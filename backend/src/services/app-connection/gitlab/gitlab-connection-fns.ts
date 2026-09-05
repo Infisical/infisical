@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { GitbeakerRequestError, Gitlab } from "@gitbeaker/rest";
+import { GitbeakerRequestError, GitbeakerRetryError, Gitlab } from "@gitbeaker/rest";
 import { AxiosError, HttpStatusCode } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
@@ -315,13 +315,18 @@ export const getGitLabConnectionClient = async (
 };
 
 const throwGitLabListError = (error: unknown, resource: "groups" | "projects"): never => {
-  if (error instanceof GitbeakerRequestError) {
-    if (error.cause?.response.status === HttpStatusCode.TooManyRequests) {
-      throw new RateLimitError({
-        message: `GitLab rate limit reached while loading ${resource}. Wait a moment and try again.`
-      });
-    }
+  const isRateLimited =
+    (error instanceof GitbeakerRequestError && error.cause?.response.status === HttpStatusCode.TooManyRequests) ||
+    (error instanceof GitbeakerRetryError &&
+      error.message.includes(`last status code: ${HttpStatusCode.TooManyRequests}`));
 
+  if (isRateLimited) {
+    throw new RateLimitError({
+      message: `GitLab rate limit reached while loading ${resource}. Wait a moment and try again.`
+    });
+  }
+
+  if (error instanceof GitbeakerRequestError) {
     throw new BadRequestError({
       message: `Failed to fetch GitLab ${resource}: ${error.message ?? "Unknown error"}${error.cause?.description && error.message !== "Unauthorized" ? `. Cause: ${error.cause.description}` : ""}`
     });

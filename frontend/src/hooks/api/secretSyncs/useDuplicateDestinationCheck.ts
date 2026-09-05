@@ -2,6 +2,17 @@ import { useMemo } from "react";
 
 import { SecretSync, useCheckDuplicateDestination } from "@app/hooks/api/secretSyncs";
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const omitEmptyValues = (config: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(config).flatMap(([key, value]) => {
+      if (value === null || value === undefined || value === "") return [];
+      return [[key, isPlainObject(value) ? omitEmptyValues(value) : value]];
+    })
+  );
+
 type UseDuplicateDestinationCheckProps = {
   destination: SecretSync;
   projectId: string;
@@ -19,15 +30,12 @@ export const useDuplicateDestinationCheck = ({
   enabled = true,
   destinationConfig
 }: UseDuplicateDestinationCheckProps) => {
-  const hasValidConfig = useMemo(() => {
-    if (!destinationConfig || typeof destinationConfig !== "object") return false;
+  const normalizedConfig = useMemo(
+    () => (isPlainObject(destinationConfig) ? omitEmptyValues(destinationConfig) : undefined),
+    [destinationConfig]
+  );
 
-    const values = Object.values(destinationConfig);
-    return (
-      values.length > 0 &&
-      values.some((value) => value !== null && value !== undefined && value !== "")
-    );
-  }, [destinationConfig]);
+  const hasValidConfig = Boolean(normalizedConfig && Object.keys(normalizedConfig).length > 0);
 
   const shouldCheck = enabled && hasValidConfig;
 
@@ -38,7 +46,7 @@ export const useDuplicateDestinationCheck = ({
     refetch
   } = useCheckDuplicateDestination(
     destination,
-    destinationConfig,
+    normalizedConfig,
     projectId,
     excludeSyncId,
     connectionId,

@@ -44,7 +44,7 @@ export const TravisCISyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.repositoryId", "");
           setValue("destinationConfig.repositorySlug", "");
-          setValue("destinationConfig.branch", undefined);
+          setValue("destinationConfig.branch", "");
         }}
       />
       <Controller
@@ -63,7 +63,7 @@ export const TravisCISyncFields = () => {
                   const repo = option;
                   onChange(repo?.id ?? "");
                   setValue("destinationConfig.repositorySlug", repo?.slug ?? "");
-                  setValue("destinationConfig.branch", undefined);
+                  setValue("destinationConfig.branch", "");
                 }}
                 options={repositories}
                 placeholder="Select a repository..."

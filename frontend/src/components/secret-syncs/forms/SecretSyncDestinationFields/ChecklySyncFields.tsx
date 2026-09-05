@@ -48,7 +48,7 @@ export const ChecklySyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.accountId", "");
           setValue("destinationConfig.accountName", "");
-          setValue("destinationConfig.groupId", undefined);
+          setValue("destinationConfig.groupId", "");
           setValue("destinationConfig.groupName", undefined);
         }}
       />
