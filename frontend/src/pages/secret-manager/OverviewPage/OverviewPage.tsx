@@ -3404,7 +3404,7 @@ const OverviewPageContent = () => {
                               "left-0 z-10 w-10 max-w-10 min-w-10 bg-container p-0 group-hover:bg-container-hover"
                             )}
                           >
-                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="mx-auto size-4" />
                           </TableCell>
                           <TableCell
                             className={twMerge(
