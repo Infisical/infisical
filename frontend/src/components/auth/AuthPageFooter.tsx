@@ -1,5 +1,5 @@
 export const AuthPageFooter = () => (
-  <footer className="mt-5 flex flex-col-reverse items-center justify-between gap-3 border-t border-border pt-5 text-center sm:flex-row sm:text-left">
+  <footer className="mt-4 flex flex-col-reverse items-center justify-between gap-3 border-t border-border py-4 text-center sm:flex-row sm:text-left">
     <p className="text-[11px] text-muted">
       &copy; {new Date().getFullYear()} Infisical Inc. All rights reserved.
     </p>
