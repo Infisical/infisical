@@ -20,7 +20,10 @@ export const KmsKeysSchema = z.object({
   keyUsage: z.string().default("encrypt-decrypt"),
   kmipMetadata: z.unknown().nullable().optional(),
   isExportable: z.boolean().default(true),
-  hasDeleteProtection: z.boolean().default(false)
+  hasDeleteProtection: z.boolean().default(false),
+  isImportable: z.boolean().default(false),
+  importOnly: z.boolean().default(false).nullable().optional(),
+  status: z.string().default("enabled")
 });
 
 export type TKmsKeys = z.infer<typeof KmsKeysSchema>;

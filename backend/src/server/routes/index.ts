@@ -374,8 +374,10 @@ import { integrationAuthDALFactory } from "@app/services/integration-auth/integr
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
-import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
+import { kmsImportKeyMaterialTokenDALFactory } from "@app/services/kms/kms-import-key-material-token-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsKeyImportMetaDALFactory } from "@app/services/kms/kms-key-import-meta-dal";
+import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
 import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
@@ -716,6 +718,8 @@ export const registerRoutes = async (
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
   const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
+  const kmsImportKeyMaterialTokenDAL = kmsImportKeyMaterialTokenDALFactory(db);
+  const kmsKeyImportMetaDAL = kmsKeyImportMetaDALFactory(db);
   const kmsLegacyEncryptionKeyDAL = kmsLegacyEncryptionKeyDALFactory(db);
   const kmsKekHistoryDAL = kmsKekHistoryDALFactory(db);
   const externalKmsDAL = externalKmsDALFactory(db);
@@ -964,6 +968,8 @@ export const registerRoutes = async (
     kmsDAL,
     internalKmsDAL,
     internalKmsKeyVersionDAL,
+    kmsImportKeyMaterialTokenDAL,
+    kmsKeyImportMetaDAL,
     orgDAL,
     projectDAL,
     hsmService,

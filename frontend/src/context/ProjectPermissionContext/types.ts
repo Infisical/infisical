@@ -47,7 +47,8 @@ export enum ProjectPermissionCmekActions {
   GenerateMac = "generate-mac",
   VerifyMac = "verify-mac",
   Rotate = "rotate",
-  ExportPrivateKey = "export-private-key"
+  ExportPrivateKey = "export-private-key",
+  GetParamsForImport = "get-params-for-import"
 }
 
 export enum ProjectPermissionKmipActions {
