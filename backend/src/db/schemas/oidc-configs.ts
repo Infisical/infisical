@@ -33,7 +33,9 @@ export const OidcConfigsSchema = z.object({
   manageGroupMemberships: z.boolean().default(false),
   encryptedOidcClientId: zodBuffer,
   encryptedOidcClientSecret: zodBuffer,
-  jwtSignatureAlgorithm: z.string().default("RS256")
+  jwtSignatureAlgorithm: z.string().default("RS256"),
+  claimEmailPath: z.string().nullable().optional(),
+  claimNamePath: z.string().nullable().optional()
 });
 
 export type TOidcConfigs = z.infer<typeof OidcConfigsSchema>;
