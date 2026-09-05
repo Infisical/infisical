@@ -414,69 +414,89 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         userId = undefined;
       }
 
-      const secs = await (tx || db.replicaNode())(TableName.SecretV2)
+      const conn = tx || db.replicaNode();
+
+      const secrets = await conn(TableName.SecretV2)
         .where({ folderId })
         .where((bd) => {
           void bd
             .whereNull(`${TableName.SecretV2}.userId`)
             .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
-        .leftJoin(
-          TableName.SecretV2JnTag,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
-        )
-        .leftJoin(
-          TableName.SecretTag,
-          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
-          `${TableName.SecretTag}.id`
-        )
-        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
         .select(selectAllTableCols(TableName.SecretV2))
-        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
-        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
-        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .orderBy(`${TableName.SecretV2}.key`, "asc");
+
+      if (!secrets.length) return [];
+
+      const secretIds = secrets.map((s) => s.id);
+
+      const tagRows = await conn(TableName.SecretV2JnTag)
+        .whereIn(`${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`, secretIds)
+        .join(TableName.SecretTag, `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+        .select(
+          db.ref(`${TableName.SecretV2}Id`).withSchema(TableName.SecretV2JnTag).as("secretId"),
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("createdAt").withSchema(TableName.SecretTag).as("tagCreatedAt")
+        )
+        .orderBy(`${TableName.SecretTag}.createdAt`, "asc")
+        .orderBy(`${TableName.SecretTag}.id`, "asc");
+
+      const metadataRows = await conn(TableName.ResourceMetadata)
+        .whereIn("secretId", secretIds)
+        .whereNotNull("secretId")
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
-          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
+          db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue"),
+          db.ref("secretId").withSchema(TableName.ResourceMetadata)
         )
-        // Order by key (name) to match Go sidecar; secondary order by createdAt+id for deterministic tag/metadata order
-        .orderBy(`${TableName.SecretV2}.key`, "asc")
-        .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
-        .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
-        .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
-        .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
+        .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc")
+        .orderBy(`${TableName.ResourceMetadata}.id`, "asc");
 
-      const data = sqlNestRelationships({
-        data: secs,
-        key: "id",
-        parentMapper: (el) => ({ _id: el.id, ...SecretsV2Schema.parse(el) }),
-        childrenMapper: [
-          {
-            key: "tagId",
-            label: "tags" as const,
-            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
-              id,
-              color,
-              slug,
-              name: slug
-            })
-          },
-          {
-            key: "metadataId",
-            label: "secretMetadata" as const,
-            mapper: ({ metadataKey, metadataValue, metadataEncryptedValue, metadataId }) => ({
-              id: metadataId,
-              key: metadataKey,
-              value: metadataValue,
-              encryptedValue: metadataEncryptedValue
-            })
-          }
-        ]
-      });
-      return data;
+      const tagsBySecretId = new Map<string, { id: string; color: string; slug: string; name: string }[]>();
+      for (const t of tagRows) {
+        const sid = t.secretId;
+        let arr = tagsBySecretId.get(sid);
+        if (!arr) {
+          arr = [];
+          tagsBySecretId.set(sid, arr);
+        }
+        arr.push({
+          id: t.tagId,
+          color: t.tagColor ?? "",
+          slug: t.tagSlug,
+          name: t.tagSlug
+        });
+      }
+
+      const metaBySecretId = new Map<
+        string,
+        { id: string; key: string; value: string | null; encryptedValue: Buffer | null }[]
+      >();
+      for (const m of metadataRows) {
+        const sid = m.secretId as string;
+        let arr = metaBySecretId.get(sid);
+        if (!arr) {
+          arr = [];
+          metaBySecretId.set(sid, arr);
+        }
+        arr.push({
+          id: m.metadataId,
+          key: m.metadataKey,
+          value: m.metadataValue as string | null,
+          encryptedValue: m.metadataEncryptedValue as Buffer | null
+        });
+      }
+
+      return secrets.map((el) => ({
+        _id: el.id,
+        ...SecretsV2Schema.parse(el),
+        tags: tagsBySecretId.get(el.id) ?? [],
+        secretMetadata: metaBySecretId.get(el.id) ?? []
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
     }
