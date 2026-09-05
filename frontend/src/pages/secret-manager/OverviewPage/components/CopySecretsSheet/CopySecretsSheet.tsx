@@ -681,6 +681,11 @@ const CopySecretsSession = ({
                         />
                       </Field>
                     </div>
+                    {hasDestinationConflicts && (
+                      <p className="text-xs text-muted" aria-live="polite">
+                        Choose whether to overwrite or skip conflicting keys when you copy.
+                      </p>
+                    )}
                   </div>
                   <div className="min-h-0 flex-1">{destinationContent}</div>
                 </section>
@@ -772,13 +777,11 @@ const CopySecretsSession = ({
                 </TooltipTrigger>
                 <TooltipContent>{disabledReason}</TooltipContent>
               </Tooltip>
-              {(unavailableValueCount > 0 || hasDestinationConflicts || disabledReason) && (
+              {(unavailableValueCount > 0 || disabledReason) && (
                 <p className="w-full text-xs text-muted" aria-live="polite">
                   {disabledReason && `${disabledReason}. `}
                   {unavailableValueCount > 0 &&
                     `${unavailableValueCount} selected ${unavailableValueCount === 1 ? "key has" : "keys have"} no value access and will be copied without values. Existing destination values are preserved. `}
-                  {hasDestinationConflicts &&
-                    "Choose whether to overwrite or skip conflicting keys when you copy."}
                 </p>
               )}
             </SheetFooter>
