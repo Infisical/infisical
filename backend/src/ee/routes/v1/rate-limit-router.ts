@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { RateLimitSchema } from "@app/db/schemas";
 import { NotFoundError } from "@app/lib/errors";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -42,7 +42,7 @@ export const registerRateLimitRouter = async (server: FastifyZodProvider) => {
     method: "PUT",
     url: "/",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: (req, res, done) => {
       verifyAuth([AuthMode.JWT])(req, res, () => {
