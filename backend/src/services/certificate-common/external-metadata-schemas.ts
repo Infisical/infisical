@@ -35,16 +35,34 @@ export const ExternalMetadataSchema = z.discriminatedUnion("type", [
 
 export type TExternalMetadata = z.infer<typeof ExternalMetadataSchema>;
 
-export const CertificateImportLinkageMap: Partial<
-  Record<CaType, { externalMetadataSchema: z.ZodTypeAny | null; referenceLabel?: string }>
-> = {
-  [CaType.INTERNAL]: { externalMetadataSchema: null },
-  [CaType.DIGICERT]: { externalMetadataSchema: DigiCertExternalMetadataSchema, referenceLabel: "DigiCert order ID" }
-};
-
 export const ImportExternalMetadataSchema = z.discriminatedUnion("type", [DigiCertExternalMetadataSchema]);
 
 export type TImportExternalMetadata = z.infer<typeof ImportExternalMetadataSchema>;
+
+type TCertificateImportVerifierDeps = {
+  digicertFns: {
+    assertOrderMatchesCertificate: (args: { caId: string; orderId: number; serialNumber: string }) => Promise<void>;
+  };
+};
+
+type TCertificateImportLinkage = {
+  externalMetadataSchema: z.ZodTypeAny | null;
+  referenceLabel?: string;
+  verifyCertificate?: (
+    args: { caId: string; externalMetadata: TImportExternalMetadata; serialNumber: string },
+    deps: TCertificateImportVerifierDeps
+  ) => Promise<void>;
+};
+
+export const CertificateImportLinkageMap: Partial<Record<CaType, TCertificateImportLinkage>> = {
+  [CaType.INTERNAL]: { externalMetadataSchema: null },
+  [CaType.DIGICERT]: {
+    externalMetadataSchema: DigiCertExternalMetadataSchema,
+    referenceLabel: "DigiCert order ID",
+    verifyCertificate: ({ caId, externalMetadata, serialNumber }, { digicertFns }) =>
+      digicertFns.assertOrderMatchesCertificate({ caId, orderId: externalMetadata.orderId, serialNumber })
+  }
+};
 
 export const CA_TYPE_LABEL: Record<CaType, string> = {
   [CaType.INTERNAL]: "Internal CA",

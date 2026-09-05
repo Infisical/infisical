@@ -140,6 +140,7 @@ export type TListCertificateProfilesDTO = {
   issuerType?: IssuerType;
   caId?: string;
   applicationId?: string;
+  enabled?: boolean;
 };
 
 export type TGetCertificateProfileByIdDTO = {

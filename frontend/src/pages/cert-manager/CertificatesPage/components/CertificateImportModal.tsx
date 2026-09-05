@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleCheck, CircleX, TriangleAlert } from "lucide-react";
 
@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -44,12 +46,20 @@ import type { TPkcs12Entry } from "@app/helpers/pkcs12";
 import { useGetCert, useImportCertificate, useImportPkcs12Entries } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import {
+  CertificateProfileSelect,
+  CertificateReferenceField,
+  useCertificateImportProfiles,
+  useCertificateImportReference
+} from "./certificate-import-fields";
 import { getCertificateImportReference } from "./certificate-import-linkage";
 import { CertificateContent } from "./CertificateContent";
 import { CertificateImportProfileFields } from "./CertificateImportProfileFields";
 import { CertificateImportFormData, certificateImportSchema } from "./types";
 
 const MAX_KEYSTORE_BYTES = 1024 * 1024;
+
+const STICKY_HEAD = "sticky top-0 z-10 bg-popover";
 
 export type FormData = CertificateImportFormData;
 
@@ -94,6 +104,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [outcomes, setOutcomes] = useState<TImportOutcome[] | null>(null);
   const [format, setFormat] = useState<"pem" | "pkcs12">("pem");
+  const [keystoreReferences, setKeystoreReferences] = useState<Record<string, string>>({});
 
   const {
     control,
@@ -104,6 +115,12 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
   } = useForm<FormData>({
     resolver: zodResolver(certificateImportSchema)
   });
+
+  const { profileOptions, isProfilesLoading } = useCertificateImportProfiles(applicationId);
+  const selectedProfileId = useWatch({ control, name: "profileId" });
+  const keystoreProfile = profileOptions.find((option) => option.id === selectedProfileId) ?? null;
+  const keystoreReferenceSource = useCertificateImportReference(keystoreProfile);
+  const keystoreReference = keystoreReferenceSource.reference;
 
   const clearFields = () =>
     reset({
@@ -125,6 +142,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     setSelected(new Set());
     setOutcomes(null);
     setFormat("pem");
+    setKeystoreReferences({});
   };
 
   const onFormSubmit = async ({
@@ -198,9 +216,23 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
   const handleImportSelected = async () => {
     if (!entries) return;
 
+    const selectedEntries = entries.filter((entry) => selected.has(entry.fingerprintSha256));
+    const externalMetadataByFingerprint = keystoreReference
+      ? Object.fromEntries(
+          selectedEntries.flatMap((entry) => {
+            const parsed = keystoreReference.parse(
+              keystoreReferences[entry.fingerprintSha256] ?? ""
+            );
+            return parsed ? [[entry.fingerprintSha256, parsed] as const] : [];
+          })
+        )
+      : undefined;
+
     const results = await importEntries({
-      entries: entries.filter((entry) => selected.has(entry.fingerprintSha256)),
-      applicationId
+      entries: selectedEntries,
+      applicationId,
+      profileId: selectedProfileId,
+      externalMetadataByFingerprint
     });
 
     setOutcomes(
@@ -281,10 +313,19 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     </FieldGroup>
   );
 
+  const isMissingKeystoreReference = Boolean(
+    keystoreReference &&
+      entries?.some(
+        (entry) =>
+          selected.has(entry.fingerprintSha256) &&
+          !keystoreReference.parse(keystoreReferences[entry.fingerprintSha256] ?? "")
+      )
+  );
+
   const failures = outcomes?.filter((outcome) => outcome.error) ?? [];
 
   const renderOutcomes = () => (
-    <ItemGroup className="gap-2">
+    <ItemGroup className="max-h-96 thin-scrollbar gap-2 overflow-y-auto">
       {outcomes?.map((outcome, index) => (
         // eslint-disable-next-line react/no-array-index-key
         <Item key={index} variant="outline" size="xs" role="listitem">
@@ -297,7 +338,9 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
           </ItemMedia>
           <ItemContent className="min-w-0">
             <ItemTitle className="truncate">{outcome.subject}</ItemTitle>
-            <ItemDescription>{outcome.error ?? "Imported"}</ItemDescription>
+            <ItemDescription className="line-clamp-none">
+              {outcome.error ?? "Imported"}
+            </ItemDescription>
           </ItemContent>
         </Item>
       ))}
@@ -305,67 +348,111 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
   );
 
   const renderEntriesTable = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">
-            <Checkbox
-              id="select-all-entries"
-              variant="project"
-              isChecked={Boolean(entries?.length) && selected.size === entries?.length}
-              onCheckedChange={() =>
-                setSelected((prev) =>
-                  prev.size === entries?.length
-                    ? new Set()
-                    : new Set(entries?.map((entry) => entry.fingerprintSha256))
-                )
-              }
-            />
-          </TableHead>
-          <TableHead>SAN / CN</TableHead>
-          <TableHead className="w-40">Private Key</TableHead>
-          <TableHead className="w-24">Chain</TableHead>
-          <TableHead className="w-44">Expires</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {entries?.map((entry) => (
-          <TableRow
-            key={entry.fingerprintSha256}
-            className="cursor-pointer"
-            onClick={() => toggleEntry(entry.fingerprintSha256)}
-          >
-            <TableCell onClick={(e) => e.stopPropagation()}>
-              <Checkbox
-                id={entry.fingerprintSha256}
-                variant="project"
-                isChecked={selected.has(entry.fingerprintSha256)}
-                onCheckedChange={() => toggleEntry(entry.fingerprintSha256)}
+    <>
+      {applicationId && (
+        <FieldGroup className="mb-4">
+          <Field>
+            <FieldLabel>Certificate Profile (optional)</FieldLabel>
+            <FieldContent>
+              <CertificateProfileSelect
+                options={profileOptions}
+                isLoading={isProfilesLoading}
+                value={selectedProfileId}
+                onChange={(profileId) => {
+                  setValue("profileId", profileId);
+                  setKeystoreReferences({});
+                }}
               />
-            </TableCell>
-            <TableCell className="max-w-0">
-              <div className="truncate">{entryLabel(entry)}</div>
-            </TableCell>
-            <TableCell>{entry.keyAlgorithm || "—"}</TableCell>
-            <TableCell>
-              {entry.chainWarning ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex items-center gap-1 text-warning">
-                      <TriangleAlert className="size-3.5" />0
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{entry.chainWarning}</TooltipContent>
-                </Tooltip>
-              ) : (
-                (entry.chainPem?.split("BEGIN CERTIFICATE").length ?? 1) - 1
-              )}
-            </TableCell>
-            <TableCell>{new Date(entry.notAfter).toLocaleDateString()}</TableCell>
+              <FieldDescription>
+                Applied to every certificate you import from this keystore.
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        </FieldGroup>
+      )}
+      <Table containerClassName="max-h-96 thin-scrollbar overflow-y-auto">
+        <TableHeader>
+          <TableRow>
+            <TableHead className={`w-12 ${STICKY_HEAD}`}>
+              <Checkbox
+                id="select-all-entries"
+                variant="project"
+                isChecked={Boolean(entries?.length) && selected.size === entries?.length}
+                onCheckedChange={() =>
+                  setSelected((prev) =>
+                    prev.size === entries?.length
+                      ? new Set()
+                      : new Set(entries?.map((entry) => entry.fingerprintSha256))
+                  )
+                }
+              />
+            </TableHead>
+            <TableHead className={STICKY_HEAD}>SAN / CN</TableHead>
+            <TableHead className={`w-40 ${STICKY_HEAD}`}>Private Key</TableHead>
+            <TableHead className={`w-24 ${STICKY_HEAD}`}>Chain</TableHead>
+            <TableHead className={`w-44 ${STICKY_HEAD}`}>Expires</TableHead>
+            {keystoreReference && (
+              <TableHead className={`w-64 ${STICKY_HEAD}`}>{keystoreReference.label}</TableHead>
+            )}
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {entries?.map((entry) => (
+            <TableRow
+              key={entry.fingerprintSha256}
+              className="cursor-pointer"
+              onClick={() => toggleEntry(entry.fingerprintSha256)}
+            >
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  id={entry.fingerprintSha256}
+                  variant="project"
+                  isChecked={selected.has(entry.fingerprintSha256)}
+                  onCheckedChange={() => toggleEntry(entry.fingerprintSha256)}
+                />
+              </TableCell>
+              <TableCell className="max-w-0">
+                <div className="truncate">{entryLabel(entry)}</div>
+              </TableCell>
+              <TableCell>{entry.keyAlgorithm || "—"}</TableCell>
+              <TableCell>
+                {entry.chainWarning ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center gap-1 text-warning">
+                        <TriangleAlert className="size-3.5" />0
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{entry.chainWarning}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  (entry.chainPem?.split("BEGIN CERTIFICATE").length ?? 1) - 1
+                )}
+              </TableCell>
+              <TableCell>{new Date(entry.notAfter).toLocaleDateString()}</TableCell>
+              {keystoreReference && (
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  {selected.has(entry.fingerprintSha256) ? (
+                    <CertificateReferenceField
+                      source={keystoreReferenceSource}
+                      value={keystoreReferences[entry.fingerprintSha256]}
+                      onChange={(value) =>
+                        setKeystoreReferences((prev) => ({
+                          ...prev,
+                          [entry.fingerprintSha256]: value
+                        }))
+                      }
+                    />
+                  ) : (
+                    <span className="text-mineshaft-400">&mdash;</span>
+                  )}
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </>
   );
 
   const renderKeystorePicker = () => (
@@ -491,9 +578,14 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
           <Button variant="outline" onClick={() => handlePopUpToggle("certificateImport", false)}>
             Cancel
           </Button>
+          {isMissingKeystoreReference && keystoreReference && (
+            <span className="text-sm text-mineshaft-300">
+              {`Enter the ${keystoreReference.label} for every selected certificate.`}
+            </span>
+          )}
           <Button
             variant="project"
-            isDisabled={!selected.size || isImportingEntries}
+            isDisabled={!selected.size || isImportingEntries || isMissingKeystoreReference}
             isPending={isImportingEntries}
             onClick={handleImportSelected}
           >

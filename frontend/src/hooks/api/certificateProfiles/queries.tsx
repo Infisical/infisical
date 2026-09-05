@@ -53,7 +53,8 @@ export const useListCertificateProfiles = ({
   search,
   includeConfigs = false,
   enrollmentType,
-  applicationId
+  applicationId,
+  enabled = true
 }: TListCertificateProfilesDTO) => {
   return useQuery({
     queryKey: certificateProfileKeys.list({
@@ -79,7 +80,8 @@ export const useListCertificateProfiles = ({
         }
       });
       return data;
-    }
+    },
+    enabled
   });
 };
 

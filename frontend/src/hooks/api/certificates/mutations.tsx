@@ -119,7 +119,7 @@ export const useImportCertificate = () => {
 export const useImportPkcs12Entries = () => {
   const queryClient = useQueryClient();
   return useMutation<TImportPkcs12EntriesResult[], object, TImportPkcs12EntriesDTO>({
-    mutationFn: async ({ entries, applicationId }) => {
+    mutationFn: async ({ entries, applicationId, profileId, externalMetadataByFingerprint }) => {
       const results: TImportPkcs12EntriesResult[] = [];
 
       await entries.reduce<Promise<void>>(async (prev, entry) => {
@@ -131,6 +131,10 @@ export const useImportPkcs12Entries = () => {
               certificatePem: entry.certificatePem,
               ...(entry.chainPem ? { chainPem: entry.chainPem } : {}),
               ...(entry.privateKeyPem ? { privateKeyPem: entry.privateKeyPem } : {}),
+              ...(profileId ? { profileId } : {}),
+              ...(externalMetadataByFingerprint?.[entry.fingerprintSha256]
+                ? { externalMetadata: externalMetadataByFingerprint[entry.fingerprintSha256] }
+                : {}),
               applicationId
             }
           );
@@ -150,6 +154,7 @@ export const useImportPkcs12Entries = () => {
     onSuccess: (results) => {
       if (results.some((result) => !result.error)) {
         queryClient.invalidateQueries({ queryKey: projectKeys.allProjectCertificates() });
+        queryClient.invalidateQueries({ queryKey: certificateProfileKeys.lists() });
         queryClient.invalidateQueries({ queryKey: ["cert-dashboard-stats"] });
       }
     }

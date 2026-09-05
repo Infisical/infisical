@@ -3475,6 +3475,7 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     digicertFns: digicertCaFns,
+    certificatePolicyService,
     licenseService,
     usageMeteringService,
     hsmConnectorService
