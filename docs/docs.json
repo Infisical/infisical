@@ -1252,6 +1252,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/agent",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",
