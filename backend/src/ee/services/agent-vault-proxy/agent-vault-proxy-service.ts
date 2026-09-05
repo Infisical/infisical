@@ -4,6 +4,7 @@ import { ActionProjectType, OrgMembershipStatus, ProjectMembershipRole, TAgentVa
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -312,7 +313,9 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     // The role is re-derived here, never trusted from mint: an admin who minted over every bundle and is
-    // then demoted must lose everything they were not explicitly granted.
+    // then demoted must lose everything they were not explicitly granted. And it has to be a live role:
+    // a time-limited one leaves its row behind when it lapses, so the membership check below still
+    // passes and hasRole(Admin) merely says "not admin", which would fall through as a member.
     //
     // actorAuthMethod is passed as null *explicitly*. validateOrgSSO throws the moment it sees
     // `undefined` but passes cleanly on `null`, and the session row stores no auth method — so leaving
@@ -320,7 +323,7 @@ export const agentVaultProxyServiceFactory = ({
     // it would pass local testing.
     let isAdmin: boolean;
     try {
-      const { hasRole } = await permissionService.getProjectPermission({
+      const { permission, hasRole } = await permissionService.getProjectPermission({
         actor: actor.type,
         actorId: actor.id,
         projectId: session.projectId,
@@ -328,6 +331,10 @@ export const agentVaultProxyServiceFactory = ({
         actorOrgId: orgId,
         actionProjectType: ActionProjectType.AgentVault
       });
+      // The smallest permission every live Agent Vault role carries; an expired one carries none.
+      if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
+        throw new UnauthorizedError({ message: "Session revoked" });
+      }
       isAdmin = hasRole(ProjectMembershipRole.Admin);
     } catch (error) {
       // An actor removed from the project surfaces here as a 403.

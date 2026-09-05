@@ -63,7 +63,9 @@ uses the same message whether a bundle id is unknown or merely not granted.
 **The session token is the lookup key, so it is sha256, not bcrypt**, and is returned exactly once. The
 bundle set is a ceiling fixed at mint and intersected with live reachability on every resolve: it can
 shrink, never grow. Nothing caches authorization, and the role is re-derived at resolve rather than
-trusted from mint, so a demotion lands.
+trusted from mint, so a demotion lands. Resolve also requires a live session-read permission, not just a
+membership row: a time-limited role leaves its row behind when it lapses, and `hasRole(Admin)` alone
+would let it fall through as a member.
 
 **Session status is derived, never stored.** `revokedAt` and `expiresAt` are the only state; a read path
 that writes is how "expired" ends up disagreeing with what the proxy sees.

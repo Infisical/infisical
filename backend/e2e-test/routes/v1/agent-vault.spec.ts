@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { AccessScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
@@ -10,8 +10,9 @@ import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { UnauthorizedError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { initLogger } from "@app/lib/logger";
 
@@ -628,6 +629,66 @@ describe("Agent Vault V1 Router", async () => {
       // Reversible on purpose: deactivation is not a revoke, so the agent comes back with the person.
       const after = await resolve();
       expect(after.connections).toHaveLength(1);
+    });
+    test("an expired time-limited role stops resolving even though its membership row remains", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const bundle = await createAccessBundle("resolve-temporary-role");
+      await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+        name: "echo",
+        hostPattern: "echo.example.com",
+        credential: { type: "passthrough" }
+      });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundleIds: [bundle.id], ttl: "never" });
+      const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
+      const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-temporary-role" });
+      const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
+
+      // The real permission service this time: what is under test is how an expired role reads.
+      const resolver = agentVaultProxyServiceFactory({
+        agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+        agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
+        agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultAccessBundleMemberDAL: agentVaultAccessBundleMemberDALFactory(testDb),
+        orgDAL: orgDALFactory(testDb),
+        permissionService: testServer.services.permission,
+        kmsService: {
+          createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
+        } as never,
+        resourceAuthMethodService: {} as never
+      });
+      const resolve = () =>
+        resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+
+      const membership = await testDb("memberships")
+        .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
+        .first();
+      const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
+
+      // getProjectPermission caches the raw membership rows behind a ten-second marker. A real expiry
+      // needs no write and is honoured from the cached rows, but flipping the flag here is a write the
+      // marker would hide, so the cache is cleared around each flip.
+      const cacheKeys = [
+        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
+        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
+      ];
+
+      // The row stays, so the "not a member" path never fires. Only a live-permission check can catch it.
+      try {
+        await testDb("membership_roles")
+          .where({ id: role.id })
+          .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
+        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await expect(resolve()).rejects.toThrow(UnauthorizedError);
+      } finally {
+        await testDb("membership_roles")
+          .where({ id: role.id })
+          .update({ isTemporary: false, temporaryAccessEndTime: null });
+        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+      }
+
+      expect((await resolve()).connections).toHaveLength(1);
     });
   });
 
