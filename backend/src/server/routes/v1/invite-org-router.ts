@@ -179,20 +179,16 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             role: ProjectMembershipRole.Member
           });
 
-          if (memberships.length) {
+          // The product's own event, as PAM writes here and as every other Agent Vault membership path
+          // writes, so filtering the Agent Vault audit log on it finds invitees too.
+          for await (const membership of memberships) {
             await server.services.auditLog.createAuditLog({
               ...req.auditLogInfo,
               orgId: req.permission.orgId,
               projectId: agentVaultProjectId,
               event: {
-                type: EventType.ADD_BATCH_PROJECT_MEMBER,
-                metadata: {
-                  members: memberships.map(({ userId, membershipId }) => ({
-                    userId,
-                    membershipId,
-                    email: ""
-                  }))
-                }
+                type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD,
+                metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
               }
             });
           }
