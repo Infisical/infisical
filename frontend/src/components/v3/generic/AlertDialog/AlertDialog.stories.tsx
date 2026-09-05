@@ -293,7 +293,7 @@ export const TypedConfirmation: Story = {
     docs: {
       description: {
         story:
-          "Add an `Input` between the header and footer that requires the user to type a keyword before the destructive action is enabled. Use this pattern for tier-two destructive actions (delete account, delete project) where an extra deliberate step reduces accidental loss. The input clears whenever the dialog closes."
+          "Add an `Input` between the header and footer that requires the user to type a keyword before the destructive action is enabled. Pressing Enter activates the dialog action by default; pass `onConfirm` to the field only when it needs custom keyboard behavior. Use this pattern for tier-two destructive actions (delete account, delete project) where an extra deliberate step reduces accidental loss. The input clears whenever the dialog closes."
       }
     }
   },

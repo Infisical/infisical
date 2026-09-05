@@ -54,6 +54,26 @@ export const Hidden: Story = {
   }
 };
 
+export const Embedded: Story = {
+  name: "Example: Embedded Layout",
+  render: (args) => {
+    const [container, setContainer] = useState<HTMLDivElement | null>(null);
+
+    return (
+      <div ref={setContainer} className="relative h-96 overflow-hidden rounded-lg border">
+        <div className="p-6 text-sm text-accent">
+          The action bar is aligned to this content region instead of the full viewport.
+        </div>
+        <SelectedActionBar
+          {...args}
+          portalContainer={container}
+          positionerClassName="absolute bottom-4"
+        />
+      </div>
+    );
+  }
+};
+
 export const EscapeClearsSelection: Story = {
   name: "Interaction: Escape clears selection",
   render: (args) => {

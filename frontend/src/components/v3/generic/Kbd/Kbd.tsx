@@ -1,4 +1,3 @@
-// Minimal Kbd component for Dice UI DataGrid keyboard shortcuts dialog
 import * as React from "react";
 
 import { cn } from "@app/components/v3/utils";

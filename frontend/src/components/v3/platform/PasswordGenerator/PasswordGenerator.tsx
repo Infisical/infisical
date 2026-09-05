@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { cloneElement, type ReactElement, useEffect, useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
 import {
   CheckIcon,
@@ -164,6 +164,7 @@ export type PasswordGeneratorProps = {
   secretPath?: string;
   environments?: { id: string; slug: string }[];
   selectedEnvironments?: { slug: string }[];
+  trigger?: ReactElement<{ disabled?: boolean }>;
 };
 
 export const PasswordGenerator = ({
@@ -174,7 +175,8 @@ export const PasswordGenerator = ({
   projectId,
   secretPath,
   environments,
-  selectedEnvironments
+  selectedEnvironments,
+  trigger
 }: PasswordGeneratorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [, isCopying, setCopyText] = useTimedReset<string>({
@@ -308,12 +310,16 @@ export const PasswordGenerator = ({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <IconButton variant="outline" size="md" isDisabled={isDisabled}>
-          <KeyRoundIcon />
-        </IconButton>
+        {trigger ? (
+          cloneElement(trigger, { disabled: isDisabled })
+        ) : (
+          <IconButton variant="outline" size="md" isDisabled={isDisabled}>
+            <KeyRoundIcon />
+          </IconButton>
+        )}
       </PopoverTrigger>
-      <PopoverContent className="w-[30rem]" align="end">
-        <div className="flex flex-col gap-4">
+      <PopoverContent className="w-[calc(100vw-1rem)] max-w-sm" align="end">
+        <div className="flex flex-col gap-3">
           <div>
             <p className="text-sm font-medium">Generate Random Value</p>
             <p className="mt-0.5 text-xs text-muted">Generate strong unique values</p>
@@ -341,14 +347,24 @@ export const PasswordGenerator = ({
             </div>
           )}
 
-          <div className="rounded-md border border-border bg-container/50 p-3">
+          <div className="rounded-md border border-border bg-container/50 p-2.5">
             <div className="flex items-center justify-between gap-2">
               <p className="flex-1 font-mono text-sm break-all select-all">{password}</p>
               <div className="flex shrink-0 gap-1">
-                <IconButton variant="ghost" size="xs" onClick={() => setRefresh((prev) => !prev)}>
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  aria-label="Generate another value"
+                  onClick={() => setRefresh((prev) => !prev)}
+                >
                   <RefreshCwIcon />
                 </IconButton>
-                <IconButton variant="ghost" size="xs" onClick={copyToClipboard}>
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  aria-label={isCopying ? "Value copied" : "Copy generated value"}
+                  onClick={copyToClipboard}
+                >
                   {isCopying ? <CheckIcon /> : <CopyIcon />}
                 </IconButton>
               </div>
@@ -396,13 +412,14 @@ export const PasswordGenerator = ({
           ) : (
             <>
               <div>
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-1.5 flex items-center justify-between">
                   <Label className="text-xs text-accent">Length: {passwordOptions.length}</Label>
                 </div>
                 <input
                   type="range"
                   min={minLength}
                   max={maxLength}
+                  aria-label="Password length"
                   value={passwordOptions.length}
                   onChange={(e) =>
                     setPasswordOptions({
@@ -414,7 +431,7 @@ export const PasswordGenerator = ({
                 />
               </div>
 
-              <div className="flex flex-wrap gap-6">
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
                 <Label className="flex cursor-pointer items-center gap-1.5 text-xs">
                   <Checkbox
                     variant="project"

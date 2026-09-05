@@ -8,6 +8,8 @@ import { createNotification } from "@app/components/notifications";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
+import { mergePendingSecretChange } from "./pendingChangeState";
+
 // akhilmhdh: Don't remove this file if ur thinking why use zustand just for selected selects state
 // This is first step and the whole secret crud will be moved to this global page scope state
 // this will allow more stuff like undo grouping stuffs etc
@@ -107,92 +109,13 @@ export interface BatchContext {
   secretPath: string;
 }
 
-const normalizeValue = (value: any): string | boolean | undefined => {
-  if (value === null || value === undefined || value === "") {
-    return undefined;
-  }
-  return value;
+const normalizeValue = (value: unknown): string | boolean | undefined => {
+  if (value === null || value === undefined || value === "") return undefined;
+  return value as string | boolean;
 };
 
-const areValuesEqual = (value1: any, value2: any): boolean => {
-  const normalized1 = normalizeValue(value1);
-  const normalized2 = normalizeValue(value2);
-
-  if (normalized1 === undefined && normalized2 === undefined) {
-    return true;
-  }
-
-  return normalized1 === normalized2;
-};
-
-const areArraysEqual = (arr1: any[] | undefined, arr2: any[] | undefined): boolean => {
-  // Handle undefined/null arrays
-  if (!arr1 && !arr2) return true;
-  if (!arr1 || !arr2) return false;
-
-  // Compare lengths
-  if (arr1.length !== arr2.length) return false;
-
-  // Deep comparison using JSON stringify (for simple objects)
-  return JSON.stringify(arr1.sort()) === JSON.stringify(arr2.sort());
-};
-
-const cleanupRevertedSecretFields = (update: PendingSecretUpdate): PendingSecretUpdate | null => {
-  const cleaned = { ...update };
-  let hasChanges = false;
-
-  if (
-    cleaned.secretValue !== undefined &&
-    !areValuesEqual(cleaned.secretValue, cleaned.originalValue)
-  ) {
-    hasChanges = true;
-  } else {
-    cleaned.secretValue = undefined;
-  }
-
-  if (
-    cleaned.secretComment !== undefined &&
-    (!areValuesEqual(cleaned.secretComment, cleaned.originalComment) ||
-      !areValuesEqual(cleaned.secretComment, cleaned.existingSecret.comment))
-  ) {
-    hasChanges = true;
-  } else {
-    cleaned.secretComment = undefined;
-  }
-
-  if (
-    cleaned.skipMultilineEncoding !== undefined &&
-    cleaned.skipMultilineEncoding !== cleaned.originalSkipMultilineEncoding
-  ) {
-    hasChanges = true;
-  } else {
-    cleaned.skipMultilineEncoding = undefined;
-  }
-
-  if (cleaned.tags !== undefined && !areArraysEqual(cleaned.tags, cleaned.originalTags)) {
-    hasChanges = true;
-  } else {
-    cleaned.tags = undefined;
-  }
-
-  if (
-    cleaned.secretMetadata !== undefined &&
-    !areArraysEqual(cleaned.secretMetadata, cleaned.originalSecretMetadata)
-  ) {
-    hasChanges = true;
-  } else {
-    cleaned.secretMetadata = undefined;
-  }
-
-  if (cleaned.newSecretName !== undefined && cleaned.newSecretName !== cleaned.secretKey) {
-    hasChanges = true;
-  } else {
-    cleaned.newSecretName = undefined;
-  }
-
-  // If no changes remain, return null to indicate this update should be removed
-  return hasChanges ? cleaned : null;
-};
+const areValuesEqual = (value1: unknown, value2: unknown) =>
+  normalizeValue(value1) === normalizeValue(value2);
 
 const cleanupRevertedFolderFields = (update: PendingFolderUpdate): PendingFolderUpdate | null => {
   const cleaned = { ...update };
@@ -369,118 +292,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         }
 
         if (change.resourceType === "secret") {
-          const secretChanges = [...newChanges.secrets];
-
-          if (change.type === PendingAction.Create) {
-            const existingCreateIndex = secretChanges.findIndex(
-              (c) =>
-                c.type === PendingAction.Create &&
-                (c.secretKey === change.secretKey || c.secretKey === change.originalKey)
-            );
-
-            if (existingCreateIndex >= 0) {
-              secretChanges[existingCreateIndex] = {
-                ...secretChanges[existingCreateIndex],
-                ...change,
-                timestamp: Date.now()
-              };
-            } else {
-              secretChanges.push(change);
-            }
-          } else if (change.type === PendingAction.Update) {
-            const existingCreateIndex = secretChanges.findIndex(
-              (c) => c.type === PendingAction.Create && c.id === change.id
-            );
-
-            if (existingCreateIndex >= 0) {
-              const existingCreate = secretChanges[existingCreateIndex] as PendingSecretCreate;
-              secretChanges[existingCreateIndex] = {
-                ...existingCreate,
-                secretKey: change.newSecretName || change.secretKey || existingCreate.secretKey,
-                secretValue:
-                  change.secretValue !== undefined
-                    ? change.secretValue
-                    : existingCreate.secretValue,
-                secretComment:
-                  change.secretComment !== undefined
-                    ? change.secretComment
-                    : existingCreate.secretComment,
-                skipMultilineEncoding:
-                  change.skipMultilineEncoding !== undefined
-                    ? change.skipMultilineEncoding
-                    : existingCreate.skipMultilineEncoding,
-                tags: change.tags !== undefined ? change.tags : existingCreate.tags,
-                secretMetadata:
-                  change.secretMetadata !== undefined
-                    ? change.secretMetadata
-                    : existingCreate.secretMetadata,
-                timestamp: Date.now()
-              };
-            } else {
-              const existingUpdateIndex = secretChanges.findIndex(
-                (c) => c.type === PendingAction.Update && c.id === change.id
-              );
-
-              if (existingUpdateIndex >= 0) {
-                const existingUpdate = secretChanges[existingUpdateIndex] as PendingSecretUpdate;
-                const mergedUpdate: PendingSecretUpdate = {
-                  ...existingUpdate,
-                  secretKey: existingUpdate.secretKey,
-                  originalValue: change.originalValue,
-                  originalComment: existingUpdate.originalComment,
-                  originalSkipMultilineEncoding: existingUpdate.originalSkipMultilineEncoding,
-                  originalTags: existingUpdate.originalTags,
-                  originalSecretMetadata: existingUpdate.originalSecretMetadata,
-
-                  newSecretName:
-                    change.newSecretName !== undefined
-                      ? change.newSecretName
-                      : existingUpdate.newSecretName,
-                  secretValue:
-                    change.secretValue !== undefined
-                      ? change.secretValue
-                      : existingUpdate.secretValue,
-                  secretComment:
-                    change.secretComment !== undefined
-                      ? change.secretComment
-                      : existingUpdate.secretComment,
-                  skipMultilineEncoding:
-                    change.skipMultilineEncoding !== undefined
-                      ? change.skipMultilineEncoding
-                      : existingUpdate.skipMultilineEncoding,
-                  tags: change.tags !== undefined ? change.tags : existingUpdate.tags,
-                  secretMetadata:
-                    change.secretMetadata !== undefined
-                      ? change.secretMetadata
-                      : existingUpdate.secretMetadata,
-                  existingSecret: existingUpdate.existingSecret,
-                  timestamp: Date.now()
-                };
-
-                // Clean up reverted fields and check if any changes remain
-                const cleanedUpdate = cleanupRevertedSecretFields(mergedUpdate);
-
-                if (cleanedUpdate) {
-                  // Still has changes, keep the update
-                  secretChanges[existingUpdateIndex] = cleanedUpdate;
-                } else {
-                  // No changes remain, remove the pending update
-                  secretChanges.splice(existingUpdateIndex, 1);
-                }
-              } else {
-                // New update - clean it up before adding
-                const cleanedUpdate = cleanupRevertedSecretFields(change);
-                if (cleanedUpdate) {
-                  secretChanges.push(cleanedUpdate);
-                }
-                // If cleanedUpdate is null, don't add it (no actual changes)
-              }
-            }
-          } else {
-            secretChanges.push(change);
-          }
-
-          newChanges.secrets = secretChanges;
+          newChanges.secrets = mergePendingSecretChange(newChanges.secrets, change);
         } else if (change.resourceType === "folder") {
           const folderChanges = [...newChanges.folders];
 

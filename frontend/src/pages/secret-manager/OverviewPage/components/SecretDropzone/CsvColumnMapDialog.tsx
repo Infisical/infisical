@@ -12,20 +12,19 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { CsvDelimiter } from "@app/components/utilities/parseSecrets";
-import { FormLabel } from "@app/components/v2";
 import {
   Badge,
   Button,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -43,15 +42,6 @@ type SecretMatrixMap = {
 };
 
 type MapKey = keyof SecretMatrixMap;
-
-type Props = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  headers: string[];
-  matrix: string[][];
-  delimiter: CsvDelimiter;
-  onParsedSecrets: (env: TParsedEnv) => void;
-};
 
 const TRUTHY_VALUES = new Set(["true", "1", "yes", "y", "t"]);
 
@@ -167,15 +157,15 @@ const MATRIX_ROWS: MatrixRow[] = [
       <div className="flex flex-col gap-1.5">
         <p>
           Separate multiple tag slugs with either{" "}
-          <code className="rounded bg-bunker-400/30 px-1">,</code> or{" "}
-          <code className="rounded bg-bunker-400/30 px-1">;</code> — whichever is <em>not</em> your
+          <code className="rounded bg-foreground/10 px-1">,</code> or{" "}
+          <code className="rounded bg-foreground/10 px-1">;</code> — whichever is <em>not</em> your
           CSV&apos;s column delimiter.
         </p>
         <p>
           Detected column delimiter:{" "}
-          <code className="rounded bg-bunker-400/30 px-1">{formatDelimiter(outer)}</code>, so use{" "}
-          <code className="rounded bg-bunker-400/30 px-1">{sep}</code> (e.g.{" "}
-          <code className="rounded bg-bunker-400/30 px-1">prod{sep}api</code>).
+          <code className="rounded bg-foreground/10 px-1">{formatDelimiter(outer)}</code>, so use{" "}
+          <code className="rounded bg-foreground/10 px-1">{sep}</code> (e.g.{" "}
+          <code className="rounded bg-foreground/10 px-1">prod{sep}api</code>).
         </p>
         <p>Missing tags are auto-created if you have permission.</p>
       </div>
@@ -188,16 +178,16 @@ const MATRIX_ROWS: MatrixRow[] = [
     hint: (sep, outer) => (
       <div className="flex flex-col gap-1.5">
         <p>
-          Provide <code className="rounded bg-bunker-400/30 px-1">key=value</code> pairs separated
-          by either <code className="rounded bg-bunker-400/30 px-1">,</code> or{" "}
-          <code className="rounded bg-bunker-400/30 px-1">;</code> — whichever is <em>not</em> your
+          Provide <code className="rounded bg-foreground/10 px-1">key=value</code> pairs separated
+          by either <code className="rounded bg-foreground/10 px-1">,</code> or{" "}
+          <code className="rounded bg-foreground/10 px-1">;</code> — whichever is <em>not</em> your
           CSV&apos;s column delimiter.
         </p>
         <p>
           Detected column delimiter:{" "}
-          <code className="rounded bg-bunker-400/30 px-1">{formatDelimiter(outer)}</code>, so use{" "}
-          <code className="rounded bg-bunker-400/30 px-1">{sep}</code> (e.g.{" "}
-          <code className="rounded bg-bunker-400/30 px-1">owner=team-a{sep}tier=p0</code>).
+          <code className="rounded bg-foreground/10 px-1">{formatDelimiter(outer)}</code>, so use{" "}
+          <code className="rounded bg-foreground/10 px-1">{sep}</code> (e.g.{" "}
+          <code className="rounded bg-foreground/10 px-1">owner=team-a{sep}tier=p0</code>).
         </p>
       </div>
     )
@@ -208,9 +198,9 @@ const MATRIX_ROWS: MatrixRow[] = [
     icon: <WrapTextIcon />,
     hint: () => (
       <>
-        Truthy cells (<code className="rounded bg-bunker-400/30 px-1">true</code>,{" "}
-        <code className="rounded bg-bunker-400/30 px-1">1</code>,{" "}
-        <code className="rounded bg-bunker-400/30 px-1">yes</code>) enable multi-line encoding;
+        Truthy cells (<code className="rounded bg-foreground/10 px-1">true</code>,{" "}
+        <code className="rounded bg-foreground/10 px-1">1</code>,{" "}
+        <code className="rounded bg-foreground/10 px-1">yes</code>) enable multi-line encoding;
         anything else leaves it disabled.
       </>
     )
@@ -294,7 +284,7 @@ type ContentProps = {
   onClose: () => void;
 };
 
-const CsvColumnMapContent = ({
+export const CsvColumnMapContent = ({
   headers,
   matrix,
   delimiter,
@@ -365,22 +355,20 @@ const CsvColumnMapContent = ({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>Import Column Mapping</DialogTitle>
-        <p className="text-sm text-accent">
-          Map your data columns to different parts of the secret.
-        </p>
-      </DialogHeader>
-      <div className="w-full overflow-hidden">
+      <SheetHeader>
+        <SheetTitle>Import Column Mapping</SheetTitle>
+        <SheetDescription>Map your data columns to different parts of the secret.</SheetDescription>
+      </SheetHeader>
+      <div className="w-full flex-1 overflow-y-auto p-4">
         <table className="w-full table-auto">
           <thead>
             <tr className="text-left">
               <th>
-                <FormLabel tooltipClassName="max-w-sm" label="Import Column" />
+                <Label>Import Column</Label>
               </th>
               <th />
               <th className="whitespace-nowrap">
-                <FormLabel label="Resulting Import" />
+                <Label>Resulting Import</Label>
               </th>
             </tr>
           </thead>
@@ -400,37 +388,14 @@ const CsvColumnMapContent = ({
           </tbody>
         </table>
       </div>
-      <DialogFooter>
-        <Button variant="ghost" onClick={onClose}>
-          Cancel
+      <SheetFooter className="border-t">
+        <Button variant="outline" onClick={onClose}>
+          Back
         </Button>
         <Button variant="project" onClick={handleImport}>
           Confirm Mapping
         </Button>
-      </DialogFooter>
+      </SheetFooter>
     </>
-  );
-};
-
-export const CsvColumnMapDialog = ({
-  isOpen,
-  onOpenChange,
-  headers,
-  matrix,
-  delimiter,
-  onParsedSecrets
-}: Props) => {
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <CsvColumnMapContent
-          headers={headers}
-          matrix={matrix}
-          delimiter={delimiter}
-          onParsedSecrets={onParsedSecrets}
-          onClose={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
   );
 };

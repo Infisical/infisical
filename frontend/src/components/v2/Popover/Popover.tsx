@@ -32,7 +32,7 @@ export const PopoverObject = ({ children, text, onChangeHandler, id }: Props) =>
             onChange={(e) => onChangeHandler(e.target.value, id)}
             // type={type}
             value={text}
-            className="ph-no-capture placeholder peer z-10 h-80 w-full rounded-md border border-mineshaft-500 bg-bunker-600 px-2 py-2.5 text-sm text-bunker-300 caret-bunker-200 outline-hidden duration-200 placeholder:text-bunker-400 focus:text-bunker-100 focus:placeholder:text-transparent dark:scheme-dark"
+            className="ph-no-capture placeholder peer z-10 h-80 w-full rounded-md border border-mineshaft-500 bg-bunker-600 px-2 py-2.5 text-sm text-bunker-300 caret-bunker-200 outline-hidden duration-200 placeholder:text-bunker-400 focus:text-bunker-100 focus:placeholder:text-transparent"
             spellCheck="false"
             placeholder="–"
           />

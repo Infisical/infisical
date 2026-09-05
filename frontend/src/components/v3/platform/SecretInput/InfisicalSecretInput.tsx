@@ -9,7 +9,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useDebounce, useToggle } from "@app/hooks";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
-import { SecretInput } from "./SecretInput";
+import { SecretInput, SecretInputVariant } from "./SecretInput";
 import { SecretReferenceWizard } from "./SecretReferenceWizard";
 
 const getIndexOfUnclosedRefToTheLeft = (value: string, pos: number) => {
@@ -30,8 +30,9 @@ const getIndexOfUnclosedRefToTheRight = (value: string, pos: number) => {
 };
 
 type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "value"> & {
-  value?: string;
+  value?: string | null;
   onChange: (val: string) => void;
+  variant?: SecretInputVariant;
   isImport?: boolean;
   isVisible?: boolean;
   isReadOnly?: boolean;
@@ -47,7 +48,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
 export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
     {
-      value = "",
+      value: propValue,
       onChange,
       containerClassName,
       secretPath: propSecretPath,
@@ -57,6 +58,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     },
     ref
   ) => {
+    const value = propValue ?? "";
     const { currentProject } = useProject();
     const projectId = currentProject?.id || "";
     const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.OverviewPage.path });

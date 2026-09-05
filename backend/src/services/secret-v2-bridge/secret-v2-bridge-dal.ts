@@ -16,7 +16,11 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
-import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { DashboardSecretsOrderBy } from "@app/services/secret/secret-types";
+import type {
+  TFindSecretsByFolderIdsFilter,
+  TSecretSortCandidate
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export const SecretServiceCacheKeys = {
   get productKey() {
@@ -43,6 +47,36 @@ interface TSecretV2DalArg {
   db: TDbClient;
   keyStore: TKeyStoreFactory;
 }
+
+type TSecretSort = { key: string; sortValue: Date };
+
+type TSecretSortCandidateRow = Omit<TSecretSortCandidate, "tags"> & {
+  tagId: string;
+  tagSlug: string;
+};
+
+type TSecretV2FindByFolderIdsRow = TSecretsV2 & {
+  rank: number;
+  reminderId: string;
+  reminderNote: string;
+  reminderRepeatDays: number;
+  nextReminderDate: Date;
+  reminderRecipientId: string;
+  reminderRecipientUsername: string;
+  reminderRecipientEmail: string;
+  reminderRecipientUserId: string;
+  tagId: string;
+  tagColor: string;
+  tagSlug: string;
+  tagCreatedAt: Date;
+  metadataId: string;
+  metadataKey: string;
+  metadataValue: string;
+  metadataEncryptedValue: Buffer;
+  metadataCreatedAt: Date;
+  rotationId: string;
+  honeyTokenId: string;
+};
 
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = "15m";
@@ -596,6 +630,131 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findSortCandidatesByFolderIds = async (dto: {
+    folderIds: string[];
+    userId?: string;
+    tx?: Knex;
+    filters?: TFindSecretsByFolderIdsFilter;
+  }) => {
+    const { folderIds, tx, filters } = dto;
+    let { userId } = dto;
+
+    try {
+      if (userId && !uuidValidate(userId)) {
+        userId = undefined;
+      }
+
+      const readDb = tx || db.replicaNode();
+      const matchingSecretsQuery = readDb(TableName.SecretV2)
+        .distinct(`${TableName.SecretV2}.id`)
+        .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
+        .where((bd) => {
+          if (filters?.search) {
+            const searchPattern = `%${sanitizeSqlLikeString(filters.search)}%`;
+            void bd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
+            if (filters.includeTagsInSearch) {
+              void bd.orWhereILike(`${TableName.SecretTag}.slug`, searchPattern);
+            }
+            if (filters.includeMetadataInSearch) {
+              void bd
+                .orWhereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
+            }
+          }
+
+          if (filters?.keys) {
+            void bd.whereIn(`${TableName.SecretV2}.key`, filters.keys);
+          }
+        })
+        .where((bd) => {
+          void bd
+            .whereNull(`${TableName.SecretV2}.userId`)
+            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
+        })
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .leftJoin(
+          TableName.SecretRotationV2SecretMapping,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretRotationV2SecretMapping}.secretId`
+        )
+        .where((qb) => {
+          if (filters?.metadataFilter && filters.metadataFilter.length > 0) {
+            filters.metadataFilter.forEach((meta) => {
+              void qb.whereExists((subQuery) => {
+                void subQuery
+                  .select("secretId")
+                  .from(TableName.ResourceMetadata)
+                  .whereRaw(`"${TableName.ResourceMetadata}"."secretId" = "${TableName.SecretV2}"."id"`)
+                  .where(`${TableName.ResourceMetadata}.key`, meta.key)
+                  .where(`${TableName.ResourceMetadata}.value`, meta.value)
+                  .whereNotNull(`${TableName.ResourceMetadata}.value`);
+              });
+            });
+          }
+        })
+        .where((bd) => {
+          const slugs = filters?.tagSlugs?.filter(Boolean);
+          if (slugs?.length) {
+            void bd.whereIn(`${TableName.SecretTag}.slug`, slugs);
+          }
+        })
+        .where((bd) => {
+          if (filters?.excludeRotatedSecrets) {
+            void bd.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
+          }
+        });
+
+      const rows = (await readDb
+        .with("matchingSecrets", matchingSecretsQuery)
+        .from({ secret: TableName.SecretV2 })
+        .join("matchingSecrets", "matchingSecrets.id", "secret.id")
+        .leftJoin(TableName.SecretV2JnTag, "secret.id", `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`)
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(
+          db.ref("id").withSchema("secret").as("id"),
+          db.ref("key").withSchema("secret").as("key"),
+          db.ref("folderId").withSchema("secret").as("folderId"),
+          db.ref("createdAt").withSchema("secret").as("createdAt"),
+          db.ref("updatedAt").withSchema("secret").as("updatedAt"),
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
+        )
+        .orderBy("secret.key", OrderByDirection.ASC)
+        .orderBy("secret.id", OrderByDirection.ASC)
+        .orderBy(`${TableName.SecretTag}.createdAt`, OrderByDirection.ASC, "first")
+        .orderBy(`${TableName.SecretTag}.id`, OrderByDirection.ASC, "first")) as TSecretSortCandidateRow[];
+
+      return sqlNestRelationships({
+        data: rows,
+        key: "id",
+        parentMapper: ({ id, key, folderId, createdAt, updatedAt }) => ({ id, key, folderId, createdAt, updatedAt }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagSlug: slug }) => ({ id, slug })
+          }
+        ]
+      }) as TSecretSortCandidate[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "get secret sort candidates" });
+    }
+  };
+
   // This method currently uses too many joins which is not performant, in case we need to add more filters we should consider refactoring this method
   const findByFolderIds = async (dto: {
     folderIds: string[];
@@ -612,7 +771,31 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         userId = undefined;
       }
 
-      const query = (tx || db.replicaNode())(TableName.SecretV2)
+      const orderBy = filters?.orderBy ?? DashboardSecretsOrderBy.Name;
+      const orderDirection = filters?.orderDirection ?? OrderByDirection.ASC;
+      const isTimestampSort = orderBy !== DashboardSecretsOrderBy.Name;
+      const sortFolderIds = filters?.sortFolderIds ?? folderIds;
+      const readDb = tx || db.replicaNode();
+
+      const secretSortQuery = readDb(`${TableName.SecretV2} as sortSecret`)
+        .select("sortSecret.key")
+        .max({ sortValue: `sortSecret.${orderBy}` })
+        .whereIn("sortSecret.folderId", sortFolderIds)
+        .where((bd) => {
+          void bd.whereNull("sortSecret.userId").orWhere({ "sortSecret.userId": userId || null });
+        })
+        .groupBy("sortSecret.key");
+
+      const query = readDb(TableName.SecretV2)
+        .modify((queryBuilder) => {
+          if (isTimestampSort) {
+            void queryBuilder.leftJoin<TSecretSort>(
+              secretSortQuery.as("secretSort"),
+              "secretSort.key",
+              `${TableName.SecretV2}.key`
+            );
+          }
+        })
         .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
         .where((bd) => {
           if (filters?.search) {
@@ -679,9 +862,9 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(
           selectAllTableCols(TableName.SecretV2),
           db.raw(
-            `DENSE_RANK() OVER (ORDER BY "${TableName.SecretV2}".key ${
-              filters?.orderDirection ?? OrderByDirection.ASC
-            }) as rank`
+            isTimestampSort
+              ? `DENSE_RANK() OVER (ORDER BY "secretSort"."sortValue" ${orderDirection} NULLS LAST, "${TableName.SecretV2}"."key" ASC) as rank`
+              : `DENSE_RANK() OVER (ORDER BY "${TableName.SecretV2}"."key" ${orderDirection}) as rank`
           )
         )
         .select(db.ref("id").withSchema(TableName.Reminder).as("reminderId"))
@@ -716,34 +899,48 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
             void bd.whereNull(`${TableName.SecretRotationV2SecretMapping}.secretId`);
           }
         })
-        // Always order by key (name) to match the Go sidecar's ordering.
         // Secondary order by createdAt+id for deterministic tag/metadata order with LEFT JOINs.
-        .orderBy("key", filters?.orderDirection ?? OrderByDirection.ASC)
+        .modify((queryBuilder) => {
+          if (isTimestampSort) {
+            void queryBuilder
+              .orderBy("secretSort.sortValue", orderDirection, "last")
+              .orderBy(`${TableName.SecretV2}.key`, OrderByDirection.ASC);
+          } else {
+            // Match the Go sidecar's name ordering when recency sorting is not requested.
+            void queryBuilder.orderBy(`${TableName.SecretV2}.key`, orderDirection);
+          }
+        })
         .orderBy(`${TableName.ResourceMetadata}.createdAt`, "asc", "first")
         .orderBy(`${TableName.ResourceMetadata}.id`, "asc", "first")
         .orderBy(`${TableName.SecretTag}.createdAt`, "asc", "first")
         .orderBy(`${TableName.SecretTag}.id`, "asc", "first");
 
-      let secs: Awaited<typeof query>;
+      let secs: TSecretV2FindByFolderIdsRow[];
 
       if (filters?.limit) {
         const rankOffset = (filters?.offset ?? 0) + 1; // ranks start at 1
-        secs = await (tx || db)
+        secs = (await (tx || db)
           .with("w", query)
           .select("*")
-          .from<Awaited<typeof query>[number]>("w")
+          .from<TSecretV2FindByFolderIdsRow>("w")
           .where("w.rank", ">=", rankOffset)
           .andWhere("w.rank", "<", rankOffset + filters.limit)
           // a CTE does not carry its inner ordering, so re-state it in full: paging needs the key order, and the
           // join rows need the metadata/tag order the inner query set, which a partial re-sort would scramble
-          .orderBy("key", filters.orderDirection ?? OrderByDirection.ASC)
+          .modify((queryBuilder) => {
+            if (isTimestampSort) {
+              void queryBuilder.orderBy("rank", OrderByDirection.ASC);
+            } else {
+              void queryBuilder.orderBy("key", orderDirection);
+            }
+          })
           .orderBy("id", OrderByDirection.ASC)
           .orderBy("metadataCreatedAt", "asc", "first")
           .orderBy("metadataId", "asc", "first")
           .orderBy("tagCreatedAt", "asc", "first")
-          .orderBy("tagId", "asc", "first");
+          .orderBy("tagId", "asc", "first")) as TSecretV2FindByFolderIdsRow[];
       } else {
-        secs = await query;
+        secs = (await query) as TSecretV2FindByFolderIdsRow[];
       }
 
       const data = sqlNestRelationships({
@@ -1519,6 +1716,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findOneWithTags,
     findByFolderId,
     findByFolderIds,
+    findSortCandidatesByFolderIds,
     findBySecretKeys,
     upsertSecretReferences,
     findReferencedSecretReferences,

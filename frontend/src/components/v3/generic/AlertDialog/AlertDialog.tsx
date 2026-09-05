@@ -8,6 +8,7 @@ import { Field, FieldLabel } from "../Field";
 import { Input } from "../Input";
 
 type AlertDialogConfirmationContextValue = {
+  actionRef: React.MutableRefObject<HTMLButtonElement | null>;
   confirmationValue?: string;
   inputValue: string;
   isConfirmed: boolean;
@@ -15,6 +16,7 @@ type AlertDialogConfirmationContextValue = {
 };
 
 const AlertDialogConfirmationContext = React.createContext<AlertDialogConfirmationContextValue>({
+  actionRef: { current: null },
   inputValue: "",
   isConfirmed: true,
   setInputValue: () => undefined
@@ -31,10 +33,11 @@ function AlertDialog(alertDialogProps: AlertDialogProps) {
   );
   const { confirmationValue, onOpenChange, ...props } = alertDialogProps;
   const [inputValue, setInputValue] = React.useState("");
+  const actionRef = React.useRef<HTMLButtonElement>(null);
   const isConfirmed =
     !hasConfirmation || (confirmationValue !== undefined && inputValue === confirmationValue);
   const confirmationContextValue = React.useMemo(
-    () => ({ confirmationValue, inputValue, isConfirmed, setInputValue }),
+    () => ({ actionRef, confirmationValue, inputValue, isConfirmed, setInputValue }),
     [confirmationValue, inputValue, isConfirmed]
   );
 
@@ -98,7 +101,7 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-4 text-foreground ring-1 ring-foreground/10 duration-100 outline-none data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[size=sm]:max-w-sm",
+          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] thin-scrollbar -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-y-auto overscroll-none rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg duration-200 outline-none has-data-[slot=alert-dialog-footer]:pb-0 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[size=sm]:max-w-sm",
           DIALOG_CONTENT_WIDTH_CLASSNAME,
           className
         )}
@@ -113,7 +116,7 @@ function AlertDialogHeader({ className, ...props }: React.ComponentProps<"div">)
     <div
       data-slot="alert-dialog-header"
       className={cn(
-        "grid grid-rows-[auto_1fr] place-items-start gap-3 text-left text-balance group-data-[size=sm]/alert-dialog-content:place-items-center group-data-[size=sm]/alert-dialog-content:text-center has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4 sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-cols-[auto_1fr] sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
+        "flex shrink-0 flex-col gap-2 text-left text-balance group-data-[size=sm]/alert-dialog-content:place-items-center group-data-[size=sm]/alert-dialog-content:text-center has-data-[slot=alert-dialog-media]:grid has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:place-items-start has-data-[slot=alert-dialog-media]:gap-3 has-data-[slot=alert-dialog-media]:gap-x-4 sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-cols-[auto_1fr] sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
         className
       )}
       {...props}
@@ -126,7 +129,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">)
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-row flex-wrap justify-end gap-2 rounded-b-xl border-t border-border bg-container p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
+        "sticky bottom-0 z-10 -mx-6 flex shrink-0 flex-row flex-wrap justify-end gap-2 rounded-b-lg border-t border-border bg-container p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2",
         className
       )}
       {...props}
@@ -212,7 +215,7 @@ function AlertDialogConfirmationField({
   onConfirm?: () => void;
 }) {
   const inputId = React.useId();
-  const { confirmationValue, inputValue, isConfirmed, setInputValue } = React.useContext(
+  const { actionRef, confirmationValue, inputValue, isConfirmed, setInputValue } = React.useContext(
     AlertDialogConfirmationContext
   );
 
@@ -236,9 +239,13 @@ function AlertDialogConfirmationField({
             onChange={(event) => setInputValue(event.target.value)}
             onKeyDown={(event) => {
               inputProps?.onKeyDown?.(event);
-              if (!event.defaultPrevented && event.key === "Enter" && isConfirmed && onConfirm) {
+              if (!event.defaultPrevented && event.key === "Enter" && isConfirmed) {
                 event.preventDefault();
-                onConfirm();
+                if (onConfirm) {
+                  onConfirm();
+                } else {
+                  actionRef.current?.click();
+                }
               }
             }}
           />
@@ -255,13 +262,28 @@ function AlertDialogAction({
   isFullWidth = false,
   isDisabled = false,
   isPending = false,
+  ref,
   ...props
 }: Omit<React.ComponentProps<typeof AlertDialogPrimitive.Action>, "asChild"> &
   Pick<
     React.ComponentProps<typeof Button>,
     "variant" | "size" | "isFullWidth" | "isDisabled" | "isPending"
   >) {
-  const { isConfirmed } = React.useContext(AlertDialogConfirmationContext);
+  const { actionRef, isConfirmed } = React.useContext(AlertDialogConfirmationContext);
+
+  const setActionRef = React.useCallback(
+    (node: HTMLButtonElement | null) => {
+      actionRef.current = node;
+
+      if (typeof ref === "function") {
+        ref(node);
+      } else if (ref) {
+        const mutableRef = ref as React.MutableRefObject<HTMLButtonElement | null>;
+        mutableRef.current = node;
+      }
+    },
+    [actionRef, ref]
+  );
 
   // Invert the asChild composition: Radix's Action lends its close-on-click behaviour to the real
   // Button, so Button renders a native <button> and its isPending spinner works (a Slot child would
@@ -269,6 +291,7 @@ function AlertDialogAction({
   return (
     <AlertDialogPrimitive.Action asChild>
       <Button
+        ref={setActionRef}
         data-slot="alert-dialog-action"
         variant={variant}
         size={size}

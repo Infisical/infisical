@@ -2,12 +2,22 @@ import { ClipboardCheckIcon, CopyIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { SecretInput } from "@app/components/v2";
-import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  IconButton,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
 import { useProject } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+} from "../tableRowActionStyles";
 
 type Props = {
   secretKey: string;
@@ -82,6 +92,7 @@ export const SecretImportSecretValueCell = ({
     <div className="relative flex items-center gap-2">
       <div className="flex-1">
         <SecretInput
+          variant="plain"
           value={getValue()}
           isVisible={isVisible}
           onFocus={() => setIsFieldFocused.on()}
@@ -93,16 +104,16 @@ export const SecretImportSecretValueCell = ({
         className={twMerge(
           "absolute top-1/2 -right-1.5 z-20 -translate-y-1/2",
           "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-          "pointer-events-none opacity-0 transition-all duration-300",
-          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+          TABLE_ROW_ACTION_BAR_CLASS_NAME
         )}
       >
         <Tooltip>
           <TooltipTrigger>
             <IconButton
+              aria-label={`Copy value for ${secretKey}`}
               variant="ghost"
               size="xs"
-              className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+              className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
               onClick={handleCopyValue}
             >
               {isCopied ? <ClipboardCheckIcon /> : <CopyIcon />}

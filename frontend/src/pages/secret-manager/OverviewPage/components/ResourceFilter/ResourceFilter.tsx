@@ -25,6 +25,7 @@ import { ResourceFilterMenuContent, type ResourceTypeOption } from "./ResourceFi
 
 // Use string literals to avoid circular dependency with OverviewPage at module init time
 const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
+  { type: "secret", label: "Secrets", icon: <KeyIcon className="text-accent" /> },
   { type: "folder", label: "Folders", icon: <FolderIcon className="text-folder" /> },
   {
     type: "dynamic",
@@ -50,8 +51,7 @@ const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
     type: "proxiedService",
     label: "Proxied Services",
     icon: <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
-  },
-  { type: "secret", label: "Secrets", icon: <KeyIcon className="text-accent" /> }
+  }
 ];
 
 type Props = {

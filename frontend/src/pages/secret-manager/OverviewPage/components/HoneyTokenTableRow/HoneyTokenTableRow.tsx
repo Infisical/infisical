@@ -1,7 +1,7 @@
 import { subject } from "@casl/ability";
 import {
   BanIcon,
-  ChevronDownIcon,
+  ChevronRightIcon,
   ClipboardCheckIcon,
   CopyIcon,
   EditIcon,
@@ -40,6 +40,13 @@ import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enu
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_EXPAND_ICON_CLASS_NAME,
+  TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_RESOURCE_ICON_CLASS_NAME
+} from "../tableRowActionStyles";
 
 const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
   [HoneyTokenStatus.Active]: "success",
@@ -47,8 +54,8 @@ const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
   [HoneyTokenStatus.Revoked]: "neutral"
 };
 
-const ACTION_BUTTON_CLASS_NAME =
-  "overflow-hidden border-0 transition-all duration-300 motion-reduce:transition-none [@media(hover:hover)]:w-0 [@media(hover:hover)]:group-hover:w-7 [@media(hover:hover)]:group-focus-within:w-7";
+const TRIGGERED_STICKY_CELL_CLASS_NAME =
+  "bg-[color-mix(in_srgb,var(--color-danger)_5%,var(--color-container))] group-hover:bg-[color-mix(in_srgb,var(--color-danger)_10%,var(--color-container-hover))]";
 
 type Props = {
   honeyTokenName: string;
@@ -98,10 +105,8 @@ export const HoneyTokenTableRow = ({
     return (
       <div
         className={twMerge(
-          "pointer-events-auto flex items-center gap-1 rounded-md border border-border bg-container-hover p-0.5 opacity-100 transition-all duration-300 motion-reduce:transition-none",
-          "[@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:gap-0 [@media(hover:hover)]:opacity-0",
-          "[@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:gap-1 [@media(hover:hover)]:group-hover:opacity-100",
-          "[@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:gap-1 [@media(hover:hover)]:group-focus-within:opacity-100"
+          "flex items-center rounded-md border border-border bg-container-hover p-0.5",
+          TABLE_ROW_ACTION_BAR_CLASS_NAME
         )}
       >
         <Tooltip>
@@ -109,7 +114,7 @@ export const HoneyTokenTableRow = ({
             <IconButton
               variant="ghost"
               size="xs"
-              className={ACTION_BUTTON_CLASS_NAME}
+              className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
               aria-label={`View details for ${honeyToken.name}`}
               onClick={() => onViewDetails(honeyToken)}
             >
@@ -125,7 +130,7 @@ export const HoneyTokenTableRow = ({
                 variant="ghost"
                 size="xs"
                 className={twMerge(
-                  ACTION_BUTTON_CLASS_NAME,
+                  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
                   "cursor-not-allowed opacity-50 hover:bg-transparent"
                 )}
                 aria-label={`More actions unavailable for ${honeyToken.name}`}
@@ -142,7 +147,7 @@ export const HoneyTokenTableRow = ({
               <IconButton
                 variant="ghost"
                 size="xs"
-                className={ACTION_BUTTON_CLASS_NAME}
+                className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                 aria-label={`More actions for ${honeyToken.name}`}
               >
                 <EllipsisIcon />
@@ -238,29 +243,37 @@ export const HoneyTokenTableRow = ({
       >
         <TableCell
           className={twMerge(
+            "w-10 max-w-10 min-w-10 p-0",
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
-            isTriggered && !isExpanded && "bg-danger/5 group-hover:bg-danger/10",
+            isTriggered && !isExpanded && TRIGGERED_STICKY_CELL_CLASS_NAME,
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover"
           )}
         >
-          {!isSingleEnvView && isExpanded ? (
-            <ChevronDownIcon className="block" />
-          ) : (
+          <div className="flex h-full items-center justify-center [&>svg]:size-4">
             <HexagonIcon
               className={twMerge(
                 isTriggered && "text-danger",
                 !isTriggered && !isAllRevoked && "text-warning",
-                isAllRevoked && "text-muted"
+                isAllRevoked && "text-muted",
+                !isSingleEnvView && !isExpanded && TABLE_ROW_RESOURCE_ICON_CLASS_NAME,
+                !isSingleEnvView && isExpanded && "hidden"
               )}
             />
-          )}
+            {!isSingleEnvView && (
+              <ChevronRightIcon
+                className={
+                  isExpanded ? TABLE_ROW_EXPANDED_ICON_CLASS_NAME : TABLE_ROW_EXPAND_ICON_CLASS_NAME
+                }
+              />
+            )}
+          </div>
         </TableCell>
         <TableCell
           className={twMerge(
             !isSingleEnvView && "sticky left-10 z-10 border-r",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
-            isTriggered && !isExpanded && "bg-danger/5 group-hover:bg-danger/10",
+            isTriggered && !isExpanded && TRIGGERED_STICKY_CELL_CLASS_NAME,
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
@@ -297,10 +310,7 @@ export const HoneyTokenTableRow = ({
               className={twMerge(
                 "absolute top-1/2 right-[3px] z-20 -translate-y-1/2",
                 "flex items-center rounded-md border border-border bg-container-hover p-0.5 shadow-md",
-                "pointer-events-auto opacity-100 transition-all duration-300 motion-reduce:transition-none",
-                "[@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0",
-                "[@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:opacity-100",
-                "[@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"
+                TABLE_ROW_ACTION_BAR_CLASS_NAME
               )}
             >
               <Tooltip disableHoverableContent>
@@ -309,7 +319,7 @@ export const HoneyTokenTableRow = ({
                     variant="ghost"
                     size="xs"
                     aria-label={`Copy honey token name ${honeyTokenName}`}
-                    className={ACTION_BUTTON_CLASS_NAME}
+                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                     onClick={(event) => {
                       event.stopPropagation();
                       navigator.clipboard.writeText(honeyTokenName);
@@ -345,17 +355,18 @@ export const HoneyTokenTableRow = ({
           })}
       </TableRow>
       {!isSingleEnvView && isExpanded && (
-        <TableRow>
-          <TableCell colSpan={totalCols} className={`${isExpanded && "bg-card p-0"}`}>
+        <TableRow className="border-0 hover:bg-transparent">
+          <TableCell colSpan={totalCols} className="border-0 p-0">
             <div
               style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
+              className="sticky left-0 border-y border-border"
             >
-              <Table containerClassName="border-none rounded-none bg-transparent">
-                <TableHeader>
+              <Table containerClassName="rounded-none border-0">
+                <TableHeader className="bg-container-hover">
                   <TableRow>
+                    <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead className="w-full">Environment</TableHead>
-                    <TableHead />
+                    <TableHead variant="action" className="w-px" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -376,6 +387,7 @@ export const HoneyTokenTableRow = ({
                               "bg-danger/5 hover:bg-danger/10"
                           )}
                         >
+                          <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                           <TableCell colSpan={2}>
                             <div className="relative flex w-full items-center">
                               <span
