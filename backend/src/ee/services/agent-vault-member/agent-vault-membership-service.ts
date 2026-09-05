@@ -205,8 +205,9 @@ export const agentVaultMembershipServiceFactory = ({
     }
 
     const memberships = await membershipDAL.transaction(async (tx) => {
-      const results: { membershipId: string; userId: string; role: string; createdAt: Date }[] = [];
-      for (const { userId } of toCreate) {
+      const results: { membershipId: string; userId: string; userName?: string; role: string; createdAt: Date }[] =
+        [];
+      for (const { userId, label } of toCreate) {
         // eslint-disable-next-line no-await-in-loop
         const membership = await membershipDAL.create(
           {
@@ -223,6 +224,8 @@ export const agentVaultMembershipServiceFactory = ({
         // eslint-disable-next-line no-await-in-loop
         await projectAccessRequestDAL.delete({ projectId, requesterUserId: userId }, tx);
         results.push({
+          // The label is the email the caller supplied, or the id when they supplied one.
+          userName: label.includes("@") ? label : undefined,
           membershipId: membership.id,
           userId,
           role: membershipRole.role,
@@ -372,6 +375,21 @@ export const agentVaultMembershipServiceFactory = ({
     }
   };
 
+  // Audit metadata pairs every actor id with a name, so a reader is not left resolving UUIDs by hand.
+  // Best effort: a label that cannot be resolved leaves the id on its own rather than failing the write.
+  const resolveActorLabel = async (dto: { userId?: string; groupId?: string; identityId?: string }) => {
+    if (dto.groupId) {
+      const [group] = await groupDAL.find({ id: dto.groupId });
+      return { groupName: group?.name };
+    }
+    if (dto.identityId) {
+      const [identity] = await identityDAL.find({ id: dto.identityId });
+      return { identityName: identity?.name };
+    }
+    const [user] = dto.userId ? await userDAL.find({ id: dto.userId }) : [];
+    return { userName: user?.username };
+  };
+
   const addProductMember = async ({ projectId, role, ctx, ...dto }: TAddAgentVaultProductMemberDTO) => {
     await checkProductAdmin(projectId, ctx);
     assertValidRole(role);
@@ -406,7 +424,7 @@ export const agentVaultMembershipServiceFactory = ({
     });
 
     usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
-    return result;
+    return { ...result, ...(await resolveActorLabel(dto)) };
   };
 
   const updateProductMemberRole = async ({ projectId, role, ctx, ...dto }: TUpdateAgentVaultProductMemberDTO) => {
@@ -415,7 +433,7 @@ export const agentVaultMembershipServiceFactory = ({
 
     const { column, id, label } = resolveActorColumn(dto);
 
-    return membershipDAL.transaction(async (tx) => {
+    const updated = await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
         { tx }
@@ -429,6 +447,8 @@ export const agentVaultMembershipServiceFactory = ({
 
       return { membershipId: membership.id, ...dto, role: membershipRole.role };
     });
+
+    return { ...updated, ...(await resolveActorLabel(dto)) };
   };
 
   const removeProductMember = async ({ projectId, ctx, ...dto }: TRemoveAgentVaultProductMemberDTO) => {
@@ -465,7 +485,7 @@ export const agentVaultMembershipServiceFactory = ({
     });
 
     usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
-    return { ...dto };
+    return { ...dto, ...(await resolveActorLabel(dto)) };
   };
 
   // The whole set rather than a page: the grant picker filters client-side, so a page would make search

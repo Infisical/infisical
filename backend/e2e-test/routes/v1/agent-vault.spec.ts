@@ -397,8 +397,16 @@ describe("Agent Vault V1 Router", async () => {
       const badRole = await inject("POST", memberships, { userId: seedData1.id, role: "viewer" });
       expect(badRole.statusCode).toBe(422);
 
+      // Naming no actor, or more than one, is refused by the schema like any other validation failure.
       const noActor = await inject("POST", memberships, { role: "member" });
-      expect(noActor.statusCode).toBe(400);
+      expect(noActor.statusCode).toBe(422);
+
+      const twoActors = await inject("POST", memberships, {
+        userId: seedData1.id,
+        identityId: seedData1.machineIdentity.id,
+        role: "member"
+      });
+      expect(twoActors.statusCode).toBe(422);
     });
   });
 

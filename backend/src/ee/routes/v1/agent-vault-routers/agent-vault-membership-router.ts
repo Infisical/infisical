@@ -132,7 +132,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
             projectId: req.internalAgentVaultProjectId,
             event: {
               type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD,
-              metadata: { userId: membership.userId, role: membership.role }
+              metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
             }
           })
         )
@@ -169,8 +169,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD,
           metadata: {
             userId: req.body.userId,
+            userName: member.userName,
             groupId: req.body.groupId,
+            groupName: member.groupName,
             identityId: req.body.identityId,
+            identityName: member.identityName,
             role: req.body.role
           }
         }
@@ -207,8 +210,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           type: EventType.AGENT_VAULT_PRODUCT_MEMBER_UPDATE,
           metadata: {
             userId: req.body.userId,
+            userName: member.userName,
             groupId: req.body.groupId,
+            groupName: member.groupName,
             identityId: req.body.identityId,
+            identityName: member.identityName,
             role: req.body.role
           }
         }
@@ -231,7 +237,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.agentVaultMembership.removeProductMember({
+      const removed = await server.services.agentVaultMembership.removeProductMember({
         projectId: req.internalAgentVaultProjectId,
         ...req.body,
         ctx: actorContext(req)
@@ -245,8 +251,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           type: EventType.AGENT_VAULT_PRODUCT_MEMBER_REMOVE,
           metadata: {
             userId: req.body.userId,
+            userName: removed.userName,
             groupId: req.body.groupId,
-            identityId: req.body.identityId
+            groupName: removed.groupName,
+            identityId: req.body.identityId,
+            identityName: removed.identityName
           }
         }
       });

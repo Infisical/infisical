@@ -445,6 +445,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           type: EventType.AGENT_VAULT_MEMBER_ADD,
           metadata: {
             accessBundleId: req.params.accessBundleId,
+            accessBundleName: member.accessBundleName,
             memberId: member.id,
             ...req.body
           }
@@ -484,7 +485,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_MEMBER_REMOVE,
-          metadata: { accessBundleId: req.params.accessBundleId, memberId: member.id }
+          metadata: {
+            accessBundleId: req.params.accessBundleId,
+            accessBundleName: member.accessBundleName,
+            memberId: member.id
+          }
         }
       });
 

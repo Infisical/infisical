@@ -45,6 +45,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               userId: z.string().uuid().nullable(),
               identityId: z.string().uuid().nullable(),
               actorName: z.string(),
+              actorEmail: z.string().nullable(),
               status: z.nativeEnum(AgentVaultSessionStatus),
               expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
               revokedAt: z.date().nullable(),

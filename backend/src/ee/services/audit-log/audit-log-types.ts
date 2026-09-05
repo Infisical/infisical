@@ -6169,8 +6169,11 @@ interface AgentVaultProductMemberAddEvent {
   type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD;
   metadata: {
     userId?: string;
+    userName?: string;
     groupId?: string;
+    groupName?: string;
     identityId?: string;
+    identityName?: string;
     role: string;
   };
 }
@@ -6179,8 +6182,11 @@ interface AgentVaultProductMemberUpdateEvent {
   type: EventType.AGENT_VAULT_PRODUCT_MEMBER_UPDATE;
   metadata: {
     userId?: string;
+    userName?: string;
     groupId?: string;
+    groupName?: string;
     identityId?: string;
+    identityName?: string;
     role: string;
   };
 }
@@ -6189,8 +6195,11 @@ interface AgentVaultProductMemberRemoveEvent {
   type: EventType.AGENT_VAULT_PRODUCT_MEMBER_REMOVE;
   metadata: {
     userId?: string;
+    userName?: string;
     groupId?: string;
+    groupName?: string;
     identityId?: string;
+    identityName?: string;
   };
 }
 
@@ -6198,6 +6207,7 @@ interface AgentVaultMemberAddEvent {
   type: EventType.AGENT_VAULT_MEMBER_ADD;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     memberId: string;
     userId?: string;
     identityId?: string;
@@ -6209,6 +6219,7 @@ interface AgentVaultMemberRemoveEvent {
   type: EventType.AGENT_VAULT_MEMBER_REMOVE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     memberId: string;
   };
 }

@@ -501,12 +501,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // The inserted row, as PAM and the generic member add return it. Re-reading the list here would go to
     // the replica and could miss the row we just wrote; the frontend refetches the list it renders anyway.
-    return agentVaultAccessBundleMemberDAL.create({
+    const created = await agentVaultAccessBundleMemberDAL.create({
       accessBundleId: bundle.id,
       userId,
       identityId,
       groupId
     });
+
+    // The bundle's name rides back for the audit event, which pairs every id it records with a label.
+    return { ...created, accessBundleName: bundle.name };
   };
 
   const removeMember = async ({ accessBundleId, memberId, ...rest }: TRemoveMemberDTO) => {
@@ -519,7 +522,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const member = await agentVaultAccessBundleMemberDAL.findOne({ id: memberId, accessBundleId: bundle.id });
     if (!member) throw new NotFoundError({ message: `Access bundle membership with ID '${memberId}' not found` });
 
-    return agentVaultAccessBundleMemberDAL.deleteById(member.id);
+    const deleted = await agentVaultAccessBundleMemberDAL.deleteById(member.id);
+    return { ...deleted, accessBundleName: bundle.name };
   };
 
   return {
