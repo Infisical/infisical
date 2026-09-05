@@ -39,6 +39,7 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
+import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
 import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./certificate-v3-service";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
 
@@ -182,7 +183,9 @@ describe("CertificateV3Service", () => {
   const mockUsageCounterDAL = {
     resolveRootOrgId: vi.fn(async (id: string) => id),
     countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
-    isCertificateQuotaKeyActiveInOrg: vi.fn(async () => false)
+    isCertificateQuotaKeyActiveInOrg: vi.fn((orgId: string, quotaKey: string) =>
+      Promise.resolve(Boolean(orgId && quotaKey && false))
+    )
   };
 
   const mockKeyStore = {
@@ -1404,6 +1407,67 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");
+    });
+  });
+
+  // applyProfileDefaults keys off altNames, and a CSR-derived request carries its SANs in
+  // subjectAlternativeNames instead. So the profile's default SANs land on a field this flow never
+  // issues from, and keying the quota on them would charge names the certificate does not carry.
+  describe("quota key SAN source on the CSR path", () => {
+    it("keys on the CSR's SANs, not the profile default SANs applyProfileDefaults leaves behind", async () => {
+      const profileWithDefaultSans = {
+        id: "profile-123",
+        projectId: "project-123",
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        status: "active",
+        enrollmentType: EnrollmentType.API,
+        apiConfigId: "api-config-123",
+        defaults: { subjectAltNames: [{ type: "dns_name", value: "profile-default.example.com" }] }
+      };
+
+      mockLicenseService.getPlan.mockResolvedValue({ pkiPqc: true, maxCertificates: 5, maxWildcardCertificates: null });
+      vi.mocked(mockPermissionService.getProjectPermission).mockResolvedValue({
+        permission: {
+          throwUnlessCan: vi.fn(),
+          can: vi.fn().mockReturnValue(true),
+          cannot: vi.fn().mockReturnValue(false)
+        }
+      } as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(profileWithDefaultSans as any);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
+        id: "ca-123",
+        projectId: "project-123",
+        externalCa: undefined,
+        internalCa: { id: "internal-ca-123", type: "ROOT", keyAlgorithm: "RSA_2048" }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({
+        id: "policy-123",
+        projectId: "project-123"
+      } as any);
+      vi.mocked(extractCertificateRequestFromCSR).mockReturnValue({
+        commonName: "app.example.com",
+        subjectAlternativeNames: [{ type: "dns_name", value: "app.example.com" }]
+      } as any);
+
+      await service
+        .signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.API,
+          ...mockActor
+        })
+        .catch(() => undefined);
+
+      const [, probedKey] = mockUsageCounterDAL.isCertificateQuotaKeyActiveInOrg.mock.calls[0];
+      expect(probedKey).toBe(buildCertificateQuotaKey({ commonName: "app.example.com", altNames: "app.example.com" }));
+      expect(probedKey).not.toBe(
+        buildCertificateQuotaKey({
+          commonName: "app.example.com",
+          altNames: "profile-default.example.com,app.example.com"
+        })
+      );
     });
   });
 

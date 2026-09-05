@@ -928,6 +928,7 @@ export const pkiScepServiceFactory = ({
 
     await validateCertificateRequestLicense({
       request: { ...certRequest, keyAlgorithm, signatureAlgorithm },
+      altNames: (certRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
       licenseService,

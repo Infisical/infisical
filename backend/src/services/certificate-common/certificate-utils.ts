@@ -47,6 +47,7 @@ export const validatePqcLicense = async ({
 // Submit-time gate only; certificate-approval-fns re-checks the caps when it materializes an approval.
 export const validateCertificateRequestLicense = async ({
   request,
+  altNames,
   projectId,
   projectDAL,
   licenseService,
@@ -57,11 +58,12 @@ export const validateCertificateRequestLicense = async ({
     keyAlgorithm?: string;
     signatureAlgorithm?: string;
     commonName?: string;
-    // applyProfileDefaults keys off altNames; a CSR-derived request keeps its SANs in
-    // subjectAlternativeNames. Either can hold the wildcard.
-    altNames?: { value: string }[];
-    subjectAlternativeNames?: { value: string }[];
   };
+  // The SANs that will actually be issued, comma-joined as the row stores them. Passed by the caller
+  // rather than read off the request: a request holds its SANs in altNames or subjectAlternativeNames
+  // depending on where it came from, and applyProfileDefaults fills the unused one, so a CSR request
+  // against a profile with default SANs would otherwise be keyed on names it never issues.
+  altNames?: string | null;
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -75,10 +77,12 @@ export const validateCertificateRequestLicense = async ({
     (algorithm): algorithm is string => !!algorithm && isPqcAlgorithm(algorithm)
   );
 
-  const requestedSans = [...(request.altNames ?? []), ...(request.subjectAlternativeNames ?? [])].map(
-    ({ value }) => value
-  );
-  const distinctSanCount = new Set(requestedSans.map((value) => value.trim().toLowerCase()).filter(Boolean)).size;
+  const distinctSanCount = new Set(
+    (altNames ?? "")
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+  ).size;
 
   const project = await projectDAL.findById(projectId);
   if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
@@ -104,7 +108,7 @@ export const validateCertificateRequestLicense = async ({
   const { isNewQuotaKey, quotaOrgId, isWildcard } = await assertCertificateQuota({
     orgId: project.orgId,
     commonName: request.commonName,
-    altNames: requestedSans.join(","),
+    altNames,
     deps: quotaDeps
   });
 

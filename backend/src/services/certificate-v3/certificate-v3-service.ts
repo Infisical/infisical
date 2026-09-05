@@ -568,6 +568,8 @@ export const certificateV3ServiceFactory = ({
 
     const quotaUsage = await validateCertificateRequestLicense({
       request: certificateRequestWithDefaults,
+      // This flow issues from altNames; the CSR flows below issue from subjectAlternativeNames.
+      altNames: (certificateRequestWithDefaults.altNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
       licenseService,
@@ -1290,6 +1292,7 @@ export const certificateV3ServiceFactory = ({
     // external-CA branches queue issuance instead and are gated in their own services.
     const quotaUsage = await validateCertificateRequestLicense({
       request: mappedCertificateRequest,
+      altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
       licenseService,
@@ -1772,6 +1775,7 @@ export const certificateV3ServiceFactory = ({
     // responds, so the cached count picks it up on its next refresh.
     await validateCertificateRequestLicense({
       request: mappedCertificateRequest,
+      altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
       licenseService,

@@ -1098,6 +1098,7 @@ export const pkiAcmeServiceFactory = ({
 
     await validateCertificateRequestLicense({
       request: updatedCertificateRequest,
+      altNames: (updatedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
       licenseService,

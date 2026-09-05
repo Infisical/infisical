@@ -995,7 +995,8 @@ export const certificateRenewalServiceFactory = ({
     if (renewedQuotaKey === buildCertificateQuotaKey(originalCert)) return undefined;
 
     return validateCertificateRequestLicense({
-      request: { ...renewedRequest, altNames: undefined },
+      request: renewedRequest,
+      altNames: renewedAltNames,
       projectId: originalCert.projectId,
       projectDAL,
       licenseService,
