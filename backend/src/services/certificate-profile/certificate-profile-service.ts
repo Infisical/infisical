@@ -1526,11 +1526,9 @@ export const certificateProfileServiceFactory = ({
     const certObj = new x509.X509Certificate(decryptedCert);
     const certificate = certObj.toString("pem");
 
-    const decryptedCertChain = await kmsDecryptor({
-      cipherTextBlob: certBody.encryptedCertificateChain!
-    });
-
-    const certificateChain = decryptedCertChain.toString();
+    const certificateChain = certBody.encryptedCertificateChain
+      ? (await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificateChain })).toString()
+      : "";
 
     let privateKey = null;
     try {

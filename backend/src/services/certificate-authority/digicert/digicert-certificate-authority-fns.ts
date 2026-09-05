@@ -630,6 +630,57 @@ export const DigiCertCertificateAuthorityFns = ({
     return { status: DigiCertPollOutcome.Pending, orderStatus };
   };
 
+  const assertOrderMatchesCertificate = async ({
+    caId,
+    orderId,
+    serialNumber
+  }: {
+    caId: string;
+    orderId: number;
+    serialNumber: string;
+  }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
+      throw new BadRequestError({ message: `CA is not a DigiCert certificate authority [caId=${caId}]` });
+    }
+
+    const digicertCa = castDbEntryToDigiCertCertificateAuthority(ca);
+    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
+      digicertCa.configuration.appConnectionId,
+      appConnectionDAL,
+      kmsService
+    );
+    const client = createDigiCertApiClient(apiKey, baseUrl);
+
+    const order = await client.getOrder(orderId);
+
+    if (
+      order.organization?.id !== digicertCa.configuration.organizationId ||
+      order.product?.name_id !== digicertCa.configuration.productNameId
+    ) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} belongs to a different DigiCert organization or product than this certificate authority.`
+      });
+    }
+
+    const digicertCertificateId = order.certificate?.id;
+    if (!digicertCertificateId) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} has no issued certificate yet, so it cannot be linked.`
+      });
+    }
+
+    const pem = await client.downloadCertificatePem(digicertCertificateId);
+    const { leaf } = extractLeafAndChain(pem);
+    const orderSerialNumber = new x509.X509Certificate(leaf).serialNumber;
+
+    if (orderSerialNumber.toLowerCase() !== serialNumber.toLowerCase()) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} was issued for a different certificate than the one being imported. Check the order number in DigiCert CertCentral.`
+      });
+    }
+  };
+
   const revokeCertificate = async ({
     caId,
     serialNumber,
@@ -692,6 +743,7 @@ export const DigiCertCertificateAuthorityFns = ({
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate,
+    assertOrderMatchesCertificate,
     orderCodeSigningCertificate: codeSigningFns.orderCodeSigningCertificate,
     reissueCodeSigningCertificate: codeSigningFns.reissueCodeSigningCertificate,
     findCodeSigningOrderByReference: codeSigningFns.findCodeSigningOrderByReference,

@@ -19,6 +19,8 @@ import {
   DetailValue
 } from "@app/components/v3";
 import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
+import { CaType } from "@app/hooks/api/ca/enums";
+import { TCertificateExternalMetadata } from "@app/hooks/api/certificates/types";
 
 import {
   getCertificateDisplayStatus,
@@ -38,6 +40,25 @@ const formatDateUTC = (dateString: string) => {
 
 const formatDateLocal = (dateString: string) => {
   return format(new Date(dateString), "EEE, dd MMM yyyy HH:mm:ss");
+};
+
+const getProviderReference = (metadata?: TCertificateExternalMetadata | null) => {
+  if (!metadata) return null;
+
+  switch (metadata.type) {
+    case CaType.DIGICERT:
+      return {
+        provider: "DigiCert CertCentral",
+        label: "Order ID",
+        value: String(metadata.orderId)
+      };
+    case CaType.GODADDY:
+      return { provider: "GoDaddy", label: "Certificate ID", value: metadata.certificateId };
+    case CaType.AWS_ACM_PUBLIC_CA:
+      return { provider: "AWS ACM Public CA", label: "Certificate ARN", value: metadata.arn };
+    default:
+      return null;
+  }
 };
 
 export const CertificateOverviewSection = ({ certificateId }: Props) => {
@@ -69,6 +90,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
   const displayStatus = getCertificateDisplayStatus(certificate);
 
   const showCaLink = certificate.caId && certificate.caName && certificate.caType === "internal";
+  const providerReference = getProviderReference(certificate.externalMetadata);
 
   return (
     <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
@@ -204,6 +226,18 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 {certificate.profileName || <span className="text-muted">—</span>}
               </DetailValue>
             </Detail>
+            {providerReference && (
+              <>
+                <Detail>
+                  <DetailLabel>Provider</DetailLabel>
+                  <DetailValue>{providerReference.provider}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>{providerReference.label}</DetailLabel>
+                  <DetailValue className="font-mono">{providerReference.value}</DetailValue>
+                </Detail>
+              </>
+            )}
             <Detail>
               <DetailLabel>Source</DetailLabel>
               <DetailValue>

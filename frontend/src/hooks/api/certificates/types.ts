@@ -1,4 +1,5 @@
 import type { TPkcs12Entry } from "@app/helpers/pkcs12";
+import { CaType } from "@app/hooks/api/ca/enums";
 
 import {
   CertExtendedKeyUsage,
@@ -60,6 +61,7 @@ export type TCertificate = {
   profileName?: string | null;
   enrollmentType?: string | null;
   caType?: CertificateIssuerKind | null;
+  externalMetadata?: TCertificateExternalMetadata | null;
   applicationId?: string | null;
   applicationName?: string | null;
   source?: TCertificateSource;
@@ -87,12 +89,19 @@ export type TRevokeCertDTO = {
 export type TImportPkcs12EntriesDTO = {
   entries: TPkcs12Entry[];
   applicationId?: string;
+  profileId?: string;
+  externalMetadataByFingerprint?: Record<string, TCertificateExternalMetadata>;
 };
 
 export type TImportPkcs12EntriesResult = {
   entry: TPkcs12Entry;
   error?: string;
 };
+
+export type TCertificateExternalMetadata =
+  | { type: CaType.DIGICERT; orderId: number }
+  | { type: CaType.GODADDY; certificateId: string }
+  | { type: CaType.AWS_ACM_PUBLIC_CA; arn: string; region: string; validationMethod: string };
 
 export type TImportCertificateDTO = {
   certificatePem: string;
@@ -102,6 +111,8 @@ export type TImportCertificateDTO = {
   pkiCollectionId?: string;
   friendlyName?: string;
   applicationId?: string;
+  profileId?: string;
+  externalMetadata?: TCertificateExternalMetadata;
 };
 
 export type TImportCertificateResponse = {

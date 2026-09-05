@@ -6,6 +6,7 @@ import {
   CertSubjectAlternativeNameType,
   TAltNameType
 } from "@app/services/certificate-common/certificate-constants";
+import { TImportExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -151,6 +152,9 @@ export type TImportCertDTO = {
   certificatePem: string;
   privateKeyPem?: string;
   chainPem?: string;
+
+  profileId?: string;
+  externalMetadata?: TImportExternalMetadata;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertPrivateKeyDTO = {
