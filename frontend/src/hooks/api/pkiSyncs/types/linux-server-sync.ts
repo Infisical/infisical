@@ -7,6 +7,8 @@ export type TLinuxServerPkiSync = TRootPkiSync & {
   destination: PkiSync.LinuxServer;
   destinationConfig: {
     destinationPath: string;
+    host?: string;
+    port?: number;
   };
   syncOptions: TRootPkiSync["syncOptions"] & {
     exportFormat?: PkiSyncExportFormat;
@@ -21,7 +23,7 @@ export type TLinuxServerPkiSync = TRootPkiSync & {
     postSyncCommand?: string | null;
   };
   connection: {
-    app: AppConnection.SSH;
+    app: AppConnection;
     name: string;
     id: string;
   };

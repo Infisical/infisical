@@ -23,16 +23,10 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
+import { releasePkiSyncConcurrency, tryAdmitPkiSyncConcurrency } from "./pki-sync-concurrency-fns";
 import { hydratePkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import {
-  PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-  PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S,
-  PKI_SYNC_CONNECTION_LOCK_RETRY,
-  PkiSync,
-  PkiSyncFailureKind,
-  PkiSyncStatus
-} from "./pki-sync-enums";
+import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSync, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
 import { PkiSyncFns, truncateSyncMessage } from "./pki-sync-fns";
@@ -46,6 +40,7 @@ import {
   THealthCheckCommandResult
 } from "./pki-sync-health-check-command-fns";
 import { commandNeedsCertificateData, HostCommandFailure } from "./pki-sync-host-command-fns";
+import { getPkiSyncTargetHost } from "./pki-sync-target-host-fns";
 import { TCertificateMap, THealthCheckTarget, TPkiSyncRaw } from "./pki-sync-types";
 
 const ENQUEUE_CHUNK_SIZE = 200;
@@ -71,7 +66,10 @@ type TPkiSyncHealthCheckQueueFactoryDep = {
     | "recordHealthCheckOutcome"
     | "findById"
   >;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete" | "getItem" | "setItemWithExpiry"
+  >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
   kmsService: Pick<
@@ -87,7 +85,7 @@ type TPkiSyncHealthCheckQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
-  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
@@ -140,26 +138,29 @@ export const pkiSyncHealthCheckQueueFactory = ({
     observableResult.observe(lastDiscoveryCount);
   });
 
-  const $withConnectionHostAccess = async <T>(connectionId: string, run: () => Promise<T>): Promise<T> => {
+  const $withConnectionHostAccess = async <T>(
+    connectionId: string,
+    targetHost: string | undefined,
+    run: () => Promise<T>
+  ): Promise<T> => {
     const connectionLock = await keyStore
       .acquireLock(
-        [KeyStorePrefixes.AppConnectionCommandLock(connectionId)],
+        [KeyStorePrefixes.AppConnectionCommandLock(connectionId, targetHost)],
         HEALTH_CHECK_LOCK_TTL_MS,
         PKI_SYNC_CONNECTION_LOCK_RETRY
       )
       .catch(() => null);
     if (!connectionLock) {
-      throw new HealthCheckBusyError("This connection is busy running another command.");
+      throw new HealthCheckBusyError(
+        targetHost
+          ? `The host ${targetHost} is busy running another command.`
+          : "This connection is busy running another command."
+      );
     }
 
     let admittedSlot = false;
     try {
-      admittedSlot =
-        (await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
-          KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-          PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-          PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
-        )) !== -1;
+      admittedSlot = await tryAdmitPkiSyncConcurrency(keyStore, connectionId, targetHost);
       if (!admittedSlot) {
         throw new HealthCheckBusyError("This connection is at its concurrency limit.");
       }
@@ -167,9 +168,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       return await run();
     } finally {
       await Promise.allSettled([
-        admittedSlot
-          ? keyStore.decrementByOrDelete(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId))
-          : undefined,
+        admittedSlot ? releasePkiSyncConcurrency(keyStore, connectionId, targetHost) : undefined,
         connectionLock.release()
       ]);
     }
@@ -312,33 +311,40 @@ export const pkiSyncHealthCheckQueueFactory = ({
 
     const certificateMap = await $certificatesForCheck(pkiSync, command);
 
-    const result = await $withConnectionHostAccess(pkiSync.connectionId, async () => {
-      const lock = await keyStore
-        .acquireLock([KeyStorePrefixes.PkiSyncLock(syncId)], HEALTH_CHECK_LOCK_TTL_MS)
-        .catch(() => null);
-      if (!lock) {
-        logger.info(`cron[${CronJobName.PkiSyncHealthCheck}]: a sync is already running, skipping [syncId=${syncId}]`);
-        return HealthCheckSkipReason.SyncInProgress;
-      }
-
-      try {
-        const checkResult = await PkiSyncFns.runHealthCheck(pkiSyncWithCredentials, certificateMap, {
-          certificateSyncDAL,
-          gatewayV2Service,
-          gatewayPoolService
-        });
-        if (!checkResult) {
-          return commandNeedsCertificateData(command)
-            ? HealthCheckSkipReason.NoCertificateData
-            : HealthCheckSkipReason.NotSupported;
+    const result = await $withConnectionHostAccess(
+      pkiSync.connectionId,
+      getPkiSyncTargetHost(pkiSync.destinationConfig),
+      async () => {
+        const lock = await keyStore
+          .acquireLock([KeyStorePrefixes.PkiSyncLock(syncId)], HEALTH_CHECK_LOCK_TTL_MS)
+          .catch(() => null);
+        if (!lock) {
+          logger.info(
+            `cron[${CronJobName.PkiSyncHealthCheck}]: a sync is already running, skipping [syncId=${syncId}]`
+          );
+          return HealthCheckSkipReason.SyncInProgress;
         }
 
-        await $recordCheckResult(pkiSync, checkResult, isFinalAttempt, messageSubject);
-        return checkResult;
-      } finally {
-        await lock.release();
+        try {
+          const checkResult = await PkiSyncFns.runHealthCheck(pkiSyncWithCredentials, certificateMap, {
+            certificateSyncDAL,
+            gatewayV2Service,
+            gatewayPoolService,
+            keyStore
+          });
+          if (!checkResult) {
+            return commandNeedsCertificateData(command)
+              ? HealthCheckSkipReason.NoCertificateData
+              : HealthCheckSkipReason.NotSupported;
+          }
+
+          await $recordCheckResult(pkiSync, checkResult, isFinalAttempt, messageSubject);
+          return checkResult;
+        } finally {
+          await lock.release();
+        }
       }
-    });
+    );
 
     if (typeof result === "string") return { skipped: result };
 
@@ -384,6 +390,51 @@ export const pkiSyncHealthCheckQueueFactory = ({
     throw new BadRequestError({ message: SKIP_MESSAGES[outcome.skipped] });
   };
 
+  const testTargetHostReachable = async (args: {
+    destination: PkiSync;
+    connectionId: string;
+    destinationConfig: Record<string, unknown>;
+  }) => {
+    const connection = await appConnectionDAL.findById(args.connectionId);
+    if (!connection) {
+      throw new NotFoundError({ message: `App connection with ID '${args.connectionId}' not found` });
+    }
+
+    const credentials = await decryptAppConnectionCredentials({
+      orgId: connection.orgId,
+      projectId: connection.projectId,
+      encryptedCredentials: connection.encryptedCredentials,
+      kmsService
+    });
+
+    const target: THealthCheckTarget = {
+      id: "unsaved-sync-reachability",
+      destination: args.destination,
+      destinationConfig: args.destinationConfig,
+      syncOptions: {},
+      connection: {
+        id: connection.id,
+        name: connection.name,
+        app: connection.app,
+        credentials: credentials as Record<string, unknown>,
+        method: connection.method,
+        orgId: connection.orgId,
+        gatewayId: connection.gatewayId ?? undefined,
+        gatewayPoolId: connection.gatewayPoolId
+      }
+    };
+
+    await PkiSyncFns.testReachability(target, {
+      certificateSyncDAL,
+      gatewayV2Service,
+      gatewayPoolService,
+      keyStore
+    }).catch((err) => {
+      if (err instanceof PkiSyncError) throw new BadRequestError({ message: err.message });
+      throw err;
+    });
+  };
+
   const testHealthCheckCommand = async (args: {
     destination: PkiSync;
     connectionId: string;
@@ -425,11 +476,12 @@ export const pkiSyncHealthCheckQueueFactory = ({
       }
     };
 
-    return $withConnectionHostAccess(connection.id, async () => {
+    return $withConnectionHostAccess(connection.id, getPkiSyncTargetHost(target.destinationConfig), async () => {
       const result = await PkiSyncFns.runHealthCheck(target, linkedCertificates, {
         certificateSyncDAL,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        keyStore
       }).catch((err) => {
         if (err instanceof PkiSyncError) throw new BadRequestError({ message: err.message });
         throw err;
@@ -498,5 +550,5 @@ export const pkiSyncHealthCheckQueueFactory = ({
     });
   };
 
-  return { init, runHealthCheckNow, testHealthCheckCommand };
+  return { init, runHealthCheckNow, testHealthCheckCommand, testTargetHostReachable };
 };

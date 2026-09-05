@@ -337,6 +337,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.GoDaddy,
   AppConnection.SSH,
   AppConnection.WinRM,
+  AppConnection.LDAP,
   AppConnection.NutanixPrismCentral,
   AppConnection.MicrosoftIntune
 ];

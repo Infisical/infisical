@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { netbiosFromDomainFqdn } from "@app/lib/ldap/ldap-search-fns";
 
 import { GcpServiceAccountAuthMethod, PamAccountType, PamPostgresAuthMethod, PamSshAuthMethod } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
@@ -954,14 +955,14 @@ export const isDomainQualifiedUsername = (username: string) => username.includes
 // Domain-qualifies a bare username to `NETBIOS\user` for RDP/NLA; already-qualified forms pass through
 export const qualifyUsernameWithDomain = (username: string, domainFqdn: string) => {
   if (isDomainQualifiedUsername(username)) return username;
-  return `${domainFqdn.split(".")[0].toUpperCase()}\\${username}`;
+  return `${netbiosFromDomainFqdn(domainFqdn)}\\${username}`;
 };
 
 // Normalizes any form to a NetBIOS `DOMAIN\user` login
 export const toNetbiosUsername = (username: string, domainFqdn: string) => {
   if (username.includes("\\")) return username;
   const localPart = username.includes("@") ? username.split("@")[0] : username;
-  return `${domainFqdn.split(".")[0].toUpperCase()}\\${localPart}`;
+  return `${netbiosFromDomainFqdn(domainFqdn)}\\${localPart}`;
 };
 
 // -- Account accessibility

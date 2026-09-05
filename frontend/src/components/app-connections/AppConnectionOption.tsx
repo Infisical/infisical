@@ -23,7 +23,8 @@ export const AppConnectionOptionContent = ({
   isOnlyOption = false,
   isSelected = false
 }: TAppConnectionOptionContentProps) => {
-  const isCreateOption = data.id === "_create";
+  const isCreateOption = data.id === "_create" || data.id.startsWith("_create:");
+  const isPerAppCreateOption = isCreateOption && data.id !== "_create";
   const { isSubOrganization } = useOrganization();
 
   return (
@@ -33,7 +34,9 @@ export const AppConnectionOptionContent = ({
           className={`flex items-center gap-x-1 ${isOnlyOption ? "text-foreground" : "text-accent"}`}
         >
           <PlusIcon className="size-4" />
-          <span className="mr-auto">Create New Connection</span>
+          <span className="mr-auto">
+            {isPerAppCreateOption ? data.name : "Create New Connection"}
+          </span>
         </div>
       ) : (
         <>
@@ -71,7 +74,7 @@ export const AppConnectionOption = ({
   isSelected,
   ...props
 }: OptionProps<TAvailableAppConnection>) => {
-  const isCreateOption = props.data.id === "_create";
+  const isCreateOption = props.data.id === "_create" || props.data.id.startsWith("_create:");
   const isOnlyOption = isCreateOption && props.selectProps.options.length === 1;
 
   return (
