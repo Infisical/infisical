@@ -76,7 +76,17 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
           "Name specific hosts. A bare wildcard is too broad."
         ),
       credentialType: z.nativeEnum(AgentVaultCredentialType),
-      headerName: z.string().trim().max(128).optional(),
+      headerName: z
+        .string()
+        .trim()
+        .max(128)
+        // Matches the backend rule. Go's HTTP client refuses any other character, so a name that saves
+        // here would 502 every request through the connection.
+        .regex(
+          /^[A-Za-z0-9!#$%&'*+.^_`|~-]*$/,
+          "A header name can't contain spaces or colons. Use letters, digits and dashes, as in X-API-Key."
+        )
+        .optional(),
       headerPrefix: z.string().trim().max(64).optional(),
       username: z.string().trim().max(256).optional(),
       secret: z.string().max(8192).optional()

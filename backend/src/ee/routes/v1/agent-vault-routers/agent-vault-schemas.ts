@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { AgentVaultAccessBundleMembersSchema } from "@app/db/schemas";
+import {
+  AGENT_VAULT_HEADER_NAME_MESSAGE,
+  AGENT_VAULT_HEADER_NAME_RE
+} from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -36,7 +40,14 @@ export const AgentVaultCredentialInputSchema = z
   .discriminatedUnion("type", [
     z.object({
       type: z.literal(AgentVaultCredentialType.Bearer),
-      headerName: z.string().trim().min(1).max(128).optional().describe(AGENT_VAULT.CONNECTION.headerName),
+      headerName: z
+        .string()
+        .trim()
+        .min(1)
+        .max(128)
+        .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
+        .optional()
+        .describe(AGENT_VAULT.CONNECTION.headerName),
       headerPrefix: z.string().trim().max(64).optional().describe(AGENT_VAULT.CONNECTION.headerPrefix),
       value: z.string().min(1).max(8192).describe(AGENT_VAULT.CONNECTION.value)
     }),
@@ -58,7 +69,14 @@ export const AgentVaultCredentialUpdateSchema = z
   .discriminatedUnion("type", [
     z.object({
       type: z.literal(AgentVaultCredentialType.Bearer),
-      headerName: z.string().trim().min(1).max(128).optional().describe(AGENT_VAULT.CONNECTION.headerName),
+      headerName: z
+        .string()
+        .trim()
+        .min(1)
+        .max(128)
+        .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
+        .optional()
+        .describe(AGENT_VAULT.CONNECTION.headerName),
       headerPrefix: z.string().trim().max(64).optional().describe(AGENT_VAULT.CONNECTION.headerPrefix),
       value: z.string().min(1).max(8192).optional().describe(AGENT_VAULT.CONNECTION.updateValue)
     }),

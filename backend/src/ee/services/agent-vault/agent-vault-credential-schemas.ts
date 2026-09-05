@@ -14,8 +14,22 @@ import { AgentVaultCredentialType } from "./agent-vault-enums";
 // config entry and needs no migration. PAM put its discriminator inside the blob and now carries
 // withLegacyAuthMethod and normalizeCredentialAuthMethod to cope.
 
+// The characters RFC 7230 allows in a header name. Go's HTTP client refuses to send anything else, so a
+// name saved without this check produces a connection that 502s on every request, at the agent rather
+// than at the person who typed it.
+export const AGENT_VAULT_HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
+
+export const AGENT_VAULT_HEADER_NAME_MESSAGE =
+  "A header name can't contain spaces or colons. Use letters, digits and dashes, as in X-API-Key.";
+
 export const AgentVaultBearerConfigSchema = z.object({
-  headerName: z.string().trim().min(1).max(128).default("Authorization"),
+  headerName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
+    .default("Authorization"),
   // Stored exactly as typed, with no trailing space: the proxy joins prefix and value with one space and
   // skips the space when the prefix is empty. That is how `DD-API-KEY: abc123` and
   // `Authorization: Bearer abc123` both come out right.
