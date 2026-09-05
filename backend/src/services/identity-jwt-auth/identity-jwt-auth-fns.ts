@@ -11,3 +11,11 @@ export const doesFieldValueMatchJwtPolicy = (fieldValue: string | boolean | numb
 
   return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue, { bash: true });
 };
+
+export const doesAudValueMatchJwtPolicy = (fieldValue: string | string[], policyValue: string) => {
+  if (Array.isArray(fieldValue)) {
+    return fieldValue.some((entry) => entry === policyValue || picomatch.isMatch(entry, policyValue, { bash: true }));
+  }
+
+  return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue, { bash: true });
+};
