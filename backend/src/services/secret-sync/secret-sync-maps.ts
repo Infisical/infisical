@@ -1,6 +1,7 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { TDaytonaConnection } from "@app/services/app-connection/daytona";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
@@ -250,6 +251,29 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
   return existingAccountId === newAccountId;
 };
 
+// A Daytona API key is bound to one organization and nothing scopes below it, so two syncs collide
+// exactly when their connections resolve to the same organization, whether or not they share a
+// connection.
+const daytonaDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  // Without a connection on either side there is no organization to compare, and an empty Daytona
+  // config matches every other sync, so treating that as a collision would block them all.
+  if (!newSync.connectionId || !existingSync.connectionId) return false;
+
+  if (existingSync.connectionId === newSync.connectionId) return true;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  const existingOrgId = (existingConn as TDaytonaConnection).credentials.organizationId;
+  const newOrgId = (newConn as TDaytonaConnection).credentials.organizationId;
+
+  if (!existingOrgId || !newOrgId) return false;
+
+  return existingOrgId === newOrgId;
+};
+
 const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
   const existingConfig = existingSync.destinationConfig;
   const newConfig = newSync.destinationConfig;
@@ -339,11 +363,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Qovery]: defaultDuplicateCheck,
   [SecretSync.Cloud66]: defaultDuplicateCheck,
   [SecretSync.Spacelift]: defaultDuplicateCheck,
-  // Daytona has an empty destination config, so checkDuplicateDestination returns early and never
-  // reaches this. Kept accurate rather than defaulted: a Daytona API key is bound to one organization
-  // and nothing scopes below it, so two syncs sharing a connection do write the same secrets.
-  [SecretSync.Daytona]: async ({ existingSync, newSync }) =>
-    Boolean(newSync.connectionId) && existingSync.connectionId === newSync.connectionId
+  [SecretSync.Daytona]: daytonaDuplicateCheck
 };
 
 /**

@@ -15,19 +15,26 @@ export const DaytonaConnectionApiKeyCredentialsSchema = z.object({
   apiKey: z.string().trim().min(1, "API Key required").max(500).describe(AppConnections.CREDENTIALS.DAYTONA.apiKey)
 });
 
+// A Daytona API key is bound to one organization, so the organization is resolved during validation
+// rather than supplied by the caller. It is stored on the connection and read back to tell whether
+// two syncs write to the same organization.
+export const DaytonaConnectionApiKeyStoredCredentialsSchema = DaytonaConnectionApiKeyCredentialsSchema.extend({
+  organizationId: z.string().trim().min(1).max(255).describe(AppConnections.CREDENTIALS.DAYTONA.organizationId)
+});
+
 const BaseDaytonaConnectionSchema = BaseAppConnectionSchema.extend({
   app: z.literal(AppConnection.Daytona)
 });
 
 export const DaytonaConnectionSchema = BaseDaytonaConnectionSchema.extend({
   method: z.literal(DaytonaConnectionMethod.ApiKey),
-  credentials: DaytonaConnectionApiKeyCredentialsSchema
+  credentials: DaytonaConnectionApiKeyStoredCredentialsSchema
 });
 
 export const SanitizedDaytonaConnectionSchema = z.discriminatedUnion("method", [
   BaseDaytonaConnectionSchema.extend({
     method: z.literal(DaytonaConnectionMethod.ApiKey),
-    credentials: DaytonaConnectionApiKeyCredentialsSchema.pick({})
+    credentials: DaytonaConnectionApiKeyStoredCredentialsSchema.pick({ organizationId: true })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Daytona]} (API Key)` }))
 ]);
 
