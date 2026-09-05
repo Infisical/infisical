@@ -12,12 +12,9 @@ import {
   FormControl,
   Input,
   Select,
-  SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
+  SelectItem
 } from "@app/components/v2";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -169,13 +166,11 @@ export const ChecklyConfigurePage = () => {
           </div>
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-mineshaft-600">
-              <Tab value={TabSections.Connection}>Connection</Tab>
-              <Tab value={TabSections.Options}>Options</Tab>
-            </div>
-          </TabList>
-          <TabPanel value={TabSections.Connection}>
+          <TabsList variant="project">
+            <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+            <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+          </TabsList>
+          <TabsContent value={TabSections.Connection}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -252,8 +247,8 @@ export const ChecklyConfigurePage = () => {
                 </Select>
               </FormControl>
             </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.Options}>
+          </TabsContent>
+          <TabsContent value={TabSections.Options}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -269,7 +264,7 @@ export const ChecklyConfigurePage = () => {
                 />
               </FormControl>
             </motion.div>
-          </TabPanel>
+          </TabsContent>
         </Tabs>
         <Button
           onClick={handleButtonClick}
