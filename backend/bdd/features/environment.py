@@ -79,11 +79,14 @@ def bootstrap_infisical(context: Context):
         )
         resp.raise_for_status()
         workspaces = resp.json()["workspaces"]
-        if not workspaces:
+        project = next(
+            (w for w in workspaces if w["type"] == "cert-manager"),
+            None,
+        )
+        if project is None:
             raise RuntimeError(
                 "Expected an auto-provisioned Cert Manager project after admin signup"
             )
-        project = workspaces[0]
 
         ca_slug = faker.slug()
         resp = client.post(
