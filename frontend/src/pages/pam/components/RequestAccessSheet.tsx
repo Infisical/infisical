@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -8,9 +8,11 @@ import {
   ListChecks,
   Rocket,
   Send,
+  ShieldAlert,
   User as UserIcon,
   Users as UsersIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -20,16 +22,23 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   TextArea
 } from "@app/components/v3";
 import {
@@ -39,6 +48,7 @@ import {
   PamApproverType,
   TAccessiblePamAccount,
   TPamApprovalWorkflowStep,
+  useBreakGlassPamAccessRequest,
   useCreatePamAccessRequest,
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
@@ -59,13 +69,19 @@ const DURATION_OPTIONS = [
 ];
 
 // Reason requiredness follows the template's Require Reason policy, same as the API and CLI
-const makeSchema = (requireReason: boolean) =>
-  z.object({
+const makeSchema = (requireReason: boolean, breakGlass: boolean) => {
+  const { minLength, message } = (() => {
+    if (breakGlass)
+      return { minLength: 10, message: "At least 10 characters for a break-glass request" };
+    if (requireReason) return { minLength: 1, message: "Required" };
+    return { minLength: 0, message: "Required" };
+  })();
+
+  return z.object({
     duration: z.string().min(1, "Required"),
-    reason: requireReason
-      ? z.string().trim().min(1, "Required").max(500)
-      : z.string().trim().max(500)
+    reason: z.string().trim().min(minLength, message).max(500)
   });
+};
 
 type FormData = z.infer<ReturnType<typeof makeSchema>>;
 
@@ -74,6 +90,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   accessType?: PamAccessType;
+  onGranted?: (account: TAccessiblePamAccount, accessType: PamAccessType) => void;
 };
 
 const ApproverChip = ({
@@ -157,16 +174,30 @@ export const RequestAccessSheet = ({
   account,
   isOpen,
   onOpenChange,
-  accessType = PamAccessType.Session
+  accessType = PamAccessType.Session,
+  onGranted
 }: Props) => {
   const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
+  const breakGlass = useBreakGlassPamAccessRequest();
+  const [bypassReason, setBypassReason] = useState("");
   const isCredentialRequest = accessType === PamAccessType.Credential;
   const isPending =
     (isCredentialRequest ? account?.credentialAccessStatus : account?.accessStatus) ===
     PamAccessStatus.Pending;
+  // Session and credential requests are separate rows, so break glass on the one this sheet is for.
+  const pendingRequestId = isCredentialRequest
+    ? account?.credentialPendingRequestId
+    : account?.pendingRequestId;
+  const canBreakGlass = Boolean(account?.canBreakGlass && pendingRequestId);
   const requireReason = Boolean(account?.requireReason);
-  const schema = useMemo(() => makeSchema(requireReason), [requireReason]);
+  const [breakGlassOnSubmit, setBreakGlassOnSubmit] = useState(false);
+  const requestLabel = isCredentialRequest ? "Request credentials" : "Request session access";
+  const submitLabel = breakGlassOnSubmit ? "Break glass" : requestLabel;
+  const schema = useMemo(
+    () => makeSchema(requireReason, breakGlassOnSubmit),
+    [requireReason, breakGlassOnSubmit]
+  );
 
   const {
     control,
@@ -179,8 +210,30 @@ export const RequestAccessSheet = ({
   });
 
   const handleOpenChange = (open: boolean) => {
-    if (!open) reset();
+    if (!open) {
+      reset();
+      setBypassReason("");
+      setBreakGlassOnSubmit(false);
+    }
     onOpenChange(open);
+  };
+
+  const onBreakGlass = () => {
+    if (!pendingRequestId) return;
+    breakGlass.mutate(
+      { requestId: pendingRequestId, bypassReason: bypassReason.trim() },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: "Access granted. The approvers you skipped have been notified.",
+            type: "success"
+          });
+          setBypassReason("");
+          onOpenChange(false);
+          if (account) onGranted?.(account, accessType);
+        }
+      }
+    );
   };
 
   const onSubmit = (data: FormData) => {
@@ -190,18 +243,23 @@ export const RequestAccessSheet = ({
         accountId: account.id,
         duration: data.duration,
         reason: data.reason || undefined,
-        accessType
+        accessType,
+        breakGlass: breakGlassOnSubmit || undefined
       },
       {
         onSuccess: () => {
+          const submittedText = isCredentialRequest
+            ? "Credential access request submitted"
+            : "Access request submitted";
           createNotification({
-            text: isCredentialRequest
-              ? "Credential access request submitted"
-              : "Access request submitted",
+            text: breakGlassOnSubmit
+              ? "Access granted. The approvers you skipped have been notified."
+              : submittedText,
             type: "success"
           });
           reset();
           onOpenChange(false);
+          if (breakGlassOnSubmit && account) onGranted?.(account, accessType);
         }
       }
     );
@@ -232,6 +290,46 @@ export const RequestAccessSheet = ({
               </p>
             </div>
             <ApprovalWorkflow accountId={account?.id} isPending accessType={accessType} />
+            {canBreakGlass && (
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle className="text-base">
+                    <ShieldAlert className="size-4 shrink-0 text-danger" />
+                    Break glass
+                  </CardTitle>
+                  <CardDescription>
+                    Grant yourself access now without waiting for an approver. Use this only in an
+                    emergency: the approvers above are notified immediately and the reason you give
+                    is recorded in the audit log.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <Field>
+                    <FieldLabel>
+                      Reason <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <FieldContent>
+                      <TextArea
+                        rows={3}
+                        value={bypassReason}
+                        onChange={(e) => setBypassReason(e.target.value)}
+                        placeholder="Why can this not wait for an approver?"
+                      />
+                      <FieldDescription>At least 10 characters.</FieldDescription>
+                    </FieldContent>
+                  </Field>
+                  <Button
+                    variant="danger"
+                    className="self-end"
+                    isDisabled={bypassReason.trim().length < 10}
+                    isPending={breakGlass.isPending}
+                    onClick={onBreakGlass}
+                  >
+                    Break glass
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
@@ -262,7 +360,10 @@ export const RequestAccessSheet = ({
                 render={({ field, fieldState }) => (
                   <Field>
                     <FieldLabel>
-                      Reason {requireReason && <span className="text-danger">*</span>}
+                      Reason{" "}
+                      {(requireReason || breakGlassOnSubmit) && (
+                        <span className="text-danger">*</span>
+                      )}
                     </FieldLabel>
                     <FieldContent>
                       <TextArea
@@ -276,7 +377,9 @@ export const RequestAccessSheet = ({
                         isError={!!fieldState.error}
                       />
                       <FieldDescription>
-                        Will be visible to approvers and recorded in audit logs.
+                        {breakGlassOnSubmit
+                          ? "Sent to the approvers you skip and recorded in audit logs."
+                          : "Will be visible to approvers and recorded in audit logs."}
                       </FieldDescription>
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </FieldContent>
@@ -314,14 +417,40 @@ export const RequestAccessSheet = ({
                 )}
               />
               <ApprovalWorkflow accountId={account?.id} isPending={false} accessType={accessType} />
+              {account?.canBreakGlass && (
+                <Card
+                  className={twMerge("p-4", breakGlassOnSubmit && "border-danger/40 bg-danger/5")}
+                >
+                  <Field orientation="horizontal" className="items-center!">
+                    <FieldContent>
+                      <FieldTitle className="flex items-center gap-2">
+                        <ShieldAlert className="size-4 shrink-0 text-danger" />
+                        Break glass
+                      </FieldTitle>
+                      <FieldDescription>
+                        Grant now, skipping the approvers. Every use is audited.
+                      </FieldDescription>
+                    </FieldContent>
+                    <Switch
+                      checked={breakGlassOnSubmit}
+                      variant="danger"
+                      onCheckedChange={setBreakGlassOnSubmit}
+                    />
+                  </Field>
+                </Card>
+              )}
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="pam" isPending={createRequest.isPending}>
-                <Send className="mr-1.5 size-4" />
-                {isCredentialRequest ? "Request credentials" : "Request session access"}
+              <Button
+                type="submit"
+                variant={breakGlassOnSubmit ? "danger" : "pam"}
+                isPending={createRequest.isPending}
+              >
+                {!breakGlassOnSubmit && <Send className="mr-1.5 size-4" />}
+                {submitLabel}
               </Button>
             </div>
           </form>

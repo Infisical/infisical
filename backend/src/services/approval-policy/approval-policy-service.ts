@@ -485,14 +485,12 @@ export const approvalPolicyServiceFactory = ({
           recipients: emailRecipients,
           subjectLine: "Infisical PAM Access Policy Bypassed",
           substitutions: {
-            projectName: project?.name ?? "Unknown project",
             requesterFullName,
             requesterEmail,
             resourceName: inputs.resourceName,
             accountName: inputs.accountName,
             accessDuration: inputs.accessDuration,
-            bypassReason: bypassReason.trim(),
-            approvalUrl: `${cfg.SITE_URL}${approvalPath}`
+            bypassReason: bypassReason.trim()
           },
           template: SmtpTemplates.AccessPamRequestBypassed
         });

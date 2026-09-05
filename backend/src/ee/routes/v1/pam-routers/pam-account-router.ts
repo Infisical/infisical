@@ -70,8 +70,14 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+  pendingRequestId: z.string().nullable().describe("The caller's pending access request for this account, if any"),
+  canBreakGlass: z.boolean().describe("Whether the caller may self-approve their own pending request for this account"),
   supportsCredentialReveal: z.boolean().describe("Whether this account type stores a credential that can be revealed"),
   credentialAccessStatus: z.nativeEnum(PamAccessStatus).describe("Current credential-approval status for the caller"),
+  credentialPendingRequestId: z
+    .string()
+    .nullable()
+    .describe("The caller's pending credential access request for this account, if any"),
   permissions: z.any().array().describe("The caller's effective (packed) resource permissions on this account")
 });
 
@@ -447,6 +453,13 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
                 ),
               accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
               grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+              pendingRequestId: z
+                .string()
+                .nullable()
+                .describe("The caller's pending access request for this account, if any"),
+              canBreakGlass: z
+                .boolean()
+                .describe("Whether the caller may self-approve their own pending request for this account"),
               disabledReason: z.string().nullable().describe("Why this account is disabled, or null if usable")
             })
           ),
