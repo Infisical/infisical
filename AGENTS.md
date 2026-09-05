@@ -28,6 +28,13 @@ When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design syste
 
 Before changing a shared frontend component's lifecycle, read the [shared component lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) for current deprecations, blockers, and replacement decisions.
 
+## Product Analytics
+
+Any PR that ships or changes a user-facing feature, API endpoint, or API client must follow
+[`.claude/skills/product-analytics/SKILL.md`](.claude/skills/product-analytics/SKILL.md). It defines the telemetry
+attribution contract: route events through the backend telemetry service, carry org/project attribution,
+aggregate high-volume events, register new client User-Agents in both backends, and honor opt-outs.
+
 ## Issue and PR Guidelines
 
 - Never create a GitHub issue.
