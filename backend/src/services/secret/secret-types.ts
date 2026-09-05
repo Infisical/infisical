@@ -207,7 +207,7 @@ export type TGetAccessibleSecretsDTO = {
 export type TGetSecretMetadataDTO = {
   secretPath: string;
   environment: string;
-  offset: number;
+  cursor?: string;
   limit: number;
 } & TProjectPermission;
 

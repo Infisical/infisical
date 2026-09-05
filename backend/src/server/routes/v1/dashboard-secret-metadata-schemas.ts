@@ -19,7 +19,7 @@ export const SecretMetadataQuerySchema = z.object({
     .default("/")
     .transform(removeTrailingSlash)
     .describe(docs.secretPath),
-  offset: z.coerce.number().int().min(0).max(2_147_483_147).default(0).describe(docs.offset),
+  cursor: z.string().trim().uuid().optional().describe(docs.cursor),
   limit: z.coerce.number().int().min(1).max(500).default(500).describe(docs.limit)
 });
 
@@ -36,5 +36,5 @@ export const SecretMetadataResponseSchema = z.object({
     })
     .array()
     .describe(docs.secrets),
-  nextOffset: z.number().int().nullable().describe(docs.nextOffset)
+  nextCursor: z.string().uuid().nullable().describe(docs.nextCursor)
 });

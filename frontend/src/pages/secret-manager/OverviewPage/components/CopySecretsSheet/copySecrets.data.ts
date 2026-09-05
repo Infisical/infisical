@@ -33,14 +33,17 @@ const waitForRetry = (delay: number, signal?: AbortSignal) =>
   });
 
 export const fetchCopySecrets = async (
-  fetchPage: (offset: number, limit: number) => Promise<TSecretMetadataPage>,
+  fetchPage: (cursor: string | undefined, limit: number) => Promise<TSecretMetadataPage>,
   signal?: AbortSignal
 ) => {
   const secrets = new Map<string, CopySecretsSource>();
-  const loadPage = async (offset: number, attempt = 0): Promise<TSecretMetadataPage> => {
+  const loadPage = async (
+    cursor: string | undefined,
+    attempt = 0
+  ): Promise<TSecretMetadataPage> => {
     signal?.throwIfAborted();
     try {
-      return await fetchPage(offset, 500);
+      return await fetchPage(cursor, 500);
     } catch (error) {
       signal?.throwIfAborted();
       const rateLimitDelay = getCopySecretsRetryDelay(error);
@@ -52,14 +55,14 @@ export const fetchCopySecrets = async (
       } else {
         throw error;
       }
-      return loadPage(offset, attempt + 1);
+      return loadPage(cursor, attempt + 1);
     }
   };
 
-  let offset = 0;
+  let cursor: string | undefined;
   for (;;) {
     // eslint-disable-next-line no-await-in-loop
-    const page = await loadPage(offset);
+    const page = await loadPage(cursor);
     signal?.throwIfAborted();
     page.secrets.forEach((secret) => {
       secrets.set(secret.id, {
@@ -71,11 +74,14 @@ export const fetchCopySecrets = async (
         isRotated: secret.isRotatedSecret
       });
     });
-    if (page.nextOffset === null) return [...secrets.values()];
-    if (!Number.isSafeInteger(page.nextOffset) || page.nextOffset <= offset) {
+    if (page.nextCursor === null) return [...secrets.values()];
+    if (
+      typeof page.nextCursor !== "string" ||
+      !page.nextCursor ||
+      (cursor && page.nextCursor <= cursor)
+    ) {
       throw new Error("Couldn't finish loading secrets. Please try again.");
     }
-    // An empty page can still have a successor when its rows were restricted.
-    offset = page.nextOffset;
+    cursor = page.nextCursor;
   }
 };

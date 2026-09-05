@@ -26,16 +26,16 @@ const requestError = (status: number, retryAfter?: string) =>
 
 describe("copy source metadata", () => {
   it("reads recursive pages, preserving paths, restrictions and duplicate keys", async () => {
-    const calls: [number, number][] = [];
-    const secrets = await fetchCopySecrets(async (offset, limit) => {
-      calls.push([offset, limit]);
-      if (offset === 500)
+    const calls: [string | undefined, number][] = [];
+    const secrets = await fetchCopySecrets(async (cursor, limit) => {
+      calls.push([cursor, limit]);
+      if (cursor === "page-1")
         return {
-          nextOffset: null,
+          nextCursor: null,
           secrets: [secret("nested", { secretPath: "/nested", secretValueHidden: true })]
         };
       return {
-        nextOffset: 500,
+        nextCursor: "page-1",
         secrets: [
           secret("readable"),
           secret("honey", { isHoneyTokenSecret: true }),
@@ -44,8 +44,8 @@ describe("copy source metadata", () => {
       };
     });
     assert.deepEqual(calls, [
-      [0, 500],
-      [500, 500]
+      [undefined, 500],
+      ["page-1", 500]
     ]);
     assert.deepEqual(
       secrets.map(({ id }) => id),
@@ -69,50 +69,53 @@ describe("copy source metadata", () => {
     assert.deepEqual(
       await fetchCopySecrets(async () => {
         calls += 1;
-        return { secrets: [], nextOffset: null };
+        return { secrets: [], nextCursor: null };
       }),
       []
     );
     assert.equal(calls, 1);
   });
 
-  it("continues after an empty page filtered by permissions", async () => {
-    const offsets: number[] = [];
-    const result = await fetchCopySecrets(async (offset) => {
-      offsets.push(offset);
-      return offset
-        ? { secrets: [secret("visible")], nextOffset: null }
-        : { secrets: [], nextOffset: 500 };
-    });
-    assert.deepEqual(offsets, [0, 500]);
-    assert.equal(result[0].id, "visible");
+  it("rejects a cursor that moves backwards", async () => {
+    const cursors: (string | undefined)[] = [];
+    await assert.rejects(
+      fetchCopySecrets(async (cursor) => {
+        cursors.push(cursor);
+        return { secrets: [secret("visible")], nextCursor: cursor ? "page-1" : "page-2" };
+      }),
+      /Couldn't finish loading secrets/
+    );
+    assert.deepEqual(cursors, [undefined, "page-2"]);
   });
 
   it("retries a rate-limited page without discarding previous pages", async () => {
-    const offsets: number[] = [];
-    const result = await fetchCopySecrets(async (offset) => {
-      offsets.push(offset);
-      if (offset === 500 && offsets.length === 2) throw requestError(429, "0");
-      return { secrets: [secret(`secret-${offset}`)], nextOffset: offset ? null : 500 };
+    const cursors: (string | undefined)[] = [];
+    const result = await fetchCopySecrets(async (cursor) => {
+      cursors.push(cursor);
+      if (cursor === "page-1" && cursors.length === 2) throw requestError(429, "0");
+      return {
+        secrets: [secret(`secret-${cursor ?? "first"}`)],
+        nextCursor: cursor ? null : "page-1"
+      };
     });
-    assert.deepEqual(offsets, [0, 500, 500]);
+    assert.deepEqual(cursors, [undefined, "page-1", "page-1"]);
     assert.deepEqual(
       result.map(({ id }) => id),
-      ["secret-0", "secret-500"]
+      ["secret-first", "secret-page-1"]
     );
   });
 
   it("bounds retries and does not return a partial result on failure", async () => {
-    const offsets: number[] = [];
+    const cursors: (string | undefined)[] = [];
     await assert.rejects(
-      fetchCopySecrets(async (offset) => {
-        offsets.push(offset);
-        if (offset) throw requestError(429, "0");
-        return { secrets: [secret("one")], nextOffset: 500 };
+      fetchCopySecrets(async (cursor) => {
+        cursors.push(cursor);
+        if (cursor) throw requestError(429, "0");
+        return { secrets: [secret("one")], nextCursor: "page-1" };
       }),
       /Request failed/
     );
-    assert.deepEqual(offsets, [0, 500, 500, 500, 500]);
+    assert.deepEqual(cursors, [undefined, "page-1", "page-1", "page-1", "page-1"]);
   });
 
   it("does not retry a permission error", async () => {
@@ -134,7 +137,7 @@ describe("copy source metadata", () => {
       fetchCopySecrets(async () => {
         calls += 1;
         controller.abort();
-        return { nextOffset: 500, secrets: [secret("one")] };
+        return { nextCursor: "page-1", secrets: [secret("one")] };
       }, controller.signal),
       { name: "AbortError" }
     );
@@ -157,7 +160,7 @@ describe("copy source metadata", () => {
 
   it("rejects pagination that makes no progress", async () => {
     await assert.rejects(
-      fetchCopySecrets(async () => ({ secrets: [], nextOffset: 0 })),
+      fetchCopySecrets(async () => ({ secrets: [], nextCursor: "page-1" })),
       /Couldn't finish loading secrets/
     );
   });

@@ -27,13 +27,13 @@ export const useCopySecretsQuery = ({
     retry: false,
     queryFn: ({ signal }) =>
       fetchCopySecrets(
-        (offset, limit) =>
+        (cursor, limit) =>
           fetchSecretMetadata(
             {
               projectId,
               environment,
               secretPath,
-              offset,
+              cursor,
               limit
             },
             signal

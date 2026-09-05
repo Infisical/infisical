@@ -598,18 +598,18 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
 
   const findMetadataByFolderIds = async ({
     folderIds,
-    offset,
+    afterId,
     limit
   }: {
     folderIds: string[];
-    offset: number;
+    afterId?: string;
     limit: number;
   }) => {
     try {
       // Page secret rows before loading tags. Joining tags before LIMIT would
       // split one secret across pages; paging distinct keys would be unbounded
       // when many folders contain the same key. No encrypted columns are read.
-      const secrets = await db
+      const query = db
         .replicaNode()(TableName.SecretV2)
         .select("id", "key", "folderId", "type")
         .select<
@@ -635,9 +635,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .where("type", SecretType.Shared)
         .whereNull("userId")
         .orderBy("id", "asc")
-        .offset(offset)
         .limit(limit);
 
+      if (afterId) void query.where("id", ">", afterId);
+      const secrets = await query;
       if (!secrets.length) return [];
       const tags = await db
         .replicaNode()(TableName.SecretV2JnTag)

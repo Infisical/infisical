@@ -39,7 +39,7 @@ export type TGetSecretMetadataDTO = {
   projectId: string;
   environment: string;
   secretPath: string;
-  offset: number;
+  cursor?: string;
   limit: number;
 };
 
@@ -53,7 +53,7 @@ export type TSecretMetadataPage = {
     isHoneyTokenSecret: boolean;
     isRotatedSecret: boolean;
   }[];
-  nextOffset: number | null;
+  nextCursor: string | null;
 };
 
 export type UsedBySecretSyncs = {
