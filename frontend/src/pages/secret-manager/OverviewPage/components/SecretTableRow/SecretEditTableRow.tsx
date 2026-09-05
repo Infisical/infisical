@@ -170,6 +170,11 @@ type Props = {
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
   revokedProjectFolderGrant?: boolean;
+  // Edits live in this component's form until they are saved or, in batch mode, until the
+  // debounce below hands them to the batch store. The virtualized parent needs to know while
+  // that is outstanding so it can keep the row mounted instead of discarding the edit on scroll.
+  unsavedChangeId?: string;
+  onUnsavedChange?: (id: string, hasUnsavedChanges: boolean) => void;
 };
 
 export const SecretEditTableRow = ({
@@ -207,7 +212,9 @@ export const SecretEditTableRow = ({
   hasPendingChange,
   hasPendingValueChange,
   pendingKeyName,
-  revokedProjectFolderGrant
+  revokedProjectFolderGrant,
+  unsavedChangeId,
+  onUnsavedChange
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -653,6 +660,16 @@ export const SecretEditTableRow = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, watchedValue, watchedKey, watchedComment, watchedTags, serializedMetadata]);
+
+  // isDirty covers both windows the parent has to protect: a non-batch edit waiting on the save
+  // button, and a batch edit waiting on the 500ms debounce above, which clears it via reset()
+  // once the change reaches the batch store.
+  useEffect(() => {
+    if (!unsavedChangeId || !onUnsavedChange) return undefined;
+
+    onUnsavedChange(unsavedChangeId, isDirty);
+    return () => onUnsavedChange(unsavedChangeId, false);
+  }, [isDirty, unsavedChangeId, onUnsavedChange]);
 
   // Reset form when a pending change is externally discarded (e.g. CommitForm discard button
   // or toggling batch mode off). We don't gate on isBatchMode because React batches the
