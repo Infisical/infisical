@@ -12,13 +12,9 @@ import {
   Field,
   FieldDescription,
   FieldError,
-  FieldLabel,
-  Input,
-  Separator,
   TextArea
 } from "@app/components/v3";
 import { useAddUsersToOrg } from "@app/hooks/api";
-import { submitSignupOnboarding } from "@app/hooks/api/auth/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -42,7 +38,6 @@ export default function TeamInviteStep({
 }: TeamInviteStepProps): JSX.Element {
   const { t } = useTranslation();
   const [emails, setEmails] = useState("");
-  const [attributionSource, setAttributionSource] = useState("");
   const [validationError, setValidationError] = useState("");
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -51,14 +46,6 @@ export default function TeamInviteStep({
 
   const orgId = String(localStorage.getItem("orgData.id"));
   const grantCount = (projectIds?.length ?? 0) + (grantPamAccess ? 1 : 0);
-
-  const finishStep = () => {
-    const trimmedAttribution = attributionSource.trim();
-    if (trimmedAttribution) {
-      submitSignupOnboarding({ attributionSource: trimmedAttribution }).catch(() => {});
-    }
-    onComplete();
-  };
 
   const inviteUsersAndContinue = async () => {
     const parsed = emails
@@ -101,7 +88,7 @@ export default function TeamInviteStep({
       return;
     }
 
-    finishStep();
+    onComplete();
   };
 
   return (
@@ -136,21 +123,6 @@ export default function TeamInviteStep({
               </FieldDescription>
             )}
           </Field>
-          <Separator />
-          <Field>
-            <FieldLabel htmlFor="signup-attribution-source">
-              Where did you hear about us?{" "}
-              <span className="font-normal text-muted">(optional)</span>
-            </FieldLabel>
-            <Input
-              variant="outlined"
-              id="signup-attribution-source"
-              value={attributionSource}
-              onChange={(e) => setAttributionSource(e.target.value)}
-              placeholder="e.g. Hacker News, a friend, GitHub..."
-              maxLength={512}
-            />
-          </Field>
           <div className="flex flex-col gap-2">
             <Button
               onClick={() => {
@@ -168,7 +140,7 @@ export default function TeamInviteStep({
               Send Invites & Continue
             </Button>
             <Button
-              onClick={finishStep}
+              onClick={() => onComplete()}
               isDisabled={isPending}
               variant="ghost"
               size="lg"
