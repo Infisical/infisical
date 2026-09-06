@@ -77,76 +77,68 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div className="flex items-center justify-end border-b border-border p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+          <div className="flex items-center justify-end">
             <Button size="sm" variant="av" onClick={() => setIsAddOpen(true)}>
               <UserPlusIcon />
               Grant Access
             </Button>
           </div>
 
-          {isPending && (
-            <div className="p-4">
-              <Skeleton className="h-16 w-full" />
-            </div>
-          )}
+          {isPending && <Skeleton className="h-16 w-full" />}
 
           {!isPending && members.length === 0 && (
-            <div className="p-4">
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>No members yet</EmptyTitle>
-                  <EmptyDescription>
-                    Grant this bundle to a user, machine identity or group.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </div>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No members yet</EmptyTitle>
+                <EmptyDescription>
+                  Grant this bundle to a user, machine identity or group.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           )}
 
           {!isPending && members.length > 0 && (
-            <div className="p-4">
-              <Table className="overflow-hidden rounded-md border border-border">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Member</TableHead>
-                    <TableHead>Granted</TableHead>
-                    <TableHead variant="action" />
+            <Table className="overflow-hidden rounded-md border border-border">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Granted</TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {members.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell>
+                      <MemberName member={member} />
+                    </TableCell>
+                    <TableCell>{format(new Date(member.createdAt), "MMM d, yyyy")}</TableCell>
+                    <TableCell variant="action">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            aria-label={`Actions for ${memberDisplayName(member)}`}
+                          >
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
+                          <DropdownMenuItem
+                            variant="danger"
+                            onClick={() => setMemberToRemove(member)}
+                          >
+                            Revoke Access
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <MemberName member={member} />
-                      </TableCell>
-                      <TableCell>{format(new Date(member.createdAt), "MMM d, yyyy")}</TableCell>
-                      <TableCell variant="action">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              variant="ghost"
-                              size="xs"
-                              aria-label={`Actions for ${memberDisplayName(member)}`}
-                            >
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setMemberToRemove(member)}
-                            >
-                              Revoke Access
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </div>
 
