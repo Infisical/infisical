@@ -2,12 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
-import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Alert,
-  AlertDescription,
   Button,
   DiscardChangesAlertDialog,
   DocumentationLinkBadge,
@@ -45,6 +42,16 @@ import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { ReviewFields } from "./ReviewFields";
 import { CONNECTION_DOCS_URL, CONNECTION_STEPS } from "./stepMeta";
+
+const BLANK_CONNECTION_FORM: TConnectionForm = {
+  name: "",
+  hostPattern: "",
+  credentialType: AgentVaultCredentialType.Bearer,
+  headerName: "Authorization",
+  headerPrefix: "Bearer",
+  username: "",
+  secret: ""
+};
 
 type Props = {
   isOpen: boolean;
@@ -115,34 +122,28 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
       });
     } else {
-      reset({
-        name: "",
-        hostPattern: "",
-        credentialType: AgentVaultCredentialType.Bearer,
-        headerName: "Authorization",
-        headerPrefix: "Bearer",
-        username: "",
-        secret: ""
-      });
+      reset(BLANK_CONNECTION_FORM);
     }
   }, [isOpen, connection, isUpdate, reset, setStep]);
 
+  // Every pick starts from blank, so nothing an earlier template filled in can survive into the next one.
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
     setTemplate(picked);
 
     if (picked) {
       const cred = picked.credential;
       reset({
+        ...BLANK_CONNECTION_FORM,
         name: picked.key,
         hostPattern: picked.hostPattern,
         credentialType: cred.type,
-        headerName:
-          cred.type === AgentVaultCredentialType.Bearer ? (cred.headerName ?? "Authorization") : "",
-        headerPrefix:
-          cred.type === AgentVaultCredentialType.Bearer ? (cred.headerPrefix ?? "Bearer") : "",
-        username: "",
-        secret: ""
+        ...(cred.type === AgentVaultCredentialType.Bearer && {
+          headerName: cred.headerName ?? "Authorization",
+          headerPrefix: cred.headerPrefix ?? "Bearer"
+        })
       });
+    } else {
+      reset(BLANK_CONNECTION_FORM);
     }
     setStep(1);
   };
@@ -194,41 +195,27 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
 
   const onSubmit = async (data: TConnectionForm) => {
     try {
-      const result = connection
-        ? await updateConnection.mutateAsync({
-            accessBundleId,
-            connectionId: connection.id,
-            name: data.name,
-            hostPattern: data.hostPattern,
-            credential: buildCredentialPatch(data)
-          })
-        : await createConnection.mutateAsync({
-            accessBundleId,
-            name: data.name,
-            hostPattern: data.hostPattern,
-            credential: buildCredential(data)
-          });
+      if (connection) {
+        await updateConnection.mutateAsync({
+          accessBundleId,
+          connectionId: connection.id,
+          name: data.name,
+          hostPattern: data.hostPattern,
+          credential: buildCredentialPatch(data)
+        });
+      } else {
+        await createConnection.mutateAsync({
+          accessBundleId,
+          name: data.name,
+          hostPattern: data.hostPattern,
+          credential: buildCredential(data)
+        });
+      }
 
       createNotification({
         text: `Connection "${data.name}" ${isUpdate ? "updated" : "created"}`,
         type: "success"
       });
-
-      // Cross-bundle overlaps are informational, and the mint sheet shows them again when someone
-      // combines the two bundles, so they go out as toasts rather than holding the sheet open.
-      result.warnings.slice(0, 3).forEach((warning) => {
-        createNotification({
-          type: "warning",
-          title: `${warning.connectionName} in ${warning.accessBundleName} also covers ${warning.patterns.join(", ")}`,
-          text: "If one session carries both bundles, the earlier one wins for those hosts."
-        });
-      });
-      if (result.warnings.length > 3) {
-        createNotification({
-          type: "warning",
-          text: `${result.warnings.length - 3} more connections in other bundles overlap these hosts.`
-        });
-      }
 
       onOpenChange(false);
     } catch (error) {
@@ -288,6 +275,12 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     await goNext();
   };
 
+  const stepDescription = (meta: (typeof CONNECTION_STEPS)[number]) => {
+    if (meta.step === ConnectionStep.Template) return template?.name ?? "Custom";
+    if (meta.step === ConnectionStep.Review && isUpdate) return "Confirm and save";
+    return meta.shortDescription;
+  };
+
   const current = steps[step];
   const isTemplateStep = current.step === ConnectionStep.Template;
   const saveLabel = isUpdate ? "Save" : "Add Connection";
@@ -325,9 +318,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                 {template?.name ?? (isUpdate ? connection?.name : "Custom")}
                 <DocumentationLinkBadge href={CONNECTION_DOCS_URL} />
               </SheetTitle>
-              <SheetDescription>
-                Define the credential the proxy attaches, and the hosts it goes to.
-              </SheetDescription>
+              <SheetDescription>Set up the service and its credentials.</SheetDescription>
             </>
           )}
         </SheetHeader>
@@ -355,11 +346,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                           key={meta.step}
                           index={index}
                           title={meta.name}
-                          description={
-                            meta.step === ConnectionStep.Template
-                              ? (template?.name ?? "Custom")
-                              : meta.shortDescription
-                          }
+                          description={stepDescription(meta)}
                         />
                       ))}
                     </StepperList>
@@ -374,10 +361,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
 
                   {current.step === ConnectionStep.Details && <DetailsFields />}
                   {current.step === ConnectionStep.Credential && (
-                    <CredentialFields
-                      isUpdate={isUpdate}
-                      storedType={connection?.credential.type}
-                    />
+                    <CredentialFields storedType={connection?.credential.type} />
                   )}
                   {current.step === ConnectionStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
@@ -391,12 +375,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                   </div>
                   <p className="text-sm font-semibold text-foreground">What this step does</p>
                   <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
-                  {template?.caveat && current.step === ConnectionStep.Credential && (
-                    <Alert variant="warning">
-                      <TriangleAlertIcon />
-                      <AlertDescription>{template.caveat}</AlertDescription>
-                    </Alert>
-                  )}
                 </aside>
               </div>
 
@@ -406,9 +384,11 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                   <span className="text-xs text-muted">
                     Step {step + 1} of {steps.length}
                   </span>
-                  <Button type="button" variant="outline" onClick={goBack}>
-                    Back
-                  </Button>
+                  {step > 0 && (
+                    <Button type="button" variant="outline" onClick={goBack}>
+                      Back
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="av"
@@ -428,7 +408,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
           onOpenChange={setIsDiscardDialogOpen}
           onDiscard={confirmDiscard}
           title="Discard Changes?"
-          description="This connection has not been saved. Its hosts and credential will be lost."
+          description="Your changes will be lost."
         />
       </SheetContent>
     </Sheet>

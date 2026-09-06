@@ -22,6 +22,7 @@ export const ReviewFields = ({ isUpdate }: Props) => {
 
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
   const secretLabel = isBasic ? "Password" : "Token";
+  const sends = credentialPreview(form);
 
   // On an edit each secret is a patch, so what matters is what will happen to the stored one. An
   // emptied box clears that half of a basic credential; a bearer token has no removed state and stays.
@@ -56,10 +57,12 @@ export const ReviewFields = ({ isUpdate }: Props) => {
             <DetailLabel>Type</DetailLabel>
             <DetailValue>{CREDENTIAL_LABELS[form.credentialType]}</DetailValue>
           </Detail>
-          <Detail>
-            <DetailLabel>Sends</DetailLabel>
-            <DetailValue className="font-mono">{credentialPreview(form)}</DetailValue>
-          </Detail>
+          {sends && (
+            <Detail>
+              <DetailLabel>Sends</DetailLabel>
+              <DetailValue className="font-mono">{sends}</DetailValue>
+            </Detail>
+          )}
           {isBasic && (
             <Detail>
               <DetailLabel>Username</DetailLabel>

@@ -41,8 +41,7 @@ export const DetailsFields = () => {
             <FieldContent>
               <TextArea {...field} rows={3} placeholder="api.datadoghq.com" />
               <FieldDescription>
-                Comma separated. No scheme and no path. A portless host means port 443. A wildcard
-                covers exactly one leftmost label, as in *.example.com.
+                Comma separated. Wildcards like *.example.com are allowed.
               </FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>

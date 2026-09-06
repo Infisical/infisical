@@ -27,9 +27,6 @@ export type AgentVaultTemplate = {
   description: string;
   hostPattern: string;
   aliases?: string[];
-  // Stated plainly where a template is broader than its name suggests, or where a placeholder has
-  // to be replaced before the pattern will validate.
-  caveat?: string;
   credential: AgentVaultTemplateCredential;
 };
 
@@ -259,8 +256,6 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
     category: AgentVaultTemplateCategory.DeveloperTools,
     description: "Postgres, auth, and storage.",
     hostPattern: "<your-project>.supabase.co",
-    caveat:
-      "Replace the placeholder with your own project subdomain. A wildcard here would send the key to any Supabase tenant.",
     credential: {
       type: AgentVaultCredentialType.Bearer,
       headerName: "apikey",
@@ -346,8 +341,6 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
     category: AgentVaultTemplateCategory.Productivity,
     description: "Atlassian Jira issue tracking.",
     hostPattern: "<your-tenant>.atlassian.net",
-    caveat:
-      "Replace the placeholder with your own Atlassian subdomain. A wildcard here would send the credential to any tenant.",
     credential: { type: AgentVaultCredentialType.Basic }
   },
   {
@@ -380,8 +373,6 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
     category: AgentVaultTemplateCategory.Commerce,
     description: "Shopify e-commerce API.",
     hostPattern: "<your-store>.myshopify.com",
-    caveat:
-      "Replace the placeholder with your own store subdomain. A wildcard here would send the token to any store.",
     credential: {
       type: AgentVaultCredentialType.Bearer,
       headerName: "X-Shopify-Access-Token",

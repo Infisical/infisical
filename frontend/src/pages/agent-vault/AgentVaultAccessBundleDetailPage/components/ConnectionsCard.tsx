@@ -138,7 +138,7 @@ export const ConnectionsCard = ({
           <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
         </CardTitle>
         <CardDescription>
-          One HTTP target and its credential. The proxy attaches it only to these hosts.
+          The services in this bundle, and the credentials used for each.
         </CardDescription>
         {canManage && (
           <CardAction>

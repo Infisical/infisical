@@ -4,14 +4,15 @@ import { ConnectionStep } from "./connectionSchema";
 
 export const CONNECTION_DOCS_URL = AgentVaultDocsUrls.accessBundles;
 
+// The template step draws its own full-width layout, so it reads nothing past the rail's step name.
 type StepMeta = {
   step: ConnectionStep;
   name: string;
-  shortDescription: string;
-  title: string;
-  subtitle: string;
-  rightLabel: string;
-  rightDescription: string;
+  shortDescription?: string;
+  title?: string;
+  subtitle?: string;
+  rightLabel?: string;
+  rightDescription?: string;
 };
 
 // Ordered as the form advances. Editing an existing connection drops the template step, since
@@ -19,13 +20,7 @@ type StepMeta = {
 export const CONNECTION_STEPS: StepMeta[] = [
   {
     step: ConnectionStep.Template,
-    name: "Template",
-    shortDescription: "Pick a service",
-    title: "Choose a Service",
-    subtitle: "Start from a known service, or configure the connection by hand.",
-    rightLabel: "TEMPLATE",
-    rightDescription:
-      "A template fills in the hosts and the credential type for a service we already know, so you only supply the secret. Custom leaves every field blank."
+    name: "Template"
   },
   {
     step: ConnectionStep.Details,
@@ -34,27 +29,24 @@ export const CONNECTION_STEPS: StepMeta[] = [
     title: "Details",
     subtitle: "What this connection is called, and the hosts it covers.",
     rightLabel: "DETAILS",
-    rightDescription:
-      "Every request an agent makes to these hosts gets the credential. Requests to anything else leave the proxy without it, so keep the list to the hosts the service actually answers on."
+    rightDescription: "The credentials are only used for the hosts you list here."
   },
   {
     step: ConnectionStep.Credential,
     name: "Credential",
-    shortDescription: "What the proxy sends",
+    shortDescription: "How to authenticate",
     title: "Credential",
-    subtitle: "The secret the proxy attaches, and how it goes on the wire.",
+    subtitle: "How requests to this service are authenticated.",
     rightLabel: "CREDENTIAL",
-    rightDescription:
-      "The agent never holds this secret. The proxy attaches it as the request leaves, replacing whatever the agent sent under that header name."
+    rightDescription: "Agents reach this service without ever holding the credentials themselves."
   },
   {
     step: ConnectionStep.Review,
     name: "Review",
     shortDescription: "Confirm and add",
     title: "Review",
-    subtitle: "Check what the proxy will send, and where.",
+    subtitle: "Check everything before you save. You can change it later.",
     rightLabel: "REVIEW",
-    rightDescription:
-      "Nothing here is final. Every field can be changed later from the bundle page, and the secret can be replaced without touching the rest."
+    rightDescription: "Nothing is locked in. Edit this connection any time from the bundle page."
   }
 ];

@@ -14,7 +14,9 @@ import { z } from "zod";
 //
 // The matching grammar is mirrored in the CLI (packages/agentvault/match.go). The shared fixture in
 // agent-vault-host-pattern-fixture.json is read by both test suites; keep them in sync through it, not
-// through this comment.
+// through this comment. The connection sheet also carries a partial copy (connectionSchema.ts) so the
+// wizard can reject a bad host on the step that holds the field; it defers to this one and is not in the
+// fixture, so a change here only needs following there if it would newly reject something.
 
 const HOST_LABELS_RE = new RE2(/^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i);
 const PORT_RE = new RE2(/^\d+$/);
