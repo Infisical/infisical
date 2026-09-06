@@ -13,8 +13,8 @@ import { MembersTab } from "./components/MembersTab";
 
 export enum AgentVaultAccessControlTab {
   Users = "users",
-  Groups = "groups",
-  MachineIdentities = "identities"
+  MachineIdentities = "identities",
+  Groups = "groups"
 }
 
 export const AgentVaultAccessControlPage = () => {
@@ -45,24 +45,24 @@ export const AgentVaultAccessControlPage = () => {
         scope={ProjectType.AgentVault}
         icon={ShieldIcon}
         title="Access Control"
-        description="Manage access for users, groups, and machine identities."
+        description="Manage access for users, machine identities, and groups."
       />
       <Tabs value={selectedTab} onValueChange={updateTab}>
         <TabsList variant="av" aria-label="Agent Vault access control sections">
           <TabsTrigger value={AgentVaultAccessControlTab.Users}>Users</TabsTrigger>
-          <TabsTrigger value={AgentVaultAccessControlTab.Groups}>Groups</TabsTrigger>
           <TabsTrigger value={AgentVaultAccessControlTab.MachineIdentities}>
             Machine Identities
           </TabsTrigger>
+          <TabsTrigger value={AgentVaultAccessControlTab.Groups}>Groups</TabsTrigger>
         </TabsList>
         <TabsContent value={AgentVaultAccessControlTab.Users}>
           <MembersTab />
         </TabsContent>
-        <TabsContent value={AgentVaultAccessControlTab.Groups}>
-          <GroupsTab />
-        </TabsContent>
         <TabsContent value={AgentVaultAccessControlTab.MachineIdentities}>
           <IdentitiesTab />
+        </TabsContent>
+        <TabsContent value={AgentVaultAccessControlTab.Groups}>
+          <GroupsTab />
         </TabsContent>
       </Tabs>
     </div>
