@@ -9,13 +9,23 @@ import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { groupDALFactory } from "@app/ee/services/group/group-dal";
+import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
+import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger } from "@app/lib/logger";
+import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { usageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
+import { projectDALFactory } from "@app/services/project/project-dal";
+import { roleDALFactory } from "@app/services/role/role-dal";
+import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
+import { userDALFactory } from "@app/services/user/user-dal";
 
 declare const testKeyStore: TKeyStoreFactory;
 
@@ -46,6 +56,23 @@ const deleteOrgIdentity = async (identityId: string) => {
   await testDb("memberships").where({ actorIdentityId: identityId }).del();
   await testDb("identities").where({ id: identityId }).delete();
 };
+
+// Routes are registered in an encapsulated plugin, so `testServer.services` is not reachable from here.
+// Resolve is exercised through the service built from the real DALs, and the permission checks under
+// test (a lapsed role, a member's grants) need the real permission service, so it is built the same way.
+const buildPermissionService = () =>
+  permissionServiceFactory({
+    permissionDAL: permissionDALFactory(testDb),
+    serviceTokenDAL: serviceTokenDALFactory(testDb),
+    projectDAL: projectDALFactory(testDb),
+    keyStore: testKeyStore,
+    roleDAL: roleDALFactory(testDb),
+    userDAL: userDALFactory(testDb),
+    identityDAL: identityDALFactory(testDb),
+    additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
+    groupDAL: groupDALFactory(testDb),
+    secretFolderDAL: secretFolderDALFactory(testDb)
+  });
 
 // A grant is a resource-scoped row in the shared memberships table; this is the only shape a grant takes.
 const grantRows = (
@@ -658,7 +685,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
-        permissionService: testServer.services.permission,
+        permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
@@ -732,7 +759,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
-        permissionService: testServer.services.permission,
+        permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
@@ -1061,7 +1088,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
-          permissionService: testServer.services.permission,
+          permissionService: buildPermissionService(),
           kmsService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
