@@ -36,7 +36,6 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
-  OverflowBadgeList,
   PageHeader,
   Skeleton,
   Table,
@@ -67,6 +66,44 @@ import { ProxyFormDialog } from "./components/ProxyFormDialog";
 import { ProxyStatusBadge } from "./components/ProxyStatusBadge";
 
 // A column heading whose meaning is not obvious from its name, with the explanation on hover.
+const bypassHostsOf = (proxy: TAgentVaultProxy) =>
+  proxy.bypassHosts
+    ? proxy.bypassHosts
+        .split(",")
+        .map((host) => host.trim())
+        .filter(Boolean)
+    : [];
+
+// Bypass hosts only mean anything under Deny, so an Allow proxy shows none even if some are stored.
+const UnmatchedHostBadge = ({ proxy }: { proxy: TAgentVaultProxy }) => {
+  if (proxy.unmatchedHost !== AgentVaultUnmatchedHost.Deny) {
+    return <Badge variant="neutral">Allow</Badge>;
+  }
+
+  const bypassHosts = bypassHostsOf(proxy);
+  if (bypassHosts.length === 0) {
+    return <Badge variant="danger">Deny</Badge>;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant="danger">
+          Deny &middot; {bypassHosts.length} {bypassHosts.length === 1 ? "exception" : "exceptions"}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-sm">
+        <p className="mb-1">Reachable without a credential:</p>
+        <ul className="font-mono text-xs">
+          {bypassHosts.map((host) => (
+            <li key={host}>{host}</li>
+          ))}
+        </ul>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 const HeadWithHint = ({ hint, children }: { hint: string; children: ReactNode }) => (
   <Tooltip>
     <TooltipTrigger asChild>
@@ -209,15 +246,8 @@ export const AgentVaultProxiesPage = () => {
                 <TableHead>Status</TableHead>
                 {isAdmin && (
                   <TableHead>
-                    <HeadWithHint hint="Reachable under Deny without naming them in an access bundle.">
-                      Bypass Hosts
-                    </HeadWithHint>
-                  </TableHead>
-                )}
-                {isAdmin && (
-                  <TableHead>
                     <HeadWithHint hint="What the agent may reach beyond the hosts its access bundles cover.">
-                      Uncovered Hosts
+                      Unmatched Hosts
                     </HeadWithHint>
                   </TableHead>
                 )}
@@ -243,7 +273,7 @@ export const AgentVaultProxiesPage = () => {
                 Array.from({ length: 3 }).map((_, index) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <TableRow key={`proxy-skeleton-${index}`}>
-                    {Array.from({ length: isAdmin ? 7 : 4 }).map((__, cell) => (
+                    {Array.from({ length: isAdmin ? 6 : 4 }).map((__, cell) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <TableCell key={`proxy-skeleton-${index}-${cell}`}>
                         <Skeleton className="h-4 w-full" />
@@ -260,31 +290,7 @@ export const AgentVaultProxiesPage = () => {
                     </TableCell>
                     {isAdmin && (
                       <TableCell>
-                        {proxy.bypassHosts ? (
-                          <div className="max-w-72">
-                            <OverflowBadgeList
-                              items={proxy.bypassHosts.split(",").map((host) => host.trim())}
-                              getKey={(host) => host}
-                              getLabel={(host) => host}
-                              getVariant={() => "neutral"}
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-muted">&mdash;</span>
-                        )}
-                      </TableCell>
-                    )}
-                    {isAdmin && (
-                      <TableCell>
-                        <Badge
-                          variant={
-                            proxy.unmatchedHost === AgentVaultUnmatchedHost.Deny
-                              ? "danger"
-                              : "neutral"
-                          }
-                        >
-                          {proxy.unmatchedHost === AgentVaultUnmatchedHost.Deny ? "Deny" : "Allow"}
-                        </Badge>
+                        <UnmatchedHostBadge proxy={proxy} />
                       </TableCell>
                     )}
                     <TableCell>
