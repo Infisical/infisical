@@ -255,8 +255,7 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
 // exactly when their connections resolve to the same organization, whether or not they share a
 // connection.
 const daytonaDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
-  // Without a connection on either side there is no organization to compare, and an empty Daytona
-  // config matches every other sync, so treating that as a collision would block them all.
+
   if (!newSync.connectionId || !existingSync.connectionId) return false;
 
   if (existingSync.connectionId === newSync.connectionId) return true;
