@@ -22,8 +22,8 @@ const NARROWED_ROLE_SLUGS = new Set<string>([ProjectMembershipRole.Admin, Projec
 // Agent Vault is one implicit project per organization, so the generic copy would name a thing its users
 // never see. Mirrors AGENT_VAULT_PRODUCT_ROLE_OPTIONS on the frontend; the two are the same sentence.
 const AGENT_VAULT_ROLE_DESCRIPTIONS: Record<string, string> = {
-  [ProjectMembershipRole.Admin]: "Full access to Agent Vault.",
-  [ProjectMembershipRole.Member]: "Create sessions over the access bundles they're granted."
+  [ProjectMembershipRole.Admin]: "Full administrative access over Agent Vault",
+  [ProjectMembershipRole.Member]: "Create sessions over the access bundles they're granted"
 };
 
 export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetPredefinedRolesDTO) => {
