@@ -145,14 +145,16 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Who holds one bundle, with enough of each actor to render a row without a second round trip.
+  // Who holds one bundle, with enough of each actor to render a row without a second round trip. Only
+  // active rows, like the count and the reachability read: nothing deactivates a grant today, but if
+  // something ever does, the list must not name someone the mint path refuses.
   const findMembers = async (
     { projectId, accessBundleId }: { projectId: string; accessBundleId: string },
     tx?: Knex
   ): Promise<TAgentVaultAccessBundleMemberDetail[]> => {
     try {
       const rows = (await (tx || db.replicaNode())(TableName.Membership)
-        .where(grantScope(projectId, accessBundleId))
+        .where({ ...grantScope(projectId, accessBundleId), isActive: true })
         .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
         .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
