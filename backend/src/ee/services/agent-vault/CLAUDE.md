@@ -21,7 +21,7 @@ What an agent may reach lives in a **session** row on our side, never in anythin
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles + connections + credential encryption
-agent-vault-member/          the grant join table and its cleanup service
+agent-vault-member/          product membership (add, role, remove); grants are written by the bundle service
 agent-vault-session/         mint, revoke, list
 agent-vault-project/         the per-org project's bootstrap and resolver
 ```
@@ -41,15 +41,30 @@ silently loses a workspace slot.
 SQL. `getAgentVaultReachability` returns an id array to `whereIn`, or `null` for an admin, who reaches
 everything.
 
-**Group expansion branches on actor type.** A user inherits through `user_group_membership`, a machine
-identity through `identity_group_membership`. The `user_group_membership`-only version denies every
-machine identity's group grants **silently** — an empty bundle list on a healthy-looking session, for
-the product's primary actor.
+**A grant is a `memberships` row, not a table of ours.** `scope = resource`,
+`scopeResourceType = agent-vault-access-bundle`, `scopeResourceId = <bundle id>`, one actor column, and one
+`membership_roles` row with the `consumer` slug (a label only; bundle access is decided in SQL, not by
+CASL). That is how PAM folders and cert-manager applications are stored, so the platform reaps grants for
+us: project removal of any actor (`applicationMembershipCleanupService`, no type filter), user org removal
+and SCIM (`deleteOrgMembershipsFn`, no scope filter), and the FK cascades on user, identity, group and
+project. Do not add an Agent Vault reaper beside those; the previous one leaked three times.
 
-**Grants live in our own table, so the shared reaper cannot see them.**
-`agentVaultMembershipCleanupService` is wired into the same five call sites as
-`applicationMembershipCleanupService`, inside the same transaction. Skip one and an actor removed from
-the project keeps a grant the mint path still honours.
+**Two things the old FK gave for free are done by hand.** `scopeResourceId` has no FK, so
+`deleteAccessBundle` deletes the bundle row first and then its grant rows in one transaction, and `addMember`
+locks the bundle row (`lockByIdInProject`, `FOR UPDATE`) before inserting, so a concurrent delete either waits
+and finds no bundle or reaps the fresh grant. Keep that order.
+
+**Reachability has one implementation: `findReachableAccessBundleIds`** on the platform's
+`membershipDAL.findResourceMembershipsForActor`, which expands `user_group_membership` for a person and
+`identity_group_membership` for a machine identity. Mint, every member-facing read and the proxy's resolve
+all call it, so Agent Vault hand-writes no group-expansion SQL. Resolve therefore runs two replica reads
+rather than one correlated statement; the lag window that opens is accepted for V1 and recorded in the
+resolve DAL's docblock.
+
+**The creator grant follows the same rule as any grant.** Only a creator with a direct project membership
+gets a `consumer` row; an admin who is in Agent Vault only through a group reaches the bundle as admin and
+gets none. Individual rows only ever belong to direct members and group rows to groups, so no grant outlives
+its owner's membership by any route, and Manage Access never names someone who is not in the product.
 
 **Infisical stores no copy of a proxy's certificate.** The proxy serves its own CA unauthenticated on
 its own listener, which is where every agent gets it, so the CA path has no runtime dependency on
@@ -111,12 +126,17 @@ revoked.
 **The org invite.** `grantAgentVaultAccess` on `/invite-org/signup` goes through
 `agent-vault-member/agent-vault-membership-service.ts`, a PAM-shaped `addProductUserMembers` (settled with the
 product owner over calling the generic membership service), so the invite path and the product agree on
-role validation, SSO-alias resolution and metering. The Access Control page itself uses the generic
-membership services, because Agent Vault reuses the generic page.
+role validation, SSO-alias resolution and metering. The Access Control page is Agent Vault's own and calls
+`/api/v1/agent-vault/memberships`; only `MembersTab.tsx` and `InviteMembersDialog.tsx` still reach for the
+generic hooks.
 
 **Two enums kept 1:1 with `ProjectType`.** `AuditLogStreamProduct.AgentVault`, or a stream narrowed by
 product never receives an Agent Vault event, and the predefined-roles filter in `project-role-fns.ts` that
-returns admin and member only for org-scoped products.
+returns admin and member only for Agent Vault (PAM deliberately keeps its full list, `dbe9dea14f`).
+
+**`ResourceType.AgentVaultAccessBundle` has arms in `permission-service.ts`** (`resolveResourceRoleRules`,
+`resolveResourceProjectAdminFallback`, `getResourcePermission`) so the shared switch never reads a grant row
+as a cert-manager application. Nothing in Agent Vault calls them.
 
 ## The CLI
 
