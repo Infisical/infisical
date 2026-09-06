@@ -1,4 +1,5 @@
 import { Combobox } from "@app/components/v3";
+import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import { useGetProjectRoles } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -40,6 +41,12 @@ export const CERT_MANAGER_ROLES = [
     description: "Access scoped to the Applications and Code Signers they've been added to"
   }
 ];
+
+// Derived from the product's own role copy so the invite flow cannot drift from the pickers inside
+// Agent Vault, which is where the same two sentences are shown.
+export const AGENT_VAULT_ROLES = AGENT_VAULT_PRODUCT_ROLE_OPTIONS.map(
+  ({ value, label, description }) => ({ slug: value, name: label, description })
+);
 
 export const PAM_ROLES = [
   {

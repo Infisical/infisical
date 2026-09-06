@@ -1,6 +1,6 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { ProjectAccessControlTabs } from "@app/types/project";
+import { AgentVaultAccessControlTab } from "@app/pages/agent-vault/AgentVaultAccessControlPage/AgentVaultAccessControlPage";
 
 import { RoleDetailsBySlugPage } from "./RoleDetailsBySlugPage";
 
@@ -19,8 +19,9 @@ export const Route = createFileRoute(
             params: {
               orgId: params.orgId
             },
+            // Agent Vault has no Roles tab: its two roles are fixed and are shown where they are picked.
             search: {
-              selectedTab: ProjectAccessControlTabs.Roles
+              selectedTab: AgentVaultAccessControlTab.Users
             }
           })
         },
