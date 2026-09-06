@@ -15,7 +15,6 @@ import {
   ForwardIcon,
   GitBranchIcon,
   HistoryIcon,
-  MessageSquareIcon,
   PencilLineIcon,
   SaveIcon,
   TagsIcon,
@@ -99,7 +98,7 @@ import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/
 
 import { DuplicateSecretModal } from "./DuplicateSecretModal";
 import { SecretAccessInsights } from "./SecretAccessInsights";
-import { SecretCommentForm } from "./SecretCommentForm";
+import { SecretCommentControl } from "./SecretCommentDisplay";
 import { SecretMetadataForm } from "./SecretMetadataForm";
 import { SecretReminderForm } from "./SecretReminderForm";
 import { SecretTagForm } from "./SecretTagForm";
@@ -170,6 +169,7 @@ type Props = {
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
   revokedProjectFolderGrant?: boolean;
+  commentPreview?: string;
 };
 
 export const SecretEditTableRow = ({
@@ -207,7 +207,8 @@ export const SecretEditTableRow = ({
   hasPendingChange,
   hasPendingValueChange,
   pendingKeyName,
-  revokedProjectFolderGrant
+  revokedProjectFolderGrant,
+  commentPreview
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -329,13 +330,12 @@ export const SecretEditTableRow = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [editConfirmation, setEditConfirmation] = useState("");
-  const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [isReminderOpen, setIsReminderOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [pendingAnnotation, setPendingAnnotation] = useState<
-    "comment" | "tags" | "reminder" | "metadata" | null
+    "tags" | "reminder" | "metadata" | null
   >(null);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isAccessInsightsOpen, setIsAccessInsightsOpen] = useState(false);
@@ -424,6 +424,9 @@ export const SecretEditTableRow = ({
   const watchedValue = watch("value");
   const watchedKey = watch("key");
   const watchedComment = watch("comment");
+  const displayedComment = isBatchMode
+    ? ((watchedComment as string) ?? commentPreview)
+    : commentPreview;
   const watchedTags = watch("tags") as { id: string; slug: string }[] | undefined;
   const watchedMetadata = watch("metadata") as
     | { key: string; value: string; isEncrypted: boolean }[]
@@ -896,8 +899,7 @@ export const SecretEditTableRow = ({
     isErrorFetchingSharedValue ||
     (isCreatable ? !canCreate : !canEditSecretValue);
 
-  const shouldStayExpanded =
-    isCommentOpen || isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
+  const shouldStayExpanded = isTagOpen || isMetadataOpen || isReminderOpen || isDropdownOpen;
 
   const [isHoveringActionZone, setIsHoveringActionZone] = useState(false);
   const showMenuWhileFocused = isHoveringActionZone || shouldStayExpanded;
@@ -1065,16 +1067,6 @@ export const SecretEditTableRow = ({
         {!isDirtyState && !isFieldActive && (
           <div className="flex w-fit items-start justify-end self-start pl-2 transition-opacity group-hover:pointer-events-none group-hover:opacity-0">
             <div className="flex items-center gap-1">
-              {comment && !isImportedSecret && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex size-5 items-center justify-center text-muted">
-                      <MessageSquareIcon className="size-3.5" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Has comment</TooltipContent>
-                </Tooltip>
-              )}
               {canReadTags && tags?.length && !isImportedSecret ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1226,26 +1218,6 @@ export const SecretEditTableRow = ({
             isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
-          <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
-            <PopoverAnchor asChild>
-              <span className="pointer-events-none absolute inset-0" />
-            </PopoverAnchor>
-            <PopoverContent
-              onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-80"
-              align="end"
-            >
-              <SecretCommentForm
-                comment={isBatchMode ? ((watchedComment as string) ?? comment) : comment}
-                secretKey={secretName}
-                secretPath={secretPath}
-                environment={environment}
-                onClose={() => setIsCommentOpen(false)}
-                isBatchMode={isBatchMode}
-                onCommentChange={handleCommentChange}
-              />
-            </PopoverContent>
-          </Popover>
           <Popover modal open={isTagOpen} onOpenChange={setIsTagOpen}>
             <PopoverAnchor asChild>
               <span className="pointer-events-none absolute inset-0" />
@@ -1333,23 +1305,8 @@ export const SecretEditTableRow = ({
           {!isImportedSecret &&
             !isCreatable &&
             !isPendingDelete &&
-            !!(comment || (canReadTags && tags?.length) || reminder || secretMetadata?.length) && (
+            !!((canReadTags && tags?.length) || reminder || secretMetadata?.length) && (
               <>
-                {comment && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <IconButton
-                        variant="ghost"
-                        size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
-                        onClick={() => setIsCommentOpen(true)}
-                      >
-                        <MessageSquareIcon className="size-3.5" />
-                      </IconButton>
-                    </TooltipTrigger>
-                    <TooltipContent>View Comment</TooltipContent>
-                  </Tooltip>
-                )}
                 {canReadTags && tags?.length ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1477,8 +1434,7 @@ export const SecretEditTableRow = ({
               className="min-w-[200px] [&_[data-variant=default]]:text-mineshaft-100 [&_[data-variant=default]:focus]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
               onCloseAutoFocus={(e) => {
                 e.preventDefault();
-                if (pendingAnnotation === "comment") setIsCommentOpen(true);
-                else if (pendingAnnotation === "tags") setIsTagOpen(true);
+                if (pendingAnnotation === "tags") setIsTagOpen(true);
                 else if (pendingAnnotation === "reminder") setIsReminderOpen(true);
                 else if (pendingAnnotation === "metadata") setIsMetadataOpen(true);
                 setPendingAnnotation(null);
@@ -1489,10 +1445,7 @@ export const SecretEditTableRow = ({
                   disabled={isPendingDelete || isCreatable || isImportedSecret}
                   className={twMerge(
                     "px-2.5 py-1.5 text-xs",
-                    (comment ||
-                      (canReadTags && tags?.length) ||
-                      reminder ||
-                      secretMetadata?.length) &&
+                    ((canReadTags && tags?.length) || reminder || secretMetadata?.length) &&
                       !isImportedSecret &&
                       "[&>svg:first-child]:text-project"
                   )}
@@ -1501,13 +1454,6 @@ export const SecretEditTableRow = ({
                   Annotate
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="min-w-[185px]">
-                  <DropdownMenuItem
-                    className="px-2.5 py-1.5 text-xs"
-                    onClick={() => setPendingAnnotation("comment")}
-                  >
-                    <MessageSquareIcon className={twMerge(comment && "text-project")} />
-                    {comment ? "View Comment" : "Add Comment"}
-                  </DropdownMenuItem>
                   <Tooltip open={!canReadTags ? undefined : false} disableHoverableContent>
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
@@ -2004,7 +1950,19 @@ export const SecretEditTableRow = ({
         <TableCell
           className={twMerge("border-r pt-1 align-top", isOverride && "border-b-border/50")}
         >
-          {nameInput}
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0 grow">{nameInput}</div>
+            <SecretCommentControl
+              comment={displayedComment}
+              secretKey={secretName}
+              environment={environment}
+              secretPath={secretPath}
+              isBatchMode={isBatchMode}
+              onCommentChange={handleCommentChange}
+              isReadOnly={isImportedSecret || !canEditSecretValue}
+              isUnavailable={isPendingDelete || (isCreatable && !isImportedSecret)}
+            />
+          </div>
         </TableCell>
         <TableCell
           className={twMerge("relative w-full p-0 px-2", isOverride && "border-b-border/50")}
