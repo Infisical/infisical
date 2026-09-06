@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -145,11 +146,22 @@ export const agentVaultSessionServiceFactory = ({
     };
   };
 
+  // Session visibility and revocation are ownership checks on the session row, not grant checks, so
+  // these two ask only for the role and skip the grant query the reachability helper would run.
+  const getSessionAuthority = async ({ projectId, ctx }: { projectId: string; ctx: TListSessionsDTO["ctx"] }) => {
+    const { permission, hasRole } = await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.AgentVault
+    });
+    return { permission, isAdmin: hasRole(ProjectMembershipRole.Admin) };
+  };
+
   const listSessions = async ({ projectId, ctx, scope, status, limit, offset }: TListSessionsDTO) => {
-    const { permission, isAdmin } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const { permission, isAdmin } = await getSessionAuthority({ projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
@@ -177,10 +189,7 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
-    const { permission, isAdmin } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const { permission, isAdmin } = await getSessionAuthority({ projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Revoke,
       ProjectPermissionSub.AgentVaultSessions
