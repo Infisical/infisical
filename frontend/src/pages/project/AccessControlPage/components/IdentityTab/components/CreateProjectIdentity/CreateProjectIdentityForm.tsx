@@ -48,6 +48,11 @@ import {
   TCreateProjectIdentityForm
 } from "./schema";
 
+const SUBMIT_VARIANT_BY_PRODUCT: Partial<Record<ProjectType, "pam" | "av">> = {
+  [ProjectType.PAM]: "pam",
+  [ProjectType.AgentVault]: "av"
+};
+
 const buildTemplatePermissions = (
   projectType: ProjectType,
   templateIds: string[]
@@ -396,7 +401,7 @@ export const CreateProjectIdentityForm = ({
         <SheetFooter className="border-t">
           <Button
             type="submit"
-            variant={isPam ? "pam" : "project"}
+            variant={SUBMIT_VARIANT_BY_PRODUCT[projectType] ?? "project"}
             isPending={isSubmitting}
             isDisabled={isSubmitting}
           >
