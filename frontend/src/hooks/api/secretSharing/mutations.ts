@@ -6,6 +6,7 @@ import { secretSharingKeys } from "./queries";
 import {
   TAccessSharedSecretRequest,
   TAccessSharedSecretResponse,
+  TBulkDeleteSharedSecretsRequestDTO,
   TCreatedSharedSecret,
   TCreateSecretRequestRequestDTO,
   TCreateSharedSecretRequest,
@@ -14,7 +15,8 @@ import {
   TRevealedSecretRequest,
   TRevealSecretRequestValueRequest,
   TSetSecretRequestValueRequest,
-  TSharedSecret
+  TSharedSecret,
+  TUpdateSharedSecretRequestDTO
 } from "./types";
 
 export const useCreateSharedSecret = () => {
@@ -110,6 +112,37 @@ export const useDeleteSharedSecret = () => {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: secretSharingKeys.allSharedSecrets() })
+  });
+};
+
+export const useUpdateSharedSecret = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TSharedSecret, { message: string }, TUpdateSharedSecretRequestDTO>({
+    mutationFn: async ({ sharedSecretId, ...inputData }) => {
+      const { data } = await apiRequest.patch<TSharedSecret>(
+        `/api/v1/shared-secrets/${sharedSecretId}`,
+        inputData
+      );
+      return data;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: secretSharingKeys.allSharedSecrets() })
+  });
+};
+
+export const useBulkDeleteSharedSecrets = () => {
+  return useMutation<
+    { secrets: TSharedSecret[] },
+    { message: string },
+    TBulkDeleteSharedSecretsRequestDTO
+  >({
+    mutationFn: async ({ sharedSecretIds }) => {
+      const { data } = await apiRequest.post<{ secrets: TSharedSecret[] }>(
+        "/api/v1/shared-secrets/bulk-delete",
+        { ids: sharedSecretIds }
+      );
+      return data;
+    }
   });
 };
 

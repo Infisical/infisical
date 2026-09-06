@@ -3955,8 +3955,19 @@ export const SECRET_SHARING = {
     allowExternalEmails:
       "When true, allows sharing with email addresses that do not belong to Infisical. A password is required when this option is enabled. External recipients will receive the secret link via email and must enter the password to access it."
   },
+  UPDATE: {
+    id: "The ID of the shared secret to update.",
+    name: "An optional name for the shared secret for easier identification.",
+    expiresIn:
+      "The new duration after which the shared secret will expire, measured from now. Accepts formats like '30d', '24h', '1w'.",
+    maxViews:
+      "The maximum number of times the shared secret can be viewed before it expires. Set to null to allow unlimited views."
+  },
   DELETE: {
     id: "The ID of the shared secret to delete."
+  },
+  BULK_DELETE: {
+    ids: "The IDs of the shared secrets to delete."
   }
 } as const;
 

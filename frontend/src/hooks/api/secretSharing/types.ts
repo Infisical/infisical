@@ -107,8 +107,19 @@ export type TGetSecretRequestByIdResponse = {
   error?: string;
 };
 
+export type TUpdateSharedSecretRequestDTO = {
+  sharedSecretId: string;
+  name?: string;
+  expiresIn?: string;
+  maxViews?: number | null;
+};
+
 export type TDeleteSharedSecretRequestDTO = {
   sharedSecretId: string;
+};
+
+export type TBulkDeleteSharedSecretsRequestDTO = {
+  sharedSecretIds: string[];
 };
 
 export type TDeleteSecretRequestDTO = {

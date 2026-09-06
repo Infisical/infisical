@@ -71,3 +71,14 @@ export type TDeleteSharedSecretDTO = {
   sharedSecretId: string;
   type: SecretSharingType;
 } & TSharedSecretPermission;
+
+export type TUpdateSharedSecretDTO = {
+  sharedSecretId: string;
+  name?: string;
+  expiresIn?: string;
+  maxViews?: number | null;
+} & TSharedSecretPermission;
+
+export type TBulkDeleteSharedSecretsDTO = {
+  sharedSecretIds: string[];
+} & TSharedSecretPermission;

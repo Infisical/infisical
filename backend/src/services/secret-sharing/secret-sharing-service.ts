@@ -26,6 +26,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TSecretSharingDALFactory } from "./secret-sharing-dal";
 import {
   SecretSharingType,
+  TBulkDeleteSharedSecretsDTO,
   TCreatePublicSharedSecretDTO,
   TCreateSecretRequestDTO,
   TCreateSharedSecretDTO,
@@ -34,7 +35,8 @@ import {
   TGetSecretRequestByIdDTO,
   TGetSharedSecretsDTO,
   TRevealSecretRequestValueDTO,
-  TSetSecretRequestValueDTO
+  TSetSecretRequestValueDTO,
+  TUpdateSharedSecretDTO
 } from "./secret-sharing-types";
 
 type TSecretSharingServiceFactoryDep = {
@@ -838,6 +840,73 @@ export const secretSharingServiceFactory = ({
     return mapIdentifierToId(deletedSharedSecret);
   };
 
+  const updateSharedSecretById = async (updateSharedSecretInput: TUpdateSharedSecretDTO) => {
+    const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId, name, expiresIn, maxViews } =
+      updateSharedSecretInput;
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
+
+    const sharedSecret = await secretSharingDAL.findOne({
+      type: SecretSharingType.Share,
+      identifier: Buffer.from(sharedSecretId, "base64url").toString("hex")
+    });
+
+    if (!sharedSecret) {
+      throw new NotFoundError({ message: `Shared secret with ID '${sharedSecretId}' not found` });
+    }
+
+    if (sharedSecret.orgId && sharedSecret.orgId !== orgId) {
+      throw new ForbiddenRequestError({ message: "User does not have permission to update shared secret" });
+    }
+
+    const updatedSharedSecret = await secretSharingDAL.updateById(sharedSecret.id, {
+      ...(name !== undefined && { name }),
+      ...(maxViews !== undefined && { expiresAfterViews: maxViews }),
+      ...(expiresIn !== undefined && { expiresAt: new Date(Date.now() + ms(expiresIn)) })
+    });
+
+    return updatedSharedSecret;
+  };
+
+  const bulkDeleteSharedSecrets = async (bulkDeleteSharedSecretsInput: TBulkDeleteSharedSecretsDTO) => {
+    const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretIds } = bulkDeleteSharedSecretsInput;
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
+
+    const sharedSecrets = await secretSharingDAL.find({
+      $in: { id: sharedSecretIds },
+      orgId,
+      ...(actor === ActorType.USER && { userId: actorId }),
+      ...(actor === ActorType.IDENTITY && { identityId: actorId })
+    });
+
+    if (!sharedSecrets.length) {
+      throw new NotFoundError({ message: "No shared secrets found for the provided IDs" });
+    }
+
+    const deletedSharedSecrets = await secretSharingDAL.transaction(async () => {
+      return Promise.all(sharedSecrets.map((sharedSecret) => secretSharingDAL.deleteById(sharedSecret.id)));
+    });
+
+    return deletedSharedSecrets.map(mapIdentifierToId);
+  };
+
   const getSharedSecretOrgId = async (sharedSecretId: string) => {
     const sharedSecret = await secretSharingDAL.findOne({
       identifier: Buffer.from(sharedSecretId, "base64url").toString("hex"),
@@ -971,6 +1040,8 @@ export const secretSharingServiceFactory = ({
     createPublicSharedSecret,
     getSharedSecrets,
     deleteSharedSecretById,
+    updateSharedSecretById,
+    bulkDeleteSharedSecrets,
     getSharedSecretById,
     accessSharedSecret,
     getSharedSecretOrgId,

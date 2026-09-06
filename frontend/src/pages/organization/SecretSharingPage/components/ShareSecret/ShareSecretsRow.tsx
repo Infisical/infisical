@@ -1,8 +1,17 @@
 import { format } from "date-fns";
-import { ClockAlertIcon, ClockIcon, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
+import {
+  ClockAlertIcon,
+  ClockIcon,
+  Ellipsis,
+  Mail,
+  MailOpen,
+  PencilIcon,
+  Trash2
+} from "lucide-react";
 
 import {
   Badge,
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -19,18 +28,16 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 export const ShareSecretsRow = ({
   row,
+  isSelected,
+  onToggleSelect,
   handlePopUpOpen
 }: {
   row: TSharedSecret;
+  isSelected: boolean;
+  onToggleSelect: () => void;
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["deleteSharedSecretConfirmation"]>,
-    {
-      name,
-      id
-    }: {
-      name: string;
-      id: string;
-    }
+    popUpName: keyof UsePopUpState<["deleteSharedSecretConfirmation", "editSharedSecret"]>,
+    data: { name: string; id: string } | TSharedSecret
   ) => void;
 }) => {
   const lastViewedAt = row.lastViewedAt
@@ -47,7 +54,18 @@ export const ShareSecretsRow = ({
   }
 
   return (
-    <TableRow key={row.id}>
+    <TableRow key={row.id} data-state={isSelected ? "selected" : undefined}>
+      <TableCell>
+        <Checkbox
+          id={`select-shared-secret-${row.id}`}
+          isChecked={isSelected}
+          variant="project"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect();
+          }}
+        />
+      </TableCell>
       <TableCell>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -87,6 +105,10 @@ export const ShareSecretsRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handlePopUpOpen("editSharedSecret", row)}>
+              <PencilIcon />
+              Edit
+            </DropdownMenuItem>
             <DropdownMenuItem
               variant="danger"
               onClick={() =>

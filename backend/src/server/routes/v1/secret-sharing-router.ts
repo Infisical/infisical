@@ -3,6 +3,7 @@ import fastifyMultipart from "@fastify/multipart";
 import { fileTypeFromBuffer } from "file-type";
 import { z } from "zod";
 
+import { SecretSharingSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
@@ -436,6 +437,96 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       });
 
       return deletedSharedSecret;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:id",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretSharing],
+      description: "Update the settings of an existing shared secret.",
+      operationId: "updateSharedSecret",
+      params: z.object({
+        id: z.string().describe(SECRET_SHARING.UPDATE.id)
+      }),
+      body: z.object({
+        name: z.string().optional().describe(SECRET_SHARING.UPDATE.name),
+        expiresIn: z.string().optional().describe(SECRET_SHARING.UPDATE.expiresIn),
+        maxViews: z.number().nullish().describe(SECRET_SHARING.UPDATE.maxViews)
+      }),
+      response: {
+        200: SecretSharingSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const updatedSharedSecret = await req.server.services.secretSharing.updateSharedSecretById({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        sharedSecretId: req.params.id,
+        ...req.body
+      });
+
+      return updatedSharedSecret;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/bulk-delete",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SecretSharing],
+      description: "Delete multiple shared secrets in a single request.",
+      operationId: "bulkDeleteSharedSecrets",
+      body: z.object({
+        ids: z.string().array().describe(SECRET_SHARING.BULK_DELETE.ids)
+      }),
+      response: {
+        200: z.object({
+          secrets: z.array(SanitizedSecretSharingSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const deletedSharedSecrets = await req.server.services.secretSharing.bulkDeleteSharedSecrets({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        sharedSecretIds: req.body.ids
+      });
+
+      await Promise.all(
+        deletedSharedSecrets.map((sharedSecret) =>
+          server.services.auditLog.createAuditLog({
+            orgId: req.permission.orgId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.DELETE_SHARED_SECRET,
+              metadata: {
+                id: sharedSecret.id,
+                name: sharedSecret.name || undefined
+              }
+            }
+          })
+        )
+      );
+
+      return { secrets: deletedSharedSecrets };
     }
   });
 
