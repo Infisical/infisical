@@ -7,22 +7,7 @@ import {
   RadioGroup,
   RadioGroupItem
 } from "@app/components/v3";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-
-// Admin and Member are the only slugs Agent Vault writes: every other role resolves to the member
-// set, so offering one would promise less access than it grants.
-const ROLES = [
-  {
-    slug: ProjectMembershipRole.Admin,
-    title: "Admin",
-    description: "Manage bundles, connections, proxies and who else has access."
-  },
-  {
-    slug: ProjectMembershipRole.Member,
-    title: "Member",
-    description: "Mint sessions over the access bundles they are granted, and nothing else."
-  }
-];
+import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 
 type Props = {
   value: string;
@@ -33,17 +18,17 @@ type Props = {
 
 export const ProductRoleField = ({ value, onChange, idPrefix }: Props) => (
   <RadioGroup value={value} onValueChange={onChange}>
-    {ROLES.map((role) => {
-      const id = `${idPrefix}-${role.slug}`;
+    {AGENT_VAULT_PRODUCT_ROLE_OPTIONS.map((role) => {
+      const id = `${idPrefix}-${role.value}`;
 
       return (
-        <FieldLabel key={role.slug} htmlFor={id} variant="av">
+        <FieldLabel key={role.value} htmlFor={id} variant="av">
           <Field orientation="horizontal">
             <FieldContent>
-              <FieldTitle>{role.title}</FieldTitle>
+              <FieldTitle>{role.label}</FieldTitle>
               <FieldDescription>{role.description}</FieldDescription>
             </FieldContent>
-            <RadioGroupItem id={id} value={role.slug} />
+            <RadioGroupItem id={id} value={role.value} />
           </Field>
         </FieldLabel>
       );

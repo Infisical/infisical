@@ -38,12 +38,12 @@ export const AGENT_VAULT_PRODUCT_ROLE_OPTIONS = [
   {
     value: ProjectMembershipRole.Admin,
     label: "Admin",
-    description: "Manage bundles, connections, proxies and who else has access."
+    description: "Full access to Agent Vault."
   },
   {
     value: ProjectMembershipRole.Member,
     label: "Member",
-    description: "Mint sessions over the access bundles they are granted, and nothing else."
+    description: "Create sessions over the access bundles they're granted."
   }
 ];
 
