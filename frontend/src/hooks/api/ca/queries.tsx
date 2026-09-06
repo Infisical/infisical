@@ -7,6 +7,7 @@ import { CaRenewalStatus, CaSigningConfigType, CaType } from "./enums";
 import {
   TAdcsTemplate,
   TAzureAdCsTemplate,
+  TCaQuota,
   TInternalCertificateAuthority,
   TUnifiedCertificateAuthority
 } from "./types";
@@ -27,7 +28,8 @@ export const caKeys = {
   getAzureAdcsTemplates: (caId: string) => [{ caId }, "azure-adcs-templates"],
   getAdcsTemplates: (caId: string) => [{ caId }, "adcs-templates"],
   getCaSigningConfig: (caId: string) => [{ caId }, "ca-signing-config"],
-  getCaAutoRenewal: (caId: string) => [{ caId }, "ca-auto-renewal"]
+  getCaAutoRenewal: (caId: string) => [{ caId }, "ca-auto-renewal"],
+  getCaQuota: () => ["ca-quota"] as const
 };
 
 export const useGetCa = ({
@@ -321,3 +323,13 @@ export const useGetAdcsTemplates = ({ caId, isAdcsCa }: { caId: string; isAdcsCa
     enabled: Boolean(caId && isAdcsCa)
   });
 };
+
+export const useGetCaQuota = (options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: caKeys.getCaQuota(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TCaQuota>("/api/v1/cert-manager/ca/quota");
+      return data;
+    },
+    enabled: options?.enabled ?? true
+  });

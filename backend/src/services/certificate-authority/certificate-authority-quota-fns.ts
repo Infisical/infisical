@@ -1,4 +1,5 @@
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TFeatureSet } from "@app/ee/services/license/license-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -9,6 +10,16 @@ export type TCertificateAuthorityQuotaDeps = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "countCasByOrgId" | "countInternalCasByOrgId">;
 };
+
+// A contract granting more internal CAs than total CAs is a License Server misconfiguration; honour
+// the larger grant. Guarded on both being numbers because the free tier leaves maxInternalCas null
+// while capping maxCas at 1, so treating null as unlimited would lift that cap.
+//
+// Exported so the quota endpoint reports the same ceiling this module enforces.
+export const resolveEffectiveMaxCas = (plan: Pick<TFeatureSet, "maxCas" | "maxInternalCas">) =>
+  typeof plan.maxCas === "number" && typeof plan.maxInternalCas === "number"
+    ? Math.max(plan.maxCas, plan.maxInternalCas)
+    : plan.maxCas;
 
 // Enforced where the CA row is written rather than in createCertificateAuthority alone: the still-live
 // POST /cert-manager/ca route calls internalCertificateAuthorityService.createCa directly, so a check
@@ -29,14 +40,7 @@ export const assertCertificateAuthorityQuota = async ({
   if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
   const plan = await deps.licenseService.getPlan(project.orgId);
-
-  // A contract granting more internal CAs than total CAs is a License Server misconfiguration; honour
-  // the larger grant. Guarded on both being numbers because the free tier leaves maxInternalCas null
-  // while capping maxCas at 1, so treating null as unlimited would lift that cap.
-  const maxCas =
-    typeof plan.maxCas === "number" && typeof plan.maxInternalCas === "number"
-      ? Math.max(plan.maxCas, plan.maxInternalCas)
-      : plan.maxCas;
+  const maxCas = resolveEffectiveMaxCas(plan);
 
   if (typeof maxCas === "number") {
     const used = await deps.certificateAuthorityDAL.countCasByOrgId(project.orgId);
