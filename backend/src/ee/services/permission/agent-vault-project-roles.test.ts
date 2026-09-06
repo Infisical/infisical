@@ -2,10 +2,18 @@ import { createMongoAbility } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { describe, expect, test } from "vitest";
 
-import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
+import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
+import { NotFoundError } from "@app/lib/errors";
 
-import { agentVaultProjectAdminPermissions } from "./default-roles";
-import { buildProjectPermissionRules } from "./permission-service";
+import {
+  agentVaultProjectAdminPermissions,
+  applicationAuditorPermissions,
+  pamResourceAdminPermissions,
+  signerOperatorPermissions
+} from "./default-roles";
+import { buildProjectPermissionRules, resolveResourceRoleRules } from "./permission-service";
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -105,5 +113,22 @@ describe("agent vault project roles", () => {
       false
     );
     expect(custom.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(false);
+  });
+});
+
+describe("resource role dispatch", () => {
+  test("an agent vault consumer carries no rules, and an unknown slug fails loudly", () => {
+    expect(resolveResourceRoleRules(ResourceType.AgentVaultAccessBundle, AgentVaultResourceRole.Consumer)).toEqual([]);
+    expect(() => resolveResourceRoleRules(ResourceType.AgentVaultAccessBundle, "admin")).toThrow(NotFoundError);
+  });
+
+  test("the other products' arms are untouched", () => {
+    expect(resolveResourceRoleRules(ResourceType.PamFolder, PamResourceRole.Admin)).toBe(pamResourceAdminPermissions);
+    expect(resolveResourceRoleRules(ResourceType.Signer, ResourceMembershipRole.Operator)).toBe(
+      signerOperatorPermissions
+    );
+    expect(resolveResourceRoleRules(ResourceType.CertificateApplication, ResourceMembershipRole.Auditor)).toBe(
+      applicationAuditorPermissions
+    );
   });
 });

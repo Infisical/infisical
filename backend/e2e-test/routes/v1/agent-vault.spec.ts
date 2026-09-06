@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
@@ -13,6 +13,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
+import { usageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 
@@ -45,6 +46,87 @@ const deleteOrgIdentity = async (identityId: string) => {
   await testDb("memberships").where({ actorIdentityId: identityId }).del();
   await testDb("identities").where({ id: identityId }).delete();
 };
+
+// A grant is a resource-scoped row in the shared memberships table; this is the only shape a grant takes.
+const grantRows = (
+  accessBundleId: string,
+  actor: { actorUserId?: string; actorIdentityId?: string; actorGroupId?: string } = {}
+) =>
+  testDb("memberships").where({
+    scope: "resource",
+    scopeResourceType: "agent-vault-access-bundle",
+    scopeResourceId: accessBundleId,
+    ...actor
+  });
+
+// A non-admin machine identity that can authenticate. The seeded identity is an org admin, so the
+// bootstrap made it an Agent Vault admin, and an admin reaches every bundle regardless of grants.
+const createUaIdentity = async (name: string) => {
+  const created = await inject("POST", "/api/v1/identities", {
+    name,
+    role: OrgMembershipRole.Member,
+    organizationId: seedData1.organization.id
+  });
+  expect(created.statusCode).toBe(200);
+  const identity = created.json().identity as { id: string };
+
+  const attached = await inject("POST", `/api/v1/auth/universal-auth/identities/${identity.id}`, {
+    accessTokenTTL: 3600,
+    accessTokenMaxTTL: 3600,
+    accessTokenNumUsesLimit: 0
+  });
+  expect(attached.statusCode).toBe(200);
+  const clientId = attached.json().identityUniversalAuth.clientId as string;
+
+  const secret = await inject("POST", `/api/v1/auth/universal-auth/identities/${identity.id}/client-secrets`, {});
+  expect(secret.statusCode).toBe(200);
+  const { clientSecret } = secret.json();
+
+  const login = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/auth/universal-auth/login",
+    body: { clientId, clientSecret }
+  });
+  expect(login.statusCode).toBe(200);
+  const token = login.json().accessToken as string;
+
+  const asIdentity = (method: "GET" | "POST" | "DELETE", url: string, body?: Record<string, unknown>) =>
+    testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) });
+
+  return { id: identity.id, asIdentity };
+};
+
+const deleteUaIdentity = async (identityId: string) => {
+  expect((await inject("DELETE", `/api/v1/identities/${identityId}`)).statusCode).toBe(200);
+};
+
+// A group that is a member of the Agent Vault project, with the given role.
+const createProjectGroup = async (projectId: string, name: string, role: ProjectMembershipRole) => {
+  const [group] = (await testDb("groups")
+    .insert({ orgId: seedData1.organization.id, name, slug: `${name}-${Date.now()}` })
+    .returning("*")) as { id: string }[];
+  const [membership] = (await testDb("memberships")
+    .insert({
+      scope: AccessScope.Project,
+      scopeOrgId: seedData1.organization.id,
+      scopeProjectId: projectId,
+      actorGroupId: group.id,
+      isActive: true
+    })
+    .returning("*")) as { id: string }[];
+  await testDb("membership_roles").insert({ membershipId: membership.id, role });
+  return {
+    id: group.id,
+    cleanup: async () => {
+      await testDb("identity_group_membership").where({ groupId: group.id }).delete();
+      await testDb("memberships").where({ id: membership.id }).delete();
+      await testDb("groups").where({ id: group.id }).delete();
+    }
+  };
+};
+
+const getProjectId = async () =>
+  (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
 
 const createAccessBundle = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/access-bundles", { name });
@@ -371,10 +453,10 @@ describe("Agent Vault V1 Router", async () => {
         userId: user.id
       });
       expect(granted.statusCode).toBe(200);
-      expect(await testDb("agent_vault_access_bundle_members").where({ userId: user.id })).toHaveLength(1);
+      expect(await grantRows(bundle.id, { actorUserId: user.id })).toHaveLength(1);
 
-      // Removal from the organization takes a different path from removal from the project, and these
-      // grants are keyed on the user rather than on the membership, so nothing cascades them away.
+      // Removal from the organization deletes every membership row the user holds in the org, and a grant
+      // is one of those rows now. This guards that nothing reintroduces a private grant table.
       const removed = await testServer.inject({
         method: "DELETE",
         url: `/api/v2/organizations/${seedData1.organization.id}/memberships/${orgMembership.id}`,
@@ -382,7 +464,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(removed.statusCode).toBe(200);
 
-      expect(await testDb("agent_vault_access_bundle_members").where({ userId: user.id })).toHaveLength(0);
+      expect(await grantRows(bundle.id, { actorUserId: user.id })).toHaveLength(0);
 
       await testDb("users").where({ id: user.id }).delete();
     });
@@ -398,14 +480,12 @@ describe("Agent Vault V1 Router", async () => {
           .statusCode
       ).toBe(200);
 
-      const granted = await testDb("agent_vault_access_bundle_members").where({ identityId: identity.id });
-      expect(granted).toHaveLength(1);
+      expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(1);
 
       expect((await inject("DELETE", memberships, { identityId: identity.id })).statusCode).toBe(200);
 
-      // Bundle grants live outside the membership table, so nothing reaps them unless this path does.
-      const afterRemoval = await testDb("agent_vault_access_bundle_members").where({ identityId: identity.id });
-      expect(afterRemoval).toHaveLength(0);
+      // Leaving the product takes every bundle grant with it, in the same transaction.
+      expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(0);
 
       await deleteOrgIdentity(identity.id);
     });
@@ -569,9 +649,8 @@ describe("Agent Vault V1 Router", async () => {
 
   describe("session resolve", async () => {
     // The resolve endpoint authenticates as an enrolled proxy, which needs a CA and a CSR, so the service
-    // is built from the real DALs against the test database instead. Only the two collaborators resolve
-    // never reaches on this path are stubbed, and getProjectPermission deliberately succeeds: it does
-    // succeed for a deactivated actor, which is the whole point of the check under test.
+    // is built from the real DALs and the real permission service against the test database instead. Only
+    // the two collaborators resolve never reaches on this path are stubbed.
     const buildResolver = () =>
       agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
@@ -579,9 +658,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
-        permissionService: {
-          getProjectPermission: () => Promise.resolve({ hasRole: () => true })
-        } as never,
+        permissionService: testServer.services.permission,
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
@@ -941,61 +1018,184 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a machine identity inherits a group's access bundles", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+    test("a machine identity inherits a group's access bundles, on mint and on resolve", async () => {
+      const projectId = await getProjectId();
       const bundle = await createAccessBundle("group-inheritance");
+      expect(
+        (
+          await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+            name: "echo",
+            hostPattern: "echo.example.com",
+            credential: { type: "passthrough" }
+          })
+        ).statusCode
+      ).toBe(200);
+      const second = await createAccessBundle("group-inheritance-late");
 
-      const [group] = (await testDb("groups")
-        .insert({ orgId: seedData1.organization.id, name: "av-agents", slug: `av-agents-${Date.now()}` })
-        .returning("*")) as { id: string }[];
+      const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "group-inheritance" });
+      const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
 
       // The group, not the identity, is the project member and the bundle's grantee.
-      const [groupMembership] = (await testDb("memberships")
-        .insert({
-          scope: AccessScope.Project,
-          scopeOrgId: seedData1.organization.id,
-          scopeProjectId: projectId,
-          actorGroupId: group.id,
-          isActive: true
-        })
-        .returning("*")) as { id: string }[];
-      await testDb("membership_roles").insert({
-        membershipId: groupMembership.id,
-        role: ProjectMembershipRole.Member
+      const group = await createProjectGroup(projectId, "av-agents", ProjectMembershipRole.Member);
+      const agent = await createUaIdentity(`av-agent-${Date.now()}`);
+      await testDb("identity_group_membership").insert({ groupId: group.id, identityId: agent.id });
+
+      try {
+        expect(
+          (await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, { groupId: group.id }))
+            .statusCode
+        ).toBe(200);
+
+        // Reachability expands identity_group_membership for a machine identity; getting that wrong
+        // denies every machine identity's group grants silently, for the product's primary actor.
+        const mint = await agent.asIdentity("POST", "/api/v1/agent-vault/sessions", {
+          accessBundleIds: [bundle.id],
+          ttl: "never"
+        });
+        expect(mint.statusCode).toBe(200);
+        const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
+
+        const resolver = agentVaultProxyServiceFactory({
+          agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+          agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
+          agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+          membershipDAL: membershipDALFactory(testDb),
+          orgDAL: orgDALFactory(testDb),
+          permissionService: testServer.services.permission,
+          kmsService: {
+            createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
+          } as never,
+          resourceAuthMethodService: {} as never
+        });
+        const resolve = () =>
+          resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+
+        expect((await resolve()).connections).toHaveLength(1);
+
+        // The bundle set is a ceiling fixed at mint: a grant made afterwards never widens the session.
+        expect(
+          (await inject("POST", `/api/v1/agent-vault/access-bundles/${second.id}/members`, { groupId: group.id }))
+            .statusCode
+        ).toBe(200);
+        expect((await resolve()).connections).toHaveLength(1);
+
+        // Losing the grant empties the session on the next poll without touching the session row.
+        const [grant] = await grantRows(bundle.id, { actorGroupId: group.id });
+        expect(
+          (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/${grant.id}`)).statusCode
+        ).toBe(200);
+        expect((await resolve()).connections).toHaveLength(0);
+
+        const remint = await agent.asIdentity("POST", "/api/v1/agent-vault/sessions", {
+          accessBundleIds: [bundle.id],
+          ttl: "never"
+        });
+        expect(remint.statusCode).toBe(400);
+        expect(JSON.parse(remint.payload).message).toContain("not one you can reach");
+      } finally {
+        await deleteUaIdentity(agent.id);
+        await group.cleanup();
+      }
+    });
+
+    test("a creator grant is written only for a directly added admin", async () => {
+      const projectId = await getProjectId();
+
+      // The seed admin holds a direct membership, so their bundle carries exactly one consumer grant.
+      const direct = await createAccessBundle("creator-direct");
+      const directGrants = await grantRows(direct.id, { actorUserId: seedData1.id });
+      expect(directGrants).toHaveLength(1);
+      const roles = await testDb("membership_roles").where({ membershipId: directGrants[0].id });
+      expect(roles.map((r: { role: string }) => r.role)).toEqual(["consumer"]);
+
+      // An admin only through a group gets no row: they reach the bundle as admin, and an individual row
+      // for them would be the one grant no removal path reaps once the group goes.
+      const group = await createProjectGroup(projectId, "av-group-admins", ProjectMembershipRole.Admin);
+      const admin = await createUaIdentity(`av-group-admin-${Date.now()}`);
+      await testDb("identity_group_membership").insert({ groupId: group.id, identityId: admin.id });
+
+      try {
+        const created = await admin.asIdentity("POST", "/api/v1/agent-vault/access-bundles", {
+          name: "creator-via-group"
+        });
+        expect(created.statusCode).toBe(200);
+        const { accessBundle } = JSON.parse(created.payload) as { accessBundle: { id: string } };
+
+        expect(await grantRows(accessBundle.id)).toHaveLength(0);
+
+        const list = await inject("GET", "/api/v1/agent-vault/access-bundles");
+        const { accessBundles } = JSON.parse(list.payload) as { accessBundles: { id: string; memberCount: number }[] };
+        expect(accessBundles.find((row) => row.id === accessBundle.id)?.memberCount).toBe(0);
+
+        const mint = await admin.asIdentity("POST", "/api/v1/agent-vault/sessions", {
+          accessBundleIds: [accessBundle.id],
+          ttl: "1h"
+        });
+        expect(mint.statusCode).toBe(200);
+      } finally {
+        await deleteUaIdentity(admin.id);
+        await group.cleanup();
+      }
+    });
+
+    test("deleting a bundle reaps its grants and their roles", async () => {
+      const bundle = await createAccessBundle("delete-reaps-grants");
+      const [grant] = await grantRows(bundle.id, { actorUserId: seedData1.id });
+      expect(grant).toBeDefined();
+
+      expect((await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).statusCode).toBe(200);
+
+      // No FK from scopeResourceId to the bundle, so the service reaps by hand and the role row cascades.
+      expect(await grantRows(bundle.id)).toHaveLength(0);
+      expect(await testDb("membership_roles").where({ membershipId: grant.id })).toHaveLength(0);
+    });
+
+    test("a member id from another scope is refused, and grants are not seats", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle("scoped-member-ids");
+      const identity = await createOrgIdentity(`av-seats-${Date.now()}`);
+      expect(
+        (await inject("POST", "/api/v1/agent-vault/memberships", { identityId: identity.id, role: "member" }))
+          .statusCode
+      ).toBe(200);
+
+      const seatsBefore = await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id);
+
+      const projectMembership = await testDb("memberships")
+        .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
+        .first();
+      const refused = await inject(
+        "DELETE",
+        `/api/v1/agent-vault/access-bundles/${bundle.id}/members/${projectMembership.id}`
+      );
+      expect(refused.statusCode).toBe(404);
+      expect(await testDb("memberships").where({ id: projectMembership.id })).toHaveLength(1);
+
+      for (const name of ["seats-a", "seats-b", "seats-c"]) {
+        // eslint-disable-next-line no-await-in-loop
+        const extra = await createAccessBundle(name);
+        // eslint-disable-next-line no-await-in-loop
+        const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${extra.id}/members`, {
+          identityId: identity.id
+        });
+        expect(granted.statusCode).toBe(200);
+      }
+      const duplicate = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+        identityId: identity.id
       });
-
-      const grant = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        groupId: group.id
+      expect(duplicate.statusCode).toBe(200);
+      const again = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+        identityId: identity.id
       });
-      expect(grant.statusCode).toBe(200);
+      expect(again.statusCode).toBe(400);
+      expect(JSON.parse(again.payload).message).toContain("already has this access bundle");
 
-      await testDb("identity_group_membership").insert({
-        groupId: group.id,
-        identityId: seedData1.machineIdentity.id
-      });
+      // Grants are resource rows, and the seat count reads project rows only.
+      expect(await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id)).toBe(
+        seatsBefore
+      );
 
-      // The reachability query branches on actor type: a user goes through user_group_membership and a
-      // machine identity through identity_group_membership. Getting that wrong denies every machine
-      // identity's group grants silently, which is the product's primary actor.
-      const reachable = await testDb("agent_vault_access_bundle_members")
-        .join(
-          "agent_vault_access_bundles",
-          "agent_vault_access_bundle_members.accessBundleId",
-          "agent_vault_access_bundles.id"
-        )
-        .where("agent_vault_access_bundles.projectId", projectId)
-        .whereIn(
-          "agent_vault_access_bundle_members.groupId",
-          testDb("identity_group_membership").where("identityId", seedData1.machineIdentity.id).select("groupId")
-        )
-        .select("agent_vault_access_bundle_members.accessBundleId");
-      expect(reachable.map((row: { accessBundleId: string }) => row.accessBundleId)).toContain(bundle.id);
-
-      await testDb("identity_group_membership").where({ groupId: group.id }).delete();
-      await testDb("memberships").where({ id: groupMembership.id }).delete();
-      await testDb("groups").where({ id: group.id }).delete();
+      await deleteOrgIdentity(identity.id);
     });
 
     test("removing an actor from the project reaps their access bundle grants", async () => {
@@ -1038,10 +1238,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(remove.statusCode).toBe(200);
 
-      const remaining = await testDb("agent_vault_access_bundle_members")
-        .where({ accessBundleId: bundle.id, userId: user.id })
-        .first();
-      expect(remaining).toBeUndefined();
+      expect(await grantRows(bundle.id, { actorUserId: user.id }).first()).toBeUndefined();
 
       await testDb("memberships").where({ actorUserId: user.id }).delete();
       await testDb("users").where({ id: user.id }).delete();
