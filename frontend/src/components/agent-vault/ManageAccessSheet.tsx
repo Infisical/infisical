@@ -71,10 +71,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
       <SheetContent className="sm:max-w-[640px]">
         <SheetHeader>
           <SheetTitle>Manage Access</SheetTitle>
-          <SheetDescription>
-            Who can mint a session over {accessBundle?.name}. Revoking takes effect at the next
-            proxy poll.
-          </SheetDescription>
+          <SheetDescription>Who can mint a session over {accessBundle?.name}.</SheetDescription>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
