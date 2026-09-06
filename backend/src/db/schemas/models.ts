@@ -272,7 +272,6 @@ export enum TableName {
   PamAccountPolicy = "pam_account_policies",
   AgentVaultAccessBundle = "agent_vault_access_bundles",
   AgentVaultConnection = "agent_vault_connections",
-  AgentVaultAccessBundleMember = "agent_vault_access_bundle_members",
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
@@ -414,7 +413,8 @@ export enum ResourceType {
   CertificateApplication = "certificate-application",
   Signer = "pki-signer",
   PamFolder = "pam-folder",
-  PamAccount = "pam-account"
+  PamAccount = "pam-account",
+  AgentVaultAccessBundle = "agent-vault-access-bundle"
 }
 
 export enum SecretEncryptionAlgo {

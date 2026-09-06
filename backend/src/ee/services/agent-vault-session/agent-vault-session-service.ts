@@ -10,6 +10,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import {
   AGENT_VAULT_SESSION_TTL_SECONDS,
@@ -18,7 +19,6 @@ import {
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
-import { TAgentVaultAccessBundleMemberDALFactory } from "../agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
@@ -30,7 +30,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
-  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "findReachableAccessBundleIds">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItem">;
@@ -47,7 +47,7 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultSessionDAL,
   agentVaultSessionAccessBundleDAL,
   agentVaultAccessBundleDAL,
-  agentVaultAccessBundleMemberDAL,
+  membershipDAL,
   permissionService,
   auditLogService,
   keyStore
@@ -64,7 +64,7 @@ export const agentVaultSessionServiceFactory = ({
   const mintSession = async ({ projectId, ctx, accessBundleIds, ttl }: TMintSessionDTO) => {
     const actor = requireSessionActor(ctx);
     const { permission, accessBundleIds: reachable } = await getAgentVaultReachability(
-      { permissionService, agentVaultAccessBundleMemberDAL },
+      { permissionService, membershipDAL },
       { projectId, ctx }
     );
     ForbiddenError.from(permission).throwUnlessCan(
@@ -147,7 +147,7 @@ export const agentVaultSessionServiceFactory = ({
 
   const listSessions = async ({ projectId, ctx, scope, status, limit, offset }: TListSessionsDTO) => {
     const { permission, isAdmin } = await getAgentVaultReachability(
-      { permissionService, agentVaultAccessBundleMemberDAL },
+      { permissionService, membershipDAL },
       { projectId, ctx }
     );
     ForbiddenError.from(permission).throwUnlessCan(
@@ -178,7 +178,7 @@ export const agentVaultSessionServiceFactory = ({
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
     const { permission, isAdmin } = await getAgentVaultReachability(
-      { permissionService, agentVaultAccessBundleMemberDAL },
+      { permissionService, membershipDAL },
       { projectId, ctx }
     );
     ForbiddenError.from(permission).throwUnlessCan(

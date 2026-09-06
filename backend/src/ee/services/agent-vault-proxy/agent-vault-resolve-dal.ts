@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 export type TAgentVaultResolveDALFactory = ReturnType<typeof agentVaultResolveDALFactory>;
 
@@ -27,22 +26,31 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
    * Read on the replica and hold no transaction across the decrypt that follows. Replica lag adds to the
    * one-poll-interval staleness promise; if revocation ever has to land in exactly one interval, this is
    * the read to move to the primary.
+   *
+   * Reachability arrives as an id list rather than a correlated subquery, so grant and credential are two
+   * replica reads and each picks its own replica: a grant seen on a lagging replica can pair with a
+   * credential rotated after the revoke and seen on a fresh one. Accepted for V1, because the window is
+   * bounded by replica lag and reaches only an actor who held that credential moments earlier. A
+   * correlated `whereExists` on memberships joined as `"scopeResourceId" = access_bundles.id::text`
+   * restores the single snapshot if that guarantee is ever needed.
    */
   const findResolvableConnections = async (
     {
       sessionId,
       projectId,
-      actor,
-      isAdmin
+      accessBundleIds
     }: {
       sessionId: string;
       projectId: string;
-      actor: { type: ActorType.USER | ActorType.IDENTITY; id: string };
-      /** An admin reaches every bundle, so the member filter is skipped — symmetrically with mint. */
-      isAdmin: boolean;
+      /**
+       * What the actor can reach right now, from the same read mint uses. Null for an admin, who reaches
+       * every bundle, so the filter is skipped — symmetrically with mint.
+       */
+      accessBundleIds: string[] | null;
     },
     tx?: Knex
   ): Promise<TResolveConnectionRow[]> => {
+    if (accessBundleIds?.length === 0) return [];
     try {
       const conn = tx || db.replicaNode();
 
@@ -63,36 +71,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultAccessBundle}.id`
         );
 
-      if (!isAdmin) {
-        void query.whereExists((qb) => {
-          void qb
-            .select(db.raw("1"))
-            .from(TableName.AgentVaultAccessBundleMember)
-            .whereRaw(`??.?? = ??.??`, [
-              TableName.AgentVaultAccessBundleMember,
-              "accessBundleId",
-              TableName.AgentVaultAccessBundle,
-              "id"
-            ])
-            .where((actorQb) => {
-              if (actor.type === ActorType.USER) {
-                void actorQb
-                  .where(`${TableName.AgentVaultAccessBundleMember}.userId`, actor.id)
-                  .orWhereIn(
-                    `${TableName.AgentVaultAccessBundleMember}.groupId`,
-                    conn(TableName.UserGroupMembership).where("userId", actor.id).select("groupId")
-                  );
-              } else {
-                void actorQb
-                  .where(`${TableName.AgentVaultAccessBundleMember}.identityId`, actor.id)
-                  .orWhereIn(
-                    `${TableName.AgentVaultAccessBundleMember}.groupId`,
-                    conn(TableName.IdentityGroupMembership).where("identityId", actor.id).select("groupId")
-                  );
-              }
-            });
-        });
-      }
+      if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
 
       return (
         (await query

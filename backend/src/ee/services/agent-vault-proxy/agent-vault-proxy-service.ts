@@ -12,11 +12,11 @@ import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { AgentVaultCredentialType, AgentVaultUnmatchedHost } from "../agent-vault/agent-vault-enums";
-import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
-import { TAgentVaultAccessBundleMemberDALFactory } from "../agent-vault-member/agent-vault-access-bundle-member-dal";
+import { findReachableAccessBundleIds, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
@@ -45,7 +45,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
   agentVaultResolveDAL: TAgentVaultResolveDALFactory;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
-  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "findReachableAccessBundleIds">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -61,7 +61,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultProxyDAL,
   agentVaultResolveDAL,
   agentVaultSessionDAL,
-  agentVaultAccessBundleMemberDAL,
+  membershipDAL,
   orgDAL,
   permissionService,
   kmsService,
@@ -97,7 +97,7 @@ export const agentVaultProxyServiceFactory = ({
 
   const $authorize = async ({ projectId, ctx }: TListProxiesDTO, action: ProjectPermissionAgentVaultProxyActions) => {
     const { permission, isAdmin } = await getAgentVaultReachability(
-      { permissionService, agentVaultAccessBundleMemberDAL },
+      { permissionService, membershipDAL },
       { projectId, ctx }
     );
     ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultProxies);
@@ -355,11 +355,15 @@ export const agentVaultProxyServiceFactory = ({
       throw error;
     }
 
+    // The same read mint uses, so the two paths can never disagree about what a grant means.
+    const accessBundleIds = isAdmin
+      ? null
+      : await findReachableAccessBundleIds(membershipDAL, { projectId: session.projectId, actor });
+
     const rows = await agentVaultResolveDAL.findResolvableConnections({
       sessionId: session.id,
       projectId: session.projectId,
-      actor,
-      isAdmin
+      accessBundleIds
     });
 
     // One cipher pair per resolve, not one per credential: this query runs once per active session per

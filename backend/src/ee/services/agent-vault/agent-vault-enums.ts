@@ -4,6 +4,13 @@ export enum AgentVaultCredentialType {
   Passthrough = "passthrough"
 }
 
+// The one role a bundle grant carries. It names what the actor does with the bundle rather than a tier,
+// and it is deliberately not a slug PAM or the generic resource roles use, so a generic path that ever
+// resolves it without an Agent Vault arm fails loudly instead of granting another product's permissions.
+export enum AgentVaultResourceRole {
+  Consumer = "consumer"
+}
+
 export enum AgentVaultUnmatchedHost {
   Allow = "allow",
   Deny = "deny"

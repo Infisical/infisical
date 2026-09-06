@@ -1,5 +1,4 @@
 import { AccessScope } from "@app/db/schemas";
-import { TAgentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -29,7 +28,6 @@ type TDeleteOrgMemberships = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
-  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "deleteUserGrantsInProjects">;
 };
 
 export const deleteOrgMembershipsFn = async ({
@@ -44,8 +42,7 @@ export const deleteOrgMembershipsFn = async ({
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
   approvalPolicyDAL,
-  alertChannelRecipientDAL,
-  agentVaultAccessBundleMemberDAL
+  alertChannelRecipientDAL
 }: TDeleteOrgMemberships) => {
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
     await assertWillRetainOrgAdmin({
@@ -156,12 +153,6 @@ export const deleteOrgMembershipsFn = async ({
     );
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: membershipUserIds }, tx);
-
-    // Agent Vault grants live in their own table keyed on the user, not on the membership, so deleting
-    // the membership rows above leaves them behind. They cannot be used while the actor is out of the
-    // org - resolve refuses anyone without an active org membership - but re-inviting the same person
-    // and adding them back to Agent Vault would silently restore every bundle they used to hold.
-    await agentVaultAccessBundleMemberDAL.deleteUserGrantsInProjects({ projectIds, userIds: membershipUserIds }, tx);
 
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
     return orgMemberships;

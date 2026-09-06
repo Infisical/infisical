@@ -8,11 +8,6 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { TAgentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
-import {
-  AgentVaultMemberKind,
-  TAgentVaultMembershipCleanupServiceFactory
-} from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -90,17 +85,12 @@ type TMembershipUserServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
-  agentVaultMembershipCleanupService: Pick<
-    TAgentVaultMembershipCleanupServiceFactory,
-    "cleanupActorAgentVaultMemberships"
-  >;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
-  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "deleteUserGrantsInProjects">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -122,14 +112,12 @@ export const membershipUserServiceFactory = ({
   additionalPrivilegeDAL,
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
-  agentVaultMembershipCleanupService,
   approvalPolicyDAL,
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
   usageMeteringService,
-  alertChannelRecipientDAL,
-  agentVaultAccessBundleMemberDAL
+  alertChannelRecipientDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -605,8 +593,7 @@ export const membershipUserServiceFactory = ({
           membershipRoleDAL,
           additionalPrivilegeDAL,
           approvalPolicyDAL,
-          alertChannelRecipientDAL,
-          agentVaultAccessBundleMemberDAL
+          alertChannelRecipientDAL
         });
         return doc;
       }
@@ -624,15 +611,6 @@ export const membershipUserServiceFactory = ({
           {
             projectId: dto.scopeData.projectId,
             actorKind: ApplicationMemberKind.User,
-            actorId: dto.selector.userId
-          },
-          tx
-        );
-
-        await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
-          {
-            projectId: dto.scopeData.projectId,
-            actorKind: AgentVaultMemberKind.User,
             actorId: dto.selector.userId
           },
           tx

@@ -3,10 +3,6 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
-import {
-  AgentVaultMemberKind,
-  TAgentVaultMembershipCleanupServiceFactory
-} from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -75,10 +71,6 @@ type TProjectMembershipServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
-  agentVaultMembershipCleanupService: Pick<
-    TAgentVaultMembershipCleanupServiceFactory,
-    "cleanupActorAgentVaultMemberships" | "cleanupUsersAgentVaultMemberships"
-  >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
@@ -106,7 +98,6 @@ export const projectMembershipServiceFactory = ({
   orgDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
-  agentVaultMembershipCleanupService,
   usageMeteringService,
   alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
@@ -438,14 +429,6 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      await agentVaultMembershipCleanupService.cleanupUsersAgentVaultMemberships(
-        {
-          projectId,
-          userIds: projectMembers.map(({ user }) => user.id)
-        },
-        tx
-      );
-
       await secretReminderRecipientsDAL.delete(
         {
           projectId,
@@ -562,15 +545,6 @@ export const projectMembershipServiceFactory = ({
         {
           projectId: project.id,
           actorKind: ApplicationMemberKind.User,
-          actorId
-        },
-        tx
-      );
-
-      await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
-        {
-          projectId: project.id,
-          actorKind: AgentVaultMemberKind.User,
           actorId
         },
         tx

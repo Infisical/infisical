@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
-import { AccessScope, TAgentVaultConnections } from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE, ResourceType, TAgentVaultConnections, TMemberships } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -8,20 +9,21 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import {
   AgentVaultBearerConfigSchema,
   TAgentVaultCredentialConfig
 } from "../agent-vault/agent-vault-credential-schemas";
-import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
+import { AgentVaultCredentialType, AgentVaultResourceRole } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
-import { TAgentVaultAccessBundleMemberDALFactory } from "../agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
 import {
   TAddMemberDTO,
@@ -44,10 +46,13 @@ import { TAgentVaultConnectionDALFactory } from "./agent-vault-connection-dal";
 type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultAccessBundleDAL: TAgentVaultAccessBundleDALFactory;
   agentVaultConnectionDAL: TAgentVaultConnectionDALFactory;
-  agentVaultAccessBundleMemberDAL: TAgentVaultAccessBundleMemberDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  membershipDAL: Pick<TMembershipDALFactory, "findOne" | "find">;
+  membershipDAL: Pick<
+    TMembershipDALFactory,
+    "findOne" | "find" | "create" | "delete" | "deleteById" | "transaction" | "findResourceMembershipsForActor"
+  >;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
 };
@@ -58,13 +63,52 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const {
     agentVaultAccessBundleDAL,
     agentVaultConnectionDAL,
-    agentVaultAccessBundleMemberDAL,
     permissionService,
     kmsService,
     membershipDAL,
+    membershipRoleDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
   } = deps;
+
+  // A grant is a resource-scoped row in the shared memberships table plus one consumer role, so the
+  // platform's reapers and FK cascades remove it with the actor. Nothing here cascades from the bundle:
+  // scopeResourceId carries no FK, so deleteAccessBundle reaps by hand.
+  const bundleScope = (projectId: string, accessBundleId: string) => ({
+    scope: RESOURCE_SCOPE as typeof RESOURCE_SCOPE,
+    scopeProjectId: projectId,
+    scopeResourceType: ResourceType.AgentVaultAccessBundle,
+    scopeResourceId: accessBundleId
+  });
+
+  const toMember = (row: TMemberships) => ({
+    id: row.id,
+    accessBundleId: row.scopeResourceId!,
+    userId: row.actorUserId ?? null,
+    identityId: row.actorIdentityId ?? null,
+    groupId: row.actorGroupId ?? null,
+    createdAt: row.createdAt
+  });
+
+  type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
+
+  const writeGrant = async (
+    {
+      projectId,
+      orgId,
+      accessBundleId,
+      actorColumn,
+      actorId
+    }: { projectId: string; orgId: string; accessBundleId: string; actorColumn: TGrantActorColumn; actorId: string },
+    tx: Knex
+  ) => {
+    const membership = await membershipDAL.create(
+      { ...bundleScope(projectId, accessBundleId), scopeOrgId: orgId, [actorColumn]: actorId, isActive: true },
+      tx
+    );
+    await membershipRoleDAL.create({ membershipId: membership.id, role: AgentVaultResourceRole.Consumer }, tx);
+    return membership;
+  };
 
   // Grants follow product membership at the same level: a group that is in Agent Vault is granted as a
   // group, and its members mint as themselves. So a person who is in the product only through a group
@@ -236,10 +280,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   // A bundle the caller cannot reach is a 404, never a 403: a 403 would confirm that the id exists.
   const resolveReachableBundle = async ({ projectId, ctx, accessBundleId }: TGetAccessBundleDTO) => {
-    const reachability = await getAgentVaultReachability(
-      { permissionService, agentVaultAccessBundleMemberDAL },
-      { projectId, ctx }
-    );
+    const reachability = await getAgentVaultReachability({ permissionService, membershipDAL }, { projectId, ctx });
 
     const bundle = await agentVaultAccessBundleDAL.findByIdInProject({ id: accessBundleId, projectId });
     const unreachable = reachability.accessBundleIds && !reachability.accessBundleIds.includes(accessBundleId);
@@ -252,7 +293,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const listAccessBundles = async ({ projectId, ctx }: TListAccessBundlesDTO) => {
     const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, agentVaultAccessBundleMemberDAL },
+      { permissionService, membershipDAL },
       { projectId, ctx }
     );
     ForbiddenError.from(permission).throwUnlessCan(
@@ -260,10 +301,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const bundles = await agentVaultAccessBundleDAL.findForList({ projectId, accessBundleIds });
-    const memberCounts = await agentVaultAccessBundleMemberDAL.countByAccessBundleIds(bundles.map((b) => b.id));
-
-    return bundles.map((bundle) => ({ ...bundle, memberCount: memberCounts[bundle.id] ?? 0 }));
+    return agentVaultAccessBundleDAL.findForList({ projectId, accessBundleIds });
   };
 
   const getAccessBundleById = async (dto: TGetAccessBundleDTO) => {
@@ -276,7 +314,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const connections = await agentVaultConnectionDAL.findByAccessBundleId(bundle.id);
     // Members are an administration detail: a member sees the connections and nothing about who else
     // holds the bundle.
-    const members = isAdmin ? await agentVaultAccessBundleMemberDAL.findByAccessBundleId(bundle.id) : undefined;
+    const members = isAdmin
+      ? await agentVaultAccessBundleDAL.findMembers({ projectId: dto.projectId, accessBundleId: bundle.id })
+      : undefined;
 
     return {
       id: bundle.id,
@@ -296,10 +336,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const createAccessBundle = async ({ projectId, ctx, name, description }: TCreateAccessBundleDTO) => {
-    const { permission } = await getAgentVaultReachability(
-      { permissionService, agentVaultAccessBundleMemberDAL },
-      { projectId, ctx }
-    );
+    const { permission } = await getAgentVaultReachability({ permissionService, membershipDAL }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Create,
       ProjectPermissionSub.AgentVaultAccessBundles
@@ -310,23 +347,35 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw new BadRequestError({ message: `An access bundle named '${name}' already exists` });
     }
 
-    // The creator is granted the bundle they just made, as PAM does when a folder is created. An admin
-    // already reaches every bundle by role, so this changes nothing for them today — it matters when
-    // they are later demoted to member, and it keeps a freshly made bundle from reading "0 members".
-    // Groups cannot create, and no other actor type holds a grant, so only these two are seeded.
-    const grantsToCreator = ctx.actor === ActorType.USER || ctx.actor === ActorType.IDENTITY;
+    // The creator is granted the bundle they just made, as PAM does when a folder is created. Only an
+    // admin can create, and an admin already reaches every bundle, so the grant matters the day they are
+    // demoted to member. It is written only for a creator who is directly in the product: the grant path
+    // refuses individual grants to someone who is in only through a group, and the creator grant follows
+    // the same rule, or it would be the one row no removal path reaps once the group goes.
+    let creatorColumn: TGrantActorColumn | null = null;
+    if (ctx.actor === ActorType.USER) creatorColumn = "actorUserId";
+    else if (ctx.actor === ActorType.IDENTITY) creatorColumn = "actorIdentityId";
 
     return agentVaultAccessBundleDAL.transaction(async (tx) => {
       const bundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
 
-      if (grantsToCreator) {
-        await agentVaultAccessBundleMemberDAL.create(
-          {
-            accessBundleId: bundle.id,
-            ...(ctx.actor === ActorType.USER ? { userId: ctx.actorId } : { identityId: ctx.actorId })
-          },
+      if (creatorColumn) {
+        const direct = await membershipDAL.findOne(
+          { scope: AccessScope.Project, scopeProjectId: projectId, [creatorColumn]: ctx.actorId },
           tx
         );
+        if (direct) {
+          await writeGrant(
+            {
+              projectId,
+              orgId: ctx.actorOrgId,
+              accessBundleId: bundle.id,
+              actorColumn: creatorColumn,
+              actorId: ctx.actorId
+            },
+            tx
+          );
+        }
       }
 
       return bundle;
@@ -355,7 +404,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    return agentVaultAccessBundleDAL.deleteById(bundle.id);
+    // Bundle row first: its DELETE holds the row lock addMember takes, so a concurrent grant either waits
+    // and finds no bundle, or landed already and is reaped by the second statement. Roles cascade.
+    return agentVaultAccessBundleDAL.transaction(async (tx) => {
+      const deleted = await agentVaultAccessBundleDAL.deleteById(bundle.id, tx);
+      await membershipDAL.delete(bundleScope(rest.projectId, bundle.id), tx);
+      return deleted;
+    });
   };
 
   // Rejects a candidate that shares any normalized host:port with another connection in the same bundle,
@@ -518,7 +573,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
-    return agentVaultAccessBundleMemberDAL.findByAccessBundleId(bundle.id);
+    return agentVaultAccessBundleDAL.findMembers({ projectId: rest.projectId, accessBundleId: bundle.id });
   };
 
   const addMember = async ({ accessBundleId, userId, identityId, groupId, ...rest }: TAddMemberDTO) => {
@@ -535,27 +590,39 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     await assertActorInProject({ projectId: rest.projectId, userId, identityId, groupId });
 
-    const existing = await agentVaultAccessBundleMemberDAL.findOne({
-      accessBundleId: bundle.id,
-      ...(userId ? { userId } : {}),
-      ...(identityId ? { identityId } : {}),
-      ...(groupId ? { groupId } : {})
-    });
-    if (existing) {
-      throw new BadRequestError({ message: "That user, machine identity or group already has this access bundle" });
+    let actorColumn: TGrantActorColumn = "actorGroupId";
+    if (userId) actorColumn = "actorUserId";
+    else if (identityId) actorColumn = "actorIdentityId";
+    const actorId = (userId ?? identityId ?? groupId)!;
+
+    // The shared table's unique index per actor per bundle is the duplicate check, so the catch sits
+    // outside the transaction and the rollback has finished before the 400 goes out.
+    try {
+      const created = await membershipDAL.transaction(async (tx) => {
+        const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
+          { id: bundle.id, projectId: rest.projectId },
+          tx
+        );
+        if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
+
+        return writeGrant(
+          { projectId: rest.projectId, orgId: rest.ctx.actorOrgId, accessBundleId: bundle.id, actorColumn, actorId },
+          tx
+        );
+      });
+
+      // The inserted row, as PAM and the generic member add return it; the bundle's name rides back for
+      // the audit event, which pairs every id it records with a label.
+      return { ...toMember(created), accessBundleName: bundle.name };
+    } catch (err) {
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+      ) {
+        throw new BadRequestError({ message: "That user, machine identity or group already has this access bundle" });
+      }
+      throw err;
     }
-
-    // The inserted row, as PAM and the generic member add return it. Re-reading the list here would go to
-    // the replica and could miss the row we just wrote; the frontend refetches the list it renders anyway.
-    const created = await agentVaultAccessBundleMemberDAL.create({
-      accessBundleId: bundle.id,
-      userId,
-      identityId,
-      groupId
-    });
-
-    // The bundle's name rides back for the audit event, which pairs every id it records with a label.
-    return { ...created, accessBundleName: bundle.name };
   };
 
   const removeMember = async ({ accessBundleId, memberId, ...rest }: TRemoveMemberDTO) => {
@@ -565,11 +632,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const member = await agentVaultAccessBundleMemberDAL.findOne({ id: memberId, accessBundleId: bundle.id });
+    const member = await membershipDAL.findOne({ ...bundleScope(rest.projectId, bundle.id), id: memberId });
     if (!member) throw new NotFoundError({ message: `Access bundle membership with ID '${memberId}' not found` });
 
-    const deleted = await agentVaultAccessBundleMemberDAL.deleteById(member.id);
-    return { ...deleted, accessBundleName: bundle.name };
+    await membershipDAL.deleteById(member.id);
+    return { id: member.id, accessBundleName: bundle.name };
   };
 
   return {

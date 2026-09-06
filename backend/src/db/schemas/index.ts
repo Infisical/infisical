@@ -4,7 +4,6 @@ export * from "./access-approval-policies-bypassers";
 export * from "./access-approval-requests";
 export * from "./access-approval-requests-reviewers";
 export * from "./additional-privileges";
-export * from "./agent-vault-access-bundle-members";
 export * from "./agent-vault-access-bundles";
 export * from "./agent-vault-connections";
 export * from "./agent-vault-proxies";

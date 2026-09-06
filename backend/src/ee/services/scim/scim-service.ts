@@ -13,7 +13,6 @@ import {
   TMemberships,
   TUsers
 } from "@app/db/schemas";
-import { TAgentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -138,7 +137,6 @@ type TScimServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
-  agentVaultAccessBundleMemberDAL: Pick<TAgentVaultAccessBundleMemberDALFactory, "deleteUserGrantsInProjects">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -166,7 +164,6 @@ export const scimServiceFactory = ({
   additionalPrivilegeDAL,
   approvalPolicyDAL,
   alertChannelRecipientDAL,
-  agentVaultAccessBundleMemberDAL,
   scimEventsDAL,
   emailDomainDAL,
   telemetryService,
@@ -891,8 +888,7 @@ export const scimServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      agentVaultAccessBundleMemberDAL
+      alertChannelRecipientDAL
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.

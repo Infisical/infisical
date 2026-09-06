@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { AgentVaultAccessBundleMembersSchema } from "@app/db/schemas";
 import {
   AGENT_VAULT_HEADER_NAME_MESSAGE,
   AGENT_VAULT_HEADER_NAME_RE
@@ -131,13 +130,13 @@ export const AgentVaultMemberSchema = z.object({
 });
 
 /** What a grant returns: the inserted row, exactly as PAM and the generic member add do. */
-export const AgentVaultCreatedMemberSchema = AgentVaultAccessBundleMembersSchema.pick({
-  id: true,
-  accessBundleId: true,
-  userId: true,
-  identityId: true,
-  groupId: true,
-  createdAt: true
+export const AgentVaultCreatedMemberSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
+  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+  userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),
+  identityId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.identityId),
+  groupId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.groupId),
+  createdAt: z.date()
 });
 
 /**

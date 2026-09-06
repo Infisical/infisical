@@ -9,10 +9,6 @@ import {
 } from "@app/db/schemas";
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
-import {
-  AgentVaultMemberKind,
-  TAgentVaultMembershipCleanupServiceFactory
-} from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -63,10 +59,6 @@ type TMembershipGroupServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
-  agentVaultMembershipCleanupService: Pick<
-    TAgentVaultMembershipCleanupServiceFactory,
-    "cleanupActorAgentVaultMemberships"
-  >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
@@ -90,7 +82,6 @@ export const membershipGroupServiceFactory = ({
   groupDAL,
   licenseService,
   applicationMembershipCleanupService,
-  agentVaultMembershipCleanupService,
   projectDAL,
   usageMeteringService,
   alertChannelRecipientDAL,
@@ -435,15 +426,6 @@ export const membershipGroupServiceFactory = ({
           {
             projectId: existingMembership.scopeProjectId,
             actorKind: ApplicationMemberKind.Group,
-            actorId: dto.selector.groupId
-          },
-          tx
-        );
-
-        await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
-          {
-            projectId: existingMembership.scopeProjectId,
-            actorKind: AgentVaultMemberKind.Group,
             actorId: dto.selector.groupId
           },
           tx

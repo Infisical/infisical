@@ -26,8 +26,6 @@ import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/o
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { agentVaultConnectionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-connection-dal";
-import { agentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
-import { agentVaultMembershipCleanupServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
@@ -883,13 +881,6 @@ export const registerRoutes = async (
     approvalPolicyDAL
   });
 
-  // Built here, beside the shared application-membership reaper, because the four membership services
-  // below take both. Access-bundle grants live in our own table, so the shared reaper cannot see them.
-  const agentVaultAccessBundleMemberDAL = agentVaultAccessBundleMemberDALFactory(db);
-  const agentVaultMembershipCleanupService = agentVaultMembershipCleanupServiceFactory({
-    agentVaultAccessBundleMemberDAL
-  });
-
   const oauthClientDAL = oauthClientDALFactory(db);
 
   const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
@@ -898,7 +889,6 @@ export const registerRoutes = async (
     licenseService,
     membershipRoleDAL,
     alertChannelRecipientDAL,
-    agentVaultAccessBundleMemberDAL,
     membershipUserDAL,
     orgDAL,
     permissionService,
@@ -913,7 +903,6 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     projectAccessRequestDAL,
     applicationMembershipCleanupService,
-    agentVaultMembershipCleanupService,
     approvalPolicyDAL,
     emailDomainDAL,
     oidcConfigDAL,
@@ -942,7 +931,6 @@ export const registerRoutes = async (
     groupDAL,
     licenseService,
     applicationMembershipCleanupService,
-    agentVaultMembershipCleanupService,
     projectDAL,
     usageMeteringService,
     alertChannelRecipientDAL,
@@ -1099,7 +1087,6 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     licenseService,
     applicationMembershipCleanupService,
-    agentVaultMembershipCleanupService,
     projectDAL,
     keyStore,
     usageMeteringService,
@@ -1291,7 +1278,6 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     approvalPolicyDAL,
     alertChannelRecipientDAL,
-    agentVaultAccessBundleMemberDAL,
     emailDomainDAL,
     telemetryService,
     usageMeteringService
@@ -1502,8 +1488,7 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     certificatePolicyDAL,
     usageMeteringService,
-    alertChannelRecipientDAL,
-    agentVaultAccessBundleMemberDAL
+    alertChannelRecipientDAL
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1626,7 +1611,6 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL,
     membershipRoleDAL,
     applicationMembershipCleanupService,
-    agentVaultMembershipCleanupService,
     usageMeteringService,
     alertChannelRecipientDAL
   });
@@ -1804,10 +1788,10 @@ export const registerRoutes = async (
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL,
     agentVaultConnectionDAL,
-    agentVaultAccessBundleMemberDAL,
     permissionService,
     kmsService,
     membershipDAL,
+    membershipRoleDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
   });
@@ -1816,7 +1800,7 @@ export const registerRoutes = async (
     agentVaultSessionDAL,
     agentVaultSessionAccessBundleDAL,
     agentVaultAccessBundleDAL,
-    agentVaultAccessBundleMemberDAL,
+    membershipDAL,
     permissionService,
     auditLogService,
     keyStore
@@ -1836,7 +1820,6 @@ export const registerRoutes = async (
     identityDAL,
     membershipRoleDAL,
     groupDAL,
-    agentVaultMembershipCleanupService,
     projectAccessRequestDAL,
     userDAL,
     userAliasDAL,
@@ -1937,7 +1920,7 @@ export const registerRoutes = async (
     agentVaultProxyDAL,
     agentVaultResolveDAL,
     agentVaultSessionDAL,
-    agentVaultAccessBundleMemberDAL,
+    membershipDAL,
     orgDAL,
     permissionService,
     kmsService,
@@ -4184,7 +4167,6 @@ export const registerRoutes = async (
     agentVaultAccessBundle: agentVaultAccessBundleService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
-    agentVaultMembershipCleanup: agentVaultMembershipCleanupService,
     agentVaultMembership: agentVaultMembershipService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,

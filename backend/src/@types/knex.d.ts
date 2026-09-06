@@ -20,9 +20,6 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
-  TAgentVaultAccessBundleMembers,
-  TAgentVaultAccessBundleMembersInsert,
-  TAgentVaultAccessBundleMembersUpdate,
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
   TAgentVaultAccessBundlesUpdate,
@@ -1787,11 +1784,6 @@ declare module "knex/types/tables" {
       TAgentVaultConnections,
       TAgentVaultConnectionsInsert,
       TAgentVaultConnectionsUpdate
-    >;
-    [TableName.AgentVaultAccessBundleMember]: KnexOriginal.CompositeTableType<
-      TAgentVaultAccessBundleMembers,
-      TAgentVaultAccessBundleMembersInsert,
-      TAgentVaultAccessBundleMembersUpdate
     >;
     [TableName.AgentVaultSession]: KnexOriginal.CompositeTableType<
       TAgentVaultSessions,

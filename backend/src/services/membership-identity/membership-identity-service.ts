@@ -1,10 +1,6 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
-import {
-  AgentVaultMemberKind,
-  TAgentVaultMembershipCleanupServiceFactory
-} from "@app/ee/services/agent-vault-member/agent-vault-membership-cleanup-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -55,10 +51,6 @@ type TMembershipIdentityServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
-  agentVaultMembershipCleanupService: Pick<
-    TAgentVaultMembershipCleanupServiceFactory,
-    "cleanupActorAgentVaultMemberships"
-  >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
@@ -81,7 +73,6 @@ export const membershipIdentityServiceFactory = ({
   identityDAL,
   licenseService,
   applicationMembershipCleanupService,
-  agentVaultMembershipCleanupService,
   projectDAL,
   keyStore,
   usageMeteringService,
@@ -442,15 +433,6 @@ export const membershipIdentityServiceFactory = ({
             {
               projectId: projectScopeFields.scopeProjectId,
               actorKind: ApplicationMemberKind.Identity,
-              actorId: dto.selector.identityId
-            },
-            tx
-          );
-
-          await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
-            {
-              projectId: projectScopeFields.scopeProjectId,
-              actorKind: AgentVaultMemberKind.Identity,
               actorId: dto.selector.identityId
             },
             tx

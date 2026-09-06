@@ -3,7 +3,6 @@ import crypto from "node:crypto";
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
-import { agentVaultAccessBundleMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-access-bundle-member-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
@@ -12,9 +11,10 @@ import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-sessio
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { UnauthorizedError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
-import { orgDALFactory } from "@app/services/org/org-dal";
 import { initLogger } from "@app/lib/logger";
+import { ActorType } from "@app/services/auth/auth-type";
+import { membershipDALFactory } from "@app/services/membership/membership-dal";
+import { orgDALFactory } from "@app/services/org/org-dal";
 
 declare const testKeyStore: TKeyStoreFactory;
 
@@ -30,9 +30,9 @@ const inject = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?:
 // one cannot authenticate at all, so a fixture that inserts only the identity is not a shape production
 // can produce - and the membership endpoint now checks for it.
 const createOrgIdentity = async (name: string) => {
-  const [identity] = (await testDb("identities")
-    .insert({ name, orgId: seedData1.organization.id })
-    .returning("*")) as { id: string }[];
+  const [identity] = (await testDb("identities").insert({ name, orgId: seedData1.organization.id }).returning("*")) as {
+    id: string;
+  }[];
   await testDb("memberships").insert({
     scope: AccessScope.Organization,
     scopeOrgId: seedData1.organization.id,
@@ -194,7 +194,8 @@ describe("Agent Vault V1 Router", async () => {
       expect(created.statusCode).toBe(200);
       const { connection } = JSON.parse(created.payload) as { connection: { id: string } };
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
-      const sealed = async () => (await testDb("agent_vault_connections").where({ id: connection.id }).first()).encryptedCredential;
+      const sealed = async () =>
+        (await testDb("agent_vault_connections").where({ id: connection.id }).first()).encryptedCredential;
 
       // Rotating the secret must not disturb the header the credential rides on. Reusing the create
       // schema here would reset DD-API-KEY to Authorization: Bearer and every request would 401.
@@ -225,7 +226,9 @@ describe("Agent Vault V1 Router", async () => {
         credential: { type: "basic", username: "sk_live_key", password: "" }
       });
       expect(created.statusCode).toBe(200);
-      const { connection } = JSON.parse(created.payload) as { connection: { id: string; credential: Record<string, unknown> } };
+      const { connection } = JSON.parse(created.payload) as {
+        connection: { id: string; credential: Record<string, unknown> };
+      };
       // The username is the key for Stripe-style services, so it is sealed and never comes back.
       expect(connection.credential).toEqual({ type: "basic" });
       expect(created.payload).not.toContain("sk_live_key");
@@ -574,7 +577,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-        agentVaultAccessBundleMemberDAL: agentVaultAccessBundleMemberDALFactory(testDb),
+        membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: {
           getProjectPermission: () => Promise.resolve({ hasRole: () => true })
@@ -650,7 +653,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-        agentVaultAccessBundleMemberDAL: agentVaultAccessBundleMemberDALFactory(testDb),
+        membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: testServer.services.permission,
         kmsService: {
@@ -753,7 +756,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         agentVaultSessionAccessBundleDAL: agentVaultSessionAccessBundleDALFactory(testDb),
         agentVaultAccessBundleDAL: agentVaultAccessBundleDALFactory(testDb),
-        agentVaultAccessBundleMemberDAL: agentVaultAccessBundleMemberDALFactory(testDb),
+        membershipDAL: membershipDALFactory(testDb),
         permissionService: { getProjectPermission: () => Promise.reject(new Error("not used by the sweep")) },
         auditLogService: {
           createAuditLog: async (data) => {

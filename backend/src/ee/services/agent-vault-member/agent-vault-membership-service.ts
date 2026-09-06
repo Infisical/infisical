@@ -1,7 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  RESOURCE_SCOPE
+} from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -19,22 +25,12 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
 
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
-import {
-  AgentVaultMemberKind,
-  TAgentVaultMembershipCleanupServiceFactory
-} from "./agent-vault-membership-cleanup-service";
 
 type TAgentVaultMembershipServiceFactoryDep = {
-  membershipDAL: Pick<TMembershipDALFactory, "create" | "find" | "transaction" | "deleteById">;
+  membershipDAL: Pick<TMembershipDALFactory, "create" | "find" | "transaction" | "delete" | "deleteById">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   groupDAL: Pick<TGroupDALFactory, "find">;
-  // Bundle grants live in our own join table, so a removal here has to reap them itself. The generic
-  // membership service does it through the same cleanup for its own delete path.
-  agentVaultMembershipCleanupService: Pick<
-    TAgentVaultMembershipCleanupServiceFactory,
-    "cleanupActorAgentVaultMemberships"
-  >;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
@@ -87,7 +83,6 @@ export const agentVaultMembershipServiceFactory = ({
   identityDAL,
   membershipRoleDAL,
   groupDAL,
-  agentVaultMembershipCleanupService,
   projectAccessRequestDAL,
   userDAL,
   userAliasDAL,
@@ -459,10 +454,6 @@ export const agentVaultMembershipServiceFactory = ({
 
     const { column, id, label } = resolveActorColumn(dto);
 
-    let actorKind = AgentVaultMemberKind.Identity;
-    if (dto.userId) actorKind = AgentVaultMemberKind.User;
-    else if (dto.groupId) actorKind = AgentVaultMemberKind.Group;
-
     await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
@@ -472,12 +463,8 @@ export const agentVaultMembershipServiceFactory = ({
 
       await assertNotLastAdmin(projectId, membership.id, tx);
 
-      // Losing the product means losing every bundle grant. Skipping this would leave rows the mint
-      // path still honours, because they live outside the membership table the generic reaper walks.
-      await agentVaultMembershipCleanupService.cleanupActorAgentVaultMemberships(
-        { projectId, actorKind, actorId: id },
-        tx
-      );
+      // Leaving the product takes every bundle grant with it, as PAM's removeProductMember does.
+      await membershipDAL.delete({ scope: RESOURCE_SCOPE, scopeProjectId: projectId, [column]: id }, tx);
 
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);

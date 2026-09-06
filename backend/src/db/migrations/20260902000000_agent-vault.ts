@@ -4,8 +4,8 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 // Agent Vault: an access bundle is a named set of connections (host patterns + a credential), granted to
-// users/identities/groups through its own membership table, and minted into a session whose token an agent's
-// proxy exchanges for decrypted credentials.
+// users/identities/groups as resource-scoped rows in the shared memberships table, and minted into a session
+// whose token an agent's proxy exchanges for decrypted credentials.
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.AgentVaultAccessBundle))) {
     await knex.schema.createTable(TableName.AgentVaultAccessBundle, (t) => {
@@ -40,8 +40,8 @@ export async function up(knex: Knex): Promise<void> {
 
       t.string("credentialType", 32).notNullable();
 
-      // Non-secret half of the credential (header name, prefix, username). Read on every list page without a
-      // decrypt. No DB default: the service validates it per credential type and always writes it.
+      // Non-secret half of the credential (header name, prefix; a basic username is sealed with its password).
+      // Read on every list page without a decrypt. No DB default: the service validates it per credential type and always writes it.
       t.jsonb("credentialConfig").notNullable();
 
       // NULL exactly when credentialType is passthrough; enforced in the service, not by a CHECK, so the
@@ -58,56 +58,6 @@ export async function up(knex: Knex): Promise<void> {
     );
 
     await createOnUpdateTrigger(knex, TableName.AgentVaultConnection);
-  }
-
-  if (!(await knex.schema.hasTable(TableName.AgentVaultAccessBundleMember))) {
-    await knex.schema.createTable(TableName.AgentVaultAccessBundleMember, (t) => {
-      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-
-      t.uuid("accessBundleId").notNullable();
-      t.foreign("accessBundleId").references("id").inTable(TableName.AgentVaultAccessBundle).onDelete("CASCADE");
-      // "Who can reach this bundle" — the members card and the mint-time reachability check.
-      t.index("accessBundleId");
-
-      t.uuid("userId");
-      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
-
-      t.uuid("identityId");
-      t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
-
-      t.uuid("groupId");
-      t.foreign("groupId").references("id").inTable(TableName.Groups).onDelete("CASCADE");
-
-      t.timestamps(true, true, true);
-    });
-
-    await knex.raw(
-      `ALTER TABLE "${TableName.AgentVaultAccessBundleMember}" ADD CONSTRAINT "agent_vault_access_bundle_members_one_actor" CHECK (num_nonnulls("userId", "identityId", "groupId") = 1)`
-    );
-
-    // Partial uniques rather than a composite one, since two of the three columns are always NULL.
-    await knex.raw(
-      `CREATE UNIQUE INDEX agent_vault_bundle_member_user ON "${TableName.AgentVaultAccessBundleMember}" ("accessBundleId", "userId") WHERE "userId" IS NOT NULL`
-    );
-    await knex.raw(
-      `CREATE UNIQUE INDEX agent_vault_bundle_member_identity ON "${TableName.AgentVaultAccessBundleMember}" ("accessBundleId", "identityId") WHERE "identityId" IS NOT NULL`
-    );
-    await knex.raw(
-      `CREATE UNIQUE INDEX agent_vault_bundle_member_group ON "${TableName.AgentVaultAccessBundleMember}" ("accessBundleId", "groupId") WHERE "groupId" IS NOT NULL`
-    );
-
-    // The three reverse lookups the session resolve hot path runs, one per actor kind.
-    await knex.raw(
-      `CREATE INDEX agent_vault_bundle_member_by_user ON "${TableName.AgentVaultAccessBundleMember}" ("userId") WHERE "userId" IS NOT NULL`
-    );
-    await knex.raw(
-      `CREATE INDEX agent_vault_bundle_member_by_identity ON "${TableName.AgentVaultAccessBundleMember}" ("identityId") WHERE "identityId" IS NOT NULL`
-    );
-    await knex.raw(
-      `CREATE INDEX agent_vault_bundle_member_by_group ON "${TableName.AgentVaultAccessBundleMember}" ("groupId") WHERE "groupId" IS NOT NULL`
-    );
-
-    await createOnUpdateTrigger(knex, TableName.AgentVaultAccessBundleMember);
   }
 
   if (!(await knex.schema.hasTable(TableName.AgentVaultSession))) {
@@ -264,8 +214,10 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.AgentVaultSession);
   await knex.schema.dropTableIfExists(TableName.AgentVaultSession);
 
-  await dropOnUpdateTrigger(knex, TableName.AgentVaultAccessBundleMember);
-  await knex.schema.dropTableIfExists(TableName.AgentVaultAccessBundleMember);
+  // Grants are memberships rows with no FK to the bundle, so nothing cascades them when the table goes.
+  await knex(TableName.Membership)
+    .where({ scope: "resource", scopeResourceType: "agent-vault-access-bundle" })
+    .delete();
 
   await dropOnUpdateTrigger(knex, TableName.AgentVaultConnection);
   await knex.schema.dropTableIfExists(TableName.AgentVaultConnection);
