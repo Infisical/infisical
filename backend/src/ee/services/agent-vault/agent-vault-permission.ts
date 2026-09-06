@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -23,14 +24,22 @@ export type TAgentVaultGrantActor = {
 
 type TPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
 type TMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+type TProjectMemberships = TProjectPermissionResult["memberships"];
+
+// A group's grants count only while the group confers a live Agent Vault role. The permission result
+// already carries the actor's group rows with their roles and expiry, so this costs no read: a group
+// whose role has lapsed stops conferring bundles the same moment it stops conferring permissions.
+export const liveGroupIdsFrom = (memberships: TProjectMemberships): string[] =>
+  memberships.filter((m) => m.actorGroupId && m.roles.some((role) => isActiveRole(role))).map((m) => m.actorGroupId!);
 
 // Grants are resource-scoped rows in the shared memberships table, so "which bundles can this actor reach"
 // is the platform's own read: direct rows plus rows held through the actor's groups, expanded through
 // user_group_membership for a person and identity_group_membership for a machine identity. Mint, every
-// member-facing read and the proxy's resolve all go through this one function.
+// member-facing read and the proxy's resolve all go through this one function, with the same set of
+// live groups from liveGroupIdsFrom, so the two paths cannot disagree about what a grant means.
 export const findReachableAccessBundleIds = async (
   membershipDAL: TMembershipDep,
-  { projectId, actor }: { projectId: string; actor: TAgentVaultGrantActor },
+  { projectId, actor, groupIds }: { projectId: string; actor: TAgentVaultGrantActor; groupIds: string[] },
   tx?: Knex
 ): Promise<string[]> => {
   const rows = await membershipDAL.findResourceMembershipsForActor(
@@ -43,7 +52,14 @@ export const findReachableAccessBundleIds = async (
     tx
   );
 
-  return [...new Set(rows.filter((row) => row.isActive).map((row) => row.scopeResourceId!))];
+  const liveGroups = new Set(groupIds);
+  const reachable = rows.filter((row) => {
+    if (!row.isActive) return false;
+    if (row.actorGroupId) return liveGroups.has(row.actorGroupId);
+    return true;
+  });
+
+  return [...new Set(reachable.map((row) => row.scopeResourceId!))];
 };
 
 // Reachability is a service-layer filter rather than a CASL condition: conditions interpolate only
@@ -54,7 +70,7 @@ export const getAgentVaultReachability = async (
   { projectId, ctx }: { projectId: string; ctx: TAgentVaultActorContext },
   tx?: Knex
 ): Promise<TAgentVaultReachability> => {
-  const { permission, hasRole } = await permissionService.getProjectPermission({
+  const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
     actor: ctx.actor,
     actorId: ctx.actorId,
     projectId,
@@ -73,7 +89,7 @@ export const getAgentVaultReachability = async (
 
   const accessBundleIds = await findReachableAccessBundleIds(
     membershipDAL,
-    { projectId, actor: { type: ctx.actor, id: ctx.actorId } },
+    { projectId, actor: { type: ctx.actor, id: ctx.actorId }, groupIds: liveGroupIdsFrom(memberships) },
     tx
   );
 

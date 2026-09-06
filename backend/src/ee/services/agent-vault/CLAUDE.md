@@ -57,9 +57,11 @@ and finds no bundle or reaps the fresh grant. Keep that order.
 **Reachability has one implementation: `findReachableAccessBundleIds`** on the platform's
 `membershipDAL.findResourceMembershipsForActor`, which expands `user_group_membership` for a person and
 `identity_group_membership` for a machine identity. Mint, every member-facing read and the proxy's resolve
-all call it, so Agent Vault hand-writes no group-expansion SQL. Resolve therefore runs two replica reads
-rather than one correlated statement; the lag window that opens is accepted for V1 and recorded in the
-resolve DAL's docblock.
+all call it, so Agent Vault hand-writes no group-expansion SQL. A group's grants count only while the group
+confers a live role, taken from the permission result both paths already hold (`liveGroupIdsFrom`), so a
+group whose Agent Vault role lapses stops conferring bundles at the same moment it stops conferring
+permissions. Resolve therefore runs two replica reads rather than one correlated statement; the lag window
+that opens is accepted for V1 and recorded in the resolve DAL's docblock.
 
 **The creator grant follows the same rule as any grant.** Only a creator with a direct project membership
 gets a `consumer` row; an admin who is in Agent Vault only through a group reaches the bundle as admin and

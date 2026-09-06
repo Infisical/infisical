@@ -16,7 +16,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { AgentVaultCredentialType, AgentVaultUnmatchedHost } from "../agent-vault/agent-vault-enums";
-import { findReachableAccessBundleIds, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
@@ -95,13 +95,18 @@ export const agentVaultProxyServiceFactory = ({
     createdAt: proxy.createdAt
   });
 
+  // Proxies are role-projected, not grant-gated, so this asks only for the role and skips the grant query.
   const $authorize = async ({ projectId, ctx }: TListProxiesDTO, action: ProjectPermissionAgentVaultProxyActions) => {
-    const { permission, isAdmin } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const { permission, hasRole } = await permissionService.getProjectPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      projectId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      actionProjectType: ActionProjectType.AgentVault
+    });
     ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultProxies);
-    return { isAdmin };
+    return { isAdmin: hasRole(ProjectMembershipRole.Admin) };
   };
 
   const $findProxyOr404 = async ({ projectId, proxyId }: { projectId: string; proxyId: string }) => {
@@ -329,8 +334,9 @@ export const agentVaultProxyServiceFactory = ({
     // the field off 401s every user-minted session in an SSO-enforced org, and only in such an org, so
     // it would pass local testing.
     let isAdmin: boolean;
+    let liveGroupIds: string[];
     try {
-      const { permission, hasRole } = await permissionService.getProjectPermission({
+      const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
         actor: actor.type,
         actorId: actor.id,
         projectId: session.projectId,
@@ -343,6 +349,7 @@ export const agentVaultProxyServiceFactory = ({
         throw new UnauthorizedError({ message: "Session revoked" });
       }
       isAdmin = hasRole(ProjectMembershipRole.Admin);
+      liveGroupIds = liveGroupIdsFrom(memberships);
     } catch (error) {
       // An actor removed from the project surfaces here as a 403.
       // The wire contract promises the proxy only 200, 401 and 404, and it treats anything else as
@@ -358,7 +365,11 @@ export const agentVaultProxyServiceFactory = ({
     // The same read mint uses, so the two paths can never disagree about what a grant means.
     const accessBundleIds = isAdmin
       ? null
-      : await findReachableAccessBundleIds(membershipDAL, { projectId: session.projectId, actor });
+      : await findReachableAccessBundleIds(membershipDAL, {
+          projectId: session.projectId,
+          actor,
+          groupIds: liveGroupIds
+        });
 
     const rows = await agentVaultResolveDAL.findResolvableConnections({
       sessionId: session.id,

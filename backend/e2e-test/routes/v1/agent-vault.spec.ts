@@ -1125,6 +1125,82 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a group's grants stop counting the moment the group's role lapses", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle("group-role-lapse");
+      expect(
+        (
+          await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+            name: "echo",
+            hostPattern: "echo.example.com",
+            credential: { type: "passthrough" }
+          })
+        ).statusCode
+      ).toBe(200);
+      const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "group-role-lapse" });
+      const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
+
+      // The identity is in the product twice: directly as a member, and through a group that holds the
+      // grant. Losing the group's role must not leave the group's bundles reachable through the direct row.
+      const group = await createProjectGroup(projectId, "av-lapsing", ProjectMembershipRole.Member);
+      const agent = await createUaIdentity(`av-lapse-${Date.now()}`);
+      expect(
+        (await inject("POST", "/api/v1/agent-vault/memberships", { identityId: agent.id, role: "member" })).statusCode
+      ).toBe(200);
+      await testDb("identity_group_membership").insert({ groupId: group.id, identityId: agent.id });
+      expect(
+        (await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, { groupId: group.id }))
+          .statusCode
+      ).toBe(200);
+
+      const cacheKeys = [
+        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.IDENTITY, agent.id, ActionProjectType.AgentVault),
+        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.IDENTITY, agent.id, ActionProjectType.AgentVault)
+      ];
+      const mint = () =>
+        agent.asIdentity("POST", "/api/v1/agent-vault/sessions", { accessBundleIds: [bundle.id], ttl: "never" });
+
+      try {
+        const live = await mint();
+        expect(live.statusCode).toBe(200);
+        const { session } = JSON.parse(live.payload) as { session: { token: string } };
+
+        const resolver = agentVaultProxyServiceFactory({
+          agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
+          agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
+          agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+          membershipDAL: membershipDALFactory(testDb),
+          orgDAL: orgDALFactory(testDb),
+          permissionService: buildPermissionService(),
+          kmsService: {
+            createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
+          } as never,
+          resourceAuthMethodService: {} as never
+        });
+        const resolve = () =>
+          resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+        expect((await resolve()).connections).toHaveLength(1);
+
+        const groupMembership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorGroupId: group.id })
+          .first();
+        await testDb("membership_roles")
+          .where({ membershipId: groupMembership.id })
+          .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
+        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+
+        // The direct membership keeps the identity in the product; the group's grant no longer reaches it.
+        expect((await resolve()).connections).toHaveLength(0);
+        const lapsed = await mint();
+        expect(lapsed.statusCode).toBe(400);
+        expect(JSON.parse(lapsed.payload).message).toContain("not one you can reach");
+      } finally {
+        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await deleteUaIdentity(agent.id);
+        await group.cleanup();
+      }
+    });
+
     test("a creator grant is written only for a directly added admin", async () => {
       const projectId = await getProjectId();
 
