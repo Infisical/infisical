@@ -153,7 +153,7 @@ The Service is created only in direct listen mode. In relay mode the gateway acc
 
 The address has to be one Infisical can resolve and reach. An in-cluster Service DNS name works when you self-host Infisical in the same cluster. From outside the cluster, expose the gateway through an Ingress or a `LoadBalancer` Service and register that address instead.
 
-Direct listen is available on self-hosted Infisical. On Infisical Cloud, leave `gateway.listenAddress` empty and use a relay.
+Direct listen is available on self-hosted Infisical. Infisical Cloud runs outside your cluster and has no route into it, so there's no address it could dial. On Cloud, leave `gateway.listenAddress` empty and use a relay.
 
 ## Default Helm values
 

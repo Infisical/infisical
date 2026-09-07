@@ -14,7 +14,9 @@ There are two ways the Gateway and Infisical reach each other, and they differ i
 Both modes carry the same mutually authenticated TLS between Infisical and the Gateway, with certificates issued by your organization's own certificate authorities. In relay mode the relay routes bytes without holding the keys to read them.
 
 <Info>
-  Direct listen is available on self-hosted Infisical. On Infisical Cloud, gateways use relay mode.
+  Direct listen is available on self-hosted Infisical. It can't work on Infisical Cloud, because
+  Cloud runs outside your network and has no route into it, so there's no address it could dial.
+  Cloud gateways use relay mode, where the Gateway opens the connection instead.
 </Info>
 
 ## Relay mode

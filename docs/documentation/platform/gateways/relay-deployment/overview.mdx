@@ -16,7 +16,7 @@ If you self-host Infisical and it can reach your gateway host at a stable addres
 A relay is what you need when:
 
 - The gateway sits behind NAT or a firewall you can't open for inbound connections
-- You're on Infisical Cloud, where gateways use relay mode
+- You're on Infisical Cloud, which runs outside your network and has no route into it, so a gateway there can't be dialed and has to open the connection itself
 - PAM CLI users connect from outside the gateway's network, since the CLI dials the gateway from their own machine
 
 A gateway can also run both, giving you direct connections for platform operations and a relay for CLI users outside the network.

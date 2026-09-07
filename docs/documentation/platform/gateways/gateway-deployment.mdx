@@ -27,6 +27,8 @@ Before you deploy, decide which side opens the connection between Infisical and 
 
 **Use relay mode** when the Gateway sits behind NAT or a firewall you can't open, when you're on Infisical Cloud, or when PAM CLI users connect from outside the Gateway's network.
 
+Direct listen isn't a paid feature you can turn on for Cloud. Cloud runs outside your network and has no route into it, so there's no address it could dial. Relay mode exists precisely so the Gateway can open that connection from the inside.
+
 You can also run both at once, which gives you direct connections for platform operations and a relay for PAM CLI users outside the network. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first and falls back to the relay when it stops answering.
 
 For the ports, certificates, and traffic flow behind each mode, see [Network architecture](/documentation/platform/gateways/network-architecture).
@@ -364,7 +366,7 @@ Switching away from a mode drops it. To keep both, pass `--relay` and `--listen-
 <Accordion title="Why does my direct listen gateway fail to register?">
 The listen address has to be `host:port`, with a port in the range 1 to 65535. An address with no port is rejected, and so is one that includes a scheme or a path, so use `gateway.internal:8443` rather than `https://gateway.internal` or `gateway.internal`.
 
-Direct listen is also unavailable on Infisical Cloud. On Cloud, use relay mode.
+Direct listen is also unavailable on Infisical Cloud, which runs outside your network and has no route into it. On Cloud, use relay mode.
 
 </Accordion>
 
