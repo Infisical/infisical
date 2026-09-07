@@ -30,7 +30,7 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
         <div className="flex flex-col gap-2">
           <CodeBlock
             label="Run an agent with it"
-            value={`infisical av run --token ${session?.token ?? ""} --proxy <proxy-address> -- <agent-command>`}
+            value={`infisical av run --session-token ${session?.token ?? ""} --proxy <proxy-address> -- <agent-command>`}
           />
           <p className="text-xs text-accent">
             Replace <span className="font-mono">&lt;proxy-address&gt;</span> with the address of

@@ -147,11 +147,14 @@ as a cert-manager application. Nothing in Agent Vault calls them.
 
 - **Trust is stateless.** It fetches the proxy's CA from `http://<proxy>/_agent-vault/ca` on every run and
   trusts it; `--ca-fingerprint` is an optional pin, checked before anything is written. Re-enrolling a proxy
-  therefore needs no action from CLI users; only pins, mounted copies and macOS keychain entries break.
-- **The agent holds nothing from Infisical.** The child gets the session token inside the proxy URL and the CA
-  trust variables, with `INFISICAL_TOKEN` and universal-auth credentials stripped. `--token` is the session
-  token, so the minting identity comes from `--client-id`/`--client-secret`, the access-token env vars, or the
-  keyring login, never from `--token`.
+  therefore needs no action for the *next* run; pins, mounted copies, macOS keychain entries, and any agent
+  already running through the proxy (it trusts the old CA until restarted) break.
+- **No sandbox, nothing stripped.** The child gets the parent's whole environment plus the session token inside
+  the proxy URL and the CA trust variables. `INFISICAL_TOKEN` and universal-auth credentials are deliberately
+  left in place: isolating the agent from its host is not this command's job, and pruning a few names would
+  suggest a boundary that is not there (settled 2026-09-07). `--session-token` is the session token, named so
+  the root's `--token` handling never sees it; the minting identity comes from `--client-id`/`--client-secret`,
+  the access-token env vars, or the keyring login.
 
 ## The frontend
 

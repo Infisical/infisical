@@ -57,7 +57,7 @@ A session carries a fixed set of bundles and an expiry, and nothing else. The pr
 On the machine where the agent runs, pass the token and the proxy address:
 
 ```bash
-infisical av run --token <session-token> --proxy 10.0.1.5:17323 -- claude
+infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- claude
 ```
 
 The CLI fetches the proxy's certificate authority, trusts it for the agent, and starts `claude` with its HTTP traffic routed through the proxy. Everything after `--` is the agent's own command.
@@ -81,7 +81,7 @@ GitHub answers with your profile. The agent sent no `Authorization` header; the 
 Not driving an interactive agent? Run the check directly:
 
 ```bash
-infisical av run --token <session-token> --proxy 10.0.1.5:17323 -- curl -sS https://api.github.com/user
+infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- curl -sS https://api.github.com/user
 ```
 
 If GitHub answers `401` through the agent, open the `coding-agent` bundle and check that a connection still covers `api.github.com`. If one does, the token stored on it is wrong; if none does, the bundle no longer covers the host.

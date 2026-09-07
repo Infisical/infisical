@@ -14,7 +14,7 @@ Anyone with a grant on at least one bundle can mint a session, from the dashboar
     Go to **Sessions** and select **Create Session**. Add the bundles the agent needs, set how long the session lives, and select **Create Session**. The token is shown once, with the command to run:
 
     ```bash
-    infisical av run --token <session-token> --proxy <proxy-address> -- claude
+    infisical av run --session-token <session-token> --proxy <proxy-address> -- claude
     ```
 
     Copy it now. Nothing stores the token, and the dialog can't be reopened.
@@ -28,7 +28,7 @@ Anyone with a grant on at least one bundle can mint a session, from the dashboar
     infisical av run --access-bundle coding-agent --proxy <proxy-address> -- claude
     ```
 
-    The CLI authenticates as your login, or as a machine identity if you pass `--client-id` and `--client-secret`. It revokes the session when the agent exits unless you pass `--keep-session`. A session started with `--token` is never revoked by the CLI, because that token isn't the CLI's to kill.
+    The CLI authenticates as your login, or as a machine identity if you pass `--client-id` and `--client-secret`. It revokes the session when the agent exits unless you pass `--keep-session`. A session started with `--session-token` is never revoked by the CLI, because that token isn't the CLI's to kill.
 
     This suits a machine you're already signed in on, where minting and running are one step. Anywhere else, mint in the dashboard and pass the token.
   </Tab>

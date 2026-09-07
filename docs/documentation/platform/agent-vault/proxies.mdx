@@ -80,7 +80,7 @@ Run the proxy where only your agents can reach it: the same host, a private netw
 To rule out a stand-in proxy, pass the fingerprint from the Proxies page:
 
 ```bash
-infisical av run --token <session-token> --proxy <proxy-address> --ca-fingerprint SHA256:9F:2C:... -- claude
+infisical av run --session-token <session-token> --proxy <proxy-address> --ca-fingerprint SHA256:9F:2C:... -- claude
 ```
 
 The CLI aborts before writing anything if the served certificate doesn't match. Pin when the agent runs on a network you don't fully control, or when the token would be costly to lose. Most deployments inside a private network don't need to.
