@@ -2846,18 +2846,35 @@ const OverviewPageContent = () => {
       <Card className="min-w-0">
         <CardHeader className="min-w-0">
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex min-w-0 items-center overflow-hidden px-1 whitespace-nowrap">
-              <FolderBreadcrumb
-                secretPath={secretPath}
-                onManageFolderAccess={
-                  canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
-                }
-              />
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-1 items-center overflow-hidden px-1 whitespace-nowrap">
+                <FolderBreadcrumb
+                  secretPath={secretPath}
+                  onManageFolderAccess={
+                    canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
+                  }
+                />
+              </div>
+              {userAvailableEnvs.length > 0 && (
+                <div className="shrink-0">
+                  <AddResourceButtons {...addResourceButtonsProps} />
+                </div>
+              )}
             </div>
-            <div className="flex min-w-0 flex-col items-stretch gap-2 @4xl/card-header:flex-row @4xl/card-header:items-center">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="max-w-full shrink-0">
+                <EnvironmentSelect
+                  selectedEnvs={filteredEnvs}
+                  setSelectedEnvs={setFilteredEnvs}
+                  isDisabled={
+                    isBatchModeActive &&
+                    (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
+                  }
+                />
+              </div>
               <ResourceSearchInput
                 key={secretPath}
-                className="min-w-0 @4xl/card-header:flex-1"
+                className="min-w-0 flex-1 basis-48"
                 value={searchFilter}
                 tags={tags}
                 onChange={setSearchFilter}
@@ -2865,40 +2882,23 @@ const OverviewPageContent = () => {
                 environments={userAvailableEnvs}
                 projectId={currentProject?.id}
               />
-              <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2 @4xl/card-header:justify-between">
-                <div className="flex max-w-full min-w-0 flex-1 items-center gap-2">
-                  <EnvironmentSelect
-                    selectedEnvs={filteredEnvs}
-                    setSelectedEnvs={setFilteredEnvs}
-                    isDisabled={
-                      isBatchModeActive &&
-                      (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
-                    }
+              {userAvailableEnvs.length > 0 && (
+                <div className="flex shrink-0 items-center gap-2">
+                  <ResourceFilter
+                    rowTypeFilter={filter}
+                    onToggleRowType={handleToggleRowType}
+                    tags={tags}
+                    selectedTagSlugs={tagFilter}
+                    onToggleTag={handleToggleTag}
+                    onClearTags={handleClearTags}
                   />
-                  {userAvailableEnvs.length > 0 && (
-                    <ResourceFilter
-                      rowTypeFilter={filter}
-                      onToggleRowType={handleToggleRowType}
-                      tags={tags}
-                      selectedTagSlugs={tagFilter}
-                      onToggleTag={handleToggleTag}
-                      onClearTags={handleClearTags}
-                    />
-                  )}
-                  {userAvailableEnvs.length > 0 && (
-                    <DownloadEnvButton
-                      secretPath={secretPath}
-                      environments={visibleEnvs}
-                      projectId={projectId}
-                    />
-                  )}
+                  <DownloadEnvButton
+                    secretPath={secretPath}
+                    environments={visibleEnvs}
+                    projectId={projectId}
+                  />
                 </div>
-                {userAvailableEnvs.length > 0 && (
-                  <div className="ml-auto shrink-0">
-                    <AddResourceButtons {...addResourceButtonsProps} />
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </CardHeader>
