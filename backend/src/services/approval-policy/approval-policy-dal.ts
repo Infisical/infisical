@@ -63,9 +63,9 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findBypassersByPolicyId = async (policyId: string): Promise<PolicyBypasser[]> => {
+  const findBypassersByPolicyId = async (policyId: string, tx?: Knex): Promise<PolicyBypasser[]> => {
     try {
-      const dbInstance = db.replicaNode();
+      const dbInstance = tx || db.replicaNode();
       const rows = (await dbInstance(TableName.ApprovalPolicyBypassers)
         .where({ policyId })
         .select("userId", "groupId")) as { userId: string | null; groupId: string | null }[];

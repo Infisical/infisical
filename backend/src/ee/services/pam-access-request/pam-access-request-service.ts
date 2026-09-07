@@ -210,9 +210,10 @@ export const pamAccessRequestServiceFactory = ({
   const isFolderBreakGlassUser = async (
     policyId: string,
     userId: string,
-    userGroupIds: Set<string>
+    userGroupIds: Set<string>,
+    tx?: Knex
   ): Promise<boolean> => {
-    const bypassers = await approvalPolicyDAL.findBypassersByPolicyId(policyId);
+    const bypassers = await approvalPolicyDAL.findBypassersByPolicyId(policyId, tx);
     return bypassers.some(
       (b) =>
         (b.type === ApproverType.User && b.id === userId) || (b.type === ApproverType.Group && userGroupIds.has(b.id))
@@ -735,6 +736,45 @@ export const pamAccessRequestServiceFactory = ({
     };
   };
 
+  const assertBreakGlassEligible = async ({
+    account,
+    folderId,
+    policyId,
+    projectId,
+    userGroupIds,
+    ctx
+  }: {
+    account: { name: string; templatePolicies: unknown };
+    folderId: string;
+    policyId: string;
+    projectId: string;
+    userGroupIds: Set<string>;
+    ctx: TActorContext;
+  }) => {
+    if (ctx.actor !== ActorType.USER) {
+      throw new ForbiddenRequestError({ message: "Only users can break glass on an access request" });
+    }
+
+    const { allowBreakGlass } = resolveAccessControls(account.templatePolicies);
+    if (!allowBreakGlass) {
+      throw new ForbiddenRequestError({
+        message: `Break-glass is not enabled for '${account.name}'. Ask a PAM admin to turn on the Allow Break-Glass policy on its template.`
+      });
+    }
+
+    if (!(await isFolderBreakGlassUser(policyId, ctx.actorId, userGroupIds))) {
+      throw new ForbiddenRequestError({ message: "You are not a break-glass user for this folder" });
+    }
+
+    const activeMemberships = await findActiveFolderMemberships(projectId, folderId);
+    const hasActiveMembership = activeMemberships.some(
+      (m) => m.actorUserId === ctx.actorId || (m.actorGroupId && userGroupIds.has(m.actorGroupId))
+    );
+    if (!hasActiveMembership) {
+      throw new ForbiddenRequestError({ message: "You are not a member of this folder" });
+    }
+  };
+
   const notifyOfBreakGlass = async ({
     request,
     steps,
@@ -868,32 +908,13 @@ export const pamAccessRequestServiceFactory = ({
       });
     }
 
-    const { allowBreakGlass } = resolveAccessControls(account.templatePolicies);
-    if (!allowBreakGlass) {
-      throw new ForbiddenRequestError({
-        message: `Break-glass is not enabled for '${account.name}'. Ask a PAM admin to turn on the Allow Break-Glass policy on its template.`
-      });
-    }
-
     const policy = await findFolderPolicy(folderId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Approval policy no longer exists for this folder" });
     }
 
     const userGroupIds = await getUserGroupIds(ctx.actorId, ctx.actorOrgId);
-    if (!(await isFolderBreakGlassUser(policy.id, ctx.actorId, userGroupIds))) {
-      throw new ForbiddenRequestError({
-        message: "You are not a break-glass user for this folder"
-      });
-    }
-
-    const activeMemberships = await findActiveFolderMemberships(projectId, folderId);
-    const hasActiveMembership = activeMemberships.some(
-      (m) => m.actorUserId === ctx.actorId || (m.actorGroupId && userGroupIds.has(m.actorGroupId))
-    );
-    if (!hasActiveMembership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this folder" });
-    }
+    await assertBreakGlassEligible({ account, folderId, policyId: policy.id, projectId, userGroupIds, ctx });
 
     // Break-glass skips the approver, not the permission the request itself needed.
     const accessType = requestData.requestData.accessType ?? PamAccessType.Session;
@@ -932,6 +953,10 @@ export const pamAccessRequestServiceFactory = ({
           )
         )
       );
+
+      if (!(await isFolderBreakGlassUser(policy.id, ctx.actorId, userGroupIds, tx))) {
+        throw new ForbiddenRequestError({ message: "You are not a break-glass user for this folder" });
+      }
 
       const currentStep = steps.find((s) => s.stepNumber === locked.currentStep);
       if (currentStep) {
@@ -1083,6 +1108,17 @@ export const pamAccessRequestServiceFactory = ({
     const policy = await findFolderPolicy(account.folderId);
     if (!policy) {
       throw new BadRequestError({ message: "No approval configuration found for this folder" });
+    }
+
+    if (breakGlass) {
+      await assertBreakGlassEligible({
+        account,
+        folderId: account.folderId,
+        policyId: policy.id,
+        projectId,
+        userGroupIds: await getUserGroupIds(ctx.actorId, ctx.actorOrgId),
+        ctx
+      });
     }
 
     const durationMs = parseDurationMs(duration);
