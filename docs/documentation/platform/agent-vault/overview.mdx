@@ -14,8 +14,8 @@ Agent Vault brokers that access. Agents like Claude Code or OpenClaw route HTTP 
 +----------+                 +-------------------+                +------------------+
 | AI agent | --------------> | Agent Vault proxy | -------------> |  api.slack.com   |
 +----------+  request with a +-------------------+ request with   |  api.github.com  |
-             session token            |          the credential    |  ...             |
-                                      |                            +------------------+
+             session token            |          the credential   |  ...             |
+                                      |                           +------------------+
                                       |  checks what this session
                                       |  may reach, and fetches
                                       |  the credentials
