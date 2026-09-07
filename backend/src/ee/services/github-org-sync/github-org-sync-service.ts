@@ -4,7 +4,6 @@ import { ForbiddenError } from "@casl/ability";
 import { Octokit } from "@octokit/core";
 import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
-import RE2 from "re2";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -19,6 +18,8 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TGroupDALFactory } from "../group/group-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
@@ -49,8 +50,13 @@ const GITHUB_REQUEST_TIMEOUT_MS = 30_000;
 
 type TGithubPageInfo = { hasNextPage: boolean; endCursor: string | null };
 
+export type TGithubTeamMember = {
+  login: string;
+  databaseId: number | null;
+};
+
 type TGithubTeamMembersConnection = {
-  edges: { node: { login: string } }[];
+  edges: { node: TGithubTeamMember }[];
   pageInfo: TGithubPageInfo;
 };
 
@@ -80,7 +86,7 @@ export type TGithubTeam = {
   slug: string;
   name: string;
   description: string | null;
-  members: string[];
+  members: TGithubTeamMember[];
 };
 
 const ORG_TEAMS_QUERY = `
@@ -96,6 +102,7 @@ const ORG_TEAMS_QUERY = `
               edges {
                 node {
                   login
+                  databaseId
                 }
               }
               pageInfo {
@@ -122,6 +129,7 @@ const TEAM_MEMBERS_QUERY = `
           edges {
             node {
               login
+              databaseId
             }
           }
           pageInfo {
@@ -162,7 +170,7 @@ export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org
         slug: node.slug,
         name: node.name,
         description: node.description,
-        members: node.members.edges.map((edge) => edge.node.login),
+        members: node.members.edges.map((edge) => edge.node),
         membersCursor: nextCursor(node.members.pageInfo)
       });
     });
@@ -189,7 +197,7 @@ export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org
           message: `GitHub team '${team.slug}' was renamed or deleted while its members were being listed. Please run the sync again.`
         });
       }
-      team.members.push(...connection.edges.map((edge) => edge.node.login));
+      team.members.push(...connection.edges.map((edge) => edge.node));
       team.membersCursor = nextCursor(connection.pageInfo);
       membersPage += 1;
     }
@@ -204,87 +212,23 @@ export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org
   return teams.map(({ slug, name, description, members }) => ({ slug, name, description, members }));
 };
 
-type TMatchableMember<T> = { user?: { email?: string | null } | null; inviteEmail?: string | null } & T;
+type TGithubAlias = {
+  externalId: string;
+  userId: string;
+  isEmailVerified?: boolean | null;
+};
 
-// Weakest rule a login is allowed to match on. A name part shorter than this collides constantly.
-const GITHUB_MIN_NAME_PART_LENGTH = 4;
+export const buildGithubMemberMatcher = (aliases: TGithubAlias[], activeUserIds: Set<string>) => {
+  const userIdByGithubId = new Map(
+    aliases.flatMap((alias) =>
+      alias.isEmailVerified === true && activeUserIds.has(alias.userId)
+        ? ([[alias.externalId, alias.userId]] as const)
+        : []
+    )
+  );
 
-const AMBIGUOUS_LOGIN_REPORT_LIMIT = 20;
-
-export const GithubMemberMatchRule = {
-  Email: "email",
-  EmailWithOrgSuffix: "email-with-org-suffix",
-  NamePart: "name-part"
-} as const;
-
-export type TGithubMemberMatchRule = (typeof GithubMemberMatchRule)[keyof typeof GithubMemberMatchRule];
-
-export type TGithubMemberMatch<T> =
-  | { status: "matched"; member: T; rule: TGithubMemberMatchRule }
-  | { status: "ambiguous"; rule: TGithubMemberMatchRule; members: T[] }
-  | { status: "unmatched" };
-
-const SEPARATORS = new RE2(/[._-]/g);
-const stripSeparators = (value: string) => value.replace(SEPARATORS, "");
-
-/**
- * Resolves a GitHub login to the org member it belongs to.
- *
- * Rules are tried strongest first across every member, so an exact email match always beats a name
- * fragment no matter what order members arrive in. A login that two members match equally well is
- * reported as ambiguous rather than resolved, because guessing hands one of them the other's
- * project access.
- */
-export const buildGithubMemberMatcher = <T>(members: TMatchableMember<T>[]) => {
-  // ~16M (login, member) comparisons on a 640-team org, so per-member fields are derived once per
-  // sync rather than once per comparison.
-  const candidates = members.flatMap((member) => {
-    const email = member.user?.email || member.inviteEmail;
-    if (!email) return [];
-    const [rawPrefix, rawDomain] = email.split("@");
-    if (!rawPrefix || !rawDomain) return [];
-    const emailPrefix = rawPrefix.toLowerCase();
-    const parts = emailPrefix.split(new RE2(/[._-]/));
-    return [
-      {
-        member,
-        email: email.toLowerCase(),
-        compactPrefix: stripSeparators(emailPrefix),
-        orgSuffixed: stripSeparators(emailPrefix) + stripSeparators(rawDomain.toLowerCase().split(".")[0]),
-        longestPart: parts.reduce((a, b) => (a.length > b.length ? a : b), "")
-      }
-    ];
-  });
-
-  return (githubLogin: string): TGithubMemberMatch<T> => {
-    const login = githubLogin.toLowerCase();
-    const compactLogin = stripSeparators(login);
-    const loginParts = new Set(login.split(new RE2(/[._-]/)));
-
-    const rules: [TGithubMemberMatchRule, (c: (typeof candidates)[number]) => boolean][] = [
-      [GithubMemberMatchRule.Email, (c) => c.compactPrefix === compactLogin],
-      [GithubMemberMatchRule.EmailWithOrgSuffix, (c) => c.orgSuffixed === compactLogin],
-      [
-        GithubMemberMatchRule.NamePart,
-        (c) => c.longestPart.length >= GITHUB_MIN_NAME_PART_LENGTH && loginParts.has(c.longestPart)
-      ]
-    ];
-
-    for (const [rule, predicate] of rules) {
-      const hits = candidates.filter(predicate);
-      const distinct = [...new Map(hits.map((hit) => [hit.email, hit])).values()];
-      if (distinct.length === 1) return { status: "matched", member: distinct[0].member, rule };
-      if (distinct.length > 1) {
-        return {
-          status: "ambiguous",
-          rule,
-          members: distinct.sort((a, b) => a.email.localeCompare(b.email)).map((hit) => hit.member)
-        };
-      }
-    }
-
-    return { status: "unmatched" };
-  };
+  return (member: TGithubTeamMember) =>
+    member.databaseId === null ? undefined : userIdByGithubId.get(String(member.databaseId));
 };
 
 // Type definitions for GitHub API errors
@@ -336,6 +280,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "find">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
@@ -350,6 +295,7 @@ export const githubOrgSyncServiceFactory = ({
   groupDAL,
   licenseService,
   orgMembershipDAL,
+  userAliasDAL,
   membershipRoleDAL,
   membershipGroupDAL,
   usageMeteringService,
@@ -839,12 +785,22 @@ export const githubOrgSyncServiceFactory = ({
       (member) => member.status === "accepted" && member.isActive
     ) as OrgMembershipWithUser[];
 
-    const matchGithubLogin = buildGithubMemberMatcher(activeMembers);
     const activeMembersById = new Map(activeMembers.map((member) => [member.id, member]));
+    const activeUserIds = new Set(activeMembers.flatMap((member) => (member.user ? [member.user.id] : [])));
+    const githubAliases = activeUserIds.size
+      ? await userAliasDAL.find({
+          aliasType: UserAliasType.GITHUB,
+          isEmailVerified: true,
+          $in: { userId: [...activeUserIds] }
+        })
+      : [];
+    const matchGithubMember = buildGithubMemberMatcher(githubAliases, activeUserIds);
+    const linkedActiveUserIds = new Set(githubAliases.map((alias) => alias.userId));
 
     const startTime = Date.now();
     const syncErrors: string[] = [];
-    const ambiguousLogins = new Map<string, string[]>();
+    const unmatchedGithubUsers = new Set<string>();
+    const preservedUnlinkedUserIds = new Set<string>();
 
     const octokit = new Octokit({ auth: orgAccessToken });
 
@@ -886,7 +842,7 @@ export const githubOrgSyncServiceFactory = ({
       throw new BadRequestError({ message: `GitHub GraphQL query failed: ${(err as Error)?.message}` });
     });
 
-    const githubTeamMembersByName = new Map<string, string[]>();
+    const githubTeamMembersByName = new Map<string, TGithubTeamMember[]>();
     githubTeams.forEach((team) => {
       const teamName = team.name.toLowerCase();
       githubTeamMembersByName.set(teamName, [...(githubTeamMembersByName.get(teamName) ?? []), ...team.members]);
@@ -905,8 +861,8 @@ export const githubOrgSyncServiceFactory = ({
     const updatedTeams = new Set<string>();
     const totalRemovedMemberships = 0;
 
-    await groupDAL.transaction(async (tx) => {
-      if (teamsToCreate.length > 0) {
+    if (teamsToCreate.length > 0) {
+      await groupDAL.transaction(async (tx) => {
         const newGroups = await groupDAL.insertMany(
           teamsToCreate.map((teamName) => ({
             name: teamName,
@@ -940,40 +896,34 @@ export const githubOrgSyncServiceFactory = ({
           existingTeamsMap[group.name].push(group);
           createdTeams.add(group.name);
         });
-      }
+      });
+    }
 
-      const allTeams = [...Object.values(existingTeamsMap).flat()];
+    const allTeams = [...Object.values(existingTeamsMap).flat()];
 
-      for (const team of allTeams) {
-        const teamName = team.name.toLowerCase();
+    for (const team of allTeams) {
+      const teamName = team.name.toLowerCase();
+      const expectedUserIds = new Set<string>();
+      (githubTeamMembersByName.get(teamName) ?? []).forEach((githubMember) => {
+        const userId = matchGithubMember(githubMember);
 
+        if (userId) {
+          expectedUserIds.add(userId);
+          logger.info(
+            { githubLogin: githubMember.login, githubUserId: githubMember.databaseId, userId },
+            "Matched GitHub team member through a verified GitHub login"
+          );
+        } else {
+          unmatchedGithubUsers.add(githubMember.login);
+        }
+      });
+
+      await groupDAL.transaction(async (tx) => {
         const currentMemberships = (await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(
           team.id,
-          orgPermission.orgId
+          orgPermission.orgId,
+          tx
         )) as GroupMembership[];
-
-        const expectedUserIds = new Set<string>();
-        const unresolvedUserIds = new Set<string>();
-        (githubTeamMembersByName.get(teamName) ?? []).forEach((login) => {
-          const githubUsername = login.toLowerCase();
-
-          const result = matchGithubLogin(githubUsername);
-
-          if (result.status === "matched" && result.member.user?.id) {
-            expectedUserIds.add(result.member.user.id);
-            logger.info(
-              `Matched GitHub user ${githubUsername} to email ${result.member.user?.email || result.member.inviteEmail} by ${result.rule}`
-            );
-          } else if (result.status === "ambiguous") {
-            const emails: string[] = [];
-            result.members.forEach((candidate) => {
-              if (candidate.user?.id) unresolvedUserIds.add(candidate.user.id);
-              const email = candidate.user?.email || candidate.inviteEmail;
-              if (email) emails.push(email);
-            });
-            ambiguousLogins.set(githubUsername, emails);
-          }
-        });
 
         const currentUserIds = new Set<string>();
         currentMemberships.forEach((membership) => {
@@ -985,13 +935,16 @@ export const githubOrgSyncServiceFactory = ({
 
         const usersToAdd = Array.from(expectedUserIds).filter((userId) => !currentUserIds.has(userId));
 
-        // An ambiguous login says we cannot tell which of its candidates belongs here, not that the
-        // team is empty. Only those candidates are held back; anyone else who left the GitHub team
-        // is still removed, so one unresolved collision cannot preserve unrelated stale access.
+        // A member without a verified GitHub alias has no trustworthy identity to reconcile yet.
+        // Keep their current access until a GitHub login creates that link.
         const membershipsToRemove = currentMemberships.filter((membership) => {
           const userId = activeMembersById.get(membership.orgMembershipId)?.user?.id;
           if (!userId) return false;
-          return !expectedUserIds.has(userId) && !unresolvedUserIds.has(userId);
+          if (!linkedActiveUserIds.has(userId)) {
+            preservedUnlinkedUserIds.add(userId);
+            return false;
+          }
+          return !expectedUserIds.has(userId);
         });
 
         if (usersToAdd.length > 0) {
@@ -1022,8 +975,8 @@ export const githubOrgSyncServiceFactory = ({
 
           updatedTeams.add(teamName);
         }
-      }
-    });
+      });
+    }
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
@@ -1031,24 +984,17 @@ export const githubOrgSyncServiceFactory = ({
       usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
     }
 
-    if (ambiguousLogins.size) {
-      logger.warn(
-        { orgId: orgPermission.orgId, count: ambiguousLogins.size },
-        "GitHub org sync skipped logins that more than one organization member matched"
-      );
-      // Capped so a badly aliased org cannot return a response the client has to scroll through.
-      const listed = [...ambiguousLogins.entries()].slice(0, AMBIGUOUS_LOGIN_REPORT_LIMIT);
+    if (preservedUnlinkedUserIds.size) {
       syncErrors.push(
-        ...listed.map(
-          ([login, emails]) =>
-            `GitHub user '${login}' matches more than one organization member (${emails.join(", ")}), so Infisical cannot tell which one they are. Their existing group access was left as it is. Align one member's email with their GitHub username to resolve it.`
-        )
+        `Infisical left existing group access unchanged for ${preservedUnlinkedUserIds.size} organization member${preservedUnlinkedUserIds.size === 1 ? "" : "s"} without a verified GitHub login. Ask them to sign in with GitHub, then run the sync again.`
       );
-      if (ambiguousLogins.size > listed.length) {
-        syncErrors.push(
-          `${ambiguousLogins.size - listed.length} further GitHub users were skipped for the same reason.`
-        );
-      }
+    }
+
+    if (unmatchedGithubUsers.size) {
+      logger.info(
+        { orgId: orgPermission.orgId, count: unmatchedGithubUsers.size },
+        "GitHub org sync skipped team members without a verified GitHub login"
+      );
     }
 
     const syncDuration = Date.now() - startTime;
