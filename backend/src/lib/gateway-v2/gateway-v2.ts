@@ -123,13 +123,21 @@ export const createRelayConnection = async ({
   });
 };
 
+// A gateway socket's inactivity timer, applied once the mTLS handshake is done. Long-lived tunnels
+// clear it entirely and rely on TCP keep-alive instead.
+const GATEWAY_IDLE_TIMEOUT_MS = 120000;
+
+// Handshake budget for a direct connection. Kept short so an unreachable or wedged direct address
+// fails fast and the caller can retry over the relay.
+const DIRECT_HANDSHAKE_TIMEOUT_MS = 3000;
+
 export const createGatewayConnection = async (
   relayConn: net.Socket,
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string },
   protocol: GatewayProxyProtocol,
   tunnelId?: string,
   serverName = "localhost",
-  timeoutMs = 120000
+  handshakeTimeoutMs = GATEWAY_IDLE_TIMEOUT_MS
 ): Promise<net.Socket> => {
   const appCfg = getConfig();
 
@@ -175,6 +183,11 @@ export const createGatewayConnection = async (
           return;
         }
 
+        // setTimeout is an inactivity timer, not a deadline, and this listener outlives the
+        // handshake. Leaving a short handshake budget in place would destroy the tunnel on the
+        // first quiet stretch of a slow operation, so widen it once the handshake is done.
+        gatewaySocket.setTimeout(GATEWAY_IDLE_TIMEOUT_MS);
+
         logger.info(`Gateway mTLS connection established successfully [tunnelId=${tunnelId ?? "n/a"}]`);
         resolve(gatewaySocket);
       });
@@ -184,7 +197,7 @@ export const createGatewayConnection = async (
         reject(new Error(`Failed to establish gateway mTLS: ${err.message}`));
       });
 
-      gatewaySocket.setTimeout(timeoutMs);
+      gatewaySocket.setTimeout(handshakeTimeoutMs);
       gatewaySocket.on("timeout", () => {
         destroyGatewayTunnel({ gatewayConn: gatewaySocket, tunnelId, trigger: "gatewayTimeout" });
         reject(new Error("Gateway connection timeout"));
@@ -241,52 +254,75 @@ export const setupRelayServer = async ({
 
   const openUpstream = async (): Promise<TUpstream> => {
     const tunnelId = crypto.randomBytes(4).toString("hex");
-    let relayConn: net.Socket;
-    let gatewayServerName = "localhost";
-    try {
-      if (directAddress) {
-        const parsed = new URL(`tcp://${directAddress}`);
-        gatewayServerName = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
-        const [targetHost] = await verifyHostInputValidity({
-          host: gatewayServerName,
-          isGateway: true,
-          isDynamicSecret: false
-        });
-        relayConn = net.connect({ host: targetHost, port: Number(parsed.port) });
-      } else {
-        if (!relayHost || !relay) throw new Error("Gateway has no reachable transport");
-        relayConn = await createRelayConnection({
-          relayHost,
-          clientCertificate: relay.clientCertificate,
-          clientPrivateKey: relay.clientPrivateKey,
-          serverCertificateChain: relay.serverCertificateChain,
-          tunnelId
-        });
-      }
-    } catch (err) {
-      tunnelLog(
-        tunnelId,
-        directAddress ? "direct connect failed" : "relay connect failed",
-        ` [err=${err instanceof Error ? err.message : String(err)}]`
-      );
-      throw err;
-    }
+    const hasRelayFallback = Boolean(directAddress && relayHost && relay);
 
+    const dialDirect = async () => {
+      const parsed = new URL(`tcp://${directAddress}`);
+      const serverName = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
+      const [targetHost] = await verifyHostInputValidity({
+        host: serverName,
+        isGateway: true,
+        isDynamicSecret: false
+      });
+      return { conn: net.connect({ host: targetHost, port: Number(parsed.port) }), serverName, direct: true };
+    };
+
+    const dialRelay = async () => {
+      if (!relayHost || !relay) throw new Error("Gateway has no reachable transport");
+      const conn = await createRelayConnection({
+        relayHost,
+        clientCertificate: relay.clientCertificate,
+        clientPrivateKey: relay.clientPrivateKey,
+        serverCertificateChain: relay.serverCertificateChain,
+        tunnelId
+      });
+      return { conn, serverName: "localhost", direct: false };
+    };
+
+    // Dials one transport and completes the gateway handshake over it. Both stages are here so a
+    // direct address that accepts TCP but fails the handshake still falls back to the relay.
+    const openOverTransport = async (
+      dial: () => Promise<{ conn: net.Socket; serverName: string; direct: boolean }>
+    ) => {
+      const { conn, serverName, direct } = await dial();
+      try {
+        const gwConn = await createGatewayConnection(
+          conn,
+          gateway,
+          protocol,
+          tunnelId,
+          serverName,
+          direct ? DIRECT_HANDSHAKE_TIMEOUT_MS : undefined
+        );
+        return { relayConn: conn, gatewayConn: gwConn };
+      } catch (err) {
+        destroyGatewayTunnel({ relayConn: conn, tunnelId, trigger: "gatewayHandshakeFailed" });
+        throw err;
+      }
+    };
+
+    let relayConn: net.Socket;
     let gatewayConn: net.Socket;
     try {
-      // Stage 2: Establish mTLS connection to gateway through the relay
-      gatewayConn = await createGatewayConnection(
-        relayConn,
-        gateway,
-        protocol,
-        tunnelId,
-        gatewayServerName,
-        directAddress ? 3000 : undefined
-      );
+      ({ relayConn, gatewayConn } = await openOverTransport(directAddress ? dialDirect : dialRelay));
     } catch (err) {
-      tunnelLog(tunnelId, "gateway mTLS failed", ` [err=${err instanceof Error ? err.message : String(err)}]`);
-      destroyGatewayTunnel({ relayConn, tunnelId, trigger: "gatewayHandshakeFailed" });
-      throw err;
+      const reason = err instanceof Error ? err.message : String(err);
+      tunnelLog(tunnelId, directAddress ? "direct transport failed" : "relay transport failed", ` [err=${reason}]`);
+      if (!hasRelayFallback) throw err;
+
+      // The direct address is unreachable or unhealthy, so retry the same attempt over the relay
+      // rather than failing an operation the gateway can still serve.
+      tunnelLog(tunnelId, "falling back to relay");
+      try {
+        ({ relayConn, gatewayConn } = await openOverTransport(dialRelay));
+      } catch (relayErr) {
+        tunnelLog(
+          tunnelId,
+          "relay fallback failed",
+          ` [err=${relayErr instanceof Error ? relayErr.message : String(relayErr)}]`
+        );
+        throw relayErr;
+      }
     }
 
     relayConn.on("close", (hadError: boolean) => tunnelLog(tunnelId, "relay socket close", ` [hadError=${hadError}]`));
@@ -302,8 +338,8 @@ export const setupRelayServer = async ({
     markAttemptTunnelEstablished();
 
     if (longLived) {
-      // Disable the 30s idle-activity timeout that was set during connection establishment.
-      // Without this, the socket is destroyed after 30s of no data, killing idle sessions.
+      // Drop the inactivity timeout applied after the handshake. Without this, an idle session is
+      // destroyed once it goes quiet for GATEWAY_IDLE_TIMEOUT_MS.
       relayConn.setTimeout(0);
       gatewayConn.setTimeout(0);
 

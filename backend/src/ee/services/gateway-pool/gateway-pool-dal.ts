@@ -5,7 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-import { HEARTBEAT_BUFFER_SECONDS } from "../gateway-v2/gateway-v2-constants";
+import { buildGatewayReachableSql } from "../gateway-v2/gateway-v2-constants";
 
 export type TGatewayPoolDALFactory = ReturnType<typeof gatewayPoolDalFactory>;
 
@@ -14,7 +14,6 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
 
   const findByOrgIdWithDetails = async (orgId: string) => {
     try {
-      const effectiveHeartbeat = `CASE WHEN ${TableName.GatewayV2}."directAddress" IS NOT NULL THEN ${TableName.GatewayV2}."directHeartbeat" ELSE ${TableName.GatewayV2}."heartbeat" END`;
       const pools = await db
         .replicaNode()(TableName.GatewayPool)
         .where(`${TableName.GatewayPool}.orgId`, orgId)
@@ -28,7 +27,9 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
         .select(
           db.raw(`COUNT(DISTINCT ${TableName.GatewayPoolMembership}."gatewayId") AS "memberCount"`),
           db.raw(
-            `COUNT(DISTINCT CASE WHEN COALESCE(${TableName.GatewayV2}."heartbeatTTL", 0) > 0 AND ${effectiveHeartbeat} + make_interval(secs => COALESCE(${TableName.GatewayV2}."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW() THEN ${TableName.GatewayPoolMembership}."gatewayId" END) AS "healthyMemberCount"`
+            `COUNT(DISTINCT CASE WHEN ${buildGatewayReachableSql(TableName.GatewayV2)} THEN ${
+              TableName.GatewayPoolMembership
+            }."gatewayId" END) AS "healthyMemberCount"`
           ),
           db.raw(
             `COALESCE(array_agg(DISTINCT ${TableName.GatewayPoolMembership}."gatewayId") FILTER (WHERE ${TableName.GatewayPoolMembership}."gatewayId" IS NOT NULL), '{}') AS "memberGatewayIds"`
@@ -69,7 +70,9 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
           `${TableName.GatewayV2}.id`,
           `${TableName.GatewayV2}.name`,
           `${TableName.GatewayV2}.heartbeat`,
-          `${TableName.GatewayV2}.heartbeatTTL`
+          `${TableName.GatewayV2}.heartbeatTTL`,
+          `${TableName.GatewayV2}.directAddress`,
+          `${TableName.GatewayV2}.directHeartbeat`
         );
 
       return { ...pool, gateways: members };

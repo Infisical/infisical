@@ -32,7 +32,7 @@ import {
 import { useTimedReset } from "@app/hooks";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2, TGatewayV2WithAuthMethod } from "@app/hooks/api/gateways-v2/types";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+import { getLastSeenHeartbeat, isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 import {
   NetworkingAuthMethodForm,
@@ -40,7 +40,7 @@ import {
 } from "../../../components/NetworkingAuthMethodForm";
 
 const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
-  const heartbeat = gateway.directAddress ? gateway.directHeartbeat : gateway.heartbeat;
+  const heartbeat = getLastSeenHeartbeat(gateway);
   if (
     !heartbeat &&
     gateway.heartbeatTTL === null &&
@@ -65,7 +65,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
 
   const { authMethod } = gateway;
   const isIdentityGateway = authMethod.method === "identity";
-  const effectiveHeartbeat = gateway.directAddress ? gateway.directHeartbeat : gateway.heartbeat;
+  const effectiveHeartbeat = getLastSeenHeartbeat(gateway);
   const connection = gateway.directAddress
     ? `${gateway.relayId ? "Direct + Relay" : "Direct"} (${gateway.directAddress})`
     : gateway.relayId

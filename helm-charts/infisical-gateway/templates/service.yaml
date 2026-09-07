@@ -1,3 +1,4 @@
+{{- if .Values.gateway.listenAddress }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,8 +9,9 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: http
+      targetPort: {{ include "infisical-gateway.listenPort" . }}
       protocol: TCP
       name: http
   selector:
     {{- include "infisical-gateway.selectorLabels" . | nindent 4 }}
+{{- end }}

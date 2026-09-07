@@ -3,23 +3,46 @@ title: "Gateway deployment"
 description: "Complete guide to deploying Infisical Gateways including network configuration and firewall requirements"
 ---
 
-Infisical Gateways enables secure communication between your private resources and the Infisical platform without exposing inbound ports in your network.
+Infisical Gateways give the platform access to resources in your private network, such as databases and internal APIs, without handing out their credentials.
 This guide covers everything you need to deploy and configure Infisical Gateways.
 
 <Tip>
   For a complete Helm chart reference for Kubernetes deployments, see the [Gateway Helm chart documentation](/self-hosting/helm-charts/gateway).
 </Tip>
 
+## Choose a connection mode
+
+Before you deploy, decide which side opens the connection between Infisical and the Gateway. This is the one choice that changes what else you have to set up.
+
+| | Direct listen | Relay |
+|---|---|---|
+| Who connects | Infisical connects to the Gateway | The Gateway connects out to a relay |
+| Firewall | Inbound port open to the Infisical host | Outbound only |
+| Relay required | No | Yes |
+| Needs a stable Gateway address | Yes | No |
+| PAM CLI from outside the network | No | Yes |
+| Infisical Cloud | Not available | Yes |
+
+**Use direct listen** when Infisical can already reach the Gateway host at a stable address. This is the common case when you self-host Infisical in the same network as your resources, and it means there's no relay to deploy or operate.
+
+**Use relay mode** when the Gateway sits behind NAT or a firewall you can't open, when you're on Infisical Cloud, or when PAM CLI users connect from outside the Gateway's network.
+
+You can also run both at once, which gives you direct connections for platform operations and a relay for PAM CLI users outside the network. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first and falls back to the relay when it stops answering.
+
+For the ports, certificates, and traffic flow behind each mode, see [Network architecture](/documentation/platform/gateways/network-architecture).
+
 ## Deployment steps
 
 <Steps>
-  <Step title="Set Up a Relay Server">
-    Ensure a relay server is running and accessible before you deploy any gateways. You have two options:
+  <Step title="Set up a relay server (relay mode only)">
+    Skip this step if you're using direct listen.
+
+    For relay mode, a relay server has to be running and reachable before you deploy any gateways. You have two options:
     - **Managed relay (Infisical Cloud, US/EU only):** If you're using Infisical Cloud in the US or EU regions, you can use the provided managed relay.
-    - **Self-hosted relay:** For all other cases, you must deploy your own relay server. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
+    - **Self-hosted relay:** For all other cases, deploy your own relay server. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
   </Step>
-  <Step title="Create the Gateway in the UI">
-    1. Navigate to **Organization Settings > Networking > Gateways**.
+  <Step title="Create the gateway in the UI">
+    1. Go to **Organization Settings > Networking > Gateways**.
     2. Select **Create Gateway**.
     ![Create Gateway button](/images/platform/gateways/gateway-create-button.png)
     3. Enter a name for the gateway, then select **Create Gateway**.
@@ -28,13 +51,19 @@ This guide covers everything you need to deploy and configure Infisical Gateways
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the gateway.
         - **AWS**: the gateway authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
         - **Kubernetes**: the gateway authenticates with the projected service account token of the pod it runs in, so no credential has to be distributed to the cluster. Configure the cluster's API server URL and the allowed namespaces and/or service account names.
-    5. Select **Show deploy command** in the **Deployment** card. Pick a relay (or "Auto Select Relay") and copy the generated CLI command.
+    5. Select **Show deploy command** in the **Deployment** card.
+    6. Under **Connection Mode**, select **Direct Listen** or **Relay**.
+        - For **Direct Listen**, enter the **Listen Address** that Infisical will dial, as `host:port`.
+        - For **Relay**, pick a relay, or leave **Auto Select Relay** so the gateway chooses the healthiest one.
+    7. Copy the generated CLI command.
   </Step>
   <Step title="Install the Infisical CLI">
     Make sure the Infisical CLI is installed on the target machine. See the [CLI Installation Guide](/cli/overview) for instructions.
   </Step>
-  <Step title="Configure Network & Firewall">
-    Ensure your network and firewall settings allow the gateway to connect to all required services. All connections are outbound only; no inbound ports need to be opened.
+  <Step title="Configure network and firewall">
+    What you open depends on the connection mode you chose.
+
+    **Relay mode.** All connections are outbound, so no inbound ports need to be opened.
 
     | Protocol | Destination                          | Port | Purpose                                    |
     | -------- | ------------------------------------ | ---- | ------------------------------------------ |
@@ -45,12 +74,57 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 
     If you're in a corporate environment with strict egress filtering, ensure outbound TCP 2222 to relay servers and outbound HTTPS 443 to Infisical API endpoints are allowed.
 
+    **Direct listen mode.** The Gateway accepts inbound connections, so one port has to be open to Infisical.
+
+    | Protocol | Direction | Source or destination | Port | Purpose |
+    | -------- | --------- | --------------------- | ---- | ------- |
+    | TCP      | Inbound   | Infisical instance host | the port in your listen address | Platform connects to the gateway |
+    | TCP      | Outbound  | Infisical instance host | 443  | API communication and certificate requests |
+
+    Scope the inbound rule to the Infisical instance host rather than opening the port broadly.
+
     <Tip>
       For the full connection model, a complete port reference, and firewall details (including self-hosted relays and HTTP forward proxies), see the [Network Architecture](/documentation/platform/gateways/network-architecture) page.
     </Tip>
   </Step>
-  <Step title="Run the CLI Command">
+  <Step title="Run the CLI command">
     Run the command you copied from the UI on the target machine. This single command enrolls the gateway and starts it immediately.
+
+    The examples below are grouped by authentication method. The connection mode is set by two flags, which you can add to any of them:
+
+    - `--listen-address=<host:port>` for direct listen, where `host:port` is the address Infisical dials
+    - `--relay=<relay-name>` to pin a relay, or omit it to let the gateway pick the healthiest one
+
+    Passing both runs the gateway in both modes.
+
+    ```bash
+    # Direct listen
+    infisical gateway start my-gateway \
+      --listen-address=gateway.internal:8443 \
+      --enroll-method=token \
+      --token=<enrollment-token> \
+      --domain=<your-infisical-domain>
+
+    # Both modes
+    infisical gateway start my-gateway \
+      --listen-address=gateway.internal:8443 \
+      --relay=my-relay \
+      --enroll-method=token \
+      --token=<enrollment-token> \
+      --domain=<your-infisical-domain>
+    ```
+
+    For Kubernetes, set `gateway.listenAddress` to the address Infisical dials:
+
+    ```bash
+    helm install infisical-gateway infisical/infisical-gateway \
+      --set gateway.name=my-gateway \
+      --set gateway.listenAddress=infisical-gateway.default.svc.cluster.local:8443 \
+      --set service.port=8443 \
+      --set gateway.enrollment.method=token \
+      --set gateway.enrollment.token.existingSecretRef=gateway-enrollment-token \
+      --set gateway.domain=<your-infisical-domain>
+    ```
 
     <AccordionGroup>
       <Accordion title="Token Auth">
@@ -245,10 +319,10 @@ This guide covers everything you need to deploy and configure Infisical Gateways
       You can safely re-run the same command to restart the gateway. The CLI detects the token has already been used locally and skips enrollment automatically.
     </Info>
   </Step>
-  <Step title="Verify Your Gateway Deployment">
+  <Step title="Verify your gateway deployment">
     After deployment, verify your gateway is working:
-    1. **Check logs** for "Gateway started successfully" message.
-    2. **Verify registration** in the Infisical UI. Navigate to **Networking > Gateways** and confirm the gateway shows a "Healthy" status.
+    1. **Check logs** for the "Gateway started successfully" message. In direct listen mode you'll also see "Direct gateway listener started" with the address it's advertising and the port it bound.
+    2. **Verify registration** in the Infisical UI. Go to **Networking > Gateways** and confirm the gateway shows a **Healthy** status. A gateway running both modes stays healthy while either one works.
     3. **Test connectivity** by creating a resource that uses the gateway to access a private service.
   </Step>
 </Steps>
@@ -268,13 +342,38 @@ To migrate a gateway to a different host with zero downtime: select **Show deplo
 
 <AccordionGroup>
 <Accordion title="Do I need to open any inbound ports on my firewall?">
-No inbound ports need to be opened for gateways. The gateway only makes outbound connections:
+That depends on the connection mode.
+
+In relay mode, no. The gateway only makes outbound connections:
 
 - **Outbound SSH** to relay servers on port 2222
 - **Outbound HTTPS** to Infisical API endpoints on port 443
-- **SSH reverse tunnels** handle all communication - no return traffic configuration needed
+- **SSH reverse tunnels** carry all return traffic, so nothing needs to be configured for it
 
-This design maintains security by avoiding the need for inbound firewall rules that could expose your network to external threats.
+In direct listen mode, one inbound port has to be open: the port in your listen address, reachable from the Infisical instance host. Scope the rule to that host so the port isn't open to anything else.
+
+</Accordion>
+
+<Accordion title="Can I switch a gateway between relay and direct listen?">
+Yes. Open the gateway's detail page, select **Show deploy command**, choose the mode you want, and re-run the generated command on the host. The gateway re-registers with the new mode and is issued the certificate it needs for it.
+
+Switching away from a mode drops it. To keep both, pass `--relay` and `--listen-address` together.
+
+</Accordion>
+
+<Accordion title="Why does my direct listen gateway fail to register?">
+The listen address has to be `host:port`, with a port in the range 1 to 65535. An address with no port is rejected, and so is one that includes a scheme or a path, so use `gateway.internal:8443` rather than `https://gateway.internal` or `gateway.internal`.
+
+Direct listen is also unavailable on Infisical Cloud. On Cloud, use relay mode.
+
+</Accordion>
+
+<Accordion title="Do PAM CLI sessions work with direct listen?">
+Only from a machine that can reach the gateway's registered address. The CLI connects to the gateway from the user's own machine rather than through Infisical, so a laptop outside the network can't reach a gateway listening on an internal address. Give those users a VPN into the network, or run a relay on the gateway alongside direct listen.
+
+Browser-based PAM access works in either mode, because the platform brokers that connection.
+
+Using direct listen also requires a current Infisical CLI. An older CLI can't connect to a gateway that only listens directly, and reports that the gateway needs a newer CLI.
 
 </Accordion>
 
@@ -301,6 +400,20 @@ If the gateway can't connect to the relay:
   ```bash
   nc -zv <relay-ip> 2222
   ```
+</Accordion>
+
+<Accordion title="How do I troubleshoot direct listen connectivity issues?">
+The gateway registers and looks healthy only once Infisical can reach it, so start from the Infisical host:
+
+1. Confirm the gateway logged "Direct gateway listener started" and check the port it bound
+2. From the Infisical instance host, test the registered address:
+  ```bash
+  nc -zv gateway.internal 8443
+  ```
+3. Check the inbound firewall rule allows the Infisical instance host on that port
+4. Confirm the registered address resolves from the Infisical host, not just from your own machine
+
+If the gateway binds a different local port than the one you advertise, such as behind a load balancer, pass `--bind` to set the local address and keep `--listen-address` as the address Infisical dials.
 </Accordion>
 
 <Accordion title="How do I troubleshoot authentication failures?">
@@ -344,6 +457,7 @@ Yes. Each gateway stores its credentials in a separate config file scoped by nam
 The gateway is designed to handle network interruptions gracefully:
 
 - **Automatic reconnection**: The gateway will automatically attempt to reconnect to relay servers if the SSH connection is lost
+- **Transport fallback**: A gateway running both modes falls back to its relay when its direct address stops answering, and returns to direct connections once it recovers
 - **Connection retry logic**: Built-in retry mechanisms handle temporary network outages without manual intervention
 - **Automatic failover**: Gateways configured with automatic relay selection will switch to a different healthy relay if the current one becomes unreachable
 - **Gateway Pools**: If the gateway itself becomes unavailable, a [Gateway Pool](/documentation/platform/gateways/gateway-pools) will automatically route through a healthy member

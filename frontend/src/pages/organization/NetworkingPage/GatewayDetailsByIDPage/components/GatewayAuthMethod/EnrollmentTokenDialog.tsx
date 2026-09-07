@@ -66,13 +66,13 @@ export const EnrollmentTokenContent = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentToken]);
 
-  const isCommandDirty = relay.id !== commandRelay.id;
+  const isCommandDirty = !isDirect && relay.id !== commandRelay.id;
 
   useEffect(() => {
     onCommandDirtyChange(isCommandDirty);
   }, [isCommandDirty, onCommandDirtyChange]);
 
-  const resolvedRelayName = commandRelay.id === "_auto" ? "" : commandRelay.name;
+  const resolvedRelayName = isDirect || commandRelay.id === "_auto" ? "" : commandRelay.name;
   const expiryLabel = formatTimeRemaining(expiresAt, now);
   const isExpired = expiryLabel === "Expired";
 

@@ -19,7 +19,7 @@ export const gatewaysQueryKeys = {
 
         // Filter out enrollment-flow gateways that haven't connected yet
         // so gateway pickers don't show them as selectable options.
-        const connectedV2 = dataV2.filter((g) => g.identityId || g.heartbeat);
+        const connectedV2 = dataV2.filter((g) => g.identityId || g.heartbeat || g.directHeartbeat);
 
         return [
           ...data.gateways.map((g) => ({

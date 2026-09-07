@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
+import { InfoIcon, LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   Card,
   CardAction,
@@ -15,14 +16,14 @@ import {
   CardTitle,
   DocumentationLinkBadge,
   Field,
+  FieldContent,
   FieldDescription,
+  FieldError,
   FieldLabel,
+  FieldTitle,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  RadioGroup,
+  RadioGroupItem,
   Tabs,
   TabsList,
   TabsTrigger
@@ -40,6 +41,28 @@ import { AwsStartCommandContent } from "../GatewayAuthMethod/AwsStartCommandDial
 import { EnrollmentTokenContent } from "../GatewayAuthMethod/EnrollmentTokenDialog";
 import { KubernetesStartCommandContent } from "../GatewayAuthMethod/KubernetesStartCommandDialog";
 
+// Mirrors the backend's parseDirectAddress so the form rejects exactly what the API would.
+const isValidListenAddress = (address: string) => {
+  try {
+    const parsed = new URL(`tcp://${address}`);
+    if (
+      !parsed.hostname ||
+      !parsed.port ||
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      return false;
+    }
+    const port = Number(parsed.port);
+    return Number.isInteger(port) && port >= 1 && port <= 65535;
+  } catch {
+    return false;
+  }
+};
+
 type Props = {
   gatewayId: string;
   gatewayName: string;
@@ -55,10 +78,15 @@ export const GatewayDeploySection = ({
 }: Props) => {
   const isCloud = isInfisicalCloud();
   const isKubernetes = authMethod.method === "kubernetes";
+  // Relay unless the gateway already listens directly. Defaulting to direct on a gateway with no
+  // address yet would render a command carrying the placeholder address.
   const [connectionMode, setConnectionMode] = useState<"relay" | "direct">(
-    isCloud ? "relay" : "direct"
+    !isCloud && directAddress ? "direct" : "relay"
   );
   const [listenAddress, setListenAddress] = useState(directAddress ?? "");
+  const trimmedListenAddress = listenAddress.trim();
+  const hasListenAddressError =
+    trimmedListenAddress.length > 0 && !isValidListenAddress(trimmedListenAddress);
   const [deploymentMethod, setDeploymentMethod] = useState("");
   const [mintedEnrollment, setMintedEnrollment] = useState<
     (TGatewayEnrollmentToken & { gatewayId: string }) | null
@@ -135,35 +163,77 @@ export const GatewayDeploySection = ({
             <>
               {!isCloud && (
                 <Field>
-                  <FieldLabel htmlFor="gateway-connection-mode">Connection Mode</FieldLabel>
-                  <Select
+                  <FieldLabel>Connection Mode</FieldLabel>
+                  <FieldDescription className="-mt-1 mb-1">
+                    Pick which side opens the connection. Both use the same mutually authenticated
+                    TLS.
+                  </FieldDescription>
+                  <RadioGroup
                     value={connectionMode}
                     onValueChange={(value) => setConnectionMode(value as "relay" | "direct")}
                   >
-                    <SelectTrigger id="gateway-connection-mode">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="direct">Direct Listen</SelectItem>
-                      <SelectItem value="relay">Relay</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <FieldLabel htmlFor="gateway-connection-mode-direct" variant="org">
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>
+                            Direct Listen
+                            <Badge variant="org">Recommended</Badge>
+                          </FieldTitle>
+                          <FieldDescription>
+                            Infisical opens the connection to the gateway. Choose this when the
+                            gateway has a stable address Infisical can reach, with no relay to
+                            deploy.
+                          </FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem value="direct" id="gateway-connection-mode-direct" />
+                      </Field>
+                    </FieldLabel>
+                    <FieldLabel htmlFor="gateway-connection-mode-relay" variant="org">
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>Relay</FieldTitle>
+                          <FieldDescription>
+                            The gateway opens the connection out to a relay. Choose this when
+                            inbound connections to the gateway are blocked by NAT or a firewall.
+                          </FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem value="relay" id="gateway-connection-mode-relay" />
+                      </Field>
+                    </FieldLabel>
+                  </RadioGroup>
                 </Field>
               )}
 
               {connectionMode === "direct" && (
-                <Field>
+                <Field data-invalid={hasListenAddressError}>
                   <FieldLabel htmlFor="gateway-listen-address">Listen Address</FieldLabel>
                   <Input
                     id="gateway-listen-address"
                     value={listenAddress}
                     onChange={(event) => setListenAddress(event.target.value)}
                     placeholder="gateway.internal:8443"
+                    isError={hasListenAddressError}
                   />
                   <FieldDescription>
-                    Enter the stable address Infisical will use to reach this gateway.
+                    The host and port Infisical dials. The gateway binds this port on every
+                    interface.
                   </FieldDescription>
+                  <FieldError isOpen={hasListenAddressError}>
+                    Enter a host and port, such as gateway.internal:8443.
+                  </FieldError>
                 </Field>
+              )}
+
+              {connectionMode === "direct" && (
+                <Alert variant="info" appearance="borderless">
+                  <InfoIcon />
+                  <AlertTitle>PAM CLI sessions dial this address directly</AlertTitle>
+                  <AlertDescription>
+                    The CLI connects from the user&apos;s own machine, not from Infisical, so that
+                    machine has to reach this address as well. Users outside this network need a VPN
+                    into it, or a relay on this gateway. Browser-based PAM access is unaffected.
+                  </AlertDescription>
+                </Alert>
               )}
 
               {authMethod.method === "aws" && (

@@ -60,3 +60,16 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Port the gateway listens on for direct connections, taken from gateway.listenAddress so the
+container port and the Service can never disagree with what the gateway actually binds.
+*/}}
+{{- define "infisical-gateway.listenPort" -}}
+{{- $addr := .Values.gateway.listenAddress -}}
+{{- $port := splitList ":" $addr | last -}}
+{{- if or (eq $port $addr) (not (regexMatch "^[0-9]+$" $port)) -}}
+{{- fail (printf "gateway.listenAddress must be host:port, got %q" $addr) -}}
+{{- end -}}
+{{- $port -}}
+{{- end }}

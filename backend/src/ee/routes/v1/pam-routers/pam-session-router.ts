@@ -328,6 +328,9 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .array(z.enum(["relay", "direct"]))
           .max(2)
           .optional()
+          .describe(
+            "Transports the client can dial. Omit to let the platform choose. A CLI that predates direct connections omits it, so the platform treats an omitted list as relay-only for CLI access."
+          )
       }),
       response: {
         200: z.object({
@@ -383,6 +386,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         accessMethod: req.body.accessMethod === "web" ? PamAccessMethod.Web : PamAccessMethod.Cli,
         targetHost: req.body.targetHost,
+        // Web access is brokered by the platform, so it can use any transport the gateway has. A CLI
+        // reports what it can dial, and an empty list means an older CLI that only knows relays.
+        // Do not collapse the empty array into undefined: that would hand a direct-only gateway to
+        // a CLI that cannot reach it.
         supportedTransports:
           req.body.accessMethod === PamAccessMethod.Web ? undefined : (req.body.supportedTransports ?? [])
       });

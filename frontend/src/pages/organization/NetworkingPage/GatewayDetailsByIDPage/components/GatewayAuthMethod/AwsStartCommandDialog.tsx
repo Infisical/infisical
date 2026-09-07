@@ -35,7 +35,7 @@ export const AwsStartCommandContent = ({
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
-  const resolvedRelayName = relay.id === "_auto" ? "" : relay.name;
+  const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";

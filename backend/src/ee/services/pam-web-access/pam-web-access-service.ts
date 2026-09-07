@@ -25,7 +25,12 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
+import {
+  PAM_CANCELLATION_FLUSH_TIMEOUT_MS,
+  PamAccessMethod,
+  PamSessionEndReason,
+  PamSessionStatus
+} from "../pam/pam-enums";
 import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -399,10 +404,17 @@ export const pamWebAccessServiceFactory = ({
             await withGatewayV2Proxy(
               (port) =>
                 new Promise<void>((resolve, reject) => {
+                  // The ALPN signal is the connection itself, so cleanup must not tear the tunnel
+                  // down until the proxy has forwarded it and the gateway has closed its end.
+                  // Bounded, so a gateway that never closes its end cannot hold the tunnel open.
                   const cancelSocket = net.connect(port, "127.0.0.1", () => {
                     cancelSocket.end();
+                  });
+                  cancelSocket.setTimeout(PAM_CANCELLATION_FLUSH_TIMEOUT_MS, () => {
+                    cancelSocket.destroy();
                     resolve();
                   });
+                  cancelSocket.on("close", () => resolve());
                   cancelSocket.on("error", reject);
                 }),
               { ...certs, protocol: GatewayProxyProtocol.PamSessionCancellation }

@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { CircleCheckIcon, CircleDashedIcon, CircleXIcon } from "lucide-react";
 
 import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+import { getLastSeenHeartbeat, isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 export const GatewayHealthStatus = ({
   heartbeat,
@@ -17,8 +17,8 @@ export const GatewayHealthStatus = ({
   directHeartbeat?: string | null;
   heartbeatTTL?: number | null;
 }) => {
-  const effectiveHeartbeat = directAddress ? directHeartbeat : heartbeat;
-  if (!effectiveHeartbeat && heartbeatTTL === null && !directAddress && !relayId) {
+  const lastSeen = getLastSeenHeartbeat({ heartbeat, directHeartbeat });
+  if (!lastSeen && heartbeatTTL === null && !directAddress && !relayId) {
     return (
       <Badge variant="warning" iconPosition="left">
         <CircleDashedIcon />
@@ -27,7 +27,7 @@ export const GatewayHealthStatus = ({
     );
   }
 
-  const heartbeatDate = effectiveHeartbeat ? new Date(effectiveHeartbeat) : null;
+  const heartbeatDate = lastSeen ? new Date(lastSeen) : null;
   const isHealthy = isGatewayHealthy({ heartbeat, directAddress, directHeartbeat, heartbeatTTL });
 
   return (

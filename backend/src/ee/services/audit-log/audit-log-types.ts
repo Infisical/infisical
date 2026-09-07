@@ -6991,7 +6991,13 @@ interface GatewayEnrollEvent {
   type: EventType.GATEWAY_ENROLL;
   metadata: {
     gatewayId: string;
-    name: string;
+    // Absent on the connect path, where the gateway authenticates by id and sends no name.
+    name?: string;
+    // Which transports the gateway registered, and the address the platform will dial for a direct
+    // one. Recorded on every registration so a switch between transports is visible after the fact.
+    transports: ("direct" | "relay")[];
+    directAddress?: string;
+    relayName?: string;
   };
 }
 

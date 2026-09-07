@@ -43,7 +43,7 @@ export const KubernetesStartCommandContent = ({
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
-  const resolvedRelayName = relay.id === "_auto" ? "" : relay.name;
+  const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
 
   const helmCommand = useMemo(() => {
     const advertisedAddress = listenAddress.trim() || "<gateway-address>:8443";

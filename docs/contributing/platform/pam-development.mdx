@@ -92,7 +92,7 @@ In a new terminal, from the CLI repository root:
 go run main.go gateway start \
   --token=<your-token> \
   --domain=http://localhost:8080 \
-  --target-relay-name=local-relay \
+  --relay=local-relay \
   --name=local-gateway \
   --pam-session-recording-path=$(pwd)/session
 ```
@@ -106,7 +106,7 @@ For all available flags, see the [Gateway CLI Reference](/cli/commands/gateway).
 | Component | Command |
 |-----------|---------|
 | Relay | `go run main.go relay start --name=local-relay --token=<token> --domain=http://localhost:8080 --host=host.docker.internal` |
-| Gateway | `go run main.go gateway start --token=<token> --domain=http://localhost:8080 --target-relay-name=local-relay --name=local-gateway --pam-session-recording-path=$(pwd)/session` |
+| Gateway | `go run main.go gateway start --token=<token> --domain=http://localhost:8080 --relay=local-relay --name=local-gateway --pam-session-recording-path=$(pwd)/session` |
 
 ## Seed test resources
 
@@ -158,7 +158,7 @@ docker compose -f docker-compose.dev.yml logs -f backend
 
 <Accordion title="Gateway cannot connect to relay">
 - Verify relay is running and registered in the UI
-- Check `--target-relay-name` matches relay's `--name`
+- Check `--relay` matches relay's `--name`
 - Ensure port 2222 isn't blocked
 </Accordion>
 

@@ -5,7 +5,7 @@ import { GatewaysV2Schema, TableName, TGatewaysV2 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
-import { HEARTBEAT_BUFFER_SECONDS } from "./gateway-v2-constants";
+import { buildGatewayProbedSql, buildGatewayReachableSql } from "./gateway-v2-constants";
 
 export type TGatewayV2DALFactory = ReturnType<typeof gatewayV2DalFactory>;
 
@@ -27,17 +27,8 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 
       if (isHeartbeatStale) {
-        const effectiveHeartbeat = `CASE WHEN "${TableName.GatewayV2}"."directAddress" IS NOT NULL THEN "${TableName.GatewayV2}"."directHeartbeat" ELSE "${TableName.GatewayV2}"."heartbeat" END`;
-        void query.whereRaw(`${effectiveHeartbeat} IS NOT NULL`);
-        void query.where((builder) => {
-          void builder
-            .where(
-              db.raw(
-                `${effectiveHeartbeat} + make_interval(secs => COALESCE("${TableName.GatewayV2}"."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) < NOW()`
-              )
-            )
-            .orWhere(`${TableName.GatewayV2}.heartbeatTTL`, 0);
-        });
+        void query.whereRaw(buildGatewayProbedSql(TableName.GatewayV2));
+        void query.whereRaw(`NOT ${buildGatewayReachableSql(TableName.GatewayV2)}`);
         // Notification cooldown: only alert if never alerted or last alert was over 1 hour ago
         void query.where((v) => {
           void v

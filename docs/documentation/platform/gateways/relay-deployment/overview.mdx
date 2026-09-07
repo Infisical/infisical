@@ -7,11 +7,23 @@ Infisical Relay is a secure routing layer that allows Infisical to connect to yo
 The relay acts as an intermediary, forwarding encrypted traffic between Infisical and your deployed gateways. This ensures that your sensitive data remains protected and never leaves your network unencrypted.
 With this architecture, you can achieve secure, firewall-friendly access across network boundaries, making it possible for Infisical to interact with resources even in highly restricted environments.
 
-Before diving in, it's important to determine whether you actually need to deploy your own relay server or if you can use Infisical's managed infrastructure.
+Before diving in, work out whether you need a relay at all, and if you do, whether you can use Infisical's managed infrastructure.
 
-## Do you need to deploy a Relay?
+## Do you need a relay at all?
 
-Not all users need to deploy their own relay servers. Infisical provides managed relay infrastructure in US/EU regions for Infisical Cloud users, which requires no setup or maintenance. You only need to deploy a relay if you:
+If you self-host Infisical and it can reach your gateway host at a stable address, you can skip relays entirely. Deploy the gateway in [direct listen mode](/documentation/platform/gateways/gateway-deployment) instead, and Infisical connects to it.
+
+A relay is what you need when:
+
+- The gateway sits behind NAT or a firewall you can't open for inbound connections
+- You're on Infisical Cloud, where gateways use relay mode
+- PAM CLI users connect from outside the gateway's network, since the CLI dials the gateway from their own machine
+
+A gateway can also run both, giving you direct connections for platform operations and a relay for CLI users outside the network.
+
+## Do you need to deploy your own relay?
+
+Infisical provides managed relay infrastructure in US/EU regions for Infisical Cloud users, which requires no setup or maintenance. You only need to deploy your own relay if you:
 
 - Are self-hosting Infisical
 - Have a dedicated enterprise instance of Infisical (managed by Infisical)

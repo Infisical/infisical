@@ -11,6 +11,8 @@ infisical pam access <path> [flags] [-- <command>]
 
 Open one PAM-managed account for your own use, brokered through Infisical's [Gateway](/documentation/platform/gateways/overview) so you never handle its credentials. Requires `infisical login`.
 
+The CLI connects to the gateway from your own machine, so you need a network path to it. A gateway in [relay mode](/documentation/platform/gateways/network-architecture) works from anywhere, because the relay is reachable from outside your network. A gateway in direct listen mode only works from a machine that can reach its registered address, so from outside that network you'll need a VPN into it, or a relay on the gateway.
+
 This single command handles every account type: the CLI adapts its behavior to whichever type the account's template defines (see [Account Types and Behavior](#account-types-and-behavior) below).
 
 SSH accounts connect you directly to a shell on the target. Every other account type starts a local proxy or credential helper that you point your own client at.
@@ -298,4 +300,6 @@ infisical pam access production/database --reason "Investigating incident INC-12
 | `Invalid duration format` | Malformed `--duration` value | Use formats like `1h`, `30m`, `2h30m` |
 | `a reason is required to access this account` | Policy requires reason, no TTY | Pass `--reason` flag |
 | `Gateway does not support '{type}' PAM accounts` | Gateway version too old | Upgrade Infisical Gateway |
+| `direct gateway connection failed and no relay fallback is available` | The gateway only listens directly, and your machine can't reach its address | Connect from the gateway's network or over a VPN, or ask an admin to add a relay to the gateway |
+| `This gateway only supports direct connections. Upgrade the Infisical CLI to connect to it.` | CLI too old to use a direct listen gateway | Upgrade the Infisical CLI |
 | `PAM response metadata is missing` | API response incomplete | Contact support |

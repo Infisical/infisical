@@ -46,7 +46,8 @@ import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
-  PAM_INFO_OID
+  PAM_INFO_OID,
+  resolveTransports
 } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
@@ -390,10 +391,9 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
     }
 
-    const useDirect = transport !== "relay" && Boolean(gateway.directAddress);
-    const useRelay = transport === "relay" || !useDirect;
+    const { useDirect, useRelay, hasTransport } = resolveTransports({ gateway, transport });
 
-    if ((transport === "direct" && !gateway.directAddress) || (useRelay && !gateway.relayId)) {
+    if (!hasTransport) {
       throw new BadRequestError({
         message: `Gateway does not have a ${transport ?? "reachable"} transport configured`
       });
@@ -561,8 +561,11 @@ export const gatewayV2ServiceFactory = ({
       });
     }
     if ((!gateway.directAddress || !allowDirect) && (!gateway.relayId || !allowRelay)) {
+      const hasTransport = Boolean(gateway.directAddress || gateway.relayId);
       throw new BadRequestError({
-        message: "Gateway has no configured connection transport"
+        message: hasTransport
+          ? "This gateway's connection transports are not supported by your client. Upgrade the Infisical CLI to connect to it."
+          : "Gateway has no configured connection transport"
       });
     }
 
@@ -1026,7 +1029,10 @@ export const gatewayV2ServiceFactory = ({
     if (results.every((result) => result.status === "rejected")) {
       await gatewayV2DAL.updateById(gatewayId, { heartbeatTTL: 0 });
       const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
-      throw failure?.reason;
+      if (failure?.reason instanceof Error) throw failure.reason;
+      throw new BadRequestError({
+        message: `Gateway ${gatewayId} is not reachable on any configured transport`
+      });
     }
   };
 
@@ -1109,8 +1115,8 @@ export const gatewayV2ServiceFactory = ({
     }
 
     // Do not mark the gateway alive here. A load report only proves the gateway can reach us;
-    // heartbeat proves we can reach it back through the relay. Updating liveness from this would
-    // keep a gateway whose relay path is broken looking healthy.
+    // heartbeat proves we can reach it back over one of its transports. Updating liveness from this
+    // would keep a gateway whose inbound path is broken looking healthy.
     await getGatewayLoadTracker()?.recordReportedLoad(gateway.id, activeChannels);
 
     return { gatewayId: gateway.id, activeChannels };

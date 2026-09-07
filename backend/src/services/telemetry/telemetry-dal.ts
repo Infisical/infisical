@@ -1,6 +1,6 @@
 import { TDbClient } from "@app/db";
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
-import { HEARTBEAT_BUFFER_SECONDS } from "@app/ee/services/gateway-v2/gateway-v2-constants";
+import { buildGatewayReachableSql } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { DatabaseError } from "@app/lib/errors";
 
 const BUILT_IN_ROLE_SLUGS = [...Object.values(OrgMembershipRole), ...Object.values(ProjectMembershipRole)] as string[];
@@ -169,13 +169,7 @@ export const telemetryDALFactory = (db: TDbClient) => {
       )?.count as string;
 
       const v2ActiveResult = (
-        await db(TableName.GatewayV2)
-          .whereNotNull("heartbeat")
-          .whereRaw(
-            `COALESCE("heartbeatTTL", 0) > 0 AND "heartbeat" + make_interval(secs => COALESCE("heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW()`
-          )
-          .count()
-          .first()
+        await db(TableName.GatewayV2).whereRaw(buildGatewayReachableSql(TableName.GatewayV2)).count().first()
       )?.count as string;
 
       const activeGateways = parseInt(legacyActiveResult || "0", 10) + parseInt(v2ActiveResult || "0", 10);

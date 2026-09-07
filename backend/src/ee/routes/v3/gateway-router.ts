@@ -745,13 +745,35 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.gatewayV2.connectGateway({
+      const connected = await server.services.gatewayV2.connectGateway({
         orgId: req.permission.orgId,
         actorId: req.permission.id,
         actorType: req.permission.type,
         relayName: req.body.relayName,
         directAddress: req.body.directAddress
       });
+
+      // A gateway can change its own transports here, including pointing the platform at a new
+      // address to dial, so every connect is recorded whether or not anything changed.
+      const transports: ("direct" | "relay")[] = [];
+      if (connected.directAddress) transports.push("direct");
+      if (connected.relayHost) transports.push("relay");
+
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        actor: { type: ActorType.GATEWAY, metadata: { gatewayId: connected.gatewayId } },
+        event: {
+          type: EventType.GATEWAY_ENROLL,
+          metadata: {
+            gatewayId: connected.gatewayId,
+            transports,
+            directAddress: connected.directAddress,
+            relayName: req.body.relayName
+          }
+        }
+      });
+
+      return connected;
     }
   });
 };

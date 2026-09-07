@@ -1,12 +1,22 @@
 import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { GATEWAYS } from "@app/lib/api-docs";
 import { zodBuffer } from "@app/lib/zod";
 import { gatewayMetricsReportLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+// Derived from what was actually issued rather than what was asked for, so the log records the
+// transports the gateway ended up with.
+const gatewayTransports = ({ directAddress, relayHost }: { directAddress?: string; relayHost?: string }) => {
+  const transports: ("direct" | "relay")[] = [];
+  if (directAddress) transports.push("direct");
+  if (relayHost) transports.push("relay");
+  return transports;
+};
 
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
@@ -28,11 +38,15 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     url: "/",
     schema: {
       operationId: "registerGateway",
-      body: z.object({
-        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional(),
-        directAddress: z.string().trim().min(3).max(255).optional(),
-        name: slugSchema({ min: 1, max: 64, field: "name" })
-      }),
+      body: z
+        .object({
+          relayName: slugSchema({ min: 1, max: 32, field: "relayName" }).optional(),
+          directAddress: z.string().trim().min(3).max(255).optional(),
+          name: slugSchema({ min: 1, max: 64, field: "name" })
+        })
+        .refine((body) => Boolean(body.relayName || body.directAddress), {
+          message: "Either relayName or directAddress is required"
+        }),
       response: {
         200: z.object({
           gatewayId: z.string(),
@@ -58,7 +72,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.gatewayV2.registerGateway({
+      const registered = await server.services.gatewayV2.registerGateway({
         orgId: req.permission.orgId,
         relayName: req.body.relayName,
         actorId: req.permission.id,
@@ -67,6 +81,23 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         directAddress: req.body.directAddress,
         name: req.body.name
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_ENROLL,
+          metadata: {
+            gatewayId: registered.gatewayId,
+            name: req.body.name,
+            transports: gatewayTransports(registered),
+            directAddress: registered.directAddress,
+            relayName: req.body.relayName
+          }
+        }
+      });
+
+      return registered;
     }
   });
 

@@ -90,3 +90,7 @@ export enum PamNotificationEvent {
   AccessRequestApproved = "access-request-approved",
   AccessRequestDenied = "access-request-denied"
 }
+
+// How long to wait for a session-cancellation signal to reach the gateway before giving up on the
+// acknowledgement. The signal is best-effort, so the tunnel is torn down either way.
+export const PAM_CANCELLATION_FLUSH_TIMEOUT_MS = 5000;

@@ -134,7 +134,7 @@ spec:
           {{- if .Values.gateway.listenAddress }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: {{ include "infisical-gateway.listenPort" . }}
               protocol: TCP
           {{- end }}
           volumeMounts:
