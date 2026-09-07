@@ -177,7 +177,7 @@ infisical av run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -
   </Accordion>
 
   <Accordion title="--access-bundle">
-    Mint a session over this access bundle, by name. Pass it once. Needs a login or a machine identity, and can't be combined with `--session-token`.
+    Mint a session over this access bundle, by name. Pass it once. Mints as the machine identity from `--client-id` and `--client-secret`, or as your login. The identity has to be an Agent Vault member with a grant on the bundle. Can't be combined with `--session-token`.
 
     ```bash
     # Example

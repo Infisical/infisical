@@ -28,9 +28,9 @@ Anyone with a grant on at least one bundle can mint a session. Admins can mint o
     infisical av run --access-bundle coding-agent --proxy <proxy-address> -- claude
     ```
 
-    The CLI mints as your login, or as a machine identity if you pass `--client-id` and `--client-secret`. It revokes the session when the agent exits unless you pass `--keep-session`.
+    The CLI mints as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables), and as your login otherwise. It revokes the session when the agent exits unless you pass `--keep-session`.
 
-    This suits a machine that's already signed in, or a machine identity that runs agents in a loop.
+    For an agent that runs unattended, set the machine identity up first: create it with Universal Auth, add it under **Access Control**, and grant it the bundle.
   </Tab>
 </Tabs>
 
