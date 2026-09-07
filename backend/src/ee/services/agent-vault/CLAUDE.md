@@ -90,8 +90,8 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Host grammar
 
-`agent-vault-host-pattern.ts` is the grammar of record; `agent-vault-host-pattern-fixture.json` is the shared
-contract with the CLI matcher (`packages/agentvault/match.go`). Change rules there, in both places.
+`agent-vault-host-pattern.ts` is the grammar of record. The CLI matcher (`packages/agentvault/match.go`) does
+the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
 - Paths are rejected: the matcher would compare the decoded path while the upstream gets the escaped one.
 - A portless pattern means 443. An explicit port is allowed, `:80` included, so the proxy must also refuse

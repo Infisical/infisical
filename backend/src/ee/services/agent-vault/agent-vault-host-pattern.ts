@@ -6,8 +6,8 @@ import { z } from "zod";
 // the upstream receives the escaped one), and a portless pattern defaults to 443 rather than any port,
 // which had let plaintext port 80 match and the credential go out unencrypted.
 //
-// The grammar is mirrored in the CLI (packages/agentvault/match.go); the shared fixture in
-// agent-vault-host-pattern-fixture.json is what keeps the two in sync.
+// The grammar is mirrored in the CLI (packages/agentvault/match.go), which does the matching at runtime.
+// A change to the rules here needs the same change there.
 
 const HOST_LABELS_RE = new RE2(/^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i);
 const PORT_RE = new RE2(/^\d+$/);
