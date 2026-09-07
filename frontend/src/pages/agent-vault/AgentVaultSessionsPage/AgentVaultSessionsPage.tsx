@@ -87,8 +87,6 @@ export const AgentVaultSessionsPage = () => {
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
-  // Held on the page rather than inside the sheet so closing the sheet does not take the one-time
-  // token reveal with it.
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
 
   const { data, isPending } = useListAgentVaultSessions({
@@ -102,7 +100,6 @@ export const AgentVaultSessionsPage = () => {
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
 
-  // The list endpoint takes no search parameter, so this narrows the page already fetched.
   const displayedSessions = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return sessions;

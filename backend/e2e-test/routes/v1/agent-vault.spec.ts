@@ -29,7 +29,6 @@ import { userDALFactory } from "@app/services/user/user-dal";
 
 declare const testKeyStore: TKeyStoreFactory;
 
-// The test file has its own module graph, so the logger the environment initialised is not this one.
 initLogger();
 
 const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
@@ -37,9 +36,6 @@ const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
 const inject = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
   testServer.inject({ method, url, headers: authHeader, ...(body ? { body } : {}) });
 
-// identityService.create writes the org membership alongside the identity row, and an identity without
-// one cannot authenticate at all, so a fixture that inserts only the identity is not a shape production
-// can produce - and the membership endpoint now checks for it.
 const createOrgIdentity = async (name: string) => {
   const [identity] = (await testDb("identities").insert({ name, orgId: seedData1.organization.id }).returning("*")) as {
     id: string;
@@ -57,9 +53,6 @@ const deleteOrgIdentity = async (identityId: string) => {
   await testDb("identities").where({ id: identityId }).delete();
 };
 
-// Routes are registered in an encapsulated plugin, so `testServer.services` is not reachable from here.
-// Resolve is exercised through the service built from the real DALs, and the permission checks under
-// test (a lapsed role, a member's grants) need the real permission service, so it is built the same way.
 const buildPermissionService = () =>
   permissionServiceFactory({
     permissionDAL: permissionDALFactory(testDb),
@@ -74,7 +67,6 @@ const buildPermissionService = () =>
     secretFolderDAL: secretFolderDALFactory(testDb)
   });
 
-// A grant is a resource-scoped row in the shared memberships table; this is the only shape a grant takes.
 const grantRows = (
   accessBundleId: string,
   actor: { actorUserId?: string; actorIdentityId?: string; actorGroupId?: string } = {}
@@ -86,8 +78,6 @@ const grantRows = (
     ...actor
   });
 
-// A non-admin machine identity that can authenticate. The seeded identity is an org admin, so the
-// bootstrap made it an Agent Vault admin, and an admin reaches every bundle regardless of grants.
 const createUaIdentity = async (name: string) => {
   const created = await inject("POST", "/api/v1/identities", {
     name,
@@ -127,7 +117,6 @@ const deleteUaIdentity = async (identityId: string) => {
   expect((await inject("DELETE", `/api/v1/identities/${identityId}`)).statusCode).toBe(200);
 };
 
-// A group that is a member of the Agent Vault project, with the given role.
 const createProjectGroup = async (projectId: string, name: string, role: ProjectMembershipRole) => {
   const [group] = (await testDb("groups")
     .insert({ orgId: seedData1.organization.id, name, slug: `${name}-${Date.now()}` })
@@ -173,7 +162,6 @@ describe("Agent Vault V1 Router", async () => {
     expect(project.type).toBe(ProjectType.AgentVault);
     expect(project.orgId).toBe(seedData1.organization.id);
 
-    // The bootstrap seeds the org's admins as project admins; without that nobody could reach the product.
     const membership = await testDb("memberships")
       .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
       .first();
@@ -182,7 +170,6 @@ describe("Agent Vault V1 Router", async () => {
     const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
     expect(role.role).toBe(ProjectMembershipRole.Admin);
 
-    // A second call resolves the same project rather than creating another.
     const again = await inject("GET", "/api/v1/agent-vault/project");
     expect((JSON.parse(again.payload) as { projectId: string }).projectId).toBe(projectId);
   });
@@ -244,8 +231,6 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(first.statusCode).toBe(200);
 
-      // An intersection, not set equality: the candidate names one host the first connection already
-      // covers, plus one it does not.
       const overlapping = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
         name: "datadog-eu",
         hostPattern: "api.datadoghq.eu, api.datadoghq.com",
@@ -254,7 +239,6 @@ describe("Agent Vault V1 Router", async () => {
       expect(overlapping.statusCode).toBe(400);
       expect(JSON.parse(overlapping.payload).message).toContain("api.datadoghq.eu:443");
 
-      // Containment is allowed: an exact host beats a wildcard deterministically, which is an override.
       const contained = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
         name: "datadog-wildcard",
         hostPattern: "*.datadoghq.com",
@@ -276,8 +260,6 @@ describe("Agent Vault V1 Router", async () => {
       const { connection } = JSON.parse(res.payload) as {
         connection: { id: string; hostPattern: string; credential: Record<string, unknown> };
       };
-      // Stored as typed, only trimmed. The canonical form is derived per comparison instead, so a
-      // pattern cannot grow past the column between the length check and the insert.
       expect(connection.hostPattern).toBe("API.GitHub.com");
       expect(connection.credential).toEqual({ type: "bearer", headerName: "Authorization", headerPrefix: "Bearer" });
       expect(res.payload).not.toContain("ghp_secret_value");
@@ -285,7 +267,6 @@ describe("Agent Vault V1 Router", async () => {
       const detail = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
       expect(detail.payload).not.toContain("ghp_secret_value");
 
-      // The secret is sealed, not stored in the plaintext config column.
       const row = await testDb("agent_vault_connections").where({ id: connection.id }).first();
       expect(row.encryptedCredential).toBeTruthy();
       expect(row.encryptedCredential.toString("utf-8")).not.toContain("ghp_secret_value");
@@ -306,8 +287,6 @@ describe("Agent Vault V1 Router", async () => {
       const sealed = async () =>
         (await testDb("agent_vault_connections").where({ id: connection.id }).first()).encryptedCredential;
 
-      // Rotating the secret must not disturb the header the credential rides on. Reusing the create
-      // schema here would reset DD-API-KEY to Authorization: Bearer and every request would 401.
       const before = await sealed();
       const rotated = await inject("PATCH", url, { credential: { type: "bearer", value: "rotated456" } });
       expect(rotated.statusCode).toBe(200);
@@ -318,7 +297,6 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect((await sealed()).equals(before)).toBe(false);
 
-      // And the mirror image: renaming the header leaves the sealed secret untouched.
       const afterRotate = await sealed();
       const renamed = await inject("PATCH", url, { credential: { type: "bearer", headerName: "X-Api-Key" } });
       expect(renamed.statusCode).toBe(200);
@@ -338,7 +316,6 @@ describe("Agent Vault V1 Router", async () => {
       const { connection } = JSON.parse(created.payload) as {
         connection: { id: string; credential: Record<string, unknown> };
       };
-      // The username is the key for Stripe-style services, so it is sealed and never comes back.
       expect(connection.credential).toEqual({ type: "basic" });
       expect(created.payload).not.toContain("sk_live_key");
 
@@ -350,27 +327,21 @@ describe("Agent Vault V1 Router", async () => {
       };
       const before = await sealedPair();
 
-      // The username-only credential has nothing else to authenticate with, so clearing it is refused.
       const emptied = await inject("PATCH", url, { credential: { type: "basic", username: "" } });
       expect(emptied.statusCode).toBe(400);
       expect((await sealedPair()).equals(before)).toBe(true);
 
-      // Supplying a password first makes the same edit legal: the flip to password-only.
       const flipped = await inject("PATCH", url, { credential: { type: "basic", username: "", password: "hunter2" } });
       expect(flipped.statusCode).toBe(200);
       expect((await sealedPair()).equals(before)).toBe(false);
 
-      // Naming one half re-seals the pair with the other half kept, so a password-only credential can
-      // regain a username without re-sending the password, and then lose the password by clearing it.
       const named = await inject("PATCH", url, { credential: { type: "basic", username: "sk_live_key" } });
       expect(named.statusCode).toBe(200);
       const cleared = await inject("PATCH", url, { credential: { type: "basic", password: "" } });
       expect(cleared.statusCode).toBe(200);
-      // And with only the username left, clearing it is refused again.
       const emptiedAgain = await inject("PATCH", url, { credential: { type: "basic", username: "" } });
       expect(emptiedAgain.statusCode).toBe(400);
 
-      // A patch that touches neither half leaves the sealed pair exactly as it is.
       const afterClear = await sealedPair();
       const renamed = await inject("PATCH", url, { name: "stripe-live" });
       expect(renamed.statusCode).toBe(200);
@@ -388,12 +359,9 @@ describe("Agent Vault V1 Router", async () => {
       const { connection } = JSON.parse(created.payload) as { connection: { id: string } };
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
 
-      // A type change has no stored half to fall back on, so neither half supplied is refused here,
-      // where the same-type path would have kept what was stored.
       const emptyBasic = await inject("PATCH", url, { credential: { type: "basic" } });
       expect(emptyBasic.statusCode).toBe(400);
 
-      // The sealed secret belongs to the old type, so there is nothing to carry over.
       const noSecret = await inject("PATCH", url, { credential: { type: "basic", username: "bot" } });
       expect(noSecret.statusCode).toBe(200);
 
@@ -427,7 +395,6 @@ describe("Agent Vault V1 Router", async () => {
       };
       const row = members.find((m) => m.identityId === identity.id);
       expect(row?.role).toBe("member");
-      // The name is joined on so the page never has to reach for the org identity list.
       expect(row?.name).toBeTruthy();
 
       const promoted = await inject("PATCH", memberships, { identityId: identity.id, role: "admin" });
@@ -451,7 +418,6 @@ describe("Agent Vault V1 Router", async () => {
         projectId: string;
       };
 
-      // A second user, so the seed admin stays available to make the calls.
       const [user] = (await testDb("users")
         .insert({ username: `av-org-reap-${Date.now()}@example.com`, isAccepted: true, isGhost: false })
         .returning("*")) as { id: string }[];
@@ -482,8 +448,6 @@ describe("Agent Vault V1 Router", async () => {
       expect(granted.statusCode).toBe(200);
       expect(await grantRows(bundle.id, { actorUserId: user.id })).toHaveLength(1);
 
-      // Removal from the organization deletes every membership row the user holds in the org, and a grant
-      // is one of those rows now. This guards that nothing reintroduces a private grant table.
       const removed = await testServer.inject({
         method: "DELETE",
         url: `/api/v2/organizations/${seedData1.organization.id}/memberships/${orgMembership.id}`,
@@ -511,14 +475,12 @@ describe("Agent Vault V1 Router", async () => {
 
       expect((await inject("DELETE", memberships, { identityId: identity.id })).statusCode).toBe(200);
 
-      // Leaving the product takes every bundle grant with it, in the same transaction.
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(0);
 
       await deleteOrgIdentity(identity.id);
     });
 
     test("the guards that keep the product administrable hold", async () => {
-      // Removing yourself would need another admin to undo, and the seed user is one.
       const self = await inject("DELETE", memberships, { userId: seedData1.id });
       expect(self.statusCode).toBe(403);
 
@@ -531,7 +493,6 @@ describe("Agent Vault V1 Router", async () => {
       const badRole = await inject("POST", memberships, { userId: seedData1.id, role: "viewer" });
       expect(badRole.statusCode).toBe(422);
 
-      // Naming no actor, or more than one, is refused by the schema like any other validation failure.
       const noActor = await inject("POST", memberships, { role: "member" });
       expect(noActor.statusCode).toBe(422);
 
@@ -546,8 +507,6 @@ describe("Agent Vault V1 Router", async () => {
 
   describe("cross-org ids and foreign resources", async () => {
     test("an access bundle in another organization is 404, never 403", async () => {
-      // A different org, not just a different project: an Agent Vault project is a per-org singleton, so
-      // a second one in this org would be what the caller's own routes resolve to.
       const [foreignOrg] = (await testDb("organizations")
         .insert({ name: "foreign org", slug: `foreign-org-${Date.now()}`, customerId: null })
         .returning("*")) as { id: string }[];
@@ -566,7 +525,6 @@ describe("Agent Vault V1 Router", async () => {
         .insert({ projectId: foreignProject.id, name: "foreign-bundle" })
         .returning("*")) as { id: string }[];
 
-      // Never 403: a 403 would confirm that another tenant's bundle id exists.
       const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${foreignBundle.id}`);
       expect(res.statusCode).toBe(404);
 
@@ -611,7 +569,6 @@ describe("Agent Vault V1 Router", async () => {
       expect(session.token.startsWith("agv_")).toBe(true);
       expect(session.accessBundles).toEqual([expect.objectContaining({ id: granted.id, position: 0 })]);
 
-      // The ceiling is the session row, and nothing adds to it after mint.
       const rows = (await testDb("agent_vault_session_access_bundles")
         .where({ sessionId: session.id })
         .select("accessBundleId")) as { accessBundleId: string }[];
@@ -676,9 +633,6 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("session resolve", async () => {
-    // The resolve endpoint authenticates as an enrolled proxy, which needs a CA and a CSR, so the service
-    // is built from the real DALs and the real permission service against the test database instead. Only
-    // the two collaborators resolve never reaches on this path are stubbed.
     const buildResolver = () =>
       agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
@@ -734,7 +688,6 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("memberships").where({ id: membership.id }).update({ isActive: true });
       }
 
-      // Reversible on purpose: deactivation is not a revoke, so the agent comes back with the person.
       const after = await resolve();
       expect(after.connections).toHaveLength(1);
     });
@@ -753,7 +706,6 @@ describe("Agent Vault V1 Router", async () => {
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-temporary-role" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
 
-      // The real permission service this time: what is under test is how an expired role reads.
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
@@ -774,15 +726,12 @@ describe("Agent Vault V1 Router", async () => {
         .first();
       const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
 
-      // getProjectPermission caches the raw membership rows behind a ten-second marker. A real expiry
-      // needs no write and is honoured from the cached rows, but flipping the flag here is a write the
-      // marker would hide, so the cache is cleared around each flip.
+      // getProjectPermission caches the raw membership rows for ten seconds, so clear it around each flip.
       const cacheKeys = [
         KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
         KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
       ];
 
-      // The row stays, so the "not a member" path never fires. Only a live-permission check can catch it.
       try {
         await testDb("membership_roles")
           .where({ id: role.id })
@@ -816,7 +765,6 @@ describe("Agent Vault V1 Router", async () => {
       };
       expect(await pendingTokens()).toBe(1);
 
-      // Bumping tokenVersion on its own would leave this token able to enroll right after the revoke.
       const revoked = await inject("POST", `/api/v1/agent-vault/proxies/${proxy.id}/revoke`);
       expect(revoked.statusCode).toBe(200);
       expect(await pendingTokens()).toBe(0);
@@ -851,11 +799,8 @@ describe("Agent Vault V1 Router", async () => {
       await testDb("agent_vault_sessions")
         .where({ id: recentlyExpired })
         .update({ expiresAt: new Date(Date.now() - 60 * 60 * 1000) });
-      // Start from a clean watermark so a previous run against the same Redis cannot narrow the window.
       await testKeyStore.deleteItem("agent-vault-session-expire-sweep");
 
-      // The services decorator lives inside the routes plugin, out of reach here, so the sweep is built
-      // from the real DALs against the test database. Audit rows are dropped by the e2e license mock anyway.
       const auditEvents: string[] = [];
       const sweeper = agentVaultSessionServiceFactory({
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
@@ -872,8 +817,6 @@ describe("Agent Vault V1 Router", async () => {
       });
       await sweeper.sweepRetiredSessions();
 
-      // Only the session that expired inside the look-back window gets an expire event; the one reaped
-      // today expired a month ago, and a revoked session is not an expiry.
       expect(auditEvents).toEqual([recentlyExpired]);
 
       const remaining = (await testDb("agent_vault_sessions")
@@ -881,7 +824,6 @@ describe("Agent Vault V1 Router", async () => {
         .select("id")) as { id: string }[];
       expect(remaining.map((row) => row.id).sort()).toEqual([recentlyExpired, live, neverEnding].sort());
 
-      // The child rows go with the parent, and the watermark moves so the next sweep starts here.
       const orphans = await testDb("agent_vault_session_access_bundles").whereIn("sessionId", [
         longExpired,
         longRevoked
@@ -935,8 +877,6 @@ describe("Agent Vault V1 Router", async () => {
     test("a grant to someone outside the Agent Vault project is refused", async () => {
       const bundle = await createAccessBundle("member-outside-project");
 
-      // The seeded machine identity is an org admin, so the bootstrap already made it a project member.
-      // A grant only does something for someone the project can see, so use one it cannot.
       const outsider = await createOrgIdentity(`av-outsider-${Date.now()}`);
 
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
@@ -971,8 +911,6 @@ describe("Agent Vault V1 Router", async () => {
       await testDb("identity_group_membership").insert({ groupId: group.id, identityId: insider.id });
 
       try {
-        // Grants follow membership at the same level: the group is the member, so the group is what gets
-        // the bundle. The refusal has to say that rather than "not a member", which would be false.
         const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
           identityId: insider.id
         });
@@ -1005,8 +943,6 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("an actor from outside the organization is refused, and an unknown id does not 500", async () => {
-      // The UI adds people through the email path, which checks org membership. This is the direct-API
-      // route to the same table, and it let any userId through to the foreign key.
       const stranger = await inject("POST", "/api/v1/agent-vault/memberships", {
         userId: "99999999-8888-7777-6666-555555555555",
         role: ProjectMembershipRole.Member
@@ -1027,8 +963,6 @@ describe("Agent Vault V1 Router", async () => {
         .where({ scope: AccessScope.Organization, scopeOrgId: seedData1.organization.id, actorIdentityId: identityId })
         .first();
 
-      // Left in place by an earlier test in this file, and the check under test runs before the
-      // already-a-member one, so remove it rather than depending on the order.
       await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identityId })
         .del();
@@ -1063,7 +997,6 @@ describe("Agent Vault V1 Router", async () => {
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "group-inheritance" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
 
-      // The group, not the identity, is the project member and the bundle's grantee.
       const group = await createProjectGroup(projectId, "av-agents", ProjectMembershipRole.Member);
       const agent = await createUaIdentity(`av-agent-${Date.now()}`);
       await testDb("identity_group_membership").insert({ groupId: group.id, identityId: agent.id });
@@ -1074,8 +1007,6 @@ describe("Agent Vault V1 Router", async () => {
             .statusCode
         ).toBe(200);
 
-        // Reachability expands identity_group_membership for a machine identity; getting that wrong
-        // denies every machine identity's group grants silently, for the product's primary actor.
         const mint = await agent.asIdentity("POST", "/api/v1/agent-vault/sessions", {
           accessBundleIds: [bundle.id],
           ttl: "never"
@@ -1100,14 +1031,12 @@ describe("Agent Vault V1 Router", async () => {
 
         expect((await resolve()).connections).toHaveLength(1);
 
-        // The bundle set is a ceiling fixed at mint: a grant made afterwards never widens the session.
         expect(
           (await inject("POST", `/api/v1/agent-vault/access-bundles/${second.id}/members`, { groupId: group.id }))
             .statusCode
         ).toBe(200);
         expect((await resolve()).connections).toHaveLength(1);
 
-        // Losing the grant empties the session on the next poll without touching the session row.
         const [grant] = await grantRows(bundle.id, { actorGroupId: group.id });
         expect(
           (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/${grant.id}`)).statusCode
@@ -1141,8 +1070,6 @@ describe("Agent Vault V1 Router", async () => {
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "group-role-lapse" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
 
-      // The identity is in the product twice: directly as a member, and through a group that holds the
-      // grant. Losing the group's role must not leave the group's bundles reachable through the direct row.
       const group = await createProjectGroup(projectId, "av-lapsing", ProjectMembershipRole.Member);
       const agent = await createUaIdentity(`av-lapse-${Date.now()}`);
       expect(
@@ -1190,7 +1117,6 @@ describe("Agent Vault V1 Router", async () => {
           .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
         await testKeyStore.deleteItemsByKeyIn(cacheKeys);
 
-        // The direct membership keeps the identity in the product; the group's grant no longer reaches it.
         expect((await resolve()).connections).toHaveLength(0);
         const lapsed = await mint();
         expect(lapsed.statusCode).toBe(400);
@@ -1205,15 +1131,12 @@ describe("Agent Vault V1 Router", async () => {
     test("a creator grant is written only for a directly added admin", async () => {
       const projectId = await getProjectId();
 
-      // The seed admin holds a direct membership, so their bundle carries exactly one consumer grant.
       const direct = await createAccessBundle("creator-direct");
       const directGrants = await grantRows(direct.id, { actorUserId: seedData1.id });
       expect(directGrants).toHaveLength(1);
       const roles = await testDb("membership_roles").where({ membershipId: directGrants[0].id });
       expect(roles.map((r: { role: string }) => r.role)).toEqual(["consumer"]);
 
-      // An admin only through a group gets no row: they reach the bundle as admin, and an individual row
-      // for them would be the one grant no removal path reaps once the group goes.
       const group = await createProjectGroup(projectId, "av-group-admins", ProjectMembershipRole.Admin);
       const admin = await createUaIdentity(`av-group-admin-${Date.now()}`);
       await testDb("identity_group_membership").insert({ groupId: group.id, identityId: admin.id });
@@ -1249,7 +1172,6 @@ describe("Agent Vault V1 Router", async () => {
 
       expect((await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).statusCode).toBe(200);
 
-      // No FK from scopeResourceId to the bundle, so the service reaps by hand and the role row cascades.
       expect(await grantRows(bundle.id)).toHaveLength(0);
       expect(await testDb("membership_roles").where({ membershipId: grant.id })).toHaveLength(0);
     });
@@ -1294,7 +1216,6 @@ describe("Agent Vault V1 Router", async () => {
       expect(again.statusCode).toBe(400);
       expect(JSON.parse(again.payload).message).toContain("already has this access bundle");
 
-      // Grants are resource rows, and the seat count reads project rows only.
       expect(await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id)).toBe(
         seatsBefore
       );
@@ -1333,8 +1254,6 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(grant.statusCode).toBe(200);
 
-      // Removing the actor from the project must take the grant with it, in the same transaction. Skip
-      // that and a user with no membership keeps a bundle the mint path still honours.
       const remove = await testServer.inject({
         method: "DELETE",
         url: `/api/v1/projects/${projectId}/memberships/${membership.id}`,

@@ -369,7 +369,6 @@ const pamRoutes = route("/organizations/$orgId/pam", [
     route("/approval-requests", "pam/PamApprovalRequestsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
 
-    // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-pam.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-pam.tsx"),
@@ -389,7 +388,6 @@ const agentVaultRoutes = route("/organizations/$orgId/agent-vault", [
     route("/proxies", "agent-vault/AgentVaultProxiesPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-agent-vault.tsx"),
 
-    // Access Management
     route("/access-management", "project/AccessControlPage/route-agent-vault.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-agent-vault.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-agent-vault.tsx"),

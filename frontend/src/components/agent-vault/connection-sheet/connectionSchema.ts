@@ -5,18 +5,12 @@ import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
 /**
- * Seeded into a secret field on edit so the box can show that something is stored without the
- * server ever returning it. Never sent: the sheet maps it back to an omitted key. It is the one value
- * a real secret cannot be, which is the price of letting a single field mean keep, replace and remove.
- * Both halves of a basic credential are secret fields, since the username can be the key.
+ * Seeded into a secret field on edit so the box can show that something is stored without the server
+ * returning it. Never sent: the sheet maps it back to an omitted key.
  */
 export const UNCHANGED_SECRET = "__INFISICAL_UNCHANGED__";
 
-/**
- * 443 is the only port the grammar accepts without saying so, and the API stores it explicitly, so
- * every host would otherwise carry a `:443` nobody typed. Stripped wherever a host pattern is shown,
- * including the form, since the API puts it back on save.
- */
+/** The API stores :443 explicitly, so it is stripped wherever a host pattern is shown and put back on save. */
 export const displayHostPattern = (hostPattern: string) =>
   hostPattern
     .split(",")
@@ -33,10 +27,8 @@ const HOST_LABELS_RE =
   /^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i;
 
 /**
- * A partial pre-check, not an authority: it exists so a malformed host is caught on the step that holds
- * the field rather than bounced back from a submit two steps later. Bracketed IPv6 is passed straight
- * through, since only the server expands it. agent-vault-host-pattern.ts stays the grammar of record and
- * revalidates everything.
+ * A partial pre-check, so a malformed host is caught on the step that holds the field rather than bounced
+ * back from a submit two steps later. agent-vault-host-pattern.ts stays the grammar of record.
  */
 const hostSegmentError = (segment: string, seen: Set<string>): string | null => {
   const raw = segment.trim();
@@ -87,10 +79,6 @@ export const CONNECTION_STEP_FIELDS: Record<ConnectionStep, string[]> = {
   [ConnectionStep.Review]: []
 };
 
-// The secret is write-only, so the form has to say what should happen to it rather than infer that
-// from an empty box. On create there is nothing stored and the field means itself. On edit, a field
-// left alone keeps what is stored and an emptied one removes that half, so tabbing through a field
-// can never wipe a credential.
 export const buildConnectionSchema = (connection?: TAgentVaultConnection | null) =>
   z
     .object({
@@ -113,8 +101,6 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
         .string()
         .trim()
         .max(128)
-        // Matches the backend rule. Go's HTTP client refuses any other character, so a name that saves
-        // here would 502 every request through the connection.
         .regex(
           /^[A-Za-z0-9!#$%&'*+.^_`|~-]*$/,
           "A header name can't contain spaces or colons. Use letters, digits and dashes, as in X-API-Key."
@@ -129,24 +115,16 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
 
       const isUnchanged = data.secret === UNCHANGED_SECRET;
 
-      // A different type from the stored one leaves the sealed secret shaped for the credential being
-      // replaced, so it has to be supplied again whatever the type.
       const typeChanged =
         Boolean(connection) && connection?.credential.type !== data.credentialType;
 
       if (data.credentialType === AgentVaultCredentialType.Bearer) {
-        // Emptying the box is how a password is removed, and a bearer token cannot be removed — a
-        // header with nothing after the prefix authenticates nobody, which is what Pass-through is for.
-        // So on edit an empty box simply keeps the stored token, and only a create can be short one.
         if ((!connection || typeChanged) && !data.secret) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
         }
         return;
       }
 
-      // Neither half is ever returned, so on edit an untouched box may hold either something or
-      // nothing. Only two emptied boxes are refused here; one emptied box beside an untouched one is
-      // left to the server, which has the stored pair.
       const willHaveUsername = data.username === UNCHANGED_SECRET ? true : Boolean(data.username);
       const willHavePassword = isUnchanged ? true : Boolean(data.secret);
       if (

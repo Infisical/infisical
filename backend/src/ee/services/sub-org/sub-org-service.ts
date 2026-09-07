@@ -135,7 +135,6 @@ export const subOrgServiceFactory = ({
       return org;
     });
 
-    // The PAM and Agent Vault bootstraps seed the creator as a project member, which changes both meters.
     usageMeteringService.emit(organization.id, PamIdentities.key);
     usageMeteringService.emit(organization.id, AgentVaultIdentities.key);
 

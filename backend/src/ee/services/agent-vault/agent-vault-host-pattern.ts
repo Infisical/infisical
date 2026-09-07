@@ -1,22 +1,13 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-// Copied from proxied-service-schemas.ts rather than imported, so that module stays independently
-// deletable. Two deliberate divergences, both of which close a hole in the original:
+// Copied from proxied-service-schemas.ts rather than imported, so that module stays independently deletable.
+// Two deliberate divergences: paths are rejected outright (the Go matcher compares the decoded path while
+// the upstream receives the escaped one), and a portless pattern defaults to 443 rather than any port,
+// which had let plaintext port 80 match and the credential go out unencrypted.
 //
-//   - Paths are rejected outright. The old schema ignored a path when validating but stored it, and the
-//     Go matcher compares the decoded path while the upstream receives the escaped one, so
-//     `/v1/safe/../../admin` (or `%2f`) matches a `/v1/safe` pattern and collects the credential.
-//   - A portless pattern defaults to 443 instead of matching any port. Skipping the port check let
-//     plaintext port 80 match, sending the credential unencrypted. An explicit port stays allowed,
-//     `:80` included, because some internal APIs sit behind a non-443 TLS port — so the proxy must also
-//     refuse to inject on any upstream it did not reach over TLS, whatever the pattern says.
-//
-// The matching grammar is mirrored in the CLI (packages/agentvault/match.go). The shared fixture in
-// agent-vault-host-pattern-fixture.json is read by both test suites; keep them in sync through it, not
-// through this comment. The connection sheet also carries a partial copy (connectionSchema.ts) so the
-// wizard can reject a bad host on the step that holds the field; it defers to this one and is not in the
-// fixture, so a change here only needs following there if it would newly reject something.
+// The grammar is mirrored in the CLI (packages/agentvault/match.go); the shared fixture in
+// agent-vault-host-pattern-fixture.json is what keeps the two in sync.
 
 const HOST_LABELS_RE = new RE2(/^(?:\*\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i);
 const PORT_RE = new RE2(/^\d+$/);
@@ -27,12 +18,9 @@ export const AGENT_VAULT_DEFAULT_PORT = "443";
 export const AGENT_VAULT_MAX_HOST_PATTERN_LENGTH = 1024;
 
 export type TAgentVaultHostPattern = {
-  /** Normalized host: lowercase, trailing dot stripped, IPv6 expanded and unbracketed. */
   host: string;
-  /** Always populated. A portless pattern defaults to 443. */
   port: string;
   isWildcard: boolean;
-  /** Canonical `host:port`, IPv6 re-bracketed. The key every overlap comparison uses. */
   key: string;
 };
 
@@ -41,8 +29,7 @@ const isValidPort = (portStr: string) => {
   return PORT_RE.test(portStr) && port >= 1 && port <= 65535;
 };
 
-// Expands a validated IPv6 address to its full eight-group lowercase form, so `[::1]` and
-// `[0:0:0:0:0:0:0:1]` compare equal. The Go matcher gets this for free from net.ParseIP.
+// Full eight-group lowercase form, so `[::1]` and `[0:0:0:0:0:0:0:1]` compare equal.
 const expandIpv6 = (address: string): string => {
   const [withoutZone] = address.split("%");
 
@@ -58,7 +45,6 @@ const expandIpv6 = (address: string): string => {
   const headGroups = split(head);
   const tailGroups = split(tail);
 
-  // A trailing dotted quad (::ffff:1.2.3.4) is two groups, not one.
   const last = tailGroups.length ? tailGroups[tailGroups.length - 1] : headGroups[headGroups.length - 1];
   if (last && IPV4_RE.test(last)) {
     const octets = last.split(".").map(Number);
@@ -73,9 +59,7 @@ const expandIpv6 = (address: string): string => {
     .join(":");
 };
 
-// An IPv4-mapped IPv6 address names an IPv4 host, so it is compared as one. Go's net.ParseIP already
-// treats ::ffff:192.0.2.1 and 192.0.2.1 as equal, and the conflict check has to agree with the proxy or
-// two connections for one address can share a bundle and leave the credential to the name tiebreak.
+// An IPv4-mapped IPv6 address is compared as the IPv4 host it names, as Go's net.ParseIP does.
 const MAPPED_IPV4_PREFIX = "0000:0000:0000:0000:0000:ffff:";
 
 const collapseMappedIpv4 = (expanded: string): string | null => {
@@ -89,7 +73,6 @@ const collapseMappedIpv4 = (expanded: string): string | null => {
 
 type TParseResult = { pattern: TAgentVaultHostPattern } | { error: string };
 
-// Parses one comma-separated segment. Returns a message written for the person who typed it.
 const parseSegment = (segment: string): TParseResult => {
   const raw = segment.trim();
   if (raw === "") return { error: "Host pattern has an empty entry" };
@@ -133,11 +116,8 @@ const parseSegment = (segment: string): TParseResult => {
       port = portStr;
     }
 
-    // A trailing dot is the same name to DNS, so normalize it away rather than storing two spellings.
     host = host.replace(/\.$/, "");
 
-    // Ahead of the grammar check, which rejects a bare wildcard too but can only say the pattern is
-    // malformed. Someone who typed `*` meant something, and this tells them what to do instead.
     if (host === "*") {
       return { error: `"${raw}" is too broad. A connection must name specific hosts.` };
     }
@@ -157,7 +137,6 @@ const parseSegment = (segment: string): TParseResult => {
   };
 };
 
-/** Splits, validates and normalizes a comma-separated host pattern column. Throws nothing; see the schema. */
 export const parseHostPatterns = (raw: string): { patterns: TAgentVaultHostPattern[]; errors: string[] } => {
   const patterns: TAgentVaultHostPattern[] = [];
   const errors: string[] = [];
@@ -179,11 +158,8 @@ export const parseHostPatterns = (raw: string): { patterns: TAgentVaultHostPatte
   return { patterns, errors };
 };
 
-// Validated but not rewritten: the column keeps what the caller typed. Every comparison - the
-// same-bundle conflict rule, matchesHost, and both proxy matchers - parses the value and derives `key`
-// itself, so storing the canonical form bought nothing and cost the one thing it
-// could: normalising grows a string ([::1] becomes 45 characters), so an input well inside the column
-// could overflow it after the length check had already passed.
+// Stored as typed, not rewritten: normalising grows the string (`[::1]` becomes 45 characters) and could
+// overflow the column after the length check had passed.
 export const hostPatternSchema = z
   .string()
   .trim()
@@ -195,11 +171,6 @@ export const hostPatternSchema = z
     });
   });
 
-/**
- * Whether a pattern covers a concrete host and port. The proxy does the real matching in Go; this exists
- * so the two grammars can be held to the same shared fixture, and so the mint dialog can answer "what
- * does this session reach" without guessing.
- */
 export const matchesHost = (pattern: TAgentVaultHostPattern, host: string, port: string): boolean => {
   if (pattern.port !== port) return false;
 
@@ -220,14 +191,12 @@ export const matchesHost = (pattern: TAgentVaultHostPattern, host: string, port:
 
 export enum AgentVaultPatternRelation {
   Identical = "identical",
-  /** One pattern's hosts are a strict subset of the other's: an exact host under a wildcard. */
   Contained = "contained",
   Disjoint = "disjoint"
 }
 
-// Because a wildcard is leftmost-only and matches exactly one label, and a portless pattern defaults to
-// 443, any two patterns stand in exactly one of these three relations. There is no partial overlap, which
-// is what makes write-time conflict detection exact rather than a heuristic.
+// A wildcard is leftmost-only and matches exactly one label, so two patterns stand in exactly one of
+// these three relations. There is no partial overlap, which is what makes conflict detection exact.
 export const relateHostPatterns = (a: TAgentVaultHostPattern, b: TAgentVaultHostPattern): AgentVaultPatternRelation => {
   if (a.port !== b.port) return AgentVaultPatternRelation.Disjoint;
   if (a.host === b.host) return AgentVaultPatternRelation.Identical;
@@ -244,11 +213,6 @@ export const relateHostPatterns = (a: TAgentVaultHostPattern, b: TAgentVaultHost
   return AgentVaultPatternRelation.Disjoint;
 };
 
-/**
- * The keys two host-pattern columns both cover exactly. This is an intersection test, not set equality:
- * `{api.foo.com, api.bar.com}` and `{api.foo.com}` are a genuine conflict, and comparing whole columns
- * would let them sit in one bundle where nothing can break the tie between them.
- */
 export const intersectHostPatterns = (a: string, b: string): string[] => {
   const bKeys = new Set(parseHostPatterns(b).patterns.map((pattern) => pattern.key));
   return parseHostPatterns(a)

@@ -11,7 +11,6 @@ export const useWizardSteps = <TStepKey extends string>({
   stepKeys: readonly TStepKey[];
   stepFields: Record<TStepKey, string[]>;
   invalidMessage: string;
-  /** Gates Continue on the current step's fields, so errors surface where they can be fixed. */
   validateStep?: (fields: string[]) => Promise<boolean>;
 }) => {
   const [step, setStep] = useState(0);

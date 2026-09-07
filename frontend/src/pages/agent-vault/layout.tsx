@@ -21,8 +21,8 @@ export const Route = createFileRoute(
 
     let agentVaultProjectId = org?.agentVaultProjectId;
     if (!agentVaultProjectId) {
-      // Lazily bootstrap the project and patch its id into the cached org so the Project/ProjectPermission
-      // contexts pick it up (injecting the returned id avoids a refetch that could race read-replica lag).
+      // Patch the returned id into the cached org so the Project contexts pick it up, without a refetch
+      // that could race read-replica lag.
       const resolvedAgentVaultProjectId = await fetchAgentVaultProjectId();
       agentVaultProjectId = resolvedAgentVaultProjectId;
       context.queryClient.setQueryData<Organization>(

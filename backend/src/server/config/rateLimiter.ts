@@ -53,13 +53,8 @@ export const gatewayMetricsReportLimit: RateLimitOptions = {
   }
 };
 
-// Agent Vault proxy endpoints key on the proxy identity, not the source IP: many proxies behind one NAT
-// would otherwise share a bucket and 429 each other. Both need inject-permission's Agent Vault arm, or
-// req.permission is undefined and they silently fall back to the shared IP bucket.
-//
-// The ceiling is sized off the proxy's 4,096-entry session cache rather than copied from
-// gatewayMetricsReportLimit: one proxy makes one resolve call per live session per poll interval, so that
-// endpoint's max of 10 would fail closed past ten concurrent sessions.
+// Keyed on the proxy identity, not the source IP, so many proxies behind one NAT do not share a bucket.
+// Sized off the proxy's 4,096-entry session cache: one resolve per live session per poll interval.
 export const agentVaultResolveLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
@@ -70,7 +65,6 @@ export const agentVaultResolveLimit: RateLimitOptions = {
   }
 };
 
-// Genuinely once per tick, so this one stays small. The floor poll interval is 10s.
 export const agentVaultHeartbeatLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",

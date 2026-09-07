@@ -4,19 +4,13 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 
 export type TParsedRootCa = {
-  /** `SHA256:` followed by colon-separated uppercase hex, the form an operator pins with. */
   fingerprint: string;
   expiresAt: Date;
 };
 
 const MAX_ROOT_CA_PEM_LENGTH = 16384;
 
-/**
- * Validates a proxy's self-signed CA and derives its fingerprint and expiry **once, at enrollment**, so
- * no read path ever parses a certificate. Only those two derived values are kept — the certificate is
- * served by the proxy itself, so storing a second copy would give it no reader. Re-enrollment overwrites
- * both together, so they cannot drift apart.
- */
+/** Derives the fingerprint and expiry once, at enrollment; the certificate itself is never stored. */
 export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
   if (pem.length > MAX_ROOT_CA_PEM_LENGTH) {
     throw new BadRequestError({ message: "The certificate authority is too large to be a valid CA certificate" });

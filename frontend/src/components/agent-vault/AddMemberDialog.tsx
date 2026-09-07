@@ -64,16 +64,12 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
   );
   const { data: identities } = useListAgentVaultProductIdentities(isOpen);
 
-  // Anyone already granted the bundle is filtered out, so the 409 the API returns for a duplicate
-  // is never reachable from the picker.
   const grantedIds = useMemo(
     () =>
       new Set(members.map((member) => member.userId ?? member.identityId ?? member.groupId ?? "")),
     [members]
   );
 
-  // One list rather than a tab per kind: an admin knows the name they are granting to, not which
-  // of the three it is filed under.
   const options = useMemo<Option[]>(() => {
     const userOptions = (users ?? [])
       .map((membership) => {

@@ -96,7 +96,6 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         200: z.object({
           session: z.object({
             id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
-            // Returned exactly once, at mint. Nothing stores it.
             token: z.string().describe(AGENT_VAULT.SESSION.token),
             expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
             createdAt: z.date(),

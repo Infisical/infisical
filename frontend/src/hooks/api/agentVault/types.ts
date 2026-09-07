@@ -21,7 +21,6 @@ export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Basic; username: string; password: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
-/** A patch of the credential: an omitted field keeps what is stored, an empty string clears it. */
 export type TAgentVaultCredentialUpdate =
   | {
       type: AgentVaultCredentialType.Bearer;
@@ -72,7 +71,6 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
 
 export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
   connections: TAgentVaultConnection[];
-  // Absent for anyone but an Agent Vault administrator.
   members?: TAgentVaultMember[];
 };
 
@@ -110,7 +108,6 @@ export type TAgentVaultProxy = {
   isHealthy: boolean;
   rootCaFingerprint: string | null;
   rootCaExpiresAt: string | null;
-  // Administrator-only projection. A member receives the row without these.
   unmatchedHost?: AgentVaultUnmatchedHost;
   bypassHosts?: string | null;
   pollInterval?: number;
@@ -186,12 +183,10 @@ export type TAgentVaultProductMember = {
 
 export type TAgentVaultProductIdentityMember = TAgentVaultProductMember & {
   name: string;
-  /** The identity's own scope. Null project means it lives at the organization, not inside Agent Vault. */
   identityProjectId: string | null;
   identityOrgId: string | null;
 };
 
-/** Exactly one of the three ids, as the API requires. */
 export type TAgentVaultProductMemberActor = {
   userId?: string;
   groupId?: string;

@@ -36,9 +36,7 @@ import {
 } from "./agent-vault-proxy-types";
 import { TAgentVaultResolveDALFactory } from "./agent-vault-resolve-dal";
 
-// Health is derived, not stored: a proxy is healthy while its last heartbeat is inside three poll
-// intervals. Do not add an isHealthy column — there are already three divergent client-side staleness
-// rules in this codebase and a fourth would be worse.
+// Health is derived from the last heartbeat and the poll interval, never stored.
 const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
 
 type TAgentVaultProxyServiceFactoryDep = {
@@ -78,8 +76,6 @@ export const agentVaultProxyServiceFactory = ({
     pollInterval: proxy.pollInterval
   });
 
-  // A member sees enough to pin a fingerprint and to tell whether the proxy is up. bypassHosts and
-  // unmatchedHost describe the deployment, not the session, so they stay administrator-only.
   const toMemberView = (proxy: TAgentVaultProxies) => ({
     id: proxy.id,
     name: proxy.name,
@@ -95,7 +91,6 @@ export const agentVaultProxyServiceFactory = ({
     createdAt: proxy.createdAt
   });
 
-  // Proxies are role-projected, not grant-gated, so this asks only for the role and skips the grant query.
   const $authorize = async ({ projectId, ctx }: TListProxiesDTO, action: ProjectPermissionAgentVaultProxyActions) => {
     const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: ctx.actor,
@@ -115,10 +110,8 @@ export const agentVaultProxyServiceFactory = ({
     return proxy;
   };
 
-  /** Read by the auth plugin's tokenVersion check on every proxy request. */
   const getProxyForAuth = (proxyId: string) => agentVaultProxyDAL.findByIdWithOrg(proxyId);
 
-  // Role-projected rather than role-gated: the Proxies page is where a member finds a fingerprint to pin.
   const listProxies = async (dto: TListProxiesDTO) => {
     const { isAdmin } = await $authorize(dto, ProjectPermissionAgentVaultProxyActions.Read);
     const proxies = await agentVaultProxyDAL.findForProject(dto.projectId);
@@ -168,8 +161,7 @@ export const agentVaultProxyServiceFactory = ({
       return created;
     });
 
-    // Outside the transaction: minting hits KMS, and nothing slow or external belongs between BEGIN and
-    // COMMIT.
+    // Outside the transaction: minting hits KMS.
     const enrollment = await $issueEnrollmentToken(proxy.id, ctx);
     return { proxy: toAdminView(proxy), enrollment };
   };
@@ -202,10 +194,8 @@ export const agentVaultProxyServiceFactory = ({
     return { id: proxy.id, name: proxy.name };
   };
 
-  // The kill switch. tokenVersion is what the auth plugin checks on every proxy request, so bumping it
-  // stops the proxy at its next call rather than at its next restart. Through the shared revoke, as
-  // gateway, relay and KMIP do, because it also deletes an enrollment token still waiting to be used:
-  // bumping the version alone left a token minted before the revoke able to enroll straight after it.
+  // Through the shared revoke, which also deletes an enrollment token still waiting to be used; bumping
+  // tokenVersion alone left it able to enroll.
   const revokeProxyAccess = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Revoke);
     const proxy = await $findProxyOr404({ projectId, proxyId });
@@ -217,8 +207,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const enroll = async ({ enrollmentToken, rootCaCertificate }: TEnrollProxyDTO) => {
-    // Validate the PEM BEFORE the login: loginWithToken deletes the enrollment token in-transaction, so
-    // a certificate checked afterwards would burn the operator's one-time token on a 400.
+    // Validate the PEM before the login: loginWithToken consumes the enrollment token in-transaction.
     const parsed = parseRootCaCertificate(rootCaCertificate);
 
     const login = await resourceAuthMethodService.loginWithToken({
@@ -227,10 +216,6 @@ export const agentVaultProxyServiceFactory = ({
     });
 
     const before = await agentVaultProxyDAL.findByIdWithOrg(login.resourceId);
-    // Only the two public facts are kept. The certificate itself is not stored: an agent fetches it from
-    // the proxy's own listener, so a copy here would have no reader. The fingerprint is what an operator
-    // pins and the expiry is what warns them a CA is ageing out, and deriving both once at enrollment
-    // means no read path ever parses a certificate.
     const proxy = await agentVaultProxyDAL.updateById(login.resourceId, {
       rootCaFingerprint: parsed.fingerprint,
       rootCaExpiresAt: parsed.expiresAt
@@ -239,8 +224,6 @@ export const agentVaultProxyServiceFactory = ({
     return {
       proxyId: proxy.id,
       name: proxy.name,
-      // The enroll route is unauthenticated (the enrollment token is the credential, once), so it has no
-      // req.permission to audit against and takes the scope from here instead.
       orgId: login.orgId,
       projectId: proxy.projectId,
       accessToken: login.accessToken,
@@ -250,8 +233,6 @@ export const agentVaultProxyServiceFactory = ({
     };
   };
 
-  // The full settings block comes back every time, unconditionally: three fields on a call the proxy
-  // already makes, so there is nothing worth saving by diffing or versioning.
   const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
     const proxy = await agentVaultProxyDAL.updateById(proxyId, { heartbeat: new Date() });
     return { config: toConfig(proxy) };
@@ -282,13 +263,7 @@ export const agentVaultProxyServiceFactory = ({
     return { type: "basic", username: secret.username ?? "", password: secret.password ?? "" };
   };
 
-  /**
-   * The only endpoint that ever decrypts a credential.
-   *
-   * Two values reach it and the distinction matters: the proxy's JWT is the credential and does the
-   * authorizing; the session token is a **selector**, because one proxy serves many sessions and only we
-   * know which bundles each carries.
-   */
+  /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
   const resolveSession = async ({ proxyId, orgId, sessionToken }: TResolveSessionDTO) => {
     const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
     if (!session) throw new NotFoundError({ message: "Session not found" });
@@ -308,10 +283,7 @@ export const agentVaultProxyServiceFactory = ({
       ? { type: ActorType.USER as const, id: session.userId }
       : { type: ActorType.IDENTITY as const, id: session.identityId! };
 
-    // Deactivation writes isActive on the org-scope membership row, which getProjectPermission below never
-    // reads - it matches project-scope rows only. Without this a session outlives an offboarded actor
-    // indefinitely, and SCIM deprovisioning writes that flag straight through the DAL, so there is no
-    // service hook to hang it on either.
+    // Deactivation writes isActive on the org-scope membership row, which getProjectPermission never reads.
     const orgMembership = await orgDAL.findEffectiveOrgMembership({
       actorType: actor.type,
       actorId: actor.id,
@@ -324,15 +296,9 @@ export const agentVaultProxyServiceFactory = ({
       });
     }
 
-    // The role is re-derived here, never trusted from mint: an admin who minted over every bundle and is
-    // then demoted must lose everything they were not explicitly granted. And it has to be a live role:
-    // a time-limited one leaves its row behind when it lapses, so the membership check below still
-    // passes and hasRole(Admin) merely says "not admin", which would fall through as a member.
-    //
-    // actorAuthMethod is passed as null *explicitly*. validateOrgSSO throws the moment it sees
-    // `undefined` but passes cleanly on `null`, and the session row stores no auth method — so leaving
-    // the field off 401s every user-minted session in an SSO-enforced org, and only in such an org, so
-    // it would pass local testing.
+    // The role is re-derived here, never trusted from mint, and it has to be a live role: a time-limited one
+    // leaves its row behind when it lapses. actorAuthMethod is passed as null *explicitly* — validateOrgSSO
+    // throws on `undefined` but passes on `null`, and the session row stores no auth method.
     let isAdmin: boolean;
     let liveGroupIds: string[];
     try {
@@ -344,25 +310,20 @@ export const agentVaultProxyServiceFactory = ({
         actorOrgId: orgId,
         actionProjectType: ActionProjectType.AgentVault
       });
-      // The smallest permission every live Agent Vault role carries; an expired one carries none.
       if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
         throw new UnauthorizedError({ message: "Session revoked" });
       }
       isAdmin = hasRole(ProjectMembershipRole.Admin);
       liveGroupIds = liveGroupIdsFrom(memberships);
     } catch (error) {
-      // An actor removed from the project surfaces here as a 403.
-      // The wire contract promises the proxy only 200, 401 and 404, and it treats anything else as
-      // "Infisical is unreachable" and keeps serving cached credentials through its grace window - so a
-      // 403 would keep a removed member's agent running for five polls instead of one. To the proxy this
-      // session is simply dead.
+      // A 403 reads to the proxy as "Infisical is unreachable", which would keep a removed member's agent
+      // running through its grace window.
       if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") {
         throw new UnauthorizedError({ message: "Session revoked" });
       }
       throw error;
     }
 
-    // The same read mint uses, so the two paths can never disagree about what a grant means.
     const accessBundleIds = isAdmin
       ? null
       : await findReachableAccessBundleIds(membershipDAL, {
@@ -377,8 +338,6 @@ export const agentVaultProxyServiceFactory = ({
       accessBundleIds
     });
 
-    // One cipher pair per resolve, not one per credential: this query runs once per active session per
-    // poll interval and the pair costs three DB reads at org scope.
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: session.projectId

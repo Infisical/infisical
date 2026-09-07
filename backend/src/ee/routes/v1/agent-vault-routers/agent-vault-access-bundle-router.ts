@@ -30,8 +30,6 @@ const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   createdAt: true
 });
 
-// Every handler reads its actor off req.permission and its project off the preValidation hook, so no
-// caller-supplied project or actor id ever reaches a service.
 const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
   actorId: req.permission.id,
   actor: req.permission.type,
@@ -123,7 +121,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         200: z.object({
           accessBundle: AccessBundleSchema.extend({
             connections: AgentVaultConnectionSchema.array(),
-            // Omitted entirely for a non-administrator: who else holds the bundle is not theirs to see.
             members: AgentVaultMemberSchema.array().optional()
           })
         })
@@ -289,8 +286,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         .object({
           name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.CONNECTION.name),
           hostPattern: AgentVaultHostPatternSchema.optional(),
-          // A patch, not a replacement: omit the credential to leave it alone, or send it with only the
-          // fields that change. See AgentVaultCredentialUpdateSchema.
           credential: AgentVaultCredentialUpdateSchema.optional()
         })
         .refine(
@@ -323,8 +318,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             name: req.body.name,
             hostPattern: req.body.hostPattern,
             credentialType: req.body.credential?.type,
-            // The config half can be patched on its own, so the presence of `credential` does not imply
-            // the secret moved. For basic both halves are sealed together, so either one re-seals it.
             credentialReplaced:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
                 ? req.body.credential.value !== undefined

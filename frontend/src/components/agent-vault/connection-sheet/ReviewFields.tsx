@@ -24,9 +24,6 @@ export const ReviewFields = ({ isUpdate }: Props) => {
   const secretLabel = isBasic ? "Password" : "Token";
   const sends = credentialPreview(form);
 
-  // On an edit each secret is a patch, so what matters is what will happen to the stored one. An
-  // emptied box clears that half of a basic credential; a bearer token has no removed state and stays.
-  // Neither half is ever returned, so "Cleared" is the most an emptied box can promise.
   const outcome = (value: string | undefined, canClear: boolean) => {
     if (!isUpdate) return value ? "Set" : "None";
     if (value === UNCHANGED_SECRET) return "Unchanged";

@@ -28,7 +28,6 @@ interface ProductSelectionStepProps {
 }
 
 const setUpProduct = async (product: SignupProductType): Promise<Project | undefined> => {
-  // PAM and Agent Vault pages are org-scoped; there is no project to create.
   if (product === ProjectType.PAM || product === ProjectType.AgentVault) return undefined;
 
   // Locate before creating: a retry after a lost response or a mid-flow refresh can arrive

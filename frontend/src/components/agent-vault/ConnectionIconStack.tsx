@@ -9,8 +9,6 @@ type TConnectionIcon = {
   image?: string;
 };
 
-// Falls back to the whole pattern rather than an empty label: a stored pattern the grammar has
-// since changed shape on still has to draw something.
 const labelOf = (pattern: string) => {
   const trimmed = pattern.trim();
   return trimmed.split(":")[0] || trimmed;
@@ -21,8 +19,6 @@ const iconFromHostPattern = (hostPattern: string): TConnectionIcon => {
   return { label: template?.name ?? labelOf(hostPattern), image: template?.image };
 };
 
-// One entry per service rather than per host pattern, so a bundle covering api.openai.com and
-// api.openai.com:443 reads as one tile.
 const iconsFromHostPatterns = (hostPatterns: string[]): TConnectionIcon[] => {
   const byLabel = new Map<string, TConnectionIcon>();
 
@@ -40,9 +36,6 @@ const monogramOf = (label: string) =>
     .charAt(0)
     .toUpperCase() || "?";
 
-// A service with no template art still needs to be distinguishable at a glance, so the hue comes
-// from the whole label instead of a palette lookup that would need an entry per service. Any
-// string produces a hue, including one this catalog has never seen.
 const hueOf = (label: string) =>
   Array.from(label).reduce((hash, character) => (hash * 31 + character.charCodeAt(0)) % 360, 7);
 
@@ -77,7 +70,6 @@ const ConnectionTile = ({ icon, className }: { icon: TConnectionIcon; className?
   );
 };
 
-/** One connection's service art, or a monogram tile when the host matches no template. */
 export const ConnectionIcon = ({
   hostPattern,
   className
@@ -91,9 +83,7 @@ export const ConnectionIcon = ({
 
 type Props = {
   hostPatterns: string[];
-  /** Tiles drawn before the rest collapse into a "+N" one. */
   maxVisible?: number;
-  /** Rendered when there is nothing to stack. Pass null where a table dash would be noise. */
   emptyPlaceholder?: ReactNode;
   className?: string;
 };
@@ -117,7 +107,6 @@ export const ConnectionIconStack = ({
         <Tooltip key={icon.label}>
           <TooltipTrigger asChild>
             <div
-              // Earlier tiles sit on top, so the stack reads left to right.
               style={{ zIndex: visible.length - index }}
               className={cn("relative", index > 0 && "-ml-1.5")}
             >

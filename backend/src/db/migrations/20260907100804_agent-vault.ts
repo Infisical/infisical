@@ -3,15 +3,11 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
-// Agent Vault: an access bundle is a named set of connections (host patterns + a credential), granted to
-// users/identities/groups as resource-scoped rows in the shared memberships table, and minted into a session
-// whose token an agent's proxy exchanges for decrypted credentials.
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.AgentVaultAccessBundle))) {
     await knex.schema.createTable(TableName.AgentVaultAccessBundle, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
-      // The per-org internal Agent Vault project, as every other product-scoped table does.
       t.string("projectId", 36).notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
@@ -19,7 +15,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("description", 256);
       t.timestamps(true, true, true);
 
-      // Also covers the projectId FK and the list page's ORDER BY name.
       t.unique(["projectId", "name"]);
     });
 
@@ -35,17 +30,13 @@ export async function up(knex: Knex): Promise<void> {
 
       t.string("name", 64).notNullable();
 
-      // One column holding a comma-separated set of host:port patterns, matching proxied_services.hostPattern.
       t.string("hostPattern", 1024).notNullable();
 
       t.string("credentialType", 32).notNullable();
 
-      // Non-secret half of the credential (header name, prefix; a basic username is sealed with its password).
-      // Read on every list page without a decrypt. No DB default: the service validates it per credential type and always writes it.
       t.jsonb("credentialConfig").notNullable();
 
-      // NULL exactly when credentialType is passthrough; enforced in the service, not by a CHECK, so the
-      // deferred credential types can land without a constraint migration.
+      // NULL exactly when credentialType is passthrough, enforced in the service rather than by a CHECK.
       t.binary("encryptedCredential");
 
       t.timestamps(true, true, true);
@@ -67,14 +58,12 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId", 36).notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
-      // CASCADE, not SET NULL: deleting the actor takes their sessions with it and the next resolve 404s.
       t.uuid("userId");
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
 
       t.uuid("identityId");
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
 
-      // sha256 hex of the token, which is itself the lookup key. The token is never stored.
       t.string("tokenHash", 64).notNullable().unique();
 
       t.timestamp("expiresAt", { useTz: true }); // NULL means never
@@ -96,7 +85,6 @@ export async function up(knex: Knex): Promise<void> {
       `CREATE INDEX agent_vault_session_by_identity ON "${TableName.AgentVaultSession}" ("identityId") WHERE "identityId" IS NOT NULL`
     );
 
-    // The two halves of the retention sweep.
     await knex.raw(
       `CREATE INDEX agent_vault_session_expires_at ON "${TableName.AgentVaultSession}" ("expiresAt") WHERE "expiresAt" IS NOT NULL`
     );
@@ -115,17 +103,14 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("sessionId").references("id").inTable(TableName.AgentVaultSession).onDelete("CASCADE");
       t.index("sessionId");
 
-      // SET NULL, not CASCADE: a deleted bundle contributes no connections but the session still reads.
       t.uuid("accessBundleId");
       t.foreign("accessBundleId").references("id").inTable(TableName.AgentVaultAccessBundle).onDelete("SET NULL");
       t.index("accessBundleId");
 
       t.string("accessBundleName", 64).notNullable();
 
-      // 0-based, the order bundles were named at mint. Breaks ties when two bundles cover the same host.
       t.integer("position").notNullable();
 
-      // Insert-only, so no updatedAt and no trigger.
       t.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
 
       t.unique(["sessionId", "position"]);
@@ -145,17 +130,11 @@ export async function up(knex: Knex): Promise<void> {
 
       t.string("name", 64).notNullable();
 
-      // Bumped on enroll and by the revoke route; the only kill switch for an issued proxy token.
       t.integer("tokenVersion").notNullable().defaultTo(0);
 
-      // Only the two public facts about the proxy's self-signed CA, derived once at enrollment. The
-      // certificate itself is not stored: the agent fetches it from the proxy's own listener, so a copy
-      // here would have no reader. The fingerprint is what an operator pins; the expiry is what warns
-      // them a CA is ageing out.
       t.string("rootCaFingerprint", 102);
       t.timestamp("rootCaExpiresAt", { useTz: true });
 
-      // Last successful heartbeat. Health is derived (heartbeat > now() - pollInterval * 3), never stored.
       t.timestamp("heartbeat", { useTz: true });
 
       t.string("unmatchedHost", 16).notNullable().defaultTo("allow");
@@ -177,7 +156,6 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.AgentVaultProxy);
   }
 
-  // Same nullable-FK-per-resource-type pattern as gatewayId / relayId / kmipServerId.
   if (await knex.schema.hasTable(TableName.ResourceAuthMethod)) {
     const hasAgentVaultProxyId = await knex.schema.hasColumn(TableName.ResourceAuthMethod, "agentVaultProxyId");
     if (!hasAgentVaultProxyId) {
@@ -214,7 +192,6 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.AgentVaultSession);
   await knex.schema.dropTableIfExists(TableName.AgentVaultSession);
 
-  // Grants are memberships rows with no FK to the bundle, so nothing cascades them when the table goes.
   await knex(TableName.Membership)
     .where({ scope: "resource", scopeResourceType: "agent-vault-access-bundle" })
     .delete();

@@ -76,9 +76,6 @@ const ENROLLMENT_TOKEN_TTL_SECONDS = 3600;
 // Bounds the reviewer chain walk; nobody legitimately chains proxies this deep.
 const MAX_PROXY_CHAIN_DEPTH = 10;
 
-// The prefix is per-resource-type so an operator can tell an Agent Vault proxy token from a gateway one
-// at a glance, and so a token pasted into the wrong command fails on its face. Gateways, relays and KMIP
-// servers keep the historic gwe_ prefix; changing theirs would invalidate tokens already in flight.
 const ENROLLMENT_TOKEN_PREFIX: Record<ResourceRef["type"], string> = {
   [RESOURCE_TYPE_GATEWAY]: "gwe_",
   [RESOURCE_TYPE_RELAY]: "gwe_",
@@ -189,8 +186,7 @@ export const resourceAuthMethodServiceFactory = ({
         : null;
     }
     if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
-      // agent_vault_proxies is project-scoped; the org comes from the join. Without this arm an Agent
-      // Vault proxy id would fall through and be loaded as a KMIP server — silent, not a type error.
+      // Without this arm an Agent Vault proxy id would fall through and be loaded as a KMIP server.
       const proxy = await agentVaultProxyDAL.findByIdWithOrg(resource.id, tx);
       return proxy ? { id: proxy.id, name: proxy.name, orgId: proxy.orgId, identityId: null } : null;
     }
@@ -244,9 +240,8 @@ export const resourceAuthMethodServiceFactory = ({
     resourceType: ResourceRef["type"],
     resourceId?: string
   ) => {
-    // Agent Vault proxies are a *project* subject, not an org one, so they authorize against the Agent
-    // Vault project rather than the org. Without this arm the else branch below would grant on
-    // OrgPermissionSubjects.KmipServer, reintroducing the org-admin fallback the product forbids.
+    // A project subject, not an org one: the else branch below would reintroduce the org-admin fallback
+    // the product forbids.
     if (resourceType === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
       if (!resourceId) {
         throw new BadRequestError({ message: "Agent Vault proxy permission check requires the proxy id" });

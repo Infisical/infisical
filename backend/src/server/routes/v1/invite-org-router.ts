@@ -35,7 +35,6 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         projectIds: z.string().trim().array().max(5).optional(),
         // Grants membership on the org's consolidated PAM project (PAM has no signup-created project).
         grantPamAccess: z.boolean().optional(),
-        // Same for Agent Vault, which is org-scoped over one implicit project.
         grantAgentVaultAccess: z.boolean().optional()
       }),
       response: {
@@ -161,8 +160,6 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      // Agent Vault goes through its product-membership service, as PAM does, so the invite path and
-      // the product agree on role validation, SSO-alias resolution and metering.
       if (req.body.grantAgentVaultAccess) {
         try {
           const agentVaultProjectId = await server.services.agentVaultProjectResolver.resolve(req.permission.orgId);
@@ -179,8 +176,6 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             role: ProjectMembershipRole.Member
           });
 
-          // The product's own event, as PAM writes here and as every other Agent Vault membership path
-          // writes, so filtering the Agent Vault audit log on it finds invitees too.
           for await (const membership of memberships) {
             await server.services.auditLog.createAuditLog({
               ...req.auditLogInfo,

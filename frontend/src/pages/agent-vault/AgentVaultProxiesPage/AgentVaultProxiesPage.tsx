@@ -65,7 +65,6 @@ import { ProxyEnrollmentDialog } from "./components/ProxyEnrollmentDialog";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
 import { ProxyStatusBadge } from "./components/ProxyStatusBadge";
 
-// A column heading whose meaning is not obvious from its name, with the explanation on hover.
 const bypassHostsOf = (proxy: TAgentVaultProxy) =>
   proxy.bypassHosts
     ? proxy.bypassHosts
@@ -74,7 +73,6 @@ const bypassHostsOf = (proxy: TAgentVaultProxy) =>
         .filter(Boolean)
     : [];
 
-// Bypass hosts only mean anything under Deny, so an Allow proxy shows none even if some are stored.
 const UnmatchedHostBadge = ({ proxy }: { proxy: TAgentVaultProxy }) => {
   if (proxy.unmatchedHost !== AgentVaultUnmatchedHost.Deny) {
     return <Badge variant="neutral">Allow</Badge>;
@@ -120,14 +118,12 @@ enum SortColumn {
   Created = "created"
 }
 
-// A member's row carries no createdAt, so the fallback keeps the sort stable rather than producing NaN.
 const SORT_COMPARATORS: Record<SortColumn, (a: TAgentVaultProxy, b: TAgentVaultProxy) => number> = {
   [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
   [SortColumn.Created]: (a, b) =>
     new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
 };
 
-// Enough of the fingerprint to recognise, with the whole value behind the copy button.
 const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
 

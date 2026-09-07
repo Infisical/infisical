@@ -96,14 +96,10 @@ export const CreateProjectIdentityForm = ({
   const isCertManager = projectType === ProjectType.CertificateManager;
   const isPam = projectType === ProjectType.PAM;
   const isAgentVault = projectType === ProjectType.AgentVault;
-  // PAM and Agent Vault are both org-scoped products with admin/member-only product membership and
-  // their own add-member endpoint, so they take the same branch throughout.
   const isProductScoped = isPam || isAgentVault;
 
   const { data: projectRoles } = useGetProjectRoles(projectId, projectType);
 
-  // Product membership is only ever Admin or Member, and neither product has an externally visible
-  // project, so the generic role copy ("...over a project") is replaced with the product's own wording.
   const roles = useMemo(() => {
     if (!isProductScoped) return projectRoles;
 
@@ -175,8 +171,6 @@ export const CreateProjectIdentityForm = ({
       let identityId: string;
 
       if (data.mode === CreateProjectIdentityMode.Create) {
-        // These products' membership PATCH takes a single product role rather than the generic roles
-        // array, so the role is set at creation time instead of through a follow-up membership update.
         const created = await createProjectIdentity({
           name: data.name!.trim(),
           projectId,
@@ -228,7 +222,6 @@ export const CreateProjectIdentityForm = ({
         }
       }
 
-      // These tabs read their own product-membership list, which the generic mutations don't know about.
       if (isPam) {
         queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
       }

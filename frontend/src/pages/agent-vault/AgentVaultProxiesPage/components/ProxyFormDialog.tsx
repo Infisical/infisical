@@ -65,7 +65,6 @@ type FormData = z.infer<typeof schema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  // Present in edit mode; absent when registering a new proxy.
   proxy?: TAgentVaultProxy;
   onCreated?: (enrollment: TAgentVaultEnrollment) => void;
 };
@@ -83,12 +82,8 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
     formState: { isSubmitting }
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  // Under allow every host is reachable already, so the list has nothing left to do. The stored value
-  // is left alone rather than cleared, so switching back to deny brings it back.
   const isDenying = watch("unmatchedHost") === AgentVaultUnmatchedHost.Deny;
 
-  // A proxy that has never checked in has nothing to update, so the delay is only worth raising once
-  // one has.
   const saveDelayNote = (() => {
     if (!proxy?.heartbeat) return null;
     return proxy.isHealthy

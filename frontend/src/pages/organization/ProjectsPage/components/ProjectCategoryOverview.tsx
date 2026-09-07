@@ -169,7 +169,6 @@ export const ProjectCategoryOverview = () => {
       ),
     [currentOrg?.agentVaultProjectId, projects]
   );
-  // Agent Vault has no access-request flow: a member is granted access bundles by an admin instead.
   const isAgentVaultAccessBlocked =
     Boolean(currentOrg?.agentVaultProjectId) && !isOrgAdmin && !isAgentVaultMember;
 
@@ -334,8 +333,6 @@ export const ProjectCategoryOverview = () => {
     });
   };
 
-  // Same shape as PAM: the project is bootstrapped lazily and org admins created after that
-  // bootstrap are not members yet, so they join on behalf before entering.
   const enterAgentVaultProject = async () => {
     let agentVaultProjectId: string;
     try {

@@ -524,8 +524,7 @@ export const injectIdentity = fp(
         case AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN: {
           const proxy = await server.services.agentVaultProxy.getProxyForAuth(token.agentVaultProxyId);
 
-          // The tokenVersion check is the only kill switch for an issued proxy token, so no proxy route
-          // may skip it. Bumped on enroll and by the revoke route.
+          // The tokenVersion check is the only kill switch for an issued proxy token, so no proxy route may skip it.
           if (!proxy || proxy.tokenVersion !== token.tokenVersion) {
             throw new UnauthorizedError({ message: "Agent Vault proxy token has been revoked" });
           }

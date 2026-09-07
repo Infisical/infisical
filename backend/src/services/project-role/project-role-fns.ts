@@ -10,17 +10,11 @@ import {
 } from "@app/ee/services/permission/default-roles";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
-// Agent Vault resolves every slug except admin to its member set (see buildProjectPermissionRules), so
-// offering Viewer or No Access would promise less access than the role grants.
-//
-// PAM does the same and has the same misleading pickers, but it is left as it is: this list feeds the
-// roles API, the org-admin invite flow's project list, and project templates, and narrowing all three
-// for PAM is its own change to make deliberately rather than a side effect of shipping Agent Vault.
+// Agent Vault resolves every slug except admin to its member set, so Viewer and No Access would promise
+// less access than they grant.
 const NARROWED_ROLE_PROJECT_TYPES = new Set<string>([ProjectType.AgentVault]);
 const NARROWED_ROLE_SLUGS = new Set<string>([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]);
 
-// Agent Vault is one implicit project per organization, so the generic copy would name a thing its users
-// never see. Mirrors AGENT_VAULT_PRODUCT_ROLE_OPTIONS on the frontend; the two are the same sentence.
 const AGENT_VAULT_ROLE_DESCRIPTIONS: Record<string, string> = {
   [ProjectMembershipRole.Admin]: "Full administrative access over Agent Vault",
   [ProjectMembershipRole.Member]: "Create sessions over the access bundles they're granted"

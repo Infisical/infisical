@@ -12,7 +12,6 @@ import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 type Props = {
   value: string;
   onChange: (role: string) => void;
-  /** Distinguishes the inputs when more than one of these is mounted. */
   idPrefix: string;
 };
 

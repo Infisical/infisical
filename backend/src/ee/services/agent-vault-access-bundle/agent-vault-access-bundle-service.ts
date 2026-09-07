@@ -71,9 +71,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     identityGroupMembershipDAL
   } = deps;
 
-  // A grant is a resource-scoped row in the shared memberships table plus one consumer role, so the
-  // platform's reapers and FK cascades remove it with the actor. Nothing here cascades from the bundle:
-  // scopeResourceId carries no FK, so deleteAccessBundle reaps by hand.
   const bundleScope = (projectId: string, accessBundleId: string) => ({
     scope: RESOURCE_SCOPE as typeof RESOURCE_SCOPE,
     scopeProjectId: projectId,
@@ -110,9 +107,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return membership;
   };
 
-  // Grants follow product membership at the same level: a group that is in Agent Vault is granted as a
-  // group, and its members mint as themselves. So a person who is in the product only through a group
-  // is turned away here as well, but told why, since "not a member" would be wrong.
   const isInProjectThroughGroup = async ({
     projectId,
     userId,
@@ -135,8 +129,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return viaGroup.length > 0;
   };
 
-  // A grant to someone outside the Agent Vault project does nothing: reachability is intersected with
-  // project membership on every resolve, so the row would sit there looking like access that works.
   const assertActorInProject = async ({
     projectId,
     userId,
@@ -171,14 +163,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
   };
 
-  // Project scope, not org scope: org scope has no cache and costs three DB queries every time.
   const getProjectCipher = (projectId: string) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-  // `null` clears the sealed column, `undefined` leaves it exactly as it is. The two are not
-  // interchangeable: $decryptCredential in the proxy service treats a NULL secret as passthrough, so a
-  // bearer row that lost its secret would stop attaching a credential rather than fail, and the agent's
-  // request would leave unauthenticated with nothing in the logs to say why.
+  // `null` clears the sealed column, `undefined` leaves it alone. $decryptCredential reads a NULL secret
+  // as passthrough, so the two are not interchangeable.
   type TCredentialWrite = { config: TAgentVaultCredentialConfig; secret: Record<string, string> | null | undefined };
 
   const splitCredential = (credential: TAgentVaultCredentialInput): TCredentialWrite => {
@@ -191,8 +180,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         return { config: { type: credential.type, ...config }, secret: { value: credential.value } };
       }
       case AgentVaultCredentialType.Basic: {
-        // The create schema refuses two empty halves, but a type change reaches here with whatever the
-        // patch omitted, and an empty pair seals `Basic ` over a bare colon, which authenticates nobody.
         if (!credential.username && !credential.password) {
           throw new BadRequestError({ message: "A basic credential needs a username, a password, or both" });
         }
@@ -206,18 +193,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
-  /**
-   * The update counterpart: every field is optional, and an absent one keeps what is stored. The
-   * create schema is deliberately not reused, because its `.default()`s would turn an omitted
-   * headerName into a reset and quietly move a DD-API-KEY credential back onto Authorization.
-   */
   const mergeCredential = (
     credential: TAgentVaultCredentialUpdate,
     stored: TAgentVaultConnections,
     storedSecret: Record<string, string> | null
   ): TCredentialWrite => {
-    // A different type has no stored config to merge onto, and the sealed secret belongs to the type
-    // being replaced, so the credential has to arrive whole.
     if (credential.type !== stored.credentialType) {
       if (credential.type === AgentVaultCredentialType.Bearer && credential.value === undefined) {
         throw new BadRequestError({
@@ -245,8 +225,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           secret: credential.value === undefined ? undefined : { value: credential.value }
         };
       case AgentVaultCredentialType.Basic: {
-        // Both halves live in the sealed blob, so a patch to either one re-seals the pair with the
-        // other half taken from what is stored.
         if (credential.username === undefined && credential.password === undefined) {
           return { config: { type: credential.type }, secret: undefined };
         }
@@ -278,7 +256,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
-  // A bundle the caller cannot reach is a 404, never a 403: a 403 would confirm that the id exists.
+  // A bundle the caller cannot reach is a 404, never a 403, which would confirm the id exists.
   const resolveReachableBundle = async ({ projectId, ctx, accessBundleId }: TGetAccessBundleDTO) => {
     const reachability = await getAgentVaultReachability({ permissionService, membershipDAL }, { projectId, ctx });
 
@@ -312,8 +290,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
 
     const connections = await agentVaultConnectionDAL.findByAccessBundleId(bundle.id);
-    // Members are an administration detail: a member sees the connections and nothing about who else
-    // holds the bundle.
     const members = isAdmin
       ? await agentVaultAccessBundleDAL.findMembers({ projectId: dto.projectId, accessBundleId: bundle.id })
       : undefined;
@@ -347,11 +323,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw new BadRequestError({ message: `An access bundle named '${name}' already exists` });
     }
 
-    // The creator is granted the bundle they just made, as PAM does when a folder is created. Only an
-    // admin can create, and an admin already reaches every bundle, so the grant matters the day they are
-    // demoted to member. It is written only for a creator who is directly in the product: the grant path
-    // refuses individual grants to someone who is in only through a group, and the creator grant follows
-    // the same rule, or it would be the one row no removal path reaps once the group goes.
     let creatorColumn: TGrantActorColumn | null = null;
     if (ctx.actor === ActorType.USER) creatorColumn = "actorUserId";
     else if (ctx.actor === ActorType.IDENTITY) creatorColumn = "actorIdentityId";
@@ -404,8 +375,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    // Bundle row first: its DELETE holds the row lock addMember takes, so a concurrent grant either waits
-    // and finds no bundle, or landed already and is reaped by the second statement. Roles cascade.
+    // Bundle row first: its DELETE holds the row lock addMember takes. Roles cascade.
     return agentVaultAccessBundleDAL.transaction(async (tx) => {
       const deleted = await agentVaultAccessBundleDAL.deleteById(bundle.id, tx);
       await membershipDAL.delete(bundleScope(rest.projectId, bundle.id), tx);
@@ -413,7 +383,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
   };
 
-  // Rejects a candidate that shares any normalized host:port with another connection in the same bundle.
   const checkHostPatternConflicts = async ({
     accessBundleId,
     hostPattern,
@@ -497,12 +466,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       });
     }
 
-    // An omitted credential leaves both halves alone. A present one patches the config, and touches the
-    // sealed secret only when the payload actually carried part of it.
     let credentialUpdate = {};
     if (credential) {
-      // A basic patch naming one half needs the other from the sealed pair, so this is the one place on
-      // the write path that opens a stored secret.
       const needsStoredSecret =
         credential.type === AgentVaultCredentialType.Basic &&
         connection.credentialType === AgentVaultCredentialType.Basic &&
@@ -580,8 +545,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     else if (identityId) actorColumn = "actorIdentityId";
     const actorId = (userId ?? identityId ?? groupId)!;
 
-    // The shared table's unique index per actor per bundle is the duplicate check, so the catch sits
-    // outside the transaction and the rollback has finished before the 400 goes out.
+    // The unique index per actor per bundle is the duplicate check, so the catch sits outside the transaction.
     try {
       const created = await membershipDAL.transaction(async (tx) => {
         const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
@@ -596,8 +560,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         );
       });
 
-      // The inserted row, as PAM and the generic member add return it; the bundle's name rides back for
-      // the audit event, which pairs every id it records with a label.
       return { ...toMember(created), accessBundleName: bundle.name };
     } catch (err) {
       if (

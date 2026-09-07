@@ -19,8 +19,6 @@ const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
   actorAuthMethod: req.permission.authMethod
 });
 
-// What every member sees. bypassHosts and unmatchedHost describe the deployment rather than the session,
-// so they are added only for an administrator — one `read` action, the service decides the shape.
 const ProxyMemberViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
   name: z.string().describe(AGENT_VAULT.PROXY.name),
@@ -38,15 +36,12 @@ const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
 });
 
 const EnrollmentSchema = z.object({
-  // Shown once, single-use, and its row is deleted in-transaction when the proxy enrolls.
   token: z.string().describe(AGENT_VAULT.PROXY.enrollmentToken),
   expiresAt: z.date()
 });
 
 const ProxySettingsSchema = {
   unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
-  // A proxy-wide exception to deny, and nothing else. These hosts are handled like any other: opened,
-  // certificate minted, no credential unless a connection covers them.
   bypassHosts: hostPatternSchema.nullable().describe(AGENT_VAULT.PROXY.bypassHosts),
   pollInterval: z.number().int().min(10).max(300).describe(AGENT_VAULT.PROXY.pollInterval)
 };
@@ -202,8 +197,6 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // Deliberately does not bump tokenVersion: the running proxy keeps serving until the replacement
-      // enrolls, so reissuing a token is not an outage.
       const { proxy, enrollment } = await server.services.agentVaultProxy.reissueEnrollmentToken({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),

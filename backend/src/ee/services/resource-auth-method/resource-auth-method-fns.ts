@@ -80,10 +80,7 @@ export const mintKmipServerJwt = ({
   );
 };
 
-/**
- * Mints an AGENT_VAULT_PROXY_ACCESS_TOKEN JWT. Non-expiring like the other resource tokens: the
- * tokenVersion check in inject-identity is the only kill switch, which is why no proxy route may skip it.
- */
+/** Non-expiring like the other resource tokens: the tokenVersion check in inject-identity is the only kill switch. */
 export const mintAgentVaultProxyJwt = ({
   agentVaultProxyId,
   orgId,

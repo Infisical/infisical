@@ -38,7 +38,6 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const [selected, setSelected] = useState<TCandidate[]>([]);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
 
-  // Only org members who are not already in Agent Vault, so the list never offers a no-op.
   const candidates = useMemo(() => {
     const attached = new Set(projectUsers.map((member) => member.user.id));
     return orgUsers

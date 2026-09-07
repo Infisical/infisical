@@ -13,13 +13,10 @@ export type TAgentVaultAccessBundleListRow = {
   description: string | null;
   createdAt: Date;
   connectionCount: number;
-  /** Every host pattern across the bundle's connections, so the list row can draw its icon stack. */
   hostPatterns: string[];
   memberCount: number;
 };
 
-// Raw fields rather than a computed display name, matching the generic and PAM member lists: the
-// frontend owns the "First Last, else username, else email" rule and can search across all of them.
 export type TAgentVaultAccessBundleMemberDetail = {
   id: string;
   accessBundleId: string;
@@ -32,7 +29,6 @@ export type TAgentVaultAccessBundleMemberDetail = {
   group: { name: string } | null;
 };
 
-// Grants are resource-scoped rows in the shared memberships table, keyed on the bundle id as text.
 const grantScope = (projectId: string, accessBundleId?: string) => ({
   scope: RESOURCE_SCOPE,
   scopeProjectId: projectId,
@@ -43,7 +39,6 @@ const grantScope = (projectId: string, accessBundleId?: string) => ({
 export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundle);
 
-  // One query for the list page. accessBundleIds narrows to what a member can reach; null means admin.
   const findForList = async (
     { projectId, accessBundleIds }: { projectId: string; accessBundleIds: string[] | null },
     tx?: Knex
@@ -53,8 +48,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      // One row per bundle, so the join cannot multiply the connection rows below. memberships stores the
-      // resource id as text, hence the cast.
       const memberCounts = conn(TableName.Membership)
         .select("scopeResourceId")
         .where({ ...grantScope(projectId), isActive: true })
@@ -120,7 +113,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Scoped by projectId so a bundle in another org is a miss, which the service turns into a 404.
   const findByIdInProject = async (
     { id, projectId }: { id: string; projectId: string },
     tx?: Knex
@@ -132,8 +124,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Taken inside addMember's transaction so a concurrent bundle delete, whose DELETE holds the same row
-  // lock, either waits for the grant and then reaps it, or finishes first and leaves nothing to grant to.
+  // Inside addMember's transaction, so a concurrent bundle delete either waits for the grant and reaps
+  // it, or leaves nothing to grant to.
   const lockByIdInProject = async (
     { id, projectId }: { id: string; projectId: string },
     tx: Knex
@@ -145,9 +137,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Who holds one bundle, with enough of each actor to render a row without a second round trip. Only
-  // active rows, like the count and the reachability read: nothing deactivates a grant today, but if
-  // something ever does, the list must not name someone the mint path refuses.
   const findMembers = async (
     { projectId, accessBundleId }: { projectId: string; accessBundleId: string },
     tx?: Knex

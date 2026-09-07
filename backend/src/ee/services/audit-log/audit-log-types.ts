@@ -6067,7 +6067,6 @@ interface AgentVaultProxyTokenReissueEvent {
   };
 }
 
-// The audit trail for CA rotation: which fingerprint enrolled, and whether it displaced one.
 interface AgentVaultProxyEnrollEvent {
   type: EventType.AGENT_VAULT_PROXY_ENROLL;
   metadata: {
@@ -6142,7 +6141,6 @@ interface AgentVaultConnectionCreateEvent {
   };
 }
 
-// Records whether the secret was replaced, never the secret itself.
 interface AgentVaultConnectionUpdateEvent {
   type: EventType.AGENT_VAULT_CONNECTION_UPDATE;
   metadata: {
@@ -6164,7 +6162,6 @@ interface AgentVaultConnectionDeleteEvent {
   };
 }
 
-// Product membership: who can reach Agent Vault at all, as opposed to the bundle grants below.
 interface AgentVaultProductMemberAddEvent {
   type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD;
   metadata: {

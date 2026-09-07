@@ -51,8 +51,6 @@ describe("agent vault project roles", () => {
     );
     expect(admin.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(true);
 
-    // Aliasing to projectAdminPermissions would silently hand an Agent Vault admin every
-    // secret-manager ability. These three are the canaries.
     expect(admin.can(ProjectPermissionCmekActions.Rotate, ProjectPermissionSub.Cmek)).toBe(false);
     expect(admin.can(ProjectPermissionSecretSyncActions.Create, ProjectPermissionSub.SecretSyncs)).toBe(false);
     expect(admin.can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens)).toBe(false);
@@ -67,7 +65,6 @@ describe("agent vault project roles", () => {
     expect(member.can(ProjectPermissionAgentVaultSessionActions.Revoke, ProjectPermissionSub.AgentVaultSessions)).toBe(
       true
     );
-    // The Proxies page is the only place a fingerprint to pin comes from, so read is on the member role.
     expect(member.can(ProjectPermissionAgentVaultProxyActions.Read, ProjectPermissionSub.AgentVaultProxies)).toBe(true);
 
     expect(member.can(ProjectPermissionAgentVaultProxyActions.Create, ProjectPermissionSub.AgentVaultProxies)).toBe(
@@ -84,17 +81,12 @@ describe("agent vault project roles", () => {
     ).toBe(false);
     expect(member.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(false);
 
-    // No directory visibility, unlike PAM's member set: a member holding these could enumerate every
-    // person, group and machine identity in the product, through the generic project routes as well as
-    // this product's own.
     expect(member.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member)).toBe(false);
     expect(member.can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups)).toBe(false);
     expect(member.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)).toBe(false);
   });
 
   test("a custom role carrying the full admin rules still resolves to the member set", () => {
-    // Custom is how a custom role and additional privileges both arrive. Anything that is not the admin
-    // slug resolves to member, so neither can reintroduce project-level power.
     const custom = abilityFor(ProjectMembershipRole.Custom, packRules(agentVaultProjectAdminPermissions as never));
 
     expect(

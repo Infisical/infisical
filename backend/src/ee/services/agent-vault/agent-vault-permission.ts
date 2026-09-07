@@ -13,7 +13,6 @@ type TProjectPermissionResult = Awaited<ReturnType<TPermissionServiceFactory["ge
 export type TAgentVaultReachability = {
   permission: TProjectPermissionResult["permission"];
   isAdmin: boolean;
-  /** Null when the actor is an admin: an admin reaches every bundle, so there is nothing to filter by. */
   accessBundleIds: string[] | null;
 };
 
@@ -26,17 +25,10 @@ type TPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
 type TMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
 type TProjectMemberships = TProjectPermissionResult["memberships"];
 
-// A group's grants count only while the group confers a live Agent Vault role. The permission result
-// already carries the actor's group rows with their roles and expiry, so this costs no read: a group
-// whose role has lapsed stops conferring bundles the same moment it stops conferring permissions.
+// A group's grants count only while the group confers a live Agent Vault role.
 export const liveGroupIdsFrom = (memberships: TProjectMemberships): string[] =>
   memberships.filter((m) => m.actorGroupId && m.roles.some((role) => isActiveRole(role))).map((m) => m.actorGroupId!);
 
-// Grants are resource-scoped rows in the shared memberships table, so "which bundles can this actor reach"
-// is the platform's own read: direct rows plus rows held through the actor's groups, expanded through
-// user_group_membership for a person and identity_group_membership for a machine identity. Mint, every
-// member-facing read and the proxy's resolve all go through this one function, with the same set of
-// live groups from liveGroupIdsFrom, so the two paths cannot disagree about what a grant means.
 export const findReachableAccessBundleIds = async (
   membershipDAL: TMembershipDep,
   { projectId, actor, groupIds }: { projectId: string; actor: TAgentVaultGrantActor; groupIds: string[] },
@@ -62,9 +54,8 @@ export const findReachableAccessBundleIds = async (
   return [...new Set(reachable.map((row) => row.scopeResourceId!))];
 };
 
-// Reachability is a service-layer filter rather than a CASL condition: conditions interpolate only
-// identity.id, username and metadata, so "which bundles can this actor reach" would stop being
-// answerable in SQL and the members card would have to filter in memory.
+// A service-layer filter rather than a CASL condition: conditions interpolate only identity.id,
+// username and metadata.
 export const getAgentVaultReachability = async (
   { permissionService, membershipDAL }: { permissionService: TPermissionDep; membershipDAL: TMembershipDep },
   { projectId, ctx }: { projectId: string; ctx: TAgentVaultActorContext },
@@ -82,7 +73,6 @@ export const getAgentVaultReachability = async (
   const isAdmin = hasRole(ProjectMembershipRole.Admin);
   if (isAdmin) return { isAdmin, accessBundleIds: null, permission };
 
-  // Only users and machine identities hold grants; anything else reaches nothing rather than everything.
   if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
     return { isAdmin: false, accessBundleIds: [], permission };
   }

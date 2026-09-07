@@ -124,8 +124,8 @@ const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
 export const hasIntermediateProjectsView = (type: ProjectType) =>
   PROJECT_TYPES_WITH_INTERMEDIATE_VIEW.has(type);
 
-// Products that live at /organizations/$orgId/<slug> over a single implicit project, with no
-// $projectId in the URL. Their project id is resolved from the org rather than the route params.
+// Products that live at /organizations/$orgId/<slug> over a single implicit project, with no $projectId
+// in the URL.
 const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
 
 export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);

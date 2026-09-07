@@ -23,7 +23,6 @@ import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { CREDENTIAL_LABELS, TConnectionForm, UNCHANGED_SECRET } from "./connectionSchema";
 
-/** Null when there is nothing to send, so a caller renders no row rather than an invented one. */
 export const credentialPreview = (
   form: {
     credentialType: AgentVaultCredentialType;
@@ -40,7 +39,6 @@ export const credentialPreview = (
 };
 
 type Props = {
-  /** The credential type as stored, so a switch away from it can invalidate the sealed secret. */
   storedType?: AgentVaultCredentialType;
 };
 
@@ -56,8 +54,6 @@ export const CredentialFields = ({ storedType }: Props) => {
   const isUntouched = secret === UNCHANGED_SECRET;
   const isUsernameUntouched = username === UNCHANGED_SECRET;
 
-  // Switching type strands the sealed secret, which belongs to the type being replaced, so the boxes
-  // stop claiming to hold anything.
   useEffect(() => {
     if (!storedType || credentialType === storedType) return;
     if (isUntouched) setValue("secret", "");
@@ -131,7 +127,6 @@ export const CredentialFields = ({ storedType }: Props) => {
               <FieldContent>
                 <Input
                   {...field}
-                  // Masked because the username can be the whole key, and never returned by the API.
                   type="password"
                   onFocus={(e) => {
                     if (isUsernameUntouched) e.target.select();
@@ -157,8 +152,7 @@ export const CredentialFields = ({ storedType }: Props) => {
                 <Input
                   {...field}
                   type="password"
-                  // Selected rather than cleared, so focusing the field and moving on cannot remove a
-                  // credential: typing still replaces the whole value, and leaving it alone keeps it.
+                  // Selected rather than cleared, so focusing the field and moving on cannot remove a credential.
                   onFocus={(e) => {
                     if (isUntouched) e.target.select();
                   }}

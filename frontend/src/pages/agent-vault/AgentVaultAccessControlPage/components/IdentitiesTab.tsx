@@ -72,8 +72,8 @@ export const IdentitiesTab = () => {
     return identities.filter((identity) => identity.name.toLowerCase().includes(term));
   }, [identities, search]);
 
-  // An identity created here is scoped to the Agent Vault project, so detaching its membership would
-  // orphan it with no other project or org listing to reach it from. Those are deleted outright.
+  // An identity created here is scoped to the Agent Vault project, so detaching it would orphan it.
+  // Those are deleted outright.
   const isAgentVaultManaged = (identity: TAgentVaultProductIdentityMember) =>
     identity.identityProjectId === currentProject.id;
 
@@ -106,8 +106,7 @@ export const IdentitiesTab = () => {
     if (!toRemove?.identityId) return;
 
     if (isAgentVaultManaged(toRemove)) {
-      // Identities are created here with delete protection on, which the delete endpoint refuses. This
-      // dialog already demands the name be typed, so it clears the flag rather than dead-ending.
+      // Identities are created here with delete protection on, which the delete endpoint refuses.
       await updateIdentity.mutateAsync({
         identityId: toRemove.identityId,
         projectId: currentProject.id,

@@ -38,10 +38,9 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarScope = "org" | "sub-org" | "project" | "pam" | "agent-vault" | "admin";
 
-// Products that own a colour repoint the shared --color-project variable rather than adding a
-// parallel set of scope classes, so every project-scoped child picks the product colour up.
+// Products that own a colour repoint the shared --color-project variable rather than adding a parallel
+// set of scope classes.
 const SIDEBAR_SCOPE_COLOR_OVERRIDE: Partial<Record<SidebarScope, Record<string, string>>> = {
-  // PAM's literal predates the token and has drifted from it; left as-is deliberately.
   pam: { "--color-project": "#ed3453" },
   "agent-vault": { "--color-project": "var(--color-product-av)" }
 };

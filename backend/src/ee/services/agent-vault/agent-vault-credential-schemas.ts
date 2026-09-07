@@ -2,21 +2,12 @@ import { z } from "zod";
 
 import { AgentVaultCredentialType } from "./agent-vault-enums";
 
-// Two halves per credential type, and the split is the point:
-//
-//   credentialConfig  plaintext jsonb, non-secret. The connections table reads `Bearer · DD-API-KEY`
-//                     straight off it with no decrypt, which is why it is a column and not part of the
-//                     encrypted blob.
-//   encryptedCredential  the secret, KMS-sealed with the project cipher. NULL exactly when the type is
-//                        passthrough.
-//
-// The discriminator is a column, not a field inside the blob, so adding OAuth2 or SigV4 later is a
-// config entry and needs no migration. PAM put its discriminator inside the blob and now carries
-// withLegacyAuthMethod and normalizeCredentialAuthMethod to cope.
+// credentialConfig is plaintext jsonb, read on the list page without a decrypt; encryptedCredential is
+// the KMS-sealed secret, NULL exactly when the type is passthrough. The discriminator is a column rather
+// than a field inside the blob, so a new credential type needs no migration.
 
-// The characters RFC 7230 allows in a header name. Go's HTTP client refuses to send anything else, so a
-// name saved without this check produces a connection that 502s on every request, at the agent rather
-// than at the person who typed it.
+// The characters RFC 7230 allows. Go's HTTP client refuses to send anything else, so a name saved
+// without this check 502s every request through the connection.
 export const AGENT_VAULT_HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
 
 export const AGENT_VAULT_HEADER_NAME_MESSAGE =
@@ -30,15 +21,11 @@ export const AgentVaultBearerConfigSchema = z.object({
     .max(128)
     .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
     .default("Authorization"),
-  // Stored exactly as typed, with no trailing space: the proxy joins prefix and value with one space and
-  // skips the space when the prefix is empty. That is how `DD-API-KEY: abc123` and
-  // `Authorization: Bearer abc123` both come out right.
   headerPrefix: z.string().trim().max(64).default("Bearer")
 });
 
-// Nothing plaintext: the username is sealed with the password. RFC 7617 lets either half be blank, and
-// real services use that with the key as the username and no password at all (Stripe, Postmark), so a
-// username shown to anyone who can read the bundle is the key shown to them.
+// Nothing plaintext: the username is sealed with the password, since for some services (Stripe, Postmark)
+// the username is the key.
 export const AgentVaultBasicConfigSchema = z.object({});
 
 export const AgentVaultPassthroughConfigSchema = z.object({});
@@ -51,10 +38,6 @@ export const AgentVaultCredentialConfigSchema = z.discriminatedUnion("type", [
 
 export type TAgentVaultCredentialConfig = z.infer<typeof AgentVaultCredentialConfigSchema>;
 
-// The secret half, as it is sealed. Present on write for bearer and basic, so there is no
-// half-configured connection and the proxy never has a refusal path. Basic may seal an empty username
-// or an empty password but not both; bearer may not be empty, because a header with nothing after the
-// prefix authenticates nobody.
 export const AgentVaultSecretSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(AgentVaultCredentialType.Bearer), value: z.string().min(1).max(8192) }),
   z.object({

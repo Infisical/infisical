@@ -1,9 +1,7 @@
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
-// Copied from the proxied-services catalog rather than imported: that module has to stay
-// independently deletable, and Agent Vault's grammar rejects the paths and bare tenant wildcards
-// several of its entries carry. Templates are a frontend convenience only. The backend never
-// learns a service name, which is what stopped App Connections' enum from growing to 114 members.
+// Copied from the proxied-services catalog rather than imported: that module stays independently
+// deletable, and Agent Vault's grammar rejects the paths several of its entries carry.
 export enum AgentVaultTemplateCategory {
   Llm = "LLM Providers",
   DeveloperTools = "Developer Tools",
@@ -393,14 +391,11 @@ const stripPort = (pattern: string) => pattern.split(":")[0];
 
 const hostMatchesTemplateHost = (host: string, templateHost: string) => {
   if (!templateHost.startsWith("*.")) return host === templateHost;
-  // A wildcard is the leftmost label and matches exactly one label, matching the backend grammar.
   const suffix = templateHost.slice(2);
   if (!host.endsWith(`.${suffix}`)) return false;
   return !host.slice(0, host.length - suffix.length - 1).includes(".");
 };
 
-// Icons and names on the bundle and connection rows are re-derived from the stored host pattern.
-// Template choice is never persisted, so a connection edited by hand stays consistent.
 export const findTemplateForHostPattern = (hostPattern: string): AgentVaultTemplate | undefined => {
   const hosts = hostPattern
     .split(",")

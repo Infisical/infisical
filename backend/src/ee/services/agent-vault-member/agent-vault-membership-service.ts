@@ -73,11 +73,8 @@ export type TAddAgentVaultProductUserMembersDTO = {
   ctx: TAgentVaultActorContext;
 };
 
-// Anything but admin resolves to the member set (§1.3), so these two are the only slugs worth writing.
 const VALID_PRODUCT_ROLES: string[] = [ProjectMembershipRole.Admin, ProjectMembershipRole.Member];
 
-// Mirrors PAM's product-membership service for the one path that bypasses Access Control: the signup
-// invite, which grants the org's implicit Agent Vault project by email before the invitee has logged in.
 export const agentVaultMembershipServiceFactory = ({
   membershipDAL,
   identityDAL,
@@ -122,8 +119,7 @@ export const agentVaultMembershipServiceFactory = ({
     const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
     const userByEmail = new Map(usersByEmail.map((u) => [u.username, u]));
 
-    // The invite this request accompanies resolves IdP identifiers through SSO aliases, so this half has
-    // to as well, or it rejects a user the other half just added.
+    // The invite this accompanies resolves IdP identifiers through SSO aliases, so this half has to as well.
     const unmatched = emails.filter((e) => !userByEmail.has(e));
     if (unmatched.length) {
       const org = await orgDAL.findById(ctx.actorOrgId);
@@ -218,7 +214,6 @@ export const agentVaultMembershipServiceFactory = ({
         // eslint-disable-next-line no-await-in-loop
         await projectAccessRequestDAL.delete({ projectId, requesterUserId: userId }, tx);
         results.push({
-          // The label is the email the caller supplied, or the id when they supplied one.
           userName: label.includes("@") ? label : undefined,
           membershipId: membership.id,
           userId,
@@ -236,8 +231,6 @@ export const agentVaultMembershipServiceFactory = ({
     return { memberships, skipped };
   };
 
-  // The roster is administrative: the member role carries no Identity read, so a member enumerating
-  // every machine identity in the product is refused here rather than gated on membership alone.
   const assertCanReadIdentities = async (projectId: string, ctx: TAgentVaultActorContext) => {
     const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
@@ -253,8 +246,6 @@ export const agentVaultMembershipServiceFactory = ({
     );
   };
 
-  // Roles come back in one query rather than one per membership: the pool is small and this list is
-  // rendered on every visit to Access Control.
   const resolveMemberships = async (memberships: Awaited<ReturnType<typeof membershipDAL.find>>) => {
     if (!memberships.length) return [];
 
@@ -275,7 +266,6 @@ export const agentVaultMembershipServiceFactory = ({
     });
   };
 
-  /** Identity members with their name attached, so the page never joins against the org identity list. */
   const listProductIdentityMembers = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
     await assertCanReadIdentities(projectId, ctx);
 
@@ -287,8 +277,6 @@ export const agentVaultMembershipServiceFactory = ({
     const identities = identityIds.length ? await identityDAL.find({ $in: { id: identityIds } }) : [];
     const identityById = new Map(identities.map((i) => [i.id, i]));
 
-    // The identity's own scope decides whether removing it here would orphan it: one created inside
-    // Agent Vault belongs to no other project, so the caller deletes it rather than detaching it.
     return resolved.map((m) => {
       const identity = m.identityId ? identityById.get(m.identityId) : undefined;
       return {
@@ -315,8 +303,6 @@ export const agentVaultMembershipServiceFactory = ({
     }
   };
 
-  // The last admin cannot be demoted or removed, or the product becomes unadministrable and only a
-  // server admin could put it right.
   const assertNotLastAdmin = async (projectId: string, membershipId: string, tx: Knex) => {
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId }, { tx });
     const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } }, { tx });
@@ -327,21 +313,12 @@ export const agentVaultMembershipServiceFactory = ({
     }
   };
 
-  // A member is someone who can mint sessions, and resolveSession refuses any actor without an active org
-  // membership - so admitting one without it would create a row that could never work. Users reach this
-  // through the email path in the UI, which checks the same thing; this is the direct-API route to it, and
-  // it validated groups and identities while letting any userId through to the foreign key as a 500.
-  //
-  // Deliberately no estate-wide lookup first: whether some user id exists in another organization is not
-  // an answer this endpoint owes its caller.
+  // resolveSession refuses an actor without an active org membership, so a member added without one could never mint.
   const assertActorIsInOrg = async (
     dto: { userId?: string; groupId?: string; identityId?: string },
     orgId: string,
     label: string
   ) => {
-    // A group never mints a session; its members do, each checked on their own at resolve. Groups and
-    // identities carry an orgId, so a scoped miss can say "not found" without telling the caller whether
-    // that id exists in someone else's organization.
     if (dto.groupId) {
       const [group] = await groupDAL.find({ id: dto.groupId, orgId });
       if (!group) throw new NotFoundError({ message: `Group with ID '${dto.groupId}' not found` });
@@ -352,9 +329,6 @@ export const agentVaultMembershipServiceFactory = ({
       if (!identity) throw new NotFoundError({ message: `Machine identity with ID '${dto.identityId}' not found` });
     }
 
-    // A user has no owning org, so membership is the only scope there is: one message whether the id
-    // belongs to another organization or to nobody. Deactivated actors are refused here too, since
-    // resolveSession turns their sessions down anyway.
     const actorId = dto.userId ?? dto.identityId!;
     const membership = await orgDAL.findEffectiveOrgMembership({
       actorType: dto.userId ? ActorType.USER : ActorType.IDENTITY,
@@ -369,8 +343,6 @@ export const agentVaultMembershipServiceFactory = ({
     }
   };
 
-  // Audit metadata pairs every actor id with a name, so a reader is not left resolving UUIDs by hand.
-  // Best effort: a label that cannot be resolved leaves the id on its own rather than failing the write.
   const resolveActorLabel = async (dto: { userId?: string; groupId?: string; identityId?: string }) => {
     if (dto.groupId) {
       const [group] = await groupDAL.find({ id: dto.groupId });
@@ -463,7 +435,6 @@ export const agentVaultMembershipServiceFactory = ({
 
       await assertNotLastAdmin(projectId, membership.id, tx);
 
-      // Leaving the product takes every bundle grant with it, as PAM's removeProductMember does.
       await membershipDAL.delete({ scope: RESOURCE_SCOPE, scopeProjectId: projectId, [column]: id }, tx);
 
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
@@ -474,8 +445,7 @@ export const agentVaultMembershipServiceFactory = ({
     return { ...dto, ...(await resolveActorLabel(dto)) };
   };
 
-  // The whole set rather than a page: the grant picker filters client-side, so a page would make search
-  // unable to find an identity it never fetched.
+  // The whole set rather than a page: the grant picker filters client-side.
   const listProductIdentities = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
     await assertCanReadIdentities(projectId, ctx);
 

@@ -57,7 +57,6 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   accessBundleId: string;
-  // Present in edit mode; absent when creating.
   connection?: TAgentVaultConnection | null;
 };
 
@@ -82,7 +81,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
 
-  // Editing an existing connection has nothing to pick, so the template step is dropped entirely.
   const steps = useMemo(
     () =>
       isUpdate
@@ -116,8 +114,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerName : undefined,
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : undefined,
-        // Both halves of a basic credential are sealed and never returned, so each box starts as
-        // "keep what is stored" whether or not that half is empty.
         username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
         secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
       });
@@ -126,7 +122,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     }
   }, [isOpen, connection, isUpdate, reset, setStep]);
 
-  // Every pick starts from blank, so nothing an earlier template filled in can survive into the next one.
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
     setTemplate(picked);
 
@@ -167,11 +162,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     };
   };
 
-  // The update is a patch, and each secret box carries all three intents. The sentinel means the field
-  // was never touched, so the key is left off and the stored value survives. An empty box means the
-  // user deleted what was there, which removes that half of a basic credential — a bearer token has no
-  // removed state, so an empty box there keeps what is stored rather than writing a header that
-  // authenticates nobody.
   const buildCredentialPatch = (data: TConnectionForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
@@ -223,8 +213,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         ? (error.response?.data as TApiErrors | undefined)
         : undefined;
 
-      // The two failures that name the Hosts field land on it, with the wizard moved back to that
-      // step; everything else keeps the repo's standard error handling.
       if (
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.includes("already covers")
@@ -250,8 +238,6 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     }
   };
 
-  // Going back is always allowed; going forward validates every step in between, so the rail can
-  // never skip a step that would have blocked Continue.
   const handleStepChange = async (target: number) => {
     if (target === step) return;
     if (target < step) {
@@ -329,10 +315,8 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
               <ConnectionTemplateSelect onSelect={handleTemplatePicked} />
             </div>
           ) : (
-            // Nothing submits the form natively. A type="submit" button on the last step would be
-            // the same reconciled DOM node as Continue, so the click that advances to Review lands
-            // on a submit button and saves before the step has been read; Enter in any field would
-            // do the same from any step.
+            // Nothing submits natively: a type="submit" on the last step is the same reconciled node as Continue,
+            // so the click that advances to Review would also save.
             <form onSubmit={(e) => e.preventDefault()} className="flex min-h-0 flex-1 flex-col">
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">

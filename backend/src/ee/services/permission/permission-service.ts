@@ -143,9 +143,6 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 const resolvePamProjectRoleRules = (role: string) =>
   role === ProjectMembershipRole.Admin ? pamProjectAdminPermissions : pamProjectMemberPermissions;
 
-// Same shape as PAM's: Agent Vault only ever assigns the `admin` / `member` project role slugs, and
-// anything else — `custom` included, which is how additional privileges arrive — resolves to the member
-// set, so a custom role cannot reintroduce project-level power.
 const resolveAgentVaultProjectRoleRules = (role: string) =>
   role === ProjectMembershipRole.Admin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions;
 
@@ -227,8 +224,7 @@ export const resolveResourceRoleRules = (resourceType: ResourceType, role: strin
     }
   }
 
-  // Bundle access is a service-layer SQL filter, so the one Agent Vault role carries no rules. The arm
-  // exists so this switch never reads an Agent Vault row as a cert-manager application.
+  // The arm exists so this switch never reads an Agent Vault row as a cert-manager application.
   if (resourceType === ResourceType.AgentVaultAccessBundle) {
     if (role === AgentVaultResourceRole.Consumer) return [];
     throw new NotFoundError({ name: "AgentVaultRoleInvalid", message: `Agent Vault role '${role}' not found` });

@@ -25,9 +25,7 @@ import { TAgentVaultSessionDALFactory } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
 import { TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-vault-session-types";
 
-// V1 ships one bundle per session so nobody has to learn ordering. The junction table, `position`, resolve
-// ordering and the proxy matcher all handle more; the concept map lists what else says "one" and has to
-// move with this constant.
+// V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
 export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
 
 type TAgentVaultSessionServiceFactoryDep = {
@@ -40,9 +38,7 @@ type TAgentVaultSessionServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItem">;
 };
 
-// Expired and revoked rows keep a month of history on the Sessions page, then go; nothing else outlives them.
 const SESSION_RETENTION_DAYS = 30;
-// The first sweep on a fresh instance looks back one day rather than over the whole table.
 const FIRST_SWEEP_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
@@ -56,8 +52,6 @@ export const agentVaultSessionServiceFactory = ({
   auditLogService,
   keyStore
 }: TAgentVaultSessionServiceFactoryDep) => {
-  // Only a person or a machine identity can hold a session; the actor comes from the request, never the
-  // body, so nobody mints on someone else's behalf.
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
       throw new BadRequestError({ message: "Only a user or machine identity can hold an Agent Vault session" });
@@ -82,8 +76,6 @@ export const agentVaultSessionServiceFactory = ({
     if (accessBundleIds.length > AGENT_VAULT_MAX_SESSION_BUNDLES) {
       throw new BadRequestError({ message: "A session carries one access bundle" });
     }
-    // Dormant while the cap is 1. Rejected rather than deduped, so the session is never shaped differently from
-    // what the caller asked for.
     if (new Set(accessBundleIds).size !== accessBundleIds.length) {
       throw new BadRequestError({ message: "The same access bundle is named more than once" });
     }
@@ -91,8 +83,6 @@ export const agentVaultSessionServiceFactory = ({
     const bundles = await agentVaultAccessBundleDAL.find({ projectId, $in: { id: accessBundleIds } });
     const bundlesById = new Map(bundles.map((bundle) => [bundle.id, bundle]));
 
-    // Named-but-unreachable fails with the bundle named rather than being dropped, and the message is
-    // the same whether the id is unknown or merely not granted, so this is not an existence oracle.
     const unreachable = accessBundleIds.find(
       (id) => !bundlesById.has(id) || (reachable !== null && !reachable.includes(id))
     );
@@ -116,8 +106,6 @@ export const agentVaultSessionServiceFactory = ({
         tx
       );
 
-      // Caller order becomes position, kept so the resolve ordering survives lifting the one-bundle cap. The
-      // bundle name is denormalised so the session still reads after a bundle is deleted.
       await agentVaultSessionAccessBundleDAL.insertMany(
         accessBundleIds.map((accessBundleId, position) => ({
           sessionId: created.id,
@@ -142,13 +130,10 @@ export const agentVaultSessionServiceFactory = ({
           position
         }))
       },
-      // Returned exactly once. Nothing stores it, so there is no second chance to read it.
       token
     };
   };
 
-  // Session visibility and revocation are ownership checks on the session row, not grant checks, so
-  // these two ask only for the role and skip the grant query the reachability helper would run.
   const getSessionAuthority = async ({ projectId, ctx }: { projectId: string; ctx: TListSessionsDTO["ctx"] }) => {
     const { permission, hasRole } = await permissionService.getProjectPermission({
       actor: ctx.actor,
@@ -168,8 +153,7 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    // The CASL read action alone would let any member list everyone's sessions, so the scope widening is
-    // checked here rather than left to the ability.
+    // The CASL read action alone would let any member list everyone's sessions.
     if (scope === AgentVaultSessionScope.All && !isAdmin) {
       throw new ForbiddenRequestError({ message: "Only an Agent Vault administrator can list everyone's sessions" });
     }
@@ -199,8 +183,7 @@ export const agentVaultSessionServiceFactory = ({
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    // The CASL action on its own would let any member revoke any other member's live session, so revoke
-    // is owner-or-admin.
+    // The CASL action alone would let any member revoke another member's session.
     const isOwner =
       (ctx.actor === ActorType.USER && session.userId === ctx.actorId) ||
       (ctx.actor === ActorType.IDENTITY && session.identityId === ctx.actorId);
@@ -208,15 +191,11 @@ export const agentVaultSessionServiceFactory = ({
       throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }
 
-    // Idempotent: revoking twice is not an error, and the first revocation time is the one that matters.
     if (session.revokedAt) return session;
 
     return agentVaultSessionDAL.updateById(session.id, { revokedAt: new Date() });
   };
 
-  // Expiry itself needs no sweep: status is derived at read time and the proxy drops its own cache entry.
-  // This exists for two things only: the session-expire audit event, emitted once per session by moving a
-  // watermark forward, and hard-deleting rows a month after they stopped working.
   const sweepRetiredSessions = async () => {
     const now = new Date();
     const watermark = await keyStore.getItem(KeyStorePrefixes.AgentVaultSessionExpireSweep);

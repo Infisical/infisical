@@ -13,17 +13,12 @@ export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
 
 export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.CONNECTION.hostPattern);
 
-// Both write schemas describe the same credential, but a create names it whole and an update patches
-// it, so they differ in exactly one way: on update every field is optional. `AgentVaultBearerConfigSchema`
-// is deliberately not reused here — its `.default()`s belong to a create, and on a PATCH they would turn
-// "field omitted" into "field reset", silently moving a DD-API-KEY credential back onto Authorization.
 const basicHalvesAreNotBothEmpty = (
   data: { type: AgentVaultCredentialType; username?: string; password?: string },
   ctx: z.RefinementCtx
 ) => {
-  // Either half may be blank, but not both: `Basic ` over an empty `:` authenticates nobody, and a
-  // caller who wanted no credential wants the passthrough type. The check cannot live in an
-  // object-level refine, because discriminatedUnion options must be plain objects.
+  // Either half may be blank, but not both. The check cannot be an object-level refine, because
+  // discriminatedUnion options must be plain objects.
   if (data.type !== AgentVaultCredentialType.Basic) return;
   if (data.username === undefined || data.password === undefined) return;
   if (data.username.length > 0 || data.password.length > 0) return;
@@ -59,11 +54,7 @@ export const AgentVaultCredentialInputSchema = z
   ])
   .superRefine(basicHalvesAreNotBothEmpty);
 
-/**
- * Every field but the discriminator is optional, and omitting one keeps what is stored. An empty
- * string is not the same as an omission: `headerPrefix: ""` means the header carries the value alone,
- * and `password: ""` clears the password on a credential that authenticates by username.
- */
+// Not derived from the create schema: its `.default()`s would turn an omitted field into a reset on a PATCH.
 export const AgentVaultCredentialUpdateSchema = z
   .discriminatedUnion("type", [
     z.object({
@@ -88,15 +79,12 @@ export const AgentVaultCredentialUpdateSchema = z
   ])
   .superRefine(basicHalvesAreNotBothEmpty);
 
-/** What every read path returns: enough to render the row, never the secret. */
 export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(AgentVaultCredentialType.Bearer),
     headerName: z.string().describe(AGENT_VAULT.CONNECTION.headerName),
     headerPrefix: z.string().describe(AGENT_VAULT.CONNECTION.headerPrefix)
   }),
-  // Nothing beyond the type: the username is sealed with the password, because for Stripe-style
-  // services the username is the key.
   z.object({ type: z.literal(AgentVaultCredentialType.Basic) }),
   z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
 ]);
@@ -110,7 +98,6 @@ export const AgentVaultConnectionSchema = z.object({
   createdAt: z.date().describe(AGENT_VAULT.CONNECTION.createdAt)
 });
 
-// Raw fields, as the generic and PAM member lists return them; the frontend formats the display name.
 export const AgentVaultMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),
@@ -129,7 +116,6 @@ export const AgentVaultMemberSchema = z.object({
   group: z.object({ name: z.string() }).nullable()
 });
 
-/** What a grant returns: the inserted row, exactly as PAM and the generic member add do. */
 export const AgentVaultCreatedMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),

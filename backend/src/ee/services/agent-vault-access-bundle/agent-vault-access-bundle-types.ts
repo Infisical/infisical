@@ -6,13 +6,11 @@ export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Basic; username: string; password: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
-/** The same credential as a patch: an absent field keeps what is stored, an empty string clears it. */
 export type TAgentVaultCredentialUpdate =
   | { type: AgentVaultCredentialType.Bearer; headerName?: string; headerPrefix?: string; value?: string }
   | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
-/** The non-secret half, as every read path returns it. A basic credential has none: its username can be the key. */
 export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
   | { type: AgentVaultCredentialType.Basic }

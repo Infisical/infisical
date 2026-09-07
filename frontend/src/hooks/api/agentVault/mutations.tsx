@@ -71,8 +71,6 @@ export const useDeleteAgentVaultAccessBundle = () => {
 
 export const useCreateAgentVaultConnection = () => {
   const queryClient = useQueryClient();
-  // Host-pattern validation errors are mapped onto the sheet's Hosts field, so the global
-  // Validation Error toast would only duplicate them.
   return useMutation({
     meta: { skipValidationToast: true },
     mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultConnectionDTO) => {
@@ -91,8 +89,6 @@ export const useCreateAgentVaultConnection = () => {
 
 export const useUpdateAgentVaultConnection = () => {
   const queryClient = useQueryClient();
-  // Host-pattern validation errors are mapped onto the sheet's Hosts field, so the global
-  // Validation Error toast would only duplicate them.
   return useMutation({
     meta: { skipValidationToast: true },
     mutationFn: async ({
@@ -280,14 +276,11 @@ export const useRevokeAgentVaultProxyAccess = () => {
   });
 };
 
-// The Users and Groups tabs read from the generic project hooks, so invalidating our own keys alone
-// leaves them showing the role or the row that was just changed until the next reload.
 const invalidateProductMembers = (
   queryClient: ReturnType<typeof useQueryClient>,
   projectId: string
 ) => {
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers() });
-  // Losing the product loses every bundle grant with it, so the bundle lists are stale too.
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles() });
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.productIdentities() });
   queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });

@@ -264,8 +264,6 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
-    // Agent Vault is a per-org singleton created by its own bootstrap, so a second one would be
-    // unreachable: every route resolves the newest project for the org and ignores the rest.
     if (type === ProjectType.AgentVault) {
       throw new BadRequestError({
         message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
@@ -785,8 +783,6 @@ export const projectServiceFactory = ({
       });
     }
 
-    // Same story for Agent Vault: one per org, recreated on next access, and deleting it takes every
-    // access bundle, credential and live session with it.
     if (project.type === ProjectType.AgentVault) {
       throw new BadRequestError({
         message: "Agent Vault projects cannot be deleted."
@@ -2270,7 +2266,6 @@ export const projectServiceFactory = ({
     const projectTypeUrl = PROJECT_ACCESS_REQUEST_URL_SLUGS[project.type as ProjectType] ?? project.type;
     const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
-    // PAM and Agent Vault are per-org singletons with no project-scoped route, unlike other product types
     const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
       [ProjectType.PAM]: "pam",
       [ProjectType.AgentVault]: "agent-vault"

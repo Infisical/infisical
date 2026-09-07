@@ -10,7 +10,6 @@ export const registerAgentVaultProjectRouter = async (server: FastifyZodProvider
     method: "GET",
     url: "/",
     schema: {
-      // Internal endpoint; Agent Vault projects are never user-facing, so keep it out of the API docs
       hide: true,
       operationId: "getAgentVaultProject",
       description: "Resolve the organization's Agent Vault project, creating it on first access",
@@ -19,9 +18,8 @@ export const registerAgentVaultProjectRouter = async (server: FastifyZodProvider
     },
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    // A deliberate REST deviation, confirmed rather than silently shipped: injectAgentVaultProjectId is a
-    // preValidation hook, so this GET creates the project on first access. Lazy bootstrap is the point —
-    // every org that predates the feature gets its project the first time someone opens the product.
+    // A deliberate REST deviation: injectAgentVaultProjectId is a preValidation hook, so this GET
+    // bootstraps the project on first access.
     handler: async (req) => ({ projectId: req.internalAgentVaultProjectId })
   });
 };

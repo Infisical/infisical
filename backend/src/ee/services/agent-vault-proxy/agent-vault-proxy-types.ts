@@ -3,7 +3,6 @@ import { AgentVaultUnmatchedHost } from "../agent-vault/agent-vault-enums";
 
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TAgentVaultActorContext };
 
-/** The settings block the server owns and hands back on every heartbeat. */
 export type TAgentVaultProxyConfig = {
   unmatchedHost: AgentVaultUnmatchedHost;
   bypassHosts: string | null;
@@ -44,7 +43,6 @@ export type TResolveSessionDTO = {
   sessionToken: string;
 };
 
-/** One connection as the proxy receives it — the only place a credential is ever decrypted. */
 export type TResolvedConnection = {
   id: string;
   name: string;

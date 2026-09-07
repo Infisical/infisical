@@ -743,7 +743,6 @@ export const orgServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
 
-    // The PAM and Agent Vault bootstraps above seed the creator as a project member, which changes both meters.
     usageMeteringService.emit(organization.id, PamIdentities.key);
     usageMeteringService.emit(organization.id, AgentVaultIdentities.key);
 

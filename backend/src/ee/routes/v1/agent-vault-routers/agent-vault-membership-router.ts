@@ -93,8 +93,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     identityId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.identityId)
   });
 
-  // resolveActorColumn takes the first id it finds, so without this a body naming two actors would act on
-  // one of them and silently ignore the other - on a remove, that is the wrong principal losing access.
+  // resolveActorColumn takes the first id it finds, so a body naming two actors would silently act on one.
   const isExactlyOneActor = (body: { userId?: string; groupId?: string; identityId?: string }) =>
     [body.userId, body.groupId, body.identityId].filter(Boolean).length === 1;
   const ONE_ACTOR_MESSAGE = "Name exactly one user, group or machine identity";
@@ -108,8 +107,6 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       description: "Give one or more users access to Agent Vault, by id or by email",
       tags: [ApiDocsTags.AgentVaultMemberships],
       body: z.object({
-        // Bounded like the org invite route, which caps its own invitee list at 100. Unbounded, one
-        // rejected address per entry made the 400's message as long as the array was.
         userIds: z.string().uuid().array().max(100).default([]),
         emails: z.string().email().array().max(100).default([]),
         role: ProductRoleSchema

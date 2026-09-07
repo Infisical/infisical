@@ -19,7 +19,6 @@ export const Route = createFileRoute(
             params: {
               orgId: params.orgId
             },
-            // Agent Vault has no Roles tab: its two roles are fixed and are shown where they are picked.
             search: {
               selectedTab: AgentVaultAccessControlTab.Users
             }

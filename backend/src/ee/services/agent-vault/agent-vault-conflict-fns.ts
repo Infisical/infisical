@@ -11,12 +11,7 @@ export type TAgentVaultConflict = {
   patterns: string[];
 };
 
-// Two connections conflict when they cover the same normalized host:port exactly. Containment is not a
-// conflict: exact beats wildcard deterministically, which is how an override is written on purpose.
-//
-// Only connections in one bundle are compared, and there it is a hard reject: nothing can break the tie,
-// since the runtime ladder past exact-host is bundle position and then connection name, and two connections
-// in one bundle share a position. Bundles never meet at runtime while a session carries one bundle.
+// Containment is not a conflict: an exact host beats a wildcard deterministically, which is how an override is written.
 export const findHostPatternConflicts = (
   hostPattern: string,
   candidates: TConflictCandidate[]

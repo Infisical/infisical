@@ -7,14 +7,12 @@ import { ormify } from "@app/lib/knex";
 
 export type TAgentVaultProxyDALFactory = ReturnType<typeof agentVaultProxyDALFactory>;
 
-/** The proxy plus the org it belongs to. The table carries only projectId; the auth framework wants orgId. */
 export type TAgentVaultProxyWithOrg = TAgentVaultProxies & { orgId: string };
 
 export const agentVaultProxyDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultProxy);
 
-  // resource-auth-method's $loadResource returns { id, name, orgId, identityId } and loginWithToken
-  // refuses a null orgId, so every lookup on that path joins projects rather than denormalising a column.
+  // loginWithToken refuses a null orgId, so this path joins projects rather than denormalising a column.
   const findByIdWithOrg = async (id: string, tx?: Knex): Promise<TAgentVaultProxyWithOrg | undefined> => {
     try {
       const row = (await (tx || db.replicaNode())(TableName.AgentVaultProxy)

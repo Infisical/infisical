@@ -78,7 +78,6 @@ export const ProjectNav = () => {
     if (isLegacyView || hasApplicationContext || isFromRootRequests || hasSignerContext)
       return null;
     if (isCertManager && (isOnAccessControl || pathname.includes("/discovery"))) return null;
-    // Agent Vault renders access control as in-page tabs (no secondary submenu).
     if (isOnAccessControl && currentProject.type === ProjectType.AgentVault) return null;
     // PAM navigation is handled separately by PamNav.
     if (currentProject.type === ProjectType.PAM) return null;

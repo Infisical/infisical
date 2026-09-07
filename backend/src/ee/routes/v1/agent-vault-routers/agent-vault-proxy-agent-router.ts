@@ -16,8 +16,6 @@ const ProxyConfigSchema = z.object({
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval)
 });
 
-// The session token rides in a header, never a query string, so it stays out of access logs and
-// referrers.
 const SESSION_HEADER = "x-infisical-agent-session";
 
 export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvider) => {
@@ -37,20 +35,16 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         200: z.object({
           proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
           name: z.string().describe(AGENT_VAULT.PROXY.name),
-          // Non-expiring, revoked by bumping tokenVersion.
           accessToken: z.string(),
           config: ProxyConfigSchema
         })
       }
     },
-    // The enrollment token is the credential, once. No AuthMode applies.
     handler: async (req) => {
       const result = await server.services.agentVaultProxy.enroll(req.body);
 
-      // The enrollment token is single-use and consumed in-transaction by the time we get here, and this
-      // response is the only copy of the access token. So an audit failure must not fail the request:
-      // it would leave the proxy enrolled server-side with nobody holding its token, and the operator
-      // re-running the same command would get a 401.
+      // The enrollment token is already consumed and this response is the only copy of the access token,
+      // so an audit failure must not fail the request.
       try {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
@@ -91,8 +85,6 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       operationId: "agentVaultProxyHeartbeat",
       description: "Report a proxy as alive and read back its settings",
       tags: [ApiDocsTags.AgentVaultProxies],
-      // No body: the proxy has nothing to tell us that the token and the timestamp do not already say.
-      // The full settings block comes back every time, unconditionally.
       response: { 200: z.object({ config: ProxyConfigSchema }) }
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
@@ -122,8 +114,6 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         200: z.object({
           sessionId: z.string().uuid(),
           expiresAt: z.date().nullable(),
-          // Ordered: bundle position, then connection name. An empty array is a valid session whose
-          // actor has lost every bundle — not an error.
           connections: z
             .object({
               id: z.string().uuid(),
@@ -147,8 +137,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // Deliberately unaudited: a resolve happens once per poll interval per session, so a row each
-      // would be ~144k a day for a hundred sessions, in the audit table and in every customer's stream.
+      // Deliberately unaudited: one row per poll per session is ~144k a day for a hundred sessions.
       return server.services.agentVaultProxy.resolveSession({
         proxyId: req.permission.id,
         orgId: req.permission.orgId,

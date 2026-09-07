@@ -780,10 +780,8 @@ const buildPamProjectMemberPermissionRules = () => {
   return rules;
 };
 
-// Agent Vault product membership is stored as plain project membership (the `admin` / `member` project
-// role slugs), so these two sets are what those slugs mean inside an Agent Vault project. The admin set
-// is written out rather than aliased to projectAdminPermissions: an Agent Vault admin has no business
-// rotating CMEKs or minting service tokens, and aliasing would hand them every secret-manager ability.
+// The admin set is written out rather than aliased to projectAdminPermissions: an Agent Vault admin has
+// no business rotating CMEKs or minting service tokens.
 const buildAgentVaultProjectAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
@@ -877,21 +875,13 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
 
   can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
 
-  // The Agent Vault audit log page reuses the generic project one, which gates on this.
   can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
   return rules;
 };
 
-// A member reaches bundles through the Agent Vault membership table, not through project role rules, so
-// their project ability is the three things a member genuinely does: read the bundles they hold, mint and
-// revoke their own sessions, and read a proxy's fingerprint so they can pin it.
-//
-// Deliberately narrower than PAM's member set, which also carries Member, Groups and Identity read as
-// directory visibility. Nothing a member sees here needs a roster: Access Control is an admin page with
-// no member nav entry, and the Sessions page takes actor names from the sessions response. Granting the
-// reads anyway would let any member enumerate every person, group and machine identity in the product,
-// through this product's routes and through the generic project ones alike.
+// Deliberately narrower than PAM's member set: no directory reads, or any member could enumerate every
+// person, group and machine identity in the product.
 const buildAgentVaultProjectMemberPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 

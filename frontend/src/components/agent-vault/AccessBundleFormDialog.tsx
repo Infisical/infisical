@@ -37,7 +37,6 @@ type FormData = z.infer<typeof schema>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  // Present in edit mode; absent when creating.
   accessBundle?: TAgentVaultAccessBundle;
 };
 

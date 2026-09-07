@@ -1914,8 +1914,6 @@ export const registerRoutes = async (
     gatewayProxyRegistry
   });
 
-  // After resourceAuthMethodService: the proxy service delegates enrollment, minting and the
-  // tokenVersion bump to it rather than reimplementing them.
   const agentVaultProxyService = agentVaultProxyServiceFactory({
     agentVaultProxyDAL,
     agentVaultResolveDAL,

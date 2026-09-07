@@ -4,9 +4,6 @@ export enum AgentVaultCredentialType {
   Passthrough = "passthrough"
 }
 
-// The one role a bundle grant carries. It names what the actor does with the bundle rather than a tier,
-// and it is deliberately not a slug PAM or the generic resource roles use, so a generic path that ever
-// resolves it without an Agent Vault arm fails loudly instead of granting another product's permissions.
 export enum AgentVaultResourceRole {
   Consumer = "consumer"
 }
@@ -16,8 +13,6 @@ export enum AgentVaultUnmatchedHost {
   Deny = "deny"
 }
 
-// Not a free-form duration: a fixed set keeps the Sessions page and the CLI honest about what a token
-// can be, and `Never` is the one an admin needs to be able to spot at a glance.
 export enum AgentVaultSessionTtl {
   OneHour = "1h",
   EightHours = "8h",

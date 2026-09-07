@@ -83,7 +83,6 @@ export const ConnectionsCard = ({
   const [connectionToDelete, setConnectionToDelete] = useState<TAgentVaultConnection | null>(null);
   const deleteConnection = useDeleteAgentVaultConnection();
 
-  // Newest first, so a connection someone just added is the one they are looking at.
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
 

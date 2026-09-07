@@ -4,7 +4,6 @@ import { ConnectionStep } from "./connectionSchema";
 
 export const CONNECTION_DOCS_URL = AgentVaultDocsUrls.accessBundles;
 
-// The template step draws its own full-width layout, so it reads nothing past the rail's step name.
 type StepMeta = {
   step: ConnectionStep;
   name: string;
@@ -15,8 +14,6 @@ type StepMeta = {
   rightDescription?: string;
 };
 
-// Ordered as the form advances. Editing an existing connection drops the template step, since
-// there is nothing left to pick.
 export const CONNECTION_STEPS: StepMeta[] = [
   {
     step: ConnectionStep.Template,

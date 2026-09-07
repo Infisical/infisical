@@ -20,8 +20,6 @@ type TBootstrapInput = {
   adminGroupIds?: string[];
 };
 
-// One Agent Vault project per org, seeded with the org's current admins. Unlike PAM there is nothing else to
-// seed: access bundles and proxies are all created by hand.
 export const bootstrapAgentVaultProject = async (
   { orgId, adminUserIds = [], adminIdentityIds = [], adminGroupIds = [] }: TBootstrapInput,
   { projectDAL, membershipDAL, membershipRoleDAL }: TBootstrapDeps,

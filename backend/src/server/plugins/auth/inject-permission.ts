@@ -101,8 +101,7 @@ export const injectPermission = fp(async (server) => {
         `injectPermission: Injecting permissions for [permissionsForKmipServer=${req.auth.kmipServerId}] [type=${ActorType.KMIP_SERVER}]`
       );
     } else if (req.auth.actor === ActorType.AGENT_VAULT_PROXY) {
-      // Without this the proxy routes' rate-limit keyGenerator falls back to source IP, so every proxy
-      // behind one NAT would share a bucket and 429 each other.
+      // Without this the proxy routes' rate-limit keyGenerator falls back to source IP.
       req.permission = {
         type: ActorType.AGENT_VAULT_PROXY,
         id: req.auth.agentVaultProxyId,

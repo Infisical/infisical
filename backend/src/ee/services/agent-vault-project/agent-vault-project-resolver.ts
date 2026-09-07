@@ -36,7 +36,6 @@ export const agentVaultProjectResolverFactory = ({
   keyStore,
   usageMeteringService
 }: TResolverDeps) => {
-  // Newest live Agent Vault project (find() excludes soft-deleted); tx reads the primary for the in-lock re-check.
   const findDefaultProjectId = async (orgId: string, tx?: Knex): Promise<string | null> => {
     const projects = await projectDAL.find(
       { orgId, type: ProjectType.AgentVault },
@@ -45,13 +44,11 @@ export const agentVaultProjectResolverFactory = ({
     return projects.length ? projects[0].id : null;
   };
 
-  // Lazily create the project on first use, seeded with current org admins (Agent Vault has no org-admin fallback).
   const ensureDefaultProject = async (orgId: string): Promise<string> => {
     const { projectId, created } = await db.transaction(async (tx) => {
       // Serialize concurrent bootstraps; a unique constraint won't work since zombie projects share type=agent-vault.
       await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [`agent-vault-bootstrap:${orgId}`]);
 
-      // Re-check inside the lock (race winner).
       const existingId = await findDefaultProjectId(orgId, tx);
       if (existingId) return { projectId: existingId, created: false };
 
@@ -84,7 +81,6 @@ export const agentVaultProjectResolverFactory = ({
       return { projectId: project.id, created: true };
     });
 
-    // Bootstrap seeds org admins as project members, which changes the agent_vault_identities meter.
     if (created) {
       usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     }

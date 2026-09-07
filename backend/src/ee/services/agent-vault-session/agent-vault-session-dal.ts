@@ -14,9 +14,7 @@ export type TAgentVaultSessionListRow = {
   id: string;
   userId: string | null;
   identityId: string | null;
-  /** The person or machine the session runs as, ready to render. */
   actorName: string;
-  /** The user's email, or null for a machine identity. */
   actorEmail: string | null;
   expiresAt: Date | null;
   revokedAt: Date | null;
@@ -24,8 +22,6 @@ export type TAgentVaultSessionListRow = {
   accessBundles: { id: string | null; name: string; position: number }[];
 };
 
-// Status is derived from the two timestamps at read time, never stored: a read path that writes is how
-// "expired" ends up disagreeing with what the proxy sees.
 const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus, now: Date) => {
   if (status === AgentVaultSessionStatus.Revoked) {
     void query.whereNotNull(`${TableName.AgentVaultSession}.revokedAt`);
@@ -45,7 +41,6 @@ const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus,
   });
 };
 
-// A user who never filled in their profile has no name, so the email carries the row instead.
 const userDisplayName = ({
   userFirstName,
   userLastName
@@ -74,7 +69,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       offset
     }: {
       projectId: string;
-      /** Undefined lists every actor's sessions; only an administrator may ask for that. */
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
       status?: AgentVaultSessionStatus;
       limit: number;
@@ -182,7 +176,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Sessions whose expiry fell inside (since, until], skipping ones already ended by a revoke.
   const findExpiredBetween = async (since: Date, until: Date, tx?: Knex) => {
     try {
       return await (tx || db.replicaNode())(TableName.AgentVaultSession)
@@ -196,8 +189,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Hard-deletes sessions retired before the cutoff: revoked ones by revokedAt, the rest by expiresAt.
-  // A never-expiring session is only ever reaped once revoked. The child rows follow by cascade.
   const pruneRetiredBefore = async (cutoff: Date, tx?: Knex) => {
     try {
       return await (tx || db)(TableName.AgentVaultSession)

@@ -11,7 +11,6 @@ import {
   TListAgentVaultSessionsDTO
 } from "./types";
 
-// Resolves the org's Agent Vault project, creating it on first access (lazy bootstrap on the backend).
 export const fetchAgentVaultProjectId = async () => {
   const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/agent-vault/project");
   return data.projectId;
@@ -22,8 +21,8 @@ export const agentVaultKeys = {
   accessBundles: () => [...agentVaultKeys.all, "access-bundles"] as const,
   accessBundle: (accessBundleId: string) =>
     [...agentVaultKeys.accessBundles(), accessBundleId] as const,
-  // sessions() is the invalidation prefix; sessionList() adds the query parameters. Folding the
-  // parameters into one key would put an `undefined` in the prefix, which prefix-matches nothing.
+  // sessions() is the invalidation prefix; folding the parameters in would put an `undefined` in it,
+  // which prefix-matches nothing.
   sessions: () => [...agentVaultKeys.all, "sessions"] as const,
   sessionList: (params?: TListAgentVaultSessionsDTO) =>
     [...agentVaultKeys.sessions(), params] as const,
@@ -46,8 +45,6 @@ export const useListAgentVaultProductIdentityMembers = () =>
     queryFn: () => fetchProductMembers<TAgentVaultProductIdentityMember>("identity-members")
   });
 
-// Every identity member rather than a page: the grant picker filters client-side, so a paginated
-// list would leave search unable to find one it never fetched.
 export const useListAgentVaultProductIdentities = (enabled = true) =>
   useQuery({
     queryKey: agentVaultKeys.productIdentities(),

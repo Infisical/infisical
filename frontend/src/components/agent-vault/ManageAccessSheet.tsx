@@ -38,7 +38,6 @@ import { AddMemberDialog } from "./AddMemberDialog";
 import { memberDisplayName, MemberName } from "./MemberName";
 
 type Props = {
-  /** The bundle whose access is being managed. Null keeps the sheet closed. */
   accessBundle: { id: string; name: string } | null;
   onOpenChange: (isOpen: boolean) => void;
 };

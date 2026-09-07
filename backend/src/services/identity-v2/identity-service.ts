@@ -250,8 +250,6 @@ export const identityV2ServiceFactory = ({
     let projectMemberRole = ProjectMembershipRole.NoAccess as string;
     if (scopeData.scope === AccessScope.Project && !resolvedRoleDocs) {
       const project = await projectDAL.findById(scopeData.projectId);
-      // PAM's and Agent Vault's project membership IS their product membership, so NoAccess would be
-      // meaningless there
       if (
         project?.type === ProjectType.CertificateManager ||
         project?.type === ProjectType.PAM ||
@@ -352,9 +350,8 @@ export const identityV2ServiceFactory = ({
     await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
 
     const identity = await identityDAL.transaction(async (tx) => {
-      // Compared against undefined, not truthiness: hasDeleteProtection: false on its own is a real
-      // update, and a truthiness check skipped it while still answering 200, so the flag could be
-      // turned on but never off.
+      // Compared against undefined: `hasDeleteProtection: false` is a real update, and a truthiness check
+      // could never turn the flag off.
       const updatedIdentity =
         data?.name !== undefined || data?.hasDeleteProtection !== undefined
           ? await identityDAL.updateById(

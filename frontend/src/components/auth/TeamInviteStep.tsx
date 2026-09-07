@@ -31,7 +31,6 @@ interface TeamInviteStepProps {
   projectIds?: string[];
   /** Also grant access to the org's PAM product (org-scoped, no project id). */
   grantPamAccess?: boolean;
-  /** Same for Agent Vault, which is also org-scoped over one implicit project. */
   grantAgentVaultAccess?: boolean;
   onComplete: () => void;
 }

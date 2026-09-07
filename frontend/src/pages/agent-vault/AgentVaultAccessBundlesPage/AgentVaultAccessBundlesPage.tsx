@@ -74,7 +74,6 @@ export const AgentVaultAccessBundlesPage = () => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const [search, setSearch] = useState("");
-  // Newest first, so a bundle someone just made is the one they are looking at.
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
   const [isCreateOpen, setIsCreateOpen] = useState(false);

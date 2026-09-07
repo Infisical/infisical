@@ -50,8 +50,6 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const [connectionToEdit, setConnectionToEdit] = useState<TAgentVaultConnection | null>(null);
 
   if (isPending) return <PageLoader />;
-  // A 404 here is the backend's answer for both a deleted bundle and a member who has lost the
-  // grant, so the copy covers both rather than guessing.
   if (!accessBundle) {
     return (
       <div className="mx-auto mb-6 w-full max-w-8xl">

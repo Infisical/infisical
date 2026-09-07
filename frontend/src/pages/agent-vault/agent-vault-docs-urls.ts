@@ -1,7 +1,3 @@
-/**
- * Centralized Agent Vault documentation URLs.
- */
-
 const AGENT_VAULT_DOCS_BASE_URL = "https://infisical.com/docs/documentation/platform/agent-vault";
 
 export const AgentVaultDocsUrls = {
