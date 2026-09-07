@@ -42,6 +42,8 @@ describe("INFISICAL_RUN_MODES route registration", () => {
 
   describe("without the api run mode (a worker-only pod)", () => {
     let workerServer: Awaited<ReturnType<typeof main>>;
+    let workerQueue: ReturnType<typeof queueServiceFactory>;
+    let workerRedis: ReturnType<typeof buildRedisFromConfig>;
     const originalRunModes = process.env.INFISICAL_RUN_MODES;
 
     beforeAll(async () => {
@@ -51,12 +53,15 @@ describe("INFISICAL_RUN_MODES route registration", () => {
       process.env.INFISICAL_RUN_MODES = `${RunMode.GeneralWorkers},${RunMode.SecretScanning}`;
       const envConfig = await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL);
 
+      workerQueue = queueServiceFactory(envConfig);
+      workerRedis = buildRedisFromConfig(envConfig);
+
       workerServer = await main({
         db: testDb,
         smtp: mockSmtpServer(),
-        queue: queueServiceFactory(envConfig),
+        queue: workerQueue,
         keyStore: keyStoreFactory(envConfig, keyValueStoreDALFactory(testDb)),
-        redis: buildRedisFromConfig(envConfig),
+        redis: workerRedis,
         clickhouse: buildClickHouseFromConfig(envConfig),
         hsmService: testHsmService,
         kmsRootConfigDAL: testKmsRootConfigDAL,
@@ -66,7 +71,12 @@ describe("INFISICAL_RUN_MODES route registration", () => {
     });
 
     afterAll(async () => {
+      // main.ts closes the server and shuts the queue down separately; the server's onClose hook
+      // does not touch the queue. Skipping it leaves this pod's BullMQ workers consuming jobs from
+      // later specs, since the whole e2e suite shares one fork and one Redis.
       await workerServer?.close();
+      await workerQueue?.shutdown();
+      await workerRedis?.quit();
 
       if (originalRunModes === undefined) delete process.env.INFISICAL_RUN_MODES;
       else process.env.INFISICAL_RUN_MODES = originalRunModes;
