@@ -5,10 +5,6 @@ description: "Run the proxy that attaches credentials, set its traffic policy, a
 
 A proxy is the forward proxy that brokers credentials: it applies the real credential to matching requests on the way out and leaves everything else untouched. It runs where agent traffic leaves your network: on a host of its own that agents across your network share, or next to a single agent. You create it in the dashboard, enroll it once from the CLI, and change its settings from the dashboard afterwards.
 
-<Info>
-  This page is for the people who run proxies. Members see the Proxies page too, with each proxy's name, health, and certificate fingerprint.
-</Info>
-
 ## Enrolling
 
 Go to **Proxies**, select **Create Proxy**, name it, and select **Create Proxy**. The dialog shows a one-time enrollment token, valid for an hour, and the command to run where the proxy will live:
