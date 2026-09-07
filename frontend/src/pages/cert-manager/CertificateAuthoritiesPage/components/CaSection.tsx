@@ -56,8 +56,16 @@ export const CaSection = () => {
   // An internal CA counts against both caps, so whichever runs out first blocks it. The message names
   // that one, since "1 of 1 internal CAs" and "1 of 1 CAs" call for different upgrades.
   const exhausted = [
-    { noun: "certificate authorities", ...caQuota?.certificateAuthorities },
-    { noun: "internal certificate authorities", ...caQuota?.internalCertificateAuthorities }
+    {
+      one: "certificate authority",
+      many: "certificate authorities",
+      ...caQuota?.certificateAuthorities
+    },
+    {
+      one: "internal certificate authority",
+      many: "internal certificate authorities",
+      ...caQuota?.internalCertificateAuthorities
+    }
   ].find((entry) => typeof entry.limit === "number" && (entry.used ?? 0) >= entry.limit);
 
   const handleCreateCa = () => {
@@ -65,7 +73,7 @@ export const CaSection = () => {
       // The allowance is shared across the organization and any sub-organizations, while this table
       // shows one project, so the count is named rather than left to look like a mismatch.
       handlePopUpOpen("upgradePlan", {
-        text: `Your plan includes ${exhausted.limit} ${exhausted.noun} and all ${exhausted.used} are in use across your organization. Upgrade to add more.`
+        text: `Your plan includes ${exhausted.limit} ${exhausted.limit === 1 ? exhausted.one : exhausted.many}. Your organization is using ${exhausted.used}. Upgrade to add more.`
       });
       return;
     }

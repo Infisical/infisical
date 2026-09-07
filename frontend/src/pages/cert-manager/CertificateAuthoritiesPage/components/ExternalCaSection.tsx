@@ -47,7 +47,7 @@ export const ExternalCaSection = () => {
   const handleCreateCa = () => {
     if (isAtCaLimit) {
       handlePopUpOpen("upgradePlan", {
-        text: `Your plan includes ${caLimit.limit} certificate authorities and all ${caLimit.used} are in use across your organization. Upgrade to add more.`
+        text: `Your plan includes ${caLimit.limit} certificate ${caLimit.limit === 1 ? "authority" : "authorities"}. Your organization is using ${caLimit.used}. Upgrade to add more.`
       });
       return;
     }
