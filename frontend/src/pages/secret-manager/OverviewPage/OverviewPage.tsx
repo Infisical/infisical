@@ -575,16 +575,17 @@ const OverviewPageContent = () => {
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
   const singleVisibleEnv = visibleEnvs.length === 1 ? visibleEnvs[0] : null;
 
-  useEffect(() => {
-    const shouldClearSortEnvironment =
-      sortEnvironment &&
+  const shouldClearSortEnvironment = Boolean(
+    sortEnvironment &&
       (visibleEnvs.length === 1 ||
-        !visibleEnvs.some((environment) => environment.slug === sortEnvironment));
-    const wouldAggregateRecency =
-      orderBy !== DashboardSecretsOrderBy.Name &&
-      visibleEnvs.length > 1 &&
-      (!sortEnvironment || shouldClearSortEnvironment);
+        !visibleEnvs.some((environment) => environment.slug === sortEnvironment))
+  );
+  const wouldAggregateRecency =
+    orderBy !== DashboardSecretsOrderBy.Name &&
+    visibleEnvs.length > 1 &&
+    (!sortEnvironment || shouldClearSortEnvironment);
 
+  useEffect(() => {
     if (shouldClearSortEnvironment) {
       setSortEnvironment(undefined);
     }
@@ -597,7 +598,7 @@ const OverviewPageContent = () => {
     if (shouldClearSortEnvironment || wouldAggregateRecency) {
       setPage(1);
     }
-  }, [orderBy, sortEnvironment, visibleEnvs, setOrderBy, setOrderDirection, setPage]);
+  }, [shouldClearSortEnvironment, wouldAggregateRecency, setOrderBy, setOrderDirection, setPage]);
 
   const handleSecretSortChange = useCallback(
     (value: string, environment?: string) => {
@@ -867,7 +868,9 @@ const OverviewPageContent = () => {
     data: overview,
     isPlaceholderData,
     isFetching: isOverviewFetching
-  } = useGetProjectSecretsOverview(overviewQueryParams, { enabled: isProjectV3 });
+  } = useGetProjectSecretsOverview(overviewQueryParams, {
+    enabled: isProjectV3 && !shouldClearSortEnvironment && !wouldAggregateRecency
+  });
   const isOverviewPending = isOverviewLoading || isPlaceholderData;
   const showDelayedOverviewSkeleton = useDelayedLoading(isPlaceholderData, {
     resetKey: JSON.stringify(overviewQueryParams)
@@ -3191,7 +3194,7 @@ const OverviewPageContent = () => {
                                       <ArrowUpDownIcon />
                                       Sort secrets by recency
                                     </DropdownMenuSubTrigger>
-                                    <DropdownMenuSubContent className="w-60">
+                                    <DropdownMenuSubContent>
                                       <DropdownMenuLabel>Use {name} timestamps</DropdownMenuLabel>
                                       <DropdownMenuRadioGroup
                                         value={
