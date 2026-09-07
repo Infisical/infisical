@@ -82,8 +82,7 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
         <DialogHeader>
           <DialogTitle>{isUpdate ? "Edit Access Bundle" : "Create Access Bundle"}</DialogTitle>
           <DialogDescription>
-            An access bundle groups the connections an agent may use. You grant the bundle, not the
-            individual connections.
+            An access bundle groups the connections an agent may use.
           </DialogDescription>
         </DialogHeader>
 
