@@ -8,7 +8,7 @@ import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { logger } from "@app/lib/logger";
 import { agentVaultHeartbeatLimit, agentVaultResolveLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 const ProxyConfigSchema = z.object({
   unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
@@ -54,6 +54,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       try {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
+          actor: { type: ActorType.AGENT_VAULT_PROXY, metadata: { agentVaultProxyId: result.proxyId } },
           orgId: result.orgId,
           projectId: result.projectId,
           event: {
