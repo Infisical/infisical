@@ -141,7 +141,7 @@ export const AgentVaultSessionsPage = () => {
         scope={ProjectType.AgentVault}
         icon={TicketIcon}
         title="Sessions"
-        description="What an agent runs with. Each session carries a fixed set of access bundles."
+        description="What an agent runs with. Each session carries one access bundle."
       />
 
       <Card>
@@ -151,7 +151,7 @@ export const AgentVaultSessionsPage = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
           </CardTitle>
           <CardDescription>
-            A session names one actor, the access bundles it carries, and when it expires.
+            A session names one actor, the access bundle it carries, and when it expires.
           </CardDescription>
           <CardAction>
             <Button
@@ -236,7 +236,7 @@ export const AgentVaultSessionsPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Identity</TableHead>
-                <TableHead>Access Bundles</TableHead>
+                <TableHead>Access Bundle</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Status</TableHead>

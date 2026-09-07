@@ -25,7 +25,10 @@ import { TAgentVaultSessionDALFactory } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
 import { TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-vault-session-types";
 
-export const AGENT_VAULT_MAX_SESSION_BUNDLES = 16;
+// V1 ships one bundle per session so nobody has to learn ordering. The junction table, `position`, resolve
+// ordering and the proxy matcher all handle more; the concept map lists what else says "one" and has to
+// move with this constant.
+export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
@@ -74,15 +77,13 @@ export const agentVaultSessionServiceFactory = ({
     );
 
     if (!accessBundleIds.length) {
-      throw new BadRequestError({ message: "Name at least one access bundle for the session" });
+      throw new BadRequestError({ message: "Name the access bundle for the session" });
     }
     if (accessBundleIds.length > AGENT_VAULT_MAX_SESSION_BUNDLES) {
-      throw new BadRequestError({
-        message: `A session can carry at most ${AGENT_VAULT_MAX_SESSION_BUNDLES} access bundles`
-      });
+      throw new BadRequestError({ message: "A session carries one access bundle" });
     }
-    // Rejected rather than deduped: silently collapsing a duplicate would make the resulting priority
-    // order something the caller did not ask for.
+    // Dormant while the cap is 1. Rejected rather than deduped, so the session is never shaped differently from
+    // what the caller asked for.
     if (new Set(accessBundleIds).size !== accessBundleIds.length) {
       throw new BadRequestError({ message: "The same access bundle is named more than once" });
     }
@@ -115,8 +116,8 @@ export const agentVaultSessionServiceFactory = ({
         tx
       );
 
-      // Caller order becomes position, and position is what breaks the tie when two bundles cover the
-      // same host. The bundle name is denormalised so the session still reads after a bundle is deleted.
+      // Caller order becomes position, kept so the resolve ordering survives lifting the one-bundle cap. The
+      // bundle name is denormalised so the session still reads after a bundle is deleted.
       await agentVaultSessionAccessBundleDAL.insertMany(
         accessBundleIds.map((accessBundleId, position) => ({
           sessionId: created.id,

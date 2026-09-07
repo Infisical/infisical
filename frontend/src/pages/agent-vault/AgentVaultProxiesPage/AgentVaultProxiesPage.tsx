@@ -246,7 +246,7 @@ export const AgentVaultProxiesPage = () => {
                 <TableHead>Status</TableHead>
                 {isAdmin && (
                   <TableHead>
-                    <HeadWithHint hint="What the agent may reach beyond the hosts its access bundles cover.">
+                    <HeadWithHint hint="What the agent may reach beyond the hosts its access bundle covers.">
                       Unmatched Hosts
                     </HeadWithHint>
                   </TableHead>

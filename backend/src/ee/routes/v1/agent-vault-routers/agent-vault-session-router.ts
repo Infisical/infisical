@@ -77,10 +77,9 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "createAgentVaultSession",
-      description: "Mint an Agent Vault session over access bundles you can reach",
+      description: "Mint an Agent Vault session over an access bundle you can reach",
       tags: [ApiDocsTags.AgentVaultSessions],
       body: z.object({
-        // Caller order is the session's priority order, so duplicates are rejected rather than deduped.
         accessBundleIds: z
           .string()
           .uuid()

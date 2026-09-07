@@ -7,7 +7,6 @@ import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMemberDTO,
   TAgentVaultAccessBundle,
-  TAgentVaultConflictWarning,
   TAgentVaultConnection,
   TAgentVaultEnrollment,
   TAgentVaultMintedSession,
@@ -77,10 +76,10 @@ export const useCreateAgentVaultConnection = () => {
   return useMutation({
     meta: { skipValidationToast: true },
     mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultConnectionDTO) => {
-      const { data } = await apiRequest.post<{
-        connection: TAgentVaultConnection;
-        warnings: TAgentVaultConflictWarning[];
-      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/connections`, params);
+      const { data } = await apiRequest.post<{ connection: TAgentVaultConnection }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/connections`,
+        params
+      );
       return data;
     },
     onSuccess: (_, { accessBundleId }) => {
@@ -101,10 +100,7 @@ export const useUpdateAgentVaultConnection = () => {
       connectionId,
       ...params
     }: TUpdateAgentVaultConnectionDTO) => {
-      const { data } = await apiRequest.patch<{
-        connection: TAgentVaultConnection;
-        warnings: TAgentVaultConflictWarning[];
-      }>(
+      const { data } = await apiRequest.patch<{ connection: TAgentVaultConnection }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/connections/${connectionId}`,
         params
       );

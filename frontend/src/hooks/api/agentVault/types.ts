@@ -76,12 +76,6 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
   members?: TAgentVaultMember[];
 };
 
-export type TAgentVaultConflictWarning = {
-  connectionName: string;
-  accessBundleName: string;
-  patterns: string[];
-};
-
 export type TAgentVaultSessionAccessBundle = {
   id: string | null;
   name: string;

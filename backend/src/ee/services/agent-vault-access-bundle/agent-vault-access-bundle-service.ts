@@ -413,33 +413,24 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
   };
 
-  // Rejects a candidate that shares any normalized host:port with another connection in the same bundle,
-  // and warns about the same collision across bundles, where the session's bundle order settles it.
+  // Rejects a candidate that shares any normalized host:port with another connection in the same bundle.
   const checkHostPatternConflicts = async ({
-    projectId,
     accessBundleId,
     hostPattern,
     excludeConnectionId
   }: {
-    projectId: string;
     accessBundleId: string;
     hostPattern: string;
     excludeConnectionId?: string;
   }) => {
-    const candidates = await agentVaultConnectionDAL.findForConflictCheck({ projectId, excludeConnectionId });
-
-    const sameBundle = findHostPatternConflicts(
+    const siblings = await agentVaultConnectionDAL.findByAccessBundleId(accessBundleId);
+    const conflicts = findHostPatternConflicts(
       hostPattern,
-      candidates.filter((candidate) => candidate.accessBundleId === accessBundleId)
+      siblings.filter((candidate) => candidate.id !== excludeConnectionId)
     );
-    if (sameBundle.length) {
-      throw new BadRequestError({ message: describeConflict(sameBundle[0]) });
+    if (conflicts.length) {
+      throw new BadRequestError({ message: describeConflict(conflicts[0]) });
     }
-
-    return findHostPatternConflicts(
-      hostPattern,
-      candidates.filter((candidate) => candidate.accessBundleId !== accessBundleId)
-    );
   };
 
   const createConnection = async ({ accessBundleId, name, hostPattern, credential, ...rest }: TCreateConnectionDTO) => {
@@ -454,11 +445,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });
     }
 
-    const warnings = await checkHostPatternConflicts({
-      projectId: rest.projectId,
-      accessBundleId: bundle.id,
-      hostPattern
-    });
+    await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern });
 
     const { config, secret } = splitCredential(credential);
     const { encryptor } = await getProjectCipher(rest.projectId);
@@ -475,7 +462,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       encryptedCredential
     });
 
-    return { connection: { ...connection, credential: summarizeCredential(connection) }, warnings };
+    return { connection: { ...connection, credential: summarizeCredential(connection) } };
   };
 
   const updateConnection = async ({
@@ -502,10 +489,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       }
     }
 
-    let warnings: Awaited<ReturnType<typeof checkHostPatternConflicts>> = [];
     if (hostPattern && hostPattern !== connection.hostPattern) {
-      warnings = await checkHostPatternConflicts({
-        projectId: rest.projectId,
+      await checkHostPatternConflicts({
         accessBundleId: bundle.id,
         hostPattern,
         excludeConnectionId: connection.id
@@ -551,7 +536,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ...credentialUpdate
     });
 
-    return { connection: { ...updated, credential: summarizeCredential(updated) }, warnings };
+    return { connection: { ...updated, credential: summarizeCredential(updated) } };
   };
 
   const deleteConnection = async ({ accessBundleId, connectionId, ...rest }: TDeleteConnectionDTO) => {

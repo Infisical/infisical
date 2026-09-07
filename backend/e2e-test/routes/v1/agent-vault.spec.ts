@@ -595,7 +595,7 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("sessions", async () => {
-    test("the bundle set comes only from the session row", async () => {
+    test("the bundle comes only from the session row", async () => {
       const granted = await createAccessBundle("session-granted");
       const notNamed = await createAccessBundle("session-not-named");
 
@@ -642,13 +642,14 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(res.payload).message).toContain("99999999-8888-7777-6666-555555555555");
     });
 
-    test("a duplicated bundle is rejected rather than deduped", async () => {
-      const bundle = await createAccessBundle("session-duplicates");
+    test("a second access bundle is rejected", async () => {
       const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundleIds: [bundle.id, bundle.id],
+        accessBundleIds: ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"],
         ttl: "1h"
       });
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).toBe(422);
+      const issues = JSON.parse(res.payload).message as { path: string[] }[];
+      expect(issues.some((issue) => issue.path.join(".") === "accessBundleIds")).toBe(true);
     });
 
     test("ttl never stores a null expiry, and revoke is idempotent", async () => {

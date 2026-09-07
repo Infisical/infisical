@@ -45,7 +45,7 @@ const UNMATCHED_HOST_CHOICES = [
   {
     value: AgentVaultUnmatchedHost.Deny,
     title: "Deny",
-    description: "The agent reaches only the hosts in its access bundles."
+    description: "The agent reaches only the hosts in its access bundle."
   }
 ];
 

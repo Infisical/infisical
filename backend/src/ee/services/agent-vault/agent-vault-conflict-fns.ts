@@ -4,25 +4,19 @@ export type TConflictCandidate = {
   id: string;
   name: string;
   hostPattern: string;
-  accessBundleId: string;
-  accessBundleName: string;
 };
 
 export type TAgentVaultConflict = {
   connectionName: string;
-  accessBundleName: string;
   patterns: string[];
 };
 
 // Two connections conflict when they cover the same normalized host:port exactly. Containment is not a
 // conflict: exact beats wildcard deterministically, which is how an override is written on purpose.
 //
-// Within one bundle this is a hard reject, because nothing can break the tie — the runtime ladder is
-// exact-host, then bundle position, then connection name, and two connections in one bundle share a
-// position, so the winner would come down to a name.
-//
-// Across bundles it is a warning only. Blocking would let one bundle veto another, and the session's
-// bundle order settles it.
+// Only connections in one bundle are compared, and there it is a hard reject: nothing can break the tie,
+// since the runtime ladder past exact-host is bundle position and then connection name, and two connections
+// in one bundle share a position. Bundles never meet at runtime while a session carries one bundle.
 export const findHostPatternConflicts = (
   hostPattern: string,
   candidates: TConflictCandidate[]
@@ -30,7 +24,6 @@ export const findHostPatternConflicts = (
   candidates
     .map((candidate) => ({
       connectionName: candidate.name,
-      accessBundleName: candidate.accessBundleName,
       patterns: intersectHostPatterns(hostPattern, candidate.hostPattern)
     }))
     .filter((conflict) => conflict.patterns.length > 0);

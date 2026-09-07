@@ -45,12 +45,9 @@ Keep patterns as narrow as the API allows. A wildcard covers every host under it
 
 ### When two connections cover one host
 
-Within one bundle, two connections can't cover the same host. Infisical rejects the save and names the connection that already covers it.
+Within one bundle, two connections can't cover the same host with the same pattern. Infisical rejects the save and names the connection that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one connection covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first connection's credential.
 
-Across bundles the same host can appear more than once, and Infisical warns you when you save. Which credential goes out depends on the session that carries both bundles:
-
-1. An exact host beats a wildcard. If one connection covers `api.example.com` and another `*.example.com`, the exact one wins whatever the bundle order.
-2. For identical patterns, the bundle listed first on the session wins.
+Different bundles can cover the same host with different credentials. An agent gets the credential from the bundle its session carries.
 
 ## Access bundles
 

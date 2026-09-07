@@ -3,7 +3,7 @@ title: "Sessions"
 description: "Mint the token an agent runs with, choose how long it lives, and revoke it while the agent is running."
 ---
 
-A session is the token an agent runs with. It carries a fixed set of access bundles, in order, and an expiry. On every request the proxy uses it to decide which connections the agent may use right now, and applies their credentials on the way out.
+A session is the token an agent runs with. It carries one access bundle and an expiry. On every request the proxy uses it to decide which connections the agent may use right now, and applies their credentials on the way out.
 
 ## Minting a session
 
@@ -11,7 +11,7 @@ Anyone with a grant on at least one bundle can mint a session. Admins can mint o
 
 <Tabs>
   <Tab title="Dashboard">
-    Go to **Sessions** and select **Create Session**. Add the bundles the agent needs, set how long the session lives, and select **Create Session**. The token is shown once, with the command to run:
+    Go to **Sessions** and select **Create Session**. Pick the bundle the agent needs, set how long the session lives, and select **Create Session**. The token is shown once, with the command to run:
 
     ```bash
     infisical av run --session-token <session-token> --proxy <proxy-address> -- claude
@@ -22,7 +22,7 @@ Anyone with a grant on at least one bundle can mint a session. Admins can mint o
     This is the way to start an agent on a machine that has no Infisical login. The token is the only thing you hand over.
   </Tab>
   <Tab title="CLI">
-    `infisical av run` mints a session for you when you name the bundles:
+    `infisical av run` mints a session for you when you name the bundle:
 
     ```bash
     infisical av run --access-bundle coding-agent --proxy <proxy-address> -- claude
@@ -34,24 +34,20 @@ Anyone with a grant on at least one bundle can mint a session. Admins can mint o
   </Tab>
 </Tabs>
 
-### Bundle order
-
-When two bundles cover the same host with identical patterns, the bundle listed first wins. The Create Session sheet lets you reorder them, and the CLI takes the order you pass `--access-bundle`. An exact host in a later bundle still beats a wildcard in an earlier one.
-
 ### How long a session lives
 
 Pick 1 hour, 8 hours, 24 hours, 7 days, or never. Seven days is the default. A session that never expires keeps working until someone revokes it, so revoke it once the agent that used it has finished.
 
 ## What a running agent can reach
 
-The bundles on a session are fixed at mint. What the agent can actually reach is re-checked against the current grants on every proxy poll, 60 seconds by default, and it can only shrink:
+The bundle on a session is fixed at mint. Whether the agent still gets its credentials is re-checked against the current grants on every proxy poll, 60 seconds by default:
 
-- Remove someone from a bundle, and every session they minted over it loses that bundle's connections.
-- Remove them from Agent Vault, and their sessions stop reaching anything. Add them back and the sessions work again.
-- Demote an admin to member, and their sessions keep only the bundles they were explicitly granted.
-- Delete a bundle, and it contributes nothing to any session that carried it. The session still lists the bundle's name so you can see what it was.
+- Remove someone from the bundle, and every session they minted over it gets no credentials.
+- Demote an admin to member, and their sessions over bundles they weren't explicitly granted get no credentials.
+- Delete a bundle, and every session that carried it gets no credentials. The session still lists the bundle's name so you can see what it was.
+- Remove them from Agent Vault, and the proxy refuses every request on their sessions. Add them back and the sessions work again.
 
-Nothing on the agent's machine needs to be restarted for any of this.
+In the first three cases the agent's requests still go out, and what it can reach without a credential is decided by the proxy's [unmatched hosts setting](/documentation/platform/agent-vault/proxies#unmatched-hosts). Nothing on the agent's machine needs to be restarted for any of this.
 
 ## Revoking and expiry
 

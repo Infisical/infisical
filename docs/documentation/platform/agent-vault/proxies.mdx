@@ -36,7 +36,7 @@ Every setting lives in Infisical and reaches a running proxy on its next poll. S
 What the proxy does with a request to a host no connection in the session covers.
 
 - **Allow**, the default: the request passes through with no credential attached.
-- **Deny**: the request is rejected. The agent reaches the hosts in its bundles, the bypass list, and nothing else.
+- **Deny**: the request is rejected. The agent reaches the hosts in its bundle, the bypass list, and nothing else.
 
 Use **Deny** when the proxy sits somewhere it could reach more than you intend, such as a network with internal services on it. Under **Deny**, a pass-through connection is how a bundle makes a host reachable without giving it a credential.
 

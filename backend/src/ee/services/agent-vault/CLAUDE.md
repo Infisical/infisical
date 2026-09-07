@@ -12,7 +12,7 @@ never in anything the agent holds.
 | --- | --- |
 | **Access bundle** | A named set of connections. The unit you grant |
 | **Connection** | One host pattern set plus its credential |
-| **Session** | A minted token naming one actor, an ordered subset of their bundles, and an expiry. The token *is* the session |
+| **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
 | **Proxy** | One deployed egress node with its own CA. One row per box |
 
 ```
@@ -58,8 +58,13 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 ## Sessions and resolve
 
 - The token is the lookup key, so it is stored as sha256 (not bcrypt) and returned exactly once.
-- The bundle set is a ceiling fixed at mint and intersected with live reachability on every resolve. It can
-  shrink and grow back, never past what was minted.
+- V1 caps a session at one bundle: `AGENT_VAULT_MAX_SESSION_BUNDLES`, mirrored by the CLI's once-only check on
+  `--access-bundle` and the single-select Create Session sheet. The mint body stays a list, the junction table
+  keeps `position`, resolve orders by position then name, and the Go matcher breaks ties by slice order, so
+  lifting the cap is those three places plus the copy that says one (the api-docs string, the service's cap
+  message, the sheet and sessions page, the CLI help and the docs), not a migration.
+- The bundle on a session is a ceiling fixed at mint and intersected with live reachability on every resolve.
+  It can shrink and grow back, never past what was minted.
 - Grants are read fresh on every resolve. The actor's role comes through the platform's permission cache
   (10 second marker), so a promotion or demotion can lag by that much on top of the proxy's poll.
 - Resolve requires a live session-read permission, not a membership row: a lapsed time-limited role leaves
@@ -94,7 +99,7 @@ contract with the CLI matcher (`packages/agentvault/match.go`). Change rules the
 - A wildcard is the leftmost label only and matches exactly one label. This is what makes every pattern pair
   identical, contained or disjoint, which is what makes conflict detection exact. Do not loosen it.
 - Conflict detection is an intersection over individual patterns, because `hostPattern` is a comma-separated
-  set. Same bundle: hard reject. Across bundles: a warning, since session order settles it.
+  set. Same bundle: hard reject. Across bundles: allowed, since a session carries one bundle they never meet.
 - Patterns are stored as typed and normalised at match time. `*.com` is accepted; settled as not a bug.
 
 ## Credentials at rest

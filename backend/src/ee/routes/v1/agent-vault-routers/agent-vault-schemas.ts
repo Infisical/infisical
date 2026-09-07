@@ -138,13 +138,3 @@ export const AgentVaultCreatedMemberSchema = z.object({
   groupId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.groupId),
   createdAt: z.date()
 });
-
-/**
- * A cross-bundle host collision is a warning, not a rejection: blocking would let one access bundle veto
- * another, and the session's bundle order settles which credential wins.
- */
-export const AgentVaultConflictWarningSchema = z.object({
-  connectionName: z.string(),
-  accessBundleName: z.string(),
-  patterns: z.string().array()
-});

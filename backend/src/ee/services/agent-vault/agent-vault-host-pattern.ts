@@ -180,8 +180,8 @@ export const parseHostPatterns = (raw: string): { patterns: TAgentVaultHostPatte
 };
 
 // Validated but not rewritten: the column keeps what the caller typed. Every comparison - the
-// same-bundle conflict rule, the cross-bundle warning, matchesHost, and both proxy matchers - parses the
-// value and derives `key` itself, so storing the canonical form bought nothing and cost the one thing it
+// same-bundle conflict rule, matchesHost, and both proxy matchers - parses the value and derives `key`
+// itself, so storing the canonical form bought nothing and cost the one thing it
 // could: normalising grows a string ([::1] becomes 45 characters), so an input well inside the column
 // could overflow it after the length check had already passed.
 export const hostPatternSchema = z

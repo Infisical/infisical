@@ -12,7 +12,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import {
-  AgentVaultConflictWarningSchema,
   AgentVaultConnectionSchema,
   AgentVaultCreatedMemberSchema,
   AgentVaultCredentialInputSchema,
@@ -242,15 +241,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         credential: AgentVaultCredentialInputSchema
       }),
       response: {
-        200: z.object({
-          connection: AgentVaultConnectionSchema,
-          warnings: AgentVaultConflictWarningSchema.array()
-        })
+        200: z.object({ connection: AgentVaultConnectionSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { connection, warnings } = await server.services.agentVaultAccessBundle.createConnection({
+      const { connection } = await server.services.agentVaultAccessBundle.createConnection({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -273,7 +269,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
-      return { connection, warnings };
+      return { connection };
     }
   });
 
@@ -302,15 +298,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           "Provide at least one of 'name', 'hostPattern' or 'credential' to update"
         ),
       response: {
-        200: z.object({
-          connection: AgentVaultConnectionSchema,
-          warnings: AgentVaultConflictWarningSchema.array()
-        })
+        200: z.object({ connection: AgentVaultConnectionSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { connection, warnings } = await server.services.agentVaultAccessBundle.updateConnection({
+      const { connection } = await server.services.agentVaultAccessBundle.updateConnection({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -341,7 +334,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
-      return { connection, warnings };
+      return { connection };
     }
   });
 

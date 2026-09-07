@@ -119,7 +119,7 @@ infisical av proxy --port 18000 --log-format json --log-file /var/log/infisical/
 <Accordion title="infisical av run">
   Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. Before starting it, the CLI:
 
-  - Gets a session: the one you pass with `--session-token`, or one minted now over the bundles named with `--access-bundle`. Exactly one of the two is required.
+  - Gets a session: the one you pass with `--session-token`, or one minted now over the bundle named with `--access-bundle`. Exactly one of the two is required.
   - Fetches the proxy's certificate authority from the proxy, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`.
   - Starts the agent with `HTTPS_PROXY` and `HTTP_PROXY` pointing at the proxy, `NO_PROXY` set to `localhost,127.0.0.1` merged with your own `NO_PROXY` and `--no-proxy`, and the certificate trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
 
@@ -131,8 +131,8 @@ infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- [
 # Pin the certificate authority the proxy serves
 infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
 
-# Mint the session here instead, over two bundles; the first wins where both cover the same host
-infisical av run --access-bundle on-call-infrastructure --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
+# Mint the session here instead, as your login or a machine identity
+infisical av run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -- claude
 ```
 
 ### Environment variables
@@ -177,7 +177,7 @@ infisical av run --access-bundle on-call-infrastructure --access-bundle coding-a
   </Accordion>
 
   <Accordion title="--access-bundle">
-    Mint a session over this access bundle, by name. Repeatable. The order you pass them is the session's priority order when two bundles cover the same host with identical patterns. Needs a login or a machine identity, and can't be combined with `--session-token`.
+    Mint a session over this access bundle, by name. Pass it once. Needs a login or a machine identity, and can't be combined with `--session-token`.
 
     ```bash
     # Example
