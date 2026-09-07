@@ -33,25 +33,6 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countActiveCerts = async (orgId: string): Promise<number> => {
-    try {
-      const row = await db
-        .replicaNode()(TableName.Certificate)
-        .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
-        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId))
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
-        .where(`${TableName.Certificate}.notAfter`, ">", new Date())
-        .whereNull(`${TableName.Certificate}.revokedAt`)
-        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
-        .count(`${TableName.Certificate}.id as count`)
-        .first();
-      return toCount(row);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count active certificates for usage" });
-    }
-  };
-
   // Code signing is licensed separately, so signer certificates are excluded. Anchored on the signer
   // rather than on the code_signing EKU: that usage is caller-supplied, so a tenant could append it to
   // every request and escape the quota entirely.
@@ -267,7 +248,6 @@ export const usageCounterDALFactory = (db: TDbClient) => {
 
   return {
     countInternalCas,
-    countActiveCerts,
     resolveRootOrgId,
     countActiveCertificateQuotaKeysByOrg,
     isCertificateQuotaKeyActiveInOrg,

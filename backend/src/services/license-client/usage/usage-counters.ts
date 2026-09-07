@@ -14,6 +14,10 @@ import { TUsageCounterDALFactory } from "./usage-counter-dal";
 export type TMeteredFeature = {
   feature: TLimitFeatureDescriptor;
   count: TFeatureCounterFn;
+  // Where the count is reported. Absent means the triggering org, which is right for a dimension
+  // counted per org. A dimension whose count spans the org tree must set this, or every sub-org
+  // reports the same tree-wide number under its own identity and the family is counted repeatedly.
+  resolveReportOrgId?: (orgId: string) => Promise<string>;
 };
 
 // Static list of every metered dimension key (no DAL needed). For callers that only need the keys, not
@@ -42,8 +46,17 @@ export const buildMeteredFeatures = ({
   isCloud
 }: TBuildMeteredFeaturesDep): TMeteredFeature[] => [
   { feature: IdentitiesMeter, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(isCloud ? orgId : null) },
-  { feature: InternalCas, count: (orgId) => usageCounterDAL.countInternalCas(orgId) },
-  { feature: ActiveCerts, count: (orgId) => usageCounterDAL.countActiveCerts(orgId) },
+  // The PKI meters count the whole org tree, so both report once at the root.
+  {
+    feature: InternalCas,
+    count: (orgId) => usageCounterDAL.countInternalCas(orgId),
+    resolveReportOrgId: (orgId) => usageCounterDAL.resolveRootOrgId(orgId)
+  },
+  {
+    feature: ActiveCerts,
+    count: (orgId) => usageCounterDAL.countActiveCertificateQuotaKeysByOrg(orgId).then(({ total }) => total),
+    resolveReportOrgId: (orgId) => usageCounterDAL.resolveRootOrgId(orgId)
+  },
   {
     feature: SecretIdentities,
     count: (orgId) => usageCounterDAL.countSecretManagementIdentities(isCloud ? orgId : undefined)
