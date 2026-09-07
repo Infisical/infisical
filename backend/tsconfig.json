@@ -9,7 +9,7 @@
     "module": "commonjs",
     "allowJs": true,
     "resolveJsonModule": true,
-    "types": ["vitest/globals"],
+    "types": ["node", "vitest/globals"],
     "typeRoots": ["./node_modules/@types", "./src/@types", "./node_modules"],
     "sourceMap": true,
     "outDir": "dist",

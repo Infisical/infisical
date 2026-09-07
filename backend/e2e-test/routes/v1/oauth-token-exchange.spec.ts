@@ -213,7 +213,7 @@ describe("POST /api/v1/oauth/token, token exchange grant", async () => {
 
   const exchangeBody = (overrides: Record<string, string> = {}) => ({
     grant_type: TOKEN_EXCHANGE_GRANT,
-    subject_token: "eyJhbGciOiJSUzI1NiJ9.e30.signature",
+    subject_token: "not-a-real-subject-token",
     subject_token_type: OauthTokenType.Jwt,
     client_id: clientId,
     client_secret: clientSecret,

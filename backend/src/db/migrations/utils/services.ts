@@ -13,8 +13,10 @@ import { additionalPrivilegeDALFactory } from "@app/services/additional-privileg
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
-import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
+import { kmsImportKeyMaterialTokenDALFactory } from "@app/services/kms/kms-import-key-material-token-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsKeyImportMetaDALFactory } from "@app/services/kms/kms-key-import-meta-dal";
+import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
 import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
@@ -74,6 +76,8 @@ export const getMigrationEncryptionServices = async ({
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
   const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
+  const kmsImportKeyMaterialTokenDAL = kmsImportKeyMaterialTokenDALFactory(db);
+  const kmsKeyImportMetaDAL = kmsKeyImportMetaDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const groupDAL = groupDALFactory(db);
   const secretFolderDAL = secretFolderDALFactory(db);
@@ -135,6 +139,8 @@ export const getMigrationEncryptionServices = async ({
     kmsDAL,
     internalKmsDAL,
     internalKmsKeyVersionDAL,
+    kmsImportKeyMaterialTokenDAL,
+    kmsKeyImportMetaDAL,
     orgDAL,
     projectDAL,
     hsmService,

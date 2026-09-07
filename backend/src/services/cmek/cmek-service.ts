@@ -15,14 +15,17 @@ import {
   TCmekDecryptDTO,
   TCmekEncryptDTO,
   TCmekGenerateMacDTO,
+  TCmekGetParamsForImportDTO,
   TCmekGetPrivateKeyDTO,
   TCmekGetPublicKeyDTO,
+  TCmekImportKeyMaterialDTO,
   TCmekKeyEncryptionAlgorithm,
   TCmekListSigningAlgorithmsDTO,
   TCmekSignDTO,
   TCmekVerifyDTO,
   TCmekVerifyMacDTO,
   TCreateCmekDTO,
+  TListCmekKeyVersionsDTO,
   TListCmeksByProjectIdDTO,
   TUpdabteCmekByIdDTO
 } from "@app/services/cmek/cmek-types";
@@ -155,6 +158,66 @@ export const cmekServiceFactory = ({
     };
   };
 
+  const getParamsForImport = async (
+    { keyId, wrapKeyEncryptionAlgorithm, wrapSigningAlgorithm }: TCmekGetParamsForImportDTO,
+    actor: OrgServiceActor
+  ) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCmekActions.GetParamsForImport,
+      ProjectPermissionSub.Cmek
+    );
+
+    const importParams = await kmsService.getParamsForImport({
+      kmsId: keyId,
+      wrapKeyEncryptionAlgorithm,
+      wrapSigningAlgorithm
+    });
+
+    return { ...importParams, projectId: key.projectId };
+  };
+
+  const importKeyMaterial = async (
+    { keyId, token, wrappedKeyMaterial }: TCmekImportKeyMaterialDTO,
+    actor: OrgServiceActor
+  ) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID ${keyId} not found` });
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCmekActions.ImportKeyMaterial,
+      ProjectPermissionSub.Cmek
+    );
+
+    const importedKeyMaterial = await kmsService.importWrappedKeyMaterial({ kmsId: keyId, token, wrappedKeyMaterial });
+
+    return { ...importedKeyMaterial, projectId: key.projectId };
+  };
+
   const deleteCmekById = async (keyId: string, actor: OrgServiceActor) => {
     const key = await kmsDAL.findCmekById(keyId);
 
@@ -199,6 +262,28 @@ export const cmekServiceFactory = ({
     const { keys: cmeks, totalCount } = await kmsDAL.listCmeksByProjectId({ projectId, ...filters });
 
     return { cmeks, totalCount };
+  };
+
+  const listCmekKeyVersions = async ({ keyId, ...filters }: TListCmekKeyVersionsDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
+
+    const { versions, totalCount } = await kmsDAL.listKeyVersions({ keyId, ...filters });
+
+    return { versions, totalCount, projectId: key.projectId };
   };
 
   const findCmekById = async (keyId: string, actor: OrgServiceActor) => {
@@ -726,8 +811,11 @@ export const cmekServiceFactory = ({
     createCmek,
     updateCmekById,
     rotateCmekById,
+    getParamsForImport,
+    importKeyMaterial,
     deleteCmekById,
     listCmeksByProjectId,
+    listCmekKeyVersions,
     cmekEncrypt,
     cmekDecrypt,
     findCmekById,

@@ -1,9 +1,10 @@
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { KeyWrapAlgorithm } from "@app/lib/crypto/cryptography/types";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign";
 import { OrderByDirection } from "@app/lib/types";
 
-import { KmsKeyUsage } from "../kms/kms-types";
+import type { KmsKeyUsage, TGetParamsForImportDTO } from "../kms/kms-types";
 
 export type TCmekKeyEncryptionAlgorithm = SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
 
@@ -14,8 +15,22 @@ export type TCreateCmekDTO = {
   description?: string;
   encryptionAlgorithm: TCmekKeyEncryptionAlgorithm;
   keyUsage: KmsKeyUsage;
+  isImportable?: boolean;
+  importOnly?: boolean;
   isExportable?: boolean;
   hasDeleteProtection?: boolean;
+};
+
+export type TCmekGetParamsForImportDTO = {
+  keyId: string;
+  wrapKeyEncryptionAlgorithm: AsymmetricKeyAlgorithm.RSA_4096;
+  wrapSigningAlgorithm: KeyWrapAlgorithm;
+};
+
+export type TCmekImportKeyMaterialDTO = {
+  keyId: string;
+  token: string;
+  wrappedKeyMaterial: string;
 };
 
 export type TUpdabteCmekByIdDTO = {
@@ -24,6 +39,18 @@ export type TUpdabteCmekByIdDTO = {
   isDisabled?: boolean;
   description?: string;
   hasDeleteProtection?: boolean;
+};
+
+export enum CmekKeyVersionsOrderBy {
+  Version = "version"
+}
+
+export type TListCmekKeyVersionsDTO = {
+  keyId: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: CmekKeyVersionsOrderBy;
+  orderDirection?: OrderByDirection;
 };
 
 export type TListCmeksByProjectIdDTO = {

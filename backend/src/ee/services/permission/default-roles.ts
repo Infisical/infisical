@@ -275,7 +275,9 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.GenerateMac,
       ProjectPermissionCmekActions.VerifyMac,
       ProjectPermissionCmekActions.Rotate,
-      ProjectPermissionCmekActions.ExportPrivateKey
+      ProjectPermissionCmekActions.ExportPrivateKey,
+      ProjectPermissionCmekActions.GetParamsForImport,
+      ProjectPermissionCmekActions.ImportKeyMaterial
     ],
     ProjectPermissionSub.Cmek
   );
@@ -625,7 +627,9 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCmekActions.Verify,
       ProjectPermissionCmekActions.GenerateMac,
       ProjectPermissionCmekActions.VerifyMac,
-      ProjectPermissionCmekActions.Rotate
+      ProjectPermissionCmekActions.Rotate,
+      ProjectPermissionCmekActions.GetParamsForImport,
+      ProjectPermissionCmekActions.ImportKeyMaterial
     ],
     ProjectPermissionSub.Cmek
   );

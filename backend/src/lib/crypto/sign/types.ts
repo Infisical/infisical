@@ -11,6 +11,15 @@ export type TAsymmetricSignVerifyFns = {
   ) => Promise<boolean>;
   generateAsymmetricPrivateKey: () => Promise<Buffer>;
   getPublicKeyFromPrivateKey: (privateKey: Buffer) => Promise<Buffer>;
+  getKeyTypeFromPrivateKey: (privateKey: Buffer) => Promise<
+    | {
+        keyType?: string;
+        namedCurve?: string;
+        modulusLength?: number;
+        publicExponent?: bigint;
+      }
+    | undefined
+  >;
 };
 
 // Supported asymmetric key types

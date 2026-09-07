@@ -8,6 +8,11 @@ export enum KmsKeyUsage {
   GENERATE_VERIFY_MAC = "generate-verify-mac"
 }
 
+export enum KmsKeyStatus {
+  Enabled = "enabled",
+  PendingImport = "pending_import"
+}
+
 export type TCmek = {
   id: string;
   keyUsage: KmsKeyUsage;
@@ -19,23 +24,42 @@ export type TCmek = {
   isReserved: boolean;
   isExportable: boolean;
   hasDeleteProtection: boolean;
+  isImportable: boolean;
+  importOnly: boolean;
+  status: KmsKeyStatus;
+  kmipMetadata?: unknown | null;
   orgId: string;
   version: number;
   createdAt: string;
   updatedAt: string;
 };
 
+export type TGetCmekResponse = {
+  key: TCmek;
+};
+
 type ProjectRef = { projectId: string };
 type KeyRef = { keyId: string };
 
 export type TCreateCmek = Pick<TCmek, "name" | "description" | "algorithm" | "keyUsage"> &
-  Partial<Pick<TCmek, "isExportable" | "hasDeleteProtection">> &
+  Partial<Pick<TCmek, "isExportable" | "hasDeleteProtection" | "isImportable" | "importOnly">> &
   ProjectRef;
 export type TUpdateCmek = KeyRef &
   Partial<Pick<TCmek, "name" | "description" | "isDisabled" | "hasDeleteProtection">> &
   ProjectRef;
 export type TDeleteCmek = KeyRef & ProjectRef;
 export type TRotateCmek = KeyRef & ProjectRef;
+
+export type TCmekGetParamsForImportDTO = KeyRef & {
+  wrapKeyEncryptionAlgorithm: AsymmetricKeyAlgorithm.RSA_4096;
+  wrapSigningAlgorithm: KeyWrapAlgorithm;
+};
+
+export type TCmekGetParamsForImportResponse = {
+  kmsId: string;
+  publicKey: string;
+  token: string;
+};
 
 export type TCmekEncrypt = KeyRef & { plaintext: string; isBase64Encoded?: boolean };
 export type TCmekDecrypt = KeyRef & { ciphertext: string };
@@ -51,7 +75,7 @@ export type TCmekGenerateMac = KeyRef & { data: string };
 export type TCmekVerifyMac = KeyRef & { data: string; mac: string };
 
 export type TProjectCmeksList = {
-  keys: TCmek[];
+  keys: Array<TCmek & { totalVersions: number }>;
   totalCount: number;
 };
 
@@ -148,6 +172,28 @@ export type TCmekBulkImportKeysResponse = {
   errors: { name: string; message: string }[];
 };
 
+export type TListCmekKeyVersionsResponse = {
+  versions: Array<{
+    id: string;
+    version: number;
+    origin: "internal" | "imported";
+    createdAt: string;
+  }>;
+  totalCount: number;
+};
+
+export type TListCmekKeyVersions = {
+  keyId: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: CmekKeyVersionsOrderBy;
+  orderDirection?: OrderByDirection;
+};
+
+export enum CmekKeyVersionsOrderBy {
+  Version = "version"
+}
+
 export enum CmekOrderBy {
   Name = "name"
 }
@@ -159,6 +205,23 @@ export enum AsymmetricKeyAlgorithm {
   ML_DSA_65 = "ML_DSA_65",
   ML_DSA_87 = "ML_DSA_87"
 }
+
+export enum KeyWrapAlgorithm {
+  RSAES_OAEP_SHA_256 = "RSAES_OAEP_SHA_256",
+  RSAES_OAEP_SHA_1 = "RSAES_OAEP_SHA_1",
+  RSA_AES_KEY_WRAP_SHA_256 = "RSA_AES_KEY_WRAP_SHA_256",
+  RSA_AES_KEY_WRAP_SHA_1 = "RSA_AES_KEY_WRAP_SHA_1"
+}
+
+export const HYBRID_KEY_WRAP_ALGORITHMS = [
+  KeyWrapAlgorithm.RSA_AES_KEY_WRAP_SHA_256,
+  KeyWrapAlgorithm.RSA_AES_KEY_WRAP_SHA_1
+] as const;
+
+export const OAEP_KEY_WRAP_ALGORITHMS = [
+  KeyWrapAlgorithm.RSAES_OAEP_SHA_256,
+  KeyWrapAlgorithm.RSAES_OAEP_SHA_1
+] as const;
 
 // Supported symmetric encrypt/decrypt algorithms
 export enum SymmetricKeyAlgorithm {
@@ -179,6 +242,17 @@ export const AllowedEncryptionKeyAlgorithms = z.enum([
   ...Object.values(AsymmetricKeyAlgorithm),
   ...Object.values(HmacAlgorithm)
 ] as [string, ...string[]]).options;
+
+const NonImportableEncryptionKeyAlgorithms = [
+  SymmetricKeyAlgorithm.AES_GCM_128,
+  AsymmetricKeyAlgorithm.ML_DSA_44,
+  AsymmetricKeyAlgorithm.ML_DSA_65,
+  AsymmetricKeyAlgorithm.ML_DSA_87
+] as string[];
+
+export const ImportableEncryptionKeyAlgorithms = AllowedEncryptionKeyAlgorithms.filter(
+  (algorithm) => !NonImportableEncryptionKeyAlgorithms.includes(algorithm)
+);
 
 export enum SigningAlgorithm {
   // RSA PSS algorithms
