@@ -165,22 +165,12 @@ export const expandSecretReferencesFactory = ({
   const getCacheUniqueKey = (environment: string, secretPath: string, srcProjectId?: string) =>
     srcProjectId ? `${srcProjectId}:${environment}-${secretPath}` : `${environment}-${secretPath}`;
 
-  const fetchSecret = async (
-    environment: string,
-    secretPath: string,
-    secretKey: string
-  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
-    const cacheKey = getCacheUniqueKey(environment, secretPath);
+  const pendingFolderLoads = new Map<string, Promise<void>>();
 
-    if (secretCache?.[cacheKey]) {
-      const cachedSecret = secretCache[cacheKey][secretKey];
-      if (cachedSecret) return { ...cachedSecret };
-      return { value: "", tags: [], exists: false };
-    }
-
+  const loadFolderSecrets = async (environment: string, secretPath: string, cacheKey: string) => {
     try {
       const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-      if (!folder) return { value: "", tags: [], exists: false };
+      if (!folder) return;
       // When userId is provided, findByFolderId returns both shared and personal secrets.
       // Personal overrides will take precedence over shared secrets in the reduce below.
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
@@ -206,14 +196,32 @@ export const expandSecretReferencesFactory = ({
       );
 
       secretCache[cacheKey] = decryptedSecret;
-
-      const fetchedSecret = secretCache[cacheKey][secretKey];
-      if (fetchedSecret) return { ...fetchedSecret };
-      return { value: "", tags: [], exists: false };
     } catch (error) {
       secretCache[cacheKey] = {};
-      return { value: "", tags: [], exists: false };
     }
+  };
+
+  const fetchSecret = async (
+    environment: string,
+    secretPath: string,
+    secretKey: string
+  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
+    const cacheKey = getCacheUniqueKey(environment, secretPath);
+
+    if (!secretCache[cacheKey]) {
+      let pending = pendingFolderLoads.get(cacheKey);
+      if (!pending) {
+        // Concurrent reference expansion must share the folder read before its result is cached.
+        pending = loadFolderSecrets(environment, secretPath, cacheKey).finally(() => {
+          pendingFolderLoads.delete(cacheKey);
+        });
+        pendingFolderLoads.set(cacheKey, pending);
+      }
+      await pending;
+    }
+
+    const secret = secretCache[cacheKey]?.[secretKey];
+    return secret ? { ...secret } : { value: "", tags: [], exists: false };
   };
 
   const recursivelyExpandSecret = async (dto: {

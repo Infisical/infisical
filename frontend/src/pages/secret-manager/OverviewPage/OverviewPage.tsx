@@ -2823,7 +2823,7 @@ const OverviewPageContent = () => {
   };
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col gap-6 md:gap-8">
       <Helmet>
         <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
         <meta property="og:title" content={String(t("dashboard.og-title"))} />

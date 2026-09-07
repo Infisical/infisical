@@ -1280,7 +1280,7 @@ export const SecretEditTableRow = ({
                 <IconButton
                   aria-label="Discard pending secret changes"
                   variant="ghost"
-                  className="hover:text-error size-7 border-0"
+                  className="size-7 border-0 hover:text-danger"
                   size="xs"
                   onClick={() => onBatchRevert?.(environment, secretName)}
                 >
@@ -1302,7 +1302,7 @@ export const SecretEditTableRow = ({
                         aria-label="View secret comment"
                         variant="ghost"
                         size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0"
                         onClick={() => setIsCommentOpen(true)}
                       >
                         <MessageSquareIcon className="size-3.5" />
@@ -1318,7 +1318,7 @@ export const SecretEditTableRow = ({
                         aria-label="View secret tags"
                         variant="ghost"
                         size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0"
                         onClick={() => setIsTagOpen(true)}
                       >
                         <TagsIcon className="size-3.5" />
@@ -1334,7 +1334,7 @@ export const SecretEditTableRow = ({
                         aria-label="View secret reminder"
                         variant="ghost"
                         size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0"
                         onClick={() => setIsReminderOpen(true)}
                       >
                         <BellIcon className="size-3.5" />
@@ -1350,7 +1350,7 @@ export const SecretEditTableRow = ({
                         aria-label="View secret metadata"
                         variant="ghost"
                         size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0"
                         onClick={() => setIsMetadataOpen(true)}
                       >
                         <CodeXmlIcon className="size-3.5" />
@@ -1368,7 +1368,7 @@ export const SecretEditTableRow = ({
                 aria-label="Edit secret value"
                 variant="ghost"
                 size="xs"
-                className="size-7 border-0 text-muted hover:text-foreground"
+                className="size-7 border-0"
                 isDisabled={
                   isPendingDelete ||
                   isImportedSecret ||
@@ -1402,7 +1402,7 @@ export const SecretEditTableRow = ({
                 aria-label="Copy secret value"
                 variant="ghost"
                 size="xs"
-                className="size-7 border-0 text-muted hover:text-foreground"
+                className="size-7 border-0"
                 isDisabled={isPendingDelete || !canCopySecret}
                 onClick={handleCopySharedToClipboard}
               >
@@ -1431,7 +1431,7 @@ export const SecretEditTableRow = ({
                     aria-label="More secret actions"
                     variant="ghost"
                     size="xs"
-                    className="size-7 border-0 text-muted hover:text-foreground"
+                    className="size-7 border-0"
                   >
                     <EllipsisIcon />
                   </IconButton>

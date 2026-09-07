@@ -32,7 +32,7 @@ import { useScopeVariant } from "@app/hooks";
 import { TVenafiTppConnection, VenafiTppConnectionMethod } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -95,6 +95,8 @@ export const VenafiTppConnectionForm = ({ appConnection, onSubmit }: Props) => {
     watch,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");

@@ -721,6 +721,7 @@
                       "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
+                  "documentation/platform/pam/product-reference/credential-health/overview",
                   {
                     "group": "Discovery",
                     "pages": [
@@ -4473,8 +4474,8 @@
             "href": "https://infisical.com/infisical-vs-hashicorp-vault"
           },
           {
-            "label": "Forum",
-            "href": "https://infisical.com/slack"
+            "label": "Community",
+            "href": "https://community.infisical.com/"
           }
         ]
       },
