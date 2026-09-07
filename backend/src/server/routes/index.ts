@@ -199,6 +199,7 @@ import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
+import { setCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
@@ -3994,6 +3995,8 @@ export const registerRoutes = async (
   }
 
   await kmsService.startService(hsmStatus);
+  setCookieSigningKey(appCfg.COOKIE_SECRET_SIGN_KEY || kmsService.getCookieSigningKey());
+
   // Register all cron jobs (synchronous registrations) before starting the scheduler
   encryptionKeyRotationService.init();
   telemetryQueue.startTelemetryCheck();
