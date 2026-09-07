@@ -47,6 +47,7 @@ import {
   SecretCacheAccessResult,
   SecretEtagMissReason
 } from "@app/lib/telemetry/metrics";
+import { OrderByDirection } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -62,8 +63,10 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
+  DashboardSecretsOrderBy,
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
+  type SecretOrderBy,
   TGetASecretByIdDTO,
   TRedactSecretVersionValueDTO
 } from "../secret/secret-types";
@@ -111,6 +114,7 @@ import {
   TUpdateManySecretDTO,
   TUpdateSecretDTO
 } from "./secret-v2-bridge-types";
+import { selectAuthorizedSecretSortPage } from "./secret-v2-sort-fns";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
 
@@ -1135,17 +1139,76 @@ export const secretV2BridgeServiceFactory = ({
   ) => {
     const groupedFolderMappings = groupBy(folderMappings, (folderMapping) => folderMapping.folderId);
 
+    const folderIds = folderMappings.map((folderMapping) => folderMapping.folderId);
     const { limit } = filters;
+    const timestampOrderBy =
+      filters.orderBy === DashboardSecretsOrderBy.CreatedAt || filters.orderBy === DashboardSecretsOrderBy.UpdatedAt
+        ? filters.orderBy
+        : undefined;
+    let isLimitReached = false;
+    let authorizedSecretIds: Set<string> | undefined;
+    let permissionTagsBySecretId: Map<string, string[]> | undefined;
+    let secrets: Awaited<ReturnType<typeof secretDAL.findByFolderIds>>;
 
-    // findByFolderIds windows on distinct keys, so scan one key past the limit to tell a full window from a truncated one
-    const scannedSecrets = await secretDAL.findByFolderIds({
-      folderIds: folderMappings.map((folderMapping) => folderMapping.folderId),
-      userId,
-      tx: undefined,
-      filters: limit ? { ...filters, limit: limit + 1 } : filters
-    });
-
-    const { items: secrets, isLimitReached } = takeDistinctKeyScanWindow(scannedSecrets, limit, (secret) => secret.key);
+    if (timestampOrderBy) {
+      // Rank timestamps only after per-secret authorization so restricted rows cannot influence page order.
+      // The candidate query fetches just the permission and sort fields; full secret rows are hydrated below.
+      const candidates = await secretDAL.findSortCandidatesByFolderIds({
+        folderIds,
+        userId,
+        tx: undefined,
+        filters
+      });
+      const page = selectAuthorizedSecretSortPage({
+        candidates,
+        canAccessSecret: (candidate) =>
+          hasSecretReadValueOrDescribePermission(projectPermission, filterByAction, {
+            environment: groupedFolderMappings[candidate.folderId][0].environment,
+            secretPath: groupedFolderMappings[candidate.folderId][0].path,
+            secretName: candidate.key,
+            secretTags: candidate.tags.map((tag) => tag.slug)
+          }),
+        sortFolderIds: filters.sortFolderIds ?? folderIds,
+        orderBy: timestampOrderBy,
+        orderDirection: filters.orderDirection ?? OrderByDirection.ASC,
+        offset: filters.offset,
+        limit
+      });
+      const keyOrder = new Map(page.orderedKeys.map((key, index) => [key, index]));
+      authorizedSecretIds = new Set(page.candidates.map((candidate) => candidate.id));
+      permissionTagsBySecretId = new Map(
+        page.candidates.map((candidate) => [candidate.id, candidate.tags.map((tag) => tag.slug)])
+      );
+      isLimitReached = page.isLimitReached;
+      secrets = page.orderedKeys.length
+        ? await secretDAL.findByFolderIds({
+            folderIds,
+            userId,
+            tx: undefined,
+            filters: {
+              ...filters,
+              keys: page.orderedKeys,
+              limit: undefined,
+              offset: undefined,
+              orderBy: DashboardSecretsOrderBy.Name,
+              orderDirection: OrderByDirection.ASC,
+              sortFolderIds: undefined
+            }
+          })
+        : [];
+      secrets.sort((left, right) => (keyOrder.get(left.key) ?? 0) - (keyOrder.get(right.key) ?? 0));
+    } else {
+      // findByFolderIds windows on distinct keys, so scan one key past the limit to tell a full window from a truncated one
+      const scannedSecrets = await secretDAL.findByFolderIds({
+        folderIds,
+        userId,
+        tx: undefined,
+        filters: limit ? { ...filters, limit: limit + 1 } : filters
+      });
+      const scanWindow = takeDistinctKeyScanWindow(scannedSecrets, limit, (secret) => secret.key);
+      secrets = scanWindow.items;
+      isLimitReached = scanWindow.isLimitReached;
+    }
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -1153,16 +1216,19 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     const decryptedSecrets = secrets
-      .filter((el) =>
-        hasSecretReadValueOrDescribePermission(projectPermission, filterByAction, {
+      .filter((el) => {
+        if (authorizedSecretIds) return authorizedSecretIds.has(el.id);
+
+        return hasSecretReadValueOrDescribePermission(projectPermission, filterByAction, {
           environment: groupedFolderMappings[el.folderId][0].environment,
           secretPath: groupedFolderMappings[el.folderId][0].path,
           secretName: el.key,
           secretTags: el.tags.map((i) => i.slug)
-        })
-      )
+        });
+      })
 
       .map((secret) => {
+        const permissionTags = permissionTagsBySecretId?.get(secret.id) ?? secret.tags.map((tag) => tag.slug);
         // Note(Daniel): This is only relevant if the filterAction isn't set to ReadValue. This is needed for the frontend.
         const secretValueHidden = !hasSecretReadValueOrDescribePermission(
           projectPermission,
@@ -1171,7 +1237,7 @@ export const secretV2BridgeServiceFactory = ({
             environment: groupedFolderMappings[secret.folderId][0].environment,
             secretPath: groupedFolderMappings[secret.folderId][0].path,
             secretName: secret.key,
-            secretTags: secret.tags.map((i) => i.slug)
+            secretTags: permissionTags
           }
         );
 
@@ -1216,10 +1282,26 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     isInternal,
     ...params
-  }: Pick<
-    TGetSecretsDTO,
-    "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "search" | "tagSlugs"
+  }: Omit<
+    Pick<
+      TGetSecretsDTO,
+      | "actorId"
+      | "actor"
+      | "path"
+      | "projectId"
+      | "actorOrgId"
+      | "actorAuthMethod"
+      | "search"
+      | "tagSlugs"
+      | "orderBy"
+      | "orderDirection"
+      | "limit"
+      | "offset"
+    >,
+    "orderBy"
   > & {
+    orderBy?: SecretOrderBy;
+    sortEnvironment?: string;
     environments: string[];
     isInternal?: boolean;
   }) => {
@@ -1252,11 +1334,24 @@ export const secretV2BridgeServiceFactory = ({
       environment: folder.environment.slug
     }));
 
+    const isRecencySort = params.orderBy && params.orderBy !== DashboardSecretsOrderBy.Name;
+    const recencySortEnvironment = params.sortEnvironment ?? (environments.length === 1 ? environments[0] : undefined);
+
+    if (isRecencySort && !recencySortEnvironment) {
+      throw new BadRequestError({
+        message: "A sort environment is required for recency sorting when multiple environments are requested"
+      });
+    }
+
+    const sortFolderIds = recencySortEnvironment
+      ? folders.filter((folder) => folder.environment.slug === recencySortEnvironment).map((folder) => folder.id)
+      : undefined;
+
     const { secrets } = await getSecretsByFolderMappings(
       {
         projectId,
         folderMappings,
-        filters: params,
+        filters: { ...params, sortFolderIds },
         userId: actorId,
         filterByAction: ProjectPermissionSecretActions.DescribeSecret
       },
