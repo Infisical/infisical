@@ -23,9 +23,51 @@ const maxRetries = 3
 // Config. It supports standalone (REDIS_URL), cluster, and sentinel modes,
 // matching the Node.js backend's buildRedisFromConfig behavior.
 func NewClientFromEnvConfig(cfg *config.Config) (redis.UniversalClient, error) {
+	return NewClient(
+		ConnectionOptions{
+			RedisURL:                                cfg.RedisURL,
+			RedisUsername:                           cfg.RedisUsername,
+			RedisPassword:                           cfg.RedisPassword,
+			RedisSentinelHosts:                      cfg.RedisSentinelHosts,
+			RedisSentinelMasterName:                 cfg.RedisSentinelMasterName,
+			RedisSentinelEnableTLS:                  cfg.RedisSentinelEnableTLS,
+			RedisSentinelUsername:                   cfg.RedisSentinelUsername,
+			RedisSentinelPassword:                   cfg.RedisSentinelPassword,
+			RedisClusterHosts:                       cfg.RedisClusterHosts,
+			RedisClusterEnableTLS:                   cfg.RedisClusterEnableTLS,
+			RedisClusterAWSElastiCacheDNSLookupMode: cfg.RedisClusterAWSElastiCacheDNSLookupMode,
+			RedisReadReplicas:                       cfg.RedisReadReplicas,
+			ParsedRedisSentinelHosts:                cfg.ParsedRedisSentinelHosts,
+			ParsedRedisClusterHosts:                 cfg.ParsedRedisClusterHosts,
+			ParsedRedisReadReplicas:                 cfg.ParsedRedisReadReplicas,
+		},
+	)
+}
+
+type ConnectionOptions struct {
+	// Redis
+	RedisURL                                string
+	RedisUsername                           string
+	RedisPassword                           string
+	RedisSentinelHosts                      string
+	RedisSentinelMasterName                 string
+	RedisSentinelEnableTLS                  bool
+	RedisSentinelUsername                   string
+	RedisSentinelPassword                   string
+	RedisClusterHosts                       string
+	RedisClusterEnableTLS                   bool
+	RedisClusterAWSElastiCacheDNSLookupMode bool
+	RedisReadReplicas                       string
+
+	ParsedRedisSentinelHosts []config.RedisHostPort
+	ParsedRedisClusterHosts  []config.RedisHostPort
+	ParsedRedisReadReplicas  []config.RedisHostPort
+}
+
+func NewClient(connOpts ConnectionOptions) (redis.UniversalClient, error) {
 	// Standalone mode via REDIS_URL.
-	if cfg.RedisURL != "" {
-		opts, err := redis.ParseURL(cfg.RedisURL)
+	if connOpts.RedisURL != "" {
+		opts, err := redis.ParseURL(connOpts.RedisURL)
 		if err != nil {
 			return nil, fmt.Errorf("parsing REDIS_URL: %w", err)
 		}
@@ -35,21 +77,21 @@ func NewClientFromEnvConfig(cfg *config.Config) (redis.UniversalClient, error) {
 
 	// Cluster mode.
 	// go-redis automatically handles READONLY/MOVED/ASK redirects.
-	if len(cfg.ParsedRedisClusterHosts) > 0 {
-		addrs := hostPortAddrs(cfg.ParsedRedisClusterHosts)
+	if len(connOpts.ParsedRedisClusterHosts) > 0 {
+		addrs := hostPortAddrs(connOpts.ParsedRedisClusterHosts)
 
 		clusterOpts := &redis.ClusterOptions{
 			Addrs:      addrs,
-			Username:   cfg.RedisUsername,
-			Password:   cfg.RedisPassword,
+			Username:   connOpts.RedisUsername,
+			Password:   connOpts.RedisPassword,
 			MaxRetries: maxRetries,
 		}
 
-		if cfg.RedisClusterEnableTLS {
+		if connOpts.RedisClusterEnableTLS {
 			clusterOpts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 		}
 
-		if cfg.RedisClusterAWSElastiCacheDNSLookupMode {
+		if connOpts.RedisClusterAWSElastiCacheDNSLookupMode {
 			// Skip DNS resolution for AWS ElastiCache — pass address through as-is.
 			clusterOpts.Dialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
 				dialer := &net.Dialer{}
@@ -62,20 +104,20 @@ func NewClientFromEnvConfig(cfg *config.Config) (redis.UniversalClient, error) {
 
 	// Sentinel mode.
 	// go-redis FailoverClient detects master switchover and reconnects automatically.
-	if len(cfg.ParsedRedisSentinelHosts) > 0 {
-		sentinelAddrs := hostPortAddrs(cfg.ParsedRedisSentinelHosts)
+	if len(connOpts.ParsedRedisSentinelHosts) > 0 {
+		sentinelAddrs := hostPortAddrs(connOpts.ParsedRedisSentinelHosts)
 
 		failoverOpts := &redis.FailoverOptions{
-			MasterName:       cfg.RedisSentinelMasterName,
+			MasterName:       connOpts.RedisSentinelMasterName,
 			SentinelAddrs:    sentinelAddrs,
-			SentinelUsername: cfg.RedisSentinelUsername,
-			SentinelPassword: cfg.RedisSentinelPassword,
-			Username:         cfg.RedisUsername,
-			Password:         cfg.RedisPassword,
+			SentinelUsername: connOpts.RedisSentinelUsername,
+			SentinelPassword: connOpts.RedisSentinelPassword,
+			Username:         connOpts.RedisUsername,
+			Password:         connOpts.RedisPassword,
 			MaxRetries:       maxRetries,
 		}
 
-		if cfg.RedisSentinelEnableTLS {
+		if connOpts.RedisSentinelEnableTLS {
 			failoverOpts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 		}
 

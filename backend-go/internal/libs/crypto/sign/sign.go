@@ -11,6 +11,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -23,12 +24,16 @@ import (
 	"strings"
 )
 
-// Algorithm identifies a key type.
-type Algorithm string
+type AsymmetricKeyAlgorithm string
 
 const (
-	RSA4096 Algorithm = "RSA_4096"
-	ECCP256 Algorithm = "ECC_NIST_P256"
+	RSA4096 AsymmetricKeyAlgorithm = "RSA_4096"
+	ECCP256 AsymmetricKeyAlgorithm = "ECC_NIST_P256"
+	ECCP384 AsymmetricKeyAlgorithm = "ECC_NIST_P384"
+	ECCP521 AsymmetricKeyAlgorithm = "ECC_NIST_P521"
+	MLDSA44 AsymmetricKeyAlgorithm = "ML_DSA_44"
+	MLDSA65 AsymmetricKeyAlgorithm = "ML_DSA_65"
+	MLDSA87 AsymmetricKeyAlgorithm = "ML_DSA_87"
 )
 
 // SigningAlgorithm identifies a signing scheme.
@@ -44,6 +49,9 @@ const (
 	ECDSA_SHA256             SigningAlgorithm = "ECDSA_SHA_256"
 	ECDSA_SHA384             SigningAlgorithm = "ECDSA_SHA_384"
 	ECDSA_SHA512             SigningAlgorithm = "ECDSA_SHA_512"
+	MLDSASign44              SigningAlgorithm = "ML_DSA_44"
+	MLDSASign65              SigningAlgorithm = "ML_DSA_65"
+	MLDSASign87              SigningAlgorithm = "ML_DSA_87"
 )
 
 // signingParams maps a SigningAlgorithm to its crypto.Hash and optional PSS salt length.
@@ -69,15 +77,32 @@ var paramsMap = map[SigningAlgorithm]signingParams{
 
 // GeneratePrivateKey generates a new private key for the given algorithm.
 // Returns the private key as PEM-encoded PKCS#8.
-func GeneratePrivateKey(algo Algorithm) ([]byte, error) {
+func GeneratePrivateKey(algo AsymmetricKeyAlgorithm) ([]byte, error) {
 	var privKey crypto.PrivateKey
 	var err error
 
 	switch algo {
 	case RSA4096:
 		privKey, err = rsa.GenerateKey(rand.Reader, 4096)
+
 	case ECCP256:
 		privKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
+	case ECCP384:
+		privKey, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+
+	case ECCP521:
+		privKey, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+
+	case MLDSA44:
+		privKey, err = mldsa.GenerateKey(mldsa.MLDSA44())
+
+	case MLDSA65:
+		privKey, err = mldsa.GenerateKey(mldsa.MLDSA65())
+
+	case MLDSA87:
+		privKey, err = mldsa.GenerateKey(mldsa.MLDSA87())
+
 	default:
 		return nil, fmt.Errorf("unsupported key algorithm: %s", algo)
 	}
@@ -125,14 +150,28 @@ func Sign(data, privateKeyPEM []byte, algo SigningAlgorithm, isDigest bool) ([]b
 		return nil, err
 	}
 
-	params, ok := paramsMap[algo]
-	if !ok {
-		return nil, fmt.Errorf("unsupported signing algorithm: %s", algo)
-	}
-
 	privKey, err := parsePrivateKeyPEM(privateKeyPEM)
 	if err != nil {
 		return nil, err
+	}
+
+	isPQCAlgorithm := IsPQCAlgorithm(algo)
+
+	if isPQCAlgorithm {
+		if isDigest {
+			return nil, fmt.Errorf("ML_DSA algorithms doesnt support digested input")
+		}
+		switch k := privKey.(type) {
+		case *mldsa.PrivateKey:
+			return k.Sign(nil, data, nil)
+		default:
+			return nil, fmt.Errorf("unsupported private key type for signing: %T", privKey)
+		}
+	}
+
+	params, ok := paramsMap[algo]
+	if !ok {
+		return nil, fmt.Errorf("unsupported signing algorithm: %s", algo)
 	}
 
 	var digest []byte
@@ -159,7 +198,6 @@ func Sign(data, privateKeyPEM []byte, algo SigningAlgorithm, isDigest bool) ([]b
 	case *ecdsa.PrivateKey:
 		// ecdsa.SignASN1 produces DER-encoded signatures matching Node.js dsaEncoding: "der".
 		return ecdsa.SignASN1(rand.Reader, k, digest)
-
 	default:
 		return nil, fmt.Errorf("unsupported private key type for signing: %T", privKey)
 	}
@@ -170,6 +208,30 @@ func Sign(data, privateKeyPEM []byte, algo SigningAlgorithm, isDigest bool) ([]b
 // If isDigest is true, data is treated as a pre-computed hash digest.
 // RSA-PSS does not support pre-digested input.
 func Verify(data, signature, publicKeyDER []byte, algo SigningAlgorithm, isDigest bool) (bool, error) {
+
+	isPQCAlgorithm := IsPQCAlgorithm(algo)
+	if isPQCAlgorithm {
+		if isDigest {
+			return false, fmt.Errorf("RSA-PSS does not support pre-digested input")
+		}
+		pubKeyRaw, err := x509.ParsePKIXPublicKey(publicKeyDER)
+
+		if err != nil {
+			return false, fmt.Errorf("parsing public key DER: %w", err)
+		}
+
+		switch pubKey := pubKeyRaw.(type) {
+		case *mldsa.PublicKey:
+			if err := mldsa.Verify(pubKey, data, signature, nil); err != nil {
+				return false, nil
+			}
+			return true, nil
+
+		default:
+			return false, fmt.Errorf("unsupported public key type for verification: %T", pubKeyRaw)
+		}
+	}
+
 	params, ok := paramsMap[algo]
 	if !ok {
 		return false, fmt.Errorf("unsupported signing algorithm: %s", algo)
@@ -255,19 +317,54 @@ func validateAlgorithmWithKey(algo SigningAlgorithm, privateKeyPEM []byte) error
 	}
 
 	algoStr := string(algo)
-	isRSAAlgo := strings.HasPrefix(algoStr, "RSASSA")
-	isECDSAAlgo := strings.HasPrefix(algoStr, "ECDSA")
 
-	switch privKey.(type) {
+	switch key := privKey.(type) {
 	case *rsa.PrivateKey:
-		if !isRSAAlgo {
+		if !strings.HasPrefix(algoStr, "RSASSA") {
 			return fmt.Errorf("RSA key cannot be used with %s", algo)
 		}
+
 	case *ecdsa.PrivateKey:
-		if !isECDSAAlgo {
+		if !strings.HasPrefix(algoStr, "ECDSA") {
 			return fmt.Errorf("ECC key cannot be used with %s", algo)
 		}
+
+	case *mldsa.PrivateKey:
+		switch algo {
+		case MLDSASign44:
+			if key.PublicKey().Parameters() != mldsa.MLDSA44() {
+				return fmt.Errorf("ML-DSA-44 algorithm requires an ML-DSA-44 key")
+			}
+
+		case MLDSASign65:
+			if key.PublicKey().Parameters() != mldsa.MLDSA65() {
+				return fmt.Errorf("ML-DSA-65 algorithm requires an ML-DSA-65 key")
+			}
+
+		case MLDSASign87:
+			if key.PublicKey().Parameters() != mldsa.MLDSA87() {
+				return fmt.Errorf("ML-DSA-87 algorithm requires an ML-DSA-87 key")
+			}
+
+		default:
+			return fmt.Errorf("ML-DSA key cannot be used with %s", algo)
+		}
+
+	default:
+		return fmt.Errorf("unsupported private key type %T", privKey)
 	}
 
 	return nil
+}
+
+func ValidateSigningAlgorithmWithKeyType(
+	encryptionAlgorithm string,
+	signingAlgorithm SigningAlgorithm,
+) error {
+	// todo : implement as with $validateAlgorithmWithKeyType from kms-service.ts
+	return nil
+}
+
+func IsPQCAlgorithm(algorithm SigningAlgorithm) bool {
+	return strings.HasPrefix(string(algorithm), "ML_DSA")
 }

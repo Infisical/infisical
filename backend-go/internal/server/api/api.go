@@ -12,7 +12,9 @@ import (
 	"github.com/infisical/api/internal/ee/services/license"
 	"github.com/infisical/api/internal/keystore"
 	"github.com/infisical/api/internal/queue"
+	kmsSvc "github.com/infisical/api/internal/server/api/svc/kms"
 	"github.com/infisical/api/internal/services/kms"
+	"github.com/infisical/api/pkg/services/kms/db/store"
 )
 
 // Infra holds the external infrastructure dependencies.
@@ -29,8 +31,11 @@ type Infra struct {
 
 // Services holds all initialized services for the API.
 type Services struct {
+	// in-process modules
 	Platform      *PlatformServices
 	SecretManager *SecretManagerServices
+	// services over gprc
+	Kms *kmsSvc.Service
 }
 
 // NewServices creates all services for the API.
@@ -43,12 +48,28 @@ func NewServices(ctx context.Context, infra *Infra) (*Services, func(), error) {
 
 	secretManagerSvc := newSecretManagerServices(ctx, infra, platformSvc)
 
+	// gRPC connection establishment and TLS verification are lazy until the first request.
+	kmsSvc, err := kmsSvc.NewKMSService(infra.Config, kmsSvc.Options{
+		Permission: platformSvc.Permission,
+		KmsStore: store.NewKMSStore(infra.DB,
+			&store.KmsStoreOptions{
+				KmsMetaCache: store.NewKeyMetaCache(),
+			}),
+		License: infra.License,
+	})
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("KMS gRPC client: %w", err)
+	}
+
 	services := &Services{
 		Platform:      platformSvc,
 		SecretManager: secretManagerSvc,
+		Kms:           kmsSvc,
 	}
 
 	cleanup := func() {
+		kmsSvc.Close()
 		platformSvc.KMS.Close()
 		platformSvc.License.Close()
 	}

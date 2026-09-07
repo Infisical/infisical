@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -39,6 +40,17 @@ type Config struct {
 	InfisicalCloud                         bool
 	MaintenanceMode                        bool
 	DisableSecretScanning                  bool
+
+	// KMS gRPC sidecar client
+	KMSGRPCAddr          string
+	KMSGRPCPort          string
+	KMSGRPCTLSEnabled    bool
+	KMSGRPCTLSCACert     string
+	KMSGRPCTLSClientCert string
+	KMSGRPCTLSClientKey  string
+	KMSGRPCTLSServerName string
+	KMSAuthHeader        string
+	KMSAuthSecret        string
 
 	// Logging
 	LogLevel string
@@ -405,6 +417,15 @@ func LoadConfig() (*Config, error) {
 		OptionalBool(&cfg.InfisicalCloud, "INFISICAL_CLOUD", false).
 		OptionalBool(&cfg.MaintenanceMode, "MAINTENANCE_MODE", false).
 		OptionalBool(&cfg.DisableSecretScanning, "DISABLE_SECRET_SCANNING", false).
+		Optional(&cfg.KMSGRPCAddr, "KMS_GRPC_ADDR", "127.0.0.1").
+		Optional(&cfg.KMSGRPCPort, "KMS_GRPC_PORT", "4040").
+		OptionalBool(&cfg.KMSGRPCTLSEnabled, "KMS_GRPC_TLS_ENABLED", false).
+		Optional(&cfg.KMSGRPCTLSCACert, "KMS_GRPC_TLS_CA_CERT", "").
+		Optional(&cfg.KMSGRPCTLSClientCert, "KMS_GRPC_TLS_CLIENT_CERT", "").
+		Optional(&cfg.KMSGRPCTLSClientKey, "KMS_GRPC_TLS_CLIENT_KEY", "").
+		Optional(&cfg.KMSGRPCTLSServerName, "KMS_GRPC_TLS_SERVER_NAME", "").
+		Optional(&cfg.KMSAuthHeader, "KMS_AUTH_HEADER", "").
+		Optional(&cfg.KMSAuthSecret, "KMS_AUTH_SECRET", "").
 
 		// Logging
 		Optional(&cfg.LogLevel, "LOG_LEVEL", "info").
@@ -802,17 +823,17 @@ func LoadConfig() (*Config, error) {
 	var parseIssues []string
 	if cfg.RedisSentinelHosts != "" {
 		var issues []string
-		cfg.ParsedRedisSentinelHosts, issues = parseHostPortList(cfg.RedisSentinelHosts, "REDIS_SENTINEL_HOSTS")
+		cfg.ParsedRedisSentinelHosts, issues = ParseHostPortList(cfg.RedisSentinelHosts, "REDIS_SENTINEL_HOSTS")
 		parseIssues = append(parseIssues, issues...)
 	}
 	if cfg.RedisClusterHosts != "" {
 		var issues []string
-		cfg.ParsedRedisClusterHosts, issues = parseHostPortList(cfg.RedisClusterHosts, "REDIS_CLUSTER_HOSTS")
+		cfg.ParsedRedisClusterHosts, issues = ParseHostPortList(cfg.RedisClusterHosts, "REDIS_CLUSTER_HOSTS")
 		parseIssues = append(parseIssues, issues...)
 	}
 	if cfg.RedisReadReplicas != "" {
 		var issues []string
-		cfg.ParsedRedisReadReplicas, issues = parseHostPortList(cfg.RedisReadReplicas, "REDIS_READ_REPLICAS")
+		cfg.ParsedRedisReadReplicas, issues = ParseHostPortList(cfg.RedisReadReplicas, "REDIS_READ_REPLICAS")
 		parseIssues = append(parseIssues, issues...)
 	}
 	if len(parseIssues) > 0 {
@@ -831,8 +852,8 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("invalid environment variables:\n  - %s", strings.Join(e.Issues, "\n  - "))
 }
 
-// parseHostPortList parses a comma-separated "host:port" string into []RedisHostPort.
-func parseHostPortList(raw, envVar string) (result []RedisHostPort, issues []string) {
+// ParseHostPortList parses a comma-separated "host:port" string into []RedisHostPort.
+func ParseHostPortList(raw, envVar string) (result []RedisHostPort, issues []string) {
 	for entry := range strings.SplitSeq(raw, ",") {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
@@ -840,12 +861,17 @@ func parseHostPortList(raw, envVar string) (result []RedisHostPort, issues []str
 		}
 		host, portStr, found := strings.Cut(entry, ":")
 		hp := RedisHostPort{Host: strings.TrimSpace(host)}
+		if hp.Host == "" {
+			issues = append(issues, fmt.Sprintf("%s: empty host in %q", envVar, entry))
+			continue
+		}
 		if found {
 			portStr = strings.TrimSpace(portStr)
-			if portStr == "" {
-				issues = append(issues, fmt.Sprintf("%s: empty port in %q", envVar, entry))
-			} else if _, err := fmt.Sscanf(portStr, "%d", &hp.Port); err != nil {
+			port, err := strconv.Atoi(portStr)
+			if portStr == "" || err != nil || port < 1 || port > 65535 {
 				issues = append(issues, fmt.Sprintf("%s: invalid port %q in %q", envVar, portStr, entry))
+			} else {
+				hp.Port = port
 			}
 		}
 		result = append(result, hp)

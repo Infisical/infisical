@@ -29,6 +29,7 @@ func TestErrorConstructors_ReturnsCorrectStatusAndName(t *testing.T) {
 		{"RateLimit", errutil.RateLimit("slow down"), "RateLimitExceeded", 429, "slow down"},
 		{"InternalServer", errutil.InternalServer("broken"), "InternalServerError", 500, "broken"},
 		{"DatabaseErr", errutil.DatabaseErr("query failed"), "DatabaseError", 500, "query failed"},
+		{"CryptographicErr", errutil.CryptographicErr("key generation failed"), "CryptographicError", 500, "key generation failed"},
 		{"GatewayTimeout", errutil.GatewayTimeout("timed out"), "GatewayTimeoutError", 504, "timed out"},
 	}
 

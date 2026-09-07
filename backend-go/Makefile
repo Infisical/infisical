@@ -1,4 +1,4 @@
-.PHONY: lint lint-fix test test-unit test-integration dev build generate test-hsm-image test-hsm ensure-golangci-lint
+.PHONY: lint lint-fix test test-unit test-integration dev build generate gen-proto test-hsm-image test-hsm ensure-golangci-lint
 
 # golangci-lint version - keep in sync with .github/workflows/run-backend-go-tests.yml
 GOLANGCI_LINT_VERSION := v2.12.2
@@ -37,8 +37,16 @@ build:
 	go build -o infisical ./cmd/infisical/...
 
 # Regenerate oapi-codegen-dd code from openapi.yml specs
-generate:
+generate: generate-cmek
 	go generate ./...
+
+# Generate the CMek API adapter and models from the extracted OpenAPI spec.
+generate-cmek:
+	cd internal/server/api/cmek && go tool oapi-codegen -config cfg.yaml openapi.yml
+
+# Generate KMS protobuf and gRPC types.
+gen-proto:
+	$(MAKE) -C pkg/services/kms gen-proto
 
 # Build the HSM test container image (requires Docker)
 test-hsm-image:

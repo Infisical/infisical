@@ -68,28 +68,51 @@ type Deps struct {
 	KeyStore keyStore
 }
 
-func NewService(ctx context.Context, logger *slog.Logger, deps *Deps) *Service {
+type Options struct {
+	LicenseServerURL  string
+	LicenseServerKey  string
+	LicenseKey        string
+	LicenseKeyOffline string
+
+	DB       pg.DB
+	KeyStore keyStore
+	Logger   *slog.Logger
+}
+
+func NewServiceFromConfig(ctx context.Context, logger *slog.Logger, deps *Deps) *Service {
+	return NewService(ctx, &Options{
+		LicenseServerURL:  deps.Config.LicenseServerURL,
+		LicenseServerKey:  deps.Config.LicenseServerKey,
+		LicenseKey:        deps.Config.LicenseKey,
+		LicenseKeyOffline: deps.Config.LicenseKeyOffline,
+		DB:                deps.DB,
+		KeyStore:          deps.KeyStore,
+		Logger:            logger,
+	})
+}
+
+func NewService(ctx context.Context, opts *Options) *Service {
 	svc := &Service{
-		logger:         logger.With(slog.String("svc", "license")),
+		logger:         opts.Logger.With(slog.String("svc", "license")),
 		onPremFeatures: DefaultFeatures(),
-		db:             deps.DB,
-		keyStore:       deps.KeyStore,
+		db:             opts.DB,
+		keyStore:       opts.KeyStore,
 	}
 
-	serverURL := deps.Config.LicenseServerURL
+	serverURL := opts.LicenseServerURL
 	if serverURL == "" {
 		serverURL = "https://portal.infisical.com"
 	}
 
-	svc.cloudAPI = newLicenseAPI(serverURL, cloudLoginPath, deps.Config.LicenseServerKey, "")
+	svc.cloudAPI = newLicenseAPI(serverURL, cloudLoginPath, opts.LicenseServerKey, "")
 	svc.onPremAPI = newLicenseAPI(serverURL, onPremLoginPath, "", "")
 
-	svc.init(ctx, deps.Config)
+	svc.init(ctx, opts)
 	svc.startBackgroundSync()
 	return svc
 }
 
-func (s *Service) init(ctx context.Context, cfg *config.Config) {
+func (s *Service) init(ctx context.Context, opts *Options) {
 	defer func() {
 		if r := recover(); r != nil {
 			s.logger.ErrorContext(ctx, "panic during license init", slog.Any("recover", r))
@@ -97,7 +120,7 @@ func (s *Service) init(ctx context.Context, cfg *config.Config) {
 	}()
 
 	// 1. Cloud instance (LICENSE_SERVER_KEY is set).
-	if cfg.LicenseServerKey != "" {
+	if opts.LicenseServerKey != "" {
 		token, err := s.cloudAPI.refreshToken(ctx)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "cloud license login failed", slog.Any("error", err))
@@ -113,7 +136,7 @@ func (s *Service) init(ctx context.Context, cfg *config.Config) {
 	}
 
 	// Determine license key type.
-	licenseKey, licenseType := detectLicenseKey(cfg)
+	licenseKey, licenseType := detectLicenseKey(opts)
 
 	// 2. Online enterprise license.
 	if licenseKey != "" && licenseType == OnlineLicenseType {
@@ -154,10 +177,10 @@ func (s *Service) init(ctx context.Context, cfg *config.Config) {
 }
 
 // detectLicenseKey determines the license key and its type (online/offline).
-func detectLicenseKey(cfg *config.Config) (key string, typ LicenseType) {
-	raw := cfg.LicenseKey
+func detectLicenseKey(opts *Options) (key string, typ LicenseType) {
+	raw := opts.LicenseKey
 	if raw == "" {
-		raw = cfg.LicenseKeyOffline
+		raw = opts.LicenseKeyOffline
 	}
 	if raw == "" {
 		return "", ""
