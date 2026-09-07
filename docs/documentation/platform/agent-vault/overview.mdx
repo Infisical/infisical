@@ -4,9 +4,9 @@ sidebarTitle: "Overview"
 description: "Run AI agents with the access, context, and capabilities they need to do work."
 ---
 
-**Infisical Agent Vault** is where you equip AI agents with what they need to do work, starting with secure access to the services they call, including LLM providers, GitHub, Slack, and more.
+**Infisical Agent Vault** equips AI agents with what they need to do work, starting with secure access to the services they call: LLM providers, GitHub, Slack, and more.
 
-Agent Vault brokers that access. Agents like Claude Code or OpenClaw route HTTP requests through an Agent Vault proxy, which attaches the real credential before forwarding the request to the target service. The agent never holds it.
+Agents like Claude Code or OpenClaw work as they always do. Their requests leave your network with the real credential attached, and the agent never holds it.
 
 ```text
             Your private network                                  Public internet
@@ -30,11 +30,11 @@ Traditional secrets management involves returning credentials back to applicatio
 
 This is not suitable for AI agents because they are vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
 
-Enter Infisical Agent Vault: a proxy backed by Infisical that prevents credential exfiltration by brokering access to credentials at the network boundary. The agent gets a session token that works only through your proxy, only for the services you allowed, and only until you revoke it.
+Enter Infisical Agent Vault, which prevents credential exfiltration by brokering access at the network boundary. The agent gets an access session that works only for the services you allowed, and only until you revoke it.
 
 ## How it works
 
-An admin creates an access bundle, everything an agent needs for a job granted as one unit. Today a bundle holds a connection for each service the agent may reach, with the credential the proxy applies, and names the people, machine identities, and groups allowed to run agents with it. Someone with the grant mints a session, a token that carries the bundle and an expiry, and launches the agent with it. The agent needs no code changes: the [Infisical CLI](/cli/overview) starts it with its HTTP clients pointed at a proxy you run in your own network, and the proxy applies the real credential to matching requests on the way out.
+You describe what an agent may use in an access bundle: the services, and the credentials for them. You grant the bundle to whoever runs agents. They start an access session over the bundle and launch the agent with it. Requests to those services get the right credential on the way out, and everything else is untouched. The agent needs no code changes.
 
 ## Get started
 
