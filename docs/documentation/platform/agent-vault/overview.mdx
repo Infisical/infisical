@@ -1,12 +1,12 @@
 ---
 title: "Agent Vault"
 sidebarTitle: "Overview"
-description: "Give AI agents access to the APIs they need without handing over your credentials."
+description: "Run AI agents with the access, context, and capabilities they need to do work."
 ---
 
-The **Infisical Agent Vault** is a credential broker for AI agents. It sits between your agents and the APIs they call, including LLM providers, GitHub, Slack, and more.
+**Infisical Agent Vault** is where you equip AI agents with what they need to do work, starting with secure access to the services they call, including LLM providers, GitHub, Slack, and more.
 
-Agents like Claude Code or OpenClaw route HTTP requests through an Agent Vault proxy, which attaches the real credential before forwarding the request to the target service. The agent never holds it.
+Agent Vault brokers that access. Agents like Claude Code or OpenClaw route HTTP requests through an Agent Vault proxy, which attaches the real credential before forwarding the request to the target service. The agent never holds it.
 
 ```text
             Your private network                                  Public internet
@@ -31,7 +31,9 @@ Traditional secrets management involves returning credentials back to applicatio
 
 This is not suitable for AI agents because they are vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
 
-Enter Infisical Agent Vault: a proxy backed by Infisical that prevents credential exfiltration by brokering access to credentials at the network boundary. The agent gets a session token that works only through your proxy, only for the hosts you allowed, and only until you revoke it. Access is checked while the agent runs, so pulling it takes effect within a minute, with nothing to restart.
+Enter Infisical Agent Vault: a proxy backed by Infisical that prevents credential exfiltration by brokering access to credentials at the network boundary. The agent gets a session token that works only through your proxy, only for the services you allowed, and only until you revoke it. Access is checked while the agent runs, so pulling it takes effect within a minute, with nothing to restart.
+
+The unit you hand an agent is an access bundle: everything it needs for a job, granted and revoked as one thing. Today a bundle carries the services an agent may reach and who may run agents with it, and it is the place where what an agent gets from Agent Vault will grow.
 
 ## What you configure in Infisical
 
@@ -52,7 +54,7 @@ The [proxy](/documentation/platform/agent-vault/proxies) has to sit between your
 | Object            | What it is                                                                                                                                                              |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Connection**    | One external service and the credential the proxy applies to requests bound for it, such as `api.github.com` with a bearer token.                                       |
-| **Access bundle** | A named group of connections, and the people, machine identities, and groups allowed to run agents with them.                                                          |
+| **Access bundle** | Everything an agent needs for a job, granted as one unit: today, a named group of connections and the people, machine identities, and groups allowed to run agents with them. |
 | **Session**       | The token an agent runs with. It carries a fixed set of access bundles and an expiry, can be revoked at any time, and is re-checked against the grants while it runs.   |
 | **Proxy**         | The forward proxy in the [Infisical CLI](/cli/overview) that attaches credentials to outbound requests. Runs on a host in your network.                                 |
 | **Agent**         | Any program that respects `HTTPS_PROXY`: Claude Code, Codex, OpenClaw, Hermes, or any other workload.                                                                   |
