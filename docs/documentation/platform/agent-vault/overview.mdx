@@ -14,7 +14,7 @@ Agents like Claude Code or OpenClaw work as they always do. Their requests leave
 +----------+                 +-------------------+                +------------------+
 | AI agent | --------------> | Agent Vault proxy | -------------> |  api.slack.com   |
 +----------+  request with a +-------------------+ request with   |  api.github.com  |
-             session token            |          the credential   |  ...             |
+              session token           |            the credential |  ...             |
                                       |                           +------------------+
                                       |  fetches the credentials
                                       |  this session may use
