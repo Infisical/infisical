@@ -17,15 +17,21 @@ type Props = {
   gatewayId: string;
   gatewayName: string;
   isDirect: boolean;
+  includeRelay: boolean;
   listenAddress: string;
 };
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
 
+// Stands in until the listen address is filled in and valid, so a copied command never carries
+// an address the API would reject.
+const PLACEHOLDER_ADDRESS = "<gateway-address>:8443";
+
 export const AwsStartCommandContent = ({
   gatewayId,
   gatewayName,
   isDirect,
+  includeRelay,
   listenAddress
 }: Props) => {
   const { protocol, hostname, port } = window.location;
@@ -35,21 +41,17 @@ export const AwsStartCommandContent = ({
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
-  const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
+  const resolvedRelayName = !includeRelay || relay.id === "_auto" ? "" : relay.name;
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
-    const directPart = isDirect
-      ? ` --listen-address=${listenAddress.trim() || "<gateway-address>:8443"}`
-      : "";
+    const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `infisical gateway start ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
-    const directPart = isDirect
-      ? ` --listen-address=${listenAddress.trim() || "<gateway-address>:8443"}`
-      : "";
+    const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
@@ -64,7 +66,7 @@ export const AwsStartCommandContent = ({
         <CodeBlock value={systemdInstallCommand} label="Install service" />
         <CodeBlock value={startServiceCommand} label="Start service" />
       </TabsContent>
-      {!isDirect && (
+      {includeRelay && (
         <Field>
           <Select
             value={relay.id}

@@ -8,6 +8,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Checkbox,
   Card,
   CardAction,
   CardContent,
@@ -67,6 +68,7 @@ type Props = {
   gatewayId: string;
   gatewayName: string;
   directAddress?: string | null;
+  relayId?: string | null;
   authMethod: GatewayAuthMethodView;
 };
 
@@ -74,19 +76,29 @@ export const GatewayDeploySection = ({
   gatewayId,
   gatewayName,
   directAddress,
+  relayId,
   authMethod
 }: Props) => {
   const isCloud = isInfisicalCloud();
   const isKubernetes = authMethod.method === "kubernetes";
   // Relay unless the gateway already listens directly. Defaulting to direct on a gateway with no
   // address yet would render a command carrying the placeholder address.
+  const isDirectGateway = !isCloud && Boolean(directAddress);
   const [connectionMode, setConnectionMode] = useState<"relay" | "direct">(
-    !isCloud && directAddress ? "direct" : "relay"
+    isDirectGateway ? "direct" : "relay"
   );
+  // The relay is an add-on to direct listen rather than a competing transport: it extends reach to
+  // PAM CLI users off the network and covers the direct address going down. Pre-checked for a
+  // gateway already running both, so the command it renders matches how it is deployed.
+  const [withRelay, setWithRelay] = useState(isDirectGateway && Boolean(relayId));
+  const includeRelay = connectionMode === "relay" || withRelay;
   const [listenAddress, setListenAddress] = useState(directAddress ?? "");
   const trimmedListenAddress = listenAddress.trim();
   const hasListenAddressError =
     trimmedListenAddress.length > 0 && !isValidListenAddress(trimmedListenAddress);
+  // A malformed address must not reach a copyable command, where it would fail against the API
+  // rather than in the field the user can see.
+  const commandListenAddress = hasListenAddressError ? "" : trimmedListenAddress;
   const [deploymentMethod, setDeploymentMethod] = useState("");
   const [mintedEnrollment, setMintedEnrollment] = useState<
     (TGatewayEnrollmentToken & { gatewayId: string }) | null
@@ -225,14 +237,51 @@ export const GatewayDeploySection = ({
               )}
 
               {connectionMode === "direct" && (
+                <Field>
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="gateway-with-relay"
+                      variant="org"
+                      className="mt-0.5"
+                      isChecked={withRelay}
+                      onCheckedChange={(isChecked) => setWithRelay(isChecked === true)}
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor="gateway-with-relay" className="cursor-pointer">
+                        Also connect through a relay
+                      </FieldLabel>
+                      <FieldDescription>
+                        Infisical keeps using the direct address and falls back to the relay when it
+                        stops answering. Add one to reach PAM CLI users outside this network.
+                      </FieldDescription>
+                    </FieldContent>
+                  </div>
+                </Field>
+              )}
+
+              {connectionMode === "direct" && (
                 <Alert variant="info" appearance="borderless">
                   <InfoIcon />
-                  <AlertTitle>PAM CLI sessions dial this address directly</AlertTitle>
-                  <AlertDescription>
-                    The CLI connects from the user&apos;s own machine, not from Infisical, so that
-                    machine has to reach this address as well. Users outside this network need a VPN
-                    into it, or a relay on this gateway. Browser-based PAM access is unaffected.
-                  </AlertDescription>
+                  {withRelay ? (
+                    <>
+                      <AlertTitle>PAM CLI sessions work from outside this network</AlertTitle>
+                      <AlertDescription>
+                        The CLI dials the gateway from the user&apos;s own machine. It tries this
+                        address first and falls back to the relay, so users off this network can
+                        still connect. Infisical itself keeps using the direct address.
+                      </AlertDescription>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTitle>PAM CLI sessions dial this address directly</AlertTitle>
+                      <AlertDescription>
+                        The CLI connects from the user&apos;s own machine, not from Infisical, so
+                        that machine has to reach this address as well. Users outside this network
+                        need a VPN into it, or the relay option above. Browser-based PAM access is
+                        unaffected.
+                      </AlertDescription>
+                    </>
+                  )}
                 </Alert>
               )}
 
@@ -241,7 +290,8 @@ export const GatewayDeploySection = ({
                   gatewayId={gatewayId}
                   gatewayName={gatewayName}
                   isDirect={connectionMode === "direct"}
-                  listenAddress={listenAddress}
+                  includeRelay={includeRelay}
+                  listenAddress={commandListenAddress}
                 />
               )}
 
@@ -250,7 +300,8 @@ export const GatewayDeploySection = ({
                   gatewayId={gatewayId}
                   gatewayName={gatewayName}
                   isDirect={connectionMode === "direct"}
-                  listenAddress={listenAddress}
+                  includeRelay={includeRelay}
+                  listenAddress={commandListenAddress}
                 />
               )}
 
@@ -274,7 +325,8 @@ export const GatewayDeploySection = ({
                     enrollmentToken={enrollment.token}
                     expiresAt={enrollment.expiresAt}
                     isDirect={connectionMode === "direct"}
-                    listenAddress={listenAddress}
+                    includeRelay={includeRelay}
+                    listenAddress={commandListenAddress}
                     onCommandDirtyChange={setIsCommandDirty}
                   />
                   <Button

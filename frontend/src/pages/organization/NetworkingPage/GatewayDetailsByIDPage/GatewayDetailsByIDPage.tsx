@@ -61,6 +61,7 @@ const Page = () => {
             gatewayId={gatewayId}
             gatewayName={gateway.name}
             directAddress={gateway.directAddress}
+            relayId={gateway.relayId}
             authMethod={gateway.authMethod}
           />
           <GatewayConnectedResourcesSection gatewayId={gatewayId} />

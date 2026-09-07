@@ -19,11 +19,16 @@ type Props = {
   enrollmentToken: string;
   expiresAt: string;
   isDirect: boolean;
+  includeRelay: boolean;
   listenAddress: string;
   onCommandDirtyChange: (isDirty: boolean) => void;
 };
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
+
+// Stands in until the listen address is filled in and valid, so a copied command never carries
+// an address the API would reject.
+const PLACEHOLDER_ADDRESS = "<gateway-address>:8443";
 
 const formatTimeRemaining = (expiresAt: string, now: number) => {
   const remainingSeconds = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000));
@@ -43,6 +48,7 @@ export const EnrollmentTokenContent = ({
   enrollmentToken,
   expiresAt,
   isDirect,
+  includeRelay,
   listenAddress,
   onCommandDirtyChange
 }: Props) => {
@@ -66,29 +72,25 @@ export const EnrollmentTokenContent = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentToken]);
 
-  const isCommandDirty = !isDirect && relay.id !== commandRelay.id;
+  const isCommandDirty = includeRelay && relay.id !== commandRelay.id;
 
   useEffect(() => {
     onCommandDirtyChange(isCommandDirty);
   }, [isCommandDirty, onCommandDirtyChange]);
 
-  const resolvedRelayName = isDirect || commandRelay.id === "_auto" ? "" : commandRelay.name;
+  const resolvedRelayName = !includeRelay || commandRelay.id === "_auto" ? "" : commandRelay.name;
   const expiryLabel = formatTimeRemaining(expiresAt, now);
   const isExpired = expiryLabel === "Expired";
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
-    const directPart = isDirect
-      ? ` --listen-address=${listenAddress.trim() || "<gateway-address>:8443"}`
-      : "";
+    const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, enrollmentToken, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
-    const directPart = isDirect
-      ? ` --listen-address=${listenAddress.trim() || "<gateway-address>:8443"}`
-      : "";
+    const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, enrollmentToken, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
@@ -122,7 +124,7 @@ export const EnrollmentTokenContent = ({
         />
         <CodeBlock value={startServiceCommand} label="Start service" />
       </TabsContent>
-      {!isDirect && (
+      {includeRelay && (
         <Field>
           <Select
             value={relay.id}

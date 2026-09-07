@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   CodeBlock,
   Field,
   FieldDescription,
@@ -17,23 +21,21 @@ type Props = {
   gatewayId: string;
   gatewayName: string;
   isDirect: boolean;
+  includeRelay: boolean;
   listenAddress: string;
 };
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
 
-const getListenPort = (address: string) => {
-  try {
-    return new URL(`tcp://${address}`).port || "8443";
-  } catch {
-    return "8443";
-  }
-};
+// Stands in until the listen address is filled in and valid, so a copied command never carries
+// an address the API would reject.
+const PLACEHOLDER_ADDRESS = "<gateway-address>:8443";
 
 export const KubernetesStartCommandContent = ({
   gatewayId,
   gatewayName,
   isDirect,
+  includeRelay,
   listenAddress
 }: Props) => {
   const { protocol, hostname, port } = window.location;
@@ -43,17 +45,13 @@ export const KubernetesStartCommandContent = ({
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
-  const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
+  const resolvedRelayName = !includeRelay || relay.id === "_auto" ? "" : relay.name;
 
   const helmCommand = useMemo(() => {
-    const advertisedAddress = listenAddress.trim() || "<gateway-address>:8443";
+    // The chart derives the container port and the Service port from listenAddress, so setting
+    // service.port here would only re-derive the same value in a second place.
     const directPart = isDirect
-      ? [
-          " \\",
-          `  --set gateway.listenAddress=${advertisedAddress}`,
-          " \\",
-          `  --set service.port=${getListenPort(advertisedAddress)}`
-        ].join("\n")
+      ? ` \\\n  --set gateway.listenAddress=${listenAddress || PLACEHOLDER_ADDRESS}`
       : "";
     const relayPart = resolvedRelayName
       ? ` \\\n  --set gateway.relayName=${resolvedRelayName}`
@@ -69,16 +67,26 @@ helm install infisical-gateway infisical/infisical-gateway \\
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
-    const directPart = isDirect
-      ? ` --listen-address=${listenAddress.trim() || "<gateway-address>:8443"}`
-      : "";
+    const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `infisical gateway start ${gatewayName} --enroll-method=kubernetes --gateway-id=${gatewayId}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   return (
     <div className="min-w-0 space-y-4">
-      <TabsContent value="helm" className="mt-0 min-w-0">
+      <TabsContent value="helm" className="mt-0 min-w-0 space-y-3">
         <CodeBlock value={helmCommand} label="Install chart" />
+        {isDirect && (
+          <Alert variant="warning" appearance="borderless">
+            <TriangleAlertIcon />
+            <AlertTitle>Check the chart&apos;s image tag before installing</AlertTitle>
+            <AlertDescription>
+              <code>gateway.listenAddress</code> needs a CLI image that supports{" "}
+              <code>--listen-address</code>. The chart&apos;s default tag predates the flag, so add{" "}
+              <code>--set image.tag=&lt;version&gt;</code> with a release that includes it.
+              Otherwise the pod crash-loops on <code>unknown flag: --listen-address</code>.
+            </AlertDescription>
+          </Alert>
+        )}
       </TabsContent>
       <TabsContent value="cli" className="mt-0 min-w-0">
         <CodeBlock value={cliCommand} label="Container command" />
@@ -87,7 +95,7 @@ helm install infisical-gateway infisical/infisical-gateway \\
           must be reachable from the pod, so a loopback address will not work.
         </p>
       </TabsContent>
-      {!isDirect && (
+      {includeRelay && (
         <Field>
           <Select
             value={relay.id}

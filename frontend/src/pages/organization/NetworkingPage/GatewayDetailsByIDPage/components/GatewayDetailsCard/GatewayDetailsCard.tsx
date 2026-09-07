@@ -1,6 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { CheckIcon, ClipboardListIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CircleCheckIcon,
+  CircleXIcon,
+  ClipboardListIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -32,7 +38,11 @@ import {
 import { useTimedReset } from "@app/hooks";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2, TGatewayV2WithAuthMethod } from "@app/hooks/api/gateways-v2/types";
-import { getLastSeenHeartbeat, isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+import {
+  getGatewayTransportHealth,
+  getLastSeenHeartbeat,
+  isGatewayHealthy
+} from "@app/hooks/api/gateways-v2/utils";
 
 import {
   NetworkingAuthMethodForm,
@@ -71,6 +81,10 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
     : gateway.relayId
       ? "Relay"
       : "Not configured";
+  // Only broken out for a gateway running both. With one transport the Health badge and Last Seen
+  // above already say everything these rows would.
+  const transportHealth = getGatewayTransportHealth(gateway);
+  const perTransportHealth = transportHealth.length > 1 ? transportHealth : [];
 
   return (
     <Card className="w-full">
@@ -110,7 +124,26 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
           </Detail>
           <Detail>
             <DetailLabel>Connection</DetailLabel>
-            <DetailValue>{connection}</DetailValue>
+            <DetailValue className="flex flex-col items-start gap-1">
+              <span>{connection}</span>
+              {perTransportHealth.map((transport) => (
+                <span key={transport.transport} className="flex items-center gap-2 text-xs">
+                  <Badge variant={transport.isHealthy ? "success" : "danger"} iconPosition="left">
+                    {transport.isHealthy ? (
+                      <CircleCheckIcon className="size-3" />
+                    ) : (
+                      <CircleXIcon className="size-3" />
+                    )}
+                    {transport.label}
+                  </Badge>
+                  <span className="text-muted">
+                    {transport.probedAt
+                      ? `last seen ${format(new Date(transport.probedAt), "PPp")}`
+                      : "never reached"}
+                  </span>
+                </span>
+              ))}
+            </DetailValue>
           </Detail>
           <Detail>
             <DetailLabel>Last Seen</DetailLabel>
