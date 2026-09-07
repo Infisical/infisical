@@ -783,7 +783,8 @@ export const pamAccessRequestServiceFactory = ({
     duration,
     bypassReason,
     actorId,
-    orgId
+    orgId,
+    projectId
   }: {
     request: { id: string; requesterName?: string | null; requesterEmail?: string | null };
     steps: { approvers: { type: string; id: string }[] }[];
@@ -793,12 +794,33 @@ export const pamAccessRequestServiceFactory = ({
     bypassReason: string;
     actorId: string;
     orgId: string;
+    projectId: string;
   }) => {
     try {
+      // steps is the request's creation-time snapshot. Notifying from it alone would send requester
+      // details and the bypass reason to someone since removed as an approver
+      const livePolicy = await findFolderPolicy(folderId);
+      const [livePolicySteps, activeMemberships] = await Promise.all([
+        livePolicy ? approvalPolicyDAL.findStepsByPolicyId(livePolicy.id) : Promise.resolve([]),
+        findActiveFolderMemberships(projectId, folderId)
+      ]);
+      const liveApproverKeys = new Set(
+        livePolicySteps.flatMap((step) => step.approvers.map((a) => `${a.type}:${a.id}`))
+      );
+      const activeMemberKeys = new Set([
+        ...activeMemberships.filter((m) => m.actorUserId).map((m) => `${ApproverType.User}:${m.actorUserId}`),
+        ...activeMemberships.filter((m) => m.actorGroupId).map((m) => `${ApproverType.Group}:${m.actorGroupId}`)
+      ]);
+
       const approverUserIds = new Set<string>();
       const approverGroupIds = new Set<string>();
+      const isStillAnApprover = (approver: { type: string; id: string }) => {
+        const key = `${approver.type}:${approver.id}`;
+        return liveApproverKeys.has(key) && activeMemberKeys.has(key);
+      };
+
       for (const step of steps) {
-        for (const approver of step.approvers) {
+        for (const approver of step.approvers.filter(isStillAnApprover)) {
           if (approver.type === ApproverType.User) approverUserIds.add(approver.id);
           else approverGroupIds.add(approver.id);
         }
@@ -999,7 +1021,8 @@ export const pamAccessRequestServiceFactory = ({
       duration: requestData.requestData.duration,
       bypassReason: trimmedReason,
       actorId: ctx.actorId,
-      orgId: ctx.actorOrgId
+      orgId: ctx.actorOrgId,
+      projectId
     }).catch((err) => {
       logger.error(err, `Failed to send PAM break-glass notifications [requestId=${requestId}]`);
     });
