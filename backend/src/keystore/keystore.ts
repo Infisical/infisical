@@ -32,6 +32,8 @@ export const PgSqlLock = {
   CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
+  SetSecretRequestValue: (secretRequestId: string) =>
+    pgAdvisoryLockHashText(`set-secret-request-value:${secretRequestId}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
