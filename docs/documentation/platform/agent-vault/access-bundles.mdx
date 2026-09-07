@@ -54,7 +54,7 @@ Across bundles the same host can appear more than once, and Infisical warns you 
 
 ## Access bundles
 
-A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be a member of Agent Vault first, under **Access Control**. A group that's in Agent Vault is granted as a group, and each of its members mints sessions as themselves.
+A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be a member of Agent Vault first: Agent Vault is organization-wide, and its **Access Control** page decides who is an admin, who is a member, and which machine identities and groups belong. A group that's in Agent Vault is granted as a group, and each of its members mints sessions as themselves.
 
 Bundles are how you scope access. An agent for on-call work gets a bundle with the incident tooling, an agent for code review gets a bundle with GitHub, and neither reaches the other's hosts.
 
