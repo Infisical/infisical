@@ -18,6 +18,7 @@ const SanitizedGatewayPoolSchema = GatewayPoolsSchema.pick({
 const SanitizedPoolMemberSchema = GatewaysV2Schema.pick({
   id: true,
   name: true,
+  relayId: true,
   heartbeat: true,
   heartbeatTTL: true,
   directAddress: true,

@@ -28,7 +28,13 @@ export const GatewayHealthStatus = ({
   }
 
   const heartbeatDate = lastSeen ? new Date(lastSeen) : null;
-  const isHealthy = isGatewayHealthy({ heartbeat, directAddress, directHeartbeat, heartbeatTTL });
+  const isHealthy = isGatewayHealthy({
+    heartbeat,
+    relayId: relayId ?? null,
+    directAddress,
+    directHeartbeat,
+    heartbeatTTL
+  });
 
   return (
     <Tooltip>

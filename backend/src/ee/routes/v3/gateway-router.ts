@@ -2,6 +2,7 @@ import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { gatewayTransports } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import {
   validateAllowedNames,
@@ -754,19 +755,17 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       });
 
       // A gateway can change its own transports here, including pointing the platform at a new
-      // address to dial, so every connect is recorded whether or not anything changed.
-      const transports: ("direct" | "relay")[] = [];
-      if (connected.directAddress) transports.push("direct");
-      if (connected.relayHost) transports.push("relay");
-
+      // address to dial, so every connect is recorded whether or not anything changed. Spreading
+      // auditLogInfo keeps the source IP and user agent on an event that repoints where the
+      // platform dials, and reuses the GATEWAY actor the audit plugin already resolved.
       await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        actor: { type: ActorType.GATEWAY, metadata: { gatewayId: connected.gatewayId } },
         event: {
           type: EventType.GATEWAY_ENROLL,
           metadata: {
             gatewayId: connected.gatewayId,
-            transports,
+            transports: gatewayTransports(connected),
             directAddress: connected.directAddress,
             relayName: req.body.relayName
           }

@@ -8,7 +8,7 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
+    - port: {{ include "infisical-gateway.servicePort" . }}
       targetPort: {{ include "infisical-gateway.listenPort" . }}
       protocol: TCP
       name: http

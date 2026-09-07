@@ -2,21 +2,13 @@ import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { gatewayTransports } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { GATEWAYS } from "@app/lib/api-docs";
 import { zodBuffer } from "@app/lib/zod";
 import { gatewayMetricsReportLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-
-// Derived from what was actually issued rather than what was asked for, so the log records the
-// transports the gateway ended up with.
-const gatewayTransports = ({ directAddress, relayHost }: { directAddress?: string; relayHost?: string }) => {
-  const transports: ("direct" | "relay")[] = [];
-  if (directAddress) transports.push("direct");
-  if (relayHost) transports.push("relay");
-  return transports;
-};
 
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,

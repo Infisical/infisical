@@ -73,3 +73,64 @@ export const resolveTransports = ({
   // fail here rather than dial with no credentials.
   return { useDirect, useRelay, hasTransport: useDirect || useRelay };
 };
+
+// Derived from what was actually issued rather than what was asked for, so an audit log records the
+// transports the gateway ended up with.
+export const gatewayTransports = ({
+  directAddress,
+  relayHost
+}: {
+  directAddress?: string;
+  relayHost?: string;
+}): TGatewayTransport[] => {
+  const transports: TGatewayTransport[] = [];
+  if (directAddress) transports.push("direct");
+  if (relayHost) transports.push("relay");
+  return transports;
+};
+
+// Which transports a PAM client is given, from what the gateway has and what the client says it can
+// dial. Extracted alongside resolveTransports so the matrix is testable without KMS or the relay
+// service. `supportedTransports` undefined means the platform is dialling on the client's behalf
+// (browser access) and any transport is fine; an empty array is an older CLI that only knows relays.
+export const resolveClientTransports = ({
+  gateway,
+  supportedTransports
+}: {
+  gateway: {
+    directAddress?: string | null;
+    relayId?: string | null;
+    directHeartbeat?: Date | null;
+    heartbeatTTL?: number | null;
+  };
+  supportedTransports?: TGatewayTransport[];
+}) => {
+  const clientAllowsDirect = supportedTransports === undefined || supportedTransports.includes("direct");
+  const allowRelay =
+    supportedTransports === undefined || supportedTransports.length === 0 || supportedTransports.includes("relay");
+
+  // A stale direct probe means the platform could not reach the address, so handing it out makes
+  // every session pay the direct handshake timeout before falling back. Skipped only when the relay
+  // can actually take over; otherwise it is the client's only path and a stale probe beats not
+  // trying. Same rule resolveTransports applies to platform-side dials.
+  const canFallBackToRelay = allowRelay && Boolean(gateway.relayId);
+  const allowDirect =
+    clientAllowsDirect &&
+    (!canFallBackToRelay ||
+      isTransportHealthy({ probedAt: gateway.directHeartbeat, heartbeatTTL: gateway.heartbeatTTL }));
+
+  const useDirect = allowDirect && Boolean(gateway.directAddress);
+  const useRelay = allowRelay && Boolean(gateway.relayId);
+
+  return {
+    allowDirect,
+    allowRelay,
+    useDirect,
+    useRelay,
+    hasTransport: useDirect || useRelay,
+    // Separates "your client is too old for this gateway" from "this gateway has nothing to dial",
+    // so the caller can tell the user which one it is.
+    isDirectOnlyForOlderClient: Boolean(gateway.directAddress) && !gateway.relayId && !clientAllowsDirect,
+    gatewayHasTransport: Boolean(gateway.directAddress || gateway.relayId)
+  };
+};

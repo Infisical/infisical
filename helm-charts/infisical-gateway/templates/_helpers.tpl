@@ -73,3 +73,16 @@ container port and the Service can never disagree with what the gateway actually
 {{- end -}}
 {{- $port -}}
 {{- end }}
+
+{{/*
+Port the Service exposes. Defaults to the port in gateway.listenAddress, because that address is
+what the platform dials: a Service listening on anything else is unreachable at the registered
+address. Set service.port only to put a different port in front of the gateway.
+*/}}
+{{- define "infisical-gateway.servicePort" -}}
+{{- if .Values.service.port -}}
+{{- .Values.service.port -}}
+{{- else -}}
+{{- include "infisical-gateway.listenPort" . -}}
+{{- end -}}
+{{- end }}

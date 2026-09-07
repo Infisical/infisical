@@ -109,7 +109,9 @@ tolerations: {}
 nodeSelector: {}
 service:
   type: ClusterIP
-  port: 80
+  # Port the Service exposes. Empty means the port from gateway.listenAddress, which is the port
+  # the platform dials. Only set this to put a different port in front of the gateway.
+  port: ""
 
 ingress:
   enabled: false

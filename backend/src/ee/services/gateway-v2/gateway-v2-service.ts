@@ -47,6 +47,7 @@ import {
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
   PAM_INFO_OID,
+  resolveClientTransports,
   resolveTransports
 } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
@@ -552,18 +553,17 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
     }
 
-    const allowDirect = supportedTransports === undefined || supportedTransports.includes("direct");
-    const allowRelay =
-      supportedTransports === undefined || supportedTransports.length === 0 || supportedTransports.includes("relay");
-    if (gateway.directAddress && !gateway.relayId && !allowDirect) {
+    const { allowDirect, allowRelay, hasTransport, isDirectOnlyForOlderClient, gatewayHasTransport } =
+      resolveClientTransports({ gateway, supportedTransports });
+
+    if (isDirectOnlyForOlderClient) {
       throw new BadRequestError({
         message: "This gateway only supports direct connections. Upgrade the Infisical CLI to connect to it."
       });
     }
-    if ((!gateway.directAddress || !allowDirect) && (!gateway.relayId || !allowRelay)) {
-      const hasTransport = Boolean(gateway.directAddress || gateway.relayId);
+    if (!hasTransport) {
       throw new BadRequestError({
-        message: hasTransport
+        message: gatewayHasTransport
           ? "This gateway's connection transports are not supported by your client. Upgrade the Infisical CLI to connect to it."
           : "Gateway has no configured connection transport"
       });
@@ -850,6 +850,11 @@ export const gatewayV2ServiceFactory = ({
         throw new NotFoundError({ message: "No connection transport associated with this gateway" });
       }
 
+      // The gateway declares its full transport set on every call, so an omitted transport is
+      // removed rather than left behind. That is what makes dropping one work, and it is also
+      // correct for a rolled-back CLI: a binary without --listen-address is not listening, so the
+      // row should stop advertising an address nothing answers on. Each probe survives only while
+      // its transport is unchanged, since a new address or relay has not been reached yet.
       const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
@@ -1026,6 +1031,19 @@ export const gatewayV2ServiceFactory = ({
     }
 
     const results = await Promise.allSettled(transports.map((transport) => $checkGatewayHealth(gatewayId, transport)));
+
+    // A gateway stays reachable while one transport answers, so a single failure raises nothing and
+    // the UI keeps reporting it healthy. Log each one, otherwise a broken direct address on an
+    // otherwise-working gateway is invisible until someone notices sessions are slow to start.
+    results.forEach((result, index) => {
+      if (result.status !== "rejected") return;
+      const err = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+      logger.warn(
+        { gatewayId, transport: transports[index], err },
+        `Gateway ${gatewayId} health probe failed on its ${transports[index]} transport`
+      );
+    });
+
     if (results.every((result) => result.status === "rejected")) {
       await gatewayV2DAL.updateById(gatewayId, { heartbeatTTL: 0 });
       const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
@@ -1448,6 +1466,11 @@ export const gatewayV2ServiceFactory = ({
         throw new NotFoundError({ message: "No connection transport associated with this gateway" });
       }
 
+      // The gateway declares its full transport set on every call, so an omitted transport is
+      // removed rather than left behind. That is what makes dropping one work, and it is also
+      // correct for a rolled-back CLI: a binary without --listen-address is not listening, so the
+      // row should stop advertising an address nothing answers on. Each probe survives only while
+      // its transport is unchanged, since a new address or relay has not been reached yet.
       const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,

@@ -69,6 +69,7 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
         .select(
           `${TableName.GatewayV2}.id`,
           `${TableName.GatewayV2}.name`,
+          `${TableName.GatewayV2}.relayId`,
           `${TableName.GatewayV2}.heartbeat`,
           `${TableName.GatewayV2}.heartbeatTTL`,
           `${TableName.GatewayV2}.directAddress`,

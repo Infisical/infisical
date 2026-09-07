@@ -124,7 +124,7 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `extraArgs` | `[]` | Extra arguments appended to the gateway container command. |
 | `extraObjects` | `[]` | Extra Kubernetes manifests to deploy with this chart. |
 | `service.type` | `ClusterIP` | Type of the Service created in direct listen mode. |
-| `service.port` | `80` | Port the Service exposes. It forwards to the port in `gateway.listenAddress`, so the two don't have to match. |
+| `service.port` | `""` | Port the Service exposes. Empty means the port from `gateway.listenAddress`. Set it only to put a different port in front of the gateway. |
 
 ## Direct listen mode
 
@@ -141,13 +141,12 @@ helm install infisical-gateway infisical-helm-charts/infisical-gateway \
   --create-namespace \
   --set gateway.name=<gateway-name> \
   --set gateway.listenAddress=infisical-gateway.infisical-gateway.svc.cluster.local:8443 \
-  --set service.port=8443 \
   --set gateway.enrollment.method=token \
   --set gateway.enrollment.token.value=<enrollment-token> \
   --set gateway.domain=<your-infisical-domain>
 ```
 
-The chart takes the container port from `gateway.listenAddress` and points the Service at it, so they can't drift apart. `service.port` is the port the Service itself exposes, which is why the example sets it to 8443 as well: the address you register has to name the port callers reach the Service on. A `host:port` value is required, and the chart fails the render if the port is missing.
+The chart takes the container port from `gateway.listenAddress` and points the Service at it, and the Service exposes that same port, so none of the three can drift apart. A `host:port` value is required, and the chart fails the render if the port is missing. Set `service.port` only if you want the Service to answer on a different port than the gateway binds, in which case the address you register has to name the Service's port.
 
 The Service is created only in direct listen mode. In relay mode the gateway accepts no connections, so the chart creates none.
 
@@ -214,6 +213,8 @@ gateway:
   relayName: ""
 
   # Stable host:port advertised by a gateway accepting direct connections.
+  # Requires an image.tag whose CLI supports --listen-address; older images reject the flag and the
+  # pod crash-loops on startup.
   listenAddress: ""
 
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
@@ -266,7 +267,9 @@ tolerations: {}
 nodeSelector: {}
 service:
   type: ClusterIP
-  port: 80
+  # Port the Service exposes. Empty means the port from gateway.listenAddress, which is the port
+  # the platform dials. Only set this to put a different port in front of the gateway.
+  port: ""
 
 ingress:
   enabled: false
