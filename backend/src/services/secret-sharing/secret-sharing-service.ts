@@ -442,77 +442,81 @@ export const secretSharingServiceFactory = ({
   }: TSetSecretRequestValueDTO) => {
     const appCfg = getConfig();
 
+    const secretRequest = await secretSharingDAL.getSecretRequestById(id);
+
+    if (!secretRequest) {
+      throw new NotFoundError({ message: `Secret request with ID '${id}' not found` });
+    }
+
+    let respondentUsername: string | undefined;
+
+    if (secretRequest.accessType === SecretSharingAccessType.Organization) {
+      if (!secretRequest.orgId) {
+        throw new BadRequestError({ message: "No organization ID present on secret request" });
+      }
+
+      if (!actorOrgId) {
+        throw new UnauthorizedError();
+      }
+
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: secretRequest.orgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
+
+      const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+
+      if (!user) {
+        throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+      }
+
+      respondentUsername = user.username;
+    }
+
+    if (secretValue.length > 10_000) {
+      throw new BadRequestError({ message: "Shared secret value is too long" });
+    }
+
+    const encryptWithRoot = kmsService.encryptWithRootKey();
+    const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
+
     const request = await secretSharingDAL.transaction(async (tx) => {
       // Serialize concurrent set-value attempts so the "already has a value" check and the update are atomic
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SetSecretRequestValue(id)]);
 
-      const secretRequest = await secretSharingDAL.getSecretRequestById(id, tx);
+      const lockedSecretRequest = await secretSharingDAL.getSecretRequestById(id, tx);
 
-      if (!secretRequest) {
+      if (!lockedSecretRequest) {
         throw new NotFoundError({ message: `Secret request with ID '${id}' not found` });
       }
 
-      let respondentUsername: string | undefined;
-
-      if (secretRequest.accessType === SecretSharingAccessType.Organization) {
-        if (!secretRequest.orgId) {
-          throw new BadRequestError({ message: "No organization ID present on secret request" });
-        }
-
-        if (!actorOrgId) {
-          throw new UnauthorizedError();
-        }
-
-        const { permission } = await permissionService.getOrgPermission({
-          scope: OrganizationActionScope.Any,
-          actor,
-          actorId,
-          orgId: secretRequest.orgId,
-          actorAuthMethod,
-          actorOrgId
-        });
-        if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
-
-        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
-
-        if (!user) {
-          throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
-        }
-
-        respondentUsername = user.username;
-      }
-
-      if (secretRequest.encryptedSecret) {
+      if (lockedSecretRequest.encryptedSecret) {
         throw new BadRequestError({ message: "Secret request already has a value set" });
       }
 
-      if (secretValue.length > 10_000) {
-        throw new BadRequestError({ message: "Shared secret value is too long" });
-      }
-
-      if (secretRequest.expiresAt && secretRequest.expiresAt < new Date()) {
+      if (lockedSecretRequest.expiresAt && lockedSecretRequest.expiresAt < new Date()) {
         throw new ForbiddenRequestError({
           message: "Access denied: Secret request has expired"
         });
       }
 
-      const encryptWithRoot = kmsService.encryptWithRootKey();
-      const encryptedSecret = encryptWithRoot(Buffer.from(secretValue));
+      return secretSharingDAL.updateById(id, { encryptedSecret }, tx);
+    });
 
-      const updatedRequest = await secretSharingDAL.updateById(id, { encryptedSecret }, tx);
-
-      await smtpService.sendMail({
-        recipients: [secretRequest.requesterUsername],
-        subjectLine: "Secret Request Completed",
-        substitutions: {
-          name: secretRequest.name,
-          respondentUsername,
-          secretRequestUrl: `${appCfg.SITE_URL}/organizations/${secretRequest.orgId}/projects/secret-management/secret-sharing?selectedTab=request-secret`
-        },
-        template: SmtpTemplates.SecretRequestCompleted
-      });
-
-      return updatedRequest;
+    await smtpService.sendMail({
+      recipients: [secretRequest.requesterUsername],
+      subjectLine: "Secret Request Completed",
+      substitutions: {
+        name: secretRequest.name,
+        respondentUsername,
+        secretRequestUrl: `${appCfg.SITE_URL}/organizations/${secretRequest.orgId}/projects/secret-management/secret-sharing?selectedTab=request-secret`
+      },
+      template: SmtpTemplates.SecretRequestCompleted
     });
 
     return request;
