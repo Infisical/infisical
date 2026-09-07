@@ -16,9 +16,8 @@ Agent Vault brokers that access. Agents like Claude Code or OpenClaw route HTTP 
 +----------+  request with a +-------------------+ request with   |  api.github.com  |
              session token            |          the credential   |  ...             |
                                       |                           +------------------+
-                                      |  checks what this session
-                                      |  may reach, and fetches
-                                      |  the credentials
+                                      |  fetches the credentials
+                                      |  this session may use
                                       v
                                +-------------+
                                |  Infisical  |
@@ -31,7 +30,7 @@ Traditional secrets management involves returning credentials back to applicatio
 
 This is not suitable for AI agents because they are vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
 
-Enter Infisical Agent Vault: a proxy backed by Infisical that prevents credential exfiltration by brokering access to credentials at the network boundary. The agent gets a session token that works only through your proxy, only for the services you allowed, and only until you revoke it. Access is checked while the agent runs, so pulling it takes effect within a minute, with nothing to restart.
+Enter Infisical Agent Vault: a proxy backed by Infisical that prevents credential exfiltration by brokering access to credentials at the network boundary. The agent gets a session token that works only through your proxy, only for the services you allowed, and only until you revoke it.
 
 ## How it works
 
