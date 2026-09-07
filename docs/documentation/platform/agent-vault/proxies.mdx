@@ -93,7 +93,7 @@ Selecting **New Enrollment Token** and enrolling again replaces the proxy's cert
 
 ## Revoking and deleting
 
-**Revoke Access** on a proxy's menu invalidates its token within one poll interval. Every agent routed through it loses credentials until the proxy is enrolled again. Use it when you believe the proxy host is compromised. **Delete** removes the proxy record; a running process for it stops being able to resolve sessions.
+**Revoke Access** on a proxy's menu invalidates its token within one poll interval. Every agent routed through it loses credentials, and the proxy process exits on its next poll with a message saying its access was revoked. Start it again with a new enrollment token. Use it when you believe the proxy host is compromised. **Delete** removes the proxy record; a running process for it exits the same way.
 
 ## What the proxy can't carry
 
