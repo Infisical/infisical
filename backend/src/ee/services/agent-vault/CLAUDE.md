@@ -72,7 +72,9 @@ its owner's membership by any route, and Manage Access never names someone who i
 its own listener, which is where every agent gets it, so the CA path has no runtime dependency on
 Infisical: with the control plane down, an agent with a cached session still works. Only the fingerprint
 (what an operator pins) and the expiry are recorded, derived once at enrollment. There is deliberately no
-download endpoint — a second copy nothing verifies against is a liability, not a feature.
+download endpoint — a second copy nothing verifies against is a liability, not a feature. The enroll route is
+unauthenticated (the enrollment token is the credential), so its audit event names the proxy as the actor
+explicitly, as gateway, relay and KMIP server enrollment do; without that the plugin's default is `unknownUser`.
 
 **A cross-org or unreachable id is 404, never 403.** A 403 would confirm the id exists. The mint path
 uses the same message whether a bundle id is unknown or merely not granted.
@@ -143,7 +145,7 @@ as a cert-manager application. Nothing in Agent Vault calls them.
 ## The CLI
 
 `infisical av proxy` and `infisical av run` live in the CLI repo (`packages/cmd/agent_vault*.go`,
-`packages/agentvault/`). Two things about `av run` are product decisions rather than conveniences:
+`packages/agentvault/`). Three things here are product decisions rather than conveniences:
 
 - **Trust is stateless.** It fetches the proxy's CA from `http://<proxy>/_agent-vault/ca` on every run and
   trusts it; `--ca-fingerprint` is an optional pin, checked before anything is written. Re-enrolling a proxy
@@ -155,6 +157,13 @@ as a cert-manager application. Nothing in Agent Vault calls them.
   suggest a boundary that is not there (settled 2026-09-07). `--session-token` is the session token, named so
   the root's `--token` handling never sees it; the minting identity comes from `--client-id`/`--client-secret`,
   the access-token env vars, or the keyring login.
+- **The proxy exits when Infisical rejects its token.** A heartbeat 401 is never transient: only Revoke Access,
+  a deleted record, or a changed signing secret produce it, and every session on the proxy 401s at the same
+  moment, so a proxy in that state serves nothing. After two consecutive 401s it shuts down with a message
+  naming the fix (a new enrollment token). Anything else (timeouts, 5xx) rides the five-poll grace window, and
+  the counter resets on it, so an outage never takes a proxy out. The enrollment dialog's Docker snippet
+  mounts a volume on `/etc/infisical/agent-vault` for the same reason: without it a re-created container has
+  no CA and a spent token, and cannot come back.
 
 ## The frontend
 
