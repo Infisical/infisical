@@ -1,33 +1,35 @@
 ---
 title: "Access bundles and connections"
-description: "What a connection sends and where, how bundles group them, and what happens when two connections cover the same host."
+description: "What a connection sends and where, how bundles group connections, and who can run agents with them."
 ---
 
-A connection is one set of hosts plus the credential the proxy attaches to requests bound for them. An access bundle groups connections and names who may run agents with them. Bundles are what you grant and what a session carries; connections are what the proxy acts on.
+A connection is one API and the credential the proxy attaches to requests bound for it. An access bundle groups connections and names who may run agents with them. You grant bundles and mint sessions over them; the proxy acts on the connections inside.
 
 <Info>
-  This page is for Agent Vault admins. Only admins create bundles and connections. Members see the bundles granted to them and mint sessions over them.
+  This page is for Agent Vault admins. Members see the bundles granted to them and mint sessions over them.
 </Info>
 
 ## Connections
 
-Each connection has a name, a host pattern, and a credential.
+Each connection has a name, the hosts it covers, and a credential.
 
 ### Credential types
 
-| Type             | What the proxy sends                                                                                            | When to use it                                                                              |
-| ---------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **Bearer**       | One header, built as `<header name>: <prefix> <value>`. Defaults to `Authorization: Bearer <value>`.            | Most APIs. Set the header name to `X-API-Key` and clear the prefix for APIs that take a bare key. |
-| **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be blank, but not both.                  | APIs behind HTTP basic auth, including the ones that carry the whole key in the username and take no password. |
-| **Pass-through** | Nothing. The request is forwarded unchanged.                                                                    | Only meaningful on a proxy that denies unmatched hosts, where it makes a host reachable without giving it a credential. |
+| Type             | What the proxy sends                                                                                 | When to use it                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Bearer**       | One header, `<header name>: <prefix> <value>`. Defaults to `Authorization: Bearer <value>`.          | Most APIs. Set the header name to `X-API-Key` and clear the prefix for APIs that take a bare key. |
+| **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be blank.                      | APIs behind HTTP basic auth, including ones that put the whole key in the username.         |
+| **Pass-through** | Nothing. The request is forwarded unchanged.                                                         | To make a host reachable on a proxy that denies unmatched hosts. See [Unmatched hosts](/documentation/platform/agent-vault/proxies#unmatched-hosts). |
 
-The secret is entered once and never shown again. For a **Basic** credential that means both halves: some services put the whole key in the username, so the username is stored and hidden the same way as the password. When you edit a connection the fields show that something is stored without revealing it, so you can rename a header without having the original token to hand. Type over a field to replace it, or clear it to remove that half of a basic credential, as long as the other half remains. A token can't be removed, since a header with nothing in it authenticates nobody; use **Pass-through** for a connection that sends no credential.
+The templates in the connection picker fill in the hosts and header for common services. Choose **Custom** to set them yourself.
 
-If the agent's request already carries a header with the same name, the proxy replaces it. The agent is expected to send a placeholder or nothing at all, so this isn't an error, but it's the first thing to suspect when a request you expected to pass through unchanged comes back `401`.
+You enter a secret once and it's never shown again. When you edit a connection, the secret fields show that a value is stored without revealing it, so you can rename a header or change the hosts without the original token to hand. Type over a field to replace the value.
+
+If the agent's request already carries a header with the same name, the proxy replaces it with the connection's credential.
 
 ### Host patterns
 
-A host pattern is a comma-separated list of hosts, each optionally with a port:
+A host pattern is a comma-separated list of hosts, each with an optional port:
 
 ```text
 api.github.com, uploads.github.com
@@ -35,31 +37,25 @@ api.github.com, uploads.github.com
 internal-api.example.com:8443
 ```
 
-- A host without a port means port `443`. Connections attach credentials only to TLS traffic, so a plain `http://` request to a matched host gets no credential, whatever the pattern says.
-- `*.` at the start matches exactly one label. `*.example.com` covers `api.example.com` and not `a.b.example.com` or `example.com` itself.
-- Paths aren't allowed. A connection covers a host, not a route on it, so `api.example.com/v1` is rejected.
+- A host without a port means port `443`. Credentials are attached to HTTPS traffic only.
+- `*.` at the start matches exactly one label. `*.example.com` covers `api.example.com`, not `a.b.example.com` or `example.com`.
+- Paths aren't allowed. A connection covers a host, not a route on it.
 
-The templates in the connection picker fill in the hosts and header for common services. A few carry a `<your-tenant>` placeholder, such as `<your-tenant>.atlassian.net`, because the wildcard would cover every tenant of that service and a compromised agent could send your credential to a stranger's account. Replace the placeholder with your own tenant before saving.
+Keep patterns as narrow as the API allows. A wildcard covers every host under it, and the credential goes to all of them. Some templates carry a placeholder such as `<your-tenant>.atlassian.net` for this reason; replace it with your own tenant before saving.
 
 ### When two connections cover one host
 
-Within one bundle, two connections can't share a host. Saving a connection whose pattern already appears in another connection of the same bundle fails, and the error names both connections and the host.
+Within one bundle, two connections can't cover the same host. Infisical rejects the save and names the connection that already covers it.
 
-Across bundles, the same host can appear more than once, and Infisical warns you when you save. Which credential goes out then depends on the session that carries both bundles:
+Across bundles the same host can appear more than once, and Infisical warns you when you save. Which credential goes out depends on the session that carries both bundles:
 
-1. An exact host beats a wildcard. If one connection covers `api.example.com` and another `*.example.com`, the exact one wins, whatever the bundle order.
-2. For identical patterns, the bundle named first when the session was minted wins.
-
-The proxy never falls back. If the winning connection's credential is rejected with `401` or `403`, the request fails with that status rather than retrying with the next connection.
+1. An exact host beats a wildcard. If one connection covers `api.example.com` and another `*.example.com`, the exact one wins whatever the bundle order.
+2. For identical patterns, the bundle listed first on the session wins.
 
 ## Access bundles
 
-A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be a member of Agent Vault first, under **Access Control**, and at the same level: a group that was added to Agent Vault is granted as a group, and each of its members then mints sessions as themselves.
+A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be a member of Agent Vault first, under **Access Control**. A group that's in Agent Vault is granted as a group, and each of its members mints sessions as themselves.
 
-Bundles are how access is scoped: an agent for on-call work gets a bundle with the incident tooling, an agent for code review gets a bundle with GitHub, and neither reaches the other's hosts.
+Bundles are how you scope access. An agent for on-call work gets a bundle with the incident tooling, an agent for code review gets a bundle with GitHub, and neither reaches the other's hosts.
 
-<Warning>
-  Deleting a bundle removes it from every live session that carries it. Agents running with those sessions lose the bundle's connections within one poll interval.
-</Warning>
-
-Removing a member from a bundle, or from Agent Vault itself, has the same effect on their running sessions: the proxy stops attaching that bundle's credentials on its next poll. See [Sessions](/documentation/platform/agent-vault/sessions) for how that re-check works.
+Removing a member from a bundle, or from Agent Vault, takes effect on their running agents within one poll interval of the proxy. Deleting a bundle removes its connections from every session that carries it. See [Sessions](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach).

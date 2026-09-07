@@ -4,71 +4,57 @@ sidebarTitle: "Quickstart"
 description: "Run an agent that makes authenticated GitHub calls without ever holding the token."
 ---
 
-By the end of this page an agent calls the GitHub API through an Agent Vault proxy, and the only thing the agent ever holds is a session token that works nowhere else.
-
-You'll do four things: create an access bundle with one connection, enroll a proxy, mint a session, and run an agent with it.
+By the end of this page an agent calls the GitHub API through an Agent Vault proxy. The only thing the agent holds is a session token that works nowhere else.
 
 ## Prerequisites
 
-- An Infisical organization where you're an Agent Vault admin. Org admins are Agent Vault admins by default.
-- The [Infisical CLI](/cli/overview) installed where the proxy will run and where the agent will run. For this page that can be one machine.
-- A GitHub personal access token to use as the credential. Any token that can call `GET /user` will do.
+- An Infisical organization where you're an Agent Vault admin. Organization admins are Agent Vault admins by default.
+- The [Infisical CLI](/cli/overview) installed on the machine that will run the proxy and on the machine that will run the agent. For this page they can be the same machine.
+- A GitHub personal access token. Any token that can call `GET /user` will do.
 
-## 1. Create an access bundle with a connection
+<Steps>
+  <Step title="Create an access bundle with a connection">
+    Open **Agent Vault** from the product switcher and go to **Access Bundles**. Select **Create Access Bundle**, name it `coding-agent`, and open it.
 
-In the dashboard, open **Agent Vault** from the product switcher and go to **Access Bundles**. Select **Create Access Bundle**, name it `coding-agent`, and open it.
+    Select **Add Connection**, pick the **GitHub** template, paste your token into **Token**, and select **Add Connection** on the review step.
 
-Select **Add Connection**. Pick the **GitHub** template, keep the hosts it fills in, paste your token into **Token**, and select **Add Connection** on the review step.
+    The connection now sends `Authorization: Bearer <your token>` on requests to `api.github.com`, and nothing anywhere else.
+  </Step>
 
-The connection now says what the proxy will send: `Authorization: Bearer <your token>` on requests to `api.github.com`, and nothing anywhere else.
+  <Step title="Create and enroll a proxy">
+    Go to **Proxies**, select **Create Proxy**, name it `egress`, and select **Create Proxy**.
 
-<Note>
-  The template fills in the hosts and how the header is built. A custom connection lets you set the header name and prefix yourself, for APIs that expect `X-API-Key` or a bare token. See [Access bundles and connections](/documentation/platform/agent-vault/access-bundles).
-</Note>
+    The dialog shows a one-time enrollment token and the command to run. On the machine that will be the proxy:
 
-You're an admin, so you can already mint sessions over this bundle. To let a teammate run agents with it, select **Grant Access** on the bundle and pick their user, machine identity, or group. They have to be a member of Agent Vault first, under **Access Control**.
+    ```bash
+    infisical av proxy --enrollment-token <enrollment-token>
+    ```
 
-## 2. Create and enroll a proxy
+    The proxy enrolls and starts listening on port `17323`. Leave it running. Within a minute its status on the Proxies page turns to **Healthy**.
 
-Go to **Proxies** and select **Create Proxy**. Name it `egress`, leave **Unmatched Hosts** on **Allow**, and select **Create Proxy**.
+    <Note>
+      The enrollment token expires in an hour. Running the same command again on a restart is fine: the proxy remembers it has enrolled. The dialog also has Docker and systemd snippets.
+    </Note>
+  </Step>
 
-The dialog that follows shows a one-time enrollment token and the command to run. On the machine that will be the proxy:
+  <Step title="Mint a session">
+    Go to **Sessions**, select **Create Session**, add `coding-agent`, and select **Create Session**.
 
-```bash
-infisical av proxy --enrollment-token <enrollment-token>
-```
+    The token appears once, with the command to run. Copy it now.
+  </Step>
 
-The proxy enrolls, generates its own certificate authority, and starts listening on port `17323`. Leave it running. Its status on the Proxies page turns to **Healthy** within a minute.
+  <Step title="Run the agent">
+    On the machine where the agent runs:
 
-<Note>
-  The enrollment token is shown once and expires in an hour. Run the same command again on a restart: the proxy remembers it has enrolled and serves without asking Infisical for a new token. For Docker and systemd the same dialog has ready-made snippets.
-</Note>
+    ```bash
+    infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- claude
+    ```
 
-## 3. Mint a session
+    Use the address the proxy answers on from where the agent runs. Everything after `--` is the agent's own command.
 
-Go to **Sessions** and select **Create Session**. Add `coding-agent`, leave the lifetime at 7 days, and select **Create Session**.
-
-The token appears once, with the command to run. Copy it now: nothing stores the token, and the dialog can't be reopened.
-
-A session carries a fixed set of bundles and an expiry, and nothing else. The proxy re-checks what the agent may use on every poll, so revoking the session or removing a grant stops the credentials flowing within a minute. See [Sessions](/documentation/platform/agent-vault/sessions).
-
-## 4. Run an agent with it
-
-On the machine where the agent runs, pass the token and the proxy address:
-
-```bash
-infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- claude
-```
-
-The CLI fetches the proxy's certificate authority, trusts it for the agent, and starts `claude` with its HTTP traffic routed through the proxy. Everything after `--` is the agent's own command.
-
-That machine needs no Infisical login. The only thing on it is the session token, which identifies the agent to a proxy in your organization. The credentials stay on the proxy.
-
-Use the address the proxy answers on from where the agent runs. The same proxy has a different address from every network, which is why you pass it rather than pick it from a list.
-
-<Note>
-  Working on your own machine and signed in with `infisical login`? You can skip the dashboard. `infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude` mints a session over the bundle and revokes it when the agent exits.
-</Note>
+    The CLI trusts the proxy's certificate for the agent and starts `claude` with its HTTP traffic routed through the proxy. That machine needs no Infisical login.
+  </Step>
+</Steps>
 
 ## Verify it works
 
@@ -76,23 +62,31 @@ Inside the agent, ask it to call GitHub:
 
 > Run `curl -sS https://api.github.com/user` and show me the output.
 
-GitHub answers with your profile. The agent sent no `Authorization` header; the proxy added it on the way out. Run the same `curl` outside the agent and GitHub answers `401`, because the agent never held the token.
+GitHub answers with your profile. The agent sent no `Authorization` header; the proxy added it on the way out. Run the same `curl` outside the agent and GitHub answers `401`.
 
-Not driving an interactive agent? Run the check directly:
+To check without an interactive agent:
 
 ```bash
 infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- curl -sS https://api.github.com/user
 ```
 
-If GitHub answers `401` through the agent, open the `coding-agent` bundle and check that a connection still covers `api.github.com`. If one does, the token stored on it is wrong; if none does, the bundle no longer covers the host.
+<Note>
+  Working on your own machine and signed in with `infisical login`? Skip the Sessions page: `infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude` mints a session for you and revokes it when the agent exits. A machine identity can do the same with `--client-id` and `--client-secret`.
+</Note>
 
-## Where to go from here
+## Next steps
 
 <CardGroup cols={2}>
+  <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
+    Add more services, choose credential types, and grant bundles to your team.
+  </Card>
   <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
-    Choose how long a session lives, order the bundles on it, and revoke one while an agent is still running.
+    Choose how long a session lives and revoke one while an agent is running.
   </Card>
   <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
-    Run the proxy on a server, decide what happens to hosts no connection covers, and pin its certificate.
+    Run the proxy on a server, decide what happens to other hosts, and pin its certificate.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/commands/av">
+    Every flag of `infisical av proxy` and `infisical av run`.
   </Card>
 </CardGroup>
