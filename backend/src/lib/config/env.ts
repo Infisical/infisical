@@ -3,7 +3,7 @@ import { z } from "zod";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
-import { QueueWorkerProfile } from "@app/lib/types";
+import { RunMode } from "@app/lib/types";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
@@ -36,6 +36,26 @@ const zodStrBool = z
   .string()
   .optional()
   .transform((val) => val === "true");
+
+// Which responsibilities this process takes on, as a comma-separated list. Splitting the fleet by
+// run mode is what lets an API pod, a general worker pod and a secret scanning pod share one image.
+export const runModesSchema = zpStr(z.string().optional())
+  .transform((val) =>
+    (val ?? Object.values(RunMode).join(","))
+      .split(",")
+      .map((mode) => mode.trim().toLowerCase())
+      .filter(Boolean)
+  )
+  .pipe(
+    z
+      .nativeEnum(RunMode, {
+        errorMap: () => ({
+          message: `INFISICAL_RUN_MODES must be a comma-separated list of: ${Object.values(RunMode).join(", ")}`
+        })
+      })
+      .array()
+      .nonempty("INFISICAL_RUN_MODES must name at least one run mode")
+  );
 
 /**
  * Everything a secret scan spends outside the clone and the scan itself: measuring the clone
@@ -203,8 +223,7 @@ const envSchema = z
     // A convergence window, not a rollback window: it lets instances that have not restarted onto the
     // new key keep booting, and covers a new key that turns out to be lost. Then the old key is gone.
     KMS_ROOT_KEY_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(7),
-    QUEUE_WORKERS_ENABLED: zodStrBool.default("true"),
-    QUEUE_WORKER_PROFILE: z.nativeEnum(QueueWorkerProfile).default(QueueWorkerProfile.All),
+    INFISICAL_RUN_MODES: runModesSchema,
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
@@ -648,6 +667,9 @@ const envSchema = z
       data.NODE_ENV === "development" && data.DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE,
     isAcmeDevelopmentMode: data.NODE_ENV === "development" && data.ACME_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
+    isApiRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.Api),
+    isGeneralWorkerRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.GeneralWorkers),
+    isSecretScanningRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.SecretScanning),
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()

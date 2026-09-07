@@ -38,7 +38,7 @@ import {
   queueStalledCounter,
   resolveCoreMeter
 } from "@app/lib/telemetry/metrics";
-import { QueueWorkerProfile } from "@app/lib/types";
+
 import {
   TAppConnectionCredentialRotationRotateJobPayload,
   TAppConnectionCredentialRotationSendNotificationJobPayload
@@ -602,20 +602,11 @@ const SECRET_SCANNING_QUEUES = [
   QueueName.SecretPushEventScan
 ];
 
-const NON_STANDARD_QUEUES = [...SECRET_SCANNING_QUEUES];
-
 const isQueueEnabled = (name: QueueName) => {
   const appCfg = getConfig();
-  switch (appCfg.QUEUE_WORKER_PROFILE) {
-    case QueueWorkerProfile.Standard:
-      return !NON_STANDARD_QUEUES.includes(name);
-    case QueueWorkerProfile.SecretScanning:
-      return SECRET_SCANNING_QUEUES.includes(name);
-    case QueueWorkerProfile.All:
-    default:
-      // allow all
-      return true;
-  }
+  return SECRET_SCANNING_QUEUES.includes(name)
+    ? appCfg.isSecretScanningRunModeEnabled
+    : appCfg.isGeneralWorkerRunModeEnabled;
 };
 
 export type TQueueServiceFactory = {
@@ -806,15 +797,11 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       throw new Error(`${name} queue is already initialized`);
     }
 
-    const appCfg = getConfig();
-
-    if (!appCfg.QUEUE_WORKERS_ENABLED) return;
-
     const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
 
-    // The Queue (producer) is created regardless of worker profile — only the Worker (consumer) is
+    // The Queue (producer) is created regardless of run mode — only the Worker (consumer) is
     // gated below. A pod that doesn't consume a queue must still be able to enqueue onto it, or
-    // splitting the fleet by profile silently drops every job destined for another profile's worker.
+    // splitting the fleet by run mode silently drops every job destined for another pod's worker.
     queueContainer[name] = new Queue(name as string, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...queueSettings,
@@ -885,8 +872,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   };
 
   const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {
-    const appCfg = getConfig();
-    if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
+    if (!isQueueEnabled(name)) {
       return;
     }
 

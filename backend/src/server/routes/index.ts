@@ -591,9 +591,11 @@ export const registerRoutes = async (
   // singleton rather than threaded through every call site.
   const gatewayLoadTracker = initGatewayLoadTracker(keyStore);
 
-  await server.register(registerSecretScanningV2Webhooks, {
-    prefix: "/secret-scanning/webhooks"
-  });
+  if (envConfig.isApiRunModeEnabled) {
+    await server.register(registerSecretScanningV2Webhooks, {
+      prefix: "/secret-scanning/webhooks"
+    });
+  }
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -4349,38 +4351,43 @@ export const registerRoutes = async (
     }
   });
 
-  // register special routes
-  await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
-  await server.register(registerPkiScepRouter, { prefix: "/scep" });
+  // A worker-only pod still serves /api/status so liveness and readiness probes keep working, but
+  // none of the product API. Everything above this point (service wiring, queue workers, crons) runs
+  // in every run mode.
+  if (envConfig.isApiRunModeEnabled) {
+    // register special routes
+    await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+    await server.register(registerPkiScepRouter, { prefix: "/scep" });
 
-  // register routes for v1
-  await server.register(
-    async (v1Server) => {
-      await v1Server.register(registerV1EERoutes);
-      await v1Server.register(registerV1Routes);
-    },
-    { prefix: "/api/v1" }
-  );
-  await server.register(
-    async (v2Server) => {
-      await v2Server.register(registerV2EERoutes);
-      await v2Server.register(registerV2Routes);
-    },
-    { prefix: "/api/v2" }
-  );
-  await server.register(
-    async (v3Server) => {
-      await v3Server.register(registerV3EERoutes);
-      await v3Server.register(registerV3Routes);
-    },
-    { prefix: "/api/v3" }
-  );
-  await server.register(registerV4Routes, { prefix: "/api/v4" });
+    // register routes for v1
+    await server.register(
+      async (v1Server) => {
+        await v1Server.register(registerV1EERoutes);
+        await v1Server.register(registerV1Routes);
+      },
+      { prefix: "/api/v1" }
+    );
+    await server.register(
+      async (v2Server) => {
+        await v2Server.register(registerV2EERoutes);
+        await v2Server.register(registerV2Routes);
+      },
+      { prefix: "/api/v2" }
+    );
+    await server.register(
+      async (v3Server) => {
+        await v3Server.register(registerV3EERoutes);
+        await v3Server.register(registerV3Routes);
+      },
+      { prefix: "/api/v3" }
+    );
+    await server.register(registerV4Routes, { prefix: "/api/v4" });
 
-  // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
-  // This route should NEVER BE ENABLED IN PRODUCTION!
-  if (getConfig().isBddNockApiEnabled) {
-    await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
+    // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
+    // This route should NEVER BE ENABLED IN PRODUCTION!
+    if (getConfig().isBddNockApiEnabled) {
+      await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
+    }
   }
 
   server.addHook("onClose", async () => {

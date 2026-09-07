@@ -181,10 +181,12 @@ export const main = async ({
       kmsRootConfigDAL
     });
 
-    await server.register(registerServeUI, {
-      standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
-      dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
-    });
+    if (appCfg.isApiRunModeEnabled) {
+      await server.register(registerServeUI, {
+        standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
+        dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
+      });
+    }
 
     await server.ready();
     server.swagger();
