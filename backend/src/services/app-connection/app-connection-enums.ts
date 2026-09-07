@@ -33,6 +33,7 @@ export enum AppConnection {
   GitLab = "gitlab",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",
+  EasyDNS = "easydns",
   Zabbix = "zabbix",
   Railway = "railway",
   Bitbucket = "bitbucket",

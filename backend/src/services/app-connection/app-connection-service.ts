@@ -106,6 +106,7 @@ import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean
 import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
 import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/dns-made-easy-connection-schema";
 import { dnsMadeEasyConnectionService } from "./dns-made-easy/dns-made-easy-connection-service";
+import { easyDNSConnectionService } from "./easydns/easydns-connection-service";
 import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-connection-schema";
 import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
@@ -1404,6 +1405,7 @@ export const appConnectionServiceFactory = ({
     adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
+    easyDNS: easyDNSConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),

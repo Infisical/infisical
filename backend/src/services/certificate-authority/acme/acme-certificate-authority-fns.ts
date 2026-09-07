@@ -23,6 +23,7 @@ import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TEasyDNSConnection } from "@app/services/app-connection/easydns/easydns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { extractCertificateFields, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
@@ -59,7 +60,7 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
-
+import { easydnsDeleteTxtRecord, easydnsInsertTxtRecord } from "./dns-providers/easydns";
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
 
 const validateDnsResolver = (resolver: string): void => {
@@ -482,6 +483,15 @@ export const executeAcmeOrder = async (
           );
           break;
         }
+        case AcmeDnsProvider.EasyDNS: {
+          await easydnsInsertTxtRecord(
+            connection as TEasyDNSConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
@@ -536,6 +546,15 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.AzureDNS: {
           await azureDnsDeleteTxtRecord(
             connection as TAzureDnsConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.EasyDNS: {
+          await easydnsDeleteTxtRecord(
+            connection as TEasyDNSConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue
@@ -712,6 +731,12 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.EasyDNS && appConnection.app !== AppConnection.EasyDNS) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not an EasyDNS connection`
+      });
+    }
+
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
     }
@@ -823,6 +848,12 @@ export const AcmeCertificateAuthorityFns = ({
         if (dnsProviderConfig.provider === AcmeDnsProvider.AzureDNS && appConnection.app !== AppConnection.AzureDNS) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not an Azure DNS connection`
+          });
+        }
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.EasyDNS && appConnection.app !== AppConnection.EasyDNS) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not an EasyDNS connection`
           });
         }
 
