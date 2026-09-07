@@ -28,8 +28,10 @@ export const easydnsInsertTxtRecord = async (
         rdata: value
       },
       {
-        headers: makeEasyDNSAuthHeaders(apiKey, secretKey),
-        "Content-Type": "application/json"
+        headers: {
+          ...makeEasyDNSAuthHeaders(apiKey, secretKey),
+          "Content-Type": "application/json"
+        }
       }
     );
   } catch (error) {

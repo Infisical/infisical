@@ -1,3 +1,5 @@
+import { OrgServiceActor } from "@app/lib/types";
+
 import { AppConnection } from "../app-connection-enums";
 import { TEasyDNSConnection } from "./easydns-connection-types";
 

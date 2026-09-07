@@ -3,7 +3,11 @@ import z from "zod";
 import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { CreateEasyDNSConnectionSchema, EasyDNSConnectionSchema } from "./easydns-connection-schema";
+import {
+  CreateEasyDNSConnectionSchema,
+  EasyDNSConnectionSchema,
+  ValidateEasyDNSConnectionCredentialsSchema
+} from "./easydns-connection-schema";
 
 export type TEasyDNSConnection = z.infer<typeof EasyDNSConnectionSchema>;
 
@@ -14,3 +18,4 @@ export type TEasyDNSConnectionInput = z.infer<typeof CreateEasyDNSConnectionSche
 export type TEasyDNSConnectionConfig = DiscriminativePick<TEasyDNSConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
+export type TValidateEasyDNSConnectionCredentialsSchema = typeof ValidateEasyDNSConnectionCredentialsSchema;
