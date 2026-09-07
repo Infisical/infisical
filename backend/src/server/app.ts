@@ -2,8 +2,6 @@
 import path from "node:path";
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import type { FastifyCookieOptions } from "@fastify/cookie";
-import cookie, { signerFactory } from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
@@ -20,7 +18,6 @@ import { Knex } from "knex";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
-import { getCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -114,19 +111,6 @@ export const main = async ({
   });
 
   try {
-    let cookieSigner: ReturnType<typeof signerFactory> | undefined;
-    const getCookieSigner = () => {
-      if (!cookieSigner) cookieSigner = signerFactory(getCookieSigningKey());
-      return cookieSigner;
-    };
-
-    await server.register<FastifyCookieOptions>(cookie, {
-      secret: {
-        sign: (value) => getCookieSigner().sign(value),
-        unsign: (value) => getCookieSigner().unsign(value)
-      }
-    });
-
     await server.register(fastifyEtag);
 
     await server.register<FastifyCorsOptions>(cors, {
