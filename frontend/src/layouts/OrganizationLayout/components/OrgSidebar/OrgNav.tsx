@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
 import { Blocks, CreditCard, FileText, Settings, Shield } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { OrgIcon, SidebarCollapsibleGroup, SubOrgIcon } from "@app/components/v3";
 import { useOrganization } from "@app/context";
