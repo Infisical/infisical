@@ -456,6 +456,34 @@ const teamVarOverlapsSyncScope = (envVar: VercelSharedEnvVar, destinationConfig:
   return targetOverlap || applyAllOverlap;
 };
 
+// The scope an existing var would keep once this sync's scope is taken off it. `projectId` is
+// metadata about which projects see the var on its scopes, not part of Vercel's conflict space,
+// so it does not participate.
+const getTeamVarScopeAfterDetach = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
+  const ourEffectiveTargets =
+    (destinationConfig.sensitive
+      ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
+      : destinationConfig.targetEnvironments) ?? [];
+  const ourTargetsSet = new Set<string>(ourEffectiveTargets);
+
+  // If our sync wants all-custom coverage and the existing var also has it, we must release
+  // that claim on the existing var so our own record can take it.
+  const newApplyAll = destinationConfig.applyToAllCustomEnvironments
+    ? false
+    : Boolean(envVar.applyToAllCustomEnvironments);
+
+  return {
+    newTarget: (envVar.target ?? []).filter((t) => !ourTargetsSet.has(t)),
+    newApplyAll
+  };
+};
+
+// True when this sync's scope swallows the var whole, leaving nothing to detach to.
+const isTeamVarCoveredBySyncScope = (envVar: VercelSharedEnvVar, destinationConfig: TeamDestinationConfig) => {
+  const { newTarget, newApplyAll } = getTeamVarScopeAfterDetach(envVar, destinationConfig);
+  return newTarget.length === 0 && !newApplyAll;
+};
+
 const listTeamSharedEnvVarsWithRetries = async (
   secretSync: TVercelSyncWithCredentials
 ): Promise<VercelSharedEnvVar[]> => {
@@ -660,6 +688,9 @@ const updateTeamSharedEnvVar = async (
   secretSync: TVercelSyncWithCredentials,
   envVar: VercelSharedEnvVar,
   value: string,
+  // Set when writing to a var this sync does not own, where reassigning projectId to the
+  // sync's targetProjects would drop project links the var already has.
+  preserveProjectLinks = false,
   attempt = 0
 ): Promise<void> => {
   const {
@@ -707,7 +738,9 @@ const updateTeamSharedEnvVar = async (
           [envVar.id]: {
             value,
             ...(effectiveTargetEnvironments !== undefined ? { target: effectiveTargetEnvironments } : {}),
-            ...(destinationConfig.targetProjects !== undefined ? { projectId: destinationConfig.targetProjects } : {}),
+            ...(!preserveProjectLinks && destinationConfig.targetProjects !== undefined
+              ? { projectId: destinationConfig.targetProjects }
+              : {}),
             applyToAllCustomEnvironments: Boolean(destinationConfig.applyToAllCustomEnvironments)
           }
         }
@@ -731,7 +764,7 @@ const updateTeamSharedEnvVar = async (
     if (error instanceof SecretSyncError) throw error;
     if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
       await sleep();
-      return updateTeamSharedEnvVar(secretSync, envVar, value, attempt + 1);
+      return updateTeamSharedEnvVar(secretSync, envVar, value, preserveProjectLinks, attempt + 1);
     }
     throw new SecretSyncError({ error, secretKey: envVar.key });
   }
@@ -785,9 +818,45 @@ const deleteTeamSharedEnvVar = async (
   }
 };
 
-// Detach this sync's scope from a team shared env var that strictly covers it. PATCHes the
-// var to remove our targets and projects, preserving its original value/type for the remaining
-// scopes. If the detach would leave the var with no scope at all, falls back to a full delete.
+// Take over a var this sync's scope covers entirely: PATCH our value onto it and keep its project
+// links. Deleting and recreating instead would drop those links, and would delete a record this
+// sync does not own even when Disable Secret Deletion is on.
+const takeOverTeamSharedEnvVar = async (
+  secretSync: TVercelSyncWithCredentials,
+  envVar: VercelSharedEnvVar,
+  value: string
+): Promise<void> => {
+  const { destinationConfig } = secretSync;
+
+  if (destinationConfig.scope !== VercelSyncScope.Team) {
+    throw new SecretSyncError({
+      message: "Invalid scope for team-level Vercel secret sync",
+      shouldRetry: false
+    });
+  }
+
+  // Vercel cannot PATCH a var between encrypted and sensitive, and we will not delete a var this
+  // sync does not own to work aroud that, so the user has to resolve the mismatch.
+  // If we delete the var, it will unlink all projects: we should not do this as this can lead
+  // to failing environments.
+  if ((envVar.type === "sensitive") !== Boolean(destinationConfig.sensitive)) {
+    throw new SecretSyncError({
+      message: `An existing Vercel team shared variable named '${envVar.key}' covers this sync's environments and is ${
+        envVar.type === "sensitive" ? "marked sensitive" : "not marked sensitive"
+      }, which does not match this sync. Vercel cannot change a variable's sensitivity after it is created, and deleting and recreating it would unlink it from the projects it is currently assigned to. Either ${
+        destinationConfig.sensitive ? "disable" : "enable"
+      } Sensitive on this sync to match, or delete the variable in Vercel and reassign its projects once the sync recreates it.`,
+      secretKey: envVar.key,
+      shouldRetry: false
+    });
+  }
+
+  await updateTeamSharedEnvVar(secretSync, envVar, value, true);
+};
+
+// Detach this sync's scope from a team shared env var that overlaps it, preserving its value for
+// the scopes it keeps. Callers must exclude vars this sync's scope covers entirely
+// (`isTeamVarCoveredBySyncScope`), which keep no scope and belong to `takeOverTeamSharedEnvVar`.
 const detachTeamSharedEnvVar = async (
   secretSync: TVercelSyncWithCredentials,
   envVar: VercelSharedEnvVar,
@@ -807,28 +876,7 @@ const detachTeamSharedEnvVar = async (
     });
   }
 
-  const ourEffectiveTargets =
-    (destinationConfig.sensitive
-      ? destinationConfig.targetEnvironments?.filter((env) => env !== VercelEnvironmentType.Development)
-      : destinationConfig.targetEnvironments) ?? [];
-  const ourTargetsSet = new Set<string>(ourEffectiveTargets);
-
-  // Vercel's conflict space for team shared env vars spans (key, target) and the
-  // applyToAllCustomEnvironments flag — projectId is metadata about which projects see the
-  // var on its scopes, not part of the conflict space.
-  const newTarget = (envVar.target ?? []).filter((t) => !ourTargetsSet.has(t));
-
-  // If our sync wants all-custom coverage and the existing var also has it, we must release
-  // that claim on the existing var so our new dedicated record can take it.
-  const ourApplyAll = Boolean(destinationConfig.applyToAllCustomEnvironments);
-  const varApplyAll = Boolean(envVar.applyToAllCustomEnvironments);
-  const newApplyAll = ourApplyAll ? false : varApplyAll;
-
-  if (newTarget.length === 0 && !newApplyAll) {
-    // No scope remains — the var has nothing to cover. Full delete.
-    await deleteTeamSharedEnvVar(secretSync, envVar);
-    return;
-  }
+  const { newTarget, newApplyAll } = getTeamVarScopeAfterDetach(envVar, destinationConfig);
 
   try {
     const { data: updateResponse } = await request.patch<{
@@ -895,14 +943,36 @@ export const VercelSyncFns = {
           (r) => r.id !== ownedRecord?.id && teamVarOverlapsSyncScope(r, teamDestinationConfig)
         );
 
+        // A record our scope covers entirely is taken over rather than detached. Consolidating
+        // several of them onto our scope would mean deleting all but one, and they are not ours
+        // to delete.
+        const coveredRecords = conflictingRecords.filter((r) => isTeamVarCoveredBySyncScope(r, teamDestinationConfig));
+        if (coveredRecords.length > 1) {
+          throw new SecretSyncError({
+            message: `Vercel has multiple team shared variables named '${key}' within this sync's environments. Consolidate them into one variable in Vercel, or narrow this sync's environments so it covers only one of them.`,
+            secretKey: key,
+            shouldRetry: false
+          });
+        }
+        const [coveredRecord] = coveredRecords;
+
         // Detach our scope from any sibling that overlaps ours before any create/recreate —
         // including ahead of the sensitivity-flip delete+create branch, whose CREATE would
         // otherwise collide with the sibling.
         for await (const conflict of conflictingRecords) {
-          await detachTeamSharedEnvVar(secretSync, conflict);
+          if (conflict.id !== coveredRecord?.id) await detachTeamSharedEnvVar(secretSync, conflict);
         }
 
+        if (coveredRecord) await takeOverTeamSharedEnvVar(secretSync, coveredRecord, secretMap[key].value);
+
         if (!ownedRecord) {
+          // The record we took over already carries our value across our full scope, so creating
+          // one here would only collide with it.
+          if (coveredRecord) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
           await createTeamSharedEnvVar(secretSync, key, secretMap[key].value);
           // eslint-disable-next-line no-continue
           continue;
