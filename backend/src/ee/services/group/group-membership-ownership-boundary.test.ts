@@ -20,7 +20,7 @@ const GROUP_SLUG = "the-group";
 const USERNAME = "someone@example.com";
 const IDENTITY_ID = "identity-id";
 
-const OWNERSHIP_MESSAGE = /owned by a parent organization/;
+const OWNERSHIP_MESSAGE = "owned by a parent organization";
 
 const admin = createMongoAbility<MongoAbility>(orgAdminPermissions);
 
@@ -95,7 +95,7 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
 // does not stand up, so they assert only that ownership is not what stopped them.
 const expectNotBlockedByOwnership = async (fn: () => Promise<unknown>) => {
   await fn().catch((err: unknown) => {
-    expect((err as Error).message).not.toMatch(OWNERSHIP_MESSAGE);
+    expect((err as Error).message).not.toContain(OWNERSHIP_MESSAGE);
   });
 };
 
@@ -128,7 +128,7 @@ describe("group membership ownership boundary", () => {
         () => null,
         (e: unknown) => e
       );
-      expect((err as Error | null)?.message).toMatch(OWNERSHIP_MESSAGE);
+      expect((err as Error | null)?.message).toContain(OWNERSHIP_MESSAGE);
 
       expect(svc.userGroupMembershipDAL.insertMany).not.toHaveBeenCalled();
       expect(svc.userGroupMembershipDAL.delete).not.toHaveBeenCalled();
@@ -148,7 +148,7 @@ describe("group membership ownership boundary", () => {
     test("names the group so the caller can tell which one it was", async () => {
       const svc = createService({ groupOrgId: PARENT_ORG_ID });
 
-      await expect(pick(svc)()).rejects.toThrow(new RegExp(GROUP_SLUG));
+      await expect(pick(svc)()).rejects.toThrow(GROUP_SLUG);
     });
 
     test("does not leak the owning organization's id", async () => {
@@ -158,7 +158,7 @@ describe("group membership ownership boundary", () => {
         () => null,
         (e: unknown) => e
       );
-      expect((err as Error | null)?.message).toMatch(OWNERSHIP_MESSAGE);
+      expect((err as Error | null)?.message).toContain(OWNERSHIP_MESSAGE);
       expect((err as Error).message).not.toContain(PARENT_ORG_ID);
     });
   });
