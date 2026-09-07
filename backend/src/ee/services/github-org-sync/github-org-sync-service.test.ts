@@ -3,7 +3,11 @@ import { describe, expect, test, vi } from "vitest";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { buildGithubMemberMatcher, fetchGithubOrgTeams } from "./github-org-sync-service";
+import {
+  assertGithubGroupMembersLinked,
+  buildGithubMemberMatcher,
+  fetchGithubOrgTeams
+} from "./github-org-sync-service";
 
 type TVariables = { cursor: string | null; slug?: string; teamsPageSize?: number; membersPageSize?: number };
 
@@ -139,5 +143,33 @@ describe("buildGithubMemberMatcher", () => {
     const match = buildGithubMemberMatcher([alias("123", "user-a")], new Set(["user-a"]));
 
     expect(match(githubMember(null))).toBeUndefined();
+  });
+});
+
+describe("assertGithubGroupMembersLinked", () => {
+  const activeUsers = [
+    { id: "user-a", email: "alice@example.com" },
+    { id: "user-b", email: "bob@example.com" }
+  ];
+
+  test("allows reconciliation when every existing member has a verified GitHub link", () => {
+    expect(() =>
+      assertGithubGroupMembersLinked({
+        currentUserIds: new Set(["user-a", "user-b"]),
+        linkedUserIds: new Set(["user-a", "user-b"]),
+        activeUsers
+      })
+    ).not.toThrow();
+  });
+
+  test("stops reconciliation before changes when an existing member has no verified GitHub link", () => {
+    expect(() =>
+      assertGithubGroupMembersLinked({
+        currentUserIds: new Set(["user-a", "user-b"]),
+        linkedUserIds: new Set(["user-a"]),
+        activeUsers,
+        noChangesApplied: true
+      })
+    ).toThrow(/bob@example\.com.*No changes were applied/);
   });
 });

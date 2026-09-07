@@ -267,13 +267,39 @@ interface GroupMembership {
   lastName: string | null;
 }
 
+export const assertGithubGroupMembersLinked = ({
+  currentUserIds,
+  linkedUserIds,
+  activeUsers,
+  noChangesApplied = false
+}: {
+  currentUserIds: Set<string>;
+  linkedUserIds: Set<string>;
+  activeUsers: { id: string; email: string }[];
+  noChangesApplied?: boolean;
+}) => {
+  const unlinkedUserIds = [...currentUserIds].filter((userId) => !linkedUserIds.has(userId));
+  if (!unlinkedUserIds.length) return;
+
+  const emailsByUserId = new Map(activeUsers.map((user) => [user.id, user.email]));
+  const reportLimit = 10;
+  const listedMembers = unlinkedUserIds.slice(0, reportLimit).map((userId) => emailsByUserId.get(userId) ?? userId);
+  const remainingCount = unlinkedUserIds.length - listedMembers.length;
+  const remainingMessage = remainingCount > 0 ? ` and ${remainingCount} more` : "";
+  const completionMessage = noChangesApplied ? " No changes were applied." : "";
+
+  throw new BadRequestError({
+    message: `GitHub team sync cannot safely reconcile ${unlinkedUserIds.length} existing group member${unlinkedUserIds.length === 1 ? "" : "s"} without a verified GitHub sign-in (${listedMembers.join(", ")}${remainingMessage}). Ask them to sign in with GitHub, or remove them from the corresponding Infisical groups, then run the sync again.${completionMessage}`
+  });
+};
+
 type TGithubOrgSyncServiceFactoryDep = {
   githubOrgSyncDAL: TGithubOrgSyncDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
-    "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
+    "find" | "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
   >;
   groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
@@ -796,11 +822,11 @@ export const githubOrgSyncServiceFactory = ({
       : [];
     const matchGithubMember = buildGithubMemberMatcher(githubAliases, activeUserIds);
     const linkedActiveUserIds = new Set(githubAliases.map((alias) => alias.userId));
+    const activeUsers = activeMembers.flatMap((member) => (member.user ? [member.user] : []));
 
     const startTime = Date.now();
     const syncErrors: string[] = [];
     const unmatchedGithubUsers = new Set<string>();
-    const preservedUnlinkedUserIds = new Set<string>();
 
     const octokit = new Octokit({ auth: orgAccessToken });
 
@@ -856,10 +882,24 @@ export const githubOrgSyncServiceFactory = ({
     });
     const existingTeamsMap = groupBy(existingTeamsOnInfisical, (i) => i.name);
 
+    if (existingTeamsOnInfisical.length) {
+      const existingGroupMemberships = await userGroupMembershipDAL.find({
+        $in: { groupId: existingTeamsOnInfisical.map((team) => team.id) }
+      });
+      assertGithubGroupMembersLinked({
+        currentUserIds: new Set(
+          existingGroupMemberships.map((membership) => membership.userId).filter((userId) => activeUserIds.has(userId))
+        ),
+        linkedUserIds: linkedActiveUserIds,
+        activeUsers,
+        noChangesApplied: true
+      });
+    }
+
     const teamsToCreate = allGithubTeamNames.filter((teamName) => !(teamName in existingTeamsMap));
     const createdTeams = new Set<string>();
     const updatedTeams = new Set<string>();
-    const totalRemovedMemberships = 0;
+    let totalRemovedMemberships = 0;
 
     if (teamsToCreate.length > 0) {
       await groupDAL.transaction(async (tx) => {
@@ -918,7 +958,7 @@ export const githubOrgSyncServiceFactory = ({
         }
       });
 
-      await groupDAL.transaction(async (tx) => {
+      const removedMembershipsForTeam = await groupDAL.transaction(async (tx) => {
         const currentMemberships = (await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(
           team.id,
           orgPermission.orgId,
@@ -932,18 +972,17 @@ export const githubOrgSyncServiceFactory = ({
             currentUserIds.add(activeMember.user.id);
           }
         });
+        assertGithubGroupMembersLinked({
+          currentUserIds,
+          linkedUserIds: linkedActiveUserIds,
+          activeUsers
+        });
 
         const usersToAdd = Array.from(expectedUserIds).filter((userId) => !currentUserIds.has(userId));
 
-        // A member without a verified GitHub alias has no trustworthy identity to reconcile yet.
-        // Keep their current access until a GitHub login creates that link.
         const membershipsToRemove = currentMemberships.filter((membership) => {
           const userId = activeMembersById.get(membership.orgMembershipId)?.user?.id;
           if (!userId) return false;
-          if (!linkedActiveUserIds.has(userId)) {
-            preservedUnlinkedUserIds.add(userId);
-            return false;
-          }
           return !expectedUserIds.has(userId);
         });
 
@@ -975,19 +1014,16 @@ export const githubOrgSyncServiceFactory = ({
 
           updatedTeams.add(teamName);
         }
+
+        return membershipsToRemove.length;
       });
+      totalRemovedMemberships += removedMembershipsForTeam;
     }
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
       usageMeteringService.emit(orgPermission.orgId, SecretIdentities.key);
       usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
-    }
-
-    if (preservedUnlinkedUserIds.size) {
-      syncErrors.push(
-        `Infisical left existing group access unchanged for ${preservedUnlinkedUserIds.size} organization member${preservedUnlinkedUserIds.size === 1 ? "" : "s"} without a verified GitHub login. Ask them to sign in with GitHub, then run the sync again.`
-      );
     }
 
     if (unmatchedGithubUsers.size) {

@@ -110,8 +110,13 @@ Infisical account. Manual sync uses that account ID to match each GitHub team me
 member.
 
 Infisical doesn't infer identity from a GitHub username or public profile email. If a member hasn't
-signed in with GitHub, manual sync doesn't add group access and leaves any existing group access
-unchanged. Ask the member to sign in with GitHub, then run **Sync Now** again.
+signed in with GitHub, manual sync doesn't add group access. If that member already belongs to a
+group that corresponds to a GitHub team, the sync stops before making changes and identifies the
+members who need to sign in. Ask each listed member to sign in with GitHub, or remove them from the
+corresponding Infisical groups, then run **Sync Now** again.
+
+Before the first manual sync, ask each Infisical member who needs GitHub-controlled group access to
+sign in with GitHub at least once.
 
 ## Troubleshooting
 
