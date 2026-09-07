@@ -1,0 +1,36 @@
+<Info>
+    If you already have a Connect server for your vault, you can skip this step.
+</Info>
+
+<Steps>
+    <Step title="Create a Connect server" titleSize="h3">
+        In 1Password, open the **Developer** section and select **Other**.
+
+        ![Developer Page](/images/app-connections/1password/developer-page.png)
+
+        Then, select **Create a Connect Server**.
+
+        ![Select Connect Server](/images/app-connections/1password/click-connect-server.png)
+    </Step>
+    <Step title="Configure the Connect server" titleSize="h3">
+        In the **Environment Name** field, enter a name for the Connect server. Then, select **Choose Vaults** and pick the vaults you want Infisical to reach:
+
+        ![Configure Connect Server](/images/app-connections/1password/configure-connect-server.png)
+
+        For each vault, select **Edit Access** > **Enable All**. When you're done, select **Add Environment**.
+    </Step>
+    <Step title="Set up an access token" titleSize="h3">
+        Infisical needs an access token to authenticate with the Connect server and sync your secrets.
+        
+        Set a name and expiration for the token in the **Token Name** and **Expires After** fields. Then, select **Choose Vaults** and pick the vaults you want Infisical to have access to:
+
+        ![Set Up Access Token](/images/app-connections/1password/set-up-access-token.png)
+
+        For each vault, select **Edit Access** > **Enable All**. When you're done, select **Issue Token**.
+    </Step>
+    <Step title="Deploy the Connect server" titleSize="h3">
+        Download the credentials file, then follow [1Password's deployment guide](https://developer.1password.com/docs/connect/get-started#step-2-deploy-1password-connect-server) to bring the server up. Save the **Access Token** you were shown; you'll paste it into Infisical in the next section.
+
+        ![Deploy Server](/images/app-connections/1password/deploy-server.png)
+    </Step>
+</Steps>
