@@ -16,7 +16,7 @@ import { mockSmtpServer } from "./mocks/smtp";
 const API_ROUTES = [
   { method: "GET" as const, url: "/api/v1/admin/config", requestUrl: "/api/v1/admin/config" },
   { method: "GET" as const, url: "/api/v2/users/me/organizations", requestUrl: "/api/v2/users/me/organizations" },
-  { method: "GET" as const, url: "/api/v4/secrets/", requestUrl: "/api/v4/secrets" },
+  { method: "GET" as const, url: "/api/v4/secrets", requestUrl: "/api/v4/secrets" }
 ];
 
 describe("INFISICAL_RUN_MODES route registration", () => {

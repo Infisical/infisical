@@ -585,7 +585,9 @@ export const registerRoutes = async (
 
   const redlock = new Redlock([redis], { retryCount: 0 });
   const cronJob = cronJobFactory({ redis, redlock });
-  cronJob.start();
+  if (envConfig.isGeneralWorkerRunModeEnabled) {
+    cronJob.start();
+  }
 
   // Reached from the gateway proxy layer in src/lib, which has no DI, so it is installed as a module
   // singleton rather than threaded through every call site.
@@ -4218,6 +4220,9 @@ export const registerRoutes = async (
     globalThis.testServices = server.services;
   }
 
+  // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
+  // (env overrides, license plan, rate limits, admin integration config), so an API pod that stopped
+  // running them would serve stale config rather than shed background work.
   const cronJobs: CronJob[] = [];
   if (appCfg.isProductionMode) {
     const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
@@ -4352,8 +4357,7 @@ export const registerRoutes = async (
   });
 
   // A worker-only pod still serves /api/status so liveness and readiness probes keep working, but
-  // none of the product API. Everything above this point (service wiring, queue workers, crons) runs
-  // in every run mode.
+  // none of the product API.
   if (envConfig.isApiRunModeEnabled) {
     // register special routes
     await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
