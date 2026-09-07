@@ -210,8 +210,8 @@ export const castDbEntryToAcmeCertificateAuthority = (
   };
 };
 
-const DNS_PROPAGATION_MAX_RETRIES = 5;
-const DNS_PROPAGATION_INTERVAL_MS = 2000;
+const DNS_PROPAGATION_MAX_RETRIES = 20;
+const DNS_PROPAGATION_INTERVAL_MS = 3000;
 const CNAME_MAX_DEPTH = 10;
 
 const resolveAcmeChallengeCname = async (recordName: string): Promise<string> => {
@@ -237,6 +237,25 @@ const resolveAcmeChallengeCname = async (recordName: string): Promise<string> =>
   return current;
 };
 
+const resolveNsViaDoh = async (domain: string, dohServer: string): Promise<string[]> => {
+  const nsUrl = `${dohServer}/dns-query?name=${encodeURIComponent(domain)}&type=NS`;
+  const resp = await fetch(nsUrl, { headers: { accept: "application/dns-json" } });
+  if (!resp.ok) throw new Error(`DoH NS query failed: ${resp.status}`);
+  const json = (await resp.json()) as { Answer?: { type: number; data: string }[] };
+  const nsNames = (json.Answer || []).filter((a) => a.type === 2).map((a) => a.data.replace(/\.$/, ""));
+  const nsAddrs: string[] = [];
+  for (const nsName of nsNames) {
+    // eslint-disable-next-line no-await-in-loop
+    const aUrl = `${dohServer}/dns-query?name=${encodeURIComponent(nsName)}&type=A`;
+    const aResp = await fetch(aUrl, { headers: { accept: "application/dns-json" } });
+    if (aResp.ok) {
+      const aJson = (await aResp.json()) as { Answer?: { type: number; data: string }[] };
+      nsAddrs.push(...(aJson.Answer || []).filter((a) => a.type === 1).map((a) => a.data));
+    }
+  }
+  return nsAddrs;
+};
+
 const waitForDnsPropagation = async (
   lookupName: string,
   expectedValue: string,
@@ -250,6 +269,35 @@ const waitForDnsPropagation = async (
     resolver.setServers([dnsResolver]);
   }
 
+  // Resolve authoritative NS via DNS-over-HTTPS to bypass local DNS hijacking.
+  // This ensures we verify the record is visible from the same servers the CA queries.
+  let authResolver: dns.promises.Resolver | null = null;
+  try {
+    const parts = lookupName.split(".");
+    for (let i = 2; i < parts.length; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      const domain = parts.slice(i).join(".");
+      const soaUrl = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=SOA`;
+      // eslint-disable-next-line no-await-in-loop
+      const soaResp = await fetch(soaUrl, { headers: { accept: "application/dns-json" } });
+      if (soaResp.ok) {
+        const soaJson = (await soaResp.json()) as { Answer?: { type: number }[] };
+        if ((soaJson.Answer || []).some((a) => a.type === 6)) {
+          // eslint-disable-next-line no-await-in-loop
+          const nsAddrs = await resolveNsViaDoh(domain, "https://cloudflare-dns.com");
+          if (nsAddrs.length > 0) {
+            authResolver = new dns.promises.Resolver();
+            authResolver.setServers(nsAddrs);
+            logger.info({ domain, nsAddrs }, "Resolved authoritative NS via DoH for propagation check");
+          }
+          break;
+        }
+      }
+    }
+  } catch (e) {
+    logger.warn({ err: (e as Error).message }, "Failed to resolve authoritative NS via DoH, using default resolver only");
+  }
+
   while (attempts < DNS_PROPAGATION_MAX_RETRIES) {
     attempts += 1;
 
@@ -258,7 +306,22 @@ const waitForDnsPropagation = async (
       .then((records) => records.some((chunks) => chunks.join("") === unquotedExpected))
       .catch(() => false);
 
-    if (found) return;
+    if (found && authResolver) {
+      // Confirm visible from authoritative NS (this is what the CA queries)
+      const authFound = await authResolver // eslint-disable-line no-await-in-loop
+        .resolveTxt(lookupName)
+        .then((records) => records.some((chunks) => chunks.join("") === unquotedExpected))
+        .catch(() => false);
+      if (authFound) {
+        logger.info("DNS propagation confirmed at authoritative NS, waiting 30s for negative caches to expire");
+        await delay(30_000); // eslint-disable-line no-await-in-loop
+        return;
+      }
+    } else if (found && !authResolver) {
+      logger.info("DNS propagation confirmed, waiting 30s for negative caches to expire");
+      await delay(30_000); // eslint-disable-line no-await-in-loop
+      return;
+    }
 
     if (attempts < DNS_PROPAGATION_MAX_RETRIES) {
       await delay(DNS_PROPAGATION_INTERVAL_MS); // eslint-disable-line no-await-in-loop
@@ -406,7 +469,10 @@ export const executeAcmeOrder = async (
 
   const acmeClientOptions: acme.ClientOptions = {
     directoryUrl: acmeCa.configuration.directoryUrl,
-    accountKey
+    accountKey,
+    backoffAttempts: 30,
+    backoffMin: 10_000,
+    backoffMax: 60_000
   };
 
   if (acmeCa.configuration.eabKid && acmeCa.configuration.eabHmacKey) {

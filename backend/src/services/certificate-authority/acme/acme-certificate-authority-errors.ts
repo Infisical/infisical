@@ -3,7 +3,7 @@ import RE2 from "re2";
 
 import { logger } from "@app/lib/logger";
 
-export const ACME_ORDER_TIMEOUT_MS = 5 * 60 * 1000;
+export const ACME_ORDER_TIMEOUT_MS = 10 * 60 * 1000;
 
 export class AcmeOrderTimeoutError extends Error {
   constructor(message: string) {
