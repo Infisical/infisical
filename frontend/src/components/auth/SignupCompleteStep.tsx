@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { IconType } from "react-icons";
-import { BsPeopleFill } from "react-icons/bs";
 import { SiGithub, SiYoutube } from "react-icons/si";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Info, LayoutGrid } from "lucide-react";
+import { ArrowRight, Info, LayoutGrid, Users } from "lucide-react";
 
 import {
   Button,
@@ -31,7 +29,11 @@ interface SignupCompleteStepProps {
   projects: Partial<Record<SignupProductType, Project>>;
 }
 
-const COMMUNITY_LINKS: { label: string; href: string; icon: IconType }[] = [
+const COMMUNITY_LINKS: {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
+}[] = [
   {
     label: "Star on GitHub",
     href: "https://github.com/Infisical/infisical",
@@ -40,7 +42,7 @@ const COMMUNITY_LINKS: { label: string; href: string; icon: IconType }[] = [
   {
     label: "Join Community",
     href: "https://community.infisical.com/c/general/contributing/23",
-    icon: BsPeopleFill
+    icon: Users
   },
   {
     label: "YouTube",
