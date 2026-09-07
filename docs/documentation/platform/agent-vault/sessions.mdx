@@ -3,7 +3,7 @@ title: "Sessions"
 description: "Mint the token an agent runs with, choose how long it lives, and revoke it while the agent is running."
 ---
 
-A session is the token an agent runs with. It carries a fixed set of access bundles, in order, and an expiry. The proxy uses it to look up which connections the agent may use right now.
+A session is the token an agent runs with. It carries a fixed set of access bundles, in order, and an expiry. On every request the proxy uses it to decide which connections the agent may use right now, and applies their credentials on the way out.
 
 ## Minting a session
 
@@ -55,7 +55,7 @@ Nothing on the agent's machine needs to be restarted for any of this.
 
 ## Revoking and expiry
 
-Select the session's menu on the Sessions page and choose **Revoke Session**. The proxy stops attaching credentials for it on its next poll. Revoking is permanent.
+Select the session's menu on the Sessions page and choose **Revoke Session**. The proxy stops applying credentials for it on its next poll. Revoking is permanent.
 
 An expired session stops the same way. The Sessions page shows sessions as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can see what an agent could reach.
 

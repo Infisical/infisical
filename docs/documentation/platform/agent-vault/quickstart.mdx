@@ -38,7 +38,7 @@ Select **Add Connection** and work through the steps:
     Keep the connection name `github` and the host pattern `api.github.com`.
   </Step>
   <Step title="Credential">
-    Paste your `github_pat_…` token into **Token**. It is stored encrypted and never shown again.
+    Paste your `github_pat_…` token into **Token**. It's stored encrypted and never shown again.
   </Step>
   <Step title="Review and create">
     Check the host and the header, then select **Add Connection**.
@@ -49,7 +49,7 @@ Select **Add Connection** and work through the steps:
   Not on the template list? Pick **Custom** and set the host, header name, and prefix yourself. See [Access bundles and connections](/documentation/platform/agent-vault/access-bundles).
 </Note>
 
-You are an admin, so you can already mint sessions over this bundle. To let a teammate or a machine identity run agents with it, select **Manage Access** on the bundle and grant it to them. They have to be a member of Agent Vault first, under **Access Control**.
+You're an admin, so you can already mint sessions over this bundle. To let a teammate or a machine identity run agents with it, select **Manage Access** on the bundle and grant it to them. They have to be a member of Agent Vault first, under **Access Control**.
 
 ## 2. Enroll a proxy
 
@@ -119,7 +119,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 </Tabs>
 
 <Note>
-  Getting a `401`? The credential was not applied. Open the `coding-agent` bundle and confirm a connection covers `api.github.com`; if one does, the token stored on it is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
+  Getting a `401`? The credential wasn't applied. Open the `coding-agent` bundle and confirm a connection covers `api.github.com`; if one does, the token stored on it is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
 </Note>
 
 <Note>
