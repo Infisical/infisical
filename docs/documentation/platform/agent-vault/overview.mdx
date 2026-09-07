@@ -1,49 +1,66 @@
 ---
 title: "Agent Vault"
 sidebarTitle: "Overview"
-description: "Run AI agents that call third-party APIs without ever holding the API keys."
+description: "Give AI agents access to the APIs they need without handing over your credentials."
 ---
 
-Agent Vault lets an AI agent call GitHub, Slack, an LLM provider, or any other HTTP API without holding the credential for it. The agent's traffic goes through an Agent Vault proxy, and the proxy attaches the real credential on the way out. If the agent is compromised, there is no key to steal.
+The **Infisical Agent Vault** is a credential broker for AI agents. It sits between your agents and the APIs they call, including LLM providers, GitHub, Slack, and more.
+
+Agents like Claude Code or OpenClaw route HTTP requests through an Agent Vault proxy, which attaches the real credential before forwarding the request to the target service. The agent never holds it.
 
 ```text
-+-----------+                 +-------------------+                +------------------+
-| AI agent  | --------------> | Agent Vault proxy | -------------> |  api.github.com  |
-+-----------+  session token  +-------------------+  request with  |  api.slack.com   |
-                                       |             the credential |  ...             |
-                                       | checks what this session   +------------------+
-                                       | may reach
-                                       v
-                                +-------------+
-                                |  Infisical  |
-                                +-------------+
+            Your private network                                  Public internet
+
++----------+                 +-------------------+                +------------------+
+| AI agent | --------------> | Agent Vault proxy | -------------> |  api.slack.com   |
++----------+  request with a +-------------------+ request with   |  api.github.com  |
+             session token            |          the credential    |  ...             |
+                                      |                            +------------------+
+                                      |  checks what this session
+                                      |  may reach, and fetches
+                                      |  the credentials
+                                      v
+                               +-------------+
+                               |  Infisical  |
+                               +-------------+
 ```
 
+## Why Agent Vault
+
+Traditional secrets management involves returning credentials back to applications and services.
+
+This is not suitable for AI agents because they are vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
+
+Enter Infisical Agent Vault: a proxy backed by Infisical that prevents credential exfiltration by brokering access to credentials at the network boundary. The agent gets a session token that works only through your proxy, only for the hosts you allowed, and only until you revoke it. Access is checked while the agent runs, so pulling it takes effect within a minute, with nothing to restart.
+
+## What you configure in Infisical
+
+Two things, and they are the same no matter where your agent runs:
+
+1. Create an [access bundle](/documentation/platform/agent-vault/access-bundles) and add a connection for each external service (`api.anthropic.com`, `api.github.com`, `slack.com`, and so on). A connection holds the credential and says how it is applied to requests bound for that host.
+
+2. Grant the bundle to the people, machine identities, or groups that may run agents with it.
+
+Then anyone with the grant mints a [session](/documentation/platform/agent-vault/sessions) and launches the agent with it. The agent needs no code changes: the [Infisical CLI](/cli/overview) starts it with its HTTP clients pointed at the proxy, and the proxy applies the real credential to matching requests on the way out.
+
+## Where the proxy runs
+
+The [proxy](/documentation/platform/agent-vault/proxies) has to sit between your agent and the internet. Run it on a host of its own to serve agents across your network, or next to a single agent on the same machine or in the same container network. Either way you enroll it once from the CLI and manage its settings from the dashboard.
+
+## What you work with
+
+| Object            | What it is                                                                                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Connection**    | One external service and the credential the proxy applies to requests bound for it, such as `api.github.com` with a bearer token.                                       |
+| **Access bundle** | A named group of connections, and the people, machine identities, and groups allowed to run agents with them.                                                          |
+| **Session**       | The token an agent runs with. It carries a fixed set of access bundles and an expiry, can be revoked at any time, and is re-checked against the grants while it runs.   |
+| **Proxy**         | The forward proxy in the [Infisical CLI](/cli/overview) that attaches credentials to outbound requests. Runs on a host in your network.                                 |
+| **Agent**         | Any program that respects `HTTPS_PROXY`: Claude Code, Codex, OpenClaw, Hermes, or any other workload.                                                                   |
+
+Agent Vault is organization-wide. Its **Access Control** page decides who is an admin, who is a member, and which machine identities and groups belong.
+
+## Next steps
+
 <Card title="Quickstart" icon="rocket" href="/documentation/platform/agent-vault/quickstart">
-  Create a bundle, enroll a proxy, and run an agent through it in about ten minutes.
+  Create a bundle with a GitHub connection, enroll a proxy, and launch an agent that makes authenticated calls with a token it never sees.
 </Card>
-
-## How it works
-
-1. An admin creates an access bundle: a set of connections, each naming the hosts of one API and the credential to attach.
-2. The admin grants the bundle to the people, machine identities, or groups that may run agents with it.
-3. Someone with the grant mints a session, a token that carries the bundle and an expiry.
-4. The agent starts with the session token and the proxy's address. Every request it makes to a covered host leaves the proxy with the credential attached.
-5. Access is checked while the agent runs. Revoke the session or the grant, and the agent stops getting credentials within a minute.
-
-## Learn more
-
-<CardGroup cols={2}>
-  <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
-    Connections, credential types, host patterns, and who can use a bundle.
-  </Card>
-  <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
-    Minting, lifetime, revocation, and what a running agent can reach.
-  </Card>
-  <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
-    Enrolling, traffic policy, and certificate trust.
-  </Card>
-  <Card title="CLI reference" icon="terminal" href="/cli/commands/av">
-    Every flag of `infisical av proxy` and `infisical av run`.
-  </Card>
-</CardGroup>
