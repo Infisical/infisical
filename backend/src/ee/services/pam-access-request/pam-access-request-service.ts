@@ -777,7 +777,6 @@ export const pamAccessRequestServiceFactory = ({
 
   const notifyOfBreakGlass = async ({
     request,
-    steps,
     account,
     folderId,
     duration,
@@ -787,7 +786,6 @@ export const pamAccessRequestServiceFactory = ({
     projectId
   }: {
     request: { id: string; requesterName?: string | null; requesterEmail?: string | null };
-    steps: { approvers: { type: string; id: string }[] }[];
     account: { name: string; folderName: string | null };
     folderId: string;
     duration: string;
@@ -797,16 +795,11 @@ export const pamAccessRequestServiceFactory = ({
     projectId: string;
   }) => {
     try {
-      // steps is the request's creation-time snapshot. Notifying from it alone would send requester
-      // details and the bypass reason to someone since removed as an approver
       const livePolicy = await findFolderPolicy(folderId);
       const [livePolicySteps, activeMemberships] = await Promise.all([
         livePolicy ? approvalPolicyDAL.findStepsByPolicyId(livePolicy.id) : Promise.resolve([]),
         findActiveFolderMemberships(projectId, folderId)
       ]);
-      const liveApproverKeys = new Set(
-        livePolicySteps.flatMap((step) => step.approvers.map((a) => `${a.type}:${a.id}`))
-      );
       const activeMemberKeys = new Set([
         ...activeMemberships.filter((m) => m.actorUserId).map((m) => `${ApproverType.User}:${m.actorUserId}`),
         ...activeMemberships.filter((m) => m.actorGroupId).map((m) => `${ApproverType.Group}:${m.actorGroupId}`)
@@ -814,13 +807,11 @@ export const pamAccessRequestServiceFactory = ({
 
       const approverUserIds = new Set<string>();
       const approverGroupIds = new Set<string>();
-      const isStillAnApprover = (approver: { type: string; id: string }) => {
-        const key = `${approver.type}:${approver.id}`;
-        return liveApproverKeys.has(key) && activeMemberKeys.has(key);
-      };
+      const holdsActiveMembership = (approver: { type: string; id: string }) =>
+        activeMemberKeys.has(`${approver.type}:${approver.id}`);
 
-      for (const step of steps) {
-        for (const approver of step.approvers.filter(isStillAnApprover)) {
+      for (const step of livePolicySteps) {
+        for (const approver of step.approvers.filter(holdsActiveMembership)) {
           if (approver.type === ApproverType.User) approverUserIds.add(approver.id);
           else approverGroupIds.add(approver.id);
         }
@@ -1015,7 +1006,6 @@ export const pamAccessRequestServiceFactory = ({
 
     void notifyOfBreakGlass({
       request,
-      steps,
       account,
       folderId,
       duration: requestData.requestData.duration,
