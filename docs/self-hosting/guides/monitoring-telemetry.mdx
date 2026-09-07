@@ -1060,7 +1060,7 @@ The secret service caches encrypted secret payloads to avoid redundant decryptio
 
     **Attributes**:
       - `http.route` (string)
-      - `http.request.method` (string)
+      - `http.request.method` (string): HTTP method, normalized to the ten names the OpenTelemetry HTTP conventions define, with anything else reported as `_OTHER`. This matches `infisical.core.http.request.count`, so you can divide one by the other to get a 429 rate per route and method.
   </Accordion>
 </AccordionGroup>
 
