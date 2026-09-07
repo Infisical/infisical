@@ -71,6 +71,11 @@ container port and the Service can never disagree with what the gateway actually
 {{- if or (eq $port $addr) (not (regexMatch "^[0-9]+$" $port)) -}}
 {{- fail (printf "gateway.listenAddress must be host:port, got %q" $addr) -}}
 {{- end -}}
+{{- /* Same range the backend enforces, so an out-of-range port fails the render rather than the
+       Kubernetes API. */ -}}
+{{- if or (lt (int $port) 1) (gt (int $port) 65535) -}}
+{{- fail (printf "gateway.listenAddress port must be between 1 and 65535, got %q" $port) -}}
+{{- end -}}
 {{- $port -}}
 {{- end }}
 

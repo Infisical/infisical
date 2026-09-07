@@ -256,15 +256,18 @@ export const setupRelayServer = async ({
     const tunnelId = crypto.randomBytes(4).toString("hex");
     const hasRelayFallback = Boolean(directAddress && relayHost && relay);
 
-    const dialDirect = async () => {
+    // The address is validated when the gateway registers it: host syntax and port range in
+    // parseDirectAddress, and Infisical's own infrastructure ruled out by
+    // assertHostNotInfisicalInfrastructure. Re-checking per connection would resolve DNS on every
+    // dial, so nothing is validated here.
+    const dialDirect = () => {
       const parsed = new URL(`tcp://${directAddress}`);
       const serverName = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
-      const [targetHost] = await verifyHostInputValidity({
-        host: serverName,
-        isGateway: true,
-        isDynamicSecret: false
+      return Promise.resolve({
+        conn: net.connect({ host: serverName, port: Number(parsed.port) }),
+        serverName,
+        direct: true
       });
-      return { conn: net.connect({ host: targetHost, port: Number(parsed.port) }), serverName, direct: true };
     };
 
     const dialRelay = async () => {

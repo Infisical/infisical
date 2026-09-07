@@ -4,6 +4,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -47,6 +48,7 @@ import {
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
   PAM_INFO_OID,
+  parseDirectAddress,
   resolveClientTransports,
   resolveTransports
 } from "./gateway-v2-constants";
@@ -56,35 +58,6 @@ import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
 // Temporary limit until gateway limiting is implemented at the relay level
 const MAX_GATEWAYS_PER_ORG = 50;
-
-const parseDirectAddress = (address: string) => {
-  let parsed: URL;
-  try {
-    parsed = new URL(`tcp://${address}`);
-  } catch {
-    throw new BadRequestError({ message: `Gateway direct address "${address}" must use the host:port format` });
-  }
-
-  if (
-    !parsed.hostname ||
-    !parsed.port ||
-    parsed.username ||
-    parsed.password ||
-    parsed.pathname ||
-    parsed.search ||
-    parsed.hash
-  ) {
-    throw new BadRequestError({ message: `Gateway direct address "${address}" must use the host:port format` });
-  }
-
-  const port = Number(parsed.port);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new BadRequestError({ message: `Gateway direct address "${address}" must include a port from 1 to 65535` });
-  }
-
-  const host = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
-  return { host, port };
-};
 
 type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
@@ -788,6 +761,9 @@ export const gatewayV2ServiceFactory = ({
 
     return {
       gatewayId: gateway.id,
+      // For the audit log. Not part of either route's response schema, so it is stripped on the way
+      // out rather than becoming part of the API contract.
+      gatewayName: gateway.name,
       directAddress: gateway.directAddress ?? undefined,
       relayHost: relayCredentials?.relayHost,
       pki: {
@@ -826,7 +802,10 @@ export const gatewayV2ServiceFactory = ({
       if (getConfig().isCloud) {
         throw new BadRequestError({ message: "Direct gateway connections are not available on Infisical Cloud" });
       }
-      parseDirectAddress(directAddress);
+      const { host } = parseDirectAddress(directAddress);
+      // Checked here rather than at dial time: registration happens once per address change, while
+      // a dial happens per connection, and this resolves DNS.
+      await assertHostNotInfisicalInfrastructure({ host });
     }
     const orgCAs = await $getOrgCAs(orgId);
 
@@ -1444,7 +1423,10 @@ export const gatewayV2ServiceFactory = ({
       if (getConfig().isCloud) {
         throw new BadRequestError({ message: "Direct gateway connections are not available on Infisical Cloud" });
       }
-      parseDirectAddress(directAddress);
+      const { host } = parseDirectAddress(directAddress);
+      // Checked here rather than at dial time: registration happens once per address change, while
+      // a dial happens per connection, and this resolves DNS.
+      await assertHostNotInfisicalInfrastructure({ host });
     }
     const orgCAs = await $getOrgCAs(orgId);
 
