@@ -22,6 +22,7 @@ const cliCommand = (token: string, siteUrl: string) =>
 const dockerCommand = (token: string, siteUrl: string) =>
   `docker run -d --name agent-vault-proxy \\
   -p 17323:17323 \\
+  -v agent-vault-proxy:/etc/infisical/agent-vault \\
   infisical/cli av proxy \\
   --enrollment-token ${token} \\
   --domain ${siteUrl}`;
