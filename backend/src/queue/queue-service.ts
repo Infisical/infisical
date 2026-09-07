@@ -38,7 +38,6 @@ import {
   queueStalledCounter,
   resolveCoreMeter
 } from "@app/lib/telemetry/metrics";
-
 import {
   TAppConnectionCredentialRotationRotateJobPayload,
   TAppConnectionCredentialRotationSendNotificationJobPayload
