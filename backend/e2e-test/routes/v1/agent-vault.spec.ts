@@ -386,7 +386,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a machine identity can be given Agent Vault, have its role changed, and lose it again", async () => {
       const identity = await createOrgIdentity(`av-membership-${Date.now()}`);
 
-      const added = await inject("POST", memberships, { identityId: identity.id, role: "member" });
+      const added = await inject("POST", `${memberships}/identities/${identity.id}`, { role: "member" });
       expect(added.statusCode).toBe(200);
 
       const listed = await inject("GET", `${memberships}/identity-members`);
@@ -397,11 +397,11 @@ describe("Agent Vault V1 Router", async () => {
       expect(row?.role).toBe("member");
       expect(row?.name).toBeTruthy();
 
-      const promoted = await inject("PATCH", memberships, { identityId: identity.id, role: "admin" });
+      const promoted = await inject("PATCH", `${memberships}/identities/${identity.id}`, { role: "admin" });
       expect(promoted.statusCode).toBe(200);
       expect(JSON.parse(promoted.payload).role).toBe("admin");
 
-      const removed = await inject("DELETE", memberships, { identityId: identity.id });
+      const removed = await inject("DELETE", `${memberships}/identities/${identity.id}`);
       expect(removed.statusCode).toBe(200);
 
       const after = JSON.parse((await inject("GET", `${memberships}/identity-members`)).payload) as {
@@ -465,7 +465,9 @@ describe("Agent Vault V1 Router", async () => {
 
       const identity = await createOrgIdentity(`av-reap-${Date.now()}`);
 
-      expect((await inject("POST", memberships, { identityId: identity.id, role: "member" })).statusCode).toBe(200);
+      expect((await inject("POST", `${memberships}/identities/${identity.id}`, { role: "member" })).statusCode).toBe(
+        200
+      );
       expect(
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
@@ -476,7 +478,7 @@ describe("Agent Vault V1 Router", async () => {
 
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(1);
 
-      expect((await inject("DELETE", memberships, { identityId: identity.id })).statusCode).toBe(200);
+      expect((await inject("DELETE", `${memberships}/identities/${identity.id}`)).statusCode).toBe(200);
 
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(0);
 
@@ -484,27 +486,19 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("the guards that keep the product administrable hold", async () => {
-      const self = await inject("DELETE", memberships, { userId: seedData1.id });
+      const self = await inject("DELETE", `${memberships}/users/${seedData1.id}`);
       expect(self.statusCode).toBe(403);
 
-      const unknown = await inject("POST", memberships, {
-        identityId: "00000000-0000-0000-0000-000000000000",
+      const unknown = await inject("POST", `${memberships}/identities/00000000-0000-0000-0000-000000000000`, {
         role: "member"
       });
       expect(unknown.statusCode).toBe(404);
 
-      const badRole = await inject("POST", memberships, { userId: seedData1.id, role: "viewer" });
+      const badRole = await inject("PATCH", `${memberships}/users/${seedData1.id}`, { role: "viewer" });
       expect(badRole.statusCode).toBe(422);
 
-      const noActor = await inject("POST", memberships, { role: "member" });
-      expect(noActor.statusCode).toBe(422);
-
-      const twoActors = await inject("POST", memberships, {
-        userId: seedData1.id,
-        identityId: seedData1.machineIdentity.id,
-        role: "member"
-      });
-      expect(twoActors.statusCode).toBe(422);
+      const notAnId = await inject("DELETE", `${memberships}/users/not-a-uuid`);
+      expect(notAnId.statusCode).toBe(422);
     });
   });
 
@@ -980,10 +974,13 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("an actor from outside the organization is refused, and an unknown id does not 500", async () => {
-      const stranger = await inject("POST", "/api/v1/agent-vault/memberships", {
-        userId: "99999999-8888-7777-6666-555555555555",
-        role: ProjectMembershipRole.Member
-      });
+      const stranger = await inject(
+        "POST",
+        "/api/v1/agent-vault/memberships/users/99999999-8888-7777-6666-555555555555",
+        {
+          role: ProjectMembershipRole.Member
+        }
+      );
       expect(stranger.statusCode).toBe(400);
       expect(JSON.parse(stranger.payload).message).toContain("not an active member of this organization");
 
@@ -1006,8 +1003,7 @@ describe("Agent Vault V1 Router", async () => {
 
       try {
         await testDb("memberships").where({ id: orgMembership.id }).update({ isActive: false });
-        const res = await inject("POST", "/api/v1/agent-vault/memberships", {
-          identityId,
+        const res = await inject("POST", `/api/v1/agent-vault/memberships/identities/${identityId}`, {
           role: ProjectMembershipRole.Member
         });
         expect(res.statusCode).toBe(400);
@@ -1116,7 +1112,7 @@ describe("Agent Vault V1 Router", async () => {
       const group = await createProjectGroup(projectId, "av-lapsing", ProjectMembershipRole.Member);
       const agent = await createUaIdentity(`av-lapse-${Date.now()}`);
       expect(
-        (await inject("POST", "/api/v1/agent-vault/memberships", { identityId: agent.id, role: "member" })).statusCode
+        (await inject("POST", `/api/v1/agent-vault/memberships/identities/${agent.id}`, { role: "member" })).statusCode
       ).toBe(200);
       await testDb("identity_group_membership").insert({ groupId: group.id, identityId: agent.id });
       expect(
@@ -1227,7 +1223,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("scoped-member-ids");
       const identity = await createOrgIdentity(`av-seats-${Date.now()}`);
       expect(
-        (await inject("POST", "/api/v1/agent-vault/memberships", { identityId: identity.id, role: "member" }))
+        (await inject("POST", `/api/v1/agent-vault/memberships/identities/${identity.id}`, { role: "member" }))
           .statusCode
       ).toBe(200);
 

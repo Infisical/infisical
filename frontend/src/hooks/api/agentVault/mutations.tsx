@@ -303,6 +303,19 @@ export const useRevokeAgentVaultProxyAccess = () => {
   });
 };
 
+// The member is named in the URL, so a call with no actor has nowhere to go. The role dialogs pass an
+// empty actor while closed, which cannot reach a mutation, so this only fires on a genuine mistake.
+const agentVaultMemberPath = ({
+  userId,
+  groupId,
+  identityId
+}: TAgentVaultProductMemberActor): string => {
+  if (userId) return `users/${userId}`;
+  if (groupId) return `groups/${groupId}`;
+  if (identityId) return `identities/${identityId}`;
+  throw new Error("Name a user, group or machine identity");
+};
+
 const invalidateProductMembers = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
@@ -338,15 +351,19 @@ export const useAddAgentVaultProductUserMembers = () => {
   });
 };
 
+// Users are added through the batch route, so this covers groups and machine identities only.
 export const useAddAgentVaultProductMember = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      projectId: _projectId,
-      ...dto
+      role,
+      ...actor
     }: TAgentVaultProductMemberActor & { projectId: string; role: string }) => {
-      const { data } = await apiRequest.post("/api/v1/agent-vault/memberships", dto);
+      const { data } = await apiRequest.post(
+        `/api/v1/agent-vault/memberships/${agentVaultMemberPath(actor)}`,
+        { role }
+      );
       return data;
     },
     onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, currentOrg.id, projectId)
@@ -358,10 +375,13 @@ export const useUpdateAgentVaultProductMemberRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      projectId: _projectId,
-      ...dto
+      role,
+      ...actor
     }: TAgentVaultProductMemberActor & { projectId: string; role: string }) => {
-      const { data } = await apiRequest.patch("/api/v1/agent-vault/memberships", dto);
+      const { data } = await apiRequest.patch(
+        `/api/v1/agent-vault/memberships/${agentVaultMemberPath(actor)}`,
+        { role }
+      );
       return data;
     },
     onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, currentOrg.id, projectId)
@@ -372,11 +392,10 @@ export const useRemoveAgentVaultProductMember = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      projectId: _projectId,
-      ...dto
-    }: TAgentVaultProductMemberActor & { projectId: string }) => {
-      const { data } = await apiRequest.delete("/api/v1/agent-vault/memberships", { data: dto });
+    mutationFn: async (actor: TAgentVaultProductMemberActor & { projectId: string }) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/agent-vault/memberships/${agentVaultMemberPath(actor)}`
+      );
       return data;
     },
     onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, currentOrg.id, projectId)
