@@ -130,11 +130,6 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 
 By default the gateway connects out to a relay. To have Infisical connect to the gateway instead, set `gateway.listenAddress` to the address Infisical dials.
 
-<Warning>
-  `gateway.listenAddress` needs an `image.tag` whose CLI supports `--listen-address`. Check the tag before setting it: an older image rejects the flag and the pod crash-loops with `unknown flag: --listen-address`.
-</Warning>
-
-
 ```bash
 helm install infisical-gateway infisical-helm-charts/infisical-gateway \
   --namespace infisical-gateway \
