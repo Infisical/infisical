@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { AGENT_VAULT_PRODUCT } from "@app/helpers/orgScopedProducts";
+import { fetchOrgScopedProjectId } from "@app/hooks/api/orgScopedProducts";
 
 import {
   TAgentVaultAccessBundleDetails,
@@ -11,10 +13,7 @@ import {
   TListAgentVaultSessionsDTO
 } from "./types";
 
-export const fetchAgentVaultProjectId = async () => {
-  const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/agent-vault/project");
-  return data.projectId;
-};
+export const fetchAgentVaultProjectId = () => fetchOrgScopedProjectId(AGENT_VAULT_PRODUCT);
 
 export const agentVaultKeys = {
   all: ["agent-vault"] as const,

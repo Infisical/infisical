@@ -13,6 +13,8 @@ import { createWorkspace } from "@app/hooks/api/projects/queries";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 
+import { getOrgScopedProduct, ORG_SCOPED_PRODUCT_SLUGS } from "./orgScopedProducts";
+
 const secretsToBeAdded = [
   {
     secretKey: "DATABASE_URL",
@@ -124,18 +126,23 @@ const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
 export const hasIntermediateProjectsView = (type: ProjectType) =>
   PROJECT_TYPES_WITH_INTERMEDIATE_VIEW.has(type);
 
-// Products that live at /organizations/$orgId/<slug> over a single implicit project, with no $projectId
-// in the URL.
-const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
+export const isOrgScopedProduct = (type: ProjectType) => Boolean(getOrgScopedProduct(type));
 
-export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
+const ORG_SCOPED_PRODUCT_PATH_RE = new RegExp(
+  `^/organizations/(?<orgId>[^/]+)/(?<slug>${ORG_SCOPED_PRODUCT_SLUGS.join("|")})(?:/|$)`
+);
 
-const ORG_SCOPED_PRODUCT_PATH_RE = /^\/organizations\/[^/]+\/(pam|agent-vault)(?:\/|$)/;
-
-export const getOrgScopedProductFromPath = (pathname: string): ProjectType | null => {
-  const slug = pathname.match(ORG_SCOPED_PRODUCT_PATH_RE)?.[1];
-  return slug ? urlSlugToProjectType(slug) : null;
+// Org-scoped products carry no $projectId, so anything that needs their project resolves it from
+// the org id in the path.
+export const getOrgScopedProductPath = (pathname: string) => {
+  const groups = pathname.match(ORG_SCOPED_PRODUCT_PATH_RE)?.groups;
+  const type = groups?.slug ? urlSlugToProjectType(groups.slug) : null;
+  const product = type ? getOrgScopedProduct(type) : undefined;
+  return product && groups?.orgId ? { orgId: groups.orgId, product } : null;
 };
+
+export const getOrgScopedProductFromPath = (pathname: string): ProjectType | null =>
+  getOrgScopedProductPath(pathname)?.product.type ?? null;
 
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {
