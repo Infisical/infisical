@@ -3,6 +3,9 @@ ARG INFISICAL_CLI_VERSION=0.43.129
 
 FROM node:22.23.2-trixie-slim AS build
 
+# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
+RUN npm install -g npm@10.9.9
+
 WORKDIR /app
 
 # Required for pkcs11js and TDS driver (SAP ASE dynamic secrets)
@@ -48,6 +51,9 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Production dependencies (runs in parallel with build)
 FROM node:22.23.2-trixie-slim AS prod-deps
 
+# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
+RUN npm install -g npm@10.9.9
+
 WORKDIR /app
 
 # Build tools needed to compile native modules during npm ci
@@ -67,6 +73,10 @@ RUN npm ci --omit=dev
 
 # Production stage
 FROM node:22.23.2-trixie-slim
+
+# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
+RUN npm install -g npm@10.9.9
+
 WORKDIR /app
 
 ENV npm_config_cache /home/node/.npm
