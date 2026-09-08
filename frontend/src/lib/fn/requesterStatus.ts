@@ -3,7 +3,7 @@ import { OrgUser } from "@app/hooks/api/users/types";
 export type TRequesterStatus = {
   isProjectUser: boolean;
   userLabel: string;
-  userId?: string;
+  orgUser?: OrgUser;
 };
 
 // Resolves the ?requesterEmail= deep link into a display label and pre-fill target.
@@ -14,17 +14,24 @@ export const getRequesterStatus = (
 ): TRequesterStatus => {
   if (!requesterEmail) return { isProjectUser: false, userLabel: "" };
 
-  const isProjectUser = memberUsernames.has(requesterEmail);
-  const userDetails = orgUsers?.find((el) => el.user.username === requesterEmail);
+  // The link carries users.email verbatim while username is a lowercased copy of it, and only
+  // username is guaranteed to be set, so match either one case-insensitively.
+  const requested = requesterEmail.toLowerCase();
+  const matches = (value: string | undefined) => value?.toLowerCase() === requested;
+
+  const isProjectUser = memberUsernames.has(requesterEmail) || memberUsernames.has(requested);
+  const orgUser = orgUsers?.find(
+    ({ user }) => matches(user.username) || matches(user.email) || false
+  );
 
   let userLabel = "";
-  if (userDetails) {
-    const { firstName, lastName, email } = userDetails.user;
+  if (orgUser) {
+    const { firstName, lastName, email } = orgUser.user;
     userLabel =
       firstName && lastName
         ? `${firstName} ${lastName}`
-        : firstName || lastName || (email as string);
+        : firstName || lastName || email || orgUser.inviteEmail;
   }
 
-  return { isProjectUser, userLabel, userId: userDetails?.id };
+  return { isProjectUser, userLabel, orgUser };
 };

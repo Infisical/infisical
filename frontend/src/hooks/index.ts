@@ -12,6 +12,7 @@ export { useOnboarding } from "./useOnboarding";
 export { usePagination } from "./usePagination";
 export { usePersistentState } from "./usePersistentState";
 export { usePopUp } from "./usePopUp";
+export { useRequesterEmail } from "./useRequesterEmail";
 export { useResetPageHelper } from "./useResetPageHelper";
 export * from "./useResizableHeaderHeight";
 export { useScopeVariant } from "./useScopeVariant";

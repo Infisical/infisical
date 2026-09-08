@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Dialog,
   DialogContent,
@@ -15,9 +18,11 @@ import {
   FilterableSelect
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { useRequesterEmail } from "@app/hooks";
 import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
 import { useAddAgentVaultProductUserMembers } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
 
 import { ProductRoleField } from "./ProductRoleField";
 
@@ -34,6 +39,8 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const { data: orgUsers = [] } = useGetOrgUsers(currentOrg.id);
   const { data: projectUsers = [] } = useGetWorkspaceUsers(currentProject.id);
   const addMembers = useAddAgentVaultProductUserMembers();
+  const navigate = useNavigate({ from: "" });
+  const requesterEmail = useRequesterEmail();
 
   const [selected, setSelected] = useState<TCandidate[]>([]);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
@@ -49,23 +56,62 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
       });
   }, [orgUsers, projectUsers]);
 
-  const handleAdd = async () => {
-    const { addedCount } = await addMembers.mutateAsync({
-      projectId: currentProject.id,
-      userIds: selected.map((candidate) => candidate.value),
-      emails: [],
-      role
-    });
-    createNotification({
-      text: `${addedCount} user${addedCount === 1 ? "" : "s"} added`,
-      type: "success"
-    });
+  const memberUsernames = useMemo(
+    () => new Set(projectUsers.map((member) => member.user.username)),
+    [projectUsers]
+  );
+
+  const requesterStatus = useMemo(
+    () => getRequesterStatus(requesterEmail, orgUsers, memberUsernames),
+    [requesterEmail, orgUsers, memberUsernames]
+  );
+  const requesterUserId = requesterStatus.orgUser?.user.id;
+
+  useEffect(() => {
+    if (!requesterEmail || !requesterUserId || requesterStatus.isProjectUser) return;
+    const requester = candidates.find((candidate) => candidate.value === requesterUserId);
+    if (requester) setSelected([requester]);
+  }, [requesterEmail, requesterUserId, requesterStatus.isProjectUser, candidates]);
+
+  const clearRequesterEmail = () => {
+    if (requesterEmail) navigate({ search: (prev) => ({ ...prev, requesterEmail: "" }) });
+  };
+
+  const handleClose = () => {
     setSelected([]);
+    setRole(ProjectMembershipRole.Member);
+    clearRequesterEmail();
     onOpenChange(false);
   };
 
+  const handleAdd = () => {
+    addMembers.mutate(
+      {
+        projectId: currentProject.id,
+        userIds: selected.map((candidate) => candidate.value),
+        emails: [],
+        role
+      },
+      {
+        onSuccess: ({ addedCount }) => {
+          createNotification({
+            text: `${addedCount} user${addedCount === 1 ? "" : "s"} added`,
+            type: "success"
+          });
+          handleClose();
+        }
+      }
+    );
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) clearRequesterEmail();
+        onOpenChange(open);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Users</DialogTitle>
@@ -94,8 +140,28 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
           </FieldContent>
         </Field>
 
+        {requesterEmail && requesterStatus.isProjectUser && (
+          <Alert variant="danger">
+            <AlertDescription>Requested user already has access to Agent Vault.</AlertDescription>
+          </Alert>
+        )}
+        {requesterEmail && !requesterStatus.isProjectUser && requesterStatus.orgUser && (
+          <Alert>
+            <AlertDescription>
+              Assign a role to provide access to requesting user <b>{requesterStatus.userLabel}</b>.
+            </AlertDescription>
+          </Alert>
+        )}
+        {requesterEmail && !requesterStatus.isProjectUser && !requesterStatus.orgUser && (
+          <Alert>
+            <AlertDescription>
+              No member of {currentOrg.name} matches <b>{requesterEmail}</b>.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button
