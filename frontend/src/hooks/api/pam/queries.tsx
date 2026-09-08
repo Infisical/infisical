@@ -4,12 +4,10 @@ import { unpackRules } from "@casl/ability/extra";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { PAM_PRODUCT } from "@app/helpers/orgScopedProducts";
 import {
   createResourcePermissionQueryHook,
   ResourcePermissionResponse
 } from "@app/helpers/resourcePermissions";
-import { fetchOrgScopedProjectId } from "@app/hooks/api/orgScopedProducts";
 import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 import {
@@ -46,7 +44,11 @@ import {
   TPamStaleAccount
 } from "./types";
 
-export const fetchPamProjectId = () => fetchOrgScopedProjectId(PAM_PRODUCT);
+// Resolves the org's PAM project, creating it on first access (lazy bootstrap on the backend).
+export const fetchPamProjectId = async () => {
+  const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/pam/project");
+  return data.projectId;
+};
 
 // For imperative (non-hook) callers; skips the fetch when the id is already cached.
 export const resolvePamProjectId = async (cachedPamProjectId?: string | null) =>
