@@ -18,7 +18,6 @@ import { z } from "zod";
 
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
-import { getCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -426,7 +425,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
 
   await server.register(fastifySession, {
-    secret: getCookieSigningKey(),
+    secret: server.cookieSigningKey,
     store: redisStore,
     cookie: {
       secure: appCfg.HTTPS_ENABLED,

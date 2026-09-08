@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { deriveSecretValueBlindIndexKey } from "./blind-index";
 import { deriveCookieSigningKey } from "./cookie-signing-key";
@@ -39,36 +39,5 @@ describe("deriveCookieSigningKey", () => {
   it("is domain separated from the blind index derivation over the same root key", async () => {
     const blindIndexKey = await deriveSecretValueBlindIndexKey(ROOT_KEY);
     expect(deriveCookieSigningKey(ROOT_KEY)).not.toBe(blindIndexKey.toString("base64"));
-  });
-});
-
-describe("the resolved cookie signing key", () => {
-  // The module holds the resolved key as process state, so each case takes a fresh copy rather than
-  // inheriting whatever the previous one set.
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
-  it("is refused before the root key has been loaded", async () => {
-    const { getCookieSigningKey } = await import("./cookie-signing-key");
-    expect(() => getCookieSigningKey()).toThrowError(/before the KMS root key was loaded/);
-  });
-
-  it("returns a configured key verbatim, without deriving or transforming it", async () => {
-    const { getCookieSigningKey, setCookieSigningKey } = await import("./cookie-signing-key");
-    const configured = "an-operator-supplied-key-of-at-least-32-chars";
-
-    setCookieSigningKey(configured);
-
-    expect(getCookieSigningKey()).toBe(configured);
-  });
-
-  it("takes the most recently set key", async () => {
-    const { getCookieSigningKey, setCookieSigningKey } = await import("./cookie-signing-key");
-
-    setCookieSigningKey("first-key-first-key-first-key-first");
-    setCookieSigningKey("second-key-second-key-second-key-se");
-
-    expect(getCookieSigningKey()).toBe("second-key-second-key-second-key-se");
   });
 });

@@ -17,7 +17,6 @@ import { z } from "zod";
 import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
 import { ApiDocsTags, SamlSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
-import { getCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -49,7 +48,7 @@ type TSAMLConfig = {
 export const registerSamlRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const passport = new Authenticator({ key: "saml", userProperty: "passportUser" });
-  await server.register(fastifySession, { secret: getCookieSigningKey() });
+  await server.register(fastifySession, { secret: server.cookieSigningKey });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
   server.decorateRequest("ssoConfig");

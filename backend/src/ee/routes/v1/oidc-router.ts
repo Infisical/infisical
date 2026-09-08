@@ -15,7 +15,6 @@ import { OidcConfigsSchema } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
-import { getCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -57,7 +56,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
   });
 
   await server.register(fastifySession, {
-    secret: getCookieSigningKey(),
+    secret: server.cookieSigningKey,
     store: redisStore,
     cookie: {
       secure: appCfg.HTTPS_ENABLED,

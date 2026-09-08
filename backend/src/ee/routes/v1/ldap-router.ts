@@ -18,7 +18,6 @@ import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
 import { isValidLdapFilter, searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LdapSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
-import { getCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -31,7 +30,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 export const registerLdapRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const passport = new Authenticator({ key: "ldap", userProperty: "passportUser" });
-  await server.register(fastifySession, { secret: getCookieSigningKey() });
+  await server.register(fastifySession, { secret: server.cookieSigningKey });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
 
