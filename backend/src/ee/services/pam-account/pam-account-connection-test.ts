@@ -17,6 +17,7 @@ export enum TestConnectionMode {
   LDAP = "ldap",
   Kubernetes = "kubernetes",
   SSH = "ssh",
+  Snowflake = "snowflake",
   Tcp = "tcp"
 }
 
@@ -79,6 +80,20 @@ export type TestConnectionRequest =
       password?: string;
       privateKey?: string;
       certificate?: string;
+    }
+  | {
+      mode: TestConnectionMode.Snowflake;
+      account: string;
+      authMethod: string;
+      username: string;
+      password?: string;
+      token?: string;
+      privateKey?: string;
+      privateKeyPassphrase?: string;
+      warehouse?: string;
+      database?: string;
+      schema?: string;
+      role?: string;
     }
   | { mode: TestConnectionMode.Tcp };
 
@@ -297,6 +312,42 @@ export const buildGatewayConnectionTest = async (
           password: c.password,
           privateKey: c.privateKey,
           certificate: c.certificate
+        }
+      };
+    }
+    case PamAccountType.Snowflake: {
+      const cd = connectionDetails as {
+        account: string;
+        warehouse?: string;
+        database?: string;
+        schema?: string;
+        role?: string;
+      };
+      const c = creds as {
+        authMethod: string;
+        username: string;
+        password?: string;
+        token?: string;
+        privateKey?: string;
+        privateKeyPassphrase?: string;
+      } | null;
+      if (!c) return tcp(host, port);
+      return {
+        host,
+        port,
+        request: {
+          mode: TestConnectionMode.Snowflake,
+          account: cd.account,
+          authMethod: c.authMethod,
+          username: c.username,
+          password: c.password,
+          token: c.token,
+          privateKey: c.privateKey,
+          privateKeyPassphrase: c.privateKeyPassphrase,
+          warehouse: cd.warehouse,
+          database: cd.database,
+          schema: cd.schema,
+          role: cd.role
         }
       };
     }

@@ -66,7 +66,13 @@ type TPamWebAccessServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
-    "create" | "endSessionById" | "activateSession" | "countActiveWebSessions" | "endExpiredWebSessions" | "updateById"
+    | "create"
+    | "endSessionById"
+    | "activateSession"
+    | "countActiveWebSessions"
+    | "endExpiredWebSessions"
+    | "isSessionTerminated"
+    | "updateById"
   >;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "runWithPoolFailover">;
@@ -676,6 +682,18 @@ export const pamWebAccessServiceFactory = ({
         if (socket.readyState === socket.OPEN) {
           socket.ping();
         }
+
+        void (async () => {
+          const sessionId = session?.id;
+          if (!sessionId || cleanedUp) return;
+          try {
+            if (!(await pamSessionDAL.isSessionTerminated(sessionId))) return;
+            await cleanup();
+            sendSessionEndAndClose(socket, SessionEndReason.Terminated);
+          } catch (err) {
+            logger.error(err, `Failed to check session termination [sessionId=${sessionId}]`);
+          }
+        })();
       }, WS_PING_INTERVAL_MS);
 
       socket.on("message", () => {

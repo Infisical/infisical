@@ -25,6 +25,11 @@ import type { SqlDialect } from "./sql-generation";
 import { useDataExplorerSession } from "./use-data-explorer-session";
 import { useQueryTabs } from "./use-query-tabs";
 
+const DIALECT_BY_ACCOUNT_TYPE: Partial<Record<PamAccountType, SqlDialect>> = {
+  [PamAccountType.MySQL]: "mysql",
+  [PamAccountType.Snowflake]: "snowflake"
+};
+
 type Props = {
   reason?: string;
   mfaSessionId?: string;
@@ -40,11 +45,18 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
 
   const { data: account } = useGetPamAccountById(accountId);
 
-  const dialect: SqlDialect = account?.accountType === PamAccountType.MySQL ? "mysql" : "postgres";
-  const defaultSchema =
-    dialect === "mysql"
-      ? ((account?.connectionDetails as { database?: string })?.database ?? "")
-      : "public";
+  const dialect: SqlDialect =
+    (account?.accountType && DIALECT_BY_ACCOUNT_TYPE[account.accountType]) ?? "postgres";
+  const connectionDetails = account?.connectionDetails as { database?: string; schema?: string };
+
+  let defaultSchema: string;
+  if (dialect === "mysql") {
+    defaultSchema = connectionDetails?.database ?? "";
+  } else if (dialect === "snowflake") {
+    defaultSchema = connectionDetails?.schema ?? "PUBLIC";
+  } else {
+    defaultSchema = "public";
+  }
 
   // Sidebar-only view state. Switching schemas in the sidebar does not alter
   // open tabs — tabs are bound to their own (schema, table) at open time.

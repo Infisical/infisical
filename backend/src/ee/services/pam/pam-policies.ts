@@ -105,8 +105,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",
     description: "Matching commands will be rejected (one regex per line).",
-    appliesTo: [PamAccountType.SSH],
-    schema: patternsStringSchema()
+    appliesTo: [PamAccountType.SSH, PamAccountType.Snowflake],
+    schema: patternsStringSchema(),
+    typeOverrides: {
+      [PamAccountType.Snowflake]: {
+        description: "Matching SQL statements will be rejected (one regex per line)."
+      }
+    }
   }
 };
 

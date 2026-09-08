@@ -57,6 +57,14 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return updated;
   };
 
+  const isSessionTerminated = async (sessionId: string, tx?: Knex) => {
+    const session = await (tx || db.replicaNode())(TableName.PamSession)
+      .where("id", sessionId)
+      .select("status")
+      .first();
+    return session?.status === PamSessionStatus.Terminated;
+  };
+
   const terminateSessionById = async (sessionId: string, tx?: Knex) => {
     const [updated] = await (tx || db)(TableName.PamSession)
       .where("id", sessionId)
@@ -172,6 +180,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     countActiveWebSessions,
     endExpiredWebSessions,
     endSessionById,
+    isSessionTerminated,
     terminateSessionById,
     activateSession,
     findByProjectId,
