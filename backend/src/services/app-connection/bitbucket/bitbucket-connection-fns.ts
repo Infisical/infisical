@@ -76,7 +76,11 @@ interface BitbucketPaginatedResponse<T> {
   next?: string;
 }
 
-const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, string>): Promise<T[]> => {
+const paginateBitbucketRequest = async <T>(
+  url: string,
+  headers: Record<string, string>,
+  username?: string
+): Promise<T[]> => {
   let allItems: T[] = [];
   let nextUrl: string | undefined = url;
   let iterationCount = 0;
@@ -92,8 +96,9 @@ const paginateBitbucketRequest = async <T>(url: string, headers: Record<string, 
     }
 
     if (nextUrl) {
+      const userTag = username ? ` [username=${username}]` : "";
       logger.warn(
-        `Stopped listing Bitbucket resources from ${sanitizeUrlForLog(url)} after ${BITBUCKET_MAX_PAGES} pages; some results were not returned`
+        `Stopped listing Bitbucket resources from ${sanitizeUrlForLog(url)} after ${BITBUCKET_MAX_PAGES} pages${userTag}; some results were not returned`
       );
     }
   } catch (error) {
@@ -120,7 +125,7 @@ export const listBitbucketWorkspaces = async (
     baseUrl.searchParams.set("q", `slug ~ "${search.replace(/"/g, "")}"`);
   }
 
-  const memberships = await paginateBitbucketRequest<BitbucketWorkspaceMembership>(baseUrl.toString(), headers);
+  const memberships = await paginateBitbucketRequest<BitbucketWorkspaceMembership>(baseUrl.toString(), headers, email);
   return memberships.map((membership) => ({ slug: membership.workspace.slug }));
 };
 
@@ -144,7 +149,7 @@ export const listBitbucketRepositories = async (
     baseUrl.searchParams.set("q", `name ~ "${search.replace(/"/g, "")}"`);
   }
 
-  return paginateBitbucketRequest<TBitbucketRepo>(baseUrl.toString(), headers);
+  return paginateBitbucketRequest<TBitbucketRepo>(baseUrl.toString(), headers, email);
 };
 
 export const listBitbucketEnvironments = async (
@@ -161,6 +166,7 @@ export const listBitbucketEnvironments = async (
 
   return paginateBitbucketRequest<TBitbucketEnvironment>(
     `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${encodeURIComponent(workspaceSlug)}/${encodeURIComponent(repositorySlug)}/environments?pagelen=${BITBUCKET_PAGE_SIZE}`,
-    headers
+    headers,
+    email
   );
 };

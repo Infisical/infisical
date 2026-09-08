@@ -295,7 +295,7 @@ describe("bitbucket-connection-fns", () => {
   });
 
   describe("pagination limits and error handling", () => {
-    it("terminates pagination at BITBUCKET_MAX_PAGES cap (10 pages) and logs warning when next continues indefinitely", async () => {
+    it("terminates pagination at BITBUCKET_MAX_PAGES cap (10 pages) and logs warning with [username] when next continues indefinitely", async () => {
       requestMock.get.mockResolvedValue({
         data: {
           values: [{ uuid: "{repo}", full_name: "ws/repo", slug: "repo" }],
@@ -309,7 +309,7 @@ describe("bitbucket-connection-fns", () => {
       expect(repos).toHaveLength(10);
       expect(loggerMock.warn).toHaveBeenCalledTimes(1);
       expect(loggerMock.warn).toHaveBeenCalledWith(
-        "Stopped listing Bitbucket resources from https://api.bitbucket.org/2.0/repositories/my-ws?pagelen=100&sort=slug after 10 pages; some results were not returned"
+        "Stopped listing Bitbucket resources from https://api.bitbucket.org/2.0/repositories/my-ws?pagelen=100&sort=slug after 10 pages [username=user@example.com]; some results were not returned"
       );
     });
 
