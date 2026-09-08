@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -30,7 +31,14 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useUser
+} from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
 import { useRemoveAgentVaultProductMember } from "@app/hooks/api/agentVault";
@@ -56,6 +64,21 @@ export const MembersTab = () => {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [memberToEdit, setMemberToEdit] = useState<TWorkspaceUser | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<TWorkspaceUser | null>(null);
+
+  const { permission } = useProjectPermission();
+  const canAddMembers = permission.can(
+    ProjectPermissionMemberActions.Create,
+    ProjectPermissionSub.Member
+  );
+  const requesterEmail = useSearch({
+    strict: false,
+    select: (el) => (el as { requesterEmail?: string })?.requesterEmail
+  });
+
+  // An access-request notification links here with the requester in the URL.
+  useEffect(() => {
+    if (requesterEmail && canAddMembers) setIsInviteOpen(true);
+  }, [requesterEmail, canAddMembers]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
