@@ -19,18 +19,12 @@ export const getRequesterStatus = (
   const requested = requesterEmail.toLowerCase();
   const matches = (value: string | undefined) => value?.toLowerCase() === requested;
 
+  const isProjectUser = memberUsernames.has(requesterEmail) || memberUsernames.has(requested);
   // Username first, so a username hit always wins: email is not guaranteed unique against other
   // users' usernames, and matching the wrong person here would preselect them for an access grant.
   const orgUser =
     orgUsers?.find(({ user }) => matches(user.username)) ??
     orgUsers?.find(({ user }) => matches(user.email));
-
-  // Derived from the resolved row, not the raw link: where usernames aren't copies of emails (LDAP,
-  // SAML with a non-email nameID) a raw lookup misses an existing member and we'd offer to grant
-  // access they already have.
-  const isProjectUser = orgUser
-    ? memberUsernames.has(orgUser.user.username)
-    : memberUsernames.has(requesterEmail) || memberUsernames.has(requested);
 
   let userLabel = "";
   if (orgUser) {
