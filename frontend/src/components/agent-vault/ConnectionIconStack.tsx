@@ -52,7 +52,7 @@ const ConnectionTile = ({ icon, className }: { icon: TConnectionIcon; className?
         <img
           src={`/images/integrations/${icon.image}`}
           alt=""
-          className="size-full object-contain"
+          className="size-full object-contain p-0.5"
           onError={() => setHasImageError(true)}
         />
       ) : (
