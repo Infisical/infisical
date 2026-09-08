@@ -171,7 +171,7 @@ export const GatewayDeploySection = ({
               {!isCloud && (
                 <Field>
                   <FieldLabel>Connection Mode</FieldLabel>
-                  <FieldDescription className="-mt-1 mb-1">
+                  <FieldDescription>
                     Pick which side opens the connection. Both use the same mutually authenticated
                     TLS.
                   </FieldDescription>
