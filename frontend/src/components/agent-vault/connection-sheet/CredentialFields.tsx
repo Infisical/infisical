@@ -164,12 +164,16 @@ export const CredentialFields = ({ storedType }: Props) => {
         />
       )}
 
-      {/* Only bearer composes anything: basic is a fixed header, so a preview there would never move. */}
-      {credentialType === AgentVaultCredentialType.Bearer && (
+      {credentialType !== AgentVaultCredentialType.Passthrough && (
         <CodeBlock
           label="Sends"
           isCopyable={false}
-          value={credentialPreview({ credentialType, headerName, headerPrefix }, "<token>") ?? ""}
+          value={
+            credentialPreview(
+              { credentialType, headerName, headerPrefix },
+              isBasic ? "base64(<username>:<password>)" : "<token>"
+            ) ?? ""
+          }
         />
       )}
 
