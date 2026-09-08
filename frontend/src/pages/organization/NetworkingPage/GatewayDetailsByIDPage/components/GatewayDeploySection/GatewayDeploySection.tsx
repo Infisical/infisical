@@ -171,10 +171,6 @@ export const GatewayDeploySection = ({
               {!isCloud && (
                 <Field>
                   <FieldLabel>Connection Mode</FieldLabel>
-                  <FieldDescription>
-                    Pick which side opens the connection. Both use the same mutually authenticated
-                    TLS.
-                  </FieldDescription>
                   <RadioGroup
                     value={connectionMode}
                     onValueChange={(value) => setConnectionMode(value as "relay" | "direct")}
