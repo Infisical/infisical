@@ -20,14 +20,12 @@ import {
 } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
-import {
-  EXTERNAL_APPROVAL_TYPE_MAP,
-  EXTERNAL_APPROVAL_TYPES
-} from "@app/helpers/externalApprovals";
+import { EXTERNAL_APPROVAL_DESCRIPTIONS } from "@app/helpers/externalApprovals";
 import { usePopUp } from "@app/hooks";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
-import { ExternalApprovalType } from "@app/hooks/api/accessApproval/types";
+import { useGetExternalApprovalOptions, useGetIdentityMembershipOrgs } from "@app/hooks/api";
+import { ExternalApprovalType, TExternalApprovalOption } from "@app/hooks/api/accessApproval/types";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { TApprovalPolicyFormSchema } from "./approvalPolicyFormSchema";
@@ -36,23 +34,21 @@ const CREATE_CONNECTION_ID = "_create";
 const SERVICENOW_DOCS_URL = "https://infisical.com/docs/integrations/app-connections/servicenow";
 
 const formatProviderOptionLabel = (
-  option: ExternalApprovalType,
-  { context }: FormatOptionLabelMeta<ExternalApprovalType>
+  option: TExternalApprovalOption,
+  { context }: FormatOptionLabelMeta<TExternalApprovalOption>
 ) => {
-  const details = EXTERNAL_APPROVAL_TYPE_MAP[option];
-
-  if (context === "value") return details.name;
+  if (context === "value") return option.name;
 
   return (
     <div className="flex items-center gap-2.5">
       <img
-        alt={`${details.name} logo`}
-        src={`/images/integrations/${APP_CONNECTION_MAP[details.app].image}`}
+        alt={`${option.name} logo`}
+        src={`/images/integrations/${APP_CONNECTION_MAP[option.app].image}`}
         className="size-5 shrink-0 rounded"
       />
       <div className="min-w-0">
-        <p className="truncate">{details.name}</p>
-        <p className="truncate text-xs text-muted">{details.description}</p>
+        <p className="truncate">{option.name}</p>
+        <p className="truncate text-xs text-muted">{EXTERNAL_APPROVAL_DESCRIPTIONS[option.type]}</p>
       </div>
     </div>
   );
@@ -73,16 +69,18 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
   const externalType = watch("externalApproval.type");
   const connectionId = watch("externalApproval.connectionId");
 
-  const providerDetails = externalType ? EXTERNAL_APPROVAL_TYPE_MAP[externalType] : undefined;
-  const app = providerDetails?.app;
-  const appName = app ? APP_CONNECTION_MAP[app].name : "";
+  const { data: externalApprovalOptions = [], isPending: isOptionsPending } =
+    useGetExternalApprovalOptions();
 
+  const selectedProvider = externalApprovalOptions.find((option) => option.type === externalType);
+  const app = selectedProvider?.app;
+  const appName = selectedProvider?.name ?? "";
+
+  // the hook needs an app even while the query is disabled; nothing is fetched until a provider is picked
   const { data: availableConnections = [], isPending: isConnectionsPending } =
-    useListAvailableAppConnections(
-      app ?? EXTERNAL_APPROVAL_TYPE_MAP[ExternalApprovalType.ServiceNow].app,
-      currentProject.id,
-      { enabled: Boolean(app) }
-    );
+    useListAvailableAppConnections(app ?? AppConnection.ServiceNow, currentProject.id, {
+      enabled: Boolean(app)
+    });
 
   const { data: identityData, isPending: isIdentitiesPending } = useGetIdentityMembershipOrgs(
     { organizationId: currentOrg.id, limit: 100 },
@@ -105,23 +103,24 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
         control={control}
         name="externalApproval.type"
         defaultValue={ExternalApprovalType.ServiceNow}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
+        render={({ field: { onChange }, fieldState: { error } }) => (
           <Field>
             <FieldLabel>
               External Provider <span className="text-danger">*</span>
             </FieldLabel>
             <FieldContent>
               <FilterableSelect
-                value={value ?? null}
+                value={selectedProvider ?? null}
                 onChange={(newValue) => {
-                  onChange(newValue as SingleValue<ExternalApprovalType>);
+                  onChange((newValue as SingleValue<TExternalApprovalOption>)?.type);
                   setValue("externalApproval.connectionId", undefined, { shouldDirty: true });
                   clearApproverIdentity();
                 }}
-                options={EXTERNAL_APPROVAL_TYPES}
+                options={externalApprovalOptions}
+                isLoading={isOptionsPending}
                 placeholder="Select an external provider..."
-                getOptionValue={(option) => option}
-                getOptionLabel={(option) => EXTERNAL_APPROVAL_TYPE_MAP[option].name}
+                getOptionValue={(option) => option.type}
+                getOptionLabel={(option) => option.name}
                 formatOptionLabel={formatProviderOptionLabel}
                 isError={Boolean(error)}
               />

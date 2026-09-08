@@ -10,6 +10,7 @@ import {
   TAccessApprovalRequest,
   TAccessRequestCount,
   TGetAccessApprovalRequestsDTO,
+  TExternalApprovalOption,
   TGetAccessPolicyApprovalCountDTO
 } from "./types";
 
@@ -28,8 +29,22 @@ export const accessApprovalKeys = {
   getAccessApprovalRequestsAllForProject: (projectSlug: string) =>
     ["access-approvals-requests", projectSlug] as const,
   getAccessApprovalRequestCount: (projectSlug: string, policyId?: string) =>
-    [{ projectSlug }, "access-approval-request-count", ...(policyId ? [policyId] : [])] as const
+    [{ projectSlug }, "access-approval-request-count", ...(policyId ? [policyId] : [])] as const,
+  getExternalApprovalOptions: () => ["external-approval-options"] as const
 };
+
+export const useGetExternalApprovalOptions = (options?: TReactQueryOptions) =>
+  useQuery({
+    queryKey: accessApprovalKeys.getExternalApprovalOptions(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ externalApprovalOptions: TExternalApprovalOption[] }>(
+        "/api/v1/access-approvals/external-approvals/options"
+      );
+      return data.externalApprovalOptions;
+    },
+    staleTime: Infinity,
+    ...options
+  });
 
 export const fetchPolicyApprovalCount = async ({
   projectSlug,

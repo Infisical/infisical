@@ -1,3 +1,4 @@
+import { AppConnection } from "../appConnections/enums";
 import { EnforcementLevel, PolicyType } from "../policies/enums";
 import { ProjectEnv } from "../projects/types";
 import { TProjectPermission } from "../roles/types";
@@ -12,6 +13,12 @@ export type TExternalApprovalPolicy = {
   type: ExternalApprovalType;
   connectionId: string;
   approverIdentityId?: string | null;
+};
+
+export type TExternalApprovalOption = {
+  type: ExternalApprovalType;
+  app: AppConnection;
+  name: string;
 };
 
 export type TExternalApprovalPolicyInput = {
