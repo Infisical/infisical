@@ -49,7 +49,7 @@ describe("DigitalOceanAppPlatformPublicClient", () => {
   });
 
   describe("getApps", () => {
-    it("requests with per_page=100 and returns apps on a single page", async () => {
+    it("requests with per_page=200 and returns apps on a single page", async () => {
       const mockApps: TDigitalOceanApp[] = [
         {
           id: "app-1",
@@ -72,7 +72,7 @@ describe("DigitalOceanAppPlatformPublicClient", () => {
 
       expect(apps).toEqual(mockApps);
       expect(mockClientGet).toHaveBeenCalledTimes(1);
-      expect(mockClientGet).toHaveBeenCalledWith("/apps?per_page=100", {
+      expect(mockClientGet).toHaveBeenCalledWith("/apps?per_page=200", {
         headers: {
           Authorization: "Bearer dop_v1_mock_token"
         }
@@ -96,7 +96,7 @@ describe("DigitalOceanAppPlatformPublicClient", () => {
             apps: page1Apps,
             links: {
               pages: {
-                next: "https://api.digitalocean.com/v2/apps?page=2&per_page=100"
+                next: "https://api.digitalocean.com/v2/apps?page=2&per_page=200"
               }
             },
             meta: { total: 35 }
@@ -114,10 +114,10 @@ describe("DigitalOceanAppPlatformPublicClient", () => {
 
       expect(apps).toHaveLength(35);
       expect(mockClientGet).toHaveBeenCalledTimes(2);
-      expect(mockClientGet).toHaveBeenNthCalledWith(1, "/apps?per_page=100", {
+      expect(mockClientGet).toHaveBeenNthCalledWith(1, "/apps?per_page=200", {
         headers: { Authorization: "Bearer dop_v1_mock_token" }
       });
-      expect(mockClientGet).toHaveBeenNthCalledWith(2, "https://api.digitalocean.com/v2/apps?page=2&per_page=100", {
+      expect(mockClientGet).toHaveBeenNthCalledWith(2, "https://api.digitalocean.com/v2/apps?page=2&per_page=200", {
         headers: { Authorization: "Bearer dop_v1_mock_token" }
       });
       expect(mockLoggerWarn).not.toHaveBeenCalled();
