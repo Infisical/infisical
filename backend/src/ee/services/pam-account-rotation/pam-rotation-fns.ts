@@ -71,11 +71,12 @@ export const withGatewayRetry = async (
 // PamAccountType -> AppConnection, so we can reuse the per-dialect ALTER statement map keyed by AppConnection.
 export const PAM_ROTATION_APP_MAP: Record<
   TSqlRotatableType,
-  AppConnection.Postgres | AppConnection.MySql | AppConnection.MsSql
+  AppConnection.Postgres | AppConnection.MySql | AppConnection.MsSql | AppConnection.OracleDB
 > = {
   [PamAccountType.Postgres]: AppConnection.Postgres,
   [PamAccountType.MySQL]: AppConnection.MySql,
-  [PamAccountType.MsSQL]: AppConnection.MsSql
+  [PamAccountType.MsSQL]: AppConnection.MsSql,
+  [PamAccountType.OracleDB]: AppConnection.OracleDB
 };
 
 export enum PamRotationReadinessIssue {

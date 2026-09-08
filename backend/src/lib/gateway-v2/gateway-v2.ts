@@ -143,7 +143,8 @@ export const createGatewayConnection = async (
     [GatewayProxyProtocol.Adcs]: ["infisical-adcs"],
     [GatewayProxyProtocol.Discovery]: ["infisical-discovery"],
     [GatewayProxyProtocol.ConnectionTest]: ["infisical-connection-test"],
-    [GatewayProxyProtocol.WinRm]: ["infisical-winrm"]
+    [GatewayProxyProtocol.WinRm]: ["infisical-winrm"],
+    [GatewayProxyProtocol.Sql]: ["infisical-sql"]
   };
 
   const tlsOptions: tls.ConnectionOptions = {

@@ -17,6 +17,8 @@ import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
 import {
   buildGatewayConnectionTest,
   CLOUD_CONNECTION_VALIDATORS,
+  exceedsOraclePasswordLimit,
+  ORACLE_MAX_PASSWORD_LENGTH,
   TestConnectionMode
 } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
@@ -215,8 +217,15 @@ export const pamAccountHeartbeatServiceFactory = ({
     const probeCredentials =
       accountType === PamAccountType.SSH ? await mintEphemeralSshCertificate(account, credentials) : credentials;
 
+    if (exceedsOraclePasswordLimit(accountType, credentials)) {
+      return {
+        status: PamHeartbeatStatus.CannotCheck,
+        message: `This account's password is longer than ${ORACLE_MAX_PASSWORD_LENGTH} characters, so this credential was not checked`
+      };
+    }
+
     const test = await buildGatewayConnectionTest(accountType, connectionDetails, probeCredentials, orgId, {
-      allowWindowsAuthSql: true
+      allowNewerGatewayTests: true
     });
     if (!test) {
       return { status: PamHeartbeatStatus.Unknown, message: "This account type cannot be checked yet" };

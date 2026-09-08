@@ -12,6 +12,7 @@ import {
   validateRecordingConnection,
   validateRecordingS3Config
 } from "../pam/pam-validators";
+import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
 import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
@@ -80,6 +81,16 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
       if (invalid.length > 0) {
         throw new BadRequestError({ message: `Allowed symbols may only include: ${SAFE_PASSWORD_SYMBOLS}` });
       }
+    }
+    const requestedLength = settings.passwordRequirements?.length;
+    if (
+      accountType === PamAccountType.OracleDB &&
+      requestedLength !== undefined &&
+      requestedLength > ORACLE_MAX_PASSWORD_LENGTH
+    ) {
+      throw new BadRequestError({
+        message: `Oracle passwords are limited to ${ORACLE_MAX_PASSWORD_LENGTH} characters, so a template cannot request a longer one`
+      });
     }
   };
 

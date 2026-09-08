@@ -1,0 +1,51 @@
+---
+title: "Oracle credential rotation"
+sidebarTitle: "Oracle"
+description: "Rotate Oracle account passwords with Infisical PAM."
+---
+
+This page covers what is specific to rotating an [Oracle account](/documentation/platform/pam/accounts/oracledb). For how rotation is configured and scheduled, see the [overview](/documentation/platform/pam/product-reference/credential-rotation/overview).
+
+<Note>
+  Rotating an Oracle account needs a [Gateway](/documentation/platform/gateways/overview) running v0.43.130 or later. Rotation fails on an older Gateway.
+</Note>
+
+## How the password is changed
+
+When an Oracle account rotates, the rotation account connects to the target and runs:
+
+```sql
+ALTER USER "<target_username>" IDENTIFIED BY "<generated_password>";
+```
+
+The connection uses the account's existing connection details, including the SSL settings.
+
+The statement matches the stored username exactly, so an account whose username doesn't match the case Oracle stored fails to rotate even though its sessions launch fine. Oracle reports this as a privilege error, not a missing user.
+
+## Rotation account requirements
+
+- **Self-rotation**: an Oracle user can change its own password, so no extra privileges are needed beyond `CREATE SESSION`.
+- **Delegated rotation**: the rotation account needs the `ALTER USER` system privilege to change another user's password. Without it Oracle returns `ORA-01031: insufficient privileges`.
+
+An example setup for a dedicated delegated rotation user:
+
+```sql
+-- the user Infisical connects as to perform rotations
+CREATE USER infisical_rotator IDENTIFIED BY "temporary_password";
+GRANT CREATE SESSION TO infisical_rotator;
+GRANT ALTER USER TO infisical_rotator;
+
+-- the account whose password gets rotated
+CREATE USER app_user IDENTIFIED BY "temporary_password";
+GRANT CREATE SESSION TO app_user;
+```
+
+<Note>
+  A delegated rotation account has to use the same service name as its target, not just the same host and port. Oracle scopes a user to a single database, so a rotation account pointed at a different service can't see the target user.
+</Note>
+
+## Password length
+
+An Oracle template won't accept a password length above 30 characters, and rotation never generates a longer one.
+
+The same limit applies to the rotation account itself. If its own password is longer than 30 characters it can't sign in to perform the rotation, so shorten it first.

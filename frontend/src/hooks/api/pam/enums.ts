@@ -30,6 +30,7 @@ export const ROTATABLE_PAM_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
   PamAccountType.MySQL,
   PamAccountType.MsSQL,
+  PamAccountType.OracleDB,
   PamAccountType.Windows,
   PamAccountType.WindowsAd
 ];

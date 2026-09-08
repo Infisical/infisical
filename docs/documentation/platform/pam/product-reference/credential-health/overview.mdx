@@ -34,6 +34,7 @@ Each check signs in the same way a session would, using the account's own authen
 | --- | --- |
 | PostgreSQL, MySQL, Microsoft SQL Server | Signs in and runs a trivial query |
 | Microsoft SQL Server with Windows authentication | Completes an NTLM or Kerberos handshake |
+| Oracle | Signs in and runs a trivial query |
 | MongoDB | Signs in and pings the server |
 | Redis | Sends `AUTH`, then `PING` |
 | Windows Active Directory | Binds to the domain controller |
@@ -47,6 +48,10 @@ Checks are spread across the interval rather than fired together, so a template 
 
 <Note>
   Microsoft SQL Server accounts using Windows authentication need a gateway running a version that supports the Windows authentication handshake. An older gateway reports these accounts as **Out of Sync** even when the credential is valid. Update the gateway to get an accurate result.
+</Note>
+
+<Note>
+  Checking an Oracle credential needs a gateway running v0.43.130 or later, and a password of 30 characters or fewer. An Oracle account that doesn't meet both shows as **Unreachable**.
 </Note>
 
 ## Configuring a template
