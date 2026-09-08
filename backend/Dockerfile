@@ -1,4 +1,6 @@
 # Build stage
+ARG INFISICAL_CLI_VERSION=0.43.128
+
 FROM node:22.22.0-trixie-slim AS build
 
 WORKDIR /app
@@ -70,6 +72,7 @@ WORKDIR /app
 ENV npm_config_cache /home/node/.npm
 
 # Only runtime dependencies — no compilation happens here
+ARG INFISICAL_CLI_VERSION
 RUN apt-get update && apt-get install -y \
     unixodbc \
     freetds-bin \
@@ -79,7 +82,8 @@ RUN apt-get update && apt-get install -y \
     bash \
     git \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.79 \
+    && test -n "$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
     && rm -rf /var/lib/apt/lists/*
 
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini

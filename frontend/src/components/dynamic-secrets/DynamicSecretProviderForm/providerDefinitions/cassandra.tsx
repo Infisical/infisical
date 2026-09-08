@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
+import { VaultCassandraImportModal } from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
 import { ProjectPermissionSub, useProject } from "@app/context";
@@ -10,7 +11,6 @@ import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import type { VaultDatabaseRole } from "@app/hooks/api/migration/types";
-import { VaultCassandraImportModal } from "@app/pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/VaultCassandraImportModal";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";

@@ -31,6 +31,11 @@ export type TestConnectionRequest =
       sslEnabled?: boolean;
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
+      authMethod?: string;
+      domain?: string;
+      realm?: string;
+      kdcAddress?: string;
+      spn?: string;
     }
   | {
       mode: TestConnectionMode.MongoDB;
@@ -67,7 +72,14 @@ export type TestConnectionRequest =
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
     }
-  | { mode: TestConnectionMode.SSH; authMethod: string; username: string; password?: string; privateKey?: string }
+  | {
+      mode: TestConnectionMode.SSH;
+      authMethod: string;
+      username: string;
+      password?: string;
+      privateKey?: string;
+      certificate?: string;
+    }
   | { mode: TestConnectionMode.Tcp };
 
 const SQL_DIALECTS = {
@@ -83,7 +95,9 @@ export const buildGatewayConnectionTest = async (
   accountType: PamAccountType,
   connectionDetails: Record<string, unknown>,
   credentials: Record<string, unknown> | null,
-  orgId: string
+  orgId: string,
+  // Off for account create and update, which must not fail against a gateway predating the proxy handshake.
+  opts?: { allowWindowsAuthSql?: boolean }
 ): Promise<{ host: string; port: number; request: TestConnectionRequest } | null> => {
   const creds = credentials && isCredentialConfigured(accountType, credentials) ? credentials : null;
 
@@ -113,8 +127,15 @@ export const buildGatewayConnectionTest = async (
         password?: string;
         awsRegion?: string;
         roleArn?: string;
+        domain?: string;
+        realm?: string;
+        kdcAddress?: string;
+        spn?: string;
       } | null;
-      if (!c || (accountType === PamAccountType.MsSQL && c.authMethod !== "sql-login")) return tcp(host, port);
+      if (!c) return tcp(host, port);
+      if (accountType === PamAccountType.MsSQL && c.authMethod !== "sql-login" && !opts?.allowWindowsAuthSql) {
+        return tcp(host, port);
+      }
       // An IAM login's password is a token Infisical mints per connection, so the test mints its own
       const password =
         c.authMethod === PamPostgresAuthMethod.AwsIam
@@ -139,7 +160,16 @@ export const buildGatewayConnectionTest = async (
           database: cd.database,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,
-          sslCertificate: cd.sslCertificate
+          sslCertificate: cd.sslCertificate,
+          ...(accountType === PamAccountType.MsSQL
+            ? {
+                authMethod: c.authMethod,
+                domain: c.domain,
+                realm: c.realm,
+                kdcAddress: c.kdcAddress,
+                spn: c.spn
+              }
+            : {})
         }
       };
     }
@@ -249,8 +279,14 @@ export const buildGatewayConnectionTest = async (
       };
     }
     case PamAccountType.SSH: {
-      const c = creds as { authMethod: string; username: string; password?: string; privateKey?: string } | null;
-      if (!c || c.authMethod === PamSshAuthMethod.Certificate) return tcp(host, port);
+      const c = creds as {
+        authMethod: string;
+        username: string;
+        password?: string;
+        privateKey?: string;
+        certificate?: string;
+      } | null;
+      if (!c || (c.authMethod === PamSshAuthMethod.Certificate && !c.certificate)) return tcp(host, port);
       return {
         host,
         port,
@@ -259,7 +295,8 @@ export const buildGatewayConnectionTest = async (
           authMethod: c.authMethod,
           username: c.username,
           password: c.password,
-          privateKey: c.privateKey
+          privateKey: c.privateKey,
+          certificate: c.certificate
         }
       };
     }

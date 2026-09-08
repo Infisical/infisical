@@ -31,8 +31,7 @@ import {
   CreateHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
-  RevokeHoneyTokenModal,
-  ViewHoneyTokenCredentialsModal
+  RevokeHoneyTokenModal
 } from "@app/components/honey-tokens";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -202,7 +201,6 @@ import {
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
-import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
 import { DopplerSecretImportModal } from "../SecretDashboardPage/components/ActionBar/DopplerSecretImportModal";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
@@ -218,7 +216,6 @@ import {
 import { CommitForm } from "../SecretDashboardPage/components/CommitForm";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
 import { DynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/DynamicSecretLease";
-import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
 import {
   HIDDEN_SECRET_VALUE,
   HIDDEN_SECRET_VALUE_API_MASK
@@ -231,7 +228,9 @@ import {
   useBatchModeActions
 } from "../SecretDashboardPage/SecretMainPage.store";
 import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceButtons";
+import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
+import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
 import { InviteMembersModal } from "./components/InviteMembersModal";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
@@ -277,8 +276,7 @@ type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 export enum EntryType {
   FOLDER = "folder",
   SECRET = "secret",
-  SECRET_ROTATION = "secretRotation",
-  HONEY_TOKEN = "honeyToken"
+  SECRET_ROTATION = "secretRotation"
 }
 
 export enum RowType {
@@ -396,12 +394,10 @@ const OverviewPageContent = () => {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
     [EntryType.SECRET_ROTATION]: Record<string, Record<string, TSecretRotationV2>>;
-    [EntryType.HONEY_TOKEN]: Record<string, Record<string, TDashboardHoneyToken>>;
   }>({
     [EntryType.FOLDER]: {},
     [EntryType.SECRET]: {},
-    [EntryType.SECRET_ROTATION]: {},
-    [EntryType.HONEY_TOKEN]: {}
+    [EntryType.SECRET_ROTATION]: {}
   });
 
   const {
@@ -427,8 +423,7 @@ const OverviewPageContent = () => {
     setSelectedEntries({
       [EntryType.FOLDER]: {},
       [EntryType.SECRET]: {},
-      [EntryType.SECRET_ROTATION]: {},
-      [EntryType.HONEY_TOKEN]: {}
+      [EntryType.SECRET_ROTATION]: {}
     });
   }, []);
 
@@ -1010,7 +1005,6 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "viewHoneyTokenCredentials",
     "createEnvironment"
   ] as const);
 
@@ -2366,14 +2360,12 @@ const OverviewPageContent = () => {
     [filter, navigate, tagFilter]
   );
 
+  const hasSelectableRows = Boolean(
+    secrets?.length || folders?.length || secretRotationNames?.length
+  );
+
   const allRowsSelectedOnPage = useMemo(() => {
-    if (
-      !secrets?.length &&
-      !folders?.length &&
-      !secretRotationNames?.length &&
-      !honeyTokenNames?.length
-    )
-      return { isChecked: false, isIndeterminate: false };
+    if (!hasSelectableRows) return { isChecked: false, isIndeterminate: false };
 
     if (
       (!secrets?.length ||
@@ -2381,22 +2373,19 @@ const OverviewPageContent = () => {
       (!folders?.length ||
         folders?.every((folder) => selectedEntries[EntryType.FOLDER][folder.name])) &&
       (!secretRotationNames?.length ||
-        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name])) &&
-      (!honeyTokenNames?.length ||
-        honeyTokenNames?.every((name) => selectedEntries[EntryType.HONEY_TOKEN][name]))
+        secretRotationNames?.every((name) => selectedEntries[EntryType.SECRET_ROTATION][name]))
     )
       return { isChecked: true, isIndeterminate: false };
 
     if (
       secrets?.some((secret) => selectedEntries[EntryType.SECRET][secret.key]) ||
       folders?.some((folder) => selectedEntries[EntryType.FOLDER][folder.name]) ||
-      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name]) ||
-      honeyTokenNames?.some((name) => selectedEntries[EntryType.HONEY_TOKEN][name])
+      secretRotationNames?.some((name) => selectedEntries[EntryType.SECRET_ROTATION][name])
     )
       return { isChecked: true, isIndeterminate: true };
 
     return { isChecked: false, isIndeterminate: false };
-  }, [selectedEntries, secrets, folders, secretRotationNames, honeyTokenNames]);
+  }, [selectedEntries, secrets, folders, secretRotationNames, hasSelectableRows]);
 
   const toggleSelectedEntry = useCallback(
     (type: EntryType, key: string) => {
@@ -2414,8 +2403,6 @@ const OverviewPageContent = () => {
             resource = getSecretByKey(env.slug, key);
           } else if (type === EntryType.FOLDER) {
             resource = getFolderByNameAndEnv(key, env.slug);
-          } else if (type === EntryType.HONEY_TOKEN) {
-            resource = getHoneyTokenByName(env.slug, key);
           } else {
             resource = getSecretRotationByName(env.slug, key);
           }
@@ -2426,13 +2413,7 @@ const OverviewPageContent = () => {
 
       setSelectedEntries(newChecks);
     },
-    [
-      selectedEntries,
-      getFolderByNameAndEnv,
-      getSecretByKey,
-      getSecretRotationByName,
-      getHoneyTokenByName
-    ]
+    [selectedEntries, getFolderByNameAndEnv, getSecretByKey, getSecretRotationByName]
   );
 
   // folders move one at a time from the inline row action. build the per-env record (same shape the
@@ -2490,19 +2471,6 @@ const OverviewPageContent = () => {
           const resource = getSecretRotationByName(env.slug, rotationName);
 
           if (resource) newChecks[EntryType.SECRET_ROTATION][rotationName][env.slug] = resource;
-        }
-      });
-
-      honeyTokenNames?.forEach((honeyTokenName) => {
-        if (allRowsSelectedOnPage.isChecked) {
-          delete newChecks[EntryType.HONEY_TOKEN][honeyTokenName];
-        } else {
-          if (!newChecks[EntryType.HONEY_TOKEN][honeyTokenName])
-            newChecks[EntryType.HONEY_TOKEN][honeyTokenName] = {};
-
-          const resource = getHoneyTokenByName(env.slug, honeyTokenName);
-
-          if (resource) newChecks[EntryType.HONEY_TOKEN][honeyTokenName][env.slug] = resource;
         }
       });
     });
@@ -2700,6 +2668,7 @@ const OverviewPageContent = () => {
       <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
+            className="mb-6 md:mb-10"
             scope={ProjectType.SecretManager}
             title="Project Overview"
             description={
@@ -3093,7 +3062,7 @@ const OverviewPageContent = () => {
                         >
                           <Checkbox
                             variant="project"
-                            isDisabled={totalCount === 0 || hasPendingBatchChanges}
+                            isDisabled={!hasSelectableRows || hasPendingBatchChanges}
                             id="checkbox-select-all-rows"
                             isChecked={allRowsSelectedOnPage.isChecked}
                             isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
@@ -3517,16 +3486,9 @@ const OverviewPageContent = () => {
                               getHoneyTokenByName={getHoneyTokenByName}
                               tableWidth={tableWidth}
                               key={`overview-ht-${honeyTokenName}-${index + 1}`}
-                              isSelected={Boolean(selectedEntries.honeyToken[honeyTokenName])}
-                              onToggleHoneyTokenSelect={() =>
-                                toggleSelectedEntry(EntryType.HONEY_TOKEN, honeyTokenName)
-                              }
                               onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                               onRevoke={(honeyToken) =>
                                 handlePopUpOpen("revokeHoneyToken", honeyToken)
-                              }
-                              onViewCredentials={(honeyToken) =>
-                                handlePopUpOpen("viewHoneyTokenCredentials", honeyToken)
                               }
                               onViewDetails={(honeyToken) =>
                                 setDetailsDrawerHoneyTokenId(honeyToken.id)
@@ -3959,12 +3921,6 @@ const OverviewPageContent = () => {
         isOpen={popUp.revokeHoneyToken.isOpen}
         honeyToken={popUp.revokeHoneyToken.data as TDashboardHoneyToken}
         onOpenChange={(isOpen) => handlePopUpToggle("revokeHoneyToken", isOpen)}
-      />
-      <ViewHoneyTokenCredentialsModal
-        isOpen={popUp.viewHoneyTokenCredentials.isOpen}
-        honeyToken={popUp.viewHoneyTokenCredentials.data as TDashboardHoneyToken}
-        projectId={projectId}
-        onOpenChange={(isOpen) => handlePopUpToggle("viewHoneyTokenCredentials", isOpen)}
       />
       {commitHistoryEnv && (
         <CommitHistorySheet

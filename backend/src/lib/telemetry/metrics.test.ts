@@ -1,6 +1,6 @@
 import opentelemetry from "@opentelemetry/api";
 
-import { highCardinalityMeter, shouldRecordHighCardinalityMetrics } from "./metrics";
+import { highCardinalityMeter, normalizeHttpMethod, shouldRecordHighCardinalityMetrics } from "./metrics";
 
 const mockConfig = {
   OTEL_TELEMETRY_COLLECTION_ENABLED: true,
@@ -99,5 +99,32 @@ describe("highCardinalityMeter", () => {
     mockConfig.OTEL_TELEMETRY_COLLECTION_ENABLED = true;
     counter.add(1);
     expect(getMeter).toHaveBeenCalledWith(meterName);
+  });
+});
+
+// KNOWN_HTTP_METHODS is a hand copy of the private KNOWN_METHODS set inside
+// @opentelemetry/instrumentation-http. If the library's set changes on an upgrade, the two metrics stop
+// agreeing on http.request.method and silently become unjoinable, so pin the whole contract here.
+describe("normalizeHttpMethod", () => {
+  test.each(["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH", "QUERY"])(
+    "keeps the semconv-known method %s",
+    (method) => {
+      expect(normalizeHttpMethod(method)).toBe(method);
+    }
+  );
+
+  test("upper-cases a known method given in another case", () => {
+    expect(normalizeHttpMethod("get")).toBe("GET");
+    expect(normalizeHttpMethod("Patch")).toBe("PATCH");
+  });
+
+  // Node's parser accepts 35 methods, so these reach us for real; the semconv vocabulary has 10.
+  test.each(["PROPFIND", "MKCOL", "UNLOCK", "M-SEARCH", "PURGE"])("folds %s onto _OTHER", (method) => {
+    expect(normalizeHttpMethod(method)).toBe("_OTHER");
+  });
+
+  test("defaults to GET when the method is absent, matching the instrumentation", () => {
+    expect(normalizeHttpMethod(undefined)).toBe("GET");
+    expect(normalizeHttpMethod("")).toBe("GET");
   });
 });

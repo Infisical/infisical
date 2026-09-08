@@ -174,7 +174,7 @@ Supports conditions and permission inversion.
 | Action | Description | Condition keys |
 | -------- | ------------------------------- | ----- |
 | `read` | View secrets and their values. This action is the equivalent of granting both `describeSecret` and `readValue`. The `read` action is considered **legacy**. You should use the `describeSecret` and/or `readValue` actions instead. | `environment`, `secretPath`, `secretName`, `secretTags` |
-| `describeSecret` | View secret details such as key, path, metadata, tags, access insights and more. If you are using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
+| `describeSecret` | View secret details such as key, path, metadata, tags, access insights and more. If you're using the API, you can pass `viewSecretValue: false` to the API call to retrieve secrets without their values. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `readValue` | View the value of a secret. In order to read secret values, the `describeSecret` action must also be granted. | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `create` | Add new secrets to the project | `environment`, `secretPath`, `secretName`, `secretTags` |
 | `edit` | Modify existing secret values | `environment`, `secretPath`, `secretName`, `secretTags` |
@@ -243,7 +243,7 @@ Supports conditions and permission inversion.
 | `read` | List and view all secret approval requests in the project                   |
 
 <Note>
-  Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they are committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
+  Project admins and users with **Secret Approval Requests** (`secret-approval-request`) **Read** can view all approval requests; others only see requests where they're committer or approver. Secret values in requests follow `secrets.readValue` for the secret's environment/path, or reviewer access.
 </Note>
 
 #### Subject: `secret-rotation`
@@ -477,11 +477,11 @@ When defining conditions for permissions, you can use the following operators to
 | `$elemMatch` | Element match for nested objects/arrays | `object` |
 
 <Note>
-When using `$glob`, note that `*` does **not** match across `/` boundaries. Use `**` to match across multiple path segments.
+When using `$glob`, note that `*` doesn't match across `/` boundaries. Use `**` to match across multiple path segments.
 
-A trailing `/*` also does **not** match the folder itself: `/app/*` matches secrets in `/app/config` but not secrets directly in `/app`. To grant access to a folder and everything under it, use a trailing `/**`.
+A trailing `/*` also doesn't match the folder itself: `/app/*` matches secrets in `/app/config` but not secrets directly in `/app`. To grant access to a folder and everything under it, use a trailing `/**`.
 
-| Pattern | Matches | Does not match |
+| Pattern | Matches | Doesn't match |
 |---------|---------|----------------|
 | `/app/*` | `/app/config`, `/app/secrets` | `/app` (the folder itself), `/app/config/db` |
 | `/app/**` | `/app`, `/app/config`, `/app/config/db/primary` | `/other/config` |
@@ -590,16 +590,14 @@ curl --request POST \
 
 ## Auditing a user's effective permissions
 
-Because a member can receive access from direct roles, group-inherited roles, and additional privileges at the same time, it isn't always obvious what they can actually do. The **Permission Audit** view resolves all sources into a single, effective answer per subject and action.
+A member can hold a direct role, a group-inherited role, and additional privileges at the same time, so what they can actually do isn't always obvious. The **Permission Audit** view resolves every source into one effective answer per subject and action.
 
-Open **Access Control → Users**, click a member, then click **Permission Audit** in the page header.
+Open **Access Control**, select the **Users** tab, select the member, then select **Permission Audit** in the page header.
 
-<Frame caption="Open a member from Access Control → Users and click Permission Audit.">
-  <img src="/images/internals/permissions/permission-audit-button.png" alt="Permission Audit button on the member details page" />
-</Frame>
-
-Each action is shown as **Allow**, **Conditional** (hover for the matching conditions), or **Forbid** (red icon = explicit forbid; muted dash = no rule grants it). The **Granted by** column lists every contributing source — direct role, group-inherited role, or additional privilege — with the source's role/group name. Use the search box to filter by resource, action, or source, and **Export CSV** to download a flat report.
-
-<Frame caption="Effective access for a member, grouped by resource with per-action state and source attribution.">
+<Frame caption="Permission Audit for a project member, grouped by resource.">
   <img src="/images/internals/permissions/permission-audit-sheet.png" alt="Permission Audit sheet showing effective access per resource" />
 </Frame>
+
+Each action reads as **Allow**, **Conditional**, or **Forbid**. Hover over a conditional action to see the conditions that have to match. A red icon means an explicit forbid, and a muted dash means nothing grants the action at all. The **Granted by** column names every source that contributes: the direct role, the group-inherited role, or the additional privilege.
+
+Use the search box to filter by resource, action, or source, and the **All** dropdown to show only allowed, conditional, or forbidden actions. Select the **Export CSV** icon next to the search box to download the full list.

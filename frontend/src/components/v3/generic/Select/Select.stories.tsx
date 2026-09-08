@@ -21,6 +21,8 @@ import {
  * `SelectTrigger` (the clickable surface, contains a `SelectValue`) →
  * `SelectContent` (the portalled menu) → `SelectItem`s, optionally grouped with
  * `SelectGroup` + `SelectLabel` and divided with `SelectSeparator`.
+ * Popper-positioned `SelectContent` preserves an 8px viewport gutter by
+ * default. Radix's item-aligned mode retains its built-in 10px viewport margin.
  *
  * The trigger sizes to its content by default — let the parent container
  * (`Field`, a sidebar, a toolbar) decide width via layout constraints. For

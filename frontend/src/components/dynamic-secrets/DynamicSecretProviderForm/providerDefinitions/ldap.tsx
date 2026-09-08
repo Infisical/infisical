@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
+import { VaultLdapImportModal } from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
@@ -27,7 +28,6 @@ import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import type { VaultLdapRole } from "@app/hooks/api/migration/types";
-import { VaultLdapImportModal } from "@app/pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/VaultLdapImportModal";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";

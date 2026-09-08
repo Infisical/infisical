@@ -379,15 +379,19 @@ export const auditLogStreamOutboxServiceFactory = ({
     }
     if (dropped.length > 0) {
       // Stale claims that used up their attempts are dropped (no DLQ); count them alongside
-      // delivery-path exhaustions, keyed by stream. No provider attribute here — the row doesn't carry
-      // it and the sweep isn't tied to a specific delivery attempt.
-      const droppedCountByStream = new Map<string, number>();
-      for (const { streamId } of dropped) {
-        droppedCountByStream.set(streamId, (droppedCountByStream.get(streamId) ?? 0) + 1);
+      // delivery-path exhaustions so both losses show up on the same counter, keyed the same way.
+      // The provider is resolved by the DAL and is null only when the stream itself is already gone,
+      // which is one of the reasons a claim goes stale.
+      const droppedCountByStream = new Map<string, { provider: string | null; count: number }>();
+      for (const { streamId, provider } of dropped) {
+        const existing = droppedCountByStream.get(streamId);
+        if (existing) existing.count += 1;
+        else droppedCountByStream.set(streamId, { provider, count: 1 });
       }
-      for (const [streamId, count] of droppedCountByStream) {
+      for (const [streamId, { provider, count }] of droppedCountByStream) {
         auditLogStreamDeliveryExhaustedCounter.add(count, {
-          "audit_log_stream.id": streamId
+          "audit_log_stream.id": streamId,
+          ...(provider && { "audit_log_stream.provider": provider })
         });
       }
     }

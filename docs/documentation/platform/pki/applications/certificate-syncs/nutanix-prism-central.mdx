@@ -4,7 +4,7 @@ sidebarTitle: "Nutanix Prism Central"
 description: "Update certificates on your Nutanix clusters."
 ---
 
-Install certificates managed in Infisical directly on your Nutanix clusters. When a certificate is renewed, it is automatically updated on the cluster with no manual intervention required.
+Install certificates managed in Infisical directly on your Nutanix clusters. When a certificate is renewed, it's automatically updated on the cluster with no manual intervention required.
 
 <Info>
   Certificate Syncs are configured per Application. First select which certificate to sync, then configure the Nutanix Prism Central destination.
@@ -22,7 +22,7 @@ Before setting up the sync, gather the following from your Nutanix environment:
 
 <Tabs>
   <Tab title="Infisical UI">
-    1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+    1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
     2. Select the **Nutanix Prism Central** option.
 
@@ -125,7 +125,7 @@ The Nutanix Prism Central Certificate Sync provides:
 - **Certificate Updates**: Push renewed certificates to the cluster automatically when auto-sync is enabled.
 
 <Note>
-  Certificate removal is not supported for Nutanix Prism Central. A cluster always has exactly one active SSL certificate, which can only be replaced, not deleted.
+  Certificate removal isn't supported for Nutanix Prism Central. A cluster always has exactly one active SSL certificate, which can only be replaced, not deleted.
 </Note>
 
 ## Manual certificate sync
@@ -146,7 +146,7 @@ When a certificate is renewed in Infisical, the renewed certificate is automatic
 
 <AccordionGroup>
   <Accordion title="Can I import certificates from Nutanix back into Infisical?">
-    No. The Nutanix API does not allow private key extraction, so importing certificates from Nutanix into Infisical is not supported.
+    No. The Nutanix API doesn't allow private key extraction, so importing certificates from Nutanix into Infisical isn't supported.
   </Accordion>
 
   <Accordion title="What happens if my Prism Central uses a self-signed TLS certificate?">

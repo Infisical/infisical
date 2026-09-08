@@ -19,7 +19,7 @@ This guide covers using such a CA from the **Code Signing** product. To set up t
 
 Once a CA is configured for code signing, it appears in the **Code Signing → Create Signer** wizard's CA picker. The Signer is created in **Pending** state while DigiCert processes the order, and flips to **Active** once the certificate issues.
 
-DigiCert's code-signing workflow includes an out-of-band approval step that the API cannot skip: DigiCert emails an approval link to the order's approver, and the order stays **Pending** until someone opens that link and approves it in DigiCert. Depending on your CertCentral account's settings this can apply per order, so a Signer can sit in Pending even after the organization is validated.
+DigiCert's code-signing workflow includes an out-of-band approval step that the API can't skip: DigiCert emails an approval link to the order's approver, and the order stays **Pending** until someone opens that link and approves it in DigiCert. Depending on your CertCentral account's settings this can apply per order, so a Signer can sit in Pending even after the organization is validated.
 
 <Note>
   Code-signing certificates require an HSM-backed key. When you select a DigiCert code-signing CA, the Signer wizard locks the key source to **HSM** and you must pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors).
@@ -35,7 +35,7 @@ Reuse is scoped to the CA's configured organization and product, so only orders 
 
 <Tabs>
   <Tab title="Infisical UI">
-    In the Create Signer wizard's **Certificate** step, open **Reuse an existing order** and pick one of the listed issued orders. The Common Name and Validity fields are hidden because they are inherited from the order. Leave the field empty to place a new order.
+    In the Create Signer wizard's **Certificate** step, open **Reuse an existing order** and pick one of the listed issued orders. The Common Name and Validity fields are hidden because they're inherited from the order. Leave the field empty to place a new order.
   </Tab>
   <Tab title="API">
     Set `externalConfiguration.reissueFromExternalOrderId` to the order id on [Create Signer](/api-reference/endpoints/code-signing/signers/create) or [Reissue](/api-reference/endpoints/code-signing/signers/reissue-certificate).

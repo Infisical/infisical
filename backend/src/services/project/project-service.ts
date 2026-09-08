@@ -18,6 +18,7 @@ import {
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
@@ -874,7 +875,7 @@ export const projectServiceFactory = ({
       });
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
       const customRoles = await roleDAL.find({
         $in: {
           projectId: workspaces.map((workspace) => workspace.id)

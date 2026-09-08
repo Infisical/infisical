@@ -60,10 +60,13 @@ const createService = ({
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       getProjectPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([]),
+      getProjectPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
     licenseService: { getPlan: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
-    membershipIdentityDAL: {} as never,
+    // The delete guards bound the removal against the roles the target identity holds.
+    membershipIdentityDAL: { getIdentityById: vi.fn().mockResolvedValue({ roles: [] }) } as never,
     membershipRoleDAL: {} as never,
     identityMetadataDAL: { delete: vi.fn(), insertMany: vi.fn() } as never,
     identityAccessTokenService: {
@@ -76,7 +79,7 @@ const createService = ({
       findOrgProjectIds: vi.fn(),
       findById: vi.fn()
     } as never,
-    orgDAL: { findById: vi.fn() } as never,
+    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }) } as never,
     roleDAL: { find: vi.fn() } as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForDeletedResource } as never

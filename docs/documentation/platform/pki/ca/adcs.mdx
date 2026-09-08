@@ -179,26 +179,26 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
 
 ## Limitations
 
-- Templates that require manual approval or are held by CA policy are not supported. Requests are issued immediately.
-- Authentication uses NTLM. Kerberos is not yet supported.
+- Templates that require manual approval or are held by CA policy aren't supported. Requests are issued immediately.
+- Authentication uses NTLM. Kerberos isn't yet supported.
 
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="The requested certificate template is not supported">
+  <Accordion title="The requested certificate template isn't supported">
     The CA rejected the request with `CERTSRV_E_UNSUPPORTED_CERT_TYPE`. The template is either not published on the CA or the name is wrong. Confirm the template is published (`certutil -CATemplates`) and that the name matches exactly.
   </Accordion>
   <Accordion title="Enroll permission denied">
-    The connection account does not have Enroll permission on the requested template. Grant Enroll to the account on the template's security settings.
+    The connection account doesn't have Enroll permission on the requested template. Grant Enroll to the account on the template's security settings.
   </Accordion>
   <Accordion title="The certificate authority name could not be discovered">
-    Automatic discovery reads the CA name from the host's registry over SMB (TCP 445), which requires the Remote Registry service to be running and reachable from the Gateway. If SMB is not open to the Gateway, leave discovery aside and set the certificate authority name explicitly on the external CA. Run `certutil -getreg CA\CommonName` on the AD CS server to find it.
+    Automatic discovery reads the CA name from the host's registry over SMB (TCP 445), which requires the Remote Registry service to be running and reachable from the Gateway. If SMB isn't open to the Gateway, leave discovery aside and set the certificate authority name explicitly on the external CA. Run `certutil -getreg CA\CommonName` on the AD CS server to find it.
   </Accordion>
   <Accordion title="Could not reach certificate authority through the gateway">
-    When you create or update the CA, Infisical validates the certificate authority name against the CA over the Gateway. This error means the name does not match a CA on the host, or the Gateway cannot reach the AD CS server. Confirm the name with `certutil -getreg CA\CommonName` on the AD CS server and that the Gateway can connect to the host over DCOM (MS-WCCE).
+    When you create or update the CA, Infisical validates the certificate authority name against the CA over the Gateway. This error means the name doesn't match a CA on the host, or the Gateway can't reach the AD CS server. Confirm the name with `certutil -getreg CA\CommonName` on the AD CS server and that the Gateway can connect to the host over DCOM (MS-WCCE).
   </Accordion>
   <Accordion title="Signer rejected: missing Code Signing extended key usage">
-    The template used for a code signing signer does not produce a code-signing certificate. Point the signer at a template that carries the Code Signing extended key usage.
+    The template used for a code signing signer doesn't produce a code-signing certificate. Point the signer at a template that carries the Code Signing extended key usage.
   </Accordion>
   <Accordion title="Gateway connectivity issues">
     Verify the Gateway can reach the AD CS host over DCOM (MS-WCCE) and that the domain account credentials are correct.

@@ -17,25 +17,19 @@ export const HoneyTokenSelect = ({ onSelect }: Props) => {
 
           return (
             <Item
+              asChild
               key={type}
               variant="outline"
               className="cursor-pointer flex-col items-center justify-center py-4 hover:bg-foreground/5"
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelect(type)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(type);
-                }
-              }}
             >
-              <ItemMedia variant="image" className="size-12">
-                <img src={`/images/integrations/${image}`} width={size} alt={`${name} logo`} />
-              </ItemMedia>
-              <ItemContent className="items-center">
-                <ItemTitle>{name}</ItemTitle>
-              </ItemContent>
+              <button type="button" onClick={() => onSelect(type)}>
+                <ItemMedia variant="image" className="size-12">
+                  <img src={`/images/integrations/${image}`} width={size} alt="" />
+                </ItemMedia>
+                <ItemContent className="items-center">
+                  <ItemTitle>{name}</ItemTitle>
+                </ItemContent>
+              </button>
             </Item>
           );
         })}

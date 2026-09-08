@@ -103,6 +103,8 @@ export enum QueueName {
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   PamCredentialRotation = "pam-credential-rotation",
   PamCredentialRotationRotate = "pam-credential-rotation-rotate",
+  PamHeartbeat = "pam-heartbeat",
+  PamHeartbeatCheck = "pam-heartbeat-check",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
@@ -166,6 +168,8 @@ export enum QueueJobs {
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
   PamCredentialRotationQueueRotations = "pam-credential-rotation-queue-rotations",
   PamCredentialRotationRotate = "pam-credential-rotation-rotate",
+  PamHeartbeatQueueChecks = "pam-heartbeat-queue-checks",
+  PamHeartbeatCheck = "pam-heartbeat-check",
   CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
@@ -436,6 +440,14 @@ export type TQueueJobTypes = {
   };
   [QueueName.PamCredentialRotationRotate]: {
     name: QueueJobs.PamCredentialRotationRotate;
+    payload: { accountId: string };
+  };
+  [QueueName.PamHeartbeat]: {
+    name: QueueJobs.PamHeartbeatQueueChecks;
+    payload: undefined;
+  };
+  [QueueName.PamHeartbeatCheck]: {
+    name: QueueJobs.PamHeartbeatCheck;
     payload: { accountId: string };
   };
   [QueueName.InvalidateCache]: {

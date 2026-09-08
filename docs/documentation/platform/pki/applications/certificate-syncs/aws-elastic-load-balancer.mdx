@@ -24,7 +24,7 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **AWS Elastic Load Balancer** option.
 
@@ -148,7 +148,7 @@ You can set a certificate as the default for all configured listeners. The defau
 
 <Tabs>
     <Tab title="Infisical UI">
-        In the sync details page, click **Set as Default** next to the certificate you want to use as the default for all configured listeners.
+        In the sync details page, select **Set as Default** next to the certificate you want to use as the default for all configured listeners.
     </Tab>
     <Tab title="API">
         To set a certificate as the default, make an API request to the Set Default Certificate endpoint:
@@ -185,8 +185,8 @@ You can manually trigger certificate synchronization to AWS Elastic Load Balance
 To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/aws-elastic-load-balancer/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
 
 <Note>
-  AWS Elastic Load Balancer does not support importing certificates back into
-  Infisical due to security limitations where private keys cannot be extracted
+  AWS Elastic Load Balancer doesn't support importing certificates back into
+  Infisical due to security limitations where private keys can't be extracted
   from AWS Certificate Manager. Only certificates managed by Infisical can be
   synced to your load balancers.
 </Note>
