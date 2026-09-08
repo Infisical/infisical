@@ -687,7 +687,7 @@ export const pamWebAccessServiceFactory = ({
           const sessionId = session?.id;
           if (!sessionId || cleanedUp) return;
           try {
-            if (!(await pamSessionDAL.isSessionTerminated(sessionId))) return;
+            if (!(await pamSessionDAL.isSessionTerminated(sessionId)) || cleanedUp) return;
             await cleanup();
             sendSessionEndAndClose(socket, SessionEndReason.Terminated);
           } catch (err) {

@@ -98,3 +98,12 @@ describe("nextTransactionState", () => {
     expect(nextTransactionState("SELECT", false)).toBe(false);
   });
 });
+
+describe("nextTransactionState", () => {
+  test("DDL implicitly ends a transaction", () => {
+    expect(nextTransactionState("BEGIN", false)).toBe(true);
+    expect(nextTransactionState("CREATE", true)).toBe(false);
+    expect(nextTransactionState("SELECT", true)).toBe(true);
+    expect(nextTransactionState("COMMIT", true)).toBe(false);
+  });
+});

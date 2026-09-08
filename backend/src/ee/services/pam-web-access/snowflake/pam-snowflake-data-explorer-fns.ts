@@ -98,7 +98,17 @@ export const extractCommand = (sql: string): string => {
 };
 
 const TRANSACTION_OPENING_COMMANDS = new Set(["BEGIN", "START"]);
-const TRANSACTION_CLOSING_COMMANDS = new Set(["COMMIT", "ROLLBACK"]);
+// Snowflake commits an open transaction implicitly before running any of these
+const TRANSACTION_CLOSING_COMMANDS = new Set([
+  "COMMIT",
+  "ROLLBACK",
+  "CREATE",
+  "ALTER",
+  "DROP",
+  "TRUNCATE",
+  "GRANT",
+  "REVOKE"
+]);
 
 // Snowflake reports no transaction flag on a result, so it is tracked from the statements run
 export const nextTransactionState = (command: string, current: boolean): boolean => {
