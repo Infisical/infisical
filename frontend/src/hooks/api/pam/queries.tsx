@@ -48,10 +48,6 @@ import {
 
 export const fetchPamProjectId = () => fetchOrgScopedProjectId(PAM_PRODUCT);
 
-// For imperative (non-hook) callers; skips the fetch when the id is already cached.
-export const resolvePamProjectId = async (cachedPamProjectId?: string | null) =>
-  cachedPamProjectId ?? fetchPamProjectId();
-
 export const pamKeys = {
   all: ["pam"] as const,
   account: () => [...pamKeys.all, "account"] as const,
