@@ -204,6 +204,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { logger } from "@app/lib/logger";
 import { Redlock } from "@app/lib/red-lock";
+import { RunMode } from "@app/lib/types";
+import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
@@ -587,6 +589,17 @@ export const registerRoutes = async (
   const cronJob = cronJobFactory({ redis, redlock, schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled });
   if (envConfig.isGeneralWorkerRunModeEnabled) {
     cronJob.start();
+  }
+
+  // An api-only deployment with no general-workers pod queues background work nobody consumes, so
+  // the fleet reports itself in Redis and every api pod complains when the reports stop.
+  const workerHeartbeat = workerHeartbeatFactory({ keyStore });
+  if (envConfig.isGeneralWorkerRunModeEnabled) {
+    workerHeartbeat.startReporting(RunMode.GeneralWorkers);
+  }
+
+  if (envConfig.isApiRunModeEnabled) {
+    workerHeartbeat.startMonitoring(RunMode.GeneralWorkers);
   }
 
   // Reached from the gateway proxy layer in src/lib, which has no DI, so it is installed as a module
@@ -4398,6 +4411,7 @@ export const registerRoutes = async (
     gatewayLoadTracker.shutdown();
     cronJobs.forEach((job) => job.stop());
     await cronJob.stop();
+    await workerHeartbeat.stop();
     await telemetryService.flushAll();
     await eventBusService.close();
     await projectEventsSSEService.close();
