@@ -163,17 +163,15 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   ): TGeneratedPasswordRequirements => {
     if (accountType !== PamAccountType.OracleDB) return requirements;
     const effective = requirements ?? DEFAULT_PASSWORD_REQUIREMENTS;
+    if (effective.length <= ORACLE_MAX_PASSWORD_LENGTH) return requirements;
+
     const requiredTotal = Object.values(effective.required).reduce((sum, count) => sum + count, 0);
-    if (effective.length <= ORACLE_MAX_PASSWORD_LENGTH && requiredTotal <= ORACLE_MAX_PASSWORD_LENGTH) {
-      return requirements;
+    if (requiredTotal > ORACLE_MAX_PASSWORD_LENGTH) {
+      throw new BadRequestError({
+        message: `This account's template requires at least ${requiredTotal} characters, which is more than the ${ORACLE_MAX_PASSWORD_LENGTH} an Oracle password allows. Lower the character requirements on the template, then rotate again`
+      });
     }
-    return {
-      ...effective,
-      length: Math.min(effective.length, ORACLE_MAX_PASSWORD_LENGTH),
-      required: Object.fromEntries(
-        Object.entries(effective.required).map(([type, count]) => [type, count > 0 ? 1 : 0])
-      ) as typeof effective.required
-    };
+    return { ...effective, length: ORACLE_MAX_PASSWORD_LENGTH };
   };
 
   const getPasswordRequirements = (templateSettings: unknown) =>

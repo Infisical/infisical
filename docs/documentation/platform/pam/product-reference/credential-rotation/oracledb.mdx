@@ -18,6 +18,12 @@ When an Oracle account rotates, the rotation account connects to the target and 
 ALTER USER "<target_username>" IDENTIFIED BY "<generated_password>";
 ```
 
+An account that rotates its own password restates the old one, which Oracle requires when a password policy is in force:
+
+```sql
+ALTER USER "<target_username>" IDENTIFIED BY "<generated_password>" REPLACE "<current_password>";
+```
+
 The connection uses the account's existing connection details, including the SSL settings.
 
 The statement matches the stored username exactly, so an account whose username doesn't match the case Oracle stored fails to rotate even though its sessions launch fine. Oracle reports this as a privilege error, not a missing user.

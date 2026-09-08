@@ -38,6 +38,11 @@ export const ROTATABLE_PAM_ACCOUNT_TYPES = [
 export const isRotatablePamAccountType = (type: PamAccountType | string) =>
   (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
 
+export const ORACLE_MAX_PASSWORD_LENGTH = 30;
+
+export const maxGeneratedPasswordLength = (type: PamAccountType | string | undefined) =>
+  type === PamAccountType.OracleDB ? ORACLE_MAX_PASSWORD_LENGTH : 250;
+
 export enum PamHeartbeatStatus {
   Healthy = "healthy",
   InvalidCredentials = "invalid-credentials",

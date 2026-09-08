@@ -36,6 +36,7 @@ import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/ap
 import {
   accountTypeRequiresRecording,
   isRotatablePamAccountType,
+  maxGeneratedPasswordLength,
   PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
   useGetPamAccountTemplate,
@@ -304,6 +305,9 @@ const SettingsTab = ({
     }
   });
 
+  const maxPwLength = maxGeneratedPasswordLength(template?.type);
+  const defaultPwLength = Math.min(32, maxPwLength);
+
   useEffect(() => {
     onDirtyChange?.(isDirty);
     return () => onDirtyChange?.(false);
@@ -350,7 +354,7 @@ const SettingsTab = ({
               heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:
                 rotation.intervalSeconds !== undefined ? rotation.intervalSeconds : 86400,
-              pwLength: pw.length ?? 32,
+              pwLength: pw.length ?? defaultPwLength,
               pwUppercase: pw.required?.uppercase ?? 1,
               pwLowercase: pw.required?.lowercase ?? 1,
               pwDigits: pw.required?.digits ?? 1,
@@ -425,7 +429,7 @@ const SettingsTab = ({
         intervalSeconds: isRotationOn ? (data.settings.rotationIntervalSeconds ?? 86400) : null
       };
       settings.passwordRequirements = {
-        length: data.settings.pwLength ?? 32,
+        length: data.settings.pwLength ?? defaultPwLength,
         required: {
           uppercase: data.settings.pwUppercase ?? 0,
           lowercase: data.settings.pwLowercase ?? 0,
@@ -582,6 +586,7 @@ const SettingsTab = ({
                       <FieldLabel>{label}</FieldLabel>
                       <Input
                         type="number"
+                        max={name === "settings.pwLength" ? maxPwLength : undefined}
                         value={field.value ?? 0}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                         onWheel={(e) => e.currentTarget.blur()}

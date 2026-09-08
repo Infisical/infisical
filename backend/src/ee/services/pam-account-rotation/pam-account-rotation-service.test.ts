@@ -328,7 +328,7 @@ describe("rotateScheduledAccount recovery probe", () => {
     expect(newPassword.length).toBe(30);
   });
 
-  test("caps an Oracle password whose required minimums sum above the ceiling", async () => {
+  test("refuses to rotate when the template's minimums cannot fit Oracle's ceiling", async () => {
     const account = {
       ...buildAccount(),
       accountType: PamAccountType.OracleDB,
@@ -343,13 +343,13 @@ describe("rotateScheduledAccount recovery probe", () => {
     };
     const { service, applyPasswordChange } = buildService((pw) => pw === CURRENT_PASSWORD, { account });
 
-    await service.rotateScheduledAccount("acc-1");
+    const result = await service.rotateScheduledAccount("acc-1");
 
-    const { newPassword } = applyPasswordChange.mock.calls[0][0] as { newPassword: string };
-    expect(newPassword.length).toBe(30);
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Failed);
+    expect(applyPasswordChange).not.toHaveBeenCalled();
   });
 
-  test("keeps every character class the template asked for when it caps", async () => {
+  test("caps only the length when the template's character mix still fits", async () => {
     const account = {
       ...buildAccount(),
       accountType: PamAccountType.OracleDB,
@@ -357,7 +357,7 @@ describe("rotateScheduledAccount recovery probe", () => {
         rotation: { enabled: true, intervalSeconds: 3600 as number | null },
         passwordRequirements: {
           length: 80,
-          required: { lowercase: 20, uppercase: 20, digits: 20, symbols: 20 },
+          required: { lowercase: 5, uppercase: 5, digits: 5, symbols: 5 },
           allowedSymbols: "-_.~!*"
         }
       }

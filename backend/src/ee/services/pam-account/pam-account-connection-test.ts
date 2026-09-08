@@ -8,7 +8,14 @@ import {
 } from "../pam-session/aws-iam/aws-iam-federation";
 import { AZURE_SCOPES, getAzureAccessToken } from "../pam-session/azure/azure-federation";
 import { mintGcpAccessToken } from "../pam-session/gcp/gcp-federation";
-import { extractGatewayTarget, isCredentialConfigured, qualifyUsernameWithDomain } from "./pam-account-schemas";
+import {
+  extractGatewayTarget,
+  isCredentialConfigured,
+  ORACLE_MAX_PASSWORD_LENGTH,
+  qualifyUsernameWithDomain
+} from "./pam-account-schemas";
+
+export { ORACLE_MAX_PASSWORD_LENGTH };
 
 export enum TestConnectionMode {
   SQL = "sql",
@@ -90,8 +97,6 @@ const SQL_DIALECTS = {
 } as const;
 
 const tcp = (host: string, port: number) => ({ host, port, request: { mode: TestConnectionMode.Tcp } as const });
-
-export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 
 export const exceedsOraclePasswordLimit = (
   accountType: PamAccountType,

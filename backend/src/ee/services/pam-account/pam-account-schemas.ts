@@ -81,6 +81,8 @@ type TFieldConditionHint = { field: string; equals: string | boolean };
 type TFieldForcedRuleHint = { when: TFieldConditionHint; value: string | number | boolean; reason: string };
 
 // Source of truth for account types: per-type schemas + sparse UI hints
+export const ORACLE_MAX_PASSWORD_LENGTH = 30;
+
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
@@ -337,7 +339,9 @@ export const ACCOUNT_TYPE_CONFIGS = {
       password: z
         .string()
         .trim()
-        .max(256)
+        .max(ORACLE_MAX_PASSWORD_LENGTH, {
+          message: `Oracle passwords are limited to ${ORACLE_MAX_PASSWORD_LENGTH} characters`
+        })
         .transform((v) => v || undefined)
         .optional()
     }),
