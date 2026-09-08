@@ -183,9 +183,9 @@ export const GatewayDeploySection = ({
                             <Badge variant="org">Recommended</Badge>
                           </FieldTitle>
                           <FieldDescription>
-                            Infisical opens the connection to the gateway. Choose this when the
-                            gateway has a stable address Infisical can reach, with no relay to
-                            deploy.
+                            Infisical opens the connection to the gateway. Choose this when your
+                            self-hosted Infisical runs on the same private network as the gateway,
+                            so it can reach the gateway&apos;s address without a relay.
                           </FieldDescription>
                         </FieldContent>
                         <RadioGroupItem value="direct" id="gateway-connection-mode-direct" />
@@ -197,7 +197,8 @@ export const GatewayDeploySection = ({
                           <FieldTitle>Relay</FieldTitle>
                           <FieldDescription>
                             The gateway opens the connection out to a relay. Choose this when
-                            inbound connections to the gateway are blocked by NAT or a firewall.
+                            Infisical runs outside the gateway&apos;s network, or when inbound
+                            connections to it are blocked by NAT or a firewall.
                           </FieldDescription>
                         </FieldContent>
                         <RadioGroupItem value="relay" id="gateway-connection-mode-relay" />
