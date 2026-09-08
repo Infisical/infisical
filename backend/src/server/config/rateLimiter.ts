@@ -54,7 +54,10 @@ export const gatewayMetricsReportLimit: RateLimitOptions = {
 };
 
 // Keyed on the proxy identity, not the source IP, so many proxies behind one NAT do not share a bucket.
-// Sized off the proxy's 4,096-entry session cache: one resolve per live session per poll interval.
+// One resolve per live session per poll, so this covers 4,200 sessions at the default 60s poll and 700 at
+// the 10s floor. Deliberate: a proxy serving that many agents is far past what we expect, and a runaway
+// one blows through any budget. A throttled proxy reads a 429 as "Infisical unreachable" and drops its
+// sessions after five polls, so raise this rather than the poll floor if a real deployment ever nears it.
 export const agentVaultResolveLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
