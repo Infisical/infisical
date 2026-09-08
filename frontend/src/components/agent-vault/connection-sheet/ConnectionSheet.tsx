@@ -110,10 +110,15 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         name: connection.name,
         hostPattern: displayHostPattern(connection.hostPattern),
         credentialType: credential.type,
+        // Seeded even for a credential that has no header, so switching the type to Bearer starts from
+        // the same defaults a new connection gets. Left undefined, the submit would send an empty
+        // prefix and the proxy would attach a bare token.
         headerName:
-          credential.type === AgentVaultCredentialType.Bearer ? credential.headerName : undefined,
+          credential.type === AgentVaultCredentialType.Bearer
+            ? credential.headerName
+            : "Authorization",
         headerPrefix:
-          credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : undefined,
+          credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
         username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
         secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
       });
