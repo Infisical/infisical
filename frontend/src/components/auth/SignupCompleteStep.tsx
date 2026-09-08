@@ -2,7 +2,7 @@ import { SiGithub, SiYoutube } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, LayoutGrid, Users } from "lucide-react";
 
-import { Button, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import { Badge, Button, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { getProjectHomePage } from "@app/helpers/project";
 import { submitSignupOnboarding } from "@app/hooks/api/auth/queries";
@@ -23,21 +23,23 @@ interface SignupCompleteStepProps {
 
 const COMMUNITY_LINKS: {
   label: string;
+  isNew?: boolean;
   href: string;
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
 }[] = [
   {
-    label: "Star on GitHub",
+    label: "29k+ Stars",
     href: "https://github.com/Infisical/infisical",
     icon: SiGithub
   },
   {
-    label: "Join Community",
-    href: "https://community.infisical.com/c/general/contributing/23",
+    label: "Discussions",
+    isNew: true,
+    href: "https://community.infisical.com/latest",
     icon: Users
   },
   {
-    label: "YouTube",
+    label: "50+ Videos",
     href: "https://www.youtube.com/@infisical_os",
     icon: SiYoutube
   }
@@ -132,13 +134,18 @@ export default function SignupCompleteStep({
             </ul>
           </nav>
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted">Community and resources</p>
+            <p className="text-sm text-muted">Additional resources</p>
             <div className="flex flex-wrap gap-2">
               {COMMUNITY_LINKS.map((link) => (
                 <Button key={link.label} asChild variant="outline" size="sm">
                   <a href={link.href} target="_blank" rel="noopener noreferrer">
                     <link.icon aria-hidden />
                     {link.label}
+                    {link.isNew && (
+                      <Badge variant="info" className="-mr-1.5">
+                        NEW
+                      </Badge>
+                    )}
                   </a>
                 </Button>
               ))}
