@@ -455,7 +455,7 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const conn = await getResolvedConnection();
     const { credentials } = conn;
-    const newPassword = passwordValidationContext?.constraints?.length
+    const newPassword = passwordValidationContext
       ? generatePasswordWithConstraints(passwordValidationContext.constraints)
       : generatePassword(passwordRequirements);
 

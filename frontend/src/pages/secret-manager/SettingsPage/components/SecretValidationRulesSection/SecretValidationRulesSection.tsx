@@ -68,14 +68,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
-  ProjectPermissionActions,
+  ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
   SecretValidationRuleType,
-  TSecretValidationRuleConfig,
   useCreateSecretValidationRule,
   useDeleteSecretValidationRule,
   useListSecretValidationRules,
@@ -90,6 +89,8 @@ import {
   DYNAMIC_SECRET_PROVIDER_OPTIONS,
   DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS,
   DynamicSecretRuleProvider,
+  flattenConstraints,
+  groupConstraintsByTarget,
   RULE_TYPE_LABELS,
   ruleFormSchema,
   RuleType,
@@ -532,68 +533,86 @@ type SheetState =
 
 export const SecretValidationRulesSection = () => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+
+  const canReadRules = permission.can(
+    ProjectPermissionSecretValidationRuleActions.Read,
+    ProjectPermissionSub.SecretValidationRules
+  );
 
   const [sheetState, setSheetState] = useState<SheetState>({ open: false });
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
-  const { data: rules = [], isLoading } = useListSecretValidationRules({
-    projectId: currentProject.id
-  });
+  const { data: rules = [], isLoading } = useListSecretValidationRules(
+    { projectId: currentProject.id },
+    { enabled: canReadRules }
+  );
 
   const createRule = useCreateSecretValidationRule();
   const updateRule = useUpdateSecretValidationRule();
   const deleteRule = useDeleteSecretValidationRule();
 
-  const resolveEnvSlug = (envId: string | null) => {
-    if (!envId) return null;
-    const env = currentProject.environments.find((e) => e.id === envId);
-    return env?.slug ?? null;
-  };
-
-  const resolveEnvName = (envId: string | null) => {
-    if (!envId) return "All Environments";
-    const env = currentProject.environments.find((e) => e.id === envId);
-    return env?.name ?? envId;
-  };
+  const ruleToDelete = rules.find((rule) => rule.id === deleteRuleId);
 
   const handleDelete = async () => {
-    if (!deleteRuleId) return;
+    if (!ruleToDelete) return;
     await deleteRule
-      .mutateAsync({ projectId: currentProject.id, ruleId: deleteRuleId })
+      .mutateAsync({
+        projectId: currentProject.id,
+        ruleId: ruleToDelete.id,
+        type: ruleToDelete.type
+      })
       .finally(() => setDeleteRuleId(null));
   };
 
   const handleClose = () => setSheetState({ open: false });
 
   const handleSubmit = async (data: TRuleForm, isActive?: boolean) => {
-    // The form mirrors the API rule config field-for-field; only the enum
-    // identity differs (local `RuleType` vs `SecretValidationRuleType`).
-    const rule = {
-      ...data.enforcement,
-      type: data.enforcement.type as string as SecretValidationRuleType
-    } as TSecretValidationRuleConfig;
+    // The editor keeps constraints in a list; the API groups them by what they apply to.
+    const { type } = data.enforcement;
+    const grouped = groupConstraintsByTarget(data.enforcement.constraints);
+    const isStaticRule = type === RuleType.StaticSecrets;
+
+    const generatedConfig = {
+      providers: "providers" in data.enforcement ? data.enforcement.providers : [],
+      passwordConstraints: grouped[ConstraintTarget.GeneratedPassword] ?? {}
+    };
+
+    const scope = {
+      projectId: currentProject.id,
+      type,
+      name: data.name,
+      description: data.description,
+      secretPath: data.folderPath
+    };
 
     if (sheetState.open && sheetState.mode === "edit") {
       await updateRule.mutateAsync({
-        projectId: currentProject.id,
+        ...scope,
         ruleId: sheetState.ruleId,
-        name: data.name,
-        description: data.description,
         isActive,
-        environmentSlug: data.environment ?? null,
-        secretPath: data.folderPath,
-        rule
+        environment: data.environment,
+        // A target with no constraints left is sent as null, so removing its last card clears it on
+        // the rule rather than reading as "leave it alone".
+        ...(isStaticRule
+          ? {
+              keyConstraints: grouped[ConstraintTarget.SecretKey] ?? null,
+              valueConstraints: grouped[ConstraintTarget.SecretValue] ?? null
+            }
+          : generatedConfig)
       });
       createNotification({ text: "Rule updated", type: "success" });
     } else {
       await createRule.mutateAsync({
-        projectId: currentProject.id,
-        name: data.name,
-        description: data.description,
-        environmentSlug: data.environment ?? undefined,
-        secretPath: data.folderPath,
-        rule
+        ...scope,
+        environment: data.environment ?? undefined,
+        ...(isStaticRule
+          ? {
+              keyConstraints: grouped[ConstraintTarget.SecretKey],
+              valueConstraints: grouped[ConstraintTarget.SecretValue]
+            }
+          : generatedConfig)
       });
       createNotification({ text: "Rule created", type: "success" });
     }
@@ -609,17 +628,28 @@ export const SecretValidationRulesSection = () => {
     ? ({
         name: editingRule.name,
         description: editingRule.description ?? undefined,
-        environment: resolveEnvSlug(editingRule.envId),
+        environment: editingRule.environment?.slug ?? null,
         folderPath: editingRule.secretPath,
         enforcement: {
-          type: editingRule.type as string as RuleType,
-          constraints: editingRule.constraints,
+          type: editingRule.type,
+          constraints:
+            editingRule.type === SecretValidationRuleType.StaticSecrets
+              ? [
+                  ...flattenConstraints(editingRule.keyConstraints, ConstraintTarget.SecretKey),
+                  ...flattenConstraints(editingRule.valueConstraints, ConstraintTarget.SecretValue)
+                ]
+              : flattenConstraints(
+                  editingRule.passwordConstraints,
+                  ConstraintTarget.GeneratedPassword
+                ),
           ...("providers" in editingRule && { providers: editingRule.providers })
         }
       } as Partial<TRuleForm>)
     : undefined;
 
   const isEditing = sheetState.open && sheetState.mode === "edit";
+
+  if (!canReadRules) return null;
 
   return (
     <Card className="mb-6">
@@ -630,7 +660,10 @@ export const SecretValidationRulesSection = () => {
           generated for dynamic secrets and secret rotations.
         </CardDescription>
         <CardAction>
-          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+          <ProjectPermissionCan
+            I={ProjectPermissionSecretValidationRuleActions.Create}
+            a={ProjectPermissionSub.SecretValidationRules}
+          >
             {(isAllowed) => (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -670,8 +703,8 @@ export const SecretValidationRulesSection = () => {
             </EmptyHeader>
             <EmptyContent>
               <ProjectPermissionCan
-                I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.Settings}
+                I={ProjectPermissionSecretValidationRuleActions.Create}
+                a={ProjectPermissionSub.SecretValidationRules}
               >
                 {(isAllowed) => (
                   <Tooltip>
@@ -725,13 +758,13 @@ export const SecretValidationRulesSection = () => {
                       </div>
                     </TableCell>
                     <TableCell className="py-3">
-                      <Badge variant="neutral">
-                        {RULE_TYPE_LABELS[rule.type as string as RuleType] ?? rule.type}
-                      </Badge>
+                      <Badge variant="neutral">{RULE_TYPE_LABELS[rule.type]}</Badge>
                     </TableCell>
                     <TableCell className="py-3">
                       <div className="flex items-center gap-1.5">
-                        <Badge variant="neutral">{resolveEnvName(rule.envId)}</Badge>
+                        <Badge variant="neutral">
+                          {rule.environment?.name ?? "All Environments"}
+                        </Badge>
                         <Badge variant="neutral">{rule.secretPath}</Badge>
                       </div>
                     </TableCell>
@@ -761,8 +794,8 @@ export const SecretValidationRulesSection = () => {
                             Copy Rule ID
                           </DropdownMenuItem>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
-                            a={ProjectPermissionSub.Settings}
+                            I={ProjectPermissionSecretValidationRuleActions.Edit}
+                            a={ProjectPermissionSub.SecretValidationRules}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -777,8 +810,8 @@ export const SecretValidationRulesSection = () => {
                             )}
                           </ProjectPermissionCan>
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
-                            a={ProjectPermissionSub.Settings}
+                            I={ProjectPermissionSecretValidationRuleActions.Delete}
+                            a={ProjectPermissionSub.SecretValidationRules}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -821,15 +854,13 @@ export const SecretValidationRulesSection = () => {
           <div className="w-full pb-4">
             <p className="mb-2 text-sm text-muted">
               Enter the rule name{" "}
-              <span className="font-medium text-foreground">
-                {rules.find((r) => r.id === deleteRuleId)?.name}
-              </span>{" "}
-              to confirm the deletion
+              <span className="font-medium text-foreground">{ruleToDelete?.name}</span> to confirm
+              the deletion
             </p>
             <Input
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
-              placeholder={rules.find((r) => r.id === deleteRuleId)?.name}
+              placeholder={ruleToDelete?.name}
             />
           </div>
           <AlertDialogFooter>
@@ -837,7 +868,7 @@ export const SecretValidationRulesSection = () => {
             <AlertDialogAction
               variant="danger"
               onClick={handleDelete}
-              disabled={deleteConfirmation !== rules.find((r) => r.id === deleteRuleId)?.name}
+              disabled={deleteConfirmation !== ruleToDelete?.name}
             >
               Delete
             </AlertDialogAction>

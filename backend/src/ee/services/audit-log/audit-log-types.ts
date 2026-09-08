@@ -6846,8 +6846,9 @@ interface SecretValidationRuleCreateEvent {
     ruleId: string;
     name: string;
     type: string;
-    environmentSlug?: string;
+    environment?: string;
     secretPath: string;
+    isActive: boolean;
   };
 }
 
@@ -6868,6 +6869,7 @@ interface SecretValidationRuleDeleteEvent {
   metadata: {
     ruleId: string;
     name: string;
+    type: string;
   };
 }
 

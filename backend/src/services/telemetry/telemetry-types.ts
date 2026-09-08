@@ -2171,6 +2171,7 @@ export type TSecretValidationRuleCreatedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -2179,6 +2180,7 @@ export type TSecretValidationRuleUpdatedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -2187,6 +2189,7 @@ export type TSecretValidationRuleDeletedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
