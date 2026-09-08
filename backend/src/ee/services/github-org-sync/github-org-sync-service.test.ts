@@ -1,12 +1,16 @@
 import { Octokit } from "@octokit/core";
 import { describe, expect, test, vi } from "vitest";
 
+import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   assertGithubGroupMembersLinked,
   buildGithubMemberMatcher,
-  fetchGithubOrgTeams
+  createGithubOrgSyncAuditLogs,
+  fetchGithubOrgTeams,
+  mapGithubTeamsByName
 } from "./github-org-sync-service";
 
 type TVariables = { cursor: string | null; slug?: string; teamsPageSize?: number; membersPageSize?: number };
@@ -104,6 +108,108 @@ describe("fetchGithubOrgTeams", () => {
 
     const options = graphql.mock.calls[0][1] as unknown as { request: { signal: AbortSignal } };
     expect(options.request.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  test("counts the member page nested in the team response toward the page limit", async () => {
+    const { octokit, graphql } = buildOctokit((query) => {
+      if (query.includes("query orgTeams")) {
+        return { organization: { teams: page([team("big", ["u1"], "next")], null) } };
+      }
+      return { organization: { team: { members: page([], "next") } } };
+    });
+
+    await expect(fetchGithubOrgTeams(octokit, "acme")).rejects.toThrow(/50000 member limit/);
+    expect(graphql).toHaveBeenCalledTimes(500);
+  });
+});
+
+describe("mapGithubTeamsByName", () => {
+  test("uses lowercase names as Infisical group keys", () => {
+    const teams = [{ name: "Platform" }, { name: "Security Operations" }];
+
+    expect([...mapGithubTeamsByName(teams).keys()]).toEqual(["platform", "security operations"]);
+  });
+
+  test("fails before syncing teams that map to the same lowercase group name", () => {
+    expect(() => mapGithubTeamsByName([{ name: "Platform" }, { name: "platform" }])).toThrow(
+      /both map to the Infisical group 'platform'.*No group changes were applied/
+    );
+  });
+});
+
+describe("createGithubOrgSyncAuditLogs", () => {
+  test("records the actor, affected membership, GitHub organization, and sync trigger", async () => {
+    const createAuditLog = vi.fn(async () => undefined);
+    const auditLogInfo: AuditLogInfo = {
+      actor: {
+        type: ActorType.USER,
+        metadata: {
+          userId: "admin-id",
+          username: "admin@example.com",
+          email: "admin@example.com"
+        }
+      },
+      ipAddress: "127.0.0.1",
+      userAgent: "vitest",
+      userAgentType: UserAgentType.OTHER
+    };
+
+    await createGithubOrgSyncAuditLogs({
+      auditLogService: { createAuditLog },
+      auditLogInfo,
+      orgId: "org-id",
+      githubOrgName: "acme",
+      syncTrigger: "manual",
+      changes: [
+        {
+          action: "add",
+          groupId: "group-a",
+          groupName: "platform",
+          userId: "user-a",
+          username: "user-a@example.com"
+        },
+        {
+          action: "remove",
+          groupId: "group-b",
+          groupName: "security",
+          userId: "user-b",
+          username: "user-b@example.com"
+        }
+      ]
+    });
+
+    expect(createAuditLog).toHaveBeenNthCalledWith(1, {
+      ...auditLogInfo,
+      orgId: "org-id",
+      event: {
+        type: EventType.ADD_USER_TO_GROUP,
+        metadata: {
+          groupId: "group-a",
+          groupName: "platform",
+          userId: "user-a",
+          username: "user-a@example.com",
+          source: "github-org-sync",
+          githubOrgName: "acme",
+          syncTrigger: "manual"
+        }
+      }
+    });
+    expect(createAuditLog).toHaveBeenNthCalledWith(2, {
+      ...auditLogInfo,
+      orgId: "org-id",
+      event: {
+        type: EventType.REMOVE_USER_FROM_GROUP,
+        metadata: {
+          groupId: "group-b",
+          groupName: "security",
+          userId: "user-b",
+          username: "user-b@example.com",
+          source: "github-org-sync",
+          githubOrgName: "acme",
+          syncTrigger: "manual"
+        }
+      }
+    });
   });
 });
 

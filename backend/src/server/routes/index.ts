@@ -1285,7 +1285,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipGroupDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    auditLogService
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
