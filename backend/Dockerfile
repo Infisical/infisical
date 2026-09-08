@@ -1,7 +1,7 @@
 # Build stage
 ARG INFISICAL_CLI_VERSION=0.43.129
 
-FROM node:22.22.0-trixie-slim AS build
+FROM node:22.23.2-trixie-slim AS build
 
 WORKDIR /app
 
@@ -46,7 +46,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm "$ORACLE_ZIP"
 
 # Production dependencies (runs in parallel with build)
-FROM node:22.22.0-trixie-slim AS prod-deps
+FROM node:22.23.2-trixie-slim AS prod-deps
 
 WORKDIR /app
 
@@ -66,7 +66,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 # Production stage
-FROM node:22.22.0-trixie-slim
+FROM node:22.23.2-trixie-slim
 WORKDIR /app
 
 ENV npm_config_cache /home/node/.npm
