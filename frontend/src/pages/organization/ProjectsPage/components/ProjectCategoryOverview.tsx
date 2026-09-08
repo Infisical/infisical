@@ -21,24 +21,21 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
-  getOrgScopedProduct,
-  ORG_SCOPED_PRODUCTS,
-  TOrgScopedProduct
-} from "@app/helpers/orgScopedProducts";
+  getCertManagerActiveProjectCookie,
+  setCertManagerActiveProjectCookie
+} from "@app/helpers/certManagerActiveProject";
 import {
   getProjectDescription,
-  getProjectHomePage,
   getProjectLucideIcon,
   getProjectTitle,
-  isOrgScopedProduct,
   projectTypeToUrlSlug
 } from "@app/helpers/project";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
+import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
-import { resolveOrgScopedProjectId } from "@app/hooks/api/orgScopedProducts";
+import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 type ActiveProducts = ProjectType;
@@ -127,12 +124,14 @@ export const ProjectCategoryOverview = () => {
   const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
+  const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
   const [isCertManagerPickerOpen, setIsCertManagerPickerOpen] = useState(false);
-  const [accessRequest, setAccessRequest] = useState<{
-    projectId: string;
-    productLabel: string;
-  } | null>(null);
+  const [pendingCertManagerProjectId, setPendingCertManagerProjectId] = useState<string | null>(
+    null
+  );
+  const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
+  const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
 
   const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
   const cmInstances = useMemo(
@@ -151,22 +150,40 @@ export const ProjectCategoryOverview = () => {
   const isCertManagerAccessBlocked =
     cmInstances.length > 0 && !isOrgAdmin && !canRequestAccess && !isCertManagerMember;
 
-  const blockedOrgScopedProducts = useMemo(
+  const isPamMember = useMemo(
     () =>
-      new Set<ProjectType>(
-        Object.values(ORG_SCOPED_PRODUCTS)
-          .filter(({ projectIdField }) => {
-            const projectId = currentOrg?.[projectIdField];
-            return (
-              Boolean(projectId) &&
-              !isOrgAdmin &&
-              !canRequestAccess &&
-              !projects.some((project) => project.id === projectId)
-            );
-          })
-          .map(({ type }) => type)
+      Boolean(
+        currentOrg?.pamProjectId &&
+          projects.some((project) => project.id === currentOrg.pamProjectId)
       ),
-    [currentOrg, projects, isOrgAdmin, canRequestAccess]
+    [currentOrg?.pamProjectId, projects]
+  );
+  const isPamAccessBlocked =
+    Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
+
+  const isAgentVaultMember = useMemo(
+    () =>
+      Boolean(
+        currentOrg?.agentVaultProjectId &&
+          projects.some((project) => project.id === currentOrg.agentVaultProjectId)
+      ),
+    [currentOrg?.agentVaultProjectId, projects]
+  );
+  const isAgentVaultAccessBlocked =
+    Boolean(currentOrg?.agentVaultProjectId) && !isOrgAdmin && !isAgentVaultMember;
+
+  const certManagerActiveProjectId = useMemo(() => {
+    const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
+    if (cookieValue && cmInstances.some((p) => p.id === cookieValue)) return cookieValue;
+    return orgDefaultCertManagerProjectId;
+  }, [currentOrg?.id, cmInstances, orgDefaultCertManagerProjectId]);
+
+  const certManagerActiveProject = useMemo(
+    () =>
+      certManagerActiveProjectId
+        ? cmInstances.find((p) => p.id === certManagerActiveProjectId)
+        : undefined,
+    [cmInstances, certManagerActiveProjectId]
   );
 
   const getStatsForType = (type: ProjectType): ProductStat[] => {
@@ -222,6 +239,7 @@ export const ProjectCategoryOverview = () => {
   };
 
   const enterCertManagerProject = async (projectId: string) => {
+    setPendingCertManagerProjectId(projectId);
     const isMember = projects.some((p) => p.id === projectId);
     if (isMember) {
       navigateToCertManager(projectId);
@@ -239,10 +257,7 @@ export const ProjectCategoryOverview = () => {
         });
       }
     } else if (canRequestAccess) {
-      setAccessRequest({
-        projectId,
-        productLabel: getProjectTitle(ProjectType.CertificateManager)
-      });
+      setIsRequestAccessOpen(true);
     } else {
       createNotification({
         type: "error",
@@ -257,52 +272,101 @@ export const ProjectCategoryOverview = () => {
     await enterCertManagerProject(projectId);
   };
 
-  const enterOrgScopedProduct = async (product: TOrgScopedProduct) => {
-    const productLabel = getProjectTitle(product.type);
-    const navigateToProduct = () =>
-      navigate({
-        to: getProjectHomePage(product.type, []),
-        params: { orgId: currentOrg?.id ?? "" }
-      });
+  const navigateToPam = () => {
+    navigate({
+      to: "/organizations/$orgId/pam/access",
+      params: { orgId: currentOrg?.id ?? "" }
+    });
+  };
 
-    let projectId: string;
+  const enterPamProject = async () => {
+    // Also lazily bootstraps the PAM project for orgs that don't have one yet.
+    let pamProjectId: string;
     try {
-      // Also lazily bootstraps the project for orgs that don't have one yet.
-      projectId = await resolveOrgScopedProjectId(currentOrg, product);
+      pamProjectId = await resolvePamProjectId(currentOrg?.pamProjectId);
     } catch (err) {
       createNotification({
         type: "error",
-        text: err instanceof Error ? err.message : `Failed to resolve the ${productLabel} project.`
+        text:
+          err instanceof Error
+            ? err.message
+            : "Failed to resolve the Privileged Access Manager project."
       });
       return;
     }
 
-    if (projects.some((p) => p.id === projectId)) {
-      navigateToProduct();
+    const isMember = projects.some((p) => p.id === pamProjectId);
+    if (isMember) {
+      navigateToPam();
+      return;
+    }
+
+    setPendingPamProjectId(pamProjectId);
+
+    if (isOrgAdmin) {
+      try {
+        await orgAdminAccessProject.mutateAsync({ projectId: pamProjectId });
+        navigateToPam();
+      } catch (err) {
+        createNotification({
+          type: "error",
+          text:
+            err instanceof Error
+              ? err.message
+              : "Failed to join the Privileged Access Manager project."
+        });
+      }
+    } else if (canRequestAccess) {
+      setIsPamRequestAccessOpen(true);
+    } else {
+      createNotification({
+        type: "error",
+        text: "You don't have access to Privileged Access Manager."
+      });
+    }
+  };
+
+  const navigateToAgentVault = () => {
+    navigate({
+      to: "/organizations/$orgId/agent-vault/sessions",
+      params: { orgId: currentOrg?.id ?? "" }
+    });
+  };
+
+  const enterAgentVaultProject = async () => {
+    let agentVaultProjectId: string;
+    try {
+      agentVaultProjectId = currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to resolve the Agent Vault project."
+      });
+      return;
+    }
+
+    const isMember = projects.some((p) => p.id === agentVaultProjectId);
+    if (isMember) {
+      navigateToAgentVault();
       return;
     }
 
     if (isOrgAdmin) {
       try {
-        await orgAdminAccessProject.mutateAsync({ projectId });
-        navigateToProduct();
+        await orgAdminAccessProject.mutateAsync({ projectId: agentVaultProjectId });
+        navigateToAgentVault();
       } catch (err) {
         createNotification({
           type: "error",
-          text: err instanceof Error ? err.message : `Failed to join the ${productLabel} project.`
+          text: err instanceof Error ? err.message : "Failed to join the Agent Vault project."
         });
       }
       return;
     }
 
-    if (canRequestAccess) {
-      setAccessRequest({ projectId, productLabel });
-      return;
-    }
-
     createNotification({
       type: "error",
-      text: `You don't have access to ${productLabel}.`
+      text: "You don't have access to Agent Vault. Ask an Agent Vault admin to add you."
     });
   };
 
@@ -323,9 +387,13 @@ export const ProjectCategoryOverview = () => {
       return;
     }
 
-    const orgScopedProduct = getOrgScopedProduct(type);
-    if (orgScopedProduct) {
-      await enterOrgScopedProduct(orgScopedProduct);
+    if (type === ProjectType.PAM) {
+      await enterPamProject();
+      return;
+    }
+
+    if (type === ProjectType.AgentVault) {
+      await enterAgentVaultProject();
       return;
     }
 
@@ -358,9 +426,22 @@ export const ProjectCategoryOverview = () => {
     );
   }
 
-  // The modal only reads id, and name only for a subtitle every caller overrides.
-  const accessRequestProject: Project | undefined = accessRequest
-    ? ({ id: accessRequest.projectId, name: accessRequest.productLabel } as Project)
+  const requestAccessTarget =
+    (pendingCertManagerProjectId
+      ? cmInstances.find((p) => p.id === pendingCertManagerProjectId)
+      : undefined) ?? certManagerActiveProject;
+  const requestAccessProject: Project | undefined = requestAccessTarget
+    ? ({
+        id: requestAccessTarget.id,
+        name: requestAccessTarget.name
+      } as Project)
+    : undefined;
+
+  const pamRequestAccessProject: Project | undefined = pendingPamProjectId
+    ? ({
+        id: pendingPamProjectId,
+        name: "Privileged Access Manager"
+      } as Project)
     : undefined;
 
   return (
@@ -417,7 +498,8 @@ export const ProjectCategoryOverview = () => {
 
           const isAccessBlocked =
             (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
-            blockedOrgScopedProducts.has(type);
+            (type === ProjectType.PAM && isPamAccessBlocked) ||
+            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
 
           if (isAccessBlocked) {
             return (
@@ -437,9 +519,13 @@ export const ProjectCategoryOverview = () => {
 
           const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
 
-          // Cert Manager and the org-scoped products resolve their destination asynchronously
-          // (instance picker, lazy project bootstrap, join-on-behalf), so they stay handler-driven.
-          if (type === ProjectType.CertificateManager || isOrgScopedProduct(type)) {
+          // Cert Manager and PAM resolve their destination asynchronously (instance picker,
+          // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
+          if (
+            type === ProjectType.CertificateManager ||
+            type === ProjectType.PAM ||
+            type === ProjectType.AgentVault
+          ) {
             return (
               <Card
                 key={type}
@@ -470,16 +556,20 @@ export const ProjectCategoryOverview = () => {
       </div>
 
       <RequestProjectAccessModal
-        isOpen={Boolean(accessRequest)}
+        isOpen={isRequestAccessOpen}
+        onOpenChange={setIsRequestAccessOpen}
+        project={requestAccessProject}
+        subTitle="Requesting access to Certificate Manager. You may include an optional note for admins to review your request."
+      />
+
+      <RequestProjectAccessModal
+        isOpen={isPamRequestAccessOpen}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setAccessRequest(null);
+          setIsPamRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingPamProjectId(null);
         }}
-        project={accessRequestProject}
-        subTitle={
-          accessRequest
-            ? `Requesting access to ${accessRequest.productLabel}. You may include an optional note for admins to review your request.`
-            : undefined
-        }
+        project={pamRequestAccessProject}
+        subTitle="Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
       />
 
       <CertManagerNotConfiguredModal
