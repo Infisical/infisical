@@ -89,6 +89,10 @@ GRANT USAGE ON SCHEMA analytics.public TO ROLE pam_reader;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics.public TO ROLE pam_reader;
 ```
 
+The account's **Role** sets what a session starts with, not a boundary it stays inside: a session can run `USE ROLE` to switch to any other role the credential holds. Grant the credential only the roles the people using the account should reach.
+
+Command blocking matches the text of each statement, so a statement that builds SQL at runtime, such as `EXECUTE IMMEDIATE`, can run something a pattern would otherwise reject. Use Snowflake privileges for restrictions that have to hold.
+
 ## Connecting
 
 <Tabs>
