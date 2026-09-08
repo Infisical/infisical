@@ -404,9 +404,7 @@ export const pamWebAccessServiceFactory = ({
             await withGatewayV2Proxy(
               (port) =>
                 new Promise<void>((resolve, reject) => {
-                  // The ALPN signal is the connection itself, so cleanup must not tear the tunnel
-                  // down until the proxy has forwarded it and the gateway has closed its end.
-                  // Bounded, so a gateway that never closes its end cannot hold the tunnel open.
+                  // The ALPN signal is the connection itself, so the tunnel must outlive the forward.
                   const cancelSocket = net.connect(port, "127.0.0.1", () => {
                     cancelSocket.end();
                   });

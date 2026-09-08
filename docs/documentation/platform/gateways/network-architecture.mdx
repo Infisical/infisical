@@ -88,7 +88,17 @@ By default the Gateway binds the port from `--listen-address` on every interface
 
 A Gateway can run both modes at once. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first, and falls back to the relay when that address stops answering. Health checks probe each mode separately, so the Gateway stays healthy while either one works.
 
-This is worth doing when you want direct connections for everything the platform does, and a relay so PAM CLI sessions still work for users outside the network.
+Running both is mainly how you switch an existing Gateway between modes without an outage. A Gateway declares its transports every time it registers, so the move is a flag change and a restart:
+
+| Flags | Mode |
+|---|---|
+| `--relay=my-relay` | Relay only |
+| `--relay=my-relay --listen-address=gateway.internal:8443` | Both |
+| `--listen-address=gateway.internal:8443` | Direct only |
+
+Stop at the middle step and check the Gateway's health. If the address is wrong or Infisical can't route to it, operations keep completing over the relay while the Gateway page reports the direct path as unreachable, so a bad address costs you nothing. Drop `--relay` once direct is healthy, or drop `--listen-address` to go back.
+
+Running both permanently only helps clients that can reach the direct address. PAM CLI sessions dial the Gateway from the user's own machine, so a user outside the network waits for the direct attempt to time out before the session falls back to the relay. If most of your CLI users are outside the network, relay mode alone serves them better.
 
 ## Self-hosted relay (optional)
 

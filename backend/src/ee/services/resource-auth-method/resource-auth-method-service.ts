@@ -168,8 +168,7 @@ export const resourceAuthMethodServiceFactory = ({
     return kmipServer ? { id: kmipServer.id, name: kmipServer.name, orgId: kmipServer.orgId, identityId: null } : null;
   };
 
-  // Bumps tokenVersion (invalidating outstanding JWTs) and clears every liveness probe, so a
-  // revoked resource cannot keep looking reachable. KMIP servers have no heartbeat columns.
+  // Bumps tokenVersion and clears every liveness probe. KMIP servers have no heartbeat columns.
   const $bumpTokenVersion = async (resource: ResourceRef, tx?: Knex): Promise<number> => {
     if (resource.type === RESOURCE_TYPE_GATEWAY) {
       const refreshed = await gatewayV2DAL.updateById(

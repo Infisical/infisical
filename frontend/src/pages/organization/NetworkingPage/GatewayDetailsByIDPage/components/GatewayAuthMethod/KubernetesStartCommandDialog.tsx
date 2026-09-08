@@ -26,8 +26,6 @@ type Props = {
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
 
-// Stands in until the listen address is filled in and valid, so a copied command never carries
-// an address the API would reject.
 const PLACEHOLDER_ADDRESS = "<gateway-address>:8443";
 
 export const KubernetesStartCommandContent = ({
@@ -46,8 +44,7 @@ export const KubernetesStartCommandContent = ({
   const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
 
   const helmCommand = useMemo(() => {
-    // The chart derives the container port and the Service port from listenAddress, so setting
-    // service.port here would only re-derive the same value in a second place.
+    // The chart derives both ports from listenAddress.
     const directPart = isDirect
       ? ` \\\n  --set gateway.listenAddress=${listenAddress || PLACEHOLDER_ADDRESS}`
       : "";

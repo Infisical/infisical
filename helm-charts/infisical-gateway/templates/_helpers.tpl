@@ -62,8 +62,7 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Port the gateway listens on for direct connections, taken from gateway.listenAddress so the
-container port and the Service can never disagree with what the gateway actually binds.
+Port the gateway listens on for direct connections, from gateway.listenAddress.
 */}}
 {{- define "infisical-gateway.listenPort" -}}
 {{- $addr := .Values.gateway.listenAddress -}}
@@ -71,8 +70,6 @@ container port and the Service can never disagree with what the gateway actually
 {{- if or (eq $port $addr) (not (regexMatch "^[0-9]+$" $port)) -}}
 {{- fail (printf "gateway.listenAddress must be host:port, got %q" $addr) -}}
 {{- end -}}
-{{- /* Same range the backend enforces, so an out-of-range port fails the render rather than the
-       Kubernetes API. */ -}}
 {{- if or (lt (int $port) 1) (gt (int $port) 65535) -}}
 {{- fail (printf "gateway.listenAddress port must be between 1 and 65535, got %q" $port) -}}
 {{- end -}}
@@ -80,9 +77,8 @@ container port and the Service can never disagree with what the gateway actually
 {{- end }}
 
 {{/*
-Port the Service exposes. Defaults to the port in gateway.listenAddress, because that address is
-what the platform dials: a Service listening on anything else is unreachable at the registered
-address. Set service.port only to put a different port in front of the gateway.
+Port the Service exposes. Defaults to the port in gateway.listenAddress, which is what the
+platform dials.
 */}}
 {{- define "infisical-gateway.servicePort" -}}
 {{- if .Values.service.port -}}

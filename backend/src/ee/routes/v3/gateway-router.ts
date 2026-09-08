@@ -754,10 +754,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         directAddress: req.body.directAddress
       });
 
-      // A gateway can change its own transports here, including pointing the platform at a new
-      // address to dial, so every connect is recorded whether or not anything changed. Spreading
-      // auditLogInfo keeps the source IP and user agent on an event that repoints where the
-      // platform dials, and reuses the GATEWAY actor the audit plugin already resolved.
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,

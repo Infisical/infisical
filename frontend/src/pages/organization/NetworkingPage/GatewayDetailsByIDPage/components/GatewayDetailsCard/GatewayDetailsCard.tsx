@@ -84,8 +84,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
     return gateway.relayId ? "Relay" : "Not configured";
   };
   const connection = describeConnection();
-  // Only broken out for a gateway running both. With one transport the Health badge and Last Seen
-  // above already say everything these rows would.
+  // With one transport the badge and Last Seen above already say it.
   const transportHealth = getGatewayTransportHealth(gateway);
   const perTransportHealth = transportHealth.length > 1 ? transportHealth : [];
 

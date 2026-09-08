@@ -15,11 +15,7 @@ export const isGatewayHealthy = (gateway: {
       ((gateway.heartbeatTTL as number) + HEARTBEAT_BUFFER_SECONDS) * 1000 >
       Date.now();
 
-  // Mirrors the backend's buildGatewayReachableSql. A gateway running both transports is reachable
-  // while either path is fresh, since the platform falls back to the relay when the direct address
-  // is down, and a transport counts only while it is still configured: deleting a relay nulls
-  // relayId and leaves its last heartbeat behind, which would otherwise keep reporting a gateway
-  // the platform can no longer dial as healthy.
+  // Mirrors buildGatewayReachableSql: a transport counts only while it is still configured.
   return (
     (Boolean(gateway.directAddress) && isFresh(gateway.directHeartbeat)) ||
     (Boolean(gateway.relayId) && isFresh(gateway.heartbeat))
@@ -44,9 +40,7 @@ export type TGatewayTransportHealth = {
   probedAt: string | null;
 };
 
-// Per-transport health for a gateway running more than one. The aggregate badge is healthy while
-// either path answers, which is right for "can Infisical use this gateway" and useless for "which
-// path is broken", and a broken direct path is what makes sessions slow to start.
+// The aggregate badge answers "is this gateway usable", not "which path is broken".
 export const getGatewayTransportHealth = (gateway: {
   heartbeat?: string | null;
   relayId?: string | null;

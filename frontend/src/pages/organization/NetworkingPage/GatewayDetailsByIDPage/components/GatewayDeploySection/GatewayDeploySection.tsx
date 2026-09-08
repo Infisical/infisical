@@ -80,9 +80,7 @@ export const GatewayDeploySection = ({
 }: Props) => {
   const isCloud = isInfisicalCloud();
   const isKubernetes = authMethod.method === "kubernetes";
-  // Direct listen is the recommended mode, so it is also the default. The exceptions are Cloud,
-  // which cannot reach into a customer network, and a gateway already deployed against a relay
-  // alone, where the rendered command should match how it actually runs.
+  // Relay only for Cloud, which cannot route inward, and for a gateway already running relay alone.
   const isRelayOnlyGateway = Boolean(relayId) && !directAddress;
   const [connectionMode, setConnectionMode] = useState<"relay" | "direct">(
     isCloud || isRelayOnlyGateway ? "relay" : "direct"
@@ -91,8 +89,7 @@ export const GatewayDeploySection = ({
   const trimmedListenAddress = listenAddress.trim();
   const hasListenAddressError =
     trimmedListenAddress.length > 0 && !isValidListenAddress(trimmedListenAddress);
-  // A malformed address must not reach a copyable command, where it would fail against the API
-  // rather than in the field the user can see.
+  // Keep a malformed address out of a copyable command.
   const commandListenAddress = hasListenAddressError ? "" : trimmedListenAddress;
   const [deploymentMethod, setDeploymentMethod] = useState("");
   const [mintedEnrollment, setMintedEnrollment] = useState<

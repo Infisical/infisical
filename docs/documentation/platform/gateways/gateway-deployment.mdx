@@ -12,7 +12,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 
 ## Choose a connection mode
 
-Before you deploy, decide which side opens the connection between Infisical and the Gateway. This is the one choice that changes what else you have to set up.
+Before you deploy, decide which side opens the connection between Infisical and the Gateway.
 
 | | Direct listen | Relay |
 |---|---|---|
@@ -27,9 +27,9 @@ Before you deploy, decide which side opens the connection between Infisical and 
 
 **Use relay mode** when the Gateway sits behind NAT or a firewall you can't open, when you're on Infisical Cloud, or when PAM CLI users connect from outside the Gateway's network.
 
-Direct listen isn't a paid feature you can turn on for Cloud. Cloud runs outside your network and has no route into it, so there's no address it could dial. Relay mode exists precisely so the Gateway can open that connection from the inside.
+Direct listen isn't a paid feature you can turn on for Cloud. Cloud runs outside your network and has no route into it, so there's no address it could dial. Relay mode exists so the Gateway can open that connection from the inside.
 
-You can also run both at once, which gives you direct connections for platform operations and a relay for PAM CLI users outside the network. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first and falls back to the relay when it stops answering.
+You can also run both at once, which is how you move an existing Gateway from one mode to the other without an outage. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first and falls back to the relay when it stops answering. See [Running both modes](/documentation/platform/gateways/network-architecture#running-both-modes).
 
 For the ports, certificates, and traffic flow behind each mode, see [Network architecture](/documentation/platform/gateways/network-architecture).
 

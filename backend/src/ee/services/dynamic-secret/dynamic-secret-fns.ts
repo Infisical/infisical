@@ -6,8 +6,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { getDbConnectionHost } from "@app/lib/knex";
 
-// The services Infisical itself runs on. A user-supplied host that resolves to one of these would
-// point Infisical at its own database, cache, or log store.
 const getReservedIps = async () => {
   const appCfg = getConfig();
   const reservedHosts = [appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI)].concat(
@@ -31,9 +29,7 @@ const getReservedIps = async () => {
   return exclusiveIps;
 };
 
-// For hosts that are legitimately private, such as a gateway's own listen address, where the
-// private-IP block in verifyHostInputValidity would reject the entire feature. Infisical's own
-// infrastructure is still off limits: a gateway naming it would have the platform dial itself.
+// Unlike verifyHostInputValidity, allows private hosts: a gateway's listen address is private by design.
 export const assertHostNotInfisicalInfrastructure = async ({ host }: { host: string }) => {
   const appCfg = getConfig();
   if (appCfg.isDevelopmentMode || appCfg.isTestMode) return;
@@ -48,8 +44,7 @@ export const assertHostNotInfisicalInfrastructure = async ({ host }: { host: str
     try {
       hostIps = (await dns.lookup(host, { all: true })).map(({ address }) => address);
     } catch {
-      // An address that does not resolve yet is allowed through: a gateway is often registered
-      // before its DNS record exists, and an unresolvable host cannot reach anything either way.
+      // A gateway is often registered before its DNS record exists.
       return;
     }
   }

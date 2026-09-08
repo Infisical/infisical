@@ -9,8 +9,7 @@ export type TListedGatewayV1 = TGateway & { isV1: true };
 export type TListedGatewayV2 = TGatewayV2 & { isV1: false };
 export type TListedGateway = TListedGatewayV1 | TListedGatewayV2;
 
-// A type predicate, so the narrowing survives a .filter(). A plain `!g.isV1` callback returns the
-// union unchanged, which is how v1 gateways reached helpers that only accept the v2 shape.
+// A predicate, so the narrowing survives a .filter(). A plain boolean callback does not narrow.
 export const isListedGatewayV2 = (gateway: TListedGateway): gateway is TListedGatewayV2 =>
   !gateway.isV1;
 

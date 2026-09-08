@@ -25,8 +25,6 @@ type Props = {
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
 
-// Stands in until the listen address is filled in and valid, so a copied command never carries
-// an address the API would reject.
 const PLACEHOLDER_ADDRESS = "<gateway-address>:8443";
 
 const formatTimeRemaining = (expiresAt: string, now: number) => {

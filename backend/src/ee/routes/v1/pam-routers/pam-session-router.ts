@@ -386,10 +386,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         accessMethod: req.body.accessMethod === "web" ? PamAccessMethod.Web : PamAccessMethod.Cli,
         targetHost: req.body.targetHost,
-        // Web access is brokered by the platform, so it can use any transport the gateway has. A CLI
-        // reports what it can dial, and an empty list means an older CLI that only knows relays.
-        // Do not collapse the empty array into undefined: that would hand a direct-only gateway to
-        // a CLI that cannot reach it.
+        // [] is an older CLI that only knows relays, so it must not collapse to undefined.
         supportedTransports:
           req.body.accessMethod === PamAccessMethod.Web ? undefined : (req.body.supportedTransports ?? [])
       });

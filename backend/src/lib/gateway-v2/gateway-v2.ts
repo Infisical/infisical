@@ -123,12 +123,8 @@ export const createRelayConnection = async ({
   });
 };
 
-// A gateway socket's inactivity timer, applied once the mTLS handshake is done. Long-lived tunnels
-// clear it entirely and rely on TCP keep-alive instead.
 const GATEWAY_IDLE_TIMEOUT_MS = 120000;
 
-// Handshake budget for a direct connection. Kept short so an unreachable or wedged direct address
-// fails fast and the caller can retry over the relay.
 const DIRECT_HANDSHAKE_TIMEOUT_MS = 3000;
 
 export const createGatewayConnection = async (
@@ -183,9 +179,7 @@ export const createGatewayConnection = async (
           return;
         }
 
-        // setTimeout is an inactivity timer, not a deadline, and this listener outlives the
-        // handshake. Leaving a short handshake budget in place would destroy the tunnel on the
-        // first quiet stretch of a slow operation, so widen it once the handshake is done.
+        // setTimeout is an inactivity timer, not a deadline, and this listener outlives the handshake.
         gatewaySocket.setTimeout(GATEWAY_IDLE_TIMEOUT_MS);
 
         logger.info(`Gateway mTLS connection established successfully [tunnelId=${tunnelId ?? "n/a"}]`);
@@ -256,10 +250,7 @@ export const setupRelayServer = async ({
     const tunnelId = crypto.randomBytes(4).toString("hex");
     const hasRelayFallback = Boolean(directAddress && relayHost && relay);
 
-    // The address is validated when the gateway registers it: host syntax and port range in
-    // parseDirectAddress, and Infisical's own infrastructure ruled out by
-    // assertHostNotInfisicalInfrastructure. Re-checking per connection would resolve DNS on every
-    // dial, so nothing is validated here.
+    // Validated at registration; re-checking here would resolve DNS on every dial.
     const dialDirect = () => {
       const parsed = new URL(`tcp://${directAddress}`);
       const serverName = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
@@ -282,8 +273,7 @@ export const setupRelayServer = async ({
       return { conn, serverName: "localhost", direct: false };
     };
 
-    // Dials one transport and completes the gateway handshake over it. Both stages are here so a
-    // direct address that accepts TCP but fails the handshake still falls back to the relay.
+    // Handshake included so a direct address that accepts TCP but fails mTLS still falls back.
     const openOverTransport = async (
       dial: () => Promise<{ conn: net.Socket; serverName: string; direct: boolean }>
     ) => {
@@ -313,8 +303,6 @@ export const setupRelayServer = async ({
       tunnelLog(tunnelId, directAddress ? "direct transport failed" : "relay transport failed", ` [err=${reason}]`);
       if (!hasRelayFallback) throw err;
 
-      // The direct address is unreachable or unhealthy, so retry the same attempt over the relay
-      // rather than failing an operation the gateway can still serve.
       tunnelLog(tunnelId, "falling back to relay");
       try {
         ({ relayConn, gatewayConn } = await openOverTransport(dialRelay));

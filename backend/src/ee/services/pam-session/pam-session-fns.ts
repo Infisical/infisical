@@ -128,9 +128,7 @@ export const sendPamSessionCancellationSignal = ({
       await withGatewayV2Proxy(
         (port) =>
           new Promise<void>((resolve, reject) => {
-            // The ALPN signal is the connection itself, so cleanup must not tear the tunnel down
-            // until the proxy has forwarded it and the gateway has closed its end. Bounded, because
-            // a gateway that never closes its end would otherwise hold this tunnel open forever.
+            // The ALPN signal is the connection itself, so the tunnel must outlive the forward.
             const socket = net.connect(port, "127.0.0.1", () => {
               socket.end();
             });

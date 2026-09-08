@@ -761,8 +761,7 @@ export const gatewayV2ServiceFactory = ({
 
     return {
       gatewayId: gateway.id,
-      // For the audit log. Not part of either route's response schema, so it is stripped on the way
-      // out rather than becoming part of the API contract.
+      // For the audit log; not in either response schema, so zod strips it.
       gatewayName: gateway.name,
       directAddress: gateway.directAddress ?? undefined,
       relayHost: relayCredentials?.relayHost,
@@ -803,8 +802,7 @@ export const gatewayV2ServiceFactory = ({
         throw new BadRequestError({ message: "Direct gateway connections are not available on Infisical Cloud" });
       }
       const { host } = parseDirectAddress(directAddress);
-      // Checked here rather than at dial time: registration happens once per address change, while
-      // a dial happens per connection, and this resolves DNS.
+      // Once per address change rather than once per dial, since this resolves DNS.
       await assertHostNotInfisicalInfrastructure({ host });
     }
     const orgCAs = await $getOrgCAs(orgId);
@@ -829,11 +827,7 @@ export const gatewayV2ServiceFactory = ({
         throw new NotFoundError({ message: "No connection transport associated with this gateway" });
       }
 
-      // The gateway declares its full transport set on every call, so an omitted transport is
-      // removed rather than left behind. That is what makes dropping one work, and it is also
-      // correct for a rolled-back CLI: a binary without --listen-address is not listening, so the
-      // row should stop advertising an address nothing answers on. Each probe survives only while
-      // its transport is unchanged, since a new address or relay has not been reached yet.
+      // The gateway declares its full transport set every call, so an omitted transport is removed.
       const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
@@ -1011,9 +1005,7 @@ export const gatewayV2ServiceFactory = ({
 
     const results = await Promise.allSettled(transports.map((transport) => $checkGatewayHealth(gatewayId, transport)));
 
-    // A gateway stays reachable while one transport answers, so a single failure raises nothing and
-    // the UI keeps reporting it healthy. Log each one, otherwise a broken direct address on an
-    // otherwise-working gateway is invisible until someone notices sessions are slow to start.
+    // One transport failing raises nothing, so log it or a broken direct path stays invisible.
     results.forEach((result, index) => {
       if (result.status !== "rejected") return;
       const err = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
@@ -1424,8 +1416,7 @@ export const gatewayV2ServiceFactory = ({
         throw new BadRequestError({ message: "Direct gateway connections are not available on Infisical Cloud" });
       }
       const { host } = parseDirectAddress(directAddress);
-      // Checked here rather than at dial time: registration happens once per address change, while
-      // a dial happens per connection, and this resolves DNS.
+      // Once per address change rather than once per dial, since this resolves DNS.
       await assertHostNotInfisicalInfrastructure({ host });
     }
     const orgCAs = await $getOrgCAs(orgId);
@@ -1448,11 +1439,7 @@ export const gatewayV2ServiceFactory = ({
         throw new NotFoundError({ message: "No connection transport associated with this gateway" });
       }
 
-      // The gateway declares its full transport set on every call, so an omitted transport is
-      // removed rather than left behind. That is what makes dropping one work, and it is also
-      // correct for a rolled-back CLI: a binary without --listen-address is not listening, so the
-      // row should stop advertising an address nothing answers on. Each probe survives only while
-      // its transport is unchanged, since a new address or relay has not been reached yet.
+      // The gateway declares its full transport set every call, so an omitted transport is removed.
       const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
