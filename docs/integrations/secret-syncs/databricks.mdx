@@ -54,26 +54,19 @@ Create a service principal Infisical can use to reach the workspace.
         Then select **Next** to configure the sync's destination.
     </Step>
     <Step title="Configure the app connection" titleSize="h3">
-        Create or select the Databricks app connection the sync will use.
+        The sync needs an [app connection](/integrations/app-connections) to authenticate to Databricks.
+        
+        Under **Databricks Connection**, select an existing app connection, or select **Create Connection** and choose **Databricks Connection**. Select the **Service Principal** method, then fill in:
 
-        <Tabs>
-            <Tab title="Create a new app connection">
-                Under **Databricks Connection**, select **Create Connection** in the dropdown, then choose **Databricks Connection**. Select the **Service Principal** method, then fill in:
+        <ConnectionFormFields />
 
-                <ConnectionFormFields />
+        ![Connect via Databricks service principal](/images/app-connections/databricks/create-databricks-service-principal-method.png)
 
-                ![Connect via Databricks service principal](/images/app-connections/databricks/create-databricks-service-principal-method.png)
+        Select **Connect to Databricks**. Infisical returns you to the sync form with the new connection selected.
 
-                Select **Connect to Databricks**. Infisical returns you to the sync form with the new connection selected.
-
-                <Note>
-                    This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/databricks#step-2-create-the-app-connection) first, then select it here.
-                </Note>
-            </Tab>
-            <Tab title="Use an existing connection">
-                Under **Databricks Connection**, select the app connection you'd like to use.
-            </Tab>
-        </Tabs>
+        <Note>
+            This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/databricks#step-2-create-the-app-connection) first, then select it here.
+        </Note>
     </Step>
     <Step title="Configure the target scope" titleSize="h3">
         Configure the Databricks secret scope where secrets should be deployed.
