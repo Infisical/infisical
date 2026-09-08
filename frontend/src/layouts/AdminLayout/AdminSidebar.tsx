@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useLocation, useMatchRoute, useNavigate, useSearch } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Building,
   ChevronLeft,
@@ -16,6 +15,7 @@ import {
   ShieldCheck,
   User
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import {
   Sidebar,

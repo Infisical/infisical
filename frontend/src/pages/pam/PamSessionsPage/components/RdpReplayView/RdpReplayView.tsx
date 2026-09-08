@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Loader2Icon, PauseIcon, PlayIcon, RotateCcwIcon } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { IconButton } from "@app/components/v3";
 import { TSessionEvent } from "@app/hooks/api/pam";
