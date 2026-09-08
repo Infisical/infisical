@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { components, OptionProps } from "react-select";
 import { CheckIcon, PlusIcon } from "lucide-react";
 
@@ -14,16 +15,18 @@ import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 
 type TAppConnectionOptionContentProps = {
   data: Pick<TAvailableAppConnection, "id" | "name"> & { projectId?: string | null };
+  createLabel?: ReactNode;
   isOnlyOption?: boolean;
   isSelected?: boolean;
 };
 
 export const AppConnectionOptionContent = ({
   data,
+  createLabel,
   isOnlyOption = false,
   isSelected = false
 }: TAppConnectionOptionContentProps) => {
-  const isCreateOption = data.id === "_create";
+  const isCreateOption = data.id === "_create" || data.id.startsWith("_create:");
   const { isSubOrganization } = useOrganization();
 
   return (
@@ -33,7 +36,7 @@ export const AppConnectionOptionContent = ({
           className={`flex items-center gap-x-1 ${isOnlyOption ? "text-foreground" : "text-accent"}`}
         >
           <PlusIcon className="size-4" />
-          <span className="mr-auto">Create New Connection</span>
+          <span className="mr-auto">{createLabel ?? "Create New Connection"}</span>
         </div>
       ) : (
         <>
@@ -71,13 +74,15 @@ export const AppConnectionOption = ({
   isSelected,
   ...props
 }: OptionProps<TAvailableAppConnection>) => {
-  const isCreateOption = props.data.id === "_create";
+  const isCreateOption = props.data.id === "_create" || props.data.id.startsWith("_create:");
+  const isPerAppCreateOption = isCreateOption && props.data.id !== "_create";
   const isOnlyOption = isCreateOption && props.selectProps.options.length === 1;
 
   return (
     <components.Option isSelected={isSelected} {...props}>
       <AppConnectionOptionContent
         data={props.data}
+        createLabel={isPerAppCreateOption ? props.children : undefined}
         isOnlyOption={isOnlyOption}
         isSelected={isSelected}
       />

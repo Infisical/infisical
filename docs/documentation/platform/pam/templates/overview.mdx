@@ -35,6 +35,7 @@ If you need different rules — say, 4-hour sessions with MFA for production —
     | Option | What it does |
     |--------|--------------|
     | **Require Approval** | Users must request and receive approval before launching a session or [viewing credentials](/documentation/platform/pam/accounts/overview#viewing-credentials) |
+    | **Allow Break-Glass** | Named responders can clear their own request without an approver, for emergencies |
     | **Require MFA** | Users must re-authenticate with MFA before connecting |
     | **Require Reason** | A reason must be provided before connecting |
     | **Max Session Duration** | How long someone can stay connected (in seconds) |
@@ -42,6 +43,10 @@ If you need different rules — say, 4-hour sessions with MFA for production —
 
     <Note>
       **Require Approval** gates sessions and credential reveals with one switch, but they are approved separately: a session request never reveals the credential, and a credential request never launches a session. A member who needs both files both.
+    </Note>
+
+    <Note>
+      **Allow Break-Glass** needs **Require Approval** on the same template, and it stays off until a Folder Admin names the responders on the folder's **Approvals** tab. Break-glass clears whichever request it is used on, so a session request grants a session and a credential request grants a reveal. See [break-glass access](/documentation/platform/pam/access-requests/overview#break-glass-access).
     </Note>
 
     <Note>

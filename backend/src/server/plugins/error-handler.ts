@@ -28,6 +28,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import {
   coreHttpErrorCounter,
   highCardinalityMeter,
+  normalizeHttpMethod,
   rateLimitExceededCounter,
   shouldRecordHighCardinalityMetrics
 } from "@app/lib/telemetry/metrics";
@@ -108,6 +109,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     }
 
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+      // Normalized only for the InfisicalCore instrument, we drop the per-actor meters there.
+      const coreMethod = normalizeHttpMethod(req.method);
       const { method } = req;
       const route = req.routeOptions.url;
 
@@ -185,7 +188,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       }
 
       const coreAttrs: Record<string, string | number> = {
-        "http.request.method": method,
+        "http.request.method": coreMethod,
         "http.route": route ?? "unknown",
         "error.type": classifyError(error)
       };
@@ -295,7 +298,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     } else if (error instanceof RateLimitError) {
       rateLimitExceededCounter.add(1, {
         "http.route": req.routeOptions.url ?? "unknown",
-        "http.request.method": req.method
+        "http.request.method": normalizeHttpMethod(req.method)
       });
       void res.status(HttpStatusCodes.TooManyRequests).send({
         reqId: req.id,

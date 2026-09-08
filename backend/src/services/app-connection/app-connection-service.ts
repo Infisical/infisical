@@ -137,6 +137,7 @@ import { kempLoadMasterConnectionService } from "./kemp-loadmaster/kemp-loadmast
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
 import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
+import { ldapConnectionService } from "./ldap/ldap-connection-service";
 import { ValidateLiteLLMConnectionCredentialsSchema } from "./litellm";
 import { liteLLMConnectionService } from "./litellm/litellm-connection-service";
 import { ValidateMicrosoftIntuneConnectionCredentialsSchema } from "./microsoft-intune";
@@ -218,7 +219,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -1146,20 +1147,16 @@ export const appConnectionServiceFactory = ({
   };
 
   const connectAppConnectionById = async <T extends TAppConnection>(
-    app: AppConnection,
+    app: AppConnection | AppConnection[],
     connectionId: string,
     actor: OrgServiceActor
   ) => {
+    const allowedApps = Array.isArray(app) ? app : [app];
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
-    await enterpriseAppCheck(
-      licenseService,
-      app,
-      actor.orgId,
-      "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
-    );
+    const connectionApp = appConnection.app as AppConnection;
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -1191,12 +1188,21 @@ export const appConnectionServiceFactory = ({
       );
     }
 
-    if (appConnection.app !== app)
+    if (!allowedApps.includes(connectionApp))
       throw new BadRequestError({
         message: `${
-          APP_CONNECTION_NAME_MAP[appConnection.app as AppConnection]
-        } Connection with ID ${connectionId} cannot be used to connect to ${APP_CONNECTION_NAME_MAP[app]}`
+          APP_CONNECTION_NAME_MAP[connectionApp]
+        } Connection with ID ${connectionId} cannot be used to connect to ${allowedApps
+          .map((allowedApp) => APP_CONNECTION_NAME_MAP[allowedApp])
+          .join(" or ")}`
       });
+
+    await enterpriseAppCheck(
+      licenseService,
+      connectionApp,
+      actor.orgId,
+      "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
+    );
 
     const connectionProject = appConnection.projectId
       ? await projectDAL.findProjectById(appConnection.projectId)
@@ -1396,6 +1402,7 @@ export const appConnectionServiceFactory = ({
     venafi: venafiConnectionService(connectAppConnectionById),
     azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
     adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),

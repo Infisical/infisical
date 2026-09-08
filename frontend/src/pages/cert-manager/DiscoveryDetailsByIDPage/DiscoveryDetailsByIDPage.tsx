@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import { Helmet } from "react-helmet";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
@@ -20,7 +22,9 @@ import {
   useProject
 } from "@app/context";
 import {
-  PkiDiscoveryScanStatus,
+  isPkiDiscoveryScanInFlight,
+  pkiDiscoveryKeys,
+  pkiInstallationKeys,
   TPkiDiscovery,
   useDeletePkiDiscovery,
   useGetPkiDiscovery,
@@ -45,9 +49,24 @@ const Page = () => {
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/$discoveryId"
   });
 
+  const queryClient = useQueryClient();
   const { data: discovery, isLoading } = useGetPkiDiscovery({ discoveryId });
   const triggerScan = useTriggerPkiDiscoveryScan();
   const deleteDiscovery = useDeletePkiDiscovery();
+
+  const isScanRunning = isPkiDiscoveryScanInFlight(discovery?.lastScanStatus);
+  const wasScanRunningRef = useRef(isScanRunning);
+
+  // Once a scan finishes, refresh scan runs and installations so the final state is not stale
+  useEffect(() => {
+    if (wasScanRunningRef.current && !isScanRunning) {
+      queryClient.invalidateQueries({
+        queryKey: pkiDiscoveryKeys.scanHistoryByDiscovery(discoveryId)
+      });
+      queryClient.invalidateQueries({ queryKey: pkiInstallationKeys.list(projectId) });
+    }
+    wasScanRunningRef.current = isScanRunning;
+  }, [isScanRunning, discoveryId, projectId, queryClient]);
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "editJob",
@@ -82,10 +101,6 @@ const Page = () => {
       // Error handled by mutation
     }
   };
-
-  const isScanRunning =
-    discovery.lastScanStatus === PkiDiscoveryScanStatus.Running ||
-    discovery.lastScanStatus === PkiDiscoveryScanStatus.Pending;
 
   return (
     <div className="mx-auto flex flex-col justify-between text-white">
@@ -162,8 +177,13 @@ const Page = () => {
               onTriggerScan={handleTriggerScan}
               isTriggerDisabled={!discovery.isActive || isScanRunning}
               isTriggerPending={triggerScan.isPending}
+              isScanRunning={isScanRunning}
             />
-            <DiscoveryInstallationsSection discoveryId={discoveryId} projectId={projectId} />
+            <DiscoveryInstallationsSection
+              discoveryId={discoveryId}
+              projectId={projectId}
+              isScanRunning={isScanRunning}
+            />
           </div>
         </div>
       </div>

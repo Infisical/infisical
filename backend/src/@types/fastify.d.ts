@@ -286,6 +286,7 @@ declare module "fastify" {
 
   interface FastifyInstance {
     redis: Redis | Cluster;
+    cookieSigningKey: string;
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
