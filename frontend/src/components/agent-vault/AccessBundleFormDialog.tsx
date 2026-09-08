@@ -94,7 +94,11 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
               <Field>
                 <FieldLabel>Name</FieldLabel>
                 <FieldContent>
-                  <Input {...field} placeholder="on-call-infrastructure" />
+                  <Input
+                    {...field}
+                    placeholder="on-call-infrastructure"
+                    isError={Boolean(fieldState.error)}
+                  />
                   <FieldDescription>Lowercase letters, numbers and hyphens.</FieldDescription>
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
@@ -108,7 +112,12 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
               <Field>
                 <FieldLabel>Description</FieldLabel>
                 <FieldContent>
-                  <TextArea {...field} rows={2} placeholder="Paging, metrics, issue tracking" />
+                  <TextArea
+                    {...field}
+                    rows={2}
+                    placeholder="Paging, metrics, issue tracking"
+                    isError={Boolean(fieldState.error)}
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>

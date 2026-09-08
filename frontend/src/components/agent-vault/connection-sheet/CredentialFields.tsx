@@ -141,7 +141,11 @@ export const CredentialFields = ({ storedType }: Props) => {
               <Field>
                 <FieldLabel>Header Name</FieldLabel>
                 <FieldContent>
-                  <Input {...field} placeholder="Authorization" />
+                  <Input
+                    {...field}
+                    placeholder="Authorization"
+                    isError={Boolean(fieldState.error)}
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
@@ -154,7 +158,7 @@ export const CredentialFields = ({ storedType }: Props) => {
               <Field>
                 <FieldLabel>Prefix</FieldLabel>
                 <FieldContent>
-                  <Input {...field} placeholder="Bearer" />
+                  <Input {...field} placeholder="Bearer" isError={Boolean(fieldState.error)} />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>

@@ -24,7 +24,7 @@ export const DetailsFields = () => {
           <Field>
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
-              <Input {...field} placeholder="datadog-us5" />
+              <Input {...field} placeholder="datadog-us5" isError={Boolean(fieldState.error)} />
               <FieldDescription>Lowercase letters, numbers and hyphens.</FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
@@ -39,7 +39,12 @@ export const DetailsFields = () => {
           <Field>
             <FieldLabel>Hosts</FieldLabel>
             <FieldContent>
-              <TextArea {...field} rows={3} placeholder="api.datadoghq.com" />
+              <TextArea
+                {...field}
+                rows={3}
+                placeholder="api.datadoghq.com"
+                isError={Boolean(fieldState.error)}
+              />
               <FieldDescription>
                 Comma separated. Wildcards like *.example.com are allowed.
               </FieldDescription>

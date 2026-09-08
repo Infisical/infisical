@@ -150,7 +150,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 <Field>
                   <FieldLabel>Name</FieldLabel>
                   <FieldContent>
-                    <Input {...field} placeholder="egress-1" />
+                    <Input {...field} placeholder="egress-1" isError={Boolean(fieldState.error)} />
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
                 </Field>
@@ -205,7 +205,11 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <Input {...field} placeholder="registry.npmjs.org, proxy.golang.org" />
+                      <Input
+                        {...field}
+                        placeholder="registry.npmjs.org, proxy.golang.org"
+                        isError={Boolean(fieldState.error)}
+                      />
                       <FieldDescription>
                         Reachable under Deny without naming them in an access bundle.
                       </FieldDescription>
@@ -233,7 +237,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <Input {...field} type="number" />
+                    <Input {...field} type="number" isError={Boolean(fieldState.error)} />
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
                 </Field>
