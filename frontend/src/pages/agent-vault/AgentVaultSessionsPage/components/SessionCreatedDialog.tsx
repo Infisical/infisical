@@ -1,4 +1,8 @@
+import { TriangleAlertIcon } from "lucide-react";
+
 import {
+  Alert,
+  AlertDescription,
   Button,
   CodeBlock,
   Dialog,
@@ -18,20 +22,33 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
+const runCommand = (token: string) =>
+  `infisical av run \\
+  --session-token ${token} \\
+  --proxy <proxy-address> \\
+  -- <agent-command>`;
+
 export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
   <Dialog open={Boolean(session)} onOpenChange={onOpenChange}>
-    <DialogContent>
+    <DialogContent onInteractOutside={(event) => event.preventDefault()}>
       <DialogHeader>
         <DialogTitle>Session Created</DialogTitle>
-        <DialogDescription>This command is shown once. Copy it now.</DialogDescription>
+        <DialogDescription>
+          Run this where your agent runs. Its traffic reaches the proxy with the credentials this
+          session carries.
+        </DialogDescription>
       </DialogHeader>
 
       <div className="flex flex-col gap-4">
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            This command is shown once. Copy it now, the session token cannot be retrieved later.
+          </AlertDescription>
+        </Alert>
+
         <div className="flex flex-col gap-2">
-          <CodeBlock
-            label="Run an agent with it"
-            value={`infisical av run --session-token ${session?.token ?? ""} --proxy <proxy-address> -- <agent-command>`}
-          />
+          <CodeBlock label="Run an agent with it" value={runCommand(session?.token ?? "")} />
           <p className="text-xs text-accent">
             Replace <span className="font-mono">&lt;proxy-address&gt;</span> with the address of
             your proxy and <span className="font-mono">&lt;agent-command&gt;</span> with the agent
