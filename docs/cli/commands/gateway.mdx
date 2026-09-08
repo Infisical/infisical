@@ -172,13 +172,13 @@ In direct listen mode it also:
     Can also be set with the `INFISICAL_GATEWAY_LISTEN_ADDRESS` environment variable.
 
     <Note>
-      Direct listen is available on self-hosted Infisical. Infisical Cloud runs outside your network and has no route into it, so there's no address it could dial. On Cloud, use `--relay` or omit both flags.
+      Direct listen is available on self-hosted Infisical. Infisical Cloud runs outside your network and has no route into it, leaving no address it could dial. On Cloud, use `--relay` or omit both flags.
     </Note>
 
   </Accordion>
 
   <Accordion title="--bind">
-    The local `host:port` the gateway binds for direct connections. Defaults to every interface on the port from `--listen-address`, so you only need this flag when the address Infisical dials differs from the socket the gateway should open.
+    The local `host:port` the gateway binds for direct connections. Defaults to every interface on the port from `--listen-address`. Reach for this flag only when the address Infisical dials differs from the socket the gateway should open.
 
     Use it to bind a single interface, or to listen on a different local port than the one advertised, such as behind a load balancer that terminates on 8443 and forwards to 9000.
 

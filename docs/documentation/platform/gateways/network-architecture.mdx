@@ -8,15 +8,14 @@ The Gateway is deployed inside your private network, alongside the resources Inf
 
 There are two ways the Gateway and Infisical reach each other, and they differ in one thing: which side opens the connection.
 
-- **Relay mode.** The Gateway dials out to a [relay server](/documentation/platform/gateways/relay-deployment/overview) and keeps that tunnel open. Infisical connects to the relay, and its requests travel back down the tunnel the Gateway already established. The Gateway accepts no inbound connections, so your firewall needs no inbound rules.
+- **Relay mode.** The Gateway dials out to a [relay server](/documentation/platform/gateways/relay-deployment/overview) and keeps that tunnel open. Infisical connects to the relay, and its requests travel back down the tunnel the Gateway already established. The Gateway accepts no inbound connections at all.
 - **Direct listen mode.** The Gateway listens on an address you register, and Infisical connects to it. There's no relay to deploy, but the address has to be reachable from wherever Infisical runs.
 
 Both modes carry the same mutually authenticated TLS between Infisical and the Gateway, with certificates issued by your organization's own certificate authorities. In relay mode the relay routes bytes without holding the keys to read them.
 
 <Info>
-  Direct listen is available on self-hosted Infisical. It can't work on Infisical Cloud, because
-  Cloud runs outside your network and has no route into it, so there's no address it could dial.
-  Cloud gateways use relay mode, where the Gateway opens the connection instead.
+  Direct listen is available on self-hosted Infisical. Cloud runs outside your network and has no
+  route into it, leaving no address it could dial, so Cloud gateways use relay mode instead.
 </Info>
 
 ## Relay mode
@@ -86,7 +85,7 @@ By default the Gateway binds the port from `--listen-address` on every interface
 
 ## Running both modes
 
-A Gateway can run both modes at once. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first, and falls back to the relay when that address stops answering. Health checks probe each mode separately, so the Gateway stays healthy while either one works.
+A Gateway can run both modes at once. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first, falling back to the relay when that address stops answering. Health checks probe each mode separately. The Gateway stays healthy while either one works.
 
 Running both is mainly how you switch an existing Gateway between modes without an outage. A Gateway declares its transports every time it registers, so the move is a flag change and a restart:
 
@@ -96,9 +95,9 @@ Running both is mainly how you switch an existing Gateway between modes without 
 | `--relay=my-relay --listen-address=gateway.internal:8443` | Both |
 | `--listen-address=gateway.internal:8443` | Direct only |
 
-Stop at the middle step and check the Gateway's health. If the address is wrong or Infisical can't route to it, operations keep completing over the relay while the Gateway page reports the direct path as unreachable, so a bad address costs you nothing. Drop `--relay` once direct is healthy, or drop `--listen-address` to go back.
+Stop at the middle step and check the Gateway's health. A wrong address costs you nothing there: operations keep completing over the relay, and the Gateway page reports the direct path as unreachable. Drop `--relay` once direct is healthy, or drop `--listen-address` to go back.
 
-Running both permanently only helps clients that can reach the direct address. PAM CLI sessions dial the Gateway from the user's own machine, so a user outside the network waits for the direct attempt to time out before the session falls back to the relay. If most of your CLI users are outside the network, relay mode alone serves them better.
+Running both permanently only helps clients that can reach the direct address. PAM CLI sessions dial the Gateway from the user's own machine. A user outside the network waits for that attempt to time out before the session falls back to the relay. If most of your CLI users are outside the network, relay mode alone serves them better.
 
 ## Self-hosted relay (optional)
 

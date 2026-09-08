@@ -11,7 +11,7 @@ infisical pam access <path> [flags] [-- <command>]
 
 Open one PAM-managed account for your own use, brokered through Infisical's [Gateway](/documentation/platform/gateways/overview) so you never handle its credentials. Requires `infisical login`.
 
-The CLI connects to the gateway from your own machine, so you need a network path to it. A gateway in [relay mode](/documentation/platform/gateways/network-architecture) works from anywhere, because the relay is reachable from outside your network. A gateway in direct listen mode only works from a machine that can reach its registered address, so from outside that network you'll need a VPN into it, or a relay on the gateway.
+The CLI connects to the gateway from your own machine, which means you need a network path to it. A gateway in [relay mode](/documentation/platform/gateways/network-architecture) works from anywhere, because the relay is reachable from outside your network. A gateway in direct listen mode only works from a machine that can reach its registered address. From outside that network you'll need a VPN into it, or a relay on the gateway.
 
 This single command handles every account type: the CLI adapts its behavior to whichever type the account's template defines (see [Account Types and Behavior](#account-types-and-behavior) below).
 

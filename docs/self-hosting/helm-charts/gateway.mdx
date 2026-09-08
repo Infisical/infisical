@@ -131,7 +131,7 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 By default the gateway connects out to a relay. To have Infisical connect to the gateway instead, set `gateway.listenAddress` to the address Infisical dials.
 
 <Warning>
-  `gateway.listenAddress` needs an `image.tag` whose CLI supports `--listen-address`. An older image rejects the flag and the pod crash-loops with `unknown flag: --listen-address`, so check the tag before setting it.
+  `gateway.listenAddress` needs an `image.tag` whose CLI supports `--listen-address`. Check the tag before setting it: an older image rejects the flag and the pod crash-loops with `unknown flag: --listen-address`.
 </Warning>
 
 
@@ -146,13 +146,13 @@ helm install infisical-gateway infisical-helm-charts/infisical-gateway \
   --set gateway.domain=<your-infisical-domain>
 ```
 
-The chart takes the container port from `gateway.listenAddress` and points the Service at it, and the Service exposes that same port, so none of the three can drift apart. A `host:port` value is required, and the chart fails the render if the port is missing. Set `service.port` only if you want the Service to answer on a different port than the gateway binds, in which case the address you register has to name the Service's port.
+The chart takes the container port from `gateway.listenAddress`, points the Service at it, and exposes that same port, which keeps all three in step. A `host:port` value is required, and the chart fails the render if the port is missing. Set `service.port` only if you want the Service to answer on a different port than the gateway binds, in which case the address you register has to name the Service's port.
 
-The Service is created only in direct listen mode. In relay mode the gateway accepts no connections, so the chart creates none.
+The Service is created only in direct listen mode. A relay-mode gateway accepts no connections and needs none.
 
 The address has to be one Infisical can resolve and reach. An in-cluster Service DNS name works when you self-host Infisical in the same cluster. From outside the cluster, expose the gateway through an Ingress or a `LoadBalancer` Service and register that address instead.
 
-Direct listen is available on self-hosted Infisical. Infisical Cloud runs outside your cluster and has no route into it, so there's no address it could dial. On Cloud, leave `gateway.listenAddress` empty and use a relay.
+Direct listen is available on self-hosted Infisical. Infisical Cloud runs outside your cluster and has no route into it, leaving no address it could dial. On Cloud, leave `gateway.listenAddress` empty and use a relay.
 
 ## Default Helm values
 

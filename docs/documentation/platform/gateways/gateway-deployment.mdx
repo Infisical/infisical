@@ -27,7 +27,7 @@ Before you deploy, decide which side opens the connection between Infisical and 
 
 **Use relay mode** when the Gateway sits behind NAT or a firewall you can't open, when you're on Infisical Cloud, or when PAM CLI users connect from outside the Gateway's network.
 
-Direct listen isn't a paid feature you can turn on for Cloud. Cloud runs outside your network and has no route into it, so there's no address it could dial. Relay mode exists so the Gateway can open that connection from the inside.
+Direct listen isn't a paid feature you can turn on for Cloud. Cloud runs outside your network and has no route into it, leaving no address it could dial. Relay mode exists for exactly that case: the Gateway opens the connection from the inside.
 
 You can also run both at once, which is how you move an existing Gateway from one mode to the other without an outage. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first and falls back to the relay when it stops answering. See [Running both modes](/documentation/platform/gateways/network-architecture#running-both-modes).
 
@@ -76,7 +76,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
 
     If you're in a corporate environment with strict egress filtering, ensure outbound TCP 2222 to relay servers and outbound HTTPS 443 to Infisical API endpoints are allowed.
 
-    **Direct listen mode.** The Gateway accepts inbound connections, so one port has to be open to Infisical.
+    **Direct listen mode.** The Gateway accepts inbound connections. One port has to be open to Infisical.
 
     | Protocol | Direction | Source or destination | Port | Purpose |
     | -------- | --------- | --------------------- | ---- | ------- |
@@ -363,7 +363,7 @@ Switching away from a mode drops it. To keep both, pass `--relay` and `--listen-
 </Accordion>
 
 <Accordion title="Why does my direct listen gateway fail to register?">
-The listen address has to be `host:port`, with a port in the range 1 to 65535. An address with no port is rejected, and so is one that includes a scheme or a path, so use `gateway.internal:8443` rather than `https://gateway.internal` or `gateway.internal`.
+The listen address has to be `host:port`, with a port in the range 1 to 65535. Use `gateway.internal:8443`, not `https://gateway.internal` or `gateway.internal`: an address is rejected if it has no port, or if it carries a scheme or a path.
 
 Direct listen is also unavailable on Infisical Cloud, which runs outside your network and has no route into it. On Cloud, use relay mode.
 
