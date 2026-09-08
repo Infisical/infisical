@@ -28,6 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultUnmatchedHost,
   useCreateAgentVaultProxy,
@@ -49,16 +50,23 @@ const UNMATCHED_HOST_CHOICES = [
   }
 ];
 
-const schema = z.object({
-  name: slugSchema({ max: 64, field: "Name" }),
-  unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost),
-  bypassHosts: z.string().trim().max(1024).optional(),
-  pollInterval: z.coerce
-    .number({ invalid_type_error: "Poll interval is required" })
-    .int("Poll interval must be a whole number of seconds")
-    .min(10, "Poll interval must be at least 10 seconds")
-    .max(300, "Poll interval must be at most 300 seconds")
-});
+const schema = z
+  .object({
+    name: slugSchema({ max: 64, field: "Name" }),
+    unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost),
+    bypassHosts: z.string().trim().max(1024).optional(),
+    pollInterval: z.coerce
+      .number({ invalid_type_error: "Poll interval is required" })
+      .int("Poll interval must be a whole number of seconds")
+      .min(10, "Poll interval must be at least 10 seconds")
+      .max(300, "Poll interval must be at most 300 seconds")
+  })
+  // Only under Deny, where the field is on screen: an Allow proxy ignores the list, and a stale
+  // value in a hidden field would block Save with an error nothing shows.
+  .superRefine((data, ctx) => {
+    if (data.unmatchedHost !== AgentVaultUnmatchedHost.Deny) return;
+    addHostListIssues(data.bypassHosts, ctx, ["bypassHosts"]);
+  });
 
 type FormData = z.infer<typeof schema>;
 
