@@ -18,7 +18,7 @@ description: "Run the Infisical gateway or manage its systemd service"
 
 ## Description
 
-The Infisical gateway gives the platform access to resources in your private network without handing out their credentials.
+The Infisical gateway runs inside your network and lets Infisical reach systems that aren't exposed to the internet, such as a database in a private subnet or an on-premises appliance.
 
 There are two ways the gateway and Infisical reach each other:
 
@@ -31,7 +31,7 @@ Passing `--listen-address` and `--relay` together runs both, and Infisical uses 
 
 <AccordionGroup>
 <Accordion title="infisical gateway start" defaultOpen="true">
-  Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to a relay server and provides secure access to private resources within your network.
+  Run the gateway inside the network where your target resources live. It connects to Infisical over a relay or by listening for direct connections, depending on the flags below.
 
 ```bash
 infisical gateway start <gateway-name> --enroll-method=token --token=<enrollment-token> --domain=<domain>

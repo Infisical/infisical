@@ -27,7 +27,7 @@ If the target is already reachable and you would rather not run a gateway, you c
 
 ## How it works
 
-The gateway system uses SSH reverse tunnels, so connectivity works without changing inbound firewall rules:
+In relay mode the gateway uses an SSH reverse tunnel, so connectivity works without changing inbound firewall rules. In [direct listen mode](/documentation/platform/gateways/network-architecture#direct-listen-mode) Infisical connects to the gateway instead, and the steps below don't apply:
 
 ![Architecture Overview](../../../images/platform/gateways/gateway-highlevel-diagram.png)
 
