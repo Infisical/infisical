@@ -41,6 +41,14 @@ export type TUpdateAccessApprovalRequestDTO = {
   editNote: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TAccessApprovalRequestExternalApproval = {
+  id: string;
+  status: string | null | undefined;
+  externalId: string | null | undefined;
+  approvedAt: Date | null | undefined;
+  approvedByIdentityId: string | null | undefined;
+} | null;
+
 export type TListApprovalRequestsDTO = {
   projectSlug: string;
   authorUserId?: string;
@@ -50,6 +58,7 @@ export type TListApprovalRequestsDTO = {
 export interface TAccessApprovalRequestServiceFactory {
   createAccessApprovalRequest: (arg: TCreateAccessApprovalRequestDTO) => Promise<{
     request: {
+      externalApprovalRequestId?: string | null | undefined;
       status: string;
       id: string;
       createdAt: Date;
@@ -118,7 +127,9 @@ export interface TAccessApprovalRequestServiceFactory {
         deletedAt: Date | null | undefined;
         maxTimePeriod?: string | null;
         requestExpirationTime?: string | null;
+        externalApprovalPolicyId?: string | null;
       };
+      externalApproval: TAccessApprovalRequestExternalApproval;
       projectId: string;
       environment: string;
       environmentName: string;

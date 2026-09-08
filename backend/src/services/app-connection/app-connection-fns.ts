@@ -10,6 +10,7 @@ import {
   validateOCIConnectionCredentials
 } from "@app/ee/services/app-connections/oci";
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
+import { EXTERNAL_APPROVAL_APP_CONNECTIONS } from "@app/ee/services/external-approval/external-approval-map";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -346,10 +347,6 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
-// Secret Manager connections that are not reached through a sync, rotation or external migration,
-// so none of the maps above surface them.
-const SECRET_MANAGER_APP_CONNECTIONS = [AppConnection.ServiceNow];
-
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
@@ -445,7 +442,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
             Boolean(SECRET_SYNC_APP_CONNECTION_MAP[option.app]) ||
             Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[option.app]) ||
             EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(option.app) ||
-            SECRET_MANAGER_APP_CONNECTIONS.includes(option.app)
+            EXTERNAL_APPROVAL_APP_CONNECTIONS.includes(option.app)
           );
         case ProjectType.SecretScanning:
           return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);

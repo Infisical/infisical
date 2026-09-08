@@ -36,6 +36,10 @@ import { TNotificationServiceFactory } from "../../../services/notification/noti
 import { NotificationType } from "../../../services/notification/notification-types";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
+import { ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
+import { TExternalApprovalQueueFactory } from "../external-approval/external-approval-queue";
+import { TExternalApprovalRequestDALFactory } from "../external-approval/external-approval-request-dal";
+import { TExternalApprovalServiceFactory } from "../external-approval/external-approval-service";
 import { TGroupDALFactory } from "../group/group-dal";
 import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -86,6 +90,9 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   queueService: Pick<TQueueServiceFactory, "queue">;
+  externalApprovalService: Pick<TExternalApprovalServiceFactory, "createPendingExternalApprovalRequest">;
+  externalApprovalQueue: Pick<TExternalApprovalQueueFactory, "queueExternalApprovalDispatch">;
+  externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "updateById">;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -105,7 +112,10 @@ export const accessApprovalRequestServiceFactory = ({
   projectMicrosoftTeamsConfigDAL,
   projectSlackConfigDAL,
   notificationService,
-  queueService
+  queueService,
+  externalApprovalService,
+  externalApprovalQueue,
+  externalApprovalRequestDAL
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
   const $queueAccessRequestWebhook = async ({
     action,
@@ -345,9 +355,13 @@ export const accessApprovalRequestServiceFactory = ({
       }
     }
 
-    const approval = await accessApprovalRequestDAL.transaction(async (tx) => {
+    const txResult = await accessApprovalRequestDAL.transaction(async (tx) => {
       const parsedMs = policy.requestExpirationTime ? ms(policy.requestExpirationTime) : null;
       const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
+
+      const externalApprovalRequest = policy.externalApprovalPolicyId
+        ? await externalApprovalService.createPendingExternalApprovalRequest(tx)
+        : null;
 
       const approvalRequest = await accessApprovalRequestDAL.create(
         {
@@ -357,7 +371,8 @@ export const accessApprovalRequestServiceFactory = ({
           permissions: JSON.stringify(requestedPermissions),
           isTemporary,
           note: note || null,
-          expiresAt
+          expiresAt,
+          externalApprovalRequestId: externalApprovalRequest?.id ?? null
         },
         tx
       );
@@ -428,8 +443,10 @@ export const accessApprovalRequestServiceFactory = ({
         template: SmtpTemplates.AccessApprovalRequest
       });
 
-      return approvalRequest;
+      return { approvalRequest, externalApprovalRequestId: externalApprovalRequest?.id ?? null };
     });
+    const approval = txResult.approvalRequest;
+    const { externalApprovalRequestId } = txResult;
 
     try {
       const created = await accessApprovalRequestDAL.transaction((tx) =>
@@ -451,6 +468,29 @@ export const accessApprovalRequestServiceFactory = ({
         error,
         `Failed to queue access request webhook [requestId=${approval.id}] [action=${AccessRequestWebhookAction.Created}]`
       );
+    }
+
+    if (externalApprovalRequestId) {
+      try {
+        await externalApprovalQueue.queueExternalApprovalDispatch({
+          externalApprovalRequestId,
+          accessApprovalRequestId: approval.id,
+          projectId: project.id
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to queue external approval dispatch [externalApprovalRequestId=${externalApprovalRequestId}] [requestId=${approval.id}]`
+        );
+        await externalApprovalRequestDAL
+          .updateById(externalApprovalRequestId, { status: ExternalApprovalRequestStatus.FailedDispatch })
+          .catch((updateError: unknown) => {
+            logger.error(
+              updateError,
+              `Failed to mark external approval request as failed dispatch [externalApprovalRequestId=${externalApprovalRequestId}]`
+            );
+          });
+      }
     }
 
     return { request: approval, projectId: project.id };

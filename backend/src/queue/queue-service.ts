@@ -12,6 +12,7 @@ import {
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
+import { TExternalApprovalDispatchJobPayload } from "@app/ee/services/external-approval/external-approval-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -119,7 +120,8 @@ export enum QueueName {
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event",
-  IntegrationDeprecationNotice = "integration-deprecation-notice"
+  IntegrationDeprecationNotice = "integration-deprecation-notice",
+  ExternalApprovalDispatch = "external-approval-dispatch"
 }
 
 export enum QueueJobs {
@@ -201,7 +203,8 @@ export enum QueueJobs {
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job",
-  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice"
+  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice",
+  ExternalApprovalDispatch = "external-approval-dispatch"
 }
 
 export enum JobState {
@@ -531,6 +534,10 @@ export type TQueueJobTypes = {
   [QueueName.AppConnectionCredentialRotationRotate]: {
     name: QueueJobs.AppConnectionCredentialRotationRotate;
     payload: TAppConnectionCredentialRotationRotateJobPayload;
+  };
+  [QueueName.ExternalApprovalDispatch]: {
+    name: QueueJobs.ExternalApprovalDispatch;
+    payload: TExternalApprovalDispatchJobPayload;
   };
   [QueueName.AuditLogClickHouseBatch]: {
     name: QueueJobs.AuditLogClickHouseBatch;

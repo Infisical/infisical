@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   const hasExternalApprovalPolicyTable = await knex.schema.hasTable(TableName.ExternalApprovalPolicy);
@@ -8,10 +9,10 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.ExternalApprovalPolicy, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
-      t.string("type").notNullable();
+      t.string("type", 50).notNullable();
 
       t.uuid("connectionId").notNullable();
-      t.foreign("connectionId").references("id").inTable(TableName.AppConnection);
+      t.foreign("connectionId").references("id").inTable(TableName.AppConnection).deferrable("deferred");
       t.index("connectionId", "external_approval_policies_connection_id_index");
 
       t.uuid("approverIdentityId").nullable();
@@ -22,6 +23,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.timestamps(true, true, true);
     });
+    await createOnUpdateTrigger(knex, TableName.ExternalApprovalPolicy);
   }
 
   const hasExternalApprovalRequestTable = await knex.schema.hasTable(TableName.ExternalApprovalRequest);
@@ -41,6 +43,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.timestamps(true, true, true);
     });
+    await createOnUpdateTrigger(knex, TableName.ExternalApprovalRequest);
   }
 
   const hasExternalApprovalPolicyIdColumn = await knex.schema.hasColumn(
@@ -95,11 +98,13 @@ export async function down(knex: Knex): Promise<void> {
 
   const hasExternalApprovalRequestTable = await knex.schema.hasTable(TableName.ExternalApprovalRequest);
   if (hasExternalApprovalRequestTable) {
+    await dropOnUpdateTrigger(knex, TableName.ExternalApprovalRequest);
     await knex.schema.dropTable(TableName.ExternalApprovalRequest);
   }
 
   const hasExternalApprovalPolicyTable = await knex.schema.hasTable(TableName.ExternalApprovalPolicy);
   if (hasExternalApprovalPolicyTable) {
+    await dropOnUpdateTrigger(knex, TableName.ExternalApprovalPolicy);
     await knex.schema.dropTable(TableName.ExternalApprovalPolicy);
   }
 }

@@ -2,13 +2,15 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { ExternalApprovalType } from "@app/ee/services/external-approval/external-approval-enums";
+import { AccessApprovalPolicies } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
+import { aapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -70,6 +72,12 @@ const requestExpirationTimeSchema = z
     return val;
   });
 
+const externalApprovalSchema = z.object({
+  type: z.nativeEnum(ExternalApprovalType).describe(AccessApprovalPolicies.EXTERNAL_APPROVAL.type),
+  connectionId: z.string().uuid().describe(AccessApprovalPolicies.EXTERNAL_APPROVAL.connectionId),
+  approverIdentityId: z.string().uuid().nullish().describe(AccessApprovalPolicies.EXTERNAL_APPROVAL.approverIdentityId)
+});
+
 export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -81,7 +89,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z
         .object({
           projectSlug: z.string().trim(),
-          name: z.string().optional(),
+          name: z.string().trim().max(255).optional(),
           secretPath: z
             .string()
             .trim()
@@ -134,7 +142,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
           maxTimePeriod: maxTimePeriodSchema,
-          requestExpirationTime: requestExpirationTimeSchema
+          requestExpirationTime: requestExpirationTimeSchema,
+          externalApproval: externalApprovalSchema.optional()
         })
         .refine(
           (val) => Boolean(val.environment) || Boolean(val.environments),
@@ -142,22 +151,23 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         ),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: aapPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const envPrefix = (req.body.environment || req.body.environments?.join("-") || "policy").slice(0, 250);
+
       const approval = await server.services.accessApprovalPolicy.createAccessApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        actorRootOrgId: req.permission.rootOrgId,
+        actorParentOrgId: req.permission.parentOrgId,
         ...req.body,
-        projectSlug: req.body.projectSlug,
-        name:
-          req.body.name ?? `${req.body.environment || req.body.environments?.join("-").substring(0, 250)}-${nanoid(3)}`,
-        enforcementLevel: req.body.enforcementLevel
+        name: req.body.name ?? `${envPrefix}-${nanoid(3)}`
       });
 
       void server.services.telemetry
@@ -193,7 +203,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema
+          approvals: aapPubSchema
             .extend({
               approvers: z
                 .object({
@@ -206,9 +216,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
                 .array()
                 .nullable()
                 .optional(),
-              bypassers: z.object({ type: z.nativeEnum(BypasserType), id: z.string().nullable().optional() }).array(),
-              maxTimePeriod: z.string().nullable().optional(),
-              requestExpirationTime: z.string().nullable().optional()
+              bypassers: z.object({ type: z.nativeEnum(BypasserType), id: z.string().nullable().optional() }).array()
             })
             .array()
             .nullable()
@@ -270,7 +278,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         policyId: z.string()
       }),
       body: z.object({
-        name: z.string().optional(),
+        name: z.string().trim().max(255).optional(),
         secretPath: z
           .string()
           .trim()
@@ -319,22 +327,25 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .array()
           .optional(),
         maxTimePeriod: maxTimePeriodSchema,
-        requestExpirationTime: requestExpirationTimeSchema
+        requestExpirationTime: requestExpirationTimeSchema,
+        externalApproval: externalApprovalSchema.nullish()
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: aapPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
+      const approval = await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
+        actorRootOrgId: req.permission.rootOrgId,
+        actorParentOrgId: req.permission.parentOrgId,
         ...req.body
       });
 
@@ -346,6 +357,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           properties: { policyId: req.params.policyId }
         })
         .catch(() => {});
+
+      return { approval };
     }
   });
 
@@ -361,7 +374,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: aapPubSchema
         })
       }
     },
@@ -404,7 +417,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema.extend({
+          approval: aapPubSchema.extend({
             approvers: z
               .object({
                 type: z.nativeEnum(ApproverType),
@@ -424,9 +437,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               })
               .array()
               .nullable()
-              .optional(),
-            maxTimePeriod: z.string().nullable().optional(),
-            requestExpirationTime: z.string().nullable().optional()
+              .optional()
           })
         })
       }

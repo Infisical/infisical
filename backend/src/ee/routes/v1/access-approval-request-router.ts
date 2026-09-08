@@ -185,8 +185,18 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               deletedAt: z.date().nullish(),
               allowedSelfApprovals: z.boolean(),
               maxTimePeriod: z.string().nullable().optional(),
-              requestExpirationTime: z.string().nullable().optional()
+              requestExpirationTime: z.string().nullable().optional(),
+              externalApprovalPolicyId: z.string().uuid().nullish()
             }),
+            externalApproval: z
+              .object({
+                id: z.string().uuid(),
+                status: z.string().nullish(),
+                externalId: z.string().nullish(), // TODO: check if it is better to define this as externalApprovalID
+                approvedAt: z.date().nullish(),
+                approvedByIdentityId: z.string().uuid().nullish()
+              })
+              .nullish(),
             reviewers: z
               .object({
                 isOrgMembershipActive: z.boolean().nullable().optional(),

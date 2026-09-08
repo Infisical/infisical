@@ -8,6 +8,7 @@ import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFin
 import {
   ApproverType,
   BypasserType,
+  TAccessApprovalPolicyExternalApproval,
   TCreateAccessApprovalPolicy,
   TDeleteAccessApprovalPolicy,
   TGetAccessApprovalPolicyByIdDTO,
@@ -54,6 +55,8 @@ export interface TAccessApprovalPolicyDALFactory
       envId: string;
       enforcementLevel: string;
       allowedSelfApprovals: boolean;
+      externalApprovalPolicyId?: string | null;
+      externalApproval: TAccessApprovalPolicyExternalApproval | null;
       secretPath: string;
       deletedAt?: Date | null | undefined;
       maxTimePeriod?: string | null;
@@ -95,6 +98,8 @@ export interface TAccessApprovalPolicyDALFactory
         envId: string;
         enforcementLevel: string;
         allowedSelfApprovals: boolean;
+        externalApprovalPolicyId?: string | null;
+        externalApproval: TAccessApprovalPolicyExternalApproval | null;
         secretPath: string;
         deletedAt?: Date | null | undefined;
         maxTimePeriod?: string | null;
@@ -119,6 +124,7 @@ export interface TAccessApprovalPolicyDALFactory
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
   }>;
@@ -141,6 +147,7 @@ export interface TAccessApprovalPolicyDALFactory
         envId: string;
         enforcementLevel: string;
         allowedSelfApprovals: boolean;
+        externalApprovalPolicyId?: string | null;
         secretPath: string;
         deletedAt?: Date | null | undefined;
         maxTimePeriod?: string | null;
@@ -159,6 +166,7 @@ export interface TAccessApprovalPolicyDALFactory
     approvals: number;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
     environments: {
@@ -215,6 +223,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
   }>;
@@ -239,6 +248,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
     environment: {
@@ -277,6 +287,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
   }>;
@@ -311,6 +322,7 @@ export interface TAccessApprovalPolicyServiceFactory {
       envId: string;
       enforcementLevel: string;
       allowedSelfApprovals: boolean;
+      externalApprovalPolicyId?: string | null;
       secretPath: string;
       deletedAt?: Date | null | undefined;
       environment: {
@@ -362,6 +374,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
     environment: {
@@ -431,6 +444,19 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
         `${TableName.AccessApprovalPolicyBypasser}.bypasserUserId`,
         `bypasserUsers.id`
       )
+      .leftJoin(
+        TableName.ExternalApprovalPolicy,
+        `${TableName.AccessApprovalPolicy}.externalApprovalPolicyId`,
+        `${TableName.ExternalApprovalPolicy}.id`
+      )
+      .select(tx.ref("type").withSchema(TableName.ExternalApprovalPolicy).as("externalApprovalType"))
+      .select(tx.ref("connectionId").withSchema(TableName.ExternalApprovalPolicy).as("externalApprovalConnectionId"))
+      .select(
+        tx
+          .ref("approverIdentityId")
+          .withSchema(TableName.ExternalApprovalPolicy)
+          .as("externalApprovalApproverIdentityId")
+      )
       .select(tx.ref("username").withSchema(TableName.Users).as("approverUsername"))
       .select(tx.ref("username").withSchema("bypasserUsers").as("bypasserUsername"))
       .select(tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
@@ -463,6 +489,14 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
             slug: data.envSlug
           },
           projectId: data.projectId,
+          externalApproval: data.externalApprovalPolicyId
+            ? {
+                id: data.externalApprovalPolicyId,
+                type: data.externalApprovalType,
+                connectionId: data.externalApprovalConnectionId,
+                approverIdentityId: data.externalApprovalApproverIdentityId
+              }
+            : null,
           ...AccessApprovalPoliciesSchema.parse(data)
         }),
         childrenMapper: [
@@ -517,8 +551,15 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
         key: "id",
         parentMapper: (data) => ({
           projectId: data.projectId,
+          externalApproval: data.externalApprovalPolicyId
+            ? {
+                id: data.externalApprovalPolicyId,
+                type: data.externalApprovalType,
+                connectionId: data.externalApprovalConnectionId,
+                approverIdentityId: data.externalApprovalApproverIdentityId
+              }
+            : null,
           ...AccessApprovalPoliciesSchema.parse(data)
-          // secretPath: data.secretPath || undefined,
         }),
         childrenMapper: [
           {

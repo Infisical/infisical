@@ -1,6 +1,7 @@
 import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
 
+import { TExternalApprovalPolicyInput } from "../external-approval/external-approval-types";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 
 export type TIsApproversValid = {
@@ -23,6 +24,13 @@ export enum BypasserType {
   User = "user"
 }
 
+export type TAccessApprovalPolicyExternalApproval = {
+  id: string;
+  type: string;
+  connectionId: string;
+  approverIdentityId?: string | null;
+};
+
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
@@ -43,6 +51,9 @@ export type TCreateAccessApprovalPolicy = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApproval?: TExternalApprovalPolicyInput | null;
+  actorRootOrgId: string;
+  actorParentOrgId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -64,6 +75,9 @@ export type TUpdateAccessApprovalPolicy = {
   environments?: string[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApproval?: TExternalApprovalPolicyInput | null;
+  actorRootOrgId: string;
+  actorParentOrgId: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
@@ -138,6 +152,8 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
+    externalApproval?: TAccessApprovalPolicyExternalApproval | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
@@ -164,6 +180,8 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
+    externalApproval?: TAccessApprovalPolicyExternalApproval | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
@@ -216,9 +234,12 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
-    secretPath?: string | null | undefined;
+    externalApprovalPolicyId?: string | null;
+    externalApproval?: TAccessApprovalPolicyExternalApproval | null;
+    secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
+    requestExpirationTime?: string | null;
   }>;
   getAccessApprovalPolicyByProjectSlug: ({
     actorId,
@@ -251,6 +272,8 @@ export interface TAccessApprovalPolicyServiceFactory {
       envId: string;
       enforcementLevel: string;
       allowedSelfApprovals: boolean;
+      externalApprovalPolicyId?: string | null;
+      externalApproval?: TAccessApprovalPolicyExternalApproval | null;
       secretPath: string;
       deletedAt?: Date | null | undefined;
       maxTimePeriod?: string | null;
@@ -308,6 +331,8 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
+    externalApprovalPolicyId?: string | null;
+    externalApproval?: TAccessApprovalPolicyExternalApproval | null;
     secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;

@@ -13,7 +13,7 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter, TOrmify } from "@app/lib/knex";
 
-import { ApprovalStatus } from "./access-approval-request-types";
+import { ApprovalStatus, TAccessApprovalRequestExternalApproval } from "./access-approval-request-types";
 
 export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName.AccessApprovalRequest>, "findById"> {
   findById: (
@@ -67,7 +67,9 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
           deletedAt: Date | null | undefined;
           maxTimePeriod?: string | null;
           requestExpirationTime?: string | null;
+          externalApprovalPolicyId?: string | null;
         };
+        externalApproval: TAccessApprovalRequestExternalApproval;
         projectId: string;
         environments: string[];
         requestedByUser: {
@@ -186,7 +188,9 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         deletedAt: Date | null | undefined;
         maxTimePeriod?: string | null;
         requestExpirationTime?: string | null;
+        externalApprovalPolicyId?: string | null;
       };
+      externalApproval: TAccessApprovalRequestExternalApproval;
       projectId: string;
       environment: string;
       environmentName: string;
@@ -289,6 +293,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             `${TableName.AccessApprovalPolicy}.id`
           )
           .leftJoin(
+            TableName.ExternalApprovalRequest,
+            `${TableName.AccessApprovalRequest}.externalApprovalRequestId`,
+            `${TableName.ExternalApprovalRequest}.id`
+          )
+          .leftJoin(
             TableName.AccessApprovalRequestReviewer,
             `${TableName.AccessApprovalRequest}.id`,
             `${TableName.AccessApprovalRequestReviewer}.requestId`
@@ -375,7 +384,21 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             db.ref("isActive").withSchema("approverGroupOrgMembership").as("approverGroupIsOrgMembershipActive"),
             db.ref("isActive").withSchema("reviewerOrgMembership").as("reviewerIsOrgMembershipActive"),
             db.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod"),
-            db.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime")
+            db
+              .ref("requestExpirationTime")
+              .withSchema(TableName.AccessApprovalPolicy)
+              .as("policyRequestExpirationTime"),
+            db
+              .ref("externalApprovalPolicyId")
+              .withSchema(TableName.AccessApprovalPolicy)
+              .as("policyExternalApprovalPolicyId"),
+            db.ref("status").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalStatus"),
+            db.ref("externalId").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalExternalId"),
+            db.ref("approvedAt").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalApprovedAt"),
+            db
+              .ref("approvedByIdentityId")
+              .withSchema(TableName.ExternalApprovalRequest)
+              .as("externalApprovalApprovedByIdentityId")
           )
           .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
           .select(db.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
@@ -454,8 +477,18 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               envId: doc.policyEnvId,
               deletedAt: doc.policyDeletedAt,
               maxTimePeriod: doc.policyMaxTimePeriod,
-              requestExpirationTime: doc.policyRequestExpirationTime
+              requestExpirationTime: doc.policyRequestExpirationTime,
+              externalApprovalPolicyId: doc.policyExternalApprovalPolicyId
             },
+            externalApproval: doc.externalApprovalRequestId
+              ? {
+                  id: doc.externalApprovalRequestId,
+                  status: doc.externalApprovalStatus,
+                  externalId: doc.externalApprovalExternalId,
+                  approvedAt: doc.externalApprovalApprovedAt,
+                  approvedByIdentityId: doc.externalApprovalApprovedByIdentityId
+                }
+              : null,
             requestedByUser: {
               userId: doc.requestedByUserId,
               email: doc.requestedByUserEmail,
@@ -572,6 +605,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         TableName.AccessApprovalPolicy,
         `${TableName.AccessApprovalRequest}.policyId`,
         `${TableName.AccessApprovalPolicy}.id`
+      )
+      .leftJoin(
+        TableName.ExternalApprovalRequest,
+        `${TableName.AccessApprovalRequest}.externalApprovalRequestId`,
+        `${TableName.ExternalApprovalRequest}.id`
       )
 
       .join<TUsers>(
@@ -715,7 +753,18 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
         tx.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt"),
         tx.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod"),
-        tx.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime")
+        tx.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime"),
+        tx
+          .ref("externalApprovalPolicyId")
+          .withSchema(TableName.AccessApprovalPolicy)
+          .as("policyExternalApprovalPolicyId"),
+        tx.ref("status").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalStatus"),
+        tx.ref("externalId").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalExternalId"),
+        tx.ref("approvedAt").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalApprovedAt"),
+        tx
+          .ref("approvedByIdentityId")
+          .withSchema(TableName.ExternalApprovalRequest)
+          .as("externalApprovalApprovedByIdentityId")
       );
 
   const findById: TAccessApprovalRequestDALFactory["findById"] = async (id, tx) => {
@@ -738,8 +787,18 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             allowedSelfApprovals: el.policyAllowedSelfApprovals,
             deletedAt: el.policyDeletedAt,
             maxTimePeriod: el.policyMaxTimePeriod,
-            requestExpirationTime: el.policyRequestExpirationTime
+            requestExpirationTime: el.policyRequestExpirationTime,
+            externalApprovalPolicyId: el.policyExternalApprovalPolicyId
           },
+          externalApproval: el.externalApprovalRequestId
+            ? {
+                id: el.externalApprovalRequestId,
+                status: el.externalApprovalStatus,
+                externalId: el.externalApprovalExternalId,
+                approvedAt: el.externalApprovalApprovedAt,
+                approvedByIdentityId: el.externalApprovalApprovedByIdentityId
+              }
+            : null,
           requestedByUser: {
             userId: el.requestedByUserId,
             email: el.requestedByUserEmail,

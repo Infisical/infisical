@@ -4155,3 +4155,12 @@ export const ENCRYPTION_KEY_ROTATION = {
       "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
   }
 };
+
+export const AccessApprovalPolicies = {
+  EXTERNAL_APPROVAL: {
+    type: "The external system that approves access requests created under this policy.",
+    connectionId: "The ID of the app connection used to reach the external approval system.",
+    approverIdentityId:
+      "The ID of the machine identity allowed to report the external decision back to Infisical. Optional."
+  }
+} as const;

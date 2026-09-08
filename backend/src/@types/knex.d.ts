@@ -134,6 +134,12 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TExternalApprovalPolicies,
+  TExternalApprovalPoliciesInsert,
+  TExternalApprovalPoliciesUpdate,
+  TExternalApprovalRequests,
+  TExternalApprovalRequestsInsert,
+  TExternalApprovalRequestsUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -863,6 +869,16 @@ declare module "knex/types/tables" {
       TInternalCertificateAuthorities,
       TInternalCertificateAuthoritiesInsert,
       TInternalCertificateAuthoritiesUpdate
+    >;
+    [TableName.ExternalApprovalPolicy]: KnexOriginal.CompositeTableType<
+      TExternalApprovalPolicies,
+      TExternalApprovalPoliciesInsert,
+      TExternalApprovalPoliciesUpdate
+    >;
+    [TableName.ExternalApprovalRequest]: KnexOriginal.CompositeTableType<
+      TExternalApprovalRequests,
+      TExternalApprovalRequestsInsert,
+      TExternalApprovalRequestsUpdate
     >;
     [TableName.ExternalCertificateAuthority]: KnexOriginal.CompositeTableType<
       TExternalCertificateAuthorities,
