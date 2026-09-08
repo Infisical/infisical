@@ -3,7 +3,7 @@ title: "Gateway deployment"
 description: "Complete guide to deploying Infisical Gateways including network configuration and firewall requirements"
 ---
 
-Infisical Gateways give the platform access to resources in your private network, such as databases and internal APIs, without handing out their credentials.
+Infisical Gateways run inside your network and let Infisical reach systems that aren't exposed to the internet, such as a database in a private subnet or an internal API.
 This guide covers everything you need to deploy and configure Infisical Gateways.
 
 <Tip>
@@ -53,7 +53,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
         - **Token** (default): a one-time enrollment token (1h expiry) bootstraps the gateway.
         - **AWS**: the gateway authenticates by signing an `sts:GetCallerIdentity` request with whatever AWS credentials it can resolve on the host (instance role, env vars, shared profile). Configure the allowed principal ARNs and/or account IDs that match your hosts.
         - **Kubernetes**: the gateway authenticates with the projected service account token of the pod it runs in, so no credential has to be distributed to the cluster. Configure the cluster's API server URL and the allowed namespaces and/or service account names.
-    5. Select **Show deploy command** in the **Deployment** card.
+    5. In the **Deployment** card, select **Generate deploy command**. For the AWS and Kubernetes methods the command is shown without this step.
     6. Under **Connection Mode**, select **Direct Listen** or **Relay**.
         - For **Direct Listen**, enter the **Listen Address** that Infisical will dial, as `host:port`.
         - For **Relay**, pick a relay, or leave **Auto Select Relay** so the gateway chooses the healthiest one.
@@ -122,7 +122,6 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
     helm install infisical-gateway infisical/infisical-gateway \
       --set gateway.name=my-gateway \
       --set gateway.listenAddress=infisical-gateway.default.svc.cluster.local:8443 \
-      --set service.port=8443 \
       --set gateway.enrollment.method=token \
       --set gateway.enrollment.token.existingSecretRef=gateway-enrollment-token \
       --set gateway.domain=<your-infisical-domain>
@@ -314,7 +313,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
     </Warning>
 
     <Info>
-      Token-method enrollment tokens are single-use and expire after 1 hour. If the token expires before deployment, select **Show deploy command** again on the detail page to generate a new one.
+      Token-method enrollment tokens are single-use and expire after 1 hour. If the token expires before deployment, select **Generate deploy command** again on the detail page to generate a new one.
     </Info>
 
     <Info>
@@ -333,12 +332,12 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
 
 From the gateway's detail page (select the gateway row in the list):
 
-- **Show deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS and Kubernetes methods. Selecting this on a token-method gateway doesn't disconnect the running gateway; the next login with the new token rotates credentials atomically.
+- **Generate deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS and Kubernetes methods. Selecting this on a token-method gateway doesn't disconnect the running gateway; the next login with the new token rotates credentials atomically.
 - **Edit auth method**: Switch between Token, AWS, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
 - **Options → Revoke Access** — Disconnects the running gateway and invalidates outstanding enrollment tokens. The gateway must re-authenticate to reconnect. Gated by the dedicated `revoke-gateway-access` permission, separate from `edit-gateways`.
 - **Options → Delete Gateway** — Permanently removes the gateway.
 
-To migrate a gateway to a different host with zero downtime: select **Show deploy command** to generate a fresh token, run it on the new host, and the new login will rotate credentials away from the old host.
+To migrate a gateway to a different host with zero downtime: select **Generate deploy command** to generate a fresh token, run it on the new host, and the new login will rotate credentials away from the old host.
 
 ## Frequently asked questions
 
@@ -357,7 +356,7 @@ In direct listen mode, one inbound port has to be open: the port in your listen 
 </Accordion>
 
 <Accordion title="Can I switch a gateway between relay and direct listen?">
-Yes. Open the gateway's detail page, select **Show deploy command**, choose the mode you want, and re-run the generated command on the host. The gateway re-registers with the new mode and is issued the certificate it needs for it.
+Yes. Open the gateway's detail page, choose the mode you want under **Connection Mode**, and re-run the generated command on the host. The gateway re-registers with the new mode and is issued the certificate it needs for it.
 
 Switching away from a mode drops it. To keep both, pass `--relay` and `--listen-address` together.
 
@@ -370,7 +369,7 @@ Direct listen is also unavailable on Infisical Cloud, which runs outside your ne
 
 </Accordion>
 
-<Accordion title="Do PAM CLI sessions work with direct listen?">
+<Accordion title="Do PAM sessions work in direct listen mode?">
 Only from a machine that can reach the gateway's registered address. The CLI connects to the gateway from the user's own machine rather than through Infisical, so a laptop outside the network can't reach a gateway listening on an internal address. Give those users a VPN into the network, or run a relay on the gateway alongside direct listen.
 
 Browser-based PAM access works in either mode, because the platform brokers that connection.
@@ -419,7 +418,7 @@ If the gateway binds a different local port than the one you advertise, such as 
 </Accordion>
 
 <Accordion title="How do I troubleshoot authentication failures?">
-For token method: ensure the enrollment token hasn't expired or already been used. Open the gateway's detail page and select **Show deploy command** to generate a fresh token.
+For token method: ensure the enrollment token hasn't expired or already been used. Open the gateway's detail page and select **Generate deploy command** to generate a fresh token.
 
 For AWS method: ensure the host has AWS credentials available (instance role, env vars, or shared profile) and the resolved principal/account is in the allowlist on the gateway's detail page.
 
@@ -437,7 +436,7 @@ Check gateway logs for detailed error information:
 </Accordion>
 
 <Accordion title="What happens if my enrollment token expires?">
-Enrollment tokens expire after 1 hour. If the token expires before deployment, open the gateway's detail page and select **Show deploy command** to generate a new one.
+Enrollment tokens expire after 1 hour. If the token expires before deployment, open the gateway's detail page and select **Generate deploy command** to generate a new one.
 </Accordion>
 
 <Accordion title="Where are gateway credentials stored?">

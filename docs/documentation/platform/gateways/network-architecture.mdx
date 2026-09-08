@@ -4,7 +4,7 @@ sidebarTitle: "Network architecture"
 description: "Ports, egress requirements, and the two ways the Gateway and Infisical connect"
 ---
 
-The Gateway is deployed inside your private network, alongside the resources it protects. Infisical never touches those resources directly. It sends every request through the Gateway, which forwards it to the database or internal API on the other side.
+The Gateway is deployed inside your private network, alongside the resources Infisical needs to reach. Infisical never touches those resources directly. It sends every request through the Gateway, which forwards it to the database or internal API on the other side.
 
 There are two ways the Gateway and Infisical reach each other, and they differ in one thing: which side opens the connection.
 
@@ -66,7 +66,7 @@ flowchart LR
   end
   PLAT["Infisical Platform"]
   GW -->|"TCP 443 · HTTPS"| PLAT
-  PLAT -->|"TCP 8443 · mTLS"| GW
+  PLAT -->|"listen address · mTLS"| GW
 ```
 
 | Connection | Source | Destination | Port | Protocol | Purpose |
@@ -123,10 +123,10 @@ If you run a self-hosted relay, that host needs:
     Use relay mode when the Gateway sits behind NAT or a firewall you can't open, when you're on Infisical Cloud, or when PAM CLI users connect from outside the Gateway's network. See [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for the full comparison.
   </Accordion>
 
-  <Accordion title="Do PAM CLI sessions work in direct listen mode?">
-    Only from a machine that can reach the Gateway's registered address. The CLI opens its own connection to the Gateway rather than going through Infisical, so a user on a laptop outside the network can't reach a Gateway that only listens on an internal address. Those users need a VPN into the network, or a relay on the Gateway.
+  <Accordion title="Do PAM sessions work in direct listen mode?">
+    Browser-based access is unaffected, because the platform brokers that connection. `infisical pam access` opens its own connection to the Gateway, so it works only from a machine that can reach the registered address.
 
-    Browser-based PAM access is unaffected, because the platform brokers that connection.
+    See [Gateway deployment](/documentation/platform/gateways/gateway-deployment#frequently-asked-questions) for what to give users outside the network.
   </Accordion>
 
   <Accordion title="Does the Gateway only proxy raw TCP?">

@@ -46,7 +46,6 @@ The gateway name is provided as a positional argument.
 Once started, the gateway component will:
 
 - Authenticate using certificates issued by Infisical
-- Provide access to private resources within your network
 - Automatically renew its certificates
 
 In relay mode it also:
@@ -149,7 +148,7 @@ In direct listen mode it also:
     For Infisical Cloud users on instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, start a relay server first. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
 
     <Note>
-      This flag was previously named `--target-relay-name`, which still works but is deprecated. An Infisical CLI older than the release that added `--relay` accepts only the old name, so a deploy command copied from a newer UI fails on it with an unknown flag error. Upgrade the CLI on the host.
+      This flag was previously named `--target-relay-name`, which still works but is deprecated.
     </Note>
 
   </Accordion>
@@ -181,7 +180,7 @@ In direct listen mode it also:
   <Accordion title="--bind">
     The local `host:port` the gateway binds for direct connections. Defaults to every interface on the port from `--listen-address`, so you only need this flag when the address Infisical dials differs from the socket the gateway should open.
 
-    Reach for it to bind a single interface, or to listen on a different local port than the one advertised, such as behind a load balancer that terminates on 8443 and forwards to 9000.
+    Use it to bind a single interface, or to listen on a different local port than the one advertised, such as behind a load balancer that terminates on 8443 and forwards to 9000.
 
     ```bash
     # Advertise 8443, listen locally on 9000
@@ -371,9 +370,9 @@ The gateway name is provided as a positional argument.
       Relay mode, with a relay chosen automatically. Direct listen is opt-in: the gateway only listens for connections when you pass `--listen-address`.
   </Accordion>
   <Accordion title="Do PAM sessions work in direct listen mode?">
-      Browser-based sessions work in either mode, because the platform brokers the connection.
+      Browser-based sessions work in either mode, because the platform brokers the connection. `infisical pam access` connects from your own machine instead, so it needs to reach the gateway's registered address.
 
-      `infisical pam access` connects to the gateway from your own machine instead, so it needs to reach the gateway's registered address. From a laptop outside the gateway's network that means a VPN into the network, or a relay running on the gateway alongside direct listen.
+      See [Gateway deployment](/documentation/platform/gateways/gateway-deployment#frequently-asked-questions) for what to give users outside the network.
   </Accordion>
   <Accordion title="When restarting the gateway without a relay flag, does it select a new relay every time?">
       No. The first time the gateway starts, it selects the optimal relay (based on latency) and caches that selection. On subsequent restarts, it will prioritize connecting to the cached relay. If it's unable to connect, it will then re-evaluate and connect to the next most optimal relay available.
