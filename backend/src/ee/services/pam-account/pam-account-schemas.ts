@@ -339,9 +339,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       password: z
         .string()
         .trim()
-        .max(ORACLE_MAX_PASSWORD_LENGTH, {
-          message: `Oracle passwords are limited to ${ORACLE_MAX_PASSWORD_LENGTH} characters`
-        })
+        .max(256)
         .transform((v) => v || undefined)
         .optional()
     }),
