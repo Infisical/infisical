@@ -1,5 +1,6 @@
-import { useEffect } from "react";
-import { Controller, useFormContext } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 import {
   Alert,
@@ -11,6 +12,10 @@ import {
   FieldError,
   FieldLabel,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -34,6 +39,49 @@ export const credentialPreview = (
     return `Authorization: Basic ${secret}`;
   const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
   return `${form.headerName || "Authorization"}: ${prefix}${secret}`;
+};
+
+type SecretName = "secret" | "username";
+
+const SecretInput = <TName extends SecretName>({
+  field,
+  label,
+  placeholder,
+  isError,
+  isUntouched
+}: {
+  field: ControllerRenderProps<TConnectionForm, TName>;
+  label: string;
+  placeholder: string;
+  isError: boolean;
+  isUntouched: boolean;
+}) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <InputGroup>
+      <InputGroupInput
+        {...field}
+        type={isVisible ? "text" : "password"}
+        // Selected rather than cleared, so focusing the field and moving on cannot remove a credential.
+        onFocus={(event) => {
+          if (isUntouched) event.target.select();
+        }}
+        placeholder={placeholder}
+        isError={isError}
+      />
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton
+          // A stored credential is never returned, so until it is replaced there is nothing to reveal.
+          isDisabled={isUntouched}
+          aria-label={`${isVisible ? "Hide" : "Show"} ${label.toLowerCase()}`}
+          onClick={() => setIsVisible((prev) => !prev)}
+        >
+          {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
+  );
 };
 
 type Props = {
@@ -123,14 +171,12 @@ export const CredentialFields = ({ storedType }: Props) => {
             <Field>
               <FieldLabel>Username</FieldLabel>
               <FieldContent>
-                <Input
-                  {...field}
-                  type="password"
-                  onFocus={(e) => {
-                    if (isUsernameUntouched) e.target.select();
-                  }}
+                <SecretInput
+                  field={field}
+                  label="Username"
                   placeholder="Enter the username"
                   isError={Boolean(fieldState.error)}
+                  isUntouched={isUsernameUntouched}
                 />
                 <FieldError>{fieldState.error?.message}</FieldError>
               </FieldContent>
@@ -147,15 +193,12 @@ export const CredentialFields = ({ storedType }: Props) => {
             <Field>
               <FieldLabel>{isBasic ? "Password" : "Token"}</FieldLabel>
               <FieldContent>
-                <Input
-                  {...field}
-                  type="password"
-                  // Selected rather than cleared, so focusing the field and moving on cannot remove a credential.
-                  onFocus={(e) => {
-                    if (isUntouched) e.target.select();
-                  }}
+                <SecretInput
+                  field={field}
+                  label={isBasic ? "Password" : "Token"}
                   placeholder={isBasic ? "Enter the password" : "Enter the token"}
                   isError={Boolean(fieldState.error)}
+                  isUntouched={isUntouched}
                 />
                 <FieldError>{fieldState.error?.message}</FieldError>
               </FieldContent>
