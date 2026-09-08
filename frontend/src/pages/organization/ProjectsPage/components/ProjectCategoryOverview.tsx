@@ -132,6 +132,8 @@ export const ProjectCategoryOverview = () => {
   );
   const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
   const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
+  const [isAgentVaultRequestAccessOpen, setIsAgentVaultRequestAccessOpen] = useState(false);
+  const [pendingAgentVaultProjectId, setPendingAgentVaultProjectId] = useState<string | null>(null);
 
   const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
   const cmInstances = useMemo(
@@ -170,7 +172,10 @@ export const ProjectCategoryOverview = () => {
     [currentOrg?.agentVaultProjectId, projects]
   );
   const isAgentVaultAccessBlocked =
-    Boolean(currentOrg?.agentVaultProjectId) && !isOrgAdmin && !isAgentVaultMember;
+    Boolean(currentOrg?.agentVaultProjectId) &&
+    !isOrgAdmin &&
+    !canRequestAccess &&
+    !isAgentVaultMember;
 
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
@@ -351,6 +356,8 @@ export const ProjectCategoryOverview = () => {
       return;
     }
 
+    setPendingAgentVaultProjectId(agentVaultProjectId);
+
     if (isOrgAdmin) {
       try {
         await orgAdminAccessProject.mutateAsync({ projectId: agentVaultProjectId });
@@ -361,6 +368,11 @@ export const ProjectCategoryOverview = () => {
           text: err instanceof Error ? err.message : "Failed to join the Agent Vault project."
         });
       }
+      return;
+    }
+
+    if (canRequestAccess) {
+      setIsAgentVaultRequestAccessOpen(true);
       return;
     }
 
@@ -441,6 +453,13 @@ export const ProjectCategoryOverview = () => {
     ? ({
         id: pendingPamProjectId,
         name: "Privileged Access Manager"
+      } as Project)
+    : undefined;
+
+  const agentVaultRequestAccessProject: Project | undefined = pendingAgentVaultProjectId
+    ? ({
+        id: pendingAgentVaultProjectId,
+        name: "Agent Vault"
       } as Project)
     : undefined;
 
@@ -570,6 +589,16 @@ export const ProjectCategoryOverview = () => {
         }}
         project={pamRequestAccessProject}
         subTitle="Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
+      />
+
+      <RequestProjectAccessModal
+        isOpen={isAgentVaultRequestAccessOpen}
+        onOpenChange={(isOpen) => {
+          setIsAgentVaultRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingAgentVaultProjectId(null);
+        }}
+        project={agentVaultRequestAccessProject}
+        subTitle="Requesting access to Agent Vault. You may include an optional note for admins to review your request."
       />
 
       <CertManagerNotConfiguredModal
