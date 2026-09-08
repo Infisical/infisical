@@ -40,3 +40,18 @@ export type TDigitalOceanApp = {
     envs?: TDigitalOceanVariable[];
   };
 };
+
+export type TDigitalOceanListAppsResponse = {
+  apps: TDigitalOceanApp[];
+  links?: {
+    pages?: {
+      first?: string;
+      prev?: string;
+      next?: string;
+      last?: string;
+    };
+  };
+  meta?: {
+    total?: number;
+  };
+};

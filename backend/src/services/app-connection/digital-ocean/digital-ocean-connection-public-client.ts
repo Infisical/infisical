@@ -3,12 +3,18 @@
 import { AxiosInstance } from "axios";
 
 import { createRequestClient } from "@app/lib/config/request";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
-import { DigitalOceanConnectionMethod } from "./digital-ocean-connection-constants";
+import {
+  DIGITAL_OCEAN_MAX_PAGES,
+  DIGITAL_OCEAN_PAGE_SIZE,
+  DigitalOceanConnectionMethod
+} from "./digital-ocean-connection-constants";
 import {
   TDigitalOceanApp,
   TDigitalOceanConnectionConfig,
+  TDigitalOceanListAppsResponse,
   TDigitalOceanVariable
 } from "./digital-ocean-connection-types";
 
@@ -35,14 +41,30 @@ class DigitalOceanAppPlatformPublicClient {
     }
   }
 
-  async getApps(connection: TDigitalOceanConnectionConfig) {
-    const response = await this.client.get<{ apps: TDigitalOceanApp[] }>(`/apps`, {
-      headers: {
-        Authorization: `Bearer ${connection.credentials.apiToken}`
-      }
-    });
+  async getApps(connection: TDigitalOceanConnectionConfig): Promise<TDigitalOceanApp[]> {
+    const apps: TDigitalOceanApp[] = [];
+    let nextUrl: string | undefined = `/apps?per_page=${DIGITAL_OCEAN_PAGE_SIZE}`;
+    let pageCount = 0;
 
-    return response.data.apps;
+    while (nextUrl && pageCount < DIGITAL_OCEAN_MAX_PAGES) {
+      const { data }: { data: TDigitalOceanListAppsResponse } = await this.client.get(nextUrl, {
+        headers: {
+          Authorization: `Bearer ${connection.credentials.apiToken}`
+        }
+      });
+
+      apps.push(...(data.apps ?? []));
+      nextUrl = data.links?.pages?.next;
+      pageCount += 1;
+    }
+
+    if (nextUrl) {
+      logger.warn(
+        `DigitalOcean app listing hit page cap of ${DIGITAL_OCEAN_MAX_PAGES} pages for URL: ${sanitizeUrlForLog(nextUrl)}`
+      );
+    }
+
+    return apps;
   }
 
   async getApp(connection: TDigitalOceanConnectionConfig, appId: string) {
