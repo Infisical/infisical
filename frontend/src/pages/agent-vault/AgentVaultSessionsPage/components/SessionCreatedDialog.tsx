@@ -51,9 +51,8 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
           <CodeBlock label="Run an agent with it" value={runCommand(session?.token ?? "")} />
           <p className="text-xs text-accent">
             Replace <span className="font-mono">&lt;proxy-host&gt;</span> with the host your proxy
-            runs on, keeping the port it listens on (<span className="font-mono">17323</span> unless
-            you changed it), and <span className="font-mono">&lt;agent-command&gt;</span> with the
-            agent to run, such as <span className="font-mono">claude</span>.
+            runs on and <span className="font-mono">&lt;agent-command&gt;</span> with the agent to
+            run, such as <span className="font-mono">claude</span>.
           </p>
         </div>
 
