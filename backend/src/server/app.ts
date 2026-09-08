@@ -2,8 +2,6 @@
 import path from "node:path";
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import type { FastifyCookieOptions } from "@fastify/cookie";
-import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
@@ -113,10 +111,6 @@ export const main = async ({
   });
 
   try {
-    await server.register<FastifyCookieOptions>(cookie, {
-      secret: appCfg.COOKIE_SECRET_SIGN_KEY
-    });
-
     await server.register(fastifyEtag);
 
     await server.register<FastifyCorsOptions>(cors, {

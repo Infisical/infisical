@@ -25,6 +25,14 @@ Used to configure platform-specific security and operational settings.
   -base64 32`.
 </ParamField>
 
+<ParamField query="COOKIE_SECRET_SIGN_KEY" type="string" default="generated per instance">
+  Signs the session cookies used by the OAuth SSO, SAML, OIDC, and LDAP login flows. Left unset,
+  Infisical derives a deterministic key from the KMS root key persisted for the deployment. All
+  replicas for that deployment use the same key. Set it to a random
+  32-byte base64 string, generated with `openssl rand -base64 32`, to manage the key yourself.
+  Changing the value ends every login already in progress.
+</ParamField>
+
 <ParamField query="SITE_URL" type="string" default="none" required>
   Must be an absolute URL including the protocol (e.g.
   https://app.infisical.com).

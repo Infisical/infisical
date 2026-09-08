@@ -1,5 +1,7 @@
 import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
 import type { ClickHouseClient } from "@clickhouse/client";
+import type { FastifyCookieOptions } from "@fastify/cookie";
+import cookie from "@fastify/cookie";
 import { CronJob } from "cron";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
@@ -3994,6 +3996,10 @@ export const registerRoutes = async (
   }
 
   await kmsService.startService(hsmStatus);
+
+  server.decorate("cookieSigningKey", appCfg.COOKIE_SECRET_SIGN_KEY || kmsService.getCookieSigningKey());
+  await server.register<FastifyCookieOptions>(cookie, { secret: server.cookieSigningKey });
+
   // Register all cron jobs (synchronous registrations) before starting the scheduler
   encryptionKeyRotationService.init();
   telemetryQueue.startTelemetryCheck();
