@@ -8,11 +8,9 @@ import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionProjectActions
 } from "@app/context/OrgPermissionContext/types";
-import { getOrgScopedProductPath, getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
 import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ErrorPageFrame, useErrorPageTimestamp } from "./ErrorPageFrame";
 
@@ -20,11 +18,24 @@ type ProjectAccessErrorProps = {
   projectId?: string;
 };
 
+// PAM has no $projectId route param, and TanStack attributes beforeLoad failures to the nearest
+// matched ancestor rather than the failing route, so derive the org id from the URL. Keep in sync with pam/layout.tsx.
+const getPamOrgIdFromPath = () =>
+  window.location.pathname.match(/\/organizations\/([^/]+)\/pam(\/|$)/)?.[1];
+
 // Products users experience as a single app rather than something they pick a project for
 // (ProjectSelect hides itself for both), so the copy names the product instead of "this project".
-// Cert Manager still carries a $projectId in its route for legacy multi-instance orgs, so it isn't
-// in the org-scoped registry.
-const CERT_MANAGER_PATH_RE = /^\/organizations\/[^/]+\/projects\/cert-manager(?:\/|$)/;
+// Cert Manager still carries a $projectId in its route for legacy multi-instance orgs.
+const PRODUCTS = [
+  { pattern: /\/organizations\/[^/]+\/pam(\/|$)/, name: "Privileged Access Manager" },
+  {
+    pattern: /\/organizations\/[^/]+\/projects\/cert-manager(\/|$)/,
+    name: "Certificate Manager"
+  }
+];
+
+const getProductNameFromPath = () =>
+  PRODUCTS.find(({ pattern }) => pattern.test(window.location.pathname))?.name;
 
 export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessErrorProps = {}) => {
   const orgAdminAccessProject = useOrgAdminAccessProject();
@@ -41,29 +52,14 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     strict: false
   });
 
-  // Org-scoped products have no $projectId route param, and TanStack attributes beforeLoad
-  // failures to the nearest matched ancestor rather than the failing route, so derive the org id
-  // from the URL. Keep in sync with the product layouts.
-  const orgScopedPath = getOrgScopedProductPath(window.location.pathname);
-  const productName = (() => {
-    if (orgScopedPath) return getProjectTitle(orgScopedPath.product.type);
-    return CERT_MANAGER_PATH_RE.test(window.location.pathname)
-      ? getProjectTitle(ProjectType.CertificateManager)
-      : undefined;
-  })();
-
-  const needsOrgFallback = !projectIdProp && !routeProjectId;
-  const orgScopedOrgId = needsOrgFallback ? orgScopedPath?.orgId : undefined;
-  // Not useOrganization(): that reads the _inject-org-details route context, which throws when the
-  // failure happened at or above that route, and this is the default error component.
-  const { data: org, isPending: isOrgPending } = useGetOrganizationById(orgScopedOrgId ?? "", {
-    enabled: Boolean(orgScopedOrgId)
+  const productName = getProductNameFromPath();
+  const needsPamFallback = !projectIdProp && !routeProjectId;
+  const pamOrgId = needsPamFallback ? getPamOrgIdFromPath() : undefined;
+  const { data: pamOrg, isPending: isPamOrgPending } = useGetOrganizationById(pamOrgId ?? "", {
+    enabled: Boolean(pamOrgId)
   });
 
-  const projectId =
-    projectIdProp ??
-    routeProjectId ??
-    (orgScopedPath && org ? (org[orgScopedPath.product.projectIdField] ?? undefined) : undefined);
+  const projectId = projectIdProp ?? routeProjectId ?? pamOrg?.pamProjectId ?? undefined;
 
   const { data, isPending: isProjectSearchPending } = useSearchProjects({
     projectIds: projectId ? [projectId] : [],
@@ -75,7 +71,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
   const [project] = data?.projects ?? [];
 
   // A disabled query reports isPending forever, so only an enabled query counts as in-flight
-  const isResolvingProjectId = Boolean(orgScopedOrgId) && isOrgPending;
+  const isResolvingProjectId = Boolean(pamOrgId) && isPamOrgPending;
   const isProjectResolving = isResolvingProjectId || (Boolean(projectId) && isProjectSearchPending);
   // Nothing in flight and still no project: the search errored or returned nothing, or no id
   // could be resolved. The request flow needs the resolved project (the modal renders nothing
