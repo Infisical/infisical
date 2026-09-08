@@ -26,7 +26,7 @@ Before creating a PostgreSQL discovery source, make sure you have:
 
 - A [Gateway](/documentation/platform/gateways/overview) (or Gateway pool) with network access to the instances you want to scan.
 - One or more [PostgreSQL accounts](/documentation/platform/pam/accounts/postgresql) in PAM to use as credential accounts. Discovery connects to each instance as one of these accounts, using its port, database, and TLS settings.
-- The [Product Admin](documentation/platform/pam/concepts/access-control#folder-and-account-memberships) role on your PAM project.
+- The [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership) role on your PAM project.
 
 <Note>
 The PostgreSQL role used for the scan only needs permission to log in to the target instance. It doesn't need superuser privileges or additional grants to list the roles on that instance.
