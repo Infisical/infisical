@@ -24,11 +24,8 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return session;
   };
 
-  // Sets the recording secrets only if the session has none yet, and returns whichever key is
-  // stored afterwards. One statement on the primary, so a caller that loses a concurrent claim
-  // still gets the winner's key back; a follow-up read would go to a replica that may not have
-  // caught up. COALESCE and CASE both see the pre-update value, so the winner is whoever the row
-  // was null for.
+  // Returns whichever key ends up stored, so a caller that loses the claim still gets the
+  // winner's. One statement on the primary, because a follow-up read could hit a lagging replica.
   const claimRecordingSecrets = async (
     sessionId: string,
     encryptedSessionKey: Buffer,

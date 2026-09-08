@@ -322,12 +322,8 @@ export const pamSessionServiceFactory = ({
         kmsService
       });
 
-      // Claim the mint in a single statement. Concurrent credential fetches for one session are
-      // routine -- a gateway fetches per connection -- and the KMS call above widens the gap
-      // between check and write to tens of milliseconds. Without the guard both callers mint, the
-      // later write wins, and the earlier caller is left holding a session key and upload token the
-      // row no longer matches: every chunk upload 400s forever, and whatever did upload is
-      // undecryptable at playback.
+      // A gateway fetches credentials per connection, so two can mint at once; without a single
+      // claim the loser keeps a key the row no longer holds and its uploads fail forever.
       const claimed = await pamSessionDAL.claimRecordingSecrets(
         sessionId,
         secrets.encryptedSessionKey,
@@ -346,8 +342,6 @@ export const pamSessionServiceFactory = ({
           sessionId
         };
       } else {
-        // Another fetch claimed it first; adopt its key rather than our own discarded one. The
-        // upload token stays empty here, same as any other re-fetch.
         storedSessionKey = claimed.encryptedSessionKey;
       }
     }

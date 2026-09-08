@@ -73,9 +73,8 @@ export const decryptSessionKey = async ({
   return decrypted.subarray(32, 32 + SESSION_KEY_LENGTH);
 };
 
-// Every rejection keeps the same client-facing message; only the error name differs, so the
-// branch is recoverable from logs without widening what the caller learns. A malformed token and
-// a token that simply does not match point at completely different causes.
+// The message must stay identical across these: the chunk router substring-matches it to write
+// the upload-token audit event.
 export const PamUploadTokenRejection = {
   Missing: "PamUploadTokenMissing",
   MalformedLength: "PamUploadTokenMalformedLength",
@@ -96,8 +95,7 @@ export const verifyGatewayUploadToken = (
     });
   }
 
-  // Buffer.from drops invalid base64 characters rather than throwing, so a bad encoding arrives
-  // here as a short decode, never as an exception.
+  // Buffer.from drops invalid base64 rather than throwing, so a bad encoding lands here short.
   const presentedBuf = Buffer.from(presentedTokenBase64, "base64");
   if (presentedBuf.length !== UPLOAD_TOKEN_LENGTH) {
     throw new BadRequestError({
