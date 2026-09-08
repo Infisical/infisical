@@ -77,8 +77,6 @@ type TServiceNowAccessRequestResponse = {
 
 export const servicenowFactory = (): TExternalApprovalProviderFns => {
   const throwDispatchError = ({ status, responseError }: { status?: number; responseError?: string }): never => {
-    // ServiceNow answers an unauthenticated request with a 302 to its login page, and safeRequest
-    // does not follow redirects, so a rejected credential arrives here as a 3xx rather than a 401.
     if (status && status >= 300 && status < 400) {
       throw new UnrecoverableError(
         "Unable to create the approval request in ServiceNow: the integration user's credentials were rejected. Verify the username and password on the app connection, and that the account is active."
@@ -132,8 +130,6 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
       secretPath = verified.secretPath;
       requestedPermissions = verified.requestedPermissions;
     } catch (error) {
-      // Retrying cannot make a malformed permissions blob parse, and the worker only stops
-      // retrying on UnrecoverableError.
       throw new UnrecoverableError(
         `The requested permissions on access request '${accessApprovalRequest.id}' could not be read, so it cannot be sent to ServiceNow: ${(error as Error)?.message}`
       );
@@ -151,19 +147,18 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
       project_name: project.name,
       environment: envSlug,
       secret_path: secretPath,
-      // The scoped app joins an array with "," and stringifies whatever it is given, so an array
-      // of objects would land as "[object Object]".
       permissions: requestedPermissions.flatMap(({ subject, actions }) =>
         actions.map((action) => `${subject}:${action}`)
       ),
       requestor_email: requestedByUser.email || requestedByUser.username,
       requestor_name: requestorName || requestedByUser.username,
-      // The scoped app maps duration with a strict `=== false`, so "false" or 0 would read as temporary.
       is_temporary: Boolean(accessApprovalRequest.isTemporary),
       ...(accessApprovalRequest.temporaryRange ? { temporary_range: accessApprovalRequest.temporaryRange } : {}),
       ...(accessApprovalRequest.note ? { justification: accessApprovalRequest.note } : {}),
       ...(externalApprovalPolicy.approverIdentityId ? { identity_id: externalApprovalPolicy.approverIdentityId } : {})
     };
+
+    logger.info(payload, "Adilson::: payload");
 
     const logDetails = `[externalApprovalRequestId=${externalApprovalRequest.id}] [accessApprovalRequestId=${accessApprovalRequest.id}] [connectionId=${connection.id}] [instanceUrl=${sanitizeUrlForLog(instanceUrl)}]`;
 
@@ -190,8 +185,6 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
 
       return { externalId: data.result?.sys_id ?? null };
     } catch (error) {
-      // safeRequest's own refusals (private IP, unresolvable host, credentials in the URL) already
-      // name what is wrong, and are more useful than the messages below.
       if (error instanceof BadRequestError) throw error;
 
       const status = error instanceof AxiosError ? error.response?.status : undefined;
@@ -210,9 +203,6 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
         return { externalId: responseError?.result?.sys_id ?? null };
       }
 
-      // The raw error is deliberately not logged: it carries the password at config.auth.password,
-      // which sits past the logger's depth-three redaction. Every throw below is a fresh error for
-      // the same reason, since the queue worker logs whatever escapes here.
       const formattedResponseError = formatServiceNowError(responseError?.result?.error);
 
       logger.error(

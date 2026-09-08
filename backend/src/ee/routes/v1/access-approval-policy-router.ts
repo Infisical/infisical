@@ -75,7 +75,7 @@ const requestExpirationTimeSchema = z
 const externalApprovalSchema = z.object({
   type: z.nativeEnum(ExternalApprovalType).describe(AccessApprovalPolicies.EXTERNAL_APPROVAL.type),
   connectionId: z.string().uuid().describe(AccessApprovalPolicies.EXTERNAL_APPROVAL.connectionId),
-  approverIdentityId: z.string().uuid().nullish().describe(AccessApprovalPolicies.EXTERNAL_APPROVAL.approverIdentityId)
+  approverIdentityId: z.string().uuid().describe(AccessApprovalPolicies.EXTERNAL_APPROVAL.approverIdentityId)
 });
 
 export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvider) => {

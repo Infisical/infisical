@@ -4160,7 +4160,6 @@ export const AccessApprovalPolicies = {
   EXTERNAL_APPROVAL: {
     type: "The external system that approves access requests created under this policy.",
     connectionId: "The ID of the app connection used to reach the external approval system.",
-    approverIdentityId:
-      "The ID of the machine identity allowed to report the external decision back to Infisical. Optional."
+    approverIdentityId: "The ID of the machine identity allowed to report the external decision back to Infisical."
   }
 } as const;

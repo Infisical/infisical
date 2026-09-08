@@ -41,13 +41,17 @@ export const externalApprovalServiceFactory = ({
       actor
     );
 
-    if (input.approverIdentityId) {
-      const identity = await identityDAL.findOne({ id: input.approverIdentityId, orgId: actor.orgId });
-      if (!identity) {
-        throw new NotFoundError({
-          message: `Identity with ID '${input.approverIdentityId}' not found in your organization`
-        });
-      }
+    if (!input.approverIdentityId) {
+      throw new NotFoundError({
+        message: `Approver identity ID is required for external approval policy`
+      });
+    }
+
+    const identity = await identityDAL.findOne({ id: input.approverIdentityId, orgId: actor.orgId });
+    if (!identity) {
+      throw new NotFoundError({
+        message: `Identity with ID '${input.approverIdentityId}' not found in your organization`
+      });
     }
   };
 
@@ -58,7 +62,7 @@ export const externalApprovalServiceFactory = ({
       {
         type: input.type,
         connectionId: input.connectionId,
-        approverIdentityId: input.approverIdentityId ?? null
+        approverIdentityId: input.approverIdentityId
       },
       tx
     );
@@ -70,7 +74,7 @@ export const externalApprovalServiceFactory = ({
       {
         type: input.type,
         connectionId: input.connectionId,
-        approverIdentityId: input.approverIdentityId ?? null
+        approverIdentityId: input.approverIdentityId
       },
       tx
     );
