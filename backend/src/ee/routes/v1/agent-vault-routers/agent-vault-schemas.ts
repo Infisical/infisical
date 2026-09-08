@@ -98,6 +98,17 @@ export const AgentVaultConnectionSchema = z.object({
   createdAt: z.date().describe(AGENT_VAULT.CONNECTION.createdAt)
 });
 
+export const AgentVaultMemberInputSchema = z
+  .object({
+    userId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.userId),
+    identityId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.identityId),
+    groupId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.groupId)
+  })
+  .refine(
+    (member) => [member.userId, member.identityId, member.groupId].filter(Boolean).length === 1,
+    "Name exactly one user, machine identity or group"
+  );
+
 export const AgentVaultMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),

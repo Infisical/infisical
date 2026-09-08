@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { projectKeys } from "../projects/query-keys";
 import { agentVaultKeys } from "./queries";
 import {
-  TAddAgentVaultMemberDTO,
+  TAddAgentVaultMembersDTO,
   TAgentVaultAccessBundle,
   TAgentVaultConnection,
   TAgentVaultEnrollment,
@@ -131,15 +131,15 @@ export const useDeleteAgentVaultConnection = () => {
   });
 };
 
-export const useAddAgentVaultAccessBundleMember = () => {
+export const useAddAgentVaultAccessBundleMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMemberDTO) => {
-      const { data } = await apiRequest.post<{ member: { id: string } }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
-        params
-      );
-      return data.member;
+    mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
+      const { data } = await apiRequest.post<{
+        members: { id: string }[];
+        skippedCount: number;
+      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
+      return data;
     },
     onSuccess: (_, { accessBundleId }) => {
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundle(accessBundleId) });

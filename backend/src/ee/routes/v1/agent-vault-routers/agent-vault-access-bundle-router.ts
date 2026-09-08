@@ -17,6 +17,7 @@ import {
   AgentVaultCredentialInputSchema,
   AgentVaultCredentialUpdateSchema,
   AgentVaultHostPatternSchema,
+  AgentVaultMemberInputSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema
 } from "./agent-vault-schemas";
@@ -401,44 +402,53 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "addAgentVaultAccessBundleMember",
-      description: "Grant an Agent Vault access bundle to a user, machine identity or group",
+      operationId: "addAgentVaultAccessBundleMembers",
+      description: "Grant an Agent Vault access bundle to users, machine identities or groups",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: z.object({
-        userId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.userId),
-        identityId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.identityId),
-        groupId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.groupId)
+        members: AgentVaultMemberInputSchema.array().min(1).max(100).describe(AGENT_VAULT.MEMBER.members)
       }),
-      response: { 200: z.object({ member: AgentVaultCreatedMemberSchema }) }
+      response: {
+        200: z.object({
+          members: AgentVaultCreatedMemberSchema.array(),
+          skippedCount: z.number().describe(AGENT_VAULT.MEMBER.skippedCount)
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const member = await server.services.agentVaultAccessBundle.addMember({
+      const { members, skippedCount, accessBundleName } = await server.services.agentVaultAccessBundle.addMembers({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
-        ...req.body
+        members: req.body.members
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_ADD,
-          metadata: {
-            accessBundleId: req.params.accessBundleId,
-            accessBundleName: member.accessBundleName,
-            memberId: member.id,
-            ...req.body
-          }
-        }
-      });
+      await Promise.all(
+        members.map((member) =>
+          server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId: req.internalAgentVaultProjectId,
+            event: {
+              type: EventType.AGENT_VAULT_MEMBER_ADD,
+              metadata: {
+                accessBundleId: req.params.accessBundleId,
+                accessBundleName,
+                memberId: member.id,
+                ...(member.userId && { userId: member.userId }),
+                ...(member.identityId && { identityId: member.identityId }),
+                ...(member.groupId && { groupId: member.groupId })
+              }
+            }
+          })
+        )
+      );
 
-      return { member };
+      return { members, skippedCount };
     }
   });
 

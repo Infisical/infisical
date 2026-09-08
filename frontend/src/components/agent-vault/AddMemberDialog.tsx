@@ -17,7 +17,7 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
-  useAddAgentVaultAccessBundleMember,
+  useAddAgentVaultAccessBundleMembers,
   useListAgentVaultProductIdentities
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
@@ -46,12 +46,12 @@ type Props = {
 
 export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members }: Props) => {
   const { currentProject } = useProject();
-  const addMember = useAddAgentVaultAccessBundleMember();
+  const addMembers = useAddAgentVaultAccessBundleMembers();
 
-  const [selected, setSelected] = useState<Option | null>(null);
+  const [selected, setSelected] = useState<Option[]>([]);
 
   useEffect(() => {
-    if (isOpen) setSelected(null);
+    if (isOpen) setSelected([]);
   }, [isOpen]);
 
   const { data: users } = useGetWorkspaceUsers(currentProject.id, false, undefined, {
@@ -107,15 +107,29 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
   }, [users, groupMemberships, identities, grantedIds]);
 
   const handleAdd = async () => {
-    if (!selected) return;
+    if (!selected.length) return;
 
-    await addMember.mutateAsync({
+    const { members: granted, skippedCount } = await addMembers.mutateAsync({
       accessBundleId,
-      ...(selected.kind === MemberKind.User && { userId: selected.id }),
-      ...(selected.kind === MemberKind.Identity && { identityId: selected.id }),
-      ...(selected.kind === MemberKind.Group && { groupId: selected.id })
+      members: selected.map((option) => ({
+        ...(option.kind === MemberKind.User && { userId: option.id }),
+        ...(option.kind === MemberKind.Identity && { identityId: option.id }),
+        ...(option.kind === MemberKind.Group && { groupId: option.id })
+      }))
     });
-    createNotification({ text: `Access bundle granted to "${selected.label}"`, type: "success" });
+
+    if (!granted.length) {
+      createNotification({ text: "They already had this access bundle", type: "info" });
+    } else {
+      const grantedText =
+        granted.length === 1 && selected.length === 1
+          ? `Access bundle granted to "${selected[0].label}"`
+          : `Access bundle granted to ${granted.length} members`;
+      createNotification({
+        text: skippedCount ? `${grantedText}. ${skippedCount} already had it.` : grantedText,
+        type: "success"
+      });
+    }
     onOpenChange(false);
   };
 
@@ -135,17 +149,28 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
           <FieldContent>
             <Combobox
               id="agent-vault-grant-to"
+              multiple
               options={options}
               value={selected}
               getOptionValue={(option) => `${option.kind}:${option.id}`}
               getOptionLabel={(option) => option.label}
               getOptionKeywords={(option) => [option.subtitle]}
-              placeholder="Pick a user, group, or machine identity..."
-              searchPlaceholder="Pick a user, group, or machine identity..."
+              placeholder="Pick users, groups, or machine identities..."
+              searchPlaceholder="Pick users, groups, or machine identities..."
               searchAriaLabel="Search users, groups, and machine identities"
               emptyMessage="Nobody left to grant. Add them under Access Control first."
+              clearAriaLabel="Clear all grantees"
               modal
-              onValueChange={setSelected}
+              onValueChange={(next) => setSelected([...next])}
+              renderValue={(option) => {
+                const Icon = KIND_ICON[option.kind];
+                return (
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <Icon className="size-3.5 shrink-0 text-muted" />
+                    <span className="truncate">{option.label}</span>
+                  </span>
+                );
+              }}
               renderOption={(option) => {
                 const Icon = KIND_ICON[option.kind];
                 return (
@@ -167,8 +192,8 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
         <DialogFooter>
           <Button
             variant="av"
-            isDisabled={!selected}
-            isPending={addMember.isPending}
+            isDisabled={!selected.length}
+            isPending={addMembers.isPending}
             onClick={async () => handleAdd()}
           >
             Grant Access

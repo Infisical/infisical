@@ -152,11 +152,15 @@ export type TUpdateAgentVaultConnectionDTO = {
   credential?: TAgentVaultCredentialUpdate;
 };
 
-export type TAddAgentVaultMemberDTO = {
-  accessBundleId: string;
+export type TAgentVaultMemberInput = {
   userId?: string;
   identityId?: string;
   groupId?: string;
+};
+
+export type TAddAgentVaultMembersDTO = {
+  accessBundleId: string;
+  members: TAgentVaultMemberInput[];
 };
 
 export type TCreateAgentVaultSessionDTO = {

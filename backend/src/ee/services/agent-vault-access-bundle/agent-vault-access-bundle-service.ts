@@ -26,7 +26,7 @@ import { AgentVaultCredentialType, AgentVaultResourceRole } from "../agent-vault
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
 import {
-  TAddMemberDTO,
+  TAddMembersDTO,
   TAgentVaultCredentialInput,
   TAgentVaultCredentialSummary,
   TAgentVaultCredentialUpdate,
@@ -50,9 +50,9 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   membershipDAL: Pick<
     TMembershipDALFactory,
-    "findOne" | "find" | "create" | "delete" | "deleteById" | "transaction" | "findResourceMembershipsForActor"
+    "findOne" | "find" | "insertMany" | "delete" | "deleteById" | "transaction" | "findResourceMembershipsForActor"
   >;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
 };
@@ -89,22 +89,39 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
 
-  const writeGrant = async (
+  type TGrantActor = { actorColumn: TGrantActorColumn; actorId: string };
+
+  const actorKey = ({ actorColumn, actorId }: TGrantActor) => `${actorColumn}:${actorId}`;
+
+  const ACTOR_FIELD_OF: Record<TGrantActorColumn, "userId" | "identityId" | "groupId"> = {
+    actorUserId: "userId",
+    actorIdentityId: "identityId",
+    actorGroupId: "groupId"
+  };
+
+  const writeGrants = async (
     {
       projectId,
       orgId,
       accessBundleId,
-      actorColumn,
-      actorId
-    }: { projectId: string; orgId: string; accessBundleId: string; actorColumn: TGrantActorColumn; actorId: string },
+      actors
+    }: { projectId: string; orgId: string; accessBundleId: string; actors: TGrantActor[] },
     tx: Knex
   ) => {
-    const membership = await membershipDAL.create(
-      { ...bundleScope(projectId, accessBundleId), scopeOrgId: orgId, [actorColumn]: actorId, isActive: true },
+    const memberships = await membershipDAL.insertMany(
+      actors.map(({ actorColumn, actorId }) => ({
+        ...bundleScope(projectId, accessBundleId),
+        scopeOrgId: orgId,
+        [actorColumn]: actorId,
+        isActive: true
+      })),
       tx
     );
-    await membershipRoleDAL.create({ membershipId: membership.id, role: AgentVaultResourceRole.Consumer }, tx);
-    return membership;
+    await membershipRoleDAL.insertMany(
+      memberships.map((membership) => ({ membershipId: membership.id, role: AgentVaultResourceRole.Consumer })),
+      tx
+    );
+    return memberships;
   };
 
   const isInProjectThroughGroup = async ({
@@ -161,6 +178,31 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       message:
         "That user, machine identity or group is not a member of Agent Vault. Add them under Access Control first."
     });
+  };
+
+  const assertActorsInProject = async ({ projectId, actors }: { projectId: string; actors: TGrantActor[] }) => {
+    const idsByColumn = new Map<TGrantActorColumn, string[]>();
+    actors.forEach((actor) => {
+      idsByColumn.set(actor.actorColumn, [...(idsByColumn.get(actor.actorColumn) ?? []), actor.actorId]);
+    });
+
+    const found = new Set<string>();
+    await Promise.all(
+      [...idsByColumn].map(async ([actorColumn, actorIds]) => {
+        const rows = await membershipDAL.find({
+          scope: AccessScope.Project,
+          scopeProjectId: projectId,
+          $in: { [actorColumn]: actorIds }
+        });
+        rows.forEach((row) => found.add(actorKey({ actorColumn, actorId: row[actorColumn]! })));
+      })
+    );
+
+    // The single-actor check re-queries the first offender so the caller gets the specific reason, not just a count.
+    const missing = actors.find((actor) => !found.has(actorKey(actor)));
+    if (missing) {
+      await assertActorInProject({ projectId, [ACTOR_FIELD_OF[missing.actorColumn]]: missing.actorId });
+    }
   };
 
   const getProjectCipher = (projectId: string) =>
@@ -336,13 +378,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           tx
         );
         if (direct) {
-          await writeGrant(
+          await writeGrants(
             {
               projectId,
               orgId: ctx.actorOrgId,
               accessBundleId: bundle.id,
-              actorColumn: creatorColumn,
-              actorId: ctx.actorId
+              actors: [{ actorColumn: creatorColumn, actorId: ctx.actorId }]
             },
             tx
           );
@@ -526,41 +567,66 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return agentVaultAccessBundleDAL.findMembers({ projectId: rest.projectId, accessBundleId: bundle.id });
   };
 
-  const addMember = async ({ accessBundleId, userId, identityId, groupId, ...rest }: TAddMemberDTO) => {
+  const addMembers = async ({ accessBundleId, members, ...rest }: TAddMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const supplied = [userId, identityId, groupId].filter(Boolean);
-    if (supplied.length !== 1) {
-      throw new BadRequestError({ message: "Grant an access bundle to exactly one user, machine identity or group" });
-    }
+    const requested = new Map<string, TGrantActor>();
+    members.forEach(({ userId, identityId, groupId }) => {
+      const supplied = [userId, identityId, groupId].filter(Boolean);
+      if (supplied.length !== 1) {
+        throw new BadRequestError({
+          message: "Grant an access bundle to exactly one user, machine identity or group per entry"
+        });
+      }
 
-    await assertActorInProject({ projectId: rest.projectId, userId, identityId, groupId });
+      let actorColumn: TGrantActorColumn = "actorGroupId";
+      if (userId) actorColumn = "actorUserId";
+      else if (identityId) actorColumn = "actorIdentityId";
+      const actor = { actorColumn, actorId: (userId ?? identityId ?? groupId)! };
+      requested.set(actorKey(actor), actor);
+    });
 
-    let actorColumn: TGrantActorColumn = "actorGroupId";
-    if (userId) actorColumn = "actorUserId";
-    else if (identityId) actorColumn = "actorIdentityId";
-    const actorId = (userId ?? identityId ?? groupId)!;
+    const actors = [...requested.values()];
+    await assertActorsInProject({ projectId: rest.projectId, actors });
 
-    // The unique index per actor per bundle is the duplicate check, so the catch sits outside the transaction.
-    try {
-      const created = await membershipDAL.transaction(async (tx) => {
+    // The bundle row lock serializes grants for this bundle, so reading the existing ones inside it is
+    // enough to dedupe. The unique index per actor per bundle stays as the backstop, and its violation
+    // has to be caught outside the transaction.
+    const grant = () =>
+      membershipDAL.transaction(async (tx) => {
         const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
           { id: bundle.id, projectId: rest.projectId },
           tx
         );
         if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
-        return writeGrant(
-          { projectId: rest.projectId, orgId: rest.ctx.actorOrgId, accessBundleId: bundle.id, actorColumn, actorId },
+        const existing = await membershipDAL.find(bundleScope(rest.projectId, bundle.id), tx);
+        const alreadyGranted = new Set(
+          existing.flatMap((row) => {
+            if (row.actorUserId) return [actorKey({ actorColumn: "actorUserId", actorId: row.actorUserId })];
+            if (row.actorIdentityId)
+              return [actorKey({ actorColumn: "actorIdentityId", actorId: row.actorIdentityId })];
+            if (row.actorGroupId) return [actorKey({ actorColumn: "actorGroupId", actorId: row.actorGroupId })];
+            return [];
+          })
+        );
+
+        const toGrant = actors.filter((actor) => !alreadyGranted.has(actorKey(actor)));
+        if (!toGrant.length) return [];
+
+        return writeGrants(
+          { projectId: rest.projectId, orgId: rest.ctx.actorOrgId, accessBundleId: bundle.id, actors: toGrant },
           tx
         );
       });
 
-      return { ...toMember(created), accessBundleName: bundle.name };
+    let created: TMemberships[] = [];
+    try {
+      created = await grant();
     } catch (err) {
       if (
         err instanceof DatabaseError &&
@@ -570,6 +636,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       }
       throw err;
     }
+
+    return {
+      members: created.map(toMember),
+      skippedCount: actors.length - created.length,
+      accessBundleName: bundle.name
+    };
   };
 
   const removeMember = async ({ accessBundleId, memberId, ...rest }: TRemoveMemberDTO) => {
@@ -596,7 +668,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     updateConnection,
     deleteConnection,
     listMembers,
-    addMember,
+    addMembers,
     removeMember
   };
 };
