@@ -76,11 +76,14 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
   const { authMethod } = gateway;
   const isIdentityGateway = authMethod.method === "identity";
   const effectiveHeartbeat = getLastSeenHeartbeat(gateway);
-  const connection = gateway.directAddress
-    ? `${gateway.relayId ? "Direct + Relay" : "Direct"} (${gateway.directAddress})`
-    : gateway.relayId
-      ? "Relay"
-      : "Not configured";
+  const describeConnection = () => {
+    if (gateway.directAddress) {
+      const mode = gateway.relayId ? "Direct + Relay" : "Direct";
+      return `${mode} (${gateway.directAddress})`;
+    }
+    return gateway.relayId ? "Relay" : "Not configured";
+  };
+  const connection = describeConnection();
   // Only broken out for a gateway running both. With one transport the Health badge and Last Seen
   // above already say everything these rows would.
   const transportHealth = getGatewayTransportHealth(gateway);
