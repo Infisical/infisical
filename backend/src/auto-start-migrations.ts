@@ -404,9 +404,18 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
   // API nodes to fall behind the schema and start failing while they are not updated.
   if (!getConfig().isApiRunModeEnabled) {
     const bootState = await getMigrationBootState({ db: applicationDb, migrationConfig });
-    if (bootState.direction === "behind" || bootState.direction === "invalid") {
+
+    if (bootState.direction === "invalid") {
+      throwInvalidMigrationHistory({
+        databaseName: "application",
+        pendingMigrationNames: bootState.pendingMigrationNames,
+        unknownAppliedMigrationNames: bootState.unknownAppliedMigrationNames
+      });
+    }
+
+    if (bootState.direction === "behind") {
       logger.warn(
-        `Skipping migrations: not an api run mode [direction=${bootState.direction}] [pendingCount=${bootState.pendingMigrationNames.length}]. Waiting on an api pod to apply them.`
+        `Skipping migrations: not an api run mode [direction=behind] [pendingCount=${bootState.pendingMigrationNames.length}]. Waiting on an api pod to apply them.`
       );
     } else {
       logger.info(`Skipping migrations: not an api run mode [direction=${bootState.direction}]`);
