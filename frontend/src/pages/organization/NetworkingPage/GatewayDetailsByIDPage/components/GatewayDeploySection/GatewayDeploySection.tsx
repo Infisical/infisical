@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { InfoIcon, LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
+import { LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -81,11 +81,13 @@ export const GatewayDeploySection = ({
 }: Props) => {
   const isCloud = isInfisicalCloud();
   const isKubernetes = authMethod.method === "kubernetes";
-  // Relay unless the gateway already listens directly. Defaulting to direct on a gateway with no
-  // address yet would render a command carrying the placeholder address.
+  // Direct listen is the recommended mode, so it is also the default. The exceptions are Cloud,
+  // which cannot reach into a customer network, and a gateway already deployed against a relay
+  // alone, where the rendered command should match how it actually runs.
   const isDirectGateway = !isCloud && Boolean(directAddress);
+  const isRelayOnlyGateway = Boolean(relayId) && !directAddress;
   const [connectionMode, setConnectionMode] = useState<"relay" | "direct">(
-    isDirectGateway ? "direct" : "relay"
+    isCloud || isRelayOnlyGateway ? "relay" : "direct"
   );
   // The relay is an add-on to direct listen rather than a competing transport: it extends reach to
   // PAM CLI users off the network and covers the direct address going down. Pre-checked for a
@@ -257,32 +259,6 @@ export const GatewayDeploySection = ({
                     </FieldContent>
                   </div>
                 </Field>
-              )}
-
-              {connectionMode === "direct" && (
-                <Alert variant="info" appearance="borderless">
-                  <InfoIcon />
-                  {withRelay ? (
-                    <>
-                      <AlertTitle>PAM CLI sessions work from outside this network</AlertTitle>
-                      <AlertDescription>
-                        The CLI dials the gateway from the user&apos;s own machine. It tries this
-                        address first and falls back to the relay, so users off this network can
-                        still connect. Infisical itself keeps using the direct address.
-                      </AlertDescription>
-                    </>
-                  ) : (
-                    <>
-                      <AlertTitle>PAM CLI sessions dial this address directly</AlertTitle>
-                      <AlertDescription>
-                        The CLI connects from the user&apos;s own machine, not from Infisical, so
-                        that machine has to reach this address as well. Users outside this network
-                        need a VPN into it, or the relay option above. Browser-based PAM access is
-                        unaffected.
-                      </AlertDescription>
-                    </>
-                  )}
-                </Alert>
               )}
 
               {authMethod.method === "aws" && (
