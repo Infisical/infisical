@@ -23,6 +23,7 @@ import {
 import {
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
+  TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
@@ -103,6 +104,8 @@ export enum QueueName {
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
+  SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
+  SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   UserNotification = "user-notification",
   AlertDispatch = "alert-dispatch",
   AuditReportGeneration = "audit-report-generation",
@@ -461,6 +464,14 @@ export type TQueueJobTypes = {
         name: QueueJobs.SecretScanningV2SendNotification;
         payload: TQueueSecretScanningSendNotification;
       };
+  [QueueName.SecretScanningV2FullScan]: {
+    name: QueueJobs.SecretScanningV2FullScan;
+    payload: TQueueSecretScanningDataSourceFullScan;
+  };
+  [QueueName.SecretScanningV2DiffScan]: {
+    name: QueueJobs.SecretScanningV2DiffScan;
+    payload: TQueueSecretScanningResourceDiffScanPayload;
+  };
   [QueueName.CaLifecycle]: {
     name: QueueJobs.CaOrderCertificateForSubscriber;
     payload: {
@@ -597,6 +608,8 @@ export type TQueueJobTypes = {
 
 const SECRET_SCANNING_QUEUES = [
   QueueName.SecretScanningV2,
+  QueueName.SecretScanningV2FullScan,
+  QueueName.SecretScanningV2DiffScan,
   QueueName.SecretFullRepoScan,
   QueueName.SecretPushEventScan
 ];
