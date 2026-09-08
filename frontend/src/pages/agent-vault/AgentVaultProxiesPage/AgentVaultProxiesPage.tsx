@@ -16,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-  Badge,
   Button,
   Card,
   CardAction,
@@ -73,23 +72,23 @@ const bypassHostsOf = (proxy: TAgentVaultProxy) =>
         .filter(Boolean)
     : [];
 
-const UnmatchedHostBadge = ({ proxy }: { proxy: TAgentVaultProxy }) => {
-  if (proxy.unmatchedHost !== AgentVaultUnmatchedHost.Deny) {
-    return <Badge variant="neutral">Allow</Badge>;
-  }
+const UnmatchedHostCell = ({ proxy }: { proxy: TAgentVaultProxy }) => {
+  const isDenying = proxy.unmatchedHost === AgentVaultUnmatchedHost.Deny;
+  const bypassHosts = isDenying ? bypassHostsOf(proxy) : [];
 
-  const bypassHosts = bypassHostsOf(proxy);
-  if (bypassHosts.length === 0) {
-    return <Badge variant="danger">Deny</Badge>;
-  }
+  const cell = (
+    <span>
+      {isDenying ? "Deny" : "Allow"}
+      {bypassHosts.length > 0 &&
+        ` · ${bypassHosts.length} ${bypassHosts.length === 1 ? "exception" : "exceptions"}`}
+    </span>
+  );
+
+  if (bypassHosts.length === 0) return cell;
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge variant="danger">
-          Deny &middot; {bypassHosts.length} {bypassHosts.length === 1 ? "exception" : "exceptions"}
-        </Badge>
-      </TooltipTrigger>
+      <TooltipTrigger asChild>{cell}</TooltipTrigger>
       <TooltipContent className="max-w-sm">
         <p className="mb-1">Reachable without a credential:</p>
         <ul className="font-mono text-xs">
@@ -286,7 +285,7 @@ export const AgentVaultProxiesPage = () => {
                     </TableCell>
                     {isAdmin && (
                       <TableCell>
-                        <UnmatchedHostBadge proxy={proxy} />
+                        <UnmatchedHostCell proxy={proxy} />
                       </TableCell>
                     )}
                     <TableCell>
