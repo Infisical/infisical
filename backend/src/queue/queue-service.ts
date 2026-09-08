@@ -734,7 +734,13 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   // Remove orphaned job schedulers left in Redis by deleted queues.
   // Queues migrated to the cronJob system (cron-job.ts) are listed here so their
   // BullMQ schedulers and pending jobs are cleaned up on first boot of the new image.
+  //
+  // Gated to general-workers because every name below belongs to that fleet, and obliterate() is
+  // called with force, which deletes active jobs too. Reaping is the consuming pod's job: an API
+  // pod has no worker on these queues and must not clear work another pod is running.
   void (async () => {
+    if (!getConfig().isGeneralWorkerRunModeEnabled) return;
+
     const staleQueueNames = [
       "queue-internal-recovery",
       "queue-internal-reconciliation",
