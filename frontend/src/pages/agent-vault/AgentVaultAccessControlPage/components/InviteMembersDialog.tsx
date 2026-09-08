@@ -148,20 +148,14 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
         {requesterEmail && !requesterStatus.isProjectUser && requesterStatus.orgUser && (
           <Alert>
             <AlertDescription>
-              {/* AlertDescription is a grid, so a bare text node would land on its own row */}
-              <span>
-                Assign a role to provide access to requesting user{" "}
-                <b>{requesterStatus.userLabel}</b>.
-              </span>
+              Assign a role to provide access to requesting user <b>{requesterStatus.userLabel}</b>.
             </AlertDescription>
           </Alert>
         )}
         {requesterEmail && !requesterStatus.isProjectUser && !requesterStatus.orgUser && (
           <Alert>
             <AlertDescription>
-              <span>
-                No member of {currentOrg.name} matches <b>{requesterEmail}</b>.
-              </span>
+              No member of {currentOrg.name} matches <b>{requesterEmail}</b>.
             </AlertDescription>
           </Alert>
         )}
