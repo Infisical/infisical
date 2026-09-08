@@ -25,7 +25,7 @@ type Props = {
 const runCommand = (token: string) =>
   `infisical av run \\
   --session-token ${token} \\
-  --proxy <proxy-address> \\
+  --proxy <proxy-host>:17323 \\
   -- <agent-command>`;
 
 export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
@@ -50,9 +50,10 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
         <div className="flex flex-col gap-2">
           <CodeBlock label="Run an agent with it" value={runCommand(session?.token ?? "")} />
           <p className="text-xs text-accent">
-            Replace <span className="font-mono">&lt;proxy-address&gt;</span> with the address of
-            your proxy and <span className="font-mono">&lt;agent-command&gt;</span> with the agent
-            to run, such as <span className="font-mono">claude</span>.
+            Replace <span className="font-mono">&lt;proxy-host&gt;</span> with the host your proxy
+            runs on, keeping the port it listens on (<span className="font-mono">17323</span> unless
+            you changed it), and <span className="font-mono">&lt;agent-command&gt;</span> with the
+            agent to run, such as <span className="font-mono">claude</span>.
           </p>
         </div>
 
