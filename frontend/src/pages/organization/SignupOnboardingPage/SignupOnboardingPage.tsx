@@ -3,10 +3,10 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
-import { OnboardingStepTransition } from "@app/components/auth/OnboardingStepTransition";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import { OnboardingProgress } from "@app/components/auth/OnboardingPageLayout";
+import { OnboardingStepTransition } from "@app/components/auth/OnboardingStepTransition";
 import OrgNameStep from "@app/components/auth/OrgNameStep";
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
