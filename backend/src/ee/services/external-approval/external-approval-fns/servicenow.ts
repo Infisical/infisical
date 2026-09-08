@@ -64,11 +64,15 @@ type TServiceNowAccessRequestPayload = {
   justification?: string;
 };
 
-type TServiceNowAccessRequestResponse = {
+type TServiceNowAccessRequestResult = {
   success?: boolean;
-  request_number?: string;
-  sys_id?: string;
+  request_number?: string | null;
+  sys_id?: string | null;
   error?: unknown;
+};
+
+type TServiceNowAccessRequestResponse = {
+  result?: TServiceNowAccessRequestResult;
 };
 
 export const servicenowFactory = (): TExternalApprovalProviderFns => {
@@ -181,10 +185,10 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
       );
 
       logger.info(
-        `externalApproval(servicenow): Created access request ${logDetails} [requestNumber=${data?.request_number ?? "none"}]`
+        `externalApproval(servicenow): Created access request ${logDetails} [requestNumber=${data.result?.request_number ?? "none"}]`
       );
 
-      return { externalId: data?.sys_id ?? null };
+      return { externalId: data.result?.sys_id ?? null };
     } catch (error) {
       // safeRequest's own refusals (private IP, unresolvable host, credentials in the URL) already
       // name what is wrong, and are more useful than the messages below.
@@ -200,16 +204,16 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
       // the first attempt already created. Adopting it is what keeps the retry from duplicating it.
       if (status === 409) {
         logger.info(
-          `externalApproval(servicenow): Access request already exists, adopting the existing record ${logDetails} [requestNumber=${responseError?.request_number ?? "none"}]`
+          `externalApproval(servicenow): Access request already exists, adopting the existing record ${logDetails} [requestNumber=${responseError?.result?.request_number ?? "none"}]`
         );
 
-        return { externalId: responseError?.sys_id ?? null };
+        return { externalId: responseError?.result?.sys_id ?? null };
       }
 
       // The raw error is deliberately not logged: it carries the password at config.auth.password,
       // which sits past the logger's depth-three redaction. Every throw below is a fresh error for
       // the same reason, since the queue worker logs whatever escapes here.
-      const formattedResponseError = formatServiceNowError(responseError?.error);
+      const formattedResponseError = formatServiceNowError(responseError?.result?.error);
 
       logger.error(
         { status, message: (error as Error)?.message, responseError: formattedResponseError },
