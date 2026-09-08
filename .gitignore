@@ -58,7 +58,6 @@ yarn-error.log*
 .infisicalignore
 
 # Editor specific
-.vscode/*
 .idea/*
 .claude/
 

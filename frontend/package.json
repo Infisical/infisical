@@ -7,7 +7,7 @@
     "npm": ">=11.10.0"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "node api.js && vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint ./src --max-warnings 0",
