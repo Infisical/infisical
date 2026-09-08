@@ -9,7 +9,8 @@ import {
   InternalCas,
   PamIdentities,
   SecretIdentities,
-  UserIdentities
+  UserIdentities,
+  WildcardCerts
 } from "../features";
 import { buildMeteredFeatures, METERED_DIMENSION_KEYS } from "./usage-counters";
 import { usageEventQueueFactory } from "./usage-event-queue";
@@ -251,6 +252,7 @@ describe("buildMeteredFeatures", () => {
         IdentitiesMeter.key,
         InternalCas.key,
         ActiveCerts.key,
+        WildcardCerts.key,
         SecretIdentities.key,
         PamIdentities.key,
         UserIdentities.key
@@ -262,6 +264,8 @@ describe("buildMeteredFeatures", () => {
     // Billed on the same unit the cap enforces: distinct quota keys, not certificate rows.
     expect(await byKey[ActiveCerts.key](ORG_ID)).toBe(2);
     expect(usageCounterDAL.countActiveCertificateQuotaKeysByOrg).toHaveBeenCalledWith(ORG_ID);
+    // Wildcards read the other half of that same result, so the two can never disagree.
+    expect(await byKey[WildcardCerts.key](ORG_ID)).toBe(1);
     expect(await byKey[SecretIdentities.key](ORG_ID)).toBe(4);
     expect(await byKey[PamIdentities.key](ORG_ID)).toBe(5);
     expect(await byKey[UserIdentities.key](ORG_ID)).toBe(8);

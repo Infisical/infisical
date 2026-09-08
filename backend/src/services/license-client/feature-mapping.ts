@@ -1,4 +1,11 @@
-import { ActiveCerts, AuditRetentionDays, IdentitiesMeter, InternalCas, SsoEnforcement } from "./features";
+import {
+  ActiveCerts,
+  AuditRetentionDays,
+  IdentitiesMeter,
+  InternalCas,
+  SsoEnforcement,
+  WildcardCerts
+} from "./features";
 
 export type TFeatureMapping = {
   // Must match a License Server feature registry key (a separate repo); a wrong key means the feature
@@ -310,6 +317,11 @@ const certManagerMappings: TFeatureMapping[] = [
   },
   {
     v2Key: ActiveCerts.key,
+    v1Field: null
+  },
+  {
+    // Usage meter only; the cap is max_wildcard_certificates, mapped separately below.
+    v2Key: WildcardCerts.key,
     v1Field: null
   },
   {

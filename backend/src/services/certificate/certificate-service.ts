@@ -33,7 +33,7 @@ import {
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { ActiveCerts } from "@app/services/license-client";
+import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
@@ -476,6 +476,7 @@ export const certificateServiceFactory = ({
     });
 
     usageMeteringService.emitForProject(cert.projectId, ActiveCerts.key);
+    usageMeteringService.emitForProject(cert.projectId, WildcardCerts.key);
 
     return {
       deletedCert
@@ -625,6 +626,7 @@ export const certificateServiceFactory = ({
     );
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -1037,6 +1039,7 @@ export const certificateServiceFactory = ({
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
     usageMeteringService.emitForProject(projectId, ActiveCerts.key);
+    usageMeteringService.emitForProject(projectId, WildcardCerts.key);
 
     return {
       certificate: certificatePem,

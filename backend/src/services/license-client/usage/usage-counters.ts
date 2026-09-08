@@ -7,7 +7,8 @@ import {
   InternalCas,
   PamIdentities,
   SecretIdentities,
-  UserIdentities
+  UserIdentities,
+  WildcardCerts
 } from "../features";
 import { TUsageCounterDALFactory } from "./usage-counter-dal";
 
@@ -26,6 +27,7 @@ export const METERED_DIMENSION_KEYS: string[] = [
   IdentitiesMeter,
   InternalCas,
   ActiveCerts,
+  WildcardCerts,
   SecretIdentities,
   PamIdentities,
   UserIdentities
@@ -55,6 +57,13 @@ export const buildMeteredFeatures = ({
   {
     feature: ActiveCerts,
     count: (orgId) => usageCounterDAL.countActiveCertificateQuotaKeysByOrg(orgId).then(({ total }) => total),
+    resolveReportOrgId: (orgId) => usageCounterDAL.resolveRootOrgId(orgId)
+  },
+  {
+    // The other half of the same query active_certs reads, so the two can never disagree about which
+    // certificates are live. Wildcards also count toward active_certs; this is a priced subset of it.
+    feature: WildcardCerts,
+    count: (orgId) => usageCounterDAL.countActiveCertificateQuotaKeysByOrg(orgId).then(({ wildcard }) => wildcard),
     resolveReportOrgId: (orgId) => usageCounterDAL.resolveRootOrgId(orgId)
   },
   {
