@@ -48,22 +48,27 @@ export const buildMeteredFeatures = ({
   isCloud
 }: TBuildMeteredFeaturesDep): TMeteredFeature[] => [
   { feature: IdentitiesMeter, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(isCloud ? orgId : null) },
-  // The PKI meters count the whole org tree, so both report once at the root.
+  // The PKI meters count the whole org tree, so each reports once at the root. On self-hosted they
+  // count the whole instance instead: the report identity there is not an org id.
   {
     feature: InternalCas,
-    count: (orgId) => usageCounterDAL.countInternalCas(orgId),
+    count: (orgId) => usageCounterDAL.countInternalCas(isCloud ? orgId : undefined),
     resolveReportOrgId: (orgId) => usageCounterDAL.resolveRootOrgId(orgId)
   },
   {
     feature: ActiveCerts,
-    count: (orgId) => usageCounterDAL.countActiveCertificateQuotaKeysByOrg(orgId).then(({ total }) => total),
+    count: (orgId) =>
+      usageCounterDAL.countActiveCertificateQuotaKeysByOrg(isCloud ? orgId : undefined).then(({ total }) => total),
     resolveReportOrgId: (orgId) => usageCounterDAL.resolveRootOrgId(orgId)
   },
   {
     // The other half of the same query active_certs reads, so the two can never disagree about which
     // certificates are live. Wildcards also count toward active_certs; this is a priced subset of it.
     feature: WildcardCerts,
-    count: (orgId) => usageCounterDAL.countActiveCertificateQuotaKeysByOrg(orgId).then(({ wildcard }) => wildcard),
+    count: (orgId) =>
+      usageCounterDAL
+        .countActiveCertificateQuotaKeysByOrg(isCloud ? orgId : undefined)
+        .then(({ wildcard }) => wildcard),
     resolveReportOrgId: (orgId) => usageCounterDAL.resolveRootOrgId(orgId)
   },
   {

@@ -13,9 +13,12 @@ const toCount = (row: unknown): number => Number((row as { count?: string | numb
 // Live counts for the project-scoped metered features, summed across the whole org tree and excluding
 // soft-deleted projects so they don't inflate a quota.
 export const usageCounterDALFactory = (db: TDbClient) => {
-  const countInternalCas = async (orgId: string): Promise<number> => {
+  // orgId omitted means instance-wide: self-hosted is one licence over the whole database and reports
+  // under an identity that is not an org id, so the org filter has to come off rather than be handed a
+  // non-uuid.
+  const countInternalCas = async (orgId?: string): Promise<number> => {
     try {
-      const row = await db
+      const qb = db
         .replicaNode()(TableName.CertificateAuthority)
         .join(
           TableName.InternalCertificateAuthority,
@@ -23,10 +26,11 @@ export const usageCounterDALFactory = (db: TDbClient) => {
           `${TableName.InternalCertificateAuthority}.caId`
         )
         .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId))
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .count(`${TableName.CertificateAuthority}.id as count`)
-        .first();
+        .whereNull(`${TableName.Project}.deleteAfter`);
+
+      if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId));
+
+      const row = await qb.count(`${TableName.CertificateAuthority}.id as count`).first();
       return toCount(row);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count internal CAs for usage" });
@@ -52,14 +56,16 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     });
 
   // No `status = 'active'` filter: nothing writes EXPIRED or RENEWED, both are derived at read time.
-  const $activeQuotaCertificates = (orgId: string) => {
+  // orgId omitted means instance-wide; see countInternalCas.
+  const $activeQuotaCertificates = (orgId?: string) => {
     const qb = db
       .replicaNode()(TableName.Certificate)
       .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
-      .whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId))
       .whereNull(`${TableName.Project}.deleteAfter`)
       .where(`${TableName.Certificate}.notAfter`, ">", new Date())
       .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED);
+
+    if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId));
 
     return $excludeSignerCertificates(qb);
   };
@@ -82,7 +88,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
   // Joins on projectId rather than caId, which is nullable and would drop imported and discovered
   // certificates. Both counts read hasWildcard from the covering index; filtering with LIKE over
   // commonName/altNames instead forces a sequential scan (measured: ~2x at 600k rows).
-  const countActiveCertificateQuotaKeysByOrg = async (orgId: string): Promise<{ total: number; wildcard: number }> => {
+  const countActiveCertificateQuotaKeysByOrg = async (orgId?: string): Promise<{ total: number; wildcard: number }> => {
     try {
       const row = (await $activeQuotaCertificates(orgId)
         .countDistinct(`${TableName.Certificate}.quotaKey as total`)

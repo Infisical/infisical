@@ -276,6 +276,34 @@ describe("buildMeteredFeatures", () => {
     expect(licenseDAL.countOfOrgMembers).toHaveBeenCalledWith(ORG_ID);
   });
 
+  // The self-hosted report identity is the literal "self-hosted", not a uuid, so a PKI counter handed
+  // it would reach Postgres as an invalid uuid and throw.
+  test("self-hosted meters the PKI dimensions instance-wide, never passing the report identity to the DB", async () => {
+    const licenseDAL = {
+      countOrgUsersAndIdentities: vi.fn(async () => 0),
+      countOfOrgMembers: vi.fn(async () => 0)
+    };
+    const usageCounterDAL = {
+      countInternalCas: vi.fn(async () => 3),
+      resolveRootOrgId: vi.fn(async (id: string) => id),
+      countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 5, wildcard: 2 })),
+      isCertificateQuotaKeyActiveInOrg: vi.fn(async () => false),
+      countPamResources: vi.fn(async () => 0),
+      countSecretManagementIdentities: vi.fn(async () => 0),
+      countPamIdentities: vi.fn(async () => 0)
+    };
+    const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: false });
+    const byKey = Object.fromEntries(metered.map((m) => [m.feature.key, m.count]));
+
+    expect(await byKey[InternalCas.key]("self-hosted")).toBe(3);
+    expect(await byKey[ActiveCerts.key]("self-hosted")).toBe(5);
+    expect(await byKey[WildcardCerts.key]("self-hosted")).toBe(2);
+
+    expect(usageCounterDAL.countInternalCas).toHaveBeenCalledWith(undefined);
+    expect(usageCounterDAL.countActiveCertificateQuotaKeysByOrg).toHaveBeenCalledWith(undefined);
+    expect(usageCounterDAL.countActiveCertificateQuotaKeysByOrg).not.toHaveBeenCalledWith("self-hosted");
+  });
+
   test("self-hosted meters secret identities across the whole instance (no org scope)", async () => {
     const licenseDAL = {
       countOrgUsersAndIdentities: vi.fn(async () => 0),
