@@ -235,6 +235,9 @@ export const agentVaultProxyServiceFactory = ({
       rootCaFingerprint: parsed.fingerprint,
       rootCaExpiresAt: parsed.expiresAt
     });
+    // updateById is typed non-nullable but returns nothing when the row is gone, which a delete during
+    // the replica-lag window can produce. The CLI treats 401 as terminal and rides out a 5xx.
+    if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
 
     return {
       proxyId: proxy.id,
@@ -250,6 +253,7 @@ export const agentVaultProxyServiceFactory = ({
 
   const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
     const proxy = await agentVaultProxyDAL.updateById(proxyId, { heartbeat: new Date() });
+    if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
     return { config: toConfig(proxy) };
   };
 
