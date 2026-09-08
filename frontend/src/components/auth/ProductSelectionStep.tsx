@@ -1,7 +1,14 @@
 import { useRef, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@app/components/v3";
+import {
+  Button,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Checkbox
+} from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -170,12 +177,16 @@ export default function ProductSelectionStep({
                   className={cn(
                     "grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-2 pt-2 pb-4 text-left transition-[background-color,opacity] duration-200 hover:bg-container-hover/30",
                     isSelected && "bg-container-hover/30",
-                    !isExploring && !isSelected && "opacity-50 hover:opacity-80 focus-within:opacity-80",
+                    !isExploring &&
+                      !isSelected &&
+                      "opacity-50 focus-within:opacity-80 hover:opacity-80",
                     isSettingUp && "cursor-wait"
                   )}
                 >
                   <Icon className={cn("size-4 shrink-0", product.iconClassName)} />
-                  <span className="font-alliance text-sm font-normal text-foreground">{product.name}</span>
+                  <span className="font-alliance text-sm font-normal text-foreground">
+                    {product.name}
+                  </span>
                   <Checkbox
                     variant="project"
                     id={`signup-product-${product.type}`}
