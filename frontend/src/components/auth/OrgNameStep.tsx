@@ -105,6 +105,7 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
                 variant="outlined"
                 {...register("attributionSource")}
                 id="signup-attribution-source"
+                autoComplete="off"
                 placeholder="e.g. Hacker News, a friend, GitHub..."
                 maxLength={512}
               />

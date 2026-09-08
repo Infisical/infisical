@@ -1,8 +1,7 @@
 import { useRef, useState } from "react";
-import { Check } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import { Button, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -135,9 +134,13 @@ export default function ProductSelectionStep({
     }
   };
 
-  const continueLabel = isExploring
-    ? "I'm Just Exploring, Show Me Everything"
-    : `Continue with ${orderedSelection.length} product${orderedSelection.length > 1 ? "s" : ""}`;
+  const continueLabel = (() => {
+    if (isExploring) return "Explore all products";
+    if (orderedSelection.length === 1) {
+      return `Continue with ${getSignupProduct(orderedSelection[0])?.name}`;
+    }
+    return `Continue with ${orderedSelection.length} products`;
+  })();
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
@@ -147,49 +150,48 @@ export default function ProductSelectionStep({
             What brings you to Infisical?
           </CardTitle>
           <CardDescription className="text-sm text-label">
-            Pick everything you&apos;re interested in and we&apos;ll set your organization up around
-            it. You can set up the rest anytime.
+            Choose the products you&apos;d like to start with. You can add more later.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div role="group" aria-label="Product selection" className="flex flex-col gap-3">
+          <div
+            role="group"
+            aria-label="Product selection"
+            className="flex flex-col space-y-2 divide-y divide-border"
+          >
             {SIGNUP_PRODUCTS.map((product) => {
               const isSelected = selectedTypes.includes(product.type);
               const Icon = product.icon;
 
               return (
-                <button
+                <label
                   key={product.type}
-                  type="button"
-                  role="checkbox"
-                  aria-checked={isSelected}
-                  onClick={() => toggleProduct(product.type)}
+                  htmlFor={`signup-product-${product.type}`}
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-3.5 rounded-md border bg-container/50 p-4 text-left transition-colors duration-200",
-                    isSelected
-                      ? product.selectedCardClassName
-                      : "border-border hover:bg-container-hover/50"
+                    "grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-2 pt-2 pb-4 text-left transition-[background-color,opacity] duration-200 hover:bg-container-hover/30",
+                    isSelected && "bg-container-hover/30",
+                    !isExploring && !isSelected && "opacity-50 hover:opacity-80 focus-within:opacity-80",
+                    isSettingUp && "cursor-wait"
                   )}
                 >
-                  <div className={cn("shrink-0 rounded-sm border p-2", product.tileClassName)}>
-                    <Icon className={cn("h-4.5 w-4.5", product.iconClassName)} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground">{product.name}</p>
-                    <p className="mt-0.5 text-xs leading-snug text-muted">{product.description}</p>
-                  </div>
+                  <Icon className={cn("size-4 shrink-0", product.iconClassName)} />
+                  <span className="font-alliance text-sm font-normal text-foreground">{product.name}</span>
+                  <Checkbox
+                    variant="project"
+                    id={`signup-product-${product.type}`}
+                    isChecked={isSelected}
+                    isDisabled={isSettingUp}
+                    onCheckedChange={() => toggleProduct(product.type)}
+                    aria-label={product.name}
+                    aria-describedby={`signup-product-${product.type}-description`}
+                  />
                   <span
-                    aria-hidden
-                    className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-sm border transition-colors duration-200",
-                      isSelected
-                        ? cn(product.radioClassName, product.dotClassName)
-                        : "border-muted/60"
-                    )}
+                    id={`signup-product-${product.type}-description`}
+                    className="col-start-2 text-sm leading-snug text-muted"
                   >
-                    {isSelected && <Check className="size-3.5 text-bunker-800" strokeWidth={3} />}
+                    {product.description}
                   </span>
-                </button>
+                </label>
               );
             })}
           </div>

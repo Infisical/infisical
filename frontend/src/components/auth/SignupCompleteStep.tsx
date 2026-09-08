@@ -109,7 +109,7 @@ export default function SignupCompleteStep({
   };
 
   return (
-    <div className="mx-auto flex w-full flex-col items-center justify-center">
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className="mb-4 gap-2">
           <p className="font-jetbrains-mono text-xs tracking-[0.02em] text-project uppercase">

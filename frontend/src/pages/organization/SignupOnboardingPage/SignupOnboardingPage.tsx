@@ -144,41 +144,17 @@ export const SignupOnboardingPage = () => {
     <OnboardingProgress currentStep={stepNumber} totalSteps={totalSteps} />
   ) : undefined;
 
-  const completeAsideDescription = (() => {
-    if (selectedProducts.length === 0) return "Your organization overview has everything laid out.";
-    if (selectedProducts.length === 1) {
-      return `${getSignupProduct(selectedProducts[0])?.name} is set up and ready to use.`;
-    }
-    return "Your products are set up and ready to go.";
-  })();
-  const asideContent = (() => {
-    switch (section) {
-      case OnboardingSection.ProductSelect:
-        return {
-          eyebrow: "One platform, five products",
-          description:
-            "Secrets, PKI, KMS, privileged access, and scanning. Start where it hurts most."
-        };
-      case OnboardingSection.InviteTeam:
-        return {
-          eyebrow: "Better together",
-          description: "Infisical works best when your whole team is in one place."
-        };
-      case OnboardingSection.Complete:
-        return {
-          eyebrow: "You're all set",
-          description: completeAsideDescription
-        };
-      default:
-        return undefined;
-    }
-  })();
+  const isWorkspaceSetup =
+    section === OnboardingSection.ProductSelect ||
+    section === OnboardingSection.InviteTeam ||
+    section === OnboardingSection.Complete;
 
   return (
     <AuthPageLayout
       showFooter={false}
       headerAction={stepIndicator}
-      aside={asideContent}
+      variant={isWorkspaceSetup ? "focused" : "split"}
+      contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
       bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
     >
       <Helmet>

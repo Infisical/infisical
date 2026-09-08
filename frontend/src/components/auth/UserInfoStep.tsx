@@ -195,6 +195,14 @@ export default function UserInfoStep({
           ) : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <input
+            className="hidden"
+            type="text"
+            name="username"
+            autoComplete="username"
+            value={email}
+            readOnly
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
               <FieldLabel className="sr-only" htmlFor="signup-first-name">
@@ -266,6 +274,7 @@ export default function UserInfoStep({
                 variant="outlined"
                 {...register("attributionSource")}
                 id="signup-attribution-source"
+                autoComplete="off"
                 placeholder="e.g. Hacker News, a friend, GitHub..."
                 maxLength={512}
               />
