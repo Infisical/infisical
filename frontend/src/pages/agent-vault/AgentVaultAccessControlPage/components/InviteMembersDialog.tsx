@@ -67,14 +67,11 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   );
   const requesterUserId = requesterStatus.orgUser?.user.id;
 
-  // Deps stay primitive on purpose: keying off the candidate list would re-run on any refetch and
-  // re-select a requester the admin had just removed.
   useEffect(() => {
     if (!requesterEmail || !requesterUserId || requesterStatus.isProjectUser) return;
-    setSelected([
-      { value: requesterUserId, label: requesterStatus.userLabel, email: requesterEmail }
-    ]);
-  }, [requesterEmail, requesterUserId, requesterStatus.isProjectUser, requesterStatus.userLabel]);
+    const requester = candidates.find((candidate) => candidate.value === requesterUserId);
+    if (requester) setSelected([requester]);
+  }, [requesterEmail, requesterUserId, requesterStatus.isProjectUser, candidates]);
 
   const clearRequesterEmail = () => {
     if (requesterEmail) navigate({ search: (prev) => ({ ...prev, requesterEmail: "" }) });
