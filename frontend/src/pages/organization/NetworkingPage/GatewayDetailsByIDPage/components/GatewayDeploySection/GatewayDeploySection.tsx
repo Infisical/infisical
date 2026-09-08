@@ -132,7 +132,7 @@ export const GatewayDeploySection = ({
         <CardHeader>
           <CardTitle>
             <h2 id="gateway-deployment-title">Deployment</h2>
-            <DocumentationLinkBadge href="https://infisical.com/docs/cli/overview" />
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/gateway-deployment" />
           </CardTitle>
           <CardDescription>
             {isKubernetes
