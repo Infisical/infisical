@@ -31,6 +31,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     method: "GET",
     url: "/",
     schema: {
+      hide: false,
       operationId: "listPamAccountTemplates",
       description: "List all PAM account templates",
       tags: [ApiDocsTags.PamAccountTemplates],
@@ -64,6 +65,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     method: "GET",
     url: "/:templateId",
     schema: {
+      hide: false,
       operationId: "getPamAccountTemplateById",
       description: "Get a PAM account template by ID",
       tags: [ApiDocsTags.PamAccountTemplates],
@@ -98,6 +100,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     method: "POST",
     url: "/",
     schema: {
+      hide: false,
       operationId: "createPamAccountTemplate",
       description: "Create a new PAM account template",
       tags: [ApiDocsTags.PamAccountTemplates],
@@ -164,6 +167,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     method: "PATCH",
     url: "/:templateId",
     schema: {
+      hide: false,
       operationId: "updatePamAccountTemplate",
       description: "Update a PAM account template",
       tags: [ApiDocsTags.PamAccountTemplates],
@@ -232,6 +236,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
     method: "DELETE",
     url: "/:templateId",
     schema: {
+      hide: false,
       operationId: "deletePamAccountTemplate",
       description: "Delete a PAM account template",
       tags: [ApiDocsTags.PamAccountTemplates],

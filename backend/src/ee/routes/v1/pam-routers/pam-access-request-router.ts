@@ -3,6 +3,7 @@ import z from "zod";
 import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -31,12 +32,23 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
+      operationId: "createPamAccessRequest",
+      description: "Request access to a PAM account, either to launch sessions or to view its credentials",
+      tags: [ApiDocsTags.PamAccessRequests],
       body: z
         .object({
-          accountId: z.string().uuid().optional(),
+          accountId: z.string().uuid().optional().describe("The ID of the account to request access to"),
           path: z.string().min(3).optional().describe("Account path in the format 'folderName/accountName'"),
-          reason: z.string().max(500).optional(),
-          duration: z.string().min(1),
+          reason: z
+            .string()
+            .max(500)
+            .optional()
+            .describe("Why access is needed; required when the account's template requires a reason"),
+          duration: z
+            .string()
+            .min(1)
+            .describe("How long the access should last, as a single unit such as '30m', '2h', or '1d'"),
           accessType: z
             .nativeEnum(PamAccessType)
             .default(PamAccessType.Session)
@@ -141,9 +153,13 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
+      operationId: "listPamAccessRequests",
+      description: "List access requests for accounts in a PAM folder",
+      tags: [ApiDocsTags.PamAccessRequests],
       querystring: z.object({
-        folderId: z.string().uuid(),
-        status: z.string().optional(),
+        folderId: z.string().uuid().describe("The ID of the folder whose access requests to list"),
+        status: z.string().optional().describe("Filter by request status"),
         offset: z.coerce.number().min(0).default(0).optional(),
         limit: z.coerce.number().min(1).max(100).default(20).optional()
       }),
@@ -176,8 +192,12 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/pending-my-approval",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
+      operationId: "listPamAccessRequestsPendingMyApproval",
+      description: "List access requests awaiting the caller's approval",
+      tags: [ApiDocsTags.PamAccessRequests],
       querystring: z.object({
-        folderId: z.string().uuid().optional()
+        folderId: z.string().uuid().optional().describe("Limit results to requests for accounts in this folder")
       }),
       response: {
         200: z.object({
@@ -204,6 +224,10 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/pending-my-approval/count",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
+      operationId: "getPamAccessRequestsPendingMyApprovalCount",
+      description: "Count access requests awaiting the caller's approval",
+      tags: [ApiDocsTags.PamAccessRequests],
       response: {
         200: z.object({
           pendingCount: z.number(),
@@ -229,11 +253,18 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/accounts/:accountId/approvers",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
+      operationId: "getPamAccountApprovers",
+      description: "Get the approval steps and approvers that apply to a PAM account",
+      tags: [ApiDocsTags.PamAccessRequests],
       params: z.object({
-        accountId: z.string().uuid()
+        accountId: z.string().uuid().describe("The ID of the account")
       }),
       querystring: z.object({
-        accessType: z.nativeEnum(PamAccessType).default(PamAccessType.Session)
+        accessType: z
+          .nativeEnum(PamAccessType)
+          .default(PamAccessType.Session)
+          .describe("Whether to resolve approvers for launching sessions or for viewing credentials")
       }),
       response: {
         200: z.object({
@@ -272,12 +303,16 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/:requestId/review",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
+      operationId: "reviewPamAccessRequest",
+      description: "Approve or reject a PAM access request",
+      tags: [ApiDocsTags.PamAccessRequests],
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().uuid().describe("The ID of the access request")
       }),
       body: z.object({
-        status: z.nativeEnum(ApprovalRequestApprovalDecision),
-        comment: z.string().max(500).optional()
+        status: z.nativeEnum(ApprovalRequestApprovalDecision).describe("The review decision"),
+        comment: z.string().max(500).optional().describe("Optional comment shared with the requester")
       }),
       response: {
         200: z.object({
@@ -335,10 +370,12 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/:requestId/break-glass",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "breakGlassPamAccessRequest",
       description: "Self-approve your own pending PAM access request in an emergency",
+      tags: [ApiDocsTags.PamAccessRequests],
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().uuid().describe("The ID of the access request")
       }),
       body: z.object({
         bypassReason: z
@@ -414,8 +451,12 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     url: "/:requestId/revoke",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
+      operationId: "revokePamAccessGrant",
+      description: "Revoke the access grant issued for an approved PAM access request",
+      tags: [ApiDocsTags.PamAccessRequests],
       params: z.object({
-        requestId: z.string().uuid()
+        requestId: z.string().uuid().describe("The ID of the access request")
       }),
       response: {
         200: z.object({

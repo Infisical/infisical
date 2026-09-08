@@ -4336,6 +4336,306 @@
                 ]
               },
               {
+                "group": "Privileged access management",
+                "boost": 0.25,
+                "pages": [
+                  {
+                    "group": "Folders",
+                    "pages": [
+                      "api-reference/endpoints/pam/folders/list",
+                      "api-reference/endpoints/pam/folders/get-by-id",
+                      "api-reference/endpoints/pam/folders/create",
+                      "api-reference/endpoints/pam/folders/update",
+                      "api-reference/endpoints/pam/folders/delete",
+                      "api-reference/endpoints/pam/folders/permissions",
+                      {
+                        "group": "Approval configuration",
+                        "pages": [
+                          "api-reference/endpoints/pam/folders/approval-configuration/get",
+                          "api-reference/endpoints/pam/folders/approval-configuration/update"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Account templates",
+                    "pages": [
+                      "api-reference/endpoints/pam/account-templates/list",
+                      "api-reference/endpoints/pam/account-templates/get-by-id",
+                      "api-reference/endpoints/pam/account-templates/create",
+                      "api-reference/endpoints/pam/account-templates/update",
+                      "api-reference/endpoints/pam/account-templates/delete"
+                    ]
+                  },
+                  {
+                    "group": "Accounts",
+                    "pages": [
+                      "api-reference/endpoints/pam/accounts/list",
+                      "api-reference/endpoints/pam/accounts/list-accessible",
+                      "api-reference/endpoints/pam/accounts/list-types",
+                      "api-reference/endpoints/pam/accounts/get-by-id",
+                      "api-reference/endpoints/pam/accounts/permissions",
+                      "api-reference/endpoints/pam/accounts/dependencies",
+                      "api-reference/endpoints/pam/accounts/reveal-credentials",
+                      "api-reference/endpoints/pam/accounts/access",
+                      {
+                        "group": "Credential health",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/health/get",
+                          "api-reference/endpoints/pam/accounts/health/check"
+                        ]
+                      },
+                      {
+                        "group": "Credential rotation",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/rotation/get",
+                          "api-reference/endpoints/pam/accounts/rotation/set-rotation-account",
+                          "api-reference/endpoints/pam/accounts/rotation/rotate",
+                          "api-reference/endpoints/pam/accounts/rotation/rotation-account-candidates"
+                        ]
+                      },
+                      {
+                        "group": "SSH certificate authority",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/ssh-ca/get-or-create",
+                          "api-reference/endpoints/pam/accounts/ssh-ca/public-key",
+                          "api-reference/endpoints/pam/accounts/ssh-ca/setup-script"
+                        ]
+                      },
+                      {
+                        "group": "PostgreSQL",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/postgres/create",
+                          "api-reference/endpoints/pam/accounts/postgres/update",
+                          "api-reference/endpoints/pam/accounts/postgres/delete"
+                        ]
+                      },
+                      {
+                        "group": "MySQL",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/mysql/create",
+                          "api-reference/endpoints/pam/accounts/mysql/update",
+                          "api-reference/endpoints/pam/accounts/mysql/delete"
+                        ]
+                      },
+                      {
+                        "group": "Microsoft SQL Server",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/mssql/create",
+                          "api-reference/endpoints/pam/accounts/mssql/update",
+                          "api-reference/endpoints/pam/accounts/mssql/delete"
+                        ]
+                      },
+                      {
+                        "group": "MongoDB",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/mongodb/create",
+                          "api-reference/endpoints/pam/accounts/mongodb/update",
+                          "api-reference/endpoints/pam/accounts/mongodb/delete"
+                        ]
+                      },
+                      {
+                        "group": "Redis",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/redis/create",
+                          "api-reference/endpoints/pam/accounts/redis/update",
+                          "api-reference/endpoints/pam/accounts/redis/delete"
+                        ]
+                      },
+                      {
+                        "group": "SSH",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/ssh/create",
+                          "api-reference/endpoints/pam/accounts/ssh/update",
+                          "api-reference/endpoints/pam/accounts/ssh/delete"
+                        ]
+                      },
+                      {
+                        "group": "Kubernetes",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/kubernetes/create",
+                          "api-reference/endpoints/pam/accounts/kubernetes/update",
+                          "api-reference/endpoints/pam/accounts/kubernetes/delete"
+                        ]
+                      },
+                      {
+                        "group": "GCP service account",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/gcp-service-account/create",
+                          "api-reference/endpoints/pam/accounts/gcp-service-account/update",
+                          "api-reference/endpoints/pam/accounts/gcp-service-account/delete"
+                        ]
+                      },
+                      {
+                        "group": "Windows",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/windows/create",
+                          "api-reference/endpoints/pam/accounts/windows/update",
+                          "api-reference/endpoints/pam/accounts/windows/delete"
+                        ]
+                      },
+                      {
+                        "group": "Windows Active Directory",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/windows-ad/create",
+                          "api-reference/endpoints/pam/accounts/windows-ad/update",
+                          "api-reference/endpoints/pam/accounts/windows-ad/delete"
+                        ]
+                      },
+                      {
+                        "group": "AWS IAM",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/aws-iam/create",
+                          "api-reference/endpoints/pam/accounts/aws-iam/update",
+                          "api-reference/endpoints/pam/accounts/aws-iam/delete"
+                        ]
+                      },
+                      {
+                        "group": "Azure CLI",
+                        "pages": [
+                          "api-reference/endpoints/pam/accounts/azure-cli/create",
+                          "api-reference/endpoints/pam/accounts/azure-cli/update",
+                          "api-reference/endpoints/pam/accounts/azure-cli/delete"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Access requests",
+                    "pages": [
+                      "api-reference/endpoints/pam/access-requests/create",
+                      "api-reference/endpoints/pam/access-requests/list",
+                      "api-reference/endpoints/pam/access-requests/list-pending-my-approval",
+                      "api-reference/endpoints/pam/access-requests/count-pending-my-approval",
+                      "api-reference/endpoints/pam/access-requests/account-approvers",
+                      "api-reference/endpoints/pam/access-requests/review",
+                      "api-reference/endpoints/pam/access-requests/break-glass",
+                      "api-reference/endpoints/pam/access-requests/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Sessions",
+                    "pages": [
+                      "api-reference/endpoints/pam/sessions/list",
+                      "api-reference/endpoints/pam/sessions/get-by-id",
+                      "api-reference/endpoints/pam/sessions/terminate",
+                      {
+                        "group": "Recordings",
+                        "pages": [
+                          "api-reference/endpoints/pam/sessions/recordings/playback",
+                          "api-reference/endpoints/pam/sessions/recordings/chunk-ciphertext",
+                          "api-reference/endpoints/pam/sessions/recordings/storage-backends"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Discovery sources",
+                    "pages": [
+                      "api-reference/endpoints/pam/discovery-sources/list",
+                      "api-reference/endpoints/pam/discovery-sources/list-types",
+                      "api-reference/endpoints/pam/discovery-sources/list-runs",
+                      "api-reference/endpoints/pam/discovery-sources/list-discovered-accounts",
+                      "api-reference/endpoints/pam/discovery-sources/list-stale-accounts",
+                      "api-reference/endpoints/pam/discovery-sources/import-discovered-accounts",
+                      {
+                        "group": "Active Directory",
+                        "pages": [
+                          "api-reference/endpoints/pam/discovery-sources/active-directory/create",
+                          "api-reference/endpoints/pam/discovery-sources/active-directory/get-by-id",
+                          "api-reference/endpoints/pam/discovery-sources/active-directory/update",
+                          "api-reference/endpoints/pam/discovery-sources/active-directory/delete",
+                          "api-reference/endpoints/pam/discovery-sources/active-directory/scan"
+                        ]
+                      },
+                      {
+                        "group": "Linux/Unix",
+                        "pages": [
+                          "api-reference/endpoints/pam/discovery-sources/unix/create",
+                          "api-reference/endpoints/pam/discovery-sources/unix/get-by-id",
+                          "api-reference/endpoints/pam/discovery-sources/unix/update",
+                          "api-reference/endpoints/pam/discovery-sources/unix/delete",
+                          "api-reference/endpoints/pam/discovery-sources/unix/scan"
+                        ]
+                      },
+                      {
+                        "group": "PostgreSQL",
+                        "pages": [
+                          "api-reference/endpoints/pam/discovery-sources/postgres/create",
+                          "api-reference/endpoints/pam/discovery-sources/postgres/get-by-id",
+                          "api-reference/endpoints/pam/discovery-sources/postgres/update",
+                          "api-reference/endpoints/pam/discovery-sources/postgres/delete",
+                          "api-reference/endpoints/pam/discovery-sources/postgres/scan"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Memberships",
+                    "pages": [
+                      {
+                        "group": "Product members",
+                        "pages": [
+                          "api-reference/endpoints/pam/memberships/product/capabilities",
+                          "api-reference/endpoints/pam/memberships/product/list-users",
+                          "api-reference/endpoints/pam/memberships/product/list-groups",
+                          "api-reference/endpoints/pam/memberships/product/list-identities",
+                          "api-reference/endpoints/pam/memberships/product/add-users",
+                          "api-reference/endpoints/pam/memberships/product/update-user-role",
+                          "api-reference/endpoints/pam/memberships/product/remove-user",
+                          "api-reference/endpoints/pam/memberships/product/add-group",
+                          "api-reference/endpoints/pam/memberships/product/update-group-role",
+                          "api-reference/endpoints/pam/memberships/product/remove-group",
+                          "api-reference/endpoints/pam/memberships/product/add-identity",
+                          "api-reference/endpoints/pam/memberships/product/update-identity-role",
+                          "api-reference/endpoints/pam/memberships/product/remove-identity"
+                        ]
+                      },
+                      {
+                        "group": "Folder members",
+                        "pages": [
+                          "api-reference/endpoints/pam/memberships/folders/list-users",
+                          "api-reference/endpoints/pam/memberships/folders/list-groups",
+                          "api-reference/endpoints/pam/memberships/folders/list-identities",
+                          "api-reference/endpoints/pam/memberships/folders/add-user",
+                          "api-reference/endpoints/pam/memberships/folders/update-user-role",
+                          "api-reference/endpoints/pam/memberships/folders/remove-user",
+                          "api-reference/endpoints/pam/memberships/folders/add-group",
+                          "api-reference/endpoints/pam/memberships/folders/update-group-role",
+                          "api-reference/endpoints/pam/memberships/folders/remove-group",
+                          "api-reference/endpoints/pam/memberships/folders/add-identity",
+                          "api-reference/endpoints/pam/memberships/folders/update-identity-role",
+                          "api-reference/endpoints/pam/memberships/folders/remove-identity"
+                        ]
+                      },
+                      {
+                        "group": "Account members",
+                        "pages": [
+                          "api-reference/endpoints/pam/memberships/accounts/list-users",
+                          "api-reference/endpoints/pam/memberships/accounts/list-groups",
+                          "api-reference/endpoints/pam/memberships/accounts/list-identities",
+                          "api-reference/endpoints/pam/memberships/accounts/add-user",
+                          "api-reference/endpoints/pam/memberships/accounts/update-user-role",
+                          "api-reference/endpoints/pam/memberships/accounts/remove-user",
+                          "api-reference/endpoints/pam/memberships/accounts/add-group",
+                          "api-reference/endpoints/pam/memberships/accounts/update-group-role",
+                          "api-reference/endpoints/pam/memberships/accounts/remove-group",
+                          "api-reference/endpoints/pam/memberships/accounts/add-identity",
+                          "api-reference/endpoints/pam/memberships/accounts/update-identity-role",
+                          "api-reference/endpoints/pam/memberships/accounts/remove-identity"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Roles",
+                    "pages": [
+                      "api-reference/endpoints/pam/roles/list"
+                    ]
+                  }
+                ]
+              },
+              {
                 "group": "Gateways",
                 "boost": 0.25,
                 "pages": [

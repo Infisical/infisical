@@ -24,6 +24,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/",
     schema: {
+      hide: false,
       operationId: "listPamFolders",
       description: "List all PAM folders in the project",
       tags: [ApiDocsTags.PamFolders],
@@ -71,6 +72,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     url: "/:folderId/permissions",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getPamFolderPermissions",
       description: "Get the caller's effective resource permissions on this folder.",
       tags: [ApiDocsTags.PamFolders],
@@ -112,6 +114,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:folderId",
     schema: {
+      hide: false,
       operationId: "getPamFolderById",
       description: "Get a PAM folder by ID",
       tags: [ApiDocsTags.PamFolders],
@@ -145,6 +148,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/",
     schema: {
+      hide: false,
       operationId: "createPamFolder",
       description: "Create a new PAM folder",
       tags: [ApiDocsTags.PamFolders],
@@ -201,6 +205,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:folderId",
     schema: {
+      hide: false,
       operationId: "updatePamFolder",
       description: "Update a PAM folder",
       tags: [ApiDocsTags.PamFolders],
@@ -261,6 +266,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     url: "/:folderId",
     schema: {
+      hide: false,
       operationId: "deletePamFolder",
       description: "Delete a PAM folder",
       tags: [ApiDocsTags.PamFolders],

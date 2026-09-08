@@ -135,6 +135,7 @@ const registerPerTypeEndpoints = (
     method: "POST",
     url: "/",
     schema: {
+      hide: false,
       operationId: `create${typeId}PamAccount`,
       description: `Create a new ${accountType} PAM account`,
       tags: [ApiDocsTags.PamAccounts],
@@ -214,6 +215,7 @@ const registerPerTypeEndpoints = (
     method: "PATCH",
     url: "/:accountId",
     schema: {
+      hide: false,
       operationId: `update${typeId}PamAccount`,
       description: `Update a ${accountType} PAM account`,
       tags: [ApiDocsTags.PamAccounts],
@@ -299,6 +301,7 @@ const registerPerTypeEndpoints = (
     method: "DELETE",
     url: "/:accountId",
     schema: {
+      hide: false,
       operationId: `delete${typeId}PamAccount`,
       description: `Delete a ${accountType} PAM account`,
       tags: [ApiDocsTags.PamAccounts],
@@ -355,6 +358,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/types",
     schema: {
+      hide: false,
       operationId: "listPamAccountTypes",
       description: "List supported PAM account types and their form field metadata",
       tags: [ApiDocsTags.PamAccounts],
@@ -381,6 +385,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/",
     schema: {
+      hide: false,
       operationId: "listPamAccounts",
       description: "List all PAM accounts in the project",
       tags: [ApiDocsTags.PamAccounts],
@@ -416,6 +421,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/accessible",
     schema: {
+      hide: false,
       operationId: "listAccessiblePamAccounts",
       description: "List PAM accounts accessible to the current user",
       tags: [ApiDocsTags.PamAccounts],
@@ -491,6 +497,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     url: "/:accountId/permissions",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getPamAccountPermissions",
       description:
         "Get the caller's effective resource permissions on this account, merging folder-level and direct account-level roles.",
@@ -544,6 +551,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:accountId/rotation",
     schema: {
+      hide: false,
       operationId: "getPamAccountRotation",
       description: "Get the credential rotation config and state for a PAM account",
       tags: [ApiDocsTags.PamAccounts],
@@ -569,6 +577,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:accountId/dependencies",
     schema: {
+      hide: false,
       operationId: "listPamAccountDependencies",
       description:
         "List the detected dependencies (Windows services, scheduled tasks, IIS app pools) for a PAM account",
@@ -610,6 +619,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:accountId/rotation",
     schema: {
+      hide: false,
       operationId: "setPamAccountRotationAccount",
       description: "Set or clear the rotation account for a PAM account",
       tags: [ApiDocsTags.PamAccounts],
@@ -668,6 +678,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:accountId/health",
     schema: {
+      hide: false,
       operationId: "getPamAccountCredentialHealth",
       description: "Get a PAM account's credential health",
       tags: [ApiDocsTags.PamAccounts],
@@ -707,6 +718,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/:accountId/health/check",
     schema: {
+      hide: false,
       operationId: "checkPamAccountCredentialHealth",
       description: "Run a credential health check on a PAM account now",
       tags: [ApiDocsTags.PamAccounts],
@@ -756,6 +768,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/:accountId/rotation/rotate",
     schema: {
+      hide: false,
       operationId: "rotatePamAccountCredentials",
       description: "Rotate a PAM account's credential now",
       tags: [ApiDocsTags.PamAccounts],
@@ -816,6 +829,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:accountId/rotation/rotation-account-candidates",
     schema: {
+      hide: false,
       operationId: "listPamRotationAccountCandidates",
       description: "List accounts eligible to be this account's rotation account",
       tags: [ApiDocsTags.PamAccounts],
@@ -850,6 +864,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:accountId",
     schema: {
+      hide: false,
       operationId: "getPamAccount",
       description: "Get a PAM account by ID",
       tags: [ApiDocsTags.PamAccounts],
@@ -879,6 +894,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/:accountId/credentials",
     schema: {
+      hide: false,
       operationId: "getPamAccountCredentials",
       description: "Reveal the stored credentials for a PAM account",
       tags: [ApiDocsTags.PamAccounts],
@@ -944,6 +960,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/:accountId/ssh-ca",
     schema: {
+      hide: false,
       operationId: "getOrCreatePamSshCa",
       description: "Get or create an SSH certificate authority for a PAM account",
       tags: [ApiDocsTags.PamAccounts],
@@ -987,6 +1004,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:accountId/ssh-ca-public-key",
     schema: {
+      hide: false,
       operationId: "getPamSshCaPublicKey",
       description: "Get the SSH CA public key for a PAM account",
       tags: [ApiDocsTags.PamAccounts],
@@ -1030,6 +1048,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     url: "/:accountId/ssh-ca-setup",
     schema: {
+      hide: false,
       operationId: "getPamSshCaSetupScript",
       description: "Get the SSH CA setup script for a PAM account",
       tags: [ApiDocsTags.PamAccounts],

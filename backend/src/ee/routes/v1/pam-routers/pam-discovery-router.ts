@@ -64,6 +64,7 @@ const registerPerTypeEndpoints = (
     method: "POST",
     url: "/",
     schema: {
+      hide: false,
       operationId: `create${typeId}PamDiscoverySource`,
       description: `Create a new ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
@@ -122,6 +123,7 @@ const registerPerTypeEndpoints = (
     method: "PATCH",
     url: "/:sourceId",
     schema: {
+      hide: false,
       operationId: `update${typeId}PamDiscoverySource`,
       description: `Update a ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
@@ -177,6 +179,7 @@ const registerPerTypeEndpoints = (
     method: "GET",
     url: "/:sourceId",
     schema: {
+      hide: false,
       operationId: `get${typeId}PamDiscoverySource`,
       description: `Get a ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
@@ -203,6 +206,7 @@ const registerPerTypeEndpoints = (
     method: "DELETE",
     url: "/:sourceId",
     schema: {
+      hide: false,
       operationId: `delete${typeId}PamDiscoverySource`,
       description: `Delete a ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
@@ -249,6 +253,7 @@ const registerPerTypeEndpoints = (
     method: "POST",
     url: "/:sourceId/scan",
     schema: {
+      hide: false,
       operationId: `scan${typeId}PamDiscoverySource`,
       description: `Trigger a scan for a ${discoveryType} PAM discovery source`,
       tags: [ApiDocsTags.PamDiscovery],
@@ -297,6 +302,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/types",
     schema: {
+      hide: false,
       operationId: "listPamDiscoveryTypes",
       description: "List supported PAM discovery source types",
       tags: [ApiDocsTags.PamDiscovery],
@@ -311,6 +317,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/",
     schema: {
+      hide: false,
       operationId: "listPamDiscoverySources",
       description: "List PAM discovery sources",
       tags: [ApiDocsTags.PamDiscovery],
@@ -336,6 +343,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/:sourceId/runs",
     schema: {
+      hide: false,
       operationId: "listPamDiscoveryRuns",
       description: "List scan runs for a PAM discovery source",
       tags: [ApiDocsTags.PamDiscovery],
@@ -367,6 +375,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/:sourceId/discovered-accounts",
     schema: {
+      hide: false,
       operationId: "listPamDiscoveredAccounts",
       description: "List staged accounts discovered by a PAM discovery source",
       tags: [ApiDocsTags.PamDiscovery],
@@ -402,6 +411,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     url: "/:sourceId/stale-accounts",
     schema: {
+      hide: false,
       operationId: "listPamStaleAccounts",
       description: "List imported accounts the discovery source's latest scan no longer found in the environment",
       tags: [ApiDocsTags.PamDiscovery],
@@ -450,6 +460,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
     method: "POST",
     url: "/:sourceId/discovered-accounts/import",
     schema: {
+      hide: false,
       operationId: "importPamDiscoveredAccounts",
       description: "Import staged accounts into a folder",
       tags: [ApiDocsTags.PamDiscovery],

@@ -78,6 +78,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "GET",
     url: "/capabilities",
     schema: {
+      hide: false,
       operationId: "getPamAccessCapabilities",
       description: "Get the current user's PAM management capabilities",
       tags: [ApiDocsTags.PamMemberships],
@@ -101,6 +102,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "GET",
     url: "/users",
     schema: {
+      hide: false,
       operationId: "listPamProductMembers",
       description: "List user members of the PAM product",
       tags: [ApiDocsTags.PamMemberships],
@@ -118,6 +120,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "GET",
     url: "/groups",
     schema: {
+      hide: false,
       operationId: "listPamProductGroupMembers",
       description: "List group members of the PAM product",
       tags: [ApiDocsTags.PamMemberships],
@@ -135,6 +138,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "POST",
     url: "/users",
     schema: {
+      hide: false,
       operationId: "addPamProductUserMembers",
       description: "Add users to the PAM product by userId or email",
       tags: [ApiDocsTags.PamMemberships],
@@ -187,6 +191,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "PATCH",
     url: "/users/:userId",
     schema: {
+      hide: false,
       operationId: "updatePamProductUserMemberRole",
       description: "Update a PAM product user member's role",
       tags: [ApiDocsTags.PamMemberships],
@@ -217,6 +222,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "DELETE",
     url: "/users/:userId",
     schema: {
+      hide: false,
       operationId: "removePamProductUserMember",
       description: "Remove a user from the PAM product",
       tags: [ApiDocsTags.PamMemberships],
@@ -242,6 +248,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "POST",
     url: "/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "addPamProductGroupMember",
       description: "Add a group to the PAM product",
       tags: [ApiDocsTags.PamMemberships],
@@ -272,6 +279,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "PATCH",
     url: "/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "updatePamProductGroupMemberRole",
       description: "Update a PAM product group member's role",
       tags: [ApiDocsTags.PamMemberships],
@@ -302,6 +310,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "DELETE",
     url: "/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "removePamProductGroupMember",
       description: "Remove a group from the PAM product",
       tags: [ApiDocsTags.PamMemberships],
@@ -327,6 +336,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "GET",
     url: "/identities",
     schema: {
+      hide: false,
       operationId: "listPamProductIdentityMembers",
       description: "List identity members of the PAM product",
       tags: [ApiDocsTags.PamMemberships],
@@ -354,6 +364,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "POST",
     url: "/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "addPamProductIdentityMember",
       description: "Add an identity to the PAM product",
       tags: [ApiDocsTags.PamMemberships],
@@ -384,6 +395,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "PATCH",
     url: "/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "updatePamProductIdentityMemberRole",
       description: "Update a PAM product identity member's role",
       tags: [ApiDocsTags.PamMemberships],
@@ -414,6 +426,7 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
     method: "DELETE",
     url: "/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "removePamProductIdentityMember",
       description: "Remove an identity from the PAM product",
       tags: [ApiDocsTags.PamMemberships],
@@ -444,6 +457,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "GET",
     url: "/:folderId/users",
     schema: {
+      hide: false,
       operationId: "listPamFolderMembers",
       description: "List user members of a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -465,6 +479,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "GET",
     url: "/:folderId/groups",
     schema: {
+      hide: false,
       operationId: "listPamFolderGroupMembers",
       description: "List group members of a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -486,6 +501,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "POST",
     url: "/:folderId/users/:userId",
     schema: {
+      hide: false,
       operationId: "addPamFolderUserMember",
       description: "Add a user to a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -525,6 +541,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "PATCH",
     url: "/:folderId/users/:userId",
     schema: {
+      hide: false,
       operationId: "updatePamFolderUserMemberRole",
       description: "Update a user member's role in a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -555,6 +572,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "DELETE",
     url: "/:folderId/users/:userId",
     schema: {
+      hide: false,
       operationId: "removePamFolderUserMember",
       description: "Remove a user from a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -582,6 +600,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "POST",
     url: "/:folderId/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "addPamFolderGroupMember",
       description: "Add a group to a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -621,6 +640,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "PATCH",
     url: "/:folderId/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "updatePamFolderGroupMemberRole",
       description: "Update a group member's role in a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -651,6 +671,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "DELETE",
     url: "/:folderId/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "removePamFolderGroupMember",
       description: "Remove a group from a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -678,6 +699,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "GET",
     url: "/:folderId/identities",
     schema: {
+      hide: false,
       operationId: "listPamFolderIdentityMembers",
       description: "List identity members of a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -699,6 +721,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "POST",
     url: "/:folderId/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "addPamFolderIdentityMember",
       description: "Add an identity to a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -738,6 +761,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "PATCH",
     url: "/:folderId/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "updatePamFolderIdentityMemberRole",
       description: "Update an identity member's role in a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -768,6 +792,7 @@ export const registerPamFolderMembershipRouter = async (server: FastifyZodProvid
     method: "DELETE",
     url: "/:folderId/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "removePamFolderIdentityMember",
       description: "Remove an identity from a folder",
       tags: [ApiDocsTags.PamMemberships],
@@ -800,6 +825,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "GET",
     url: "/:accountId/users",
     schema: {
+      hide: false,
       operationId: "listPamAccountMembers",
       description: "List user members of an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -821,6 +847,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "GET",
     url: "/:accountId/groups",
     schema: {
+      hide: false,
       operationId: "listPamAccountGroupMembers",
       description: "List group members of an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -842,6 +869,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "POST",
     url: "/:accountId/users/:userId",
     schema: {
+      hide: false,
       operationId: "addPamAccountUserMember",
       description: "Add a user to an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -881,6 +909,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "PATCH",
     url: "/:accountId/users/:userId",
     schema: {
+      hide: false,
       operationId: "updatePamAccountUserMemberRole",
       description: "Update a user member's role in an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -911,6 +940,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "DELETE",
     url: "/:accountId/users/:userId",
     schema: {
+      hide: false,
       operationId: "removePamAccountUserMember",
       description: "Remove a user from an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -938,6 +968,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "POST",
     url: "/:accountId/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "addPamAccountGroupMember",
       description: "Add a group to an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -977,6 +1008,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "PATCH",
     url: "/:accountId/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "updatePamAccountGroupMemberRole",
       description: "Update a group member's role in an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -1007,6 +1039,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "DELETE",
     url: "/:accountId/groups/:groupId",
     schema: {
+      hide: false,
       operationId: "removePamAccountGroupMember",
       description: "Remove a group from an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -1034,6 +1067,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "GET",
     url: "/:accountId/identities",
     schema: {
+      hide: false,
       operationId: "listPamAccountIdentityMembers",
       description: "List identity members of an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -1055,6 +1089,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "POST",
     url: "/:accountId/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "addPamAccountIdentityMember",
       description: "Add an identity to an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -1094,6 +1129,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "PATCH",
     url: "/:accountId/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "updatePamAccountIdentityMemberRole",
       description: "Update an identity member's role in an account",
       tags: [ApiDocsTags.PamMemberships],
@@ -1124,6 +1160,7 @@ export const registerPamAccountMembershipRouter = async (server: FastifyZodProvi
     method: "DELETE",
     url: "/:accountId/identities/:identityId",
     schema: {
+      hide: false,
       operationId: "removePamAccountIdentityMember",
       description: "Remove an identity from an account",
       tags: [ApiDocsTags.PamMemberships],

@@ -45,6 +45,7 @@ export const registerPamResourceRoleRouter = async (server: FastifyZodProvider) 
     method: "GET",
     url: "/",
     schema: {
+      hide: false,
       operationId: "listPamResourceRoles",
       description: "List available PAM resource roles",
       tags: [ApiDocsTags.PamRoles],

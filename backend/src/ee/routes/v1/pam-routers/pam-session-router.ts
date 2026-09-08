@@ -52,6 +52,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "listPamSessions",
       description: "List PAM sessions for a project",
       tags: [ApiDocsTags.PamSessions],
@@ -96,6 +97,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     url: "/:sessionId",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getPamSession",
       description: "Get a PAM session by ID",
       tags: [ApiDocsTags.PamSessions],
@@ -126,6 +128,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     url: "/:sessionId/credentials",
     config: { rateLimit: readLimit },
     schema: {
+      // Gateway-internal: called by the gateway with its own access token, not by API users
+      hide: true,
       operationId: "getPamSessionCredentials",
       description: "Get connection credentials for a PAM session",
       tags: [ApiDocsTags.PamSessions],
@@ -197,6 +201,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     url: "/:sessionId/end",
     config: { rateLimit: writeLimit },
     schema: {
+      // Gateway-internal: called by the gateway with its own access token, not by API users
+      hide: true,
       operationId: "endPamSession",
       description: "End a PAM session",
       tags: [ApiDocsTags.PamSessions],
@@ -241,6 +247,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     url: "/:sessionId/terminate",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "terminatePamSession",
       description: "Terminate an active PAM session",
       tags: [ApiDocsTags.PamSessions],
@@ -300,6 +307,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
     url: "/access",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "pamAccountAccess",
       description: "Access a PAM account by path and obtain gateway connection details",
       tags: [ApiDocsTags.PamSessions],
@@ -429,6 +437,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
     url: "/:accountId/web-access-ticket",
     config: { rateLimit: writeLimit },
     schema: {
+      // Browser-only bootstrap for the web access WebSocket, which OpenAPI cannot describe
+      hide: true,
       operationId: "pamSessionWebAccessTicket",
       description: "Create a web access ticket for a PAM account",
       tags: [ApiDocsTags.PamSessions],
@@ -480,6 +490,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
     url: "/:accountId/web-access",
     config: { rateLimit: readLimit },
     schema: {
+      // Browser-only bootstrap for the web access WebSocket, which OpenAPI cannot describe
+      hide: true,
       operationId: "pamSessionWebAccess",
       description: "WebSocket endpoint for web-based access to a PAM account",
       tags: [ApiDocsTags.PamSessions],

@@ -98,6 +98,7 @@ export enum ApiDocsTags {
   PamMemberships = "PAM Memberships",
   PamRoles = "PAM Roles",
   PamDiscovery = "PAM Discovery",
+  PamAccessRequests = "PAM Access Requests",
   KmipServers = "KMIP Servers"
 }
 

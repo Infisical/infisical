@@ -29,6 +29,8 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     url: "/:sessionId/chunks/presigned-put",
     config: { rateLimit: writeLimit },
     schema: {
+      // Gateway-internal: called by the gateway with its own access token, not by API users
+      hide: true,
       operationId: "pamSessionChunkPresignedPut",
       description: "Request a presigned URL for uploading a session recording chunk",
       tags: [ApiDocsTags.PamSessions],
@@ -99,6 +101,8 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     url: "/:sessionId/chunks",
     config: { rateLimit: writeLimit },
     schema: {
+      // Gateway-internal: called by the gateway with its own access token, not by API users
+      hide: true,
       operationId: "pamSessionRecordChunk",
       description: "Record a session recording chunk",
       tags: [ApiDocsTags.PamSessions],
@@ -207,6 +211,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     url: "/:sessionId/playback",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "pamSessionPlayback",
       description: "Get playback data for a session recording",
       tags: [ApiDocsTags.PamSessions],
@@ -239,6 +244,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     url: "/:sessionId/chunks/:chunkIndex/ciphertext",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "pamSessionChunkCiphertext",
       description: "Get the ciphertext for a specific recording chunk",
       tags: [ApiDocsTags.PamSessions],
@@ -265,6 +271,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     url: "/recording-storage-backends",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "pamSessionRecordingStorageBackends",
       description: "List available recording storage backends",
       tags: [ApiDocsTags.PamSessions],

@@ -2,6 +2,7 @@ import z from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamNotificationEvent } from "@app/ee/services/pam/pam-enums";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
@@ -44,8 +45,12 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
     url: "/:folderId/approval-configuration",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
+      operationId: "getPamFolderApprovalConfiguration",
+      description: "Get the access request approval configuration for a PAM folder",
+      tags: [ApiDocsTags.PamAccessRequests],
       params: z.object({
-        folderId: z.string().uuid()
+        folderId: z.string().uuid().describe("The ID of the folder")
       }),
       response: {
         200: z.object({
@@ -78,12 +83,20 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
     url: "/:folderId/approval-configuration",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
+      operationId: "setPamFolderApprovalConfiguration",
+      description: "Replace the access request approval configuration for a PAM folder",
+      tags: [ApiDocsTags.PamAccessRequests],
       params: z.object({
-        folderId: z.string().uuid()
+        folderId: z.string().uuid().describe("The ID of the folder")
       }),
       body: z.object({
-        steps: z.array(StepSchema).max(1),
-        notificationConfigs: z.array(NotificationConfigSchema).max(10).optional(),
+        steps: z.array(StepSchema).max(1).describe("Approval steps; an empty array removes the approval requirement"),
+        notificationConfigs: z
+          .array(NotificationConfigSchema)
+          .max(10)
+          .optional()
+          .describe("Workflow integration channels to notify about access request events"),
         breakGlassUsers: z
           .array(ApproverSchema)
           .max(20)
