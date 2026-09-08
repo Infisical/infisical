@@ -106,11 +106,23 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       operationId: "addAgentVaultProductUserMembers",
       description: "Give one or more users access to Agent Vault, by id or by email",
       tags: [ApiDocsTags.AgentVaultMemberships],
-      body: z.object({
-        userIds: z.string().uuid().array().max(100).default([]),
-        emails: z.string().email().array().max(100).default([]),
-        role: ProductRoleSchema
-      }),
+      body: z
+        .object({
+          userIds: z.string().uuid().array().max(100).default([]),
+          // Usernames are stored lowercase and the lookup is an exact match, so a mixed-case address
+          // would come back as "not a member" rather than resolving.
+          emails: z
+            .string()
+            .email()
+            .array()
+            .max(100)
+            .default([])
+            .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+          role: ProductRoleSchema
+        })
+        .refine((val) => val.userIds.length + val.emails.length > 0, {
+          message: "Provide at least one userId or email."
+        }),
       response: { 200: z.object({ addedCount: z.number(), skipped: z.string().array() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
