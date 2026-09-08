@@ -179,7 +179,7 @@ export default function ProductSelectionStep({
                   key={product.type}
                   htmlFor={`signup-product-${product.type}`}
                   className={cn(
-                    "grid w-full cursor-pointer select-none grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-2 pt-2 pb-3 text-left transition-[background-color,opacity] duration-200 hover:bg-container-hover/30",
+                    "grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-2 pt-2 pb-3 text-left transition-[background-color,opacity] duration-200 select-none hover:bg-container-hover/30",
                     isSelected && "bg-container-hover/30",
                     !isExploring &&
                       !isSelected &&
