@@ -19,6 +19,8 @@ const API_ROUTES = [
   { method: "GET" as const, url: "/api/v4/secrets", requestUrl: "/api/v4/secrets" }
 ];
 
+const testGlobals = () => globalThis as unknown as { testServices?: unknown };
+
 describe("INFISICAL_RUN_MODES route registration", () => {
   describe("with the api run mode (the shared test server)", () => {
     test("serves the status endpoint", async () => {
@@ -44,6 +46,7 @@ describe("INFISICAL_RUN_MODES route registration", () => {
     let workerServer: Awaited<ReturnType<typeof main>>;
     let workerQueue: ReturnType<typeof queueServiceFactory>;
     let workerRedis: ReturnType<typeof buildRedisFromConfig>;
+    let sharedTestServices: unknown;
     const originalRunModes = process.env.INFISICAL_RUN_MODES;
 
     beforeAll(async () => {
@@ -55,6 +58,11 @@ describe("INFISICAL_RUN_MODES route registration", () => {
 
       workerQueue = queueServiceFactory(envConfig);
       workerRedis = buildRedisFromConfig(envConfig);
+
+      // registerRoutes publishes its own services to globalThis.testServices under NODE_ENV=test,
+      // so booting a second server hands every later spec this pod's services — which point at a
+      // different smtp mock and belong to a server this file closes.
+      sharedTestServices = testGlobals().testServices;
 
       workerServer = await main({
         db: testDb,
@@ -68,6 +76,8 @@ describe("INFISICAL_RUN_MODES route registration", () => {
         superAdminDAL: testSuperAdminDAL,
         envConfig
       });
+
+      testGlobals().testServices = sharedTestServices;
     });
 
     afterAll(async () => {
@@ -77,6 +87,7 @@ describe("INFISICAL_RUN_MODES route registration", () => {
       await workerServer?.close();
       await workerQueue?.shutdown();
       await workerRedis?.quit();
+      testGlobals().testServices = sharedTestServices;
 
       if (originalRunModes === undefined) delete process.env.INFISICAL_RUN_MODES;
       else process.env.INFISICAL_RUN_MODES = originalRunModes;
