@@ -70,7 +70,15 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   // Deps stay primitive on purpose: keying off the candidate list would re-run on any refetch and
   // re-select a requester the admin had just removed.
   useEffect(() => {
-    if (!requesterEmail || !requesterUserId || requesterStatus.isProjectUser) return;
+    if (!requesterEmail) return;
+    // The org-user and project-user queries settle independently, so isProjectUser can flip true
+    // after a preselect. Drop it rather than leave them chipped in under the "already has access"
+    // warning, which would submit a no-op add.
+    if (requesterStatus.isProjectUser) {
+      setSelected([]);
+      return;
+    }
+    if (!requesterUserId) return;
     setSelected([
       { value: requesterUserId, label: requesterStatus.userLabel, email: requesterEmail }
     ]);
@@ -111,7 +119,10 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) clearRequesterEmail();
+        if (!open) {
+          handleClose();
+          return;
+        }
         onOpenChange(open);
       }}
     >
