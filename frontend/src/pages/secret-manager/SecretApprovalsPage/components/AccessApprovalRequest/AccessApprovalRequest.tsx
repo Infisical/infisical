@@ -1,6 +1,7 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
@@ -61,6 +62,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
@@ -144,6 +146,12 @@ export const AccessApprovalRequest = ({
     ProjectPermissionMemberActions.Read,
     ProjectPermissionSub.Member
   );
+
+  const searchParams = useSearch({
+    from: ROUTE_PATHS.SecretManager.ApprovalPage.id
+  });
+
+  const { requestId } = searchParams;
 
   const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
   const membersGroupById = useMemo(
@@ -501,6 +509,15 @@ export const AccessApprovalRequest = ({
       validRequestedByFilter ||
       (statusFilter === "close" && closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length)
   );
+
+  useEffect(() => {
+    if (requestId && !selectedRequest) {
+      const foundRequest = filteredRequests.find((r) => r.id === requestId);
+      if (foundRequest) {
+        handleSelectRequest(foundRequest);
+      }
+    }
+  }, [requestId, filteredRequests]);
 
   return (
     <>
