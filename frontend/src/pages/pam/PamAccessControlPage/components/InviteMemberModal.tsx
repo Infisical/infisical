@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -17,7 +17,6 @@ import {
   FilterableSelect
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { useRequesterEmail } from "@app/hooks";
 import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
 import { useAddPamProductUserMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -41,7 +40,10 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const { mutate: addUser, isPending } = useAddPamProductUserMember();
   const navigate = useNavigate({ from: "" });
 
-  const requesterEmail = useRequesterEmail();
+  const requesterEmail = useSearch({
+    strict: false,
+    select: (el) => (el as { requesterEmail?: string })?.requesterEmail
+  });
 
   const [selectedUsers, setSelectedUsers] = useState<SelectOption[]>([]);
   const [selectedRole, setSelectedRole] = useState<string>(ProjectMembershipRole.Member);
@@ -69,13 +71,12 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   );
 
   useEffect(() => {
-    const orgMembershipId = requesterStatus.orgUser?.id;
-    if (requesterEmail && orgMembershipId && !requesterStatus.isProjectUser) {
-      setSelectedUsers([{ value: orgMembershipId, label: requesterStatus.userLabel }]);
+    if (requesterEmail && requesterStatus.userId && !requesterStatus.isProjectUser) {
+      setSelectedUsers([{ value: requesterStatus.userId, label: requesterStatus.userLabel }]);
     }
   }, [
     requesterEmail,
-    requesterStatus.orgUser?.id,
+    requesterStatus.userId,
     requesterStatus.isProjectUser,
     requesterStatus.userLabel
   ]);
@@ -171,7 +172,7 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
               </AlertDescription>
             </Alert>
           )}
-          {requesterEmail && !requesterStatus.isProjectUser && requesterStatus.orgUser && (
+          {requesterEmail && !requesterStatus.isProjectUser && requesterStatus.userId && (
             <Alert>
               <AlertDescription>
                 Assign a role to provide access to requesting user{" "}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -33,7 +34,6 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { useRequesterEmail } from "@app/hooks";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
 import { useRemovePamProductUserMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -54,7 +54,10 @@ export const MembersTab = () => {
   const { data: members = [], isPending } = useGetWorkspaceUsers(currentProject.id);
   const deleteMember = useRemovePamProductUserMember();
 
-  const requesterEmail = useRequesterEmail();
+  const requesterEmail = useSearch({
+    strict: false,
+    select: (el) => (el as { requesterEmail?: string })?.requesterEmail
+  });
 
   useEffect(() => {
     if (requesterEmail) {

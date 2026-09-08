@@ -236,9 +236,9 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }));
 
     const requesterStatus = getRequesterStatus(requesterEmail, orgUsers, wsUserUsernames);
-    if (!requesterStatus.isProjectUser && requesterStatus.orgUser) {
+    if (!requesterStatus.isProjectUser && requesterStatus.userId) {
       setValue("orgMemberships", [
-        { value: requesterStatus.orgUser.id, label: requesterStatus.userLabel }
+        { value: requesterStatus.userId, label: requesterStatus.userLabel }
       ]);
     }
 

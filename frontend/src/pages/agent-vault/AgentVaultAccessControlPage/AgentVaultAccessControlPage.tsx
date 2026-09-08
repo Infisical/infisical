@@ -12,9 +12,7 @@ import { IdentitiesTab } from "./components/IdentitiesTab";
 import { MembersTab } from "./components/MembersTab";
 
 export enum AgentVaultAccessControlTab {
-  // "members" is the shared tab vocabulary (ProjectAccessControlTabs.Member) that both the access
-  // request notification link and the member-details breadcrumb send; only the label says "Users".
-  Users = "members",
+  Users = "users",
   MachineIdentities = "identities",
   Groups = "groups"
 }
