@@ -253,10 +253,7 @@ const envSchema = z
     SMTP_CUSTOM_CA_CERT: zpStr(
       z.string().optional().describe("Base64 encoded custom CA certificate PEM(s) for the SMTP server")
     ),
-    COOKIE_SECRET_SIGN_KEY: z
-      .string()
-      .min(32)
-      .default("#5VihU%rbXHcHwWwCot5L3vyPsx$7dWYw^iGk!EJg2bC*f$PD$%KCqx^R@#^LSEf"),
+    COOKIE_SECRET_SIGN_KEY: zpStr(z.string().min(32).optional()),
 
     // Ensure that the SITE_URL never ends with a trailing slash
     SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional(),

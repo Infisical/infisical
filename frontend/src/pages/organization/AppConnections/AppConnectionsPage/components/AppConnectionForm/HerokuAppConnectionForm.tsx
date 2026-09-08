@@ -38,7 +38,7 @@ import {
   THerokuConnection
 } from "@app/hooks/api/appConnections/types/heroku-connection";
 
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -104,6 +104,8 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
     setValue,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const selectedMethod = watch("method");
 

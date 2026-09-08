@@ -4564,6 +4564,8 @@ interface CreatePkiSyncEvent {
     destination: string;
     applicationId?: string;
     connectionId?: string;
+    connectionName?: string;
+    targetHost?: string;
     hasCredentials?: boolean;
     hasPostSyncCommand?: boolean;
     hasHealthCheckCommand?: boolean;
@@ -4576,6 +4578,10 @@ interface UpdatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    destination?: string;
+    connectionId?: string;
+    connectionName?: string;
+    targetHost?: string;
     hasPostSyncCommand?: boolean;
     hasHealthCheckCommand?: boolean;
   };
@@ -6228,6 +6234,7 @@ interface PamApprovalConfigUpdateEvent {
     policyId: string | null;
     stepCount: number;
     notificationConfigCount?: number;
+    breakGlassUserCount?: number;
   };
 }
 
@@ -6456,9 +6463,15 @@ interface PamAccessPolicyBypassedEvent {
   metadata: {
     policyType: string;
     policyId: string | null;
+    policyName?: string;
     requestId: string;
     grantId: string;
     granteeUserId: string;
+    granteeName?: string;
+    granteeEmail?: string;
+    accountId?: string;
+    folderId?: string;
+    folderName?: string;
     resourceName?: string;
     accountName?: string;
     accessDuration: string;

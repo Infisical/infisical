@@ -104,7 +104,9 @@ export const SecretApprovalsPage = () => {
             <TabsTrigger value={TabSection.Policies}>Policies</TabsTrigger>
           </TabsList>
           <TabsContent value={TabSection.SecretApprovalRequests}>
-            <SecretApprovalRequest />
+            <SecretApprovalRequest
+              onConfigurePolicies={() => updateSelectedTab(TabSection.Policies)}
+            />
           </TabsContent>
           <TabsContent value={TabSection.ResourceApprovalRequests}>
             <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
