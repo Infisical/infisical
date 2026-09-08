@@ -24,6 +24,35 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return session;
   };
 
+  // Sets the recording secrets only if the session has none yet, and returns whichever key is
+  // stored afterwards. One statement on the primary, so a caller that loses a concurrent claim
+  // still gets the winner's key back; a follow-up read would go to a replica that may not have
+  // caught up. COALESCE and CASE both see the pre-update value, so the winner is whoever the row
+  // was null for.
+  const claimRecordingSecrets = async (
+    sessionId: string,
+    encryptedSessionKey: Buffer,
+    gatewayUploadTokenHash: Buffer,
+    tx?: Knex
+  ) => {
+    const [row] = await (tx || db)(TableName.PamSession)
+      .where({ id: sessionId })
+      .update({
+        encryptedSessionKey: db.raw("COALESCE(??, ?)", [
+          "encryptedSessionKey",
+          encryptedSessionKey
+        ]) as unknown as Buffer,
+        gatewayUploadTokenHash: db.raw("CASE WHEN ?? IS NULL THEN ? ELSE ?? END", [
+          "encryptedSessionKey",
+          gatewayUploadTokenHash,
+          "gatewayUploadTokenHash"
+        ]) as unknown as Buffer
+      })
+      .returning(["encryptedSessionKey"]);
+
+    return row as { encryptedSessionKey: Buffer | null } | undefined;
+  };
+
   const countActiveWebSessions = async (userId: string, projectId: string, tx?: Knex): Promise<number> => {
     const result = await (tx || db.replicaNode())(TableName.PamSession)
       .where("userId", userId)
@@ -169,6 +198,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findById,
+    claimRecordingSecrets,
     countActiveWebSessions,
     endExpiredWebSessions,
     endSessionById,

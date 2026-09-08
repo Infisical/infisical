@@ -75,7 +75,7 @@ export const decryptSessionKey = async ({
 
 // Every rejection keeps the same client-facing message; only the error name differs, so the
 // branch is recoverable from logs without widening what the caller learns. A malformed token and
-// a token that simply does not match point at completely different causes (PAM-463).
+// a token that simply does not match point at completely different causes.
 export const PamUploadTokenRejection = {
   Missing: "PamUploadTokenMissing",
   MalformedLength: "PamUploadTokenMalformedLength",

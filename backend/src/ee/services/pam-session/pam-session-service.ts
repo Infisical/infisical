@@ -3,7 +3,7 @@ import RE2 from "re2";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
@@ -89,7 +89,7 @@ type TPamSessionServiceFactoryDep = {
     | "endSessionById"
     | "terminateSessionById"
     | "updateById"
-    | "update"
+    | "claimRecordingSecrets"
     | "activateSession"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
@@ -327,16 +327,17 @@ export const pamSessionServiceFactory = ({
       // between check and write to tens of milliseconds. Without the guard both callers mint, the
       // later write wins, and the earlier caller is left holding a session key and upload token the
       // row no longer matches: every chunk upload 400s forever, and whatever did upload is
-      // undecryptable at playback (PAM-463).
-      const [claimed] = await pamSessionDAL.update(
-        { id: sessionId, encryptedSessionKey: null },
-        {
-          encryptedSessionKey: secrets.encryptedSessionKey,
-          gatewayUploadTokenHash: secrets.uploadTokenHash
-        }
+      // undecryptable at playback.
+      const claimed = await pamSessionDAL.claimRecordingSecrets(
+        sessionId,
+        secrets.encryptedSessionKey,
+        secrets.uploadTokenHash
       );
+      if (!claimed?.encryptedSessionKey) {
+        throw new NotFoundError({ message: `Session with ID '${sessionId}' was not found` });
+      }
 
-      if (claimed) {
+      if (claimed.encryptedSessionKey.equals(secrets.encryptedSessionKey)) {
         recording = {
           sessionKey: secrets.sessionKey.toString("base64"),
           uploadToken: secrets.uploadToken.toString("base64"),
@@ -345,14 +346,9 @@ export const pamSessionServiceFactory = ({
           sessionId
         };
       } else {
-        // Another fetch claimed it first; adopt its secrets rather than our own discarded ones.
-        const claimedSession = await pamSessionDAL.findById(sessionId);
-        storedSessionKey = claimedSession?.encryptedSessionKey ?? null;
-        if (!storedSessionKey) {
-          throw new InternalServerError({
-            message: `Recording secrets for session ${sessionId} are missing after a lost mint`
-          });
-        }
+        // Another fetch claimed it first; adopt its key rather than our own discarded one. The
+        // upload token stays empty here, same as any other re-fetch.
+        storedSessionKey = claimed.encryptedSessionKey;
       }
     }
 
