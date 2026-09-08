@@ -21,7 +21,6 @@ type Props = {
   gatewayId: string;
   gatewayName: string;
   isDirect: boolean;
-  includeRelay: boolean;
   listenAddress: string;
 };
 
@@ -35,7 +34,6 @@ export const KubernetesStartCommandContent = ({
   gatewayId,
   gatewayName,
   isDirect,
-  includeRelay,
   listenAddress
 }: Props) => {
   const { protocol, hostname, port } = window.location;
@@ -45,7 +43,7 @@ export const KubernetesStartCommandContent = ({
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
-  const resolvedRelayName = !includeRelay || relay.id === "_auto" ? "" : relay.name;
+  const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
 
   const helmCommand = useMemo(() => {
     // The chart derives the container port and the Service port from listenAddress, so setting
@@ -95,7 +93,7 @@ helm install infisical-gateway infisical/infisical-gateway \\
           must be reachable from the pod, so a loopback address will not work.
         </p>
       </TabsContent>
-      {includeRelay && (
+      {!isDirect && (
         <Field>
           <Select
             value={relay.id}

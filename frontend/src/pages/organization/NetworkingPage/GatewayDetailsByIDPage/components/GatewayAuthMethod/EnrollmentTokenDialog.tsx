@@ -19,7 +19,6 @@ type Props = {
   enrollmentToken: string;
   expiresAt: string;
   isDirect: boolean;
-  includeRelay: boolean;
   listenAddress: string;
   onCommandDirtyChange: (isDirty: boolean) => void;
 };
@@ -48,7 +47,6 @@ export const EnrollmentTokenContent = ({
   enrollmentToken,
   expiresAt,
   isDirect,
-  includeRelay,
   listenAddress,
   onCommandDirtyChange
 }: Props) => {
@@ -72,13 +70,13 @@ export const EnrollmentTokenContent = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentToken]);
 
-  const isCommandDirty = includeRelay && relay.id !== commandRelay.id;
+  const isCommandDirty = !isDirect && relay.id !== commandRelay.id;
 
   useEffect(() => {
     onCommandDirtyChange(isCommandDirty);
   }, [isCommandDirty, onCommandDirtyChange]);
 
-  const resolvedRelayName = !includeRelay || commandRelay.id === "_auto" ? "" : commandRelay.name;
+  const resolvedRelayName = isDirect || commandRelay.id === "_auto" ? "" : commandRelay.name;
   const expiryLabel = formatTimeRemaining(expiresAt, now);
   const isExpired = expiryLabel === "Expired";
 
@@ -124,7 +122,7 @@ export const EnrollmentTokenContent = ({
         />
         <CodeBlock value={startServiceCommand} label="Start service" />
       </TabsContent>
-      {includeRelay && (
+      {!isDirect && (
         <Field>
           <Select
             value={relay.id}

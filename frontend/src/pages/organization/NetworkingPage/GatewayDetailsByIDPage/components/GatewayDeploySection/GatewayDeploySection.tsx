@@ -14,7 +14,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Checkbox,
   DocumentationLinkBadge,
   Field,
   FieldContent,
@@ -84,16 +83,10 @@ export const GatewayDeploySection = ({
   // Direct listen is the recommended mode, so it is also the default. The exceptions are Cloud,
   // which cannot reach into a customer network, and a gateway already deployed against a relay
   // alone, where the rendered command should match how it actually runs.
-  const isDirectGateway = !isCloud && Boolean(directAddress);
   const isRelayOnlyGateway = Boolean(relayId) && !directAddress;
   const [connectionMode, setConnectionMode] = useState<"relay" | "direct">(
     isCloud || isRelayOnlyGateway ? "relay" : "direct"
   );
-  // The relay is an add-on to direct listen rather than a competing transport: it extends reach to
-  // PAM CLI users off the network and covers the direct address going down. Pre-checked for a
-  // gateway already running both, so the command it renders matches how it is deployed.
-  const [withRelay, setWithRelay] = useState(isDirectGateway && Boolean(relayId));
-  const includeRelay = connectionMode === "relay" || withRelay;
   const [listenAddress, setListenAddress] = useState(directAddress ?? "");
   const trimmedListenAddress = listenAddress.trim();
   const hasListenAddressError =
@@ -238,35 +231,11 @@ export const GatewayDeploySection = ({
                 </Field>
               )}
 
-              {connectionMode === "direct" && (
-                <Field>
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      id="gateway-with-relay"
-                      variant="org"
-                      className="mt-0.5"
-                      isChecked={withRelay}
-                      onCheckedChange={(isChecked) => setWithRelay(isChecked === true)}
-                    />
-                    <FieldContent>
-                      <FieldLabel htmlFor="gateway-with-relay" className="cursor-pointer">
-                        Also connect through a relay
-                      </FieldLabel>
-                      <FieldDescription>
-                        Infisical keeps using the direct address and falls back to the relay when it
-                        stops answering. Add one to reach PAM CLI users outside this network.
-                      </FieldDescription>
-                    </FieldContent>
-                  </div>
-                </Field>
-              )}
-
               {authMethod.method === "aws" && (
                 <AwsStartCommandContent
                   gatewayId={gatewayId}
                   gatewayName={gatewayName}
                   isDirect={connectionMode === "direct"}
-                  includeRelay={includeRelay}
                   listenAddress={commandListenAddress}
                 />
               )}
@@ -276,7 +245,6 @@ export const GatewayDeploySection = ({
                   gatewayId={gatewayId}
                   gatewayName={gatewayName}
                   isDirect={connectionMode === "direct"}
-                  includeRelay={includeRelay}
                   listenAddress={commandListenAddress}
                 />
               )}
@@ -301,7 +269,6 @@ export const GatewayDeploySection = ({
                     enrollmentToken={enrollment.token}
                     expiresAt={enrollment.expiresAt}
                     isDirect={connectionMode === "direct"}
-                    includeRelay={includeRelay}
                     listenAddress={commandListenAddress}
                     onCommandDirtyChange={setIsCommandDirty}
                   />

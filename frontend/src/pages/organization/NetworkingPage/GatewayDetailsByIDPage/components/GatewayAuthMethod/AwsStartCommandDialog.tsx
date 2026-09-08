@@ -17,7 +17,6 @@ type Props = {
   gatewayId: string;
   gatewayName: string;
   isDirect: boolean;
-  includeRelay: boolean;
   listenAddress: string;
 };
 
@@ -31,7 +30,6 @@ export const AwsStartCommandContent = ({
   gatewayId,
   gatewayName,
   isDirect,
-  includeRelay,
   listenAddress
 }: Props) => {
   const { protocol, hostname, port } = window.location;
@@ -41,7 +39,7 @@ export const AwsStartCommandContent = ({
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
-  const resolvedRelayName = !includeRelay || relay.id === "_auto" ? "" : relay.name;
+  const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
@@ -66,7 +64,7 @@ export const AwsStartCommandContent = ({
         <CodeBlock value={systemdInstallCommand} label="Install service" />
         <CodeBlock value={startServiceCommand} label="Start service" />
       </TabsContent>
-      {includeRelay && (
+      {!isDirect && (
         <Field>
           <Select
             value={relay.id}
