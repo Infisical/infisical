@@ -9,7 +9,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 import { verifyRequestedPermissions } from "../../access-approval-request/access-approval-request-fns";
 import { ExternalApprovalType } from "../external-approval-enums";
-import { TExternalApprovalProviderFns } from "../external-approval-types";
+import { TExternalApprovalDispatchContext, TExternalApprovalProviderFns } from "../external-approval-types";
 
 const SERVICENOW_REQUEST_TIMEOUT_MS = 30_000;
 const SERVICENOW_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
@@ -75,6 +75,48 @@ type TServiceNowAccessRequestResponse = {
   result?: TServiceNowAccessRequestResult;
 };
 
+const buildAccessRequestPayload = ({
+  accessApprovalRequest,
+  externalApprovalRequest,
+  externalApprovalPolicy,
+  project,
+  envSlug,
+  secretPath,
+  requestedPermissions,
+  siteUrl
+}: Pick<
+  TExternalApprovalDispatchContext,
+  "accessApprovalRequest" | "externalApprovalRequest" | "externalApprovalPolicy" | "project"
+> & {
+  envSlug: string;
+  secretPath: string;
+  requestedPermissions: { subject: string; actions: string[] }[];
+  siteUrl: string | undefined;
+}): TServiceNowAccessRequestPayload => {
+  const { requestedByUser } = accessApprovalRequest;
+  const requestorName = [requestedByUser.firstName, requestedByUser.lastName].filter(Boolean).join(" ");
+
+  return {
+    request_id: externalApprovalRequest.id,
+    external_request_id: accessApprovalRequest.id,
+    callback_url: `${siteUrl}/api/v1/access-approvals/requests/${accessApprovalRequest.id}/external-review`,
+    request_type: "secret_access",
+    project_id: project.id,
+    project_name: project.name,
+    environment: envSlug,
+    secret_path: secretPath,
+    permissions: requestedPermissions.flatMap(({ subject, actions }) =>
+      actions.map((action) => `${subject}:${action}`)
+    ),
+    requestor_email: requestedByUser.email || requestedByUser.username,
+    requestor_name: requestorName || requestedByUser.username,
+    is_temporary: Boolean(accessApprovalRequest.isTemporary),
+    ...(accessApprovalRequest.temporaryRange ? { temporary_range: accessApprovalRequest.temporaryRange } : {}),
+    ...(accessApprovalRequest.note ? { justification: accessApprovalRequest.note } : {}),
+    ...(externalApprovalPolicy.approverIdentityId ? { identity_id: externalApprovalPolicy.approverIdentityId } : {})
+  };
+};
+
 export const servicenowFactory = (): TExternalApprovalProviderFns => {
   const throwDispatchError = ({ status, responseError }: { status?: number; responseError?: string }): never => {
     if (status && status >= 300 && status < 400) {
@@ -120,45 +162,20 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
     const { instanceUrl, username, password } = connection.credentials;
     const appCfg = getConfig();
 
-    let envSlug: string;
-    let secretPath: string;
-    let requestedPermissions: { subject: string; actions: string[] }[];
+    const { envSlug, secretPath, requestedPermissions } = verifyRequestedPermissions({
+      permissions: accessApprovalRequest.permissions
+    });
 
-    try {
-      const verified = verifyRequestedPermissions({ permissions: accessApprovalRequest.permissions });
-      envSlug = verified.envSlug;
-      secretPath = verified.secretPath;
-      requestedPermissions = verified.requestedPermissions;
-    } catch (error) {
-      throw new UnrecoverableError(
-        `The requested permissions on access request '${accessApprovalRequest.id}' could not be read, so it cannot be sent to ServiceNow: ${(error as Error)?.message}`
-      );
-    }
-
-    const { requestedByUser } = accessApprovalRequest;
-    const requestorName = [requestedByUser.firstName, requestedByUser.lastName].filter(Boolean).join(" ");
-
-    const payload: TServiceNowAccessRequestPayload = {
-      request_id: externalApprovalRequest.id,
-      external_request_id: accessApprovalRequest.id,
-      callback_url: `${appCfg.SITE_URL}/api/v1/access-approvals/requests/${accessApprovalRequest.id}/external-review`,
-      request_type: "secret_access",
-      project_id: project.id,
-      project_name: project.name,
-      environment: envSlug,
-      secret_path: secretPath,
-      permissions: requestedPermissions.flatMap(({ subject, actions }) =>
-        actions.map((action) => `${subject}:${action}`)
-      ),
-      requestor_email: requestedByUser.email || requestedByUser.username,
-      requestor_name: requestorName || requestedByUser.username,
-      is_temporary: Boolean(accessApprovalRequest.isTemporary),
-      ...(accessApprovalRequest.temporaryRange ? { temporary_range: accessApprovalRequest.temporaryRange } : {}),
-      ...(accessApprovalRequest.note ? { justification: accessApprovalRequest.note } : {}),
-      ...(externalApprovalPolicy.approverIdentityId ? { identity_id: externalApprovalPolicy.approverIdentityId } : {})
-    };
-
-    logger.info(payload, "Adilson::: payload");
+    const payload = buildAccessRequestPayload({
+      accessApprovalRequest,
+      externalApprovalRequest,
+      externalApprovalPolicy,
+      project,
+      envSlug,
+      secretPath,
+      requestedPermissions,
+      siteUrl: appCfg.SITE_URL
+    });
 
     const logDetails = `[externalApprovalRequestId=${externalApprovalRequest.id}] [accessApprovalRequestId=${accessApprovalRequest.id}] [connectionId=${connection.id}] [instanceUrl=${sanitizeUrlForLog(instanceUrl)}]`;
 

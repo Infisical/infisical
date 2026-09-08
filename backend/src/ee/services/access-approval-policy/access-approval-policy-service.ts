@@ -13,6 +13,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
 import { TAccessApprovalRequestReviewerDALFactory } from "../access-approval-request/access-approval-request-reviewer-dal";
 import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
+import { TExternalApprovalPolicyDALFactory } from "../external-approval/external-approval-policy-dal";
 import { TExternalApprovalServiceFactory } from "../external-approval/external-approval-service";
 import { TGroupDALFactory } from "../group/group-dal";
 import {
@@ -46,13 +47,8 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
   accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
-  externalApprovalService: Pick<
-    TExternalApprovalServiceFactory,
-    | "validateExternalApprovalPolicyInput"
-    | "createExternalApprovalPolicy"
-    | "updateExternalApprovalPolicy"
-    | "deleteExternalApprovalPolicy"
-  >;
+  externalApprovalService: Pick<TExternalApprovalServiceFactory, "validateExternalApprovalPolicyInput">;
+  externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "create" | "updateById" | "deleteById">;
 };
 
 export const accessApprovalPolicyServiceFactory = ({
@@ -68,7 +64,8 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestDAL,
   additionalPrivilegeDAL,
   accessApprovalRequestReviewerDAL,
-  externalApprovalService
+  externalApprovalService,
+  externalApprovalPolicyDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $policyExists = async ({
     envId,
@@ -251,7 +248,14 @@ export const accessApprovalPolicyServiceFactory = ({
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const { doc: accessApproval, externalApprovalPolicy } = await accessApprovalPolicyDAL.transaction(async (tx) => {
       const createdExternalApprovalPolicy = externalApproval
-        ? await externalApprovalService.createExternalApprovalPolicy(externalApproval, tx)
+        ? await externalApprovalPolicyDAL.create(
+            {
+              type: externalApproval.type,
+              connectionId: externalApproval.connectionId,
+              approverIdentityId: externalApproval.approverIdentityId
+            },
+            tx
+          )
         : null;
 
       const doc = await accessApprovalPolicyDAL.create(
@@ -522,12 +526,23 @@ export const accessApprovalPolicyServiceFactory = ({
         currentExternalApprovalPolicy = null;
       } else if (externalApproval) {
         currentExternalApprovalPolicy = accessApprovalPolicy.externalApprovalPolicyId
-          ? await externalApprovalService.updateExternalApprovalPolicy(
+          ? await externalApprovalPolicyDAL.updateById(
               accessApprovalPolicy.externalApprovalPolicyId,
-              externalApproval,
+              {
+                type: externalApproval.type,
+                connectionId: externalApproval.connectionId,
+                approverIdentityId: externalApproval.approverIdentityId
+              },
               tx
             )
-          : await externalApprovalService.createExternalApprovalPolicy(externalApproval, tx);
+          : await externalApprovalPolicyDAL.create(
+              {
+                type: externalApproval.type,
+                connectionId: externalApproval.connectionId,
+                approverIdentityId: externalApproval.approverIdentityId
+              },
+              tx
+            );
       }
 
       const doc = await accessApprovalPolicyDAL.updateById(
@@ -547,7 +562,7 @@ export const accessApprovalPolicyServiceFactory = ({
       );
 
       if (externalApproval === null && accessApprovalPolicy.externalApprovalPolicyId) {
-        await externalApprovalService.deleteExternalApprovalPolicy(accessApprovalPolicy.externalApprovalPolicyId, tx);
+        await externalApprovalPolicyDAL.deleteById(accessApprovalPolicy.externalApprovalPolicyId, tx);
       }
 
       await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);

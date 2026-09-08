@@ -18,11 +18,6 @@ export type TValidateExternalApprovalPolicyInputDTO = {
   actor: OrgServiceActor;
 };
 
-export type TMarkExternalApprovalRequestApprovedDTO = {
-  externalApprovalRequestId: string;
-  approvedByIdentityId?: string | null;
-};
-
 export type TExternalApprovalDispatchJobPayload = {
   externalApprovalRequestId: string;
   accessApprovalRequestId: string;

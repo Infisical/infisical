@@ -39,7 +39,6 @@ import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/acces
 import { ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
 import { TExternalApprovalQueueFactory } from "../external-approval/external-approval-queue";
 import { TExternalApprovalRequestDALFactory } from "../external-approval/external-approval-request-dal";
-import { TExternalApprovalServiceFactory } from "../external-approval/external-approval-service";
 import { TGroupDALFactory } from "../group/group-dal";
 import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -90,9 +89,8 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   queueService: Pick<TQueueServiceFactory, "queue">;
-  externalApprovalService: Pick<TExternalApprovalServiceFactory, "createPendingExternalApprovalRequest">;
   externalApprovalQueue: Pick<TExternalApprovalQueueFactory, "queueExternalApprovalDispatch">;
-  externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "updateById">;
+  externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "create" | "updateById">;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -113,7 +111,6 @@ export const accessApprovalRequestServiceFactory = ({
   projectSlackConfigDAL,
   notificationService,
   queueService,
-  externalApprovalService,
   externalApprovalQueue,
   externalApprovalRequestDAL
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
@@ -360,7 +357,7 @@ export const accessApprovalRequestServiceFactory = ({
       const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
       const externalApprovalRequest = policy.externalApprovalPolicyId
-        ? await externalApprovalService.createPendingExternalApprovalRequest(tx)
+        ? await externalApprovalRequestDAL.create({ status: ExternalApprovalRequestStatus.PendingDispatch }, tx)
         : null;
 
       const approvalRequest = await accessApprovalRequestDAL.create(

@@ -2997,8 +2997,6 @@ export const registerRoutes = async (
   });
 
   const externalApprovalService = externalApprovalServiceFactory({
-    externalApprovalPolicyDAL,
-    externalApprovalRequestDAL,
     appConnectionService,
     identityDAL
   });
@@ -3026,7 +3024,8 @@ export const registerRoutes = async (
     accessApprovalRequestDAL,
     accessApprovalRequestReviewerDAL,
     additionalPrivilegeDAL,
-    externalApprovalService
+    externalApprovalService,
+    externalApprovalPolicyDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
@@ -3047,7 +3046,6 @@ export const registerRoutes = async (
     notificationService,
     additionalPrivilegeDAL,
     queueService,
-    externalApprovalService,
     externalApprovalQueue,
     externalApprovalRequestDAL
   });
