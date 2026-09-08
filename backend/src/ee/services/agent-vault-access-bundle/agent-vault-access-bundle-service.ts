@@ -604,7 +604,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         );
         if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
-        const existing = await membershipDAL.find(bundleScope(rest.projectId, bundle.id), tx);
+        const existing = await membershipDAL.find(bundleScope(rest.projectId, bundle.id), { tx });
         const alreadyGranted = new Set(
           existing.flatMap((row) => {
             if (row.actorUserId) return [actorKey({ actorColumn: "actorUserId", actorId: row.actorUserId })];
