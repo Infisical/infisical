@@ -44,6 +44,6 @@ export const CONNECTION_STEPS: StepMeta[] = [
     title: "Review",
     subtitle: "Check everything before you save. You can change it later.",
     rightLabel: "REVIEW",
-    rightDescription: "Nothing is locked in. Edit this connection any time from the bundle page."
+    rightDescription: "Review your settings before saving."
   }
 ];
