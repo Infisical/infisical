@@ -39,6 +39,7 @@ import {
   ItemMedia,
   ItemSeparator,
   SecretPathInput,
+  Separator,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -61,8 +62,10 @@ import {
 import {
   ApproverType,
   BypasserType,
+  ExternalApprovalType,
   TAccessApprovalPolicy,
-  TApprovalPolicyApproverInput
+  TApprovalPolicyApproverInput,
+  TExternalApprovalPolicyInput
 } from "@app/hooks/api/accessApproval/types";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
@@ -77,6 +80,7 @@ import {
 } from "./approvalPolicyFormSchema";
 import { groupApproversBySequence } from "./approvalPolicyRowUtils";
 import { ApproverOption, ApproverOptionData } from "./ApproverOption";
+import { ExternalApprovalFields } from "./ExternalApprovalFields";
 
 const getApproverOptionValue = (option: ApproverOptionData) =>
   `${option.type}-${option.id ?? option.username ?? ""}`;
@@ -120,6 +124,24 @@ const canAddMemberEmail = (input: string, options: readonly ApproverOptionData[]
 
 const hasOptionId = (option: ApproverOptionData): option is ApproverOptionData & { id: string } =>
   Boolean(option.id);
+
+const getEmptyApprovalStep = () => ({ approvals: 1, user: [], group: [] });
+
+const toExternalApprovalInput = (
+  externalApproval: TApprovalPolicyFormSchema["externalApproval"]
+): TExternalApprovalPolicyInput | undefined =>
+  externalApproval?.connectionId && externalApproval.approverIdentityId
+    ? {
+        type: externalApproval.type,
+        connectionId: externalApproval.connectionId,
+        approverIdentityId: externalApproval.approverIdentityId
+      }
+    : undefined;
+
+// an external policy has no Infisical approvers, so edit mode would otherwise open with zero
+// steps and strand the form the moment external mode is switched off
+const withFallbackApprovalStep = <T,>(steps: T[]) =>
+  steps.length ? steps : [getEmptyApprovalStep()];
 
 type Props = {
   isOpen?: boolean;
@@ -192,7 +214,16 @@ const Form = ({
             bypassForMachineIdentities: editValues.bypassForMachineIdentities ?? true,
             maxTimePeriod: editValues.maxTimePeriod,
             requestExpirationTime: editValues.requestExpirationTime,
-            sequenceApprovers: groupApproversBySequence(editValues.approvers, editValues.approvals)
+            sequenceApprovers: withFallbackApprovalStep(
+              groupApproversBySequence(editValues.approvers, editValues.approvals)
+            ),
+            externalMode: Boolean(editValues.externalApproval),
+            externalApproval: {
+              type: (editValues.externalApproval?.type ??
+                ExternalApprovalType.ServiceNow) as ExternalApprovalType,
+              connectionId: editValues.externalApproval?.connectionId,
+              approverIdentityId: editValues.externalApproval?.approverIdentityId ?? undefined
+            }
           } as TApprovalPolicyFormSchema)
         : undefined,
     [editValues]
@@ -211,7 +242,9 @@ const Form = ({
     defaultValues: !editValues
       ? {
           secretPath: "/",
-          sequenceApprovers: [{ approvals: 1 }]
+          sequenceApprovers: [{ approvals: 1 }],
+          externalMode: false,
+          externalApproval: { type: ExternalApprovalType.ServiceNow }
         }
       : undefined
   });
@@ -243,6 +276,7 @@ const Form = ({
   const formGroupBypassers = watch("groupBypassers");
   const formEnvironments = watch("environments");
   const bypasserCount = (formUserBypassers || []).length + (formGroupBypassers || []).length;
+  const isExternalMode = isAccessPolicyType && watch("externalMode");
 
   const handleCreatePolicy = async ({
     environments,
@@ -251,6 +285,8 @@ const Form = ({
     groupBypassers,
     userBypassers,
     sequenceApprovers,
+    externalMode,
+    externalApproval,
     ...data
   }: TApprovalPolicyFormSchema) => {
     if (!projectId) return;
@@ -268,15 +304,21 @@ const Form = ({
     } else {
       await createAccessApprovalPolicy({
         ...data,
-        approvers: sequenceApprovers?.flatMap((approvers, index) =>
-          approvers.user
-            .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
-            .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
-        ),
-        approvalsRequired: sequenceApprovers?.map((el, index) => ({
-          stepNumber: index + 1,
-          numberOfApprovals: el.approvals
-        })),
+        approvers: externalMode
+          ? []
+          : sequenceApprovers?.flatMap((approvers, index) =>
+              approvers.user
+                .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
+                .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
+            ),
+        approvalsRequired: externalMode
+          ? []
+          : sequenceApprovers?.map((el, index) => ({
+              stepNumber: index + 1,
+              numberOfApprovals: el.approvals
+            })),
+        // POST only accepts the object or an omitted key -- an explicit null fails validation
+        externalApproval: externalMode ? toExternalApprovalInput(externalApproval) : undefined,
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         environments: environments.map((env) => env.slug),
         projectSlug
@@ -296,6 +338,8 @@ const Form = ({
     userBypassers,
     groupBypassers,
     sequenceApprovers,
+    externalMode,
+    externalApproval,
     ...data
   }: TApprovalPolicyFormSchema) => {
     if (!projectId || !projectSlug) return;
@@ -316,15 +360,21 @@ const Form = ({
       await updateAccessApprovalPolicy({
         id: editValues?.id,
         ...data,
-        approvers: sequenceApprovers?.flatMap((approvers, index) =>
-          approvers.user
-            .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
-            .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
-        ),
-        approvalsRequired: sequenceApprovers?.map((el, index) => ({
-          stepNumber: index + 1,
-          numberOfApprovals: el.approvals
-        })),
+        approvers: externalMode
+          ? []
+          : sequenceApprovers?.flatMap((approvers, index) =>
+              approvers.user
+                .map((el) => ({ ...el, sequence: index + 1 }) as TApprovalPolicyApproverInput)
+                .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
+            ),
+        approvalsRequired: externalMode
+          ? []
+          : sequenceApprovers?.map((el, index) => ({
+              stepNumber: index + 1,
+              numberOfApprovals: el.approvals
+            })),
+        // PATCH reads null as "detach and delete the external policy row"
+        externalApproval: externalMode ? toExternalApprovalInput(externalApproval) : null,
         bypassers: bypassers.length > 0 ? bypassers : undefined,
         environments: environments.map((env) => env.slug),
         projectSlug
@@ -778,64 +828,106 @@ const Form = ({
           )}
         />
         {isAccessPolicyType && (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] items-start gap-3">
+          <>
+            <Separator />
             <Controller
               control={control}
-              name="maxTimePeriod"
-              render={({ field, fieldState: { error } }) => (
-                <Field className="flex-1">
-                  <FieldLabel>
-                    Max. Time Period
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-sm">
-                        The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
+              name="externalMode"
+              defaultValue={false}
+              render={({ field: { value, onChange } }) => (
+                <Field orientation="horizontal">
                   <FieldContent>
-                    <Input
-                      {...field}
-                      value={field.value || ""}
-                      placeholder="permanent"
-                      isError={Boolean(error)}
-                    />
-                    <FieldError errors={[error]} />
+                    <FieldTitle>External Mode</FieldTitle>
+                    <FieldDescription>
+                      Approve requests in an external system. Requests under this policy cannot be
+                      approved in Infisical.
+                    </FieldDescription>
                   </FieldContent>
+                  <Switch
+                    id="external-mode"
+                    aria-label="Approve requests in an external system"
+                    variant="project"
+                    checked={value}
+                    onCheckedChange={(isEnabled) => {
+                      onChange(isEnabled);
+
+                      if (isEnabled) return;
+
+                      setValue(
+                        "externalApproval",
+                        { type: ExternalApprovalType.ServiceNow },
+                        { shouldDirty: true }
+                      );
+                      if (!sequenceApproversFieldArray.fields.length) {
+                        sequenceApproversFieldArray.append(getEmptyApprovalStep());
+                      }
+                    }}
+                  />
                 </Field>
               )}
             />
-            <Controller
-              control={control}
-              name="requestExpirationTime"
-              render={({ field, fieldState: { error } }) => (
-                <Field className="flex-1">
-                  <FieldLabel>
-                    Request Expiration
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-sm">
-                        Time before unapproved requests expire. Ex: 1h, 3d, 72h
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      {...field}
-                      value={field.value || ""}
-                      placeholder="never expires"
-                      isError={Boolean(error)}
-                    />
-                    <FieldError errors={[error]} />
-                  </FieldContent>
-                </Field>
-              )}
-            />
-          </div>
+            {isExternalMode && (
+              <ExternalApprovalFields control={control} watch={watch} setValue={setValue} />
+            )}
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] items-start gap-3">
+              <Controller
+                control={control}
+                name="maxTimePeriod"
+                render={({ field, fieldState: { error } }) => (
+                  <Field className="flex-1">
+                    <FieldLabel>
+                      Max. Time Period
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        value={field.value || ""}
+                        placeholder="permanent"
+                        isError={Boolean(error)}
+                      />
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="requestExpirationTime"
+                render={({ field, fieldState: { error } }) => (
+                  <Field className="flex-1">
+                    <FieldLabel>
+                      Request Expiration
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          Time before unapproved requests expire. Ex: 1h, 3d, 72h
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        value={field.value || ""}
+                        placeholder="never expires"
+                        isError={Boolean(error)}
+                      />
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </div>
+          </>
         )}
         {!isAccessPolicyType && (
           <Controller
@@ -859,181 +951,187 @@ const Form = ({
             )}
           />
         )}
-        <div>
-          <p className="text-sm font-medium text-foreground">Approvers</p>
-          <p className="text-xs text-muted">
-            Select readable members or groups, or enter an exact project member email.
-          </p>
-        </div>
-        {isAccessPolicyType ? (
+        {!isExternalMode && (
           <>
-            {sequenceApproversFieldArray.fields.length === 1 ? (
-              <div className="flex items-start gap-3">
-                <Field className="min-w-0 flex-1">
-                  <FieldLabel>Approvers</FieldLabel>
-                  <FieldContent>
-                    {renderApproverSelect(0)}
-                    <FieldError
-                      errors={[
-                        errors.sequenceApprovers?.[0]?.user,
-                        errors.sequenceApprovers?.[0]?.group
-                      ]}
-                    />
-                  </FieldContent>
-                </Field>
-                <Field className="w-28">
-                  <FieldLabel>Min. Approvals</FieldLabel>
-                  <FieldContent>{renderMinApprovals(0, "h-9 w-full")}</FieldContent>
-                </Field>
-              </div>
-            ) : (
-              <ItemGroup className="max-h-[12rem] thin-scrollbar shrink-0 gap-0 overflow-y-auto rounded-lg border border-border bg-container">
-                {sequenceApproversFieldArray.fields.map((el, index) => (
-                  <Fragment key={el.id}>
-                    {index > 0 && <ItemSeparator className="m-0" />}
-                    <Item
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDrop={handleDrop}
-                      className={twMerge(
-                        "rounded-none border-0",
-                        dragOverItem === index && "bg-container-hover",
-                        draggedItem === index && "opacity-50"
-                      )}
-                    >
-                      <ItemMedia>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <IconButton
-                              type="button"
-                              draggable
-                              aria-label={`Reorder step ${index + 1}`}
-                              variant="ghost-muted"
-                              size="xs"
-                              onDragStart={(e) => handleDragStart(e, index)}
-                              onDragEnd={handleDragEnd}
-                              onKeyDown={(event) => handleReorderKeyDown(event, index)}
-                              className="cursor-move"
-                            >
-                              <GripVerticalIcon />
-                            </IconButton>
-                          </TooltipTrigger>
-                          <TooltipContent>Drag or use arrow keys to reorder</TooltipContent>
-                        </Tooltip>
-                        <Badge variant="neutral">Step {index + 1}</Badge>
-                      </ItemMedia>
-                      <ItemContent className="min-w-0">
-                        {renderApproverSelect(index)}
+            <div>
+              <p className="text-sm font-medium text-foreground">Approvers</p>
+              <p className="text-xs text-muted">
+                Select readable members or groups, or enter an exact project member email.
+              </p>
+            </div>
+            {isAccessPolicyType ? (
+              <>
+                {sequenceApproversFieldArray.fields.length === 1 ? (
+                  <div className="flex items-start gap-3">
+                    <Field className="min-w-0 flex-1">
+                      <FieldLabel>Approvers</FieldLabel>
+                      <FieldContent>
+                        {renderApproverSelect(0)}
                         <FieldError
                           errors={[
-                            errors.sequenceApprovers?.[index]?.user,
-                            errors.sequenceApprovers?.[index]?.group
+                            errors.sequenceApprovers?.[0]?.user,
+                            errors.sequenceApprovers?.[0]?.group
                           ]}
                         />
-                      </ItemContent>
-                      <ItemActions>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted">Min</span>
-                          {renderMinApprovals(index, "h-8 w-14")}
-                        </div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <IconButton
-                              aria-label="Remove step"
-                              variant="ghost"
-                              size="xs"
-                              onClick={() => sequenceApproversFieldArray.remove(index)}
-                              className="text-danger hover:text-danger"
-                            >
-                              <Trash2Icon />
-                            </IconButton>
-                          </TooltipTrigger>
-                          <TooltipContent>Remove Step</TooltipContent>
-                        </Tooltip>
-                      </ItemActions>
-                    </Item>
-                  </Fragment>
-                ))}
-              </ItemGroup>
+                      </FieldContent>
+                    </Field>
+                    <Field className="w-28">
+                      <FieldLabel>Min. Approvals</FieldLabel>
+                      <FieldContent>{renderMinApprovals(0, "h-9 w-full")}</FieldContent>
+                    </Field>
+                  </div>
+                ) : (
+                  <ItemGroup className="max-h-[12rem] thin-scrollbar shrink-0 gap-0 overflow-y-auto rounded-lg border border-border bg-container">
+                    {sequenceApproversFieldArray.fields.map((el, index) => (
+                      <Fragment key={el.id}>
+                        {index > 0 && <ItemSeparator className="m-0" />}
+                        <Item
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDrop={handleDrop}
+                          className={twMerge(
+                            "rounded-none border-0",
+                            dragOverItem === index && "bg-container-hover",
+                            draggedItem === index && "opacity-50"
+                          )}
+                        >
+                          <ItemMedia>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <IconButton
+                                  type="button"
+                                  draggable
+                                  aria-label={`Reorder step ${index + 1}`}
+                                  variant="ghost-muted"
+                                  size="xs"
+                                  onDragStart={(e) => handleDragStart(e, index)}
+                                  onDragEnd={handleDragEnd}
+                                  onKeyDown={(event) => handleReorderKeyDown(event, index)}
+                                  className="cursor-move"
+                                >
+                                  <GripVerticalIcon />
+                                </IconButton>
+                              </TooltipTrigger>
+                              <TooltipContent>Drag or use arrow keys to reorder</TooltipContent>
+                            </Tooltip>
+                            <Badge variant="neutral">Step {index + 1}</Badge>
+                          </ItemMedia>
+                          <ItemContent className="min-w-0">
+                            {renderApproverSelect(index)}
+                            <FieldError
+                              errors={[
+                                errors.sequenceApprovers?.[index]?.user,
+                                errors.sequenceApprovers?.[index]?.group
+                              ]}
+                            />
+                          </ItemContent>
+                          <ItemActions>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-muted">Min</span>
+                              {renderMinApprovals(index, "h-8 w-14")}
+                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <IconButton
+                                  aria-label="Remove step"
+                                  variant="ghost"
+                                  size="xs"
+                                  onClick={() => sequenceApproversFieldArray.remove(index)}
+                                  className="text-danger hover:text-danger"
+                                >
+                                  <Trash2Icon />
+                                </IconButton>
+                              </TooltipTrigger>
+                              <TooltipContent>Remove Step</TooltipContent>
+                            </Tooltip>
+                          </ItemActions>
+                        </Item>
+                      </Fragment>
+                    ))}
+                  </ItemGroup>
+                )}
+                <div>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    type="button"
+                    onClick={() =>
+                      sequenceApproversFieldArray.append({
+                        approvals: 1,
+                        user: [],
+                        group: []
+                      })
+                    }
+                  >
+                    <PlusIcon />
+                    Add Step
+                  </Button>
+                  <FieldError errors={[errors.sequenceApprovers]} />
+                </div>
+              </>
+            ) : (
+              <Field>
+                <FieldLabel>Approvers</FieldLabel>
+                <FieldContent>
+                  <CreatableSelect<ApproverOptionData>
+                    isMulti
+                    aria-label="Approvers"
+                    placeholder="Select approvers or enter a member email..."
+                    options={approverOptions}
+                    getOptionValue={getApproverOptionValue}
+                    getOptionLabel={getApproverOptionLabel}
+                    filterOption={filterApproverOption}
+                    formatOptionLabel={formatApproverOptionLabel}
+                    formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                    isValidNewOption={(input, value) =>
+                      canAddMemberEmail(input, [
+                        ...(value as MultiValue<ApproverOptionData>),
+                        ...approverOptions
+                      ])
+                    }
+                    isOptionDisabled={(option) =>
+                      option.type === ApproverType.User && option.isOrgMembershipActive === false
+                    }
+                    value={selectedPolicyApprovers}
+                    onChange={(newValue) =>
+                      updatePolicyApprovers([...(newValue as MultiValue<ApproverOptionData>)])
+                    }
+                    onCreateOption={(input) =>
+                      updatePolicyApprovers([
+                        ...selectedPolicyApprovers,
+                        getManualMemberOption(input, ApproverType.User)
+                      ])
+                    }
+                    noOptionsMessage={() => "Enter an exact project member email address."}
+                    isError={Boolean(errors.userApprovers || errors.groupApprovers)}
+                  />
+                  <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
+                </FieldContent>
+              </Field>
             )}
-            <div>
-              <Button
-                size="xs"
-                variant="outline"
-                type="button"
-                onClick={() =>
-                  sequenceApproversFieldArray.append({
-                    approvals: 1,
-                    user: [],
-                    group: []
-                  })
-                }
-              >
-                <PlusIcon />
-                Add Step
-              </Button>
-              <FieldError errors={[errors.sequenceApprovers]} />
-            </div>
+            <Controller
+              control={control}
+              name="allowedSelfApprovals"
+              defaultValue
+              render={({ field: { value, onChange } }) => (
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Self Approvals</FieldTitle>
+                    <FieldDescription>
+                      Allow approvers to review their own requests
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    id="self-approvals"
+                    aria-label="Allow self approvals"
+                    variant="project"
+                    checked={value}
+                    onCheckedChange={onChange}
+                  />
+                </Field>
+              )}
+            />
           </>
-        ) : (
-          <Field>
-            <FieldLabel>Approvers</FieldLabel>
-            <FieldContent>
-              <CreatableSelect<ApproverOptionData>
-                isMulti
-                aria-label="Approvers"
-                placeholder="Select approvers or enter a member email..."
-                options={approverOptions}
-                getOptionValue={getApproverOptionValue}
-                getOptionLabel={getApproverOptionLabel}
-                filterOption={filterApproverOption}
-                formatOptionLabel={formatApproverOptionLabel}
-                formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
-                isValidNewOption={(input, value) =>
-                  canAddMemberEmail(input, [
-                    ...(value as MultiValue<ApproverOptionData>),
-                    ...approverOptions
-                  ])
-                }
-                isOptionDisabled={(option) =>
-                  option.type === ApproverType.User && option.isOrgMembershipActive === false
-                }
-                value={selectedPolicyApprovers}
-                onChange={(newValue) =>
-                  updatePolicyApprovers([...(newValue as MultiValue<ApproverOptionData>)])
-                }
-                onCreateOption={(input) =>
-                  updatePolicyApprovers([
-                    ...selectedPolicyApprovers,
-                    getManualMemberOption(input, ApproverType.User)
-                  ])
-                }
-                noOptionsMessage={() => "Enter an exact project member email address."}
-                isError={Boolean(errors.userApprovers || errors.groupApprovers)}
-              />
-              <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
-            </FieldContent>
-          </Field>
         )}
-        <Controller
-          control={control}
-          name="allowedSelfApprovals"
-          defaultValue
-          render={({ field: { value, onChange } }) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>Self Approvals</FieldTitle>
-                <FieldDescription>Allow approvers to review their own requests</FieldDescription>
-              </FieldContent>
-              <Switch
-                id="self-approvals"
-                aria-label="Allow self approvals"
-                variant="project"
-                checked={value}
-                onCheckedChange={onChange}
-              />
-            </Field>
-          )}
-        />
         {!isAccessPolicyType && (
           <Controller
             control={control}

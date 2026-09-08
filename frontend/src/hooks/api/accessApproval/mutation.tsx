@@ -32,7 +32,8 @@ export const useCreateAccessApprovalPolicy = () => {
       allowedSelfApprovals,
       approvalsRequired,
       maxTimePeriod,
-      requestExpirationTime
+      requestExpirationTime,
+      externalApproval
     }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
         environments,
@@ -46,7 +47,8 @@ export const useCreateAccessApprovalPolicy = () => {
         allowedSelfApprovals,
         approvalsRequired,
         maxTimePeriod,
-        requestExpirationTime
+        requestExpirationTime,
+        externalApproval
       });
       return data;
     },
@@ -81,7 +83,8 @@ export const useUpdateAccessApprovalPolicy = () => {
       approvalsRequired,
       environments,
       maxTimePeriod,
-      requestExpirationTime
+      requestExpirationTime,
+      externalApproval
     }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
@@ -94,7 +97,8 @@ export const useUpdateAccessApprovalPolicy = () => {
         approvalsRequired,
         environments,
         maxTimePeriod,
-        requestExpirationTime
+        requestExpirationTime,
+        externalApproval
       });
       return data;
     },

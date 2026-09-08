@@ -3,6 +3,23 @@ import { ProjectEnv } from "../projects/types";
 import { TProjectPermission } from "../roles/types";
 import { ApprovalStatus } from "../secretApprovalRequest/types";
 
+export enum ExternalApprovalType {
+  ServiceNow = "servicenow"
+}
+
+export type TExternalApprovalPolicy = {
+  id: string;
+  type: ExternalApprovalType;
+  connectionId: string;
+  approverIdentityId?: string | null;
+};
+
+export type TExternalApprovalPolicyInput = {
+  type: ExternalApprovalType;
+  connectionId: string;
+  approverIdentityId: string;
+};
+
 export type TAccessApprovalPolicy = {
   id: string;
   name: string;
@@ -21,6 +38,8 @@ export type TAccessApprovalPolicy = {
   bypassForMachineIdentities?: boolean;
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApprovalPolicyId?: string | null;
+  externalApproval?: TExternalApprovalPolicy | null;
 };
 
 export enum ApproverType {
@@ -238,6 +257,7 @@ export type TCreateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApproval?: TExternalApprovalPolicyInput;
 };
 
 export type TUpdateAccessPolicyDTO = {
@@ -255,6 +275,7 @@ export type TUpdateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApproval?: TExternalApprovalPolicyInput | null;
 };
 
 export type TDeleteSecretPolicyDTO = {

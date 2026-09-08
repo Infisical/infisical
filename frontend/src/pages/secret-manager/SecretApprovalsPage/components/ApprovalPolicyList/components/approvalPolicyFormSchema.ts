@@ -1,7 +1,11 @@
 import ms from "ms";
 import { z } from "zod";
 
-import { ApproverType, BypasserType } from "@app/hooks/api/accessApproval/types";
+import {
+  ApproverType,
+  BypasserType,
+  ExternalApprovalType
+} from "@app/hooks/api/accessApproval/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 
 import { getEmptyApprovalStepIndexes } from "./approvalPolicyFormUtils";
@@ -106,7 +110,15 @@ export const approvalPolicyFormSchema = z
       .default([])
       .optional(),
     maxTimePeriod: durationSchema,
-    requestExpirationTime: durationSchema
+    requestExpirationTime: durationSchema,
+    externalMode: z.boolean().default(false),
+    externalApproval: z
+      .object({
+        type: z.nativeEnum(ExternalApprovalType).default(ExternalApprovalType.ServiceNow),
+        connectionId: z.string().optional(),
+        approverIdentityId: z.string().optional()
+      })
+      .optional()
   })
   .superRefine((data, ctx) => {
     const bypasserCount = data.userBypassers.length + data.groupBypassers.length;
@@ -169,6 +181,26 @@ export const approvalPolicyFormSchema = z
           });
         }
       });
+      return;
+    }
+
+    if (data.externalMode) {
+      if (!data.externalApproval?.connectionId) {
+        ctx.addIssue({
+          path: ["externalApproval", "connectionId"],
+          code: z.ZodIssueCode.custom,
+          message: "Select an app connection"
+        });
+      }
+
+      if (!data.externalApproval?.approverIdentityId) {
+        ctx.addIssue({
+          path: ["externalApproval", "approverIdentityId"],
+          code: z.ZodIssueCode.custom,
+          message: "Select an approving identity"
+        });
+      }
+
       return;
     }
 
