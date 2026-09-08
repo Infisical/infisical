@@ -446,7 +446,7 @@ export const secretScanningV2QueueServiceFactory = ({
       });
 
       await queueService.queue(
-        QueueName.SecretScanningV2DiffScan,
+        QueueName.SecretScanningV2RealtimeScan,
         QueueJobs.SecretScanningV2DiffScan,
         {
           payload,
@@ -864,7 +864,7 @@ export const secretScanningV2QueueServiceFactory = ({
   );
 
   queueService.start(
-    QueueName.SecretScanningV2DiffScan,
+    QueueName.SecretScanningV2RealtimeScan,
     async (job) => {
       await handleDiffScan(job as Parameters<typeof handleDiffScan>[0]);
     },

@@ -105,7 +105,7 @@ export enum QueueName {
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
   SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
-  SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
+  SecretScanningV2RealtimeScan = "secret-scanning-v2-realtime-scan",
   UserNotification = "user-notification",
   AlertDispatch = "alert-dispatch",
   AuditReportGeneration = "audit-report-generation",
@@ -171,6 +171,8 @@ export enum QueueJobs {
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
+  // Kept as "diff-scan" while the queue moved to "realtime-scan": jobs already enqueued under this
+  // name carry it, and the drain branch on QueueName.SecretScanningV2 matches on it.
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
@@ -468,7 +470,7 @@ export type TQueueJobTypes = {
     name: QueueJobs.SecretScanningV2FullScan;
     payload: TQueueSecretScanningDataSourceFullScan;
   };
-  [QueueName.SecretScanningV2DiffScan]: {
+  [QueueName.SecretScanningV2RealtimeScan]: {
     name: QueueJobs.SecretScanningV2DiffScan;
     payload: TQueueSecretScanningResourceDiffScanPayload;
   };
@@ -609,7 +611,7 @@ export type TQueueJobTypes = {
 const SECRET_SCANNING_QUEUES = [
   QueueName.SecretScanningV2,
   QueueName.SecretScanningV2FullScan,
-  QueueName.SecretScanningV2DiffScan,
+  QueueName.SecretScanningV2RealtimeScan,
   QueueName.SecretFullRepoScan,
   QueueName.SecretPushEventScan
 ];
