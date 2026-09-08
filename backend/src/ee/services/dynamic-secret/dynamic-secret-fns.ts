@@ -6,7 +6,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { getDbConnectionHost } from "@app/lib/knex";
 
+let reservedIpsCache: { ips: string[]; expiresAt: number } | null = null;
+const RESERVED_IPS_TTL_MS = 5 * 60 * 1000;
+
 const getReservedIps = async () => {
+  if (reservedIpsCache && reservedIpsCache.expiresAt > Date.now()) return reservedIpsCache.ips;
   const appCfg = getConfig();
   const reservedHosts = [appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI)].concat(
     (appCfg.DB_READ_REPLICAS || []).map((el) => getDbConnectionHost(el.DB_CONNECTION_URI)),
@@ -26,6 +30,7 @@ const getReservedIps = async () => {
       }
     }
   }
+  reservedIpsCache = { ips: exclusiveIps, expiresAt: Date.now() + RESERVED_IPS_TTL_MS };
   return exclusiveIps;
 };
 
@@ -33,9 +38,6 @@ const getReservedIps = async () => {
 export const assertHostNotInfisicalInfrastructure = async ({ host }: { host: string }) => {
   const appCfg = getConfig();
   if (appCfg.isDevelopmentMode || appCfg.isTestMode) return;
-
-  const exclusiveIps = await getReservedIps();
-  if (!exclusiveIps.length) return;
 
   let hostIps: string[];
   if (net.isIP(host)) {
@@ -49,6 +51,7 @@ export const assertHostNotInfisicalInfrastructure = async ({ host }: { host: str
     }
   }
 
+  const exclusiveIps = await getReservedIps();
   if (hostIps.some((el) => exclusiveIps.includes(el))) {
     throw new BadRequestError({
       message:

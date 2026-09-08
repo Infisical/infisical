@@ -5,7 +5,10 @@ import tls from "node:tls";
 import { isAxiosError } from "axios";
 import https from "https";
 
-import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import {
+  assertHostNotInfisicalInfrastructure,
+  verifyHostInputValidity
+} from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
@@ -250,15 +253,14 @@ export const setupRelayServer = async ({
     const tunnelId = crypto.randomBytes(4).toString("hex");
     const hasRelayFallback = Boolean(directAddress && relayHost && relay);
 
-    // Validated at registration; re-checking here would resolve DNS on every dial.
-    const dialDirect = () => {
+    const dialDirect = async () => {
       const parsed = new URL(`tcp://${directAddress}`);
       const serverName = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
-      return Promise.resolve({
-        conn: net.connect({ host: serverName, port: Number(parsed.port) }),
-        serverName,
-        direct: true
-      });
+      // Rechecked immediately before connecting, not just at registration: a name that passed then
+      // can be rebound since. Connecting by name rather than by the resolved address keeps Node's
+      // own multi-address fallback, which a dual-stack gateway relies on.
+      await assertHostNotInfisicalInfrastructure({ host: serverName });
+      return { conn: net.connect({ host: serverName, port: Number(parsed.port) }), serverName, direct: true };
     };
 
     const dialRelay = async () => {
