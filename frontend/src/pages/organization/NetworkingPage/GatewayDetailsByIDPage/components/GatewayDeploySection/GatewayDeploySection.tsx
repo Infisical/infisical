@@ -215,10 +215,7 @@ export const GatewayDeploySection = ({
                     placeholder="gateway.internal:8443"
                     isError={hasListenAddressError}
                   />
-                  <FieldDescription>
-                    The host and port Infisical dials. The gateway binds this port on every
-                    interface.
-                  </FieldDescription>
+                  <FieldDescription>The host and port Infisical dials.</FieldDescription>
                   <FieldError isOpen={hasListenAddressError}>
                     Enter a host and port, such as gateway.internal:8443.
                   </FieldError>
