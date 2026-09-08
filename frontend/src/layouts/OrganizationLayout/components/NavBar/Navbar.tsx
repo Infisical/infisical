@@ -76,7 +76,6 @@ import {
   useGetOrganizations,
   useLogoutUser
 } from "@app/hooks/api";
-import { agentVaultKeys } from "@app/hooks/api/agentVault";
 import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
@@ -227,9 +226,7 @@ export const Navbar = () => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
     queryClient.removeQueries({ queryKey: appConnectionKeys.all });
-    // Neither product's keys carry the org or its implicit project, so a stale entry would render
-    // another org's data until it goes stale.
-    queryClient.removeQueries({ queryKey: agentVaultKeys.all });
+    // PAM's keys carry no org, so a stale entry would render another org's data until it goes stale.
     queryClient.removeQueries({ queryKey: pamKeys.all });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });

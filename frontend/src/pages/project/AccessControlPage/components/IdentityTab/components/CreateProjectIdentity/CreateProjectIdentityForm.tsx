@@ -19,6 +19,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS, PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import {
@@ -98,6 +99,7 @@ export const CreateProjectIdentityForm = ({
   const isAgentVault = projectType === ProjectType.AgentVault;
   const isProductScoped = isPam || isAgentVault;
 
+  const { currentOrg } = useOrganization();
   const { data: projectRoles } = useGetProjectRoles(projectId, projectType);
 
   const roles = useMemo(() => {
@@ -226,7 +228,9 @@ export const CreateProjectIdentityForm = ({
         queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
       }
       if (isAgentVault) {
-        queryClient.invalidateQueries({ queryKey: agentVaultKeys.productIdentities() });
+        queryClient.invalidateQueries({
+          queryKey: agentVaultKeys.productIdentities(currentOrg.id)
+        });
       }
 
       const hasTemplateGrants = data.templateIds.length > 0;

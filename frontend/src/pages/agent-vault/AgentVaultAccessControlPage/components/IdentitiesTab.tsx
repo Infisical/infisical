@@ -116,7 +116,7 @@ export const IdentitiesTab = () => {
         identityId: toRemove.identityId,
         projectId: currentProject.id
       });
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.productIdentities() });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.productIdentities(currentOrg.id) });
       createNotification({ text: `"${toRemove.name}" deleted`, type: "success" });
     } else {
       await removeMember.mutateAsync({
