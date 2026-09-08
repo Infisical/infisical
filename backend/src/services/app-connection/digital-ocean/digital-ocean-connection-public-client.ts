@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable class-methods-use-this */
-import { AxiosInstance } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 
 import { createRequestClient } from "@app/lib/config/request";
 import { logger, sanitizeUrlForLog } from "@app/lib/logger";
@@ -18,6 +18,16 @@ import {
   TDigitalOceanVariable
 } from "./digital-ocean-connection-types";
 
+const isValidNextUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url, IntegrationUrls.DIGITAL_OCEAN_API_URL);
+    const expected = new URL(IntegrationUrls.DIGITAL_OCEAN_API_URL);
+    return parsed.protocol === "https:" && parsed.origin === expected.origin;
+  } catch {
+    return false;
+  }
+};
+
 class DigitalOceanAppPlatformPublicClient {
   private readonly client: AxiosInstance;
 
@@ -34,7 +44,11 @@ class DigitalOceanAppPlatformPublicClient {
   async healthcheck(connection: TDigitalOceanConnectionConfig) {
     switch (connection.method) {
       case DigitalOceanConnectionMethod.ApiToken:
-        await this.getApps(connection);
+        await this.client.get(`/apps?per_page=1`, {
+          headers: {
+            Authorization: `Bearer ${connection.credentials.apiToken}`
+          }
+        });
         break;
       default:
         throw new Error(`Unsupported connection method`);
@@ -47,14 +61,29 @@ class DigitalOceanAppPlatformPublicClient {
     let pageCount = 0;
 
     while (nextUrl && pageCount < DIGITAL_OCEAN_MAX_PAGES) {
-      const { data }: { data: TDigitalOceanListAppsResponse } = await this.client.get(nextUrl, {
+      const response: AxiosResponse<TDigitalOceanListAppsResponse> = await this.client.get(nextUrl, {
         headers: {
           Authorization: `Bearer ${connection.credentials.apiToken}`
         }
       });
+      const { data } = response;
 
       apps.push(...(data.apps ?? []));
-      nextUrl = data.links?.pages?.next;
+
+      const rawNextUrl = data.links?.pages?.next;
+      if (rawNextUrl) {
+        if (isValidNextUrl(rawNextUrl)) {
+          nextUrl = rawNextUrl;
+        } else {
+          logger.warn(
+            `Rejected off-origin or non-HTTPS pagination URL in DigitalOcean client: ${sanitizeUrlForLog(rawNextUrl)}`
+          );
+          nextUrl = undefined;
+        }
+      } else {
+        nextUrl = undefined;
+      }
+
       pageCount += 1;
     }
 
@@ -105,7 +134,7 @@ class DigitalOceanAppPlatformPublicClient {
     const response = await this.getApp(connection, appId);
     const existing = response.spec.envs || [];
 
-    const variables = existing.filter((v) => input.find((i) => i.key === v.key));
+    const variables = existing.filter((v) => !input.some((i) => i.key === v.key));
 
     return this.client.put(
       `/apps/${appId}`,

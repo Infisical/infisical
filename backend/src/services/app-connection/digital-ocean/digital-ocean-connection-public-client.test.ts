@@ -149,6 +149,36 @@ describe("DigitalOceanAppPlatformPublicClient", () => {
       expect(mockLoggerWarn).toHaveBeenCalledWith(expect.not.stringContaining("do-not-leak"));
     });
 
+    it("rejects off-origin links.pages.next URL and halts pagination without following it", async () => {
+      const page1Apps: TDigitalOceanApp[] = [
+        {
+          id: "app-1",
+          spec: { name: "app-one", services: [] }
+        }
+      ];
+
+      mockClientGet.mockResolvedValueOnce({
+        data: {
+          apps: page1Apps,
+          links: {
+            pages: {
+              next: "https://evil.com/v2/apps?page=2"
+            }
+          },
+          meta: { total: 10 }
+        }
+      });
+
+      const apps = await DigitalOceanAppPlatformPublicAPI.getApps(mockConnection);
+
+      expect(apps).toEqual(page1Apps);
+      expect(mockClientGet).toHaveBeenCalledTimes(1);
+      expect(mockLoggerWarn).toHaveBeenCalledTimes(1);
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.stringContaining("Rejected off-origin or non-HTTPS pagination URL in DigitalOcean client:")
+      );
+    });
+
     it("handles response with empty or undefined apps gracefully", async () => {
       mockClientGet.mockResolvedValueOnce({
         data: {}
@@ -161,13 +191,16 @@ describe("DigitalOceanAppPlatformPublicClient", () => {
   });
 
   describe("healthcheck", () => {
-    it("delegates to getApps for ApiToken method", async () => {
+    it("makes a single lightweight request for ApiToken method", async () => {
       mockClientGet.mockResolvedValueOnce({
         data: { apps: [] }
       });
 
       await expect(DigitalOceanAppPlatformPublicAPI.healthcheck(mockConnection)).resolves.toBeUndefined();
       expect(mockClientGet).toHaveBeenCalledTimes(1);
+      expect(mockClientGet).toHaveBeenCalledWith("/apps?per_page=1", {
+        headers: { Authorization: "Bearer dop_v1_mock_token" }
+      });
     });
 
     it("throws error for unsupported connection method", async () => {
@@ -279,7 +312,7 @@ describe("DigitalOceanAppPlatformPublicClient", () => {
           spec: {
             name: "my-app",
             services: [],
-            envs: [{ key: "DELETE_ME", value: "val2", type: "SECRET" }]
+            envs: [{ key: "KEEP_ME", value: "val1", type: "GENERAL" }]
           }
         },
         {
