@@ -1,7 +1,14 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@app/components/v3";
+import {
+  Button,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Checkbox
+} from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -20,6 +27,8 @@ import {
 } from "./signupProducts";
 
 interface ProductSelectionStepProps {
+  initialProducts: SignupProductType[];
+  projectCache: { current: Partial<Record<SignupProductType, Project>> };
   onComplete: (
     products: SignupProductType[],
     projects: Partial<Record<SignupProductType, Project>>
@@ -64,12 +73,14 @@ const setUpProduct = async (product: SignupProductType): Promise<Project | undef
 };
 
 export default function ProductSelectionStep({
-  onComplete
+  onComplete,
+  initialProducts,
+  projectCache
 }: ProductSelectionStepProps): JSX.Element {
-  const [selectedTypes, setSelectedTypes] = useState<SignupProductType[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<SignupProductType[]>(initialProducts);
   const [isSettingUp, setIsSettingUp] = useState(false);
   // Survives failed attempts so a retry only sets up the products still missing.
-  const createdProjectsRef = useRef<Partial<Record<SignupProductType, Project>>>({});
+  const createdProjectsRef = projectCache;
 
   const toggleProduct = (product: SignupProductType) => {
     setSelectedTypes((current) =>
@@ -143,9 +154,9 @@ export default function ProductSelectionStep({
   })();
 
   return (
-    <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <AuthPagePanel>
-        <CardHeader className="mb-4 gap-2">
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
+      <AuthPagePanel className="gap-6">
+        <CardHeader className="gap-2">
           <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
             What brings you to Infisical?
           </CardTitle>
@@ -168,14 +179,18 @@ export default function ProductSelectionStep({
                   key={product.type}
                   htmlFor={`signup-product-${product.type}`}
                   className={cn(
-                    "grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-2 pt-2 pb-4 text-left transition-[background-color,opacity] duration-200 hover:bg-container-hover/30",
+                    "grid w-full cursor-pointer select-none grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-2 pt-2 pb-3 text-left transition-[background-color,opacity] duration-200 hover:bg-container-hover/30",
                     isSelected && "bg-container-hover/30",
-                    !isExploring && !isSelected && "opacity-50 hover:opacity-80 focus-within:opacity-80",
+                    !isExploring &&
+                      !isSelected &&
+                      "opacity-50 focus-within:opacity-80 hover:opacity-80",
                     isSettingUp && "cursor-wait"
                   )}
                 >
                   <Icon className={cn("size-4 shrink-0", product.iconClassName)} />
-                  <span className="font-alliance text-sm font-normal text-foreground">{product.name}</span>
+                  <span className="font-alliance text-sm font-normal text-foreground">
+                    {product.name}
+                  </span>
                   <Checkbox
                     variant="project"
                     id={`signup-product-${product.type}`}

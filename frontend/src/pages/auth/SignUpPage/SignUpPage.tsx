@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
 
+import { OnboardingStepTransition } from "@app/components/auth/OnboardingStepTransition";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
@@ -29,15 +30,6 @@ enum SignupSection {
   Complete = "complete"
 }
 
-// Email entry and code verification share a step; the completion summary shows no counter.
-const STEP_NUMBERS: Partial<Record<SignupSection, number>> = {
-  [SignupSection.Email]: 1,
-  [SignupSection.VerifyCode]: 1,
-  [SignupSection.UserInfo]: 2,
-  [SignupSection.ProductSelect]: 3,
-  [SignupSection.InviteTeam]: 4
-};
-
 type PendingEmailVerification = {
   email: string;
   resendCooldownEndTime: number;
@@ -59,6 +51,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     isInvite ? SignupSection.UserInfo : SignupSection.Email
   );
   const [orgId, setOrgId] = useState("");
+  const [inviteEmails, setInviteEmails] = useState("");
+  const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
   const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
   const [createdProjects, setCreatedProjects] = useState<
@@ -192,10 +186,19 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           />
         );
       case SignupSection.ProductSelect:
-        return <ProductSelectionStep onComplete={handleProductSelectComplete} />;
+        return (
+          <ProductSelectionStep
+            onComplete={handleProductSelectComplete}
+            initialProducts={selectedProducts}
+            projectCache={projectCache}
+          />
+        );
       case SignupSection.InviteTeam:
         return (
           <TeamInviteStep
+            emails={inviteEmails}
+            onEmailsChange={setInviteEmails}
+            onBack={() => setSection(SignupSection.ProductSelect)}
             productName={
               selectedProducts.length === 1
                 ? getSignupProduct(selectedProducts[0])?.name
@@ -243,19 +246,21 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     return undefined;
   };
 
-  // Step one (email entry and code verification) shows no counter, so the indicator numbers only
-  // the steps after it; without an email service the invite step is skipped too.
-  const totalSteps = serverDetails?.emailConfigured ? 3 : 2;
-  const stepNumber = STEP_NUMBERS[section];
-  const stepIndicator =
-    !isInvite && stepNumber && stepNumber > 1 ? (
-      <OnboardingProgress currentStep={stepNumber - 1} totalSteps={totalSteps} />
-    ) : undefined;
-
   const isWorkspaceSetup =
     section === SignupSection.ProductSelect ||
     section === SignupSection.InviteTeam ||
     section === SignupSection.Complete;
+
+  const postAuthSteps = serverDetails?.emailConfigured
+    ? [SignupSection.ProductSelect, SignupSection.InviteTeam, SignupSection.Complete]
+    : [SignupSection.ProductSelect, SignupSection.Complete];
+  const stepIndicator =
+    !isInvite && isWorkspaceSetup ? (
+      <OnboardingProgress
+        currentStep={postAuthSteps.indexOf(section) + 1}
+        totalSteps={postAuthSteps.length}
+      />
+    ) : undefined;
 
   return (
     <AuthPageLayout
@@ -272,15 +277,17 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      {section === SignupSection.VerifyCode ||
-      section === SignupSection.ProductSelect ||
-      section === SignupSection.Complete ? (
-        <div className="w-full">{renderView()}</div>
-      ) : (
-        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-          {renderView()}
-        </form>
-      )}
+      <OnboardingStepTransition step={section}>
+        {section === SignupSection.VerifyCode ||
+        section === SignupSection.ProductSelect ||
+        section === SignupSection.Complete ? (
+          <div className="w-full">{renderView()}</div>
+        ) : (
+          <form className="w-full" onSubmit={(e) => e.preventDefault()}>
+            {renderView()}
+          </form>
+        )}
+      </OnboardingStepTransition>
     </AuthPageLayout>
   );
 };
