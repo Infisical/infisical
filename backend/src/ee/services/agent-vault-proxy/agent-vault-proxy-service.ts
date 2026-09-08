@@ -15,6 +15,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultCredentialType, AgentVaultUnmatchedHost } from "../agent-vault/agent-vault-enums";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
@@ -141,25 +142,34 @@ export const agentVaultProxyServiceFactory = ({
     const existing = await agentVaultProxyDAL.findOne({ projectId, name });
     if (existing) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
 
-    const proxy = await agentVaultProxyDAL.transaction(async (tx) => {
-      const created = await agentVaultProxyDAL.create(
-        {
-          projectId,
-          name,
-          unmatchedHost: settings.unmatchedHost ?? AgentVaultUnmatchedHost.Allow,
-          bypassHosts: settings.bypassHosts ?? null,
-          pollInterval: settings.pollInterval ?? 60
-        },
-        tx
-      );
+    const create = () =>
+      agentVaultProxyDAL.transaction(async (tx) => {
+        const created = await agentVaultProxyDAL.create(
+          {
+            projectId,
+            name,
+            unmatchedHost: settings.unmatchedHost ?? AgentVaultUnmatchedHost.Allow,
+            bypassHosts: settings.bypassHosts ?? null,
+            pollInterval: settings.pollInterval ?? 60
+          },
+          tx
+        );
 
-      await resourceAuthMethodService.initAtCreate(
-        { resource: { type: RESOURCE_TYPE_AGENT_VAULT_PROXY, id: created.id }, authMethod: { method: "token" } },
-        tx
-      );
+        await resourceAuthMethodService.initAtCreate(
+          { resource: { type: RESOURCE_TYPE_AGENT_VAULT_PROXY, id: created.id }, authMethod: { method: "token" } },
+          tx
+        );
 
-      return created;
-    });
+        return created;
+      });
+
+    let proxy;
+    try {
+      proxy = await create();
+    } catch (err) {
+      if (isUniqueViolation(err)) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
+      throw err;
+    }
 
     // Outside the transaction: minting hits KMS.
     const enrollment = await $issueEnrollmentToken(proxy.id, ctx);
@@ -183,8 +193,13 @@ export const agentVaultProxyServiceFactory = ({
       if (existing) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
     }
 
-    const updated = await agentVaultProxyDAL.updateById(proxy.id, { name, ...settings });
-    return toAdminView(updated);
+    try {
+      const updated = await agentVaultProxyDAL.updateById(proxy.id, { name, ...settings });
+      return toAdminView(updated);
+    } catch (err) {
+      if (isUniqueViolation(err)) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
+      throw err;
+    }
   };
 
   const deleteProxy = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {

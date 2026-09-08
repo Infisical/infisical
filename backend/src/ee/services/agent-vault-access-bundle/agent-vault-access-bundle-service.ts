@@ -9,8 +9,7 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -22,6 +21,7 @@ import {
   AgentVaultBearerConfigSchema,
   TAgentVaultCredentialConfig
 } from "../agent-vault/agent-vault-credential-schemas";
+import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultCredentialType, AgentVaultResourceRole } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
@@ -369,29 +369,39 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (ctx.actor === ActorType.USER) creatorColumn = "actorUserId";
     else if (ctx.actor === ActorType.IDENTITY) creatorColumn = "actorIdentityId";
 
-    return agentVaultAccessBundleDAL.transaction(async (tx) => {
-      const bundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
+    const create = () =>
+      agentVaultAccessBundleDAL.transaction(async (tx) => {
+        const bundle = await agentVaultAccessBundleDAL.create({ projectId, name, description }, tx);
 
-      if (creatorColumn) {
-        const direct = await membershipDAL.findOne(
-          { scope: AccessScope.Project, scopeProjectId: projectId, [creatorColumn]: ctx.actorId },
-          tx
-        );
-        if (direct) {
-          await writeGrants(
-            {
-              projectId,
-              orgId: ctx.actorOrgId,
-              accessBundleId: bundle.id,
-              actors: [{ actorColumn: creatorColumn, actorId: ctx.actorId }]
-            },
+        if (creatorColumn) {
+          const direct = await membershipDAL.findOne(
+            { scope: AccessScope.Project, scopeProjectId: projectId, [creatorColumn]: ctx.actorId },
             tx
           );
+          if (direct) {
+            await writeGrants(
+              {
+                projectId,
+                orgId: ctx.actorOrgId,
+                accessBundleId: bundle.id,
+                actors: [{ actorColumn: creatorColumn, actorId: ctx.actorId }]
+              },
+              tx
+            );
+          }
         }
-      }
 
-      return bundle;
-    });
+        return bundle;
+      });
+
+    try {
+      return await create();
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new BadRequestError({ message: `An access bundle named '${name}' already exists` });
+      }
+      throw err;
+    }
   };
 
   const updateAccessBundle = async ({ accessBundleId, name, description, ...rest }: TUpdateAccessBundleDTO) => {
@@ -406,7 +416,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (existing) throw new BadRequestError({ message: `An access bundle named '${name}' already exists` });
     }
 
-    return agentVaultAccessBundleDAL.updateById(bundle.id, { name, description });
+    try {
+      return await agentVaultAccessBundleDAL.updateById(bundle.id, { name, description });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new BadRequestError({ message: `An access bundle named '${name}' already exists` });
+      }
+      throw err;
+    }
   };
 
   const deleteAccessBundle = async ({ accessBundleId, ...rest }: TDeleteAccessBundleDTO) => {
@@ -463,14 +480,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ? encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob
       : null;
 
-    const connection = await agentVaultConnectionDAL.create({
-      accessBundleId: bundle.id,
-      name,
-      hostPattern,
-      credentialType: credential.type,
-      credentialConfig: config,
-      encryptedCredential
-    });
+    let connection;
+    try {
+      connection = await agentVaultConnectionDAL.create({
+        accessBundleId: bundle.id,
+        name,
+        hostPattern,
+        credentialType: credential.type,
+        credentialConfig: config,
+        encryptedCredential
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });
+      }
+      throw err;
+    }
 
     return { connection: { ...connection, credential: summarizeCredential(connection) } };
   };
@@ -536,11 +561,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       };
     }
 
-    const updated = await agentVaultConnectionDAL.updateById(connection.id, {
-      name,
-      hostPattern,
-      ...credentialUpdate
-    });
+    let updated;
+    try {
+      updated = await agentVaultConnectionDAL.updateById(connection.id, {
+        name,
+        hostPattern,
+        ...credentialUpdate
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });
+      }
+      throw err;
+    }
 
     return { connection: { ...updated, credential: summarizeCredential(updated) } };
   };
@@ -628,10 +661,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     try {
       created = await grant();
     } catch (err) {
-      if (
-        err instanceof DatabaseError &&
-        (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
-      ) {
+      if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: "That user, machine identity or group already has this access bundle" });
       }
       throw err;
