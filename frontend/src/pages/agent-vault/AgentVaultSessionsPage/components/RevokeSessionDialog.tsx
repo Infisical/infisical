@@ -1,17 +1,5 @@
-import { TriangleAlertIcon } from "lucide-react";
-
 import { createNotification } from "@app/components/notifications";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle
-} from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3";
 import { useRevokeAgentVaultSession } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
@@ -32,32 +20,15 @@ export const RevokeSessionDialog = ({ session, onOpenChange }: Props) => {
   };
 
   return (
-    <AlertDialog open={Boolean(session)} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia>
-            <TriangleAlertIcon />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Revoke session for &quot;{session?.actorName}&quot;</AlertDialogTitle>
-          <AlertDialogDescription>
-            Proxies stop attaching credentials for this session at their next poll. This cannot be
-            undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="danger"
-            isPending={revokeSession.isPending}
-            onClick={async (event) => {
-              event.preventDefault();
-              await handleRevoke();
-            }}
-          >
-            Revoke Session
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <DeleteConfirmDialog
+      isOpen={Boolean(session)}
+      onOpenChange={onOpenChange}
+      title={`Revoke session for "${session?.actorName}"`}
+      description="Proxies stop attaching credentials for this session at their next poll. This cannot be undone."
+      confirmKey={session?.actorName ?? ""}
+      confirmLabel="Revoke Session"
+      isPending={revokeSession.isPending}
+      onConfirm={handleRevoke}
+    />
   );
 };

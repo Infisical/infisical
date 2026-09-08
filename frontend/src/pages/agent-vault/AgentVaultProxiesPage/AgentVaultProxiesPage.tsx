@@ -415,38 +415,18 @@ export const AgentVaultProxiesPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={Boolean(proxyToRevoke)}
+      <DeleteConfirmDialog
+        isOpen={Boolean(proxyToRevoke)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setProxyToRevoke(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <TriangleAlertIcon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Revoke &quot;{proxyToRevoke?.name}&quot;</AlertDialogTitle>
-            <AlertDialogDescription>
-              Its token stops working at its next poll. Every agent routed through it loses its
-              credentials until the proxy enrolls again.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isPending={revokeProxy.isPending}
-              onClick={async (event) => {
-                event.preventDefault();
-                await handleRevoke();
-              }}
-            >
-              Revoke Access
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={`Revoke "${proxyToRevoke?.name}"`}
+        description="Its token stops working at its next poll. Every agent routed through it loses its credentials until the proxy enrolls again."
+        confirmKey={proxyToRevoke?.name ?? ""}
+        confirmLabel="Revoke Access"
+        isPending={revokeProxy.isPending}
+        onConfirm={handleRevoke}
+      />
 
       <DeleteConfirmDialog
         isOpen={Boolean(proxyToDelete)}
