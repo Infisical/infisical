@@ -20,11 +20,9 @@ export const getRequesterStatus = (
   const matches = (value: string | undefined) => value?.toLowerCase() === requested;
 
   const isProjectUser = memberUsernames.has(requesterEmail) || memberUsernames.has(requested);
-  // Username first, so a username hit always wins: email is not guaranteed unique against other
-  // users' usernames, and matching the wrong person here would preselect them for an access grant.
-  const orgUser =
-    orgUsers?.find(({ user }) => matches(user.username)) ??
-    orgUsers?.find(({ user }) => matches(user.email));
+  const orgUser = orgUsers?.find(
+    ({ user }) => matches(user.username) || matches(user.email) || false
+  );
 
   let userLabel = "";
   if (orgUser) {
