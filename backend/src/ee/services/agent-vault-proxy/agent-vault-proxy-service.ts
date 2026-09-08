@@ -7,7 +7,13 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  InternalServerError,
+  NotFoundError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -259,12 +265,13 @@ export const agentVaultProxyServiceFactory = ({
 
   const $decryptCredential = (
     row: { credentialType: string; credentialConfig: unknown; encryptedCredential: Buffer | null },
-    decryptor: (input: { cipherTextBlob: Buffer }) => Buffer
+    decryptor: ((input: { cipherTextBlob: Buffer }) => Buffer) | null
   ): TResolvedConnection["credential"] => {
     const config = (row.credentialConfig ?? {}) as Record<string, string>;
     if (row.credentialType === AgentVaultCredentialType.Passthrough || !row.encryptedCredential) {
       return { type: "passthrough" };
     }
+    if (!decryptor) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
 
     const secret = JSON.parse(decryptor({ cipherTextBlob: row.encryptedCredential }).toString("utf-8")) as Record<
       string,
@@ -357,10 +364,16 @@ export const agentVaultProxyServiceFactory = ({
       accessBundleIds
     });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId: session.projectId
-    });
+    // A bundle of pass-through connections has nothing sealed, so deriving the project data key would be
+    // a kms_keys read (or an external KMS round trip) per resolve for nothing.
+    const decryptor = rows.some((row) => row.encryptedCredential)
+      ? (
+          await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId: session.projectId
+          })
+        ).decryptor
+      : null;
 
     const connections: TResolvedConnection[] = rows.map((row) => ({
       id: row.id,
