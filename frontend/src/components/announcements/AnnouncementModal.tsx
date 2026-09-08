@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, XIcon } from "lucide-react";
 
 import {
   Button,
   Dialog,
+  DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   IconButton
@@ -42,6 +45,35 @@ const safeLink = (link: string | null): string | null => {
   }
 };
 
+const AnnouncementImage = ({ src }: { src: string }) => {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+
+  return (
+    <div className="relative aspect-[16/9] w-full overflow-hidden bg-container">
+      {status !== "loaded" && (
+        <div
+          role="status"
+          className="absolute inset-0 flex items-center justify-center text-sm text-muted"
+        >
+          {status === "error" ? "Image unavailable" : "Loading image…"}
+        </div>
+      )}
+      <img
+        src={src}
+        alt=""
+        loading="eager"
+        onLoad={() => setStatus("loaded")}
+        onError={() => setStatus("error")}
+        className={
+          status === "loaded"
+            ? "absolute inset-0 h-full w-full object-cover"
+            : "invisible absolute inset-0 h-full w-full object-cover"
+        }
+      />
+    </div>
+  );
+};
+
 export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props) => {
   const [index, setIndex] = useState(0);
 
@@ -63,76 +95,84 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl overflow-hidden p-0">
-        {announcement.imageUrl && (
-          <div className="aspect-[16/9] w-full overflow-hidden bg-muted">
-            <img
-              src={announcement.imageUrl}
-              alt=""
-              loading="eager"
-              className="h-full w-full object-cover"
-            />
-          </div>
-        )}
-        <div className="flex flex-col gap-4 p-4">
-          <DialogHeader>
-            {publishedLabel && (
-              <time
-                dateTime={announcement.published}
-                className="text-xs font-medium tracking-wide text-muted uppercase"
-              >
-                {publishedLabel}
-              </time>
-            )}
-            <DialogTitle>{announcement.title}</DialogTitle>
-            <DialogDescription className="my-4 whitespace-pre-line text-foreground/75">
-              {announcement.body}
-            </DialogDescription>
-            {safeHref && ctaLabel && (
-              <a
-                href={safeHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-1.5 text-sm text-white underline"
-              >
-                {ctaLabel}
-                <ExternalLink className="size-3.5" />
-              </a>
-            )}
-          </DialogHeader>
-          <div className="flex items-center justify-between gap-2">
-            {showPager ? (
-              <div className="flex items-center gap-1.5 text-sm text-muted">
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  aria-label="Previous announcement"
-                  onClick={() => setIndex(Math.max(0, safeIndex - 1))}
-                  isDisabled={!hasPrev}
+      <DialogContent
+        showCloseButton={false}
+        className="h-[40rem] max-w-xl gap-0 overflow-hidden p-0"
+      >
+        <DialogClose asChild>
+          <IconButton
+            aria-label="Close"
+            variant="outline"
+            size="xs"
+            className="absolute top-3 right-3 z-20 bg-popover hover:bg-container-hover"
+          >
+            <XIcon />
+          </IconButton>
+        </DialogClose>
+        <DialogBody key={announcement.id}>
+          {announcement.imageUrl && (
+            <AnnouncementImage key={announcement.imageUrl} src={announcement.imageUrl} />
+          )}
+          <div className={announcement.imageUrl ? "p-4" : "p-4 pr-14"}>
+            <DialogHeader>
+              {publishedLabel && (
+                <time
+                  dateTime={announcement.published}
+                  className="text-xs font-medium tracking-wide text-muted uppercase"
                 >
-                  <ChevronLeft />
-                </IconButton>
-                <span className="tabular-nums">
-                  {safeIndex + 1} / {total}
-                </span>
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  aria-label="Next announcement"
-                  onClick={() => setIndex(Math.min(total - 1, safeIndex + 1))}
-                  isDisabled={!hasNext}
+                  {publishedLabel}
+                </time>
+              )}
+              <DialogTitle>{announcement.title}</DialogTitle>
+              <DialogDescription className="my-4 whitespace-pre-line text-foreground/75">
+                {announcement.body}
+              </DialogDescription>
+              {safeHref && ctaLabel && (
+                <a
+                  href={safeHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-fit items-center gap-1.5 text-sm text-white underline"
                 >
-                  <ChevronRight />
-                </IconButton>
-              </div>
-            ) : (
-              <span aria-hidden="true" />
-            )}
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Got it
-            </Button>
+                  {ctaLabel}
+                  <ExternalLink className="size-3.5" />
+                </a>
+              )}
+            </DialogHeader>
           </div>
-        </div>
+        </DialogBody>
+        <DialogFooter className="mx-0 justify-between">
+          {showPager ? (
+            <div className="flex items-center gap-1.5 text-sm text-muted">
+              <IconButton
+                variant="ghost"
+                size="xs"
+                aria-label="Previous announcement"
+                onClick={() => setIndex(Math.max(0, safeIndex - 1))}
+                isDisabled={!hasPrev}
+              >
+                <ChevronLeft />
+              </IconButton>
+              <span className="tabular-nums">
+                {safeIndex + 1} / {total}
+              </span>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                aria-label="Next announcement"
+                onClick={() => setIndex(Math.min(total - 1, safeIndex + 1))}
+                isDisabled={!hasNext}
+              >
+                <ChevronRight />
+              </IconButton>
+            </div>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Got it
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
