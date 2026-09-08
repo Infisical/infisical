@@ -12,6 +12,7 @@ import {
   SelectValue,
   TabsContent
 } from "@app/components/v3";
+import { useTimeRemaining } from "@app/hooks";
 import { useGetRelays } from "@app/hooks/api/relays/queries";
 
 type Props = {
@@ -22,18 +23,6 @@ type Props = {
 };
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
-
-const formatTimeRemaining = (expiresAt: string, now: number) => {
-  const remainingSeconds = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000));
-  if (remainingSeconds === 0) return "Expired";
-
-  const hours = Math.floor(remainingSeconds / 3600);
-  const minutes = Math.floor((remainingSeconds % 3600) / 60);
-  const seconds = remainingSeconds % 60;
-
-  if (hours > 0) return `${hours}h ${minutes}m remaining`;
-  return `${minutes}m ${seconds}s remaining`;
-};
 
 // Renders a freshly minted token as inline deployment instructions.
 export const EnrollmentTokenContent = ({
@@ -49,12 +38,7 @@ export const EnrollmentTokenContent = ({
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
   const [commandRelay, setCommandRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
+  const { label: expiryLabel, isExpired } = useTimeRemaining(expiresAt);
 
   useEffect(() => {
     setCommandRelay(relay);
@@ -69,8 +53,6 @@ export const EnrollmentTokenContent = ({
   }, [isCommandDirty, onCommandDirtyChange]);
 
   const resolvedRelayName = commandRelay.id === "_auto" ? "" : commandRelay.name;
-  const expiryLabel = formatTimeRemaining(expiresAt, now);
-  const isExpired = expiryLabel === "Expired";
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";

@@ -18,5 +18,6 @@ export { useScopeVariant } from "./useScopeVariant";
 export { useSecretsActivationNudge } from "./useSecretsActivationNudge";
 export { useSyntaxHighlight } from "./useSyntaxHighlight";
 export { useTimedReset } from "./useTimedReset";
+export { useTimeRemaining } from "./useTimeRemaining";
 export { useToggle } from "./useToggle";
 export { useWizardSteps } from "./useWizardSteps";

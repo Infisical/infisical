@@ -1,4 +1,10 @@
+import { ReactNode } from "react";
+import { TriangleAlertIcon } from "lucide-react";
+
 import {
+  Alert,
+  AlertDescription,
+  Badge,
   Button,
   CodeBlock,
   Dialog,
@@ -12,6 +18,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { useTimeRemaining } from "@app/hooks";
 import { TAgentVaultEnrollment } from "@app/hooks/api/agentVault/types";
 
 const cliCommand = (token: string, siteUrl: string) =>
@@ -48,18 +55,38 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
   const token = enrollment?.token ?? "";
   const { protocol, hostname, port } = window.location;
   const siteUrl = `${protocol}//${hostname}${port && port !== "80" ? `:${port}` : ""}`;
+  const { label: expiryLabel, isExpired } = useTimeRemaining(enrollment?.expiresAt);
+
+  const labelWithExpiry = (text: string): ReactNode => (
+    <span className="flex w-full items-center justify-between gap-2">
+      <span>{text}</span>
+      <Badge className="tabular-nums" variant={isExpired ? "danger" : "neutral"}>
+        {expiryLabel}
+      </Badge>
+    </span>
+  );
 
   return (
     <Dialog open={Boolean(enrollment)} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl" onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Enrollment Token</DialogTitle>
           <DialogDescription>
-            This token is shown only once and expires in an hour.
+            Run this where the proxy lives. It enrolls once and keeps its own certificate after
+            that.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              {isExpired
+                ? "This token has expired. Generate a new one from the proxy's menu."
+                : "This token is shown once and expires in an hour. Copy it now, it cannot be retrieved later."}
+            </AlertDescription>
+          </Alert>
+
           <Tabs defaultValue="cli">
             <TabsList variant="av" aria-label="Deployment target">
               <TabsTrigger value="cli">CLI</TabsTrigger>
@@ -67,13 +94,25 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
               <TabsTrigger value="systemd">systemd</TabsTrigger>
             </TabsList>
             <TabsContent value="cli">
-              <CodeBlock value={cliCommand(token, siteUrl)} />
+              <CodeBlock
+                value={cliCommand(token, siteUrl)}
+                label={labelWithExpiry("Command")}
+                isCopyable={!isExpired}
+              />
             </TabsContent>
             <TabsContent value="docker">
-              <CodeBlock value={dockerCommand(token, siteUrl)} />
+              <CodeBlock
+                value={dockerCommand(token, siteUrl)}
+                label={labelWithExpiry("Command")}
+                isCopyable={!isExpired}
+              />
             </TabsContent>
             <TabsContent value="systemd">
-              <CodeBlock value={systemdUnit(token, siteUrl)} />
+              <CodeBlock
+                value={systemdUnit(token, siteUrl)}
+                label={labelWithExpiry("Unit file")}
+                isCopyable={!isExpired}
+              />
             </TabsContent>
           </Tabs>
         </div>
