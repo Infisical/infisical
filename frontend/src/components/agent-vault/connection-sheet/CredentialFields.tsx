@@ -5,9 +5,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Detail,
-  DetailLabel,
-  DetailValue,
+  CodeBlock,
   Field,
   FieldContent,
   FieldError,
@@ -168,12 +166,11 @@ export const CredentialFields = ({ storedType }: Props) => {
 
       {/* Only bearer composes anything: basic is a fixed header, so a preview there would never move. */}
       {credentialType === AgentVaultCredentialType.Bearer && (
-        <Detail>
-          <DetailLabel>Sends</DetailLabel>
-          <DetailValue className="font-mono">
-            {credentialPreview({ credentialType, headerName, headerPrefix }, "<token>")}
-          </DetailValue>
-        </Detail>
+        <CodeBlock
+          label="Sends"
+          isCopyable={false}
+          value={credentialPreview({ credentialType, headerName, headerPrefix }, "<token>") ?? ""}
+        />
       )}
 
       {credentialType === AgentVaultCredentialType.Passthrough && (
