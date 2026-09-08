@@ -2,11 +2,13 @@ import { createFileRoute, isRedirect, redirect } from "@tanstack/react-router";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
+import { agentVaultKeys } from "@app/hooks/api/agentVault";
 import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
 import { certManagerInstanceKeys } from "@app/hooks/api/certManagerInstance";
 import { identitiesKeys } from "@app/hooks/api/identities/queries";
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
+import { pamKeys } from "@app/hooks/api/pam";
 import { projectKeys } from "@app/hooks/api/projects";
 import { fetchUserOrgPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { subOrganizationsQuery } from "@app/hooks/api/subOrganizations";
@@ -51,6 +53,10 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
             context.queryClient.removeQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
             context.queryClient.removeQueries({ queryKey: identitiesKeys.countIdentitiesRoot });
             context.queryClient.removeQueries({ queryKey: appConnectionKeys.all });
+            // Neither product's keys carry the org or its implicit project, so a stale entry would
+            // render another org's data until it goes stale.
+            context.queryClient.removeQueries({ queryKey: agentVaultKeys.all });
+            context.queryClient.removeQueries({ queryKey: pamKeys.all });
 
             await context.queryClient.fetchQuery({
               queryKey: authKeys.getAuthToken,
