@@ -251,7 +251,16 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       params: z.object({
         sessionId: z.string().uuid().describe("The ID of the session"),
         chunkIndex: z.coerce.number().int().nonnegative().max(999999).describe("The chunk index to retrieve")
-      })
+      }),
+      response: {
+        200: z.any().describe(
+          JSON.stringify({
+            type: "string",
+            format: "binary",
+            description: "The encrypted chunk bytes, returned as application/octet-stream"
+          })
+        )
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
