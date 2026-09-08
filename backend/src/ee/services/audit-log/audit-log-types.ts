@@ -945,7 +945,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.SCEP_ACCOUNT]: "profileId",
   [ActorType.GATEWAY]: "gatewayId",
   [ActorType.RELAY]: "relayId",
-  [ActorType.KMIP_SERVER]: "kmipServerId"
+  [ActorType.KMIP_SERVER]: "kmipServerId",
+  [ActorType.AGENT_VAULT_PROXY]: "agentVaultProxyId"
 };
 
 export const filterableSecretEvents: EventType[] = [
