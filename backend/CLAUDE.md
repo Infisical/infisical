@@ -143,6 +143,15 @@ DALs extend these with custom queries — typically complex joins using Knex que
 
 `updateById` and `update` support atomic `$incr` and `$decr` operators alongside regular field updates.
 
+**A dropped column does not fail type checking if the insert is built in a `.map()`.** TypeScript's
+excess-property check only fires on a fresh object literal at the assignment site, so a stale field
+survives when the literal is returned from a callback:
+
+```ts
+insertMany(names.map((name) => ({ name, role: "member", orgId })));  // compiles, then 500s at runtime
+insertMany([{ name, role: "member", orgId }]);                       // TS2353
+```
+
 See `src/services/secret/secret-dal.ts` for a DAL that overrides the base `update` to auto-increment version and adds complex join queries.
 
 ### Service Module Structure

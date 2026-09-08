@@ -2818,6 +2818,9 @@ interface AddUserToGroupEvent {
     groupName: string;
     userId: string;
     username: string;
+    source?: "github-org-sync";
+    githubOrgName?: string;
+    syncTrigger?: "login" | "manual";
   };
 }
 
@@ -2828,6 +2831,9 @@ interface RemoveUserFromGroupEvent {
     groupName: string;
     userId: string;
     username: string;
+    source?: "github-org-sync";
+    githubOrgName?: string;
+    syncTrigger?: "login" | "manual";
   };
 }
 
