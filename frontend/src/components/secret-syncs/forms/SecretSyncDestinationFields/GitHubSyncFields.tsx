@@ -139,7 +139,7 @@ export const GitHubSyncFields = () => {
                     value={value}
                     onValueChange={(val) => {
                       onChange(val);
-                      setValue("destinationConfig.selectedRepositoryIds", undefined);
+                      setValue("destinationConfig.selectedRepositoryIds", []);
                     }}
                   >
                     <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>

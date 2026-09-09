@@ -16,7 +16,11 @@ export const GitHubSyncDestinationSchema = BaseSecretSyncSchema().merge(
           scope: z.literal(GitHubSyncScope.Organization),
           org: z.string().min(1, "Organization name required"),
           visibility: z.nativeEnum(GitHubSyncVisibility),
-          selectedRepositoryIds: z.number().array().optional()
+          selectedRepositoryIds: z
+            .number()
+            .array()
+            .optional()
+            .transform((value) => (value?.length ? value : undefined))
         }),
         z.object({
           scope: z.literal(GitHubSyncScope.Repository),
