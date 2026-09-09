@@ -212,11 +212,11 @@ export type TPermissionServiceFactory = {
     projectId: string;
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
-  getActorRoleSlugs: (arg: {
+  getActorGrantAbilities: (arg: {
     scopeData: AccessScopeData;
     actorId: string;
     actorType: ActorType.USER | ActorType.IDENTITY;
-  }) => Promise<string[]>;
+  }) => Promise<{ permission: MongoAbility }[]>;
   getMembershipPermissionAudit: (arg: TGetMembershipPermissionAuditArg) => Promise<{
     sources: TPermissionAuditSource[];
   }>;

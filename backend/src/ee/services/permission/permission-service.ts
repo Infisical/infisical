@@ -1198,13 +1198,34 @@ export const permissionServiceFactory = ({
     return sources;
   };
 
-  const getActorRoleSlugs: TPermissionServiceFactory["getActorRoleSlugs"] = async ({
+  const getActorGrantAbilities: TPermissionServiceFactory["getActorGrantAbilities"] = async ({
     scopeData,
     actorId,
     actorType
   }) => {
     const memberships = await permissionDAL.getPermission({ scopeData, actorId, actorType });
-    return resolveMembershipRoleSlugs(memberships.flatMap((membership) => membership.roles));
+    const roleSlugs = resolveMembershipRoleSlugs(memberships.flatMap((membership) => membership.roles));
+    const isProjectScope = scopeData.scope === AccessScope.Project;
+
+    const rolePermissions = isProjectScope
+      ? await getProjectPermissionByRoles(roleSlugs, scopeData.projectId, { ignoreUnresolvedRoles: true })
+      : await getOrgPermissionByRoles(roleSlugs, scopeData.orgId, { ignoreUnresolvedRoles: true });
+
+    const privilegePermissions = memberships.flatMap((membership) =>
+      (membership.additionalPrivileges ?? []).filter(isActiveRole).map(({ permissions }) => ({
+        permission: isProjectScope
+          ? createMongoAbility<ProjectPermissionSet>(
+              buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: permissions || [] }]),
+              { conditionsMatcher }
+            )
+          : createMongoAbility<OrgPermissionSet>(
+              buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: permissions || [] }]),
+              { conditionsMatcher }
+            )
+      }))
+    );
+
+    return [...rolePermissions.map(({ permission }) => ({ permission })), ...privilegePermissions];
   };
 
   const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({
@@ -1436,7 +1457,7 @@ export const permissionServiceFactory = ({
     getOrgPermissionByRoles,
     getProjectPermissionByRoles,
     checkGroupProjectPermission,
-    getActorRoleSlugs,
+    getActorGrantAbilities,
     getMembershipPermissionAudit,
     getIdentityPermissionAudit,
     invalidateProjectFolderPermissionCache,

@@ -76,11 +76,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getOrgPermission"
-    | "getProjectPermission"
-    | "getOrgPermissionByRoles"
-    | "getProjectPermissionByRoles"
-    | "getActorRoleSlugs"
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   kmsService: TKmsServiceFactory;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "findOne">;

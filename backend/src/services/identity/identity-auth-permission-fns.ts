@@ -17,11 +17,7 @@ const PROJECT_ACTION_BY_ORG_ACTION = {
 type TIdentityAuthPermissionDeps = {
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getOrgPermission"
-    | "getProjectPermission"
-    | "getOrgPermissionByRoles"
-    | "getProjectPermissionByRoles"
-    | "getActorRoleSlugs"
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
@@ -62,19 +58,13 @@ export const assertIdentityAuthMutationAllowed = async (
   const resolveTargetPermissions = async () => {
     if (shouldUseNewPrivilegeSystem) return [];
 
-    const targetRoles = await permissionService.getActorRoleSlugs({
+    return permissionService.getActorGrantAbilities({
       scopeData: projectId
         ? { scope: AccessScope.Project, orgId, projectId }
         : { scope: AccessScope.Organization, orgId },
       actorId: identityId,
       actorType: ActorType.IDENTITY
     });
-
-    const rolePermissions = projectId
-      ? await permissionService.getProjectPermissionByRoles(targetRoles, projectId, { ignoreUnresolvedRoles: true })
-      : await permissionService.getOrgPermissionByRoles(targetRoles, orgId, { ignoreUnresolvedRoles: true });
-
-    return rolePermissions.map(({ permission: rolePermission }) => ({ permission: rolePermission }));
   };
 
   if (projectId) {

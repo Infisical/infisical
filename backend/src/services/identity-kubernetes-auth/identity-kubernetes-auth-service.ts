@@ -106,11 +106,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getOrgPermission"
-    | "getProjectPermission"
-    | "getOrgPermissionByRoles"
-    | "getProjectPermissionByRoles"
-    | "getActorRoleSlugs"
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;

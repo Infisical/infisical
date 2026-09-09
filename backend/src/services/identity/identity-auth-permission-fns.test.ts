@@ -23,9 +23,9 @@ import { assertIdentityAuthMutationAllowed } from "./identity-auth-permission-fn
 // carried none, and revoke carried one only on its org branch, so on the legacy privilege system a
 // principal holding `edit-auth` could repoint an identity that outranks it and authenticate as it.
 // `orgEditAuthOnly` models the actor that made this reachable: a custom role with `edit-auth` but
-// not full admin. The target's role set comes from `getActorRoleSlugs`, which reads the same
-// group-aware membership query the ability is built from, so a role held only through an identity
-// group is bounded like a direct one.
+// not full admin. The target's grants come from `getActorGrantAbilities`, which reads the same
+// membership query the ability is built from, so a role held only through an identity group, and an
+// additional privilege carrying no role slug at all, are each bounded like a direct role.
 
 const orgAdmin = createMongoAbility<MongoAbility<OrgPermissionSet>>(orgAdminPermissions);
 const orgMember = createMongoAbility<MongoAbility<OrgPermissionSet>>(orgMemberPermissions);
@@ -54,8 +54,6 @@ const runBoundary = async ({
   action = OrgPermissionIdentityActions.EditAuth,
   scopeCalls = [],
   roleLookups = [],
-  targetRoles = ["member"],
-  resolvedRoles = [],
   principals = []
 }: {
   shouldUseNewPrivilegeSystem?: boolean;
@@ -65,30 +63,20 @@ const runBoundary = async ({
   action?: OrgPermissionIdentityActions.EditAuth | OrgPermissionIdentityActions.CreateToken;
   scopeCalls?: TScopeCall[];
   roleLookups?: string[];
-  targetRoles?: string[];
-  resolvedRoles?: string[][];
   principals?: TPrincipal[];
 }) => {
   const deps = {
     permissionService: {
       getOrgPermission: () => Promise.resolve({ permission: actorPermission }),
       getProjectPermission: () => Promise.resolve({ permission: actorPermission }),
-      getOrgPermissionByRoles: (roles: string[]) => {
-        roleLookups.push("org");
-        resolvedRoles.push(roles);
-        return Promise.resolve(targetPermissions.map((permission) => ({ permission })));
-      },
-      getProjectPermissionByRoles: (roles: string[]) => {
-        roleLookups.push("project");
-        resolvedRoles.push(roles);
-        return Promise.resolve(targetPermissions.map((permission) => ({ permission })));
-      },
-      // Stands in for permissionDAL.getPermission, which returns direct and group-derived
-      // memberships together, so a group-inherited role is indistinguishable from a direct one here.
-      getActorRoleSlugs: ({ scopeData, actorId, actorType }: { scopeData: TScopeCall } & TPrincipal) => {
+      // One ability per grant the target holds. The real implementation sources these from
+      // permissionDAL.getPermission, so direct roles, group-inherited roles and additional
+      // privileges are indistinguishable from each other by the time they reach the boundary.
+      getActorGrantAbilities: ({ scopeData, actorId, actorType }: { scopeData: TScopeCall } & TPrincipal) => {
         scopeCalls.push(scopeData);
         principals.push({ actorId, actorType });
-        return Promise.resolve(targetRoles);
+        roleLookups.push(scopeData.projectId ? "project" : "org");
+        return Promise.resolve(targetPermissions.map((permission) => ({ permission })));
       }
     },
     orgDAL: { findById: () => Promise.resolve({ shouldUseNewPrivilegeSystem }) }
@@ -140,19 +128,6 @@ describe("assertIdentityAuthMutationAllowed", () => {
       const principals: TPrincipal[] = [];
       await runBoundary({ actorPermission: orgAdmin, targetPermissions: [orgMember], principals });
       expect(principals).toEqual([{ actorId: "identity-1", actorType: ActorType.IDENTITY }]);
-    });
-
-    test("the whole effective role set is forwarded, group-inherited roles included", async () => {
-      const resolvedRoles: string[][] = [];
-      await expect(
-        runBoundary({
-          actorPermission: orgEditAuthOnly,
-          targetPermissions: [orgAdmin],
-          targetRoles: ["member", "admin"],
-          resolvedRoles
-        })
-      ).rejects.toThrow(PermissionBoundaryError);
-      expect(resolvedRoles).toEqual([["member", "admin"]]);
     });
 
     test("holding the action is sufficient under the new privilege system", async () => {

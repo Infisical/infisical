@@ -171,11 +171,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getOrgPermission"
-    | "getProjectPermission"
-    | "getOrgPermissionByRoles"
-    | "getProjectPermissionByRoles"
-    | "getActorRoleSlugs"
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;

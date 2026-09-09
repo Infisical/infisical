@@ -53,11 +53,7 @@ type TIdentityOciAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getOrgPermission"
-    | "getProjectPermission"
-    | "getOrgPermissionByRoles"
-    | "getProjectPermissionByRoles"
-    | "getActorRoleSlugs"
+    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
