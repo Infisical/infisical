@@ -132,7 +132,11 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
                   placeholder="Select project..."
                   searchPlaceholder="Search projects..."
                   searchAriaLabel="Search projects"
-                  emptyMessage="No projects available. This identity is already a member of every project you can access."
+                  emptyMessage={
+                    filteredWorkspaces.length === 0
+                      ? "This identity is already a member of every project you can access."
+                      : "No projects found."
+                  }
                   isLoading={isWorkspacesLoading}
                   isError={Boolean(error)}
                   modal
