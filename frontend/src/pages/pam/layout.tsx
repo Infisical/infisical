@@ -52,6 +52,7 @@ export const Route = createFileRoute(
     ]);
 
     return {
+      implicitProjectId: pamProjectId,
       breadcrumbs: [
         {
           type: BreadcrumbTypes.Component,

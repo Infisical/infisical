@@ -47,6 +47,7 @@ export const Route = createFileRoute(
     ]);
 
     return {
+      implicitProjectId: agentVaultProjectId,
       breadcrumbs: [{ type: BreadcrumbTypes.Component, component: ProjectSelect }]
     };
   }
