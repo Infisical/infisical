@@ -108,6 +108,7 @@ export enum QueueName {
   SecretScanningV2RealtimeScan = "secret-scanning-v2-realtime-scan",
   UserNotification = "user-notification",
   AlertDispatch = "alert-dispatch",
+  EventOutboxFlush = "event-outbox-flush",
   AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
   PamDiscoveryScan = "pam-discovery-scan",
@@ -183,6 +184,7 @@ export enum QueueJobs {
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification-job",
   AlertDispatch = "alert-dispatch-job",
+  EventOutboxFlush = "event-outbox-flush-job",
   GenerateAuditReport = "generate-audit-report-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
@@ -517,6 +519,10 @@ export type TQueueJobTypes = {
   [QueueName.AlertDispatch]: {
     name: QueueJobs.AlertDispatch;
     payload: { alertId: string; scheduledAt: string };
+  };
+  [QueueName.EventOutboxFlush]: {
+    name: QueueJobs.EventOutboxFlush;
+    payload: { consumer: string; resourceType: string; resourceId: string };
   };
   [QueueName.AuditReportGeneration]: {
     name: QueueJobs.GenerateAuditReport;

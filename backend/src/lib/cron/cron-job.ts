@@ -47,6 +47,8 @@ export const CronJobName = {
   PamHeartbeatQueueChecks: "pam-heartbeat-queue-checks",
   MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
   DailyAlertProcessing: "daily-alert-processing",
+  EventOutboxStaleClaimSweeper: "event-outbox-stale-claim-sweeper",
+  EventOutboxCleanup: "event-outbox-cleanup",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check"
 } as const;

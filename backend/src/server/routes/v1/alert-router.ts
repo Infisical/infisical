@@ -40,6 +40,7 @@ const AlertResponseSchema = z.object({
   resourceType: z.string(),
   resourceId: z.string().nullable(),
   eventType: z.string(),
+  triggerType: z.string(),
   condition: z.unknown().nullable(),
   enabled: z.boolean(),
   orgId: z.string(),

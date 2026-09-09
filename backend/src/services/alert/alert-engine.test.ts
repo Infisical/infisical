@@ -5,7 +5,13 @@ import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 import { TAlertPayload } from "./alert-channel-types";
 import { alertEngineFactory, TAlertEngineDep } from "./alert-engine";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
-import { AlertPrincipalType, AlertRunStatus, IResourceAlertProvider, TAlertContext } from "./alert-types";
+import {
+  AlertPrincipalType,
+  AlertRunStatus,
+  AlertTriggerType,
+  IResourceAlertProvider,
+  TAlertContext
+} from "./alert-types";
 
 // logger is `export let logger` assigned by initLogger(), which unit tests don't run, so any
 // channel-failure path (which logs) would otherwise dereference undefined. Mock it per-file.
@@ -55,12 +61,18 @@ const makeAlert = () => ({
 
 const makeProvider = (targets: TTarget[], onFindDueTargets?: () => void): IResourceAlertProvider<TTarget> => ({
   resourceType: RESOURCE_TYPE,
-  eventTypes: ["test.resource.expiration"],
+  events: [
+    { key: "test.resource.expiration", triggerType: AlertTriggerType.Scheduled },
+    { key: "test.resource.opened", triggerType: AlertTriggerType.Event }
+  ],
   conditionSchema: z.any(),
   findDueTargets: async () => {
     onFindDueTargets?.();
     return targets;
   },
+  // Mirrors a real provider: only ids that still resolve to a row come back, so a target deleted
+  // between the event and its delivery simply drops out.
+  findTargetsByIds: async ({ targetIds }) => targets.filter((target) => targetIds.includes(target.id)),
   assertPermission: async () => undefined,
   assertResourceInScope: async () => undefined,
   targetId: (target) => target.id,
@@ -103,6 +115,7 @@ const buildEngine = (opts: {
   recipients?: Array<{ userId: string; email: string; firstName?: string | null }>;
   failEmail?: boolean;
   failEmailFor?: string;
+  failHistoryWrite?: boolean;
 }) => {
   const registry = alertProviderRegistryFactory();
   let findDueTargetsCalls = 0;
@@ -140,6 +153,7 @@ const buildEngine = (opts: {
     alertHistoryDAL: {
       findRecentlyAlertedTargets: async () => opts.recentlyAlerted ?? [],
       createWithTargets: async (_alertId: string, options: { status: string }, deliveries: TDelivery[]) => {
+        if (opts.failHistoryWrite) throw new Error("history table unavailable");
         historyWrites.push({ deliveries, status: options.status });
         return {} as never;
       }
@@ -476,5 +490,118 @@ describe("alert engine", () => {
 
     expect(outcome).toBe(AlertDispatchOutcome.NoDueTargets);
     expect(historyWrites).toHaveLength(0);
+  });
+});
+
+describe("alert engine, event path", () => {
+  const eventAlert = () => ({ ...makeAlert(), triggerType: "event", eventType: "test.resource.opened" });
+  const EVENT = { eventType: "test.resource.opened", targetIds: ["t1"] };
+
+  test("delivers the targets the event named", async () => {
+    const { engine, sentMail, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }, { id: "t2" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
+    });
+
+    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+
+    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(result.deliveredChannelIds).toEqual(["c-email"]);
+    expect(sentMail).toHaveLength(1);
+    // t2 exists but the event did not name it, so it is not delivered.
+    expect(historyWrites[0].deliveries).toEqual([
+      { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.SUCCESS }
+    ]);
+  });
+
+  // The whole reason the event path exists: a daily scan rediscovers the same target every day and
+  // needs dedup, an event does not. If someone reintroduces the dedup lookup here, this fails.
+  test("delivers the same target again even though it was just alerted on", async () => {
+    const { engine, sentMail } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
+      recentlyAlerted: [{ channelId: "c-email", targetId: "t1" }]
+    });
+
+    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+
+    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(sentMail).toHaveLength(1);
+  });
+
+  test("reports no due targets when the event's targets no longer exist", async () => {
+    const { engine, historyWrites } = buildEngine({
+      targets: [],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
+    });
+
+    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+
+    expect(result.outcome).toBe(AlertDispatchOutcome.NoDueTargets);
+    expect(result.deliveredChannelIds).toEqual([]);
+    expect(historyWrites).toHaveLength(0);
+  });
+
+  // A retry must not re-notify a channel that already succeeded, which is what makes retrying an
+  // event with no dedup behind it safe.
+  test("skips channels a previous attempt already delivered to", async () => {
+    const { engine, sentMail, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [
+        { id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true },
+        {
+          id: "c-slack",
+          channelType: "slack",
+          encryptedConfig: encConfig({ webhookUrl: "https://hooks.slack.com/services/T/B/x" }),
+          enabled: true
+        }
+      ]
+    });
+
+    const result = await engine.runAlertForEvent(eventAlert(), { ...EVENT, skipChannelIds: ["c-email"] });
+
+    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(result.deliveredChannelIds).toEqual(["c-slack"]);
+    expect(sentMail).toHaveLength(0);
+    expect(historyWrites[0].deliveries.map((d) => d.channelId)).toEqual(["c-slack"]);
+  });
+
+  test("returns NoChannels when every channel was already delivered to", async () => {
+    const { engine } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
+    });
+
+    const result = await engine.runAlertForEvent(eventAlert(), { ...EVENT, skipChannelIds: ["c-email"] });
+
+    expect(result.outcome).toBe(AlertDispatchOutcome.NoChannels);
+  });
+
+  // Everything that can throw happens before the first send. A history write that fails afterwards
+  // must not turn a delivered event into a retry, or the retry would re-notify.
+  test("still reports success when the history write fails after delivery", async () => {
+    const { engine, sentMail } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
+      failHistoryWrite: true
+    });
+
+    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+
+    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(sentMail).toHaveLength(1);
+  });
+
+  test("reports failure and no delivered channels when every channel fails", async () => {
+    const { engine } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
+      failEmail: true
+    });
+
+    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+
+    expect(result.outcome).toBe(AlertDispatchOutcome.DeliveryFailed);
+    expect(result.deliveredChannelIds).toEqual([]);
   });
 });

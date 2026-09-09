@@ -1,6 +1,6 @@
 import pLimit from "p-limit";
 
-import { TAlerts } from "@app/db/schemas";
+import { TAlertChannels, TAlerts } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -13,10 +13,20 @@ import { AlertChannelType, TAlertChannelDeps, TAlertRecipient, TChannelTargetRes
 import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
-import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, TAlertContext } from "./alert-types";
+import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, IResourceAlertProvider, TAlertContext } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 const ALERT_DELIVERY_CONCURRENCY = 10;
+
+type TChannelWork = {
+  channel: TAlertChannels;
+  due: { target: unknown; id: string }[];
+};
+
+export type TDispatchResult = {
+  outcome: AlertDispatchOutcome;
+  deliveredChannelIds: string[];
+};
 
 type TChannelDispatchResult = {
   channelId: string;
@@ -49,52 +59,11 @@ export const alertEngineFactory = ({
   kmsService,
   smtpService
 }: TAlertEngineDep) => {
-  const runAlert = async (alert: TAlerts, opts?: { asOf?: Date }): Promise<AlertDispatchOutcome> => {
-    const provider = alertProviderRegistry.get(alert.resourceType);
-    if (!provider) {
-      logger.warn(`No alert provider registered for resource type '${alert.resourceType}' [alertId=${alert.id}]`);
-      return AlertDispatchOutcome.NoProvider;
-    }
-
-    const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
-    if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
-
-    const dueTargets = await provider.findDueTargets({
-      orgId: alert.orgId,
-      projectId: alert.projectId,
-      resourceId: alert.resourceId,
-      eventType: alert.eventType,
-      condition: alert.condition,
-      asOf: opts?.asOf ?? new Date()
-    });
-    if (dueTargets.length === 0) return AlertDispatchOutcome.NoDueTargets;
-
-    const targets = dueTargets.map((target) => ({ target, id: provider.targetId(target) }));
-
-    const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
-    const recentlyAlerted = await alertHistoryDAL.findRecentlyAlertedTargets(
-      alert.id,
-      targets.map((target) => target.id),
-      window
-    );
-    const alertedSet = new Set(recentlyAlerted.map((row) => `${row.channelId}:${row.targetId}`));
-
-    const channelWork = channels
-      .map((channel) => {
-        const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
-        const due = targets.filter((target) => !alertedSet.has(`${channel.id}:${target.id}`));
-        const cap = definition?.maxTargetsPerRun;
-        if (cap && due.length > cap) {
-          logger.info(
-            `Alert ${channel.channelType} channel capped at ${cap} targets this run; ${due.length - cap} deferred to the next run [alertId=${alert.id}] [channelId=${channel.id}]`
-          );
-          return { channel, due: due.slice(0, cap) };
-        }
-        return { channel, due };
-      })
-      .filter((work) => work.due.length > 0);
-    if (channelWork.length === 0) return AlertDispatchOutcome.AllDeduped;
-
+  const $dispatchChannelWork = async (
+    alert: TAlerts,
+    provider: IResourceAlertProvider,
+    channelWork: TChannelWork[]
+  ): Promise<TDispatchResult> => {
     const alertContext: TAlertContext = {
       id: alert.id,
       name: alert.name,
@@ -194,7 +163,7 @@ export const alertEngineFactory = ({
     );
 
     const dispatched = channelResults.filter((result) => !result.skipped);
-    if (dispatched.length === 0) return AlertDispatchOutcome.NoRecipients;
+    if (dispatched.length === 0) return { outcome: AlertDispatchOutcome.NoRecipients, deliveredChannelIds: [] };
 
     const deliveries = dispatched.flatMap((result) => {
       const perTarget = new Map<string, boolean>((result.targetResults ?? []).map((t) => [t.targetId, t.success]));
@@ -218,13 +187,138 @@ export const alertEngineFactory = ({
       logger.error(`Alert delivery failed on one or more channels [alertId=${alert.id}]: ${errorText}`);
     }
 
-    await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
+    // Deliberately not allowed to fail the run. On the event path the caller may retry, and a throw
+    // after channels have already sent would re-notify; every other failure mode is handled above,
+    // before the first send.
+    try {
+      await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
+    } catch (err) {
+      logger.error(err, `Failed to record alert history after delivery [alertId=${alert.id}]`);
+    }
 
-    if (status === AlertRunStatus.SUCCESS) return AlertDispatchOutcome.DeliverySuccess;
-    return status === AlertRunStatus.PARTIAL
-      ? AlertDispatchOutcome.DeliveryPartial
-      : AlertDispatchOutcome.DeliveryFailed;
+    const deliveredChannelIds = dispatched.filter((result) => result.success).map((result) => result.channelId);
+
+    if (status === AlertRunStatus.SUCCESS) {
+      return { outcome: AlertDispatchOutcome.DeliverySuccess, deliveredChannelIds };
+    }
+    return {
+      outcome:
+        status === AlertRunStatus.PARTIAL ? AlertDispatchOutcome.DeliveryPartial : AlertDispatchOutcome.DeliveryFailed,
+      deliveredChannelIds
+    };
   };
 
-  return { runAlert };
+  const runAlert = async (alert: TAlerts, opts?: { asOf?: Date }): Promise<AlertDispatchOutcome> => {
+    const provider = alertProviderRegistry.get(alert.resourceType);
+    if (!provider) {
+      logger.warn(`No alert provider registered for resource type '${alert.resourceType}' [alertId=${alert.id}]`);
+      return AlertDispatchOutcome.NoProvider;
+    }
+    if (!provider.findDueTargets) {
+      logger.warn(
+        `Alert provider '${alert.resourceType}' has no findDueTargets, so a scheduled alert cannot run [alertId=${alert.id}]`
+      );
+      return AlertDispatchOutcome.NoProvider;
+    }
+
+    const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
+    if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
+
+    const dueTargets = await provider.findDueTargets({
+      orgId: alert.orgId,
+      projectId: alert.projectId,
+      resourceId: alert.resourceId,
+      eventType: alert.eventType,
+      condition: alert.condition,
+      asOf: opts?.asOf ?? new Date()
+    });
+    if (dueTargets.length === 0) return AlertDispatchOutcome.NoDueTargets;
+
+    const targets = dueTargets.map((target) => ({ target, id: provider.targetId(target) }));
+
+    const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
+    const recentlyAlerted = await alertHistoryDAL.findRecentlyAlertedTargets(
+      alert.id,
+      targets.map((target) => target.id),
+      window
+    );
+    const alertedSet = new Set(recentlyAlerted.map((row) => `${row.channelId}:${row.targetId}`));
+
+    const channelWork = channels
+      .map((channel) => {
+        const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
+        const due = targets.filter((target) => !alertedSet.has(`${channel.id}:${target.id}`));
+        const cap = definition?.maxTargetsPerRun;
+        if (cap && due.length > cap) {
+          logger.info(
+            `Alert ${channel.channelType} channel capped at ${cap} targets this run; ${due.length - cap} deferred to the next run [alertId=${alert.id}] [channelId=${channel.id}]`
+          );
+          return { channel, due: due.slice(0, cap) };
+        }
+        return { channel, due };
+      })
+      .filter((work) => work.due.length > 0);
+    if (channelWork.length === 0) return AlertDispatchOutcome.AllDeduped;
+
+    const { outcome } = await $dispatchChannelWork(alert, provider, channelWork);
+    return outcome;
+  };
+
+  const runAlertForEvent = async (
+    alert: TAlerts,
+    input: { eventType: string; targetIds: string[]; skipChannelIds?: string[] }
+  ): Promise<TDispatchResult> => {
+    const provider = alertProviderRegistry.get(alert.resourceType);
+    if (!provider) {
+      logger.warn(`No alert provider registered for resource type '${alert.resourceType}' [alertId=${alert.id}]`);
+      return { outcome: AlertDispatchOutcome.NoProvider, deliveredChannelIds: [] };
+    }
+    if (!provider.findTargetsByIds) {
+      logger.warn(
+        `Alert provider '${alert.resourceType}' has no findTargetsByIds, so an event alert cannot run [alertId=${alert.id}]`
+      );
+      return { outcome: AlertDispatchOutcome.NoProvider, deliveredChannelIds: [] };
+    }
+
+    const skip = new Set(input.skipChannelIds ?? []);
+    const channels = (await alertChannelDAL.findByAlertId(alert.id, { enabled: true })).filter(
+      (channel) => !skip.has(channel.id)
+    );
+    if (channels.length === 0) return { outcome: AlertDispatchOutcome.NoChannels, deliveredChannelIds: [] };
+
+    const resolved = await provider.findTargetsByIds({
+      orgId: alert.orgId,
+      projectId: alert.projectId,
+      resourceId: alert.resourceId,
+      eventType: input.eventType,
+      condition: alert.condition,
+      targetIds: input.targetIds
+    });
+    // The rows were deleted between the event being recorded and it being delivered. Nothing to say.
+    if (resolved.length === 0) return { outcome: AlertDispatchOutcome.NoDueTargets, deliveredChannelIds: [] };
+
+    const targets = resolved.map((target) => ({ target, id: provider.targetId(target) }));
+
+    const channelWork = channels.map((channel) => {
+      const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
+      const cap = definition?.maxTargetsPerRun;
+      if (cap && targets.length > cap) {
+        // On the scheduled path the tail defers to tomorrow's run. Here there is no next run, so this
+        // is a real drop — MAX_TARGET_IDS_PER_EVENT is set at or below every channel cap to keep it
+        // unreachable, and the log names what was lost if that ever stops holding.
+        logger.warn(
+          `Alert ${channel.channelType} channel caps at ${cap} targets; dropping ${targets.length - cap} from this event [alertId=${alert.id}] [channelId=${channel.id}] [dropped=${targets
+            .slice(cap)
+            .map((target) => target.id)
+            .join(",")}]`
+        );
+        return { channel, due: targets.slice(0, cap) };
+      }
+      return { channel, due: targets };
+    });
+
+    return $dispatchChannelWork(alert, provider, channelWork);
+  };
+
+  return { runAlert, runAlertForEvent };
 };

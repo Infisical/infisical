@@ -4,7 +4,7 @@ import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
 import { alertServiceFactory, TAlertServiceFactoryDep } from "./alert-service";
-import { AlertPrincipalType, IResourceAlertProvider, TAlertPermissionInput } from "./alert-types";
+import { AlertPrincipalType, AlertTriggerType, IResourceAlertProvider, TAlertPermissionInput } from "./alert-types";
 
 const RESOURCE_TYPE = "test.resource";
 
@@ -31,9 +31,13 @@ const buildService = (opts?: {
   const permissionCalls: TAlertPermissionInput[] = [];
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
-    eventTypes: ["test.resource.expiration"],
+    events: [
+      { key: "test.resource.expiration", triggerType: AlertTriggerType.Scheduled },
+      { key: "test.resource.opened", triggerType: AlertTriggerType.Event }
+    ],
     conditionSchema: z.object({ alertBefore: z.string() }),
     findDueTargets: async () => [],
+    findTargetsByIds: async () => [],
     buildViewUrl: async () => "https://app.infisical.com/x",
     buildPayload: () => ({}) as TAlertPayload,
     targetId: () => "t",
@@ -261,6 +265,27 @@ describe("alert service", () => {
     await expect(service.createAlert({ ...validCreate, resourceId: "foreign-resource" })).rejects.toThrow(
       "resource out of scope"
     );
+  });
+
+  // triggerType is derived from the provider's event definition, never taken from the request, so an
+  // alert on an event-triggered key is invisible to the daily scan and reachable only from the outbox.
+  test("stores the trigger type its event declares", async () => {
+    const { service, alerts } = buildService();
+
+    await service.createAlert(validCreate);
+    expect([...alerts.values()][0].triggerType).toBe("scheduled");
+
+    const { service: eventService, alerts: eventAlerts } = buildService();
+    await eventService.createAlert({ ...validCreate, eventType: "test.resource.opened" });
+    expect([...eventAlerts.values()][0].triggerType).toBe("event");
+  });
+
+  test("returns the trigger type so a client can tell a scheduled alert from an event one", async () => {
+    const { service } = buildService();
+
+    const created = await service.createAlert(validCreate);
+
+    expect(created.triggerType).toBe("scheduled");
   });
 
   test("rejects a resource-less (scope-wide) alert as unsupported", async () => {

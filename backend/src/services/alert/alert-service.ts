@@ -21,7 +21,7 @@ import {
   TListAlertsDTO,
   TUpdateAlertDTO
 } from "./alert-service-types";
-import { AlertPermissionAction, AlertTriggerType, IResourceAlertProvider, toAlertActor } from "./alert-types";
+import { AlertPermissionAction, IResourceAlertProvider, TAlertEventDefinition, toAlertActor } from "./alert-types";
 
 export type TAlertServiceFactoryDep = {
   alertDAL: TAlertDALFactory;
@@ -71,11 +71,15 @@ export const alertServiceFactory = ({
     provider: IResourceAlertProvider,
     input: { eventType?: string; condition?: unknown },
     opts: { alwaysValidateCondition?: boolean } = {}
-  ) => {
-    if (input.eventType && !provider.eventTypes.includes(input.eventType)) {
-      throw new BadRequestError({
-        message: `Event type '${input.eventType}' is not supported by resource type '${provider.resourceType}'`
-      });
+  ): TAlertEventDefinition | undefined => {
+    let event: TAlertEventDefinition | undefined;
+    if (input.eventType) {
+      event = provider.events.find((candidate) => candidate.key === input.eventType);
+      if (!event) {
+        throw new BadRequestError({
+          message: `Event type '${input.eventType}' is not supported by resource type '${provider.resourceType}'`
+        });
+      }
     }
 
     if (opts.alwaysValidateCondition || input.condition !== undefined) {
@@ -86,6 +90,8 @@ export const alertServiceFactory = ({
         throw new BadRequestError({ message: `Invalid alert condition: ${message}` });
       }
     }
+
+    return event;
   };
 
   const $assembleResponse = (alert: TAlerts, channels: TAlertChannelEmbedded[]): TAlertResponse => ({
@@ -95,6 +101,7 @@ export const alertServiceFactory = ({
     resourceType: alert.resourceType,
     resourceId: alert.resourceId ?? null,
     eventType: alert.eventType,
+    triggerType: alert.triggerType,
     condition: alert.condition ?? null,
     enabled: alert.enabled,
     orgId: alert.orgId,
@@ -113,7 +120,7 @@ export const alertServiceFactory = ({
     }
 
     const provider = $getProvider(dto.resourceType);
-    $validate(provider, dto, { alwaysValidateCondition: true });
+    const event = $validate(provider, dto, { alwaysValidateCondition: true }) as TAlertEventDefinition;
 
     await $assertAlertPermission(
       provider,
@@ -158,7 +165,7 @@ export const alertServiceFactory = ({
           resourceType: dto.resourceType,
           resourceId: dto.resourceId,
           eventType: dto.eventType,
-          triggerType: AlertTriggerType.Scheduled,
+          triggerType: event.triggerType,
           condition: dto.condition != null ? JSON.stringify(dto.condition) : null,
           enabled: dto.enabled ?? true,
           orgId: dto.actorOrgId,

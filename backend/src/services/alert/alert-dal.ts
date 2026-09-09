@@ -42,6 +42,66 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The event path's counterpart to findEnabledByResourceType. Same enabled-channel and
+  // soft-deleted-project filters, narrowed to one resource and one event key. Runs in the outbox
+  // worker only; the emit path never touches the alerts table.
+  const findEnabledForEvent = async (
+    filter: {
+      orgId: string;
+      projectId?: string | null;
+      resourceType: string;
+      resourceId: string;
+      eventType: string;
+    },
+    tx?: Knex
+  ): Promise<TAlerts[]> => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Alert)
+        .leftJoin(TableName.Project, `${TableName.Alert}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Alert}.orgId`, filter.orgId)
+        .where(`${TableName.Alert}.resourceType`, filter.resourceType)
+        .where(`${TableName.Alert}.resourceId`, filter.resourceId)
+        .where(`${TableName.Alert}.eventType`, filter.eventType)
+        .where(`${TableName.Alert}.triggerType`, AlertTriggerType.Event)
+        .where(`${TableName.Alert}.enabled`, true)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .whereExists(
+          (qb) =>
+            void qb
+              .select(db.raw("1"))
+              .from(TableName.AlertChannelMembership)
+              .join(
+                TableName.AlertChannel,
+                `${TableName.AlertChannelMembership}.channelId`,
+                `${TableName.AlertChannel}.id`
+              )
+              .whereRaw(`"${TableName.AlertChannelMembership}"."alertId" = "${TableName.Alert}"."id"`)
+              .where(`${TableName.AlertChannel}.enabled`, true)
+        );
+
+      // A resource in a project can be watched by a project-scoped alert and by an org-wide one, so
+      // both are in scope; without a projectId only the org-scoped row can match.
+      if (filter.projectId) {
+        void query.where(
+          (builder) =>
+            void builder
+              .where(`${TableName.Alert}.projectId`, filter.projectId as string)
+              .orWhereNull(`${TableName.Alert}.projectId`)
+        );
+      } else {
+        void query.whereNull(`${TableName.Alert}.projectId`);
+      }
+
+      const alerts = await query
+        .select(selectAllTableCols(TableName.Alert))
+        .orderBy(`${TableName.Alert}.createdAt`, "asc");
+
+      return alerts as TAlerts[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindEnabledForEvent" });
+    }
+  };
+
   const findActiveById = async (id: string, tx?: Knex): Promise<TAlerts | undefined> => {
     try {
       const alert = await (tx || db.replicaNode())(TableName.Alert)
@@ -135,6 +195,7 @@ export const alertDALFactory = (db: TDbClient) => {
   return {
     ...alertOrm,
     findEnabledByResourceType,
+    findEnabledForEvent,
     findActiveById,
     findActiveByScope,
     findByChannelId,

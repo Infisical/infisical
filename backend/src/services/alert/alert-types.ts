@@ -10,8 +10,14 @@ export enum AlertPrincipalType {
 }
 
 export enum AlertTriggerType {
-  Scheduled = "scheduled"
+  Scheduled = "scheduled",
+  Event = "event"
 }
+
+export type TAlertEventDefinition = {
+  key: string;
+  triggerType: AlertTriggerType;
+};
 
 export enum AlertRunStatus {
   SUCCESS = "success",
@@ -49,6 +55,7 @@ export const ALERT_SCAN_LEAD_DAYS = 1;
 export const ALERT_SCAN_LEAD_INTERVAL = "1 day";
 
 export const MAX_CHANNELS_PER_ALERT = 10;
+export const MAX_TARGET_IDS_PER_EVENT = 25;
 export const MAX_RECIPIENTS_PER_CHANNEL = 20;
 
 export const ALERT_HISTORY_RETENTION_DAYS = 90;
@@ -66,6 +73,15 @@ export type TAlertContext = {
   condition: unknown;
 };
 
+export type TFindTargetsByIdsInput = {
+  orgId: string;
+  projectId?: string | null;
+  resourceId?: string | null;
+  eventType: string;
+  condition: unknown;
+  targetIds: string[];
+};
+
 export type TFindDueTargetsInput = {
   orgId: string;
   projectId?: string | null;
@@ -75,11 +91,19 @@ export type TFindDueTargetsInput = {
   asOf: Date;
 };
 
+// Narrowed views for providers that commit to one trigger, so a provider's own factory can declare
+// which discovery method it guarantees rather than leaving callers to assert it.
+export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
+  Required<Pick<IResourceAlertProvider<TTarget>, "findDueTargets">>;
+
+export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
+  Required<Pick<IResourceAlertProvider<TTarget>, "findTargetsByIds">>;
+
 export interface IResourceAlertProvider<TTarget = unknown> {
   // Dot-namespaced, e.g. "pki.certificate", "identity.ua-secret".
   resourceType: string;
-  // Event keys this provider understands, e.g. ["pki.certificate.expiration"].
-  eventTypes: string[];
+  // Event keys this provider understands, each declaring how it fires.
+  events: TAlertEventDefinition[];
   // Validates an alert's `condition` (the "when"), e.g. { alertBefore: "30d" }.
   conditionSchema: z.ZodTypeAny;
 
@@ -88,7 +112,14 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // Must be ordered most-urgent-first (soonest expiry): the engine's per-channel maxTargetsPerRun cap
   // keeps the head of this list and defers the tail, so urgency ordering ensures the targets closest
   // to expiry are never the ones dropped.
-  findDueTargets(input: TFindDueTargetsInput): Promise<TTarget[]>;
+  // Required for any Scheduled event; the registry enforces that at boot.
+  findDueTargets?(input: TFindDueTargetsInput): Promise<TTarget[]>;
+
+  // Rehydrate the targets an event named, by id. The event path knows its targets already, so nothing
+  // is scanned for; this exists so the row is read at delivery time rather than copied into the event.
+  // A target whose row is gone is dropped, not an error — it was deleted between emit and dispatch.
+  // Required for any Event event; the registry enforces that at boot.
+  findTargetsByIds?(input: TFindTargetsByIdsInput): Promise<TTarget[]>;
 
   // Deep link to the alert's resource, honouring its scope (org- vs project-scoped). Resolved once
   // per run by the engine and passed into buildPayload, so it may perform async lookups.

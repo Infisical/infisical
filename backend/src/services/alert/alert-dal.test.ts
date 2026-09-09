@@ -14,7 +14,8 @@ const buildDAL = () => {
     existsFrom: [] as unknown[],
     existsJoin: [] as unknown[][],
     existsWhere: [] as unknown[][],
-    existsWhereRaw: [] as unknown[]
+    existsWhereRaw: [] as unknown[],
+    orWhereNull: [] as unknown[]
   };
 
   const existsChain = {
@@ -43,6 +44,10 @@ const buildDAL = () => {
       return chain;
     },
     where: (...args: unknown[]) => {
+      if (typeof args[0] === "function") {
+        (args[0] as (qb: typeof chain) => void)(chain);
+        return chain;
+      }
       calls.where.push(args);
       return chain;
     },
@@ -52,6 +57,10 @@ const buildDAL = () => {
     },
     whereExists: (cb: (qb: typeof existsChain) => void) => {
       cb(existsChain);
+      return chain;
+    },
+    orWhereNull: (col: unknown) => {
+      calls.orWhereNull.push(col);
       return chain;
     },
     select: () => chain,
@@ -88,5 +97,70 @@ describe("alert dal", () => {
     expect(calls.existsWhereRaw[0]).toBe(`"${TableName.AlertChannelMembership}"."alertId" = "${TableName.Alert}"."id"`);
     // A channel that exists but is switched off must not keep the alert in the sweep.
     expect(calls.existsWhere).toContainEqual([`${TableName.AlertChannel}.enabled`, true]);
+  });
+
+  test("findEnabledForEvent narrows to one resource, event and the event trigger", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+
+    expect(calls.where).toContainEqual([`${TableName.Alert}.orgId`, "org-1"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.resourceType`, "approval.workflow"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.resourceId`, "policy-1"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.eventType`, "approval.workflow.request_opened"]);
+    // The mirror of the cron's filter: the outbox must never pick up a scheduled alert.
+    expect(calls.where).toContainEqual([`${TableName.Alert}.triggerType`, "event"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
+  });
+
+  test("findEnabledForEvent applies the same soft-deleted-project and enabled-channel filters", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+
+    expect(calls.whereNull).toContainEqual(`${TableName.Project}.deleteAfter`);
+    expect(calls.existsFrom).toContainEqual(TableName.AlertChannelMembership);
+    expect(calls.existsWhere).toContainEqual([`${TableName.AlertChannel}.enabled`, true]);
+  });
+
+  // A resource inside a project can be watched by a project-scoped alert and by an org-wide one, so
+  // both have to be in scope; without a projectId only the org-scoped row can match.
+  test("findEnabledForEvent matches the project-scoped and org-scoped alert when given a project", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+
+    expect(calls.where).toContainEqual([`${TableName.Alert}.projectId`, "proj-1"]);
+    expect(calls.orWhereNull).toContainEqual(`${TableName.Alert}.projectId`);
+  });
+
+  test("findEnabledForEvent matches only org-scoped alerts when given no project", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+
+    expect(calls.whereNull).toContainEqual(`${TableName.Alert}.projectId`);
+    expect(calls.orWhereNull).toHaveLength(0);
   });
 });

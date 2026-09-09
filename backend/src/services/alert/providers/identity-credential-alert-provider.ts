@@ -14,8 +14,9 @@ import {
   ALERT_SCAN_LEAD_DAYS,
   ALERT_SCAN_LEAD_INTERVAL,
   AlertPermissionAction,
+  AlertTriggerType,
   DEFAULT_DEDUP_WINDOW_HOURS,
-  IResourceAlertProvider,
+  IScheduledAlertProvider,
   MAX_DEDUP_WINDOW_HOURS,
   TAlertContext,
   TAlertPermissionInput,
@@ -93,7 +94,7 @@ const targetId = (target: TIdentityCredentialTarget): string => `${target.creden
 export const identityCredentialAlertProviderFactory = ({
   identityCredentialAlertDAL,
   permissionService
-}: TIdentityCredentialAlertProviderDep): IResourceAlertProvider<TIdentityCredentialTarget> => {
+}: TIdentityCredentialAlertProviderDep): IScheduledAlertProvider<TIdentityCredentialTarget> => {
   const projectBaseUrl = (
     siteUrl: string | undefined,
     orgId: string,
@@ -265,7 +266,7 @@ export const identityCredentialAlertProviderFactory = ({
 
   return {
     resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-    eventTypes: [IDENTITY_AUTHENTICATION_EXPIRY_EVENT],
+    events: [{ key: IDENTITY_AUTHENTICATION_EXPIRY_EVENT, triggerType: AlertTriggerType.Scheduled }],
     conditionSchema: IdentityCredentialConditionSchema,
     findDueTargets,
     buildViewUrl,
