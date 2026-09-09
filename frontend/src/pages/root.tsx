@@ -12,6 +12,9 @@ import { queryClient } from "@app/hooks/api/reactQuery";
 type TRouterContext = {
   serverConfig: TServerConfig | null;
   queryClient: QueryClient;
+  // Published by the PAM and Agent Vault layouts, whose URLs carry no $projectId. Optional because
+  // only those two branches of the tree set it; see useImplicitProjectId.
+  implicitProjectId?: string;
 };
 
 const RootPage = () => {
