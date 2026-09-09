@@ -1,20 +1,46 @@
-import { NotFoundError } from "@app/lib/errors";
+import { Knex } from "knex";
+
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
-import { EXTERNAL_APPROVAL_APP_CONNECTION_MAP } from "./external-approval-map";
-import { TValidateExternalApprovalPolicyInputDTO } from "./external-approval-types";
+import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
+import { ExternalApprovalRequestStatus } from "./external-approval-enums";
+import { EXTERNAL_APPROVAL_APP_CONNECTION_MAP, listExternalApprovalOptions } from "./external-approval-map";
+import { TExternalApprovalPolicyDALFactory } from "./external-approval-policy-dal";
+import { TExternalApprovalRequestDALFactory } from "./external-approval-request-dal";
+import {
+  TAuthorizeExternalReviewDTO,
+  TExternalApprovalDecision,
+  TResolveExternalApprovalDecisionDTO,
+  TValidateExternalApprovalPolicyInputDTO
+} from "./external-approval-types";
 
 type TExternalApprovalServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   identityDAL: Pick<TIdentityDALFactory, "findOne">;
+  externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "findById">;
+  externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "findById" | "updateById">;
 };
 
 export type TExternalApprovalServiceFactory = ReturnType<typeof externalApprovalServiceFactory>;
 
+const DECISION_TO_EXTERNAL_STATUS: Record<TExternalApprovalDecision, ExternalApprovalRequestStatus> = {
+  [ApprovalStatus.APPROVED]: ExternalApprovalRequestStatus.Approved,
+  [ApprovalStatus.REJECTED]: ExternalApprovalRequestStatus.Rejected
+};
+
+const FINAL_EXTERNAL_STATUSES: string[] = [
+  ExternalApprovalRequestStatus.Approved,
+  ExternalApprovalRequestStatus.Rejected
+];
+
 export const externalApprovalServiceFactory = ({
   appConnectionService,
-  identityDAL
+  identityDAL,
+  externalApprovalPolicyDAL,
+  externalApprovalRequestDAL
 }: TExternalApprovalServiceFactoryDep) => {
   const validateExternalApprovalPolicyInput = async ({
     input,
@@ -42,7 +68,87 @@ export const externalApprovalServiceFactory = ({
     }
   };
 
+  const authorizeExternalReview = async ({ externalApprovalPolicyId, actor }: TAuthorizeExternalReviewDTO) => {
+    const externalApprovalPolicy = await externalApprovalPolicyDAL.findById(externalApprovalPolicyId);
+    if (!externalApprovalPolicy) {
+      throw new NotFoundError({
+        message: `External approval policy with ID '${externalApprovalPolicyId}' not found`
+      });
+    }
+
+    if (
+      actor.type !== ActorType.IDENTITY ||
+      !externalApprovalPolicy.approverIdentityId ||
+      externalApprovalPolicy.approverIdentityId !== actor.id
+    ) {
+      throw new ForbiddenRequestError({
+        message: "Only the approver identity configured on this external approval policy can report its decision"
+      });
+    }
+
+    return externalApprovalPolicy;
+  };
+
+  const resolveExternalApprovalDecision = async (
+    { externalApprovalRequestId, externalId, status, approvedByIdentityId }: TResolveExternalApprovalDecisionDTO,
+    tx: Knex
+  ) => {
+    const externalApprovalRequest = await externalApprovalRequestDAL.findById(externalApprovalRequestId, tx);
+    if (!externalApprovalRequest) {
+      throw new NotFoundError({
+        message: `External approval request with ID '${externalApprovalRequestId}' not found`
+      });
+    }
+
+    const targetStatus = DECISION_TO_EXTERNAL_STATUS[status];
+
+    if (externalApprovalRequest.status && FINAL_EXTERNAL_STATUSES.includes(externalApprovalRequest.status)) {
+      if (externalApprovalRequest.status === targetStatus) {
+        return { externalApprovalRequest, alreadyFinalized: true as const };
+      }
+      throw new ConflictError({
+        message: "A different decision has already been recorded for this request"
+      });
+    }
+
+    if (externalApprovalRequest.status === ExternalApprovalRequestStatus.FailedDispatch) {
+      throw new BadRequestError({
+        message: "The request was never delivered to the external approver, so no decision can be recorded for it"
+      });
+    }
+
+    if (
+      externalApprovalRequest.status !== ExternalApprovalRequestStatus.WaitingApproval ||
+      !externalApprovalRequest.externalId
+    ) {
+      throw new BadRequestError({
+        message: "The request has not finished dispatching to the external approver yet. Retry shortly."
+      });
+    }
+
+    if (externalApprovalRequest.externalId !== externalId) {
+      throw new BadRequestError({
+        message: "The external ID does not match the external approval request for this access request"
+      });
+    }
+
+    const updated = await externalApprovalRequestDAL.updateById(
+      externalApprovalRequestId,
+      {
+        status: targetStatus,
+        approvedAt: new Date(),
+        approvedByIdentityId
+      },
+      tx
+    );
+
+    return { externalApprovalRequest: updated, alreadyFinalized: false as const };
+  };
+
   return {
-    validateExternalApprovalPolicyInput
+    listExternalApprovalOptions,
+    validateExternalApprovalPolicyInput,
+    authorizeExternalReview,
+    resolveExternalApprovalDecision
   };
 };

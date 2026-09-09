@@ -4,6 +4,7 @@ import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-mana
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
+import { registerExternalApprovalRouter } from "./external-approval-router";
 import { registerAgentProxyCaRouter } from "./agent-proxy-ca-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
@@ -89,6 +90,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
   await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approvals/requests" });
+  await server.register(registerExternalApprovalRouter, { prefix: "/access-approvals/external-approvals" });
   await server.register(registerRateLimitRouter, { prefix: "/rate-limit" });
 
   await server.register(

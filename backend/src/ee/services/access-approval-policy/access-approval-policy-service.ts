@@ -404,8 +404,16 @@ export const accessApprovalPolicyServiceFactory = ({
       });
     }
 
+    const isExternalPolicy =
+      externalApproval === null ? false : Boolean(externalApproval || accessApprovalPolicy.externalApprovalPolicyId);
+
+    if (!isExternalPolicy && approvers.length === 0) {
+      throw new BadRequestError({ message: "At least one approver should be provided" });
+    }
+
     const currentApprovals = approvals || accessApprovalPolicy.approvals;
     if (
+      !isExternalPolicy &&
       groupApprovers?.length === 0 &&
       userApprovers &&
       currentApprovals > userApprovers.length + userApproverNames.length

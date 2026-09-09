@@ -1,8 +1,7 @@
-import { subject } from "@casl/ability";
-import slugify from "@sindresorhus/slugify";
+import { ForbiddenError, subject } from "@casl/ability";
 import msFn from "ms";
 
-import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -39,16 +38,18 @@ import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/acces
 import { ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
 import { TExternalApprovalQueueFactory } from "../external-approval/external-approval-queue";
 import { TExternalApprovalRequestDALFactory } from "../external-approval/external-approval-request-dal";
+import { TExternalApprovalServiceFactory } from "../external-approval/external-approval-service";
 import { TGroupDALFactory } from "../group/group-dal";
 import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
+  ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
-import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { grantApprovedRequestPrivilege, verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
 import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
 
@@ -71,6 +72,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "updateById"
     | "findOne"
     | "getCount"
+    | "findByIdForUpdate"
   >;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find" | "findLastValidPolicy">;
   accessApprovalRequestReviewerDAL: Pick<
@@ -91,6 +93,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   externalApprovalQueue: Pick<TExternalApprovalQueueFactory, "queueExternalApprovalDispatch">;
   externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "create" | "updateById">;
+  externalApprovalService: Pick<
+    TExternalApprovalServiceFactory,
+    "authorizeExternalReview" | "resolveExternalApprovalDecision"
+  >;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -112,7 +118,8 @@ export const accessApprovalRequestServiceFactory = ({
   notificationService,
   queueService,
   externalApprovalQueue,
-  externalApprovalRequestDAL
+  externalApprovalRequestDAL,
+  externalApprovalService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
   const $queueAccessRequestWebhook = async ({
     action,
@@ -224,6 +231,121 @@ export const accessApprovalRequestServiceFactory = ({
         backoff: { type: "exponential", delay: 3000 }
       }
     );
+  };
+
+  const reviewExternalAccessRequest: TAccessApprovalRequestServiceFactory["reviewExternalAccessRequest"] = async ({
+    requestId,
+    externalId,
+    status,
+    actor
+  }) => {
+    const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId);
+    const notFound = () => new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
+    if (!accessApprovalRequest) throw notFound();
+
+    const project = await projectDAL.findById(accessApprovalRequest.projectId);
+    if (!project || project.orgId !== actor.orgId) throw notFound();
+
+    const { policy, externalApproval } = accessApprovalRequest;
+    if (!policy.externalApprovalPolicyId || !externalApproval) {
+      throw new BadRequestError({ message: "This access request is not under an external approval policy" });
+    }
+
+    await externalApprovalService.authorizeExternalReview({
+      externalApprovalPolicyId: policy.externalApprovalPolicyId,
+      actor
+    });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: accessApprovalRequest.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalRequestGrantActions.ExternalReview,
+      ProjectPermissionSub.ApprovalRequestGrants
+    );
+
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this access request has been deleted."
+      });
+    }
+
+    if (accessApprovalRequest.expiresAt && new Date() > new Date(accessApprovalRequest.expiresAt)) {
+      throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
+    }
+
+    const result = {
+      projectId: accessApprovalRequest.projectId,
+      policyId: accessApprovalRequest.policyId,
+      externalApprovalRequestId: externalApproval.id,
+      externalApprovalPolicyId: policy.externalApprovalPolicyId
+    };
+
+    if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
+      throw new BadRequestError({ message: "The request has been closed" });
+    }
+
+    const request = await accessApprovalRequestDAL.transaction(async (tx) => {
+      const { alreadyFinalized } = await externalApprovalService.resolveExternalApprovalDecision(
+        {
+          externalApprovalRequestId: externalApproval.id,
+          externalId,
+          status,
+          approvedByIdentityId: actor.id
+        },
+        tx
+      );
+      if (alreadyFinalized) return accessApprovalRequest;
+
+      if (status === ApprovalStatus.REJECTED) {
+        const current = await accessApprovalRequestDAL.findByIdForUpdate(accessApprovalRequest.id, tx);
+        if (!current || current.status !== ApprovalStatus.PENDING) {
+          throw new BadRequestError({ message: "The request has been closed" });
+        }
+        return accessApprovalRequestDAL.updateById(accessApprovalRequest.id, { status: ApprovalStatus.REJECTED }, tx);
+      }
+
+      return grantApprovedRequestPrivilege(
+        {
+          accessApprovalRequestDAL,
+          additionalPrivilegeDAL,
+          accessApprovalRequest,
+          approvedByUserId: null,
+          bypassReason: null
+        },
+        tx
+      );
+    });
+
+    try {
+      const reviewed = await accessApprovalRequestDAL.transaction((tx) =>
+        accessApprovalRequestDAL.findById(accessApprovalRequest.id, tx)
+      );
+      if (reviewed) {
+        await $queueAccessRequestWebhook({
+          action: AccessRequestWebhookAction.Reviewed,
+          accessApprovalRequest: reviewed,
+          projectId: accessApprovalRequest.projectId,
+          isBypassed: false
+        });
+      } else {
+        logger.warn(
+          `Skipping access request webhook, request not found [requestId=${accessApprovalRequest.id}] [action=${AccessRequestWebhookAction.Reviewed}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue access request webhook [requestId=${accessApprovalRequest.id}] [action=${AccessRequestWebhookAction.Reviewed}]`
+      );
+    }
+
+    return { ...result, request };
   };
 
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
@@ -419,26 +541,28 @@ export const accessApprovalRequestServiceFactory = ({
         }))
       );
 
-      await smtpService.sendMail({
-        recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
-        subjectLine: "Access Approval Request",
+      if (!externalApprovalRequest) {
+        await smtpService.sendMail({
+          recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
+          subjectLine: "Access Approval Request",
 
-        substitutions: {
-          projectName: project.name,
-          requesterFullName,
-          requesterEmail: requestedByUser.email,
-          isTemporary,
-          ...(isTemporary && {
-            expiresIn: msFn(ms(temporaryRange || ""), { long: true })
-          }),
-          secretPath,
-          environment: envSlug,
-          permissions: accessTypes,
-          approvalUrl,
-          note
-        },
-        template: SmtpTemplates.AccessApprovalRequest
-      });
+          substitutions: {
+            projectName: project.name,
+            requesterFullName,
+            requesterEmail: requestedByUser.email,
+            isTemporary,
+            ...(isTemporary && {
+              expiresIn: msFn(ms(temporaryRange || ""), { long: true })
+            }),
+            secretPath,
+            environment: envSlug,
+            permissions: accessTypes,
+            approvalUrl,
+            note
+          },
+          template: SmtpTemplates.AccessApprovalRequest
+        });
+      }
 
       return { approvalRequest, externalApprovalRequestId: externalApprovalRequest?.id ?? null };
     });
@@ -971,61 +1095,18 @@ export const accessApprovalRequestServiceFactory = ({
         reviewForThisActorProcessing.status === ApprovalStatus.APPROVED &&
         (meetsStandardApprovalThreshold || isBreakGlassApprovalAttempt)
       ) {
-        const currentRequestState = await accessApprovalRequestDAL.findById(accessApprovalRequest.id, tx);
-        let privilegeIdToSet = currentRequestState?.privilegeId || null;
-
-        if (!privilegeIdToSet) {
-          if (accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
-            throw new BadRequestError({ message: "Temporary range is required for temporary access" });
-          }
-
-          if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
-            // Permanent access
-            const privilege = await additionalPrivilegeDAL.create(
-              {
-                actorUserId: accessApprovalRequest.requestedByUserId,
-                projectId: accessApprovalRequest.projectId,
-                name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-                permissions: JSON.stringify(accessApprovalRequest.permissions)
-              },
-              tx
-            );
-            privilegeIdToSet = privilege.id;
-          } else {
-            // Temporary access
-            const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
-            const startTime = new Date();
-
-            const privilege = await additionalPrivilegeDAL.create(
-              {
-                actorUserId: accessApprovalRequest.requestedByUserId,
-                projectId: accessApprovalRequest.projectId,
-                name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
-                permissions: JSON.stringify(accessApprovalRequest.permissions),
-                isTemporary: true, // Explicitly set to true for the privilege
-                temporaryMode: TemporaryPermissionMode.Relative,
-                temporaryRange: accessApprovalRequest.temporaryRange!,
-                temporaryAccessStartTime: startTime,
-                temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
-              },
-              tx
-            );
-            privilegeIdToSet = privilege.id;
-          }
-          await accessApprovalRequestDAL.updateById(
-            accessApprovalRequest.id,
-            {
-              privilegeId: privilegeIdToSet,
-              status: ApprovalStatus.APPROVED,
-              approvedAt: new Date(),
-              approvedByUserId: actorId,
-              // A break-glass approval grants access without the required reviews; persist the
-              // reason so the bypass can be surfaced in the UI and audit log after the fact.
-              bypassReason: isBreakGlassApprovalAttempt ? bypassReason || null : null
-            },
-            tx
-          );
-        }
+        await grantApprovedRequestPrivilege(
+          {
+            accessApprovalRequestDAL,
+            additionalPrivilegeDAL,
+            accessApprovalRequest,
+            approvedByUserId: actorId,
+            // A break-glass approval grants access without the required reviews; persist the
+            // reason so the bypass can be surfaced in the UI and audit log after the fact.
+            bypassReason: isBreakGlassApprovalAttempt ? bypassReason || null : null
+          },
+          tx
+        );
       }
 
       // Send notification if this was a breakglass approval
@@ -1244,6 +1325,7 @@ export const accessApprovalRequestServiceFactory = ({
     updateAccessApprovalRequest,
     listApprovalRequests,
     reviewAccessRequest,
+    reviewExternalAccessRequest,
     revokeAccessRequest,
     getCount
   };

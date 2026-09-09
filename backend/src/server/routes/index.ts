@@ -2998,7 +2998,9 @@ export const registerRoutes = async (
 
   const externalApprovalService = externalApprovalServiceFactory({
     appConnectionService,
-    identityDAL
+    identityDAL,
+    externalApprovalPolicyDAL,
+    externalApprovalRequestDAL
   });
 
   const externalApprovalQueue = externalApprovalQueueFactory({
@@ -3047,7 +3049,8 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     queueService,
     externalApprovalQueue,
-    externalApprovalRequestDAL
+    externalApprovalRequestDAL,
+    externalApprovalService
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({
@@ -4090,6 +4093,7 @@ export const registerRoutes = async (
     identityLdapAuth: identityLdapAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
+    externalApproval: externalApprovalService,
     secretApprovalPolicy: secretApprovalPolicyService,
     secretApprovalRequest: secretApprovalRequestService,
     dynamicSecret: dynamicSecretService,

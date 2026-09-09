@@ -48,7 +48,6 @@ const formatServiceNowError = (error: unknown): string | undefined => {
 
 type TServiceNowAccessRequestPayload = {
   request_id: string;
-  external_request_id: string;
   callback_url: string;
   request_type: "secret_access";
   project_id: string;
@@ -77,17 +76,13 @@ type TServiceNowAccessRequestResponse = {
 
 const buildAccessRequestPayload = ({
   accessApprovalRequest,
-  externalApprovalRequest,
   externalApprovalPolicy,
   project,
   envSlug,
   secretPath,
   requestedPermissions,
   siteUrl
-}: Pick<
-  TExternalApprovalDispatchContext,
-  "accessApprovalRequest" | "externalApprovalRequest" | "externalApprovalPolicy" | "project"
-> & {
+}: Pick<TExternalApprovalDispatchContext, "accessApprovalRequest" | "externalApprovalPolicy" | "project"> & {
   envSlug: string;
   secretPath: string;
   requestedPermissions: { subject: string; actions: string[] }[];
@@ -97,8 +92,7 @@ const buildAccessRequestPayload = ({
   const requestorName = [requestedByUser.firstName, requestedByUser.lastName].filter(Boolean).join(" ");
 
   return {
-    request_id: externalApprovalRequest.id,
-    external_request_id: accessApprovalRequest.id,
+    request_id: accessApprovalRequest.id,
     callback_url: `${siteUrl}/api/v1/access-approvals/requests/${accessApprovalRequest.id}/external-review`,
     request_type: "secret_access",
     project_id: project.id,
@@ -168,13 +162,12 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
 
     const payload = buildAccessRequestPayload({
       accessApprovalRequest,
-      externalApprovalRequest,
       externalApprovalPolicy,
       project,
       envSlug,
       secretPath,
       requestedPermissions,
-      siteUrl: appCfg.SITE_URL
+      siteUrl: "https://columbus-stretchable-omega.ngrok-free.dev" // TODO: CHANGE TO APP_CFG.SITE_URL
     });
 
     const logDetails = `[externalApprovalRequestId=${externalApprovalRequest.id}] [accessApprovalRequestId=${accessApprovalRequest.id}] [connectionId=${connection.id}] [instanceUrl=${sanitizeUrlForLog(instanceUrl)}]`;

@@ -768,6 +768,7 @@ export enum EventType {
   PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
+  ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW = "access-approval-request-external-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
   VIEW_AUDIT_LOGS = "view-audit-logs",
@@ -6477,6 +6478,17 @@ interface AccessApprovalRequestReviewEvent {
   };
 }
 
+interface AccessApprovalRequestExternalReviewEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    externalApprovalRequestId: string;
+    externalApprovalPolicyId: string;
+    reviewStatus: string;
+  };
+}
+
 interface AccessApprovalRequestRevokeEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_REVOKE;
   metadata: {
@@ -7852,6 +7864,7 @@ export type Event =
   | PamAccessPolicyBypassedEvent
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
+  | AccessApprovalRequestExternalReviewEvent
   | AccessApprovalRequestRevokeEvent
   | AccessApprovalRequestUpdateEvent
   | CreateAcmeAccountEvent

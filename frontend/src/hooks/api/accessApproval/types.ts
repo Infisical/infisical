@@ -21,6 +21,22 @@ export type TExternalApprovalOption = {
   name: string;
 };
 
+export enum ExternalApprovalRequestStatus {
+  PendingDispatch = "pending_dispatch",
+  FailedDispatch = "failed_dispatch",
+  WaitingApproval = "waiting_approval",
+  Approved = "approved",
+  Rejected = "rejected"
+}
+
+export type TExternalApprovalRequest = {
+  id: string;
+  status?: ExternalApprovalRequestStatus | null;
+  externalId?: string | null;
+  approvedAt?: Date | null;
+  approvedByIdentityId?: string | null;
+};
+
 export type TExternalApprovalPolicyInput = {
   type: ExternalApprovalType;
   connectionId: string;
@@ -153,7 +169,10 @@ export type TAccessApprovalRequest = {
     allowedSelfApprovals: boolean;
     maxTimePeriod?: string | null;
     requestExpirationTime?: string | null;
+    externalApprovalPolicyId?: string | null;
   };
+
+  externalApproval?: TExternalApprovalRequest | null;
 
   reviewers: {
     isOrgMembershipActive: boolean;

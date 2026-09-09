@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AccessApprovalRequests } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -288,6 +289,72 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         .catch(() => {});
 
       return { review };
+    }
+  });
+
+  server.route({
+    url: "/:requestId/external-review",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        requestId: z.string().uuid().describe(AccessApprovalRequests.EXTERNAL_REVIEW.requestId)
+      }),
+      body: z.object({
+        status: z
+          .enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED])
+          .describe(AccessApprovalRequests.EXTERNAL_REVIEW.status),
+        external_id: z.string().trim().min(1).max(255).describe(AccessApprovalRequests.EXTERNAL_REVIEW.externalId)
+      }),
+      response: {
+        200: z.object({
+          approval: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { request, projectId, policyId, externalApprovalRequestId, externalApprovalPolicyId } =
+        await server.services.accessApprovalRequest.reviewExternalAccessRequest({
+          requestId: req.params.requestId,
+          externalId: req.body.external_id,
+          status: req.body.status,
+          actor: req.permission
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW,
+          metadata: {
+            requestId: request.id,
+            policyId,
+            externalApprovalRequestId,
+            externalApprovalPolicyId,
+            reviewStatus: req.body.status
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalRequestReviewed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            requestId: request.id,
+            projectId,
+            reviewStatus: req.body.status,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
+      return { approval: request };
     }
   });
 

@@ -1,8 +1,14 @@
 import { PackRule, unpackRules } from "@casl/ability/extra";
+import slugify from "@sindresorhus/slugify";
+import { Knex } from "knex";
 import { z } from "zod";
 
+import { TAccessApprovalRequests, TemporaryPermissionMode } from "@app/db/schemas";
 import { PermissionConditionOperators } from "@app/lib/casl";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
 import { CASL_ACTION_SCHEMA_NATIVE_ENUM } from "../permission/permission-schemas";
 import { PermissionConditionSchema } from "../permission/permission-types";
@@ -14,7 +20,8 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "../permission/project-permission";
-import { TVerifyPermission } from "./access-approval-request-types";
+import type { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
+import { ApprovalStatus, TVerifyPermission } from "./access-approval-request-types";
 
 // Turn a permission slug into a human-readable label, e.g. "dynamic-secrets" -> "Dynamic Secrets"
 // and "read-root-credential" -> "Read Root Credential". Used for review notifications.
@@ -185,4 +192,84 @@ export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) =
     accessTypes,
     requestedPermissions
   };
+};
+
+type TGrantApprovedRequestPrivilege = {
+  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "findByIdForUpdate" | "updateById">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
+  accessApprovalRequest: Pick<
+    TAccessApprovalRequests,
+    "id" | "isTemporary" | "temporaryRange" | "requestedByUserId" | "permissions"
+  > & { projectId: string };
+  approvedByUserId: string | null;
+  bypassReason: string | null;
+};
+
+export const grantApprovedRequestPrivilege = async (
+  {
+    accessApprovalRequestDAL,
+    additionalPrivilegeDAL,
+    accessApprovalRequest,
+    approvedByUserId,
+    bypassReason
+  }: TGrantApprovedRequestPrivilege,
+  tx: Knex
+) => {
+  const currentRequestState = await accessApprovalRequestDAL.findByIdForUpdate(accessApprovalRequest.id, tx);
+  if (!currentRequestState) {
+    throw new NotFoundError({ message: `Access approval request with ID '${accessApprovalRequest.id}' not found` });
+  }
+  if (currentRequestState.status !== ApprovalStatus.PENDING) {
+    throw new BadRequestError({ message: "The request has been closed" });
+  }
+  if (currentRequestState.privilegeId) return currentRequestState;
+
+  if (accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+    throw new BadRequestError({ message: "Temporary range is required for temporary access" });
+  }
+
+  let privilegeId: string;
+  if (!accessApprovalRequest.isTemporary && !accessApprovalRequest.temporaryRange) {
+    const privilege = await additionalPrivilegeDAL.create(
+      {
+        actorUserId: accessApprovalRequest.requestedByUserId,
+        projectId: accessApprovalRequest.projectId,
+        name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+        permissions: JSON.stringify(accessApprovalRequest.permissions)
+      },
+      tx
+    );
+    privilegeId = privilege.id;
+  } else {
+    const relativeTempAllocatedTimeInMs = ms(accessApprovalRequest.temporaryRange!);
+    const startTime = new Date();
+
+    const privilege = await additionalPrivilegeDAL.create(
+      {
+        actorUserId: accessApprovalRequest.requestedByUserId,
+        projectId: accessApprovalRequest.projectId,
+        name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+        permissions: JSON.stringify(accessApprovalRequest.permissions),
+        isTemporary: true,
+        temporaryMode: TemporaryPermissionMode.Relative,
+        temporaryRange: accessApprovalRequest.temporaryRange!,
+        temporaryAccessStartTime: startTime,
+        temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
+      },
+      tx
+    );
+    privilegeId = privilege.id;
+  }
+
+  return accessApprovalRequestDAL.updateById(
+    accessApprovalRequest.id,
+    {
+      privilegeId,
+      status: ApprovalStatus.APPROVED,
+      approvedAt: new Date(),
+      approvedByUserId,
+      bypassReason
+    },
+    tx
+  );
 };

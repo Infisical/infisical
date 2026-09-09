@@ -113,7 +113,6 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             ])
             .array()
             .max(100, "Cannot have more than 100 approvers")
-            .min(1, { message: "At least one approver should be provided" })
             .refine(
               // @ts-expect-error this is ok
               (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
@@ -148,7 +147,11 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         .refine(
           (val) => Boolean(val.environment) || Boolean(val.environments),
           "Must provide either environment or environments"
-        ),
+        )
+        .refine((val) => Boolean(val.externalApproval) || val.approvers.length > 0, {
+          message: "At least one approver should be provided",
+          path: ["approvers"]
+        }),
       response: {
         200: z.object({
           approval: aapPubSchema
@@ -277,59 +280,67 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       params: z.object({
         policyId: z.string()
       }),
-      body: z.object({
-        name: z.string().trim().max(255).optional(),
-        secretPath: z
-          .string()
-          .trim()
-          .min(1, { message: "Secret path cannot be empty" })
-          .optional()
-          .transform((val) => (val ? removeTrailingSlash(val) : val)),
-        approvers: z
-          .discriminatedUnion("type", [
-            z.object({
-              type: z.literal(ApproverType.Group),
-              id: z.string(),
-              sequence: z.number().int().default(1)
-            }),
-            z.object({
-              type: z.literal(ApproverType.User),
-              id: z.string().optional(),
-              username: z.string().optional(),
-              sequence: z.number().int().default(1)
+      body: z
+        .object({
+          name: z.string().trim().max(255).optional(),
+          secretPath: z
+            .string()
+            .trim()
+            .min(1, { message: "Secret path cannot be empty" })
+            .optional()
+            .transform((val) => (val ? removeTrailingSlash(val) : val)),
+          approvers: z
+            .discriminatedUnion("type", [
+              z.object({
+                type: z.literal(ApproverType.Group),
+                id: z.string(),
+                sequence: z.number().int().default(1)
+              }),
+              z.object({
+                type: z.literal(ApproverType.User),
+                id: z.string().optional(),
+                username: z.string().optional(),
+                sequence: z.number().int().default(1)
+              })
+            ])
+            .array()
+            .max(100, "Cannot have more than 100 approvers")
+            .refine(
+              // @ts-expect-error this is ok
+              (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
+              "Must provide either username or id"
+            ),
+          bypassers: z
+            .discriminatedUnion("type", [
+              z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
+              z.object({
+                type: z.literal(BypasserType.User),
+                id: z.string().optional(),
+                username: z.string().optional()
+              })
+            ])
+            .array()
+            .max(100, "Cannot have more than 100 bypassers")
+            .optional(),
+          approvals: z.number().min(1).optional(),
+          enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
+          allowedSelfApprovals: z.boolean().default(true),
+          environments: z.array(z.string()).optional(),
+          approvalsRequired: z
+            .object({
+              numberOfApprovals: z.number().int(),
+              stepNumber: z.number().int()
             })
-          ])
-          .array()
-          .min(1, { message: "At least one approver should be provided" })
-          .max(100, "Cannot have more than 100 approvers")
-          .refine(
-            // @ts-expect-error this is ok
-            (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
-            "Must provide either username or id"
-          ),
-        bypassers: z
-          .discriminatedUnion("type", [
-            z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
-            z.object({ type: z.literal(BypasserType.User), id: z.string().optional(), username: z.string().optional() })
-          ])
-          .array()
-          .max(100, "Cannot have more than 100 bypassers")
-          .optional(),
-        approvals: z.number().min(1).optional(),
-        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        allowedSelfApprovals: z.boolean().default(true),
-        environments: z.array(z.string()).optional(),
-        approvalsRequired: z
-          .object({
-            numberOfApprovals: z.number().int(),
-            stepNumber: z.number().int()
-          })
-          .array()
-          .optional(),
-        maxTimePeriod: maxTimePeriodSchema,
-        requestExpirationTime: requestExpirationTimeSchema,
-        externalApproval: externalApprovalSchema.nullish()
-      }),
+            .array()
+            .optional(),
+          maxTimePeriod: maxTimePeriodSchema,
+          requestExpirationTime: requestExpirationTimeSchema,
+          externalApproval: externalApprovalSchema.nullish()
+        })
+        .refine((val) => Boolean(val.externalApproval) || val.approvers.length > 0, {
+          message: "At least one approver should be provided",
+          path: ["approvers"]
+        }),
       response: {
         200: z.object({
           approval: aapPubSchema

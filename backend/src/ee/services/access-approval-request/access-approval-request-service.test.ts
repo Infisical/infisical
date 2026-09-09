@@ -1,0 +1,247 @@
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { describe, expect, test, vi } from "vitest";
+
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
+
+import { ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
+import { ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub } from "../permission/project-permission";
+import { accessApprovalRequestServiceFactory } from "./access-approval-request-service";
+import { ApprovalStatus } from "./access-approval-request-types";
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() }
+}));
+
+const REQUEST_ID = "22222222-2222-4222-8222-222222222222";
+const EXTERNAL_REQUEST_ID = "55555555-5555-4555-8555-555555555555";
+const EXTERNAL_POLICY_ID = "11111111-1111-4111-8111-111111111111";
+const IDENTITY_ID = "33333333-3333-4333-8333-333333333333";
+const PROJECT_ID = "66666666-6666-4666-8666-666666666666";
+const ORG_ID = "77777777-7777-4777-8777-777777777777";
+const EXTERNAL_ID = "sn-sys-id-1";
+
+const identityActor = {
+  type: ActorType.IDENTITY,
+  id: IDENTITY_ID,
+  authMethod: null,
+  orgId: ORG_ID,
+  rootOrgId: ORG_ID,
+  parentOrgId: ORG_ID
+} as never;
+
+const TX = { marker: "tx" };
+
+const buildRequest = (patch: Record<string, unknown> = {}) => ({
+  id: REQUEST_ID,
+  policyId: "policy-1",
+  projectId: PROJECT_ID,
+  status: ApprovalStatus.PENDING,
+  isTemporary: false,
+  temporaryRange: null,
+  privilegeId: null,
+  requestedByUserId: "user-1",
+  permissions: [{ subject: "secrets", action: ["read"], conditions: { environment: "dev", secretPath: "/" } }],
+  expiresAt: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  environment: "dev",
+  policy: {
+    id: "policy-1",
+    name: "Policy",
+    deletedAt: null,
+    enforcementLevel: "hard",
+    approvers: [],
+    bypassers: [],
+    externalApprovalPolicyId: EXTERNAL_POLICY_ID
+  },
+  externalApproval: {
+    id: EXTERNAL_REQUEST_ID,
+    status: ExternalApprovalRequestStatus.WaitingApproval,
+    externalId: EXTERNAL_ID,
+    approvedAt: null,
+    approvedByIdentityId: null
+  },
+  requestedByUser: { userId: "user-1", email: "a@b.c", firstName: "A", lastName: "B", username: "a@b.c" },
+  ...patch
+});
+
+const makeService = ({
+  request = buildRequest(),
+  lockedRow = { id: REQUEST_ID, status: ApprovalStatus.PENDING, privilegeId: null },
+  canExternalReview = true,
+  project = { id: PROJECT_ID, orgId: ORG_ID, name: "Project" }
+}: {
+  request?: ReturnType<typeof buildRequest> | undefined;
+  lockedRow?: Record<string, unknown> | undefined;
+  canExternalReview?: boolean;
+  project?: Record<string, unknown> | undefined;
+} = {}) => {
+  const accessApprovalRequestDAL = {
+    findById: vi.fn().mockResolvedValue(request),
+    findByIdForUpdate: vi.fn().mockResolvedValue(lockedRow),
+    updateById: vi
+      .fn<(id: string, patch: Record<string, unknown>, tx?: unknown) => Promise<Record<string, unknown>>>()
+      .mockImplementation(async (id, patch) => ({ ...lockedRow, id, ...patch })),
+    transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(TX))
+  };
+  const additionalPrivilegeDAL = { create: vi.fn().mockResolvedValue({ id: "priv-1" }) };
+  const externalApprovalService = {
+    authorizeExternalReview: vi.fn().mockResolvedValue({ id: EXTERNAL_POLICY_ID, approverIdentityId: IDENTITY_ID }),
+    resolveExternalApprovalDecision: vi.fn().mockResolvedValue({ alreadyFinalized: false })
+  };
+  const permissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue({
+      permission: createMongoAbility(
+        canExternalReview
+          ? [
+              {
+                action: ProjectPermissionApprovalRequestGrantActions.ExternalReview,
+                subject: ProjectPermissionSub.ApprovalRequestGrants
+              }
+            ]
+          : []
+      )
+    })
+  };
+  const projectDAL = { findById: vi.fn().mockResolvedValue(project) };
+  const queueService = { queue: vi.fn().mockResolvedValue(undefined) };
+  const projectEnvDAL = { findOne: vi.fn().mockResolvedValue({ name: "Development" }) };
+
+  const service = accessApprovalRequestServiceFactory({
+    accessApprovalRequestDAL: accessApprovalRequestDAL as never,
+    additionalPrivilegeDAL: additionalPrivilegeDAL as never,
+    externalApprovalService: externalApprovalService as never,
+    permissionService: permissionService as never,
+    projectDAL: projectDAL as never,
+    projectEnvDAL: projectEnvDAL as never,
+    queueService: queueService as never,
+    accessApprovalRequestReviewerDAL: {} as never,
+    accessApprovalPolicyDAL: {} as never,
+    accessApprovalPolicyApproverDAL: {} as never,
+    groupDAL: {} as never,
+    smtpService: {} as never,
+    userDAL: {} as never,
+    kmsService: {} as never,
+    microsoftTeamsService: {} as never,
+    projectMicrosoftTeamsConfigDAL: {} as never,
+    projectSlackConfigDAL: {} as never,
+    notificationService: {} as never,
+    externalApprovalQueue: {} as never,
+    externalApprovalRequestDAL: {} as never
+  });
+
+  return { service, accessApprovalRequestDAL, additionalPrivilegeDAL, externalApprovalService, permissionService };
+};
+
+const review = (
+  service: ReturnType<typeof makeService>["service"],
+  status: ApprovalStatus.APPROVED | ApprovalStatus.REJECTED
+) =>
+  service.reviewExternalAccessRequest({ requestId: REQUEST_ID, externalId: EXTERNAL_ID, status, actor: identityActor });
+
+describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
+  test("approval records the external decision, grants the privilege, and leaves approvedByUserId null", async () => {
+    const { service, accessApprovalRequestDAL, additionalPrivilegeDAL, externalApprovalService } = makeService();
+
+    const result = await review(service, ApprovalStatus.APPROVED);
+
+    expect(externalApprovalService.resolveExternalApprovalDecision).toHaveBeenCalledWith(
+      {
+        externalApprovalRequestId: EXTERNAL_REQUEST_ID,
+        externalId: EXTERNAL_ID,
+        status: ApprovalStatus.APPROVED,
+        approvedByIdentityId: IDENTITY_ID
+      },
+      TX
+    );
+    expect(additionalPrivilegeDAL.create).toHaveBeenCalledTimes(1);
+    expect(additionalPrivilegeDAL.create.mock.calls[0][1]).toBe(TX);
+
+    const updateCall = accessApprovalRequestDAL.updateById.mock.calls.find(([id]) => id === REQUEST_ID);
+    expect(updateCall).toBeDefined();
+    const [, patch, tx] = updateCall!;
+    expect(patch.status).toBe(ApprovalStatus.APPROVED);
+    expect(patch.privilegeId).toBe("priv-1");
+    expect(patch.approvedByUserId).toBeNull();
+    expect(tx).toBe(TX);
+
+    expect(accessApprovalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith(REQUEST_ID, TX);
+    expect(result.projectId).toBe(PROJECT_ID);
+    expect(result.externalApprovalRequestId).toBe(EXTERNAL_REQUEST_ID);
+    expect(result.externalApprovalPolicyId).toBe(EXTERNAL_POLICY_ID);
+  });
+
+  test("rejection closes the request without creating a privilege", async () => {
+    const { service, accessApprovalRequestDAL, additionalPrivilegeDAL } = makeService();
+
+    await review(service, ApprovalStatus.REJECTED);
+
+    expect(additionalPrivilegeDAL.create).not.toHaveBeenCalled();
+    expect(accessApprovalRequestDAL.updateById).toHaveBeenCalledWith(
+      REQUEST_ID,
+      { status: ApprovalStatus.REJECTED },
+      TX
+    );
+  });
+
+  test("a request in another org is reported as not found before any authorization", async () => {
+    const { service, externalApprovalService } = makeService({ project: { id: PROJECT_ID, orgId: "other-org" } });
+
+    await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(NotFoundError);
+    expect(externalApprovalService.authorizeExternalReview).not.toHaveBeenCalled();
+  });
+
+  test("a request without an external approval policy is a 400", async () => {
+    const { service } = makeService({
+      request: buildRequest({
+        externalApproval: null,
+        policy: { ...buildRequest().policy, externalApprovalPolicyId: null }
+      })
+    });
+
+    await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  test("an identity without the ExternalReview permission is forbidden", async () => {
+    const { service, accessApprovalRequestDAL } = makeService({ canExternalReview: false });
+
+    await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(accessApprovalRequestDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("replaying the same decision on a closed request returns it without writing", async () => {
+    const { service, accessApprovalRequestDAL } = makeService({
+      request: buildRequest({
+        status: ApprovalStatus.APPROVED,
+        externalApproval: {
+          id: EXTERNAL_REQUEST_ID,
+          status: ExternalApprovalRequestStatus.Approved,
+          externalId: EXTERNAL_ID,
+          approvedAt: new Date(),
+          approvedByIdentityId: IDENTITY_ID
+        }
+      })
+    });
+
+    const result = await review(service, ApprovalStatus.APPROVED);
+
+    expect(result.request.status).toBe(ApprovalStatus.APPROVED);
+    expect(accessApprovalRequestDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("a closed request with a different decision is a 400", async () => {
+    const { service } = makeService({ request: buildRequest({ status: ApprovalStatus.REJECTED }) });
+
+    await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  test("a request closed between the read and the lock does not grant", async () => {
+    const { service, additionalPrivilegeDAL } = makeService({
+      lockedRow: { id: REQUEST_ID, status: ApprovalStatus.REJECTED, privilegeId: null }
+    });
+
+    await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(BadRequestError);
+    expect(additionalPrivilegeDAL.create).not.toHaveBeenCalled();
+  });
+});

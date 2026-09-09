@@ -1,4 +1,5 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TAccessApprovalRequests } from "@app/db/schemas";
+import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 
 export enum ApprovalStatus {
   PENDING = "pending",
@@ -22,6 +23,13 @@ export type TReviewAccessRequestDTO = {
   envName?: string;
   bypassReason?: string;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TReviewExternalAccessRequestDTO = {
+  requestId: string;
+  externalId: string;
+  status: ApprovalStatus.APPROVED | ApprovalStatus.REJECTED;
+  actor: OrgServiceActor;
+};
 
 export type TCreateAccessApprovalRequestDTO = {
   projectSlug: string;
@@ -216,6 +224,13 @@ export interface TAccessApprovalRequestServiceFactory {
     projectId: string;
     policyId: string;
     isBypass: boolean;
+  }>;
+  reviewExternalAccessRequest: (arg: TReviewExternalAccessRequestDTO) => Promise<{
+    request: TAccessApprovalRequests;
+    projectId: string;
+    policyId: string;
+    externalApprovalRequestId: string;
+    externalApprovalPolicyId: string;
   }>;
   getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
     count: {

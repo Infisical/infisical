@@ -28,7 +28,7 @@ export const registerExternalApprovalRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: () => {
       const externalApprovalOptions = server.services.externalApproval.listExternalApprovalOptions();
       return { externalApprovalOptions };

@@ -271,6 +271,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
     finalizedCount: number;
   }>;
   resetReviewByPolicyId: (policyId: string, tx?: Knex) => Promise<void>;
+  findByIdForUpdate: (id: string, tx: Knex) => Promise<TAccessApprovalRequests | undefined>;
 }
 
 export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalRequestDALFactory => {
@@ -1038,11 +1039,21 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
     }
   };
 
+  const findByIdForUpdate: TAccessApprovalRequestDALFactory["findByIdForUpdate"] = async (id, tx) => {
+    try {
+      const doc = await tx(TableName.AccessApprovalRequest).where({ id }).forUpdate().first();
+      return doc ? AccessApprovalRequestsSchema.parse(doc) : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdForUpdateAccessApprovalRequest" });
+    }
+  };
+
   return {
     ...accessApprovalRequestOrm,
     findById,
     findRequestsWithPrivilegeByPolicyIds,
     getCount,
-    resetReviewByPolicyId
+    resetReviewByPolicyId,
+    findByIdForUpdate
   };
 };

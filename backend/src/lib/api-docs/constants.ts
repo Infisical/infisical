@@ -4163,3 +4163,20 @@ export const AccessApprovalPolicies = {
     approverIdentityId: "The ID of the machine identity allowed to report the external decision back to Infisical."
   }
 } as const;
+
+export const ExternalApprovals = {
+  LIST_OPTIONS: {
+    type: "The external approval type used to configure an access approval policy.",
+    app: "The app connection type that must be selected when configuring this external approval type.",
+    name: "The human readable name of the external approval system."
+  }
+} as const;
+
+export const AccessApprovalRequests = {
+  EXTERNAL_REVIEW: {
+    requestId: "The ID of the access approval request the external approver decided on.",
+    status: "The decision made by the external approver.",
+    externalId:
+      "The ID of the request in the external approval system. Must match the ID recorded when the request was dispatched."
+  }
+} as const;

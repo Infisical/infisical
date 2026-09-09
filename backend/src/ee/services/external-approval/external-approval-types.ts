@@ -4,6 +4,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
+import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
 import { ExternalApprovalType } from "./external-approval-enums";
 
 export type TExternalApprovalPolicyInput = {
@@ -16,6 +17,20 @@ export type TValidateExternalApprovalPolicyInputDTO = {
   input: TExternalApprovalPolicyInput;
   projectId: string;
   actor: OrgServiceActor;
+};
+
+export type TExternalApprovalDecision = ApprovalStatus.APPROVED | ApprovalStatus.REJECTED;
+
+export type TAuthorizeExternalReviewDTO = {
+  externalApprovalPolicyId: string;
+  actor: OrgServiceActor;
+};
+
+export type TResolveExternalApprovalDecisionDTO = {
+  externalApprovalRequestId: string;
+  externalId: string;
+  status: TExternalApprovalDecision;
+  approvedByIdentityId: string;
 };
 
 export type TExternalApprovalDispatchJobPayload = {
