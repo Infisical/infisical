@@ -235,7 +235,7 @@ const CopySecretsSession = ({
       bulkSelectionSummary = `${count} selected items. Choose a source environment to confirm availability.`;
     } else if (isSourceLoading && !isSourceError) {
       bulkSelectionSummary = "Checking selected items in this source…";
-    } else {
+    } else if (availableSecretCount + availableFolderCount < count) {
       bulkSelectionSummary = `${availableSecretCount + availableFolderCount} of ${count} originally selected items are available in ${sourceEnvironment.name} at ${normalizedSourcePath}. Unavailable items won’t be copied.`;
     }
   }

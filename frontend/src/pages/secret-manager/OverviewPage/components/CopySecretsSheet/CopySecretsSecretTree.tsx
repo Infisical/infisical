@@ -37,6 +37,7 @@ type FolderNode = {
   secrets: CopySecretsSource[];
   folders: FolderNode[];
   previewStatus?: "new";
+  hasPreviewChanges: boolean;
 };
 
 type Props = {
@@ -71,7 +72,8 @@ const createTree = (
     name: normalizeCopyPath(sourcePath),
     path: normalizeCopyPath(sourcePath),
     secrets: [],
-    folders: []
+    folders: [],
+    hasPreviewChanges: false
   };
 
   const ensureFolder = (path: string) => {
@@ -88,7 +90,8 @@ const createTree = (
             name: segment,
             path: `${node.path === "/" ? "" : node.path}/${segment}`,
             secrets: [],
-            folders: []
+            folders: [],
+            hasPreviewChanges: false
           };
           node.folders.push(child);
         }
@@ -102,7 +105,19 @@ const createTree = (
   });
   secrets.forEach((secret) => ensureFolder(secret.path)?.secrets.push(secret));
 
-  return root;
+  const setPreviewChanges = (node: FolderNode): FolderNode => {
+    const childFolders = node.folders.map(setPreviewChanges);
+    return {
+      ...node,
+      folders: childFolders,
+      hasPreviewChanges:
+        Boolean(node.previewStatus) ||
+        node.secrets.some(({ previewStatus }) => Boolean(previewStatus)) ||
+        childFolders.some(({ hasPreviewChanges }) => hasPreviewChanges)
+    };
+  };
+
+  return setPreviewChanges(root);
 };
 
 const getSelectableIds = (node: FolderNode): string[] => [
@@ -134,6 +149,7 @@ const Folder = ({
   isDisabled,
   isReadOnly,
   includeValues,
+  isChangePreview,
   idPrefix,
   onSelectionChange,
   isRoot = false
@@ -145,6 +161,7 @@ const Folder = ({
   isDisabled: boolean;
   isReadOnly: boolean;
   includeValues: boolean;
+  isChangePreview: boolean;
   idPrefix: string;
   onSelectionChange: (ids: string[], folderPaths: string[]) => void;
   isRoot?: boolean;
@@ -174,6 +191,7 @@ const Folder = ({
         <div
           className={cn(
             "grid min-h-9 items-center gap-2 rounded-sm px-2 hover:bg-container-hover",
+            isChangePreview && !node.hasPreviewChanges && "opacity-50",
             isReadOnly
               ? "grid-cols-[1rem_1rem_minmax(0,1fr)_auto]"
               : "grid-cols-[1rem_1rem_1rem_minmax(0,1fr)_auto]"
@@ -252,6 +270,7 @@ const Folder = ({
                     key={secret.id}
                     className={cn(
                       "grid min-h-9 items-center gap-2 rounded-sm px-2 hover:bg-container-hover",
+                      isChangePreview && !secret.previewStatus && "opacity-50",
                       isReadOnly
                         ? "grid-cols-[1rem_1rem_minmax(0,1fr)_auto]"
                         : "grid-cols-[1rem_1rem_1rem_minmax(0,1fr)_auto]"
@@ -345,6 +364,7 @@ const Folder = ({
                   isDisabled={isDisabled}
                   isReadOnly={isReadOnly}
                   includeValues={includeValues}
+                  isChangePreview={isChangePreview}
                   idPrefix={idPrefix}
                   onSelectionChange={onSelectionChange}
                 />
@@ -453,6 +473,7 @@ export const CopySecretsSecretTree = ({
           isDisabled={isDisabled}
           isReadOnly={isReadOnly}
           includeValues={includeValues}
+          isChangePreview={showChangesFilter}
           idPrefix={idPrefix}
           onSelectionChange={onSelectionChange}
           isRoot
