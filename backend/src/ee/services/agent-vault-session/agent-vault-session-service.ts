@@ -88,7 +88,9 @@ export const agentVaultSessionServiceFactory = ({
       return !bundle || (reachable !== null && !reachable.includes(bundle.id));
     });
     if (unreachable) {
-      throw new BadRequestError({ message: `No access bundle named '${unreachable}' is granted to you` });
+      throw new BadRequestError({
+        message: `No access bundle named '${unreachable}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
+      });
     }
 
     const ttlSeconds = AGENT_VAULT_SESSION_TTL_SECONDS[ttl];

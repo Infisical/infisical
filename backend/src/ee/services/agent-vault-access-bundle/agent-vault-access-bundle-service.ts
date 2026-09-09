@@ -326,7 +326,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    return agentVaultAccessBundleDAL.findSummaries({ projectId, accessBundleIds });
+    return agentVaultAccessBundleDAL.findWithCounts({ projectId, accessBundleIds });
   };
 
   const getAccessBundleById = async (dto: TGetAccessBundleDTO) => {
