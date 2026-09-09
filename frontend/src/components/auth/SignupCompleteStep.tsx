@@ -2,7 +2,14 @@ import { SiGithub, SiYoutube } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, LayoutGrid, Users } from "lucide-react";
 
-import { Badge, Button, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { getProjectHomePage } from "@app/helpers/project";
 import { submitSignupOnboarding } from "@app/hooks/api/auth/queries";
