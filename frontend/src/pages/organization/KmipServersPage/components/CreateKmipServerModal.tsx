@@ -46,7 +46,7 @@ const schema = z.object({
 
 const keyAlgorithmOptions = certKeyAlgorithms.filter(({ value }) => !isPqcAlgorithm(value));
 
-export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
+export const CreateKmipServerModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const navigate = useNavigate();

@@ -56,7 +56,7 @@ import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteKmipServerById, useGetKmipServers } from "@app/hooks/api/kmipServers";
 import { TKmipServer } from "@app/hooks/api/kmipServers/types";
 
-import { KmipServerDeployModal } from "./components/KmipServerDeployModal";
+import { CreateKmipServerModal } from "./CreateKmipServerModal";
 
 const SKELETON_ROWS = ["first", "second", "third"];
 const SKELETON_CELLS = ["name", "created", "actions"];
@@ -71,7 +71,7 @@ export const KmipServerTab = withPermission(
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deleteKmipServer",
-      "deployKmipServer"
+      "createKmipServer"
     ] as const);
 
     const navigate = useNavigate();
@@ -115,7 +115,7 @@ export const KmipServerTab = withPermission(
                 <Button
                   variant={scopeVariant}
                   isDisabled={!isAllowed}
-                  onClick={() => handlePopUpOpen("deployKmipServer")}
+                  onClick={() => handlePopUpOpen("createKmipServer")}
                 >
                   <PlusIcon />
                   Create KMIP Server
@@ -242,9 +242,9 @@ export const KmipServerTab = withPermission(
           isPending={deleteKmipServerById.isPending}
           onConfirm={handleDeleteKmipServer}
         />
-        <KmipServerDeployModal
-          isOpen={popUp.deployKmipServer.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("deployKmipServer", isOpen)}
+        <CreateKmipServerModal
+          isOpen={popUp.createKmipServer.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("createKmipServer", isOpen)}
         />
       </Card>
     );
