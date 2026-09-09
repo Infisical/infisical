@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, getAdminMemberOnlyProductLabel, ProjectMembershipRole } from "@app/db/schemas";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -73,13 +73,14 @@ export const newProjectMembershipIdentityFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
     );
-    if (project?.type === ProjectType.CertificateManager) {
+    const adminMemberOnlyLabel = getAdminMemberOnlyProductLabel(project?.type);
+    if (adminMemberOnlyLabel) {
       const invalidRoles = dto.data.roles.filter(
         (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
       );
       if (invalidRoles.length > 0) {
         throw new BadRequestError({
-          message: "Certificate Manager only supports Admin and Member roles."
+          message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
         });
       }
     }
@@ -156,13 +157,14 @@ export const newProjectMembershipIdentityFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
     );
-    if (project?.type === ProjectType.CertificateManager) {
+    const adminMemberOnlyLabel = getAdminMemberOnlyProductLabel(project?.type);
+    if (adminMemberOnlyLabel) {
       const invalidRoles = dto.data.roles.filter(
         (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
       );
       if (invalidRoles.length > 0) {
         throw new BadRequestError({
-          message: "Certificate Manager only supports Admin and Member roles."
+          message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
         });
       }
     }

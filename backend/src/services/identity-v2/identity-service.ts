@@ -1,6 +1,7 @@
 import {
   AccessScope,
   ActionProjectType,
+  getAdminMemberOnlyProductLabel,
   OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
@@ -150,14 +151,7 @@ export const identityV2ServiceFactory = ({
       const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
         projectDAL.findById(scopeData.projectId)
       );
-      const adminMemberOnlyProductLabels: Partial<Record<ProjectType, string>> = {
-        [ProjectType.CertificateManager]: "Certificate Manager",
-        [ProjectType.PAM]: "PAM",
-        [ProjectType.AgentVault]: "Agent Vault"
-      };
-      const adminMemberOnlyLabel = project?.type
-        ? adminMemberOnlyProductLabels[project.type as ProjectType]
-        : undefined;
+      const adminMemberOnlyLabel = getAdminMemberOnlyProductLabel(project?.type);
       if (adminMemberOnlyLabel) {
         const invalidRoles = data.roles.filter(
           (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member

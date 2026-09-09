@@ -469,6 +469,18 @@ export enum ProjectType {
   AgentVault = "agent-vault"
 }
 
+// These products resolve every non-admin slug to their member rule set, so a viewer, no-access or
+// custom role would promise less access than it grants. Write paths reject those roles outright;
+// rows written before a product joined this list are not re-validated.
+const ADMIN_MEMBER_ONLY_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.PAM]: "PAM",
+  [ProjectType.AgentVault]: "Agent Vault"
+};
+
+export const getAdminMemberOnlyProductLabel = (projectType?: string | null) =>
+  projectType ? ADMIN_MEMBER_ONLY_PRODUCT_LABELS[projectType as ProjectType] : undefined;
+
 export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,
   CertificateManager = ProjectType.CertificateManager,
