@@ -39,7 +39,12 @@ export const buildGatewayReachableSql = (table: string) => {
 export const buildGatewayProbedSql = (table: string) =>
   `("${table}"."directHeartbeat" IS NOT NULL OR "${table}"."heartbeat" IS NOT NULL)`;
 
-export type TGatewayTransport = "direct" | "relay";
+export enum GatewayTransport {
+  Direct = "direct",
+  Relay = "relay"
+}
+
+export type TGatewayTransport = GatewayTransport;
 
 export const resolveTransports = ({
   gateway,
@@ -55,12 +60,12 @@ export const resolveTransports = ({
 }) => {
   const directUsable =
     Boolean(gateway.directAddress) &&
-    (transport === "direct" ||
+    (transport === GatewayTransport.Direct ||
       !gateway.relayId ||
       isTransportHealthy({ probedAt: gateway.directHeartbeat, heartbeatTTL: gateway.heartbeatTTL }));
-  const useDirect = transport !== "relay" && directUsable;
+  const useDirect = transport !== GatewayTransport.Relay && directUsable;
   // Relay credentials ride along even when direct is chosen, so a dial can retry before the probe goes stale.
-  const useRelay = transport !== "direct" && Boolean(gateway.relayId);
+  const useRelay = transport !== GatewayTransport.Direct && Boolean(gateway.relayId);
 
   return { useDirect, useRelay, hasTransport: useDirect || useRelay };
 };
@@ -73,8 +78,8 @@ export const gatewayTransports = ({
   relayHost?: string;
 }): TGatewayTransport[] => {
   const transports: TGatewayTransport[] = [];
-  if (directAddress) transports.push("direct");
-  if (relayHost) transports.push("relay");
+  if (directAddress) transports.push(GatewayTransport.Direct);
+  if (relayHost) transports.push(GatewayTransport.Relay);
   return transports;
 };
 
@@ -91,9 +96,11 @@ export const resolveClientTransports = ({
   };
   supportedTransports?: TGatewayTransport[];
 }) => {
-  const clientAllowsDirect = supportedTransports === undefined || supportedTransports.includes("direct");
+  const clientAllowsDirect = supportedTransports === undefined || supportedTransports.includes(GatewayTransport.Direct);
   const allowRelay =
-    supportedTransports === undefined || supportedTransports.length === 0 || supportedTransports.includes("relay");
+    supportedTransports === undefined ||
+    supportedTransports.length === 0 ||
+    supportedTransports.includes(GatewayTransport.Relay);
 
   // Skip a stale direct address only when the relay can take over; otherwise it is the client's only path.
   const canFallBackToRelay = allowRelay && Boolean(gateway.relayId);

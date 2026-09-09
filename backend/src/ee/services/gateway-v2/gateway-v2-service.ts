@@ -47,6 +47,7 @@ import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
+  GatewayTransport,
   PAM_INFO_OID,
   parseDirectAddress,
   resolveClientTransports,
@@ -353,7 +354,7 @@ export const gatewayV2ServiceFactory = ({
     gatewayId: string;
     targetHost: string;
     targetPort: number;
-    transport?: "direct" | "relay";
+    transport?: GatewayTransport;
   }): Promise<TGatewayV2ConnectionDetails | undefined> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -514,7 +515,7 @@ export const gatewayV2ServiceFactory = ({
     host: string;
     port?: number;
     actorMetadata: { id: string; type: ActorType; name: string };
-    supportedTransports?: ("relay" | "direct")[];
+    supportedTransports?: GatewayTransport[];
   }) => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -887,7 +888,7 @@ export const gatewayV2ServiceFactory = ({
     }
   };
 
-  const $checkGatewayHealth = async (gatewayId: string, transport?: "direct" | "relay") => {
+  const $checkGatewayHealth = async (gatewayId: string, transport?: GatewayTransport) => {
     const gatewayV2ConnectionDetails = await getPlatformConnectionDetailsByGatewayId({
       gatewayId,
       targetHost: "health-check",
@@ -988,7 +989,9 @@ export const gatewayV2ServiceFactory = ({
 
     await gatewayV2DAL.updateById(
       gatewayId,
-      transport === "direct" ? { directHeartbeat: new Date(), heartbeatTTL } : { heartbeat: new Date(), heartbeatTTL }
+      transport === GatewayTransport.Direct
+        ? { directHeartbeat: new Date(), heartbeatTTL }
+        : { heartbeat: new Date(), heartbeatTTL }
     );
   };
 
@@ -996,9 +999,9 @@ export const gatewayV2ServiceFactory = ({
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
 
-    const transports: ("direct" | "relay")[] = [];
-    if (gateway.directAddress) transports.push("direct");
-    if (gateway.relayId) transports.push("relay");
+    const transports: GatewayTransport[] = [];
+    if (gateway.directAddress) transports.push(GatewayTransport.Direct);
+    if (gateway.relayId) transports.push(GatewayTransport.Relay);
     if (transports.length === 0) {
       throw new BadRequestError({ message: `Gateway ${gatewayId} has no configured connection transport` });
     }

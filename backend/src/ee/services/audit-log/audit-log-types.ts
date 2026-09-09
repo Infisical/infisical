@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -7001,7 +7002,7 @@ interface GatewayConnectEvent {
   metadata: {
     gatewayId: string;
     name: string;
-    transports: ("direct" | "relay")[];
+    transports: GatewayTransport[];
     directAddress?: string;
     relayName?: string;
   };

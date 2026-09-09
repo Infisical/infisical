@@ -3,6 +3,7 @@ import z from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { hostPattern } from "@app/ee/services/pam-account/pam-account-schemas";
@@ -325,7 +326,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .optional()
           .describe("Target host to connect to, for accounts that allow multiple hosts"),
         supportedTransports: z
-          .array(z.enum(["relay", "direct"]))
+          .array(z.nativeEnum(GatewayTransport))
           .max(2)
           .optional()
           .describe(

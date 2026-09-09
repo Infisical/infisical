@@ -1,6 +1,7 @@
 import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -457,7 +458,7 @@ export const pamSessionServiceFactory = ({
     tokenVersionId?: string;
     accessMethod?: PamAccessMethod;
     targetHost?: string;
-    supportedTransports?: ("relay" | "direct")[];
+    supportedTransports?: GatewayTransport[];
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 

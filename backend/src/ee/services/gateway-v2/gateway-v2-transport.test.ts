@@ -1,4 +1,5 @@
 import {
+  GatewayTransport,
   HEARTBEAT_BUFFER_SECONDS,
   isTransportHealthy,
   parseDirectAddress,
@@ -98,7 +99,9 @@ describe("resolveTransports", () => {
 
   describe("an explicit transport is honoured, because a health probe has to target one path", () => {
     test("direct is used even when its own probe is stale", () => {
-      expect(resolveTransports({ gateway: { ...dual, directHeartbeat: stale }, transport: "direct" })).toEqual({
+      expect(
+        resolveTransports({ gateway: { ...dual, directHeartbeat: stale }, transport: GatewayTransport.Direct })
+      ).toEqual({
         useDirect: true,
         useRelay: false,
         hasTransport: true
@@ -106,7 +109,9 @@ describe("resolveTransports", () => {
     });
 
     test("relay is used even when direct is healthy", () => {
-      expect(resolveTransports({ gateway: { ...dual, directHeartbeat: fresh }, transport: "relay" })).toEqual({
+      expect(
+        resolveTransports({ gateway: { ...dual, directHeartbeat: fresh }, transport: GatewayTransport.Relay })
+      ).toEqual({
         useDirect: false,
         useRelay: true,
         hasTransport: true
@@ -114,7 +119,9 @@ describe("resolveTransports", () => {
     });
 
     test("asking for direct on a relay-only gateway leaves nothing to dial", () => {
-      expect(resolveTransports({ gateway: { ...relay, directHeartbeat: null }, transport: "direct" })).toMatchObject({
+      expect(
+        resolveTransports({ gateway: { ...relay, directHeartbeat: null }, transport: GatewayTransport.Direct })
+      ).toMatchObject({
         useDirect: false,
         hasTransport: false
       });
@@ -147,20 +154,26 @@ describe("resolveClientTransports", () => {
     expect(
       resolveClientTransports({
         gateway: { ...dual, directHeartbeat: stale },
-        supportedTransports: ["direct", "relay"]
+        supportedTransports: [GatewayTransport.Direct, GatewayTransport.Relay]
       })
     ).toMatchObject({ useDirect: false, useRelay: true, hasTransport: true });
   });
 
   test("a stale direct probe is still used when it is the only path the client has", () => {
     expect(
-      resolveClientTransports({ gateway: { ...direct, directHeartbeat: stale }, supportedTransports: ["direct"] })
+      resolveClientTransports({
+        gateway: { ...direct, directHeartbeat: stale },
+        supportedTransports: [GatewayTransport.Direct]
+      })
     ).toMatchObject({ useDirect: true, useRelay: false, hasTransport: true });
   });
 
   test("a stale direct probe is still used when the client cannot dial the relay", () => {
     expect(
-      resolveClientTransports({ gateway: { ...dual, directHeartbeat: stale }, supportedTransports: ["direct"] })
+      resolveClientTransports({
+        gateway: { ...dual, directHeartbeat: stale },
+        supportedTransports: [GatewayTransport.Direct]
+      })
     ).toMatchObject({ useDirect: true, useRelay: false, hasTransport: true });
   });
 
