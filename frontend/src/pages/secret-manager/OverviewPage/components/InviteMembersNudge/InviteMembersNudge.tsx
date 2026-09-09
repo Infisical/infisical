@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Control, Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleCheckIcon, SendHorizontalIcon, XIcon } from "lucide-react";
@@ -13,16 +13,18 @@ import {
   CardDescription,
   CardTitle,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
   Input
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { emailListSchema, parseEmailList } from "@app/helpers/email";
-import { useAddUserToWsNonE2EE } from "@app/hooks/api";
+import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
 // PostHog event names for the secrets activation nudge. They are intentionally the same names the
 // blocking modal fired so the shown -> invited/dismissed funnel stays on one timeline; the
@@ -35,8 +37,9 @@ const ACTIVATION_EVENTS = {
 
 const PRESENTATION = "card";
 
-// Invited members get the default project role; the card has no role picker to stay compact.
-const DEFAULT_PROJECT_ROLE_SLUG = "member";
+// The card has no role picker to stay compact. Invitees get this role when the caller may assign
+// it (the modal's default), otherwise the first role the caller's project permissions allow.
+const PREFERRED_PROJECT_ROLE_SLUG = "member";
 
 // How long the inline success state stays visible before the card dismisses itself.
 const SUCCESS_AUTO_DISMISS_MS = 3000;
@@ -52,6 +55,8 @@ export const InviteMembersNudgeCard = ({
   isLifted = false,
   isSuccess,
   isSubmitting,
+  canSubmit,
+  roleName,
   control,
   onSubmit,
   onDismiss,
@@ -62,6 +67,14 @@ export const InviteMembersNudgeCard = ({
   const transition = { duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" as const };
   const hidden = prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12 };
 
+  let roleDescription: string | undefined;
+  if (roleName) {
+    roleDescription = `Invited teammates join this project as ${roleName}.`;
+  } else if (!canSubmit) {
+    roleDescription =
+      "You cannot assign a project role here, so invites must be sent from Access Control.";
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -71,7 +84,7 @@ export const InviteMembersNudgeCard = ({
           aria-label="Invite your team"
           data-slot="invite-members-nudge"
           data-state={isSuccess ? "success" : "idle"}
-          className={`fixed right-4 left-4 z-40 md:left-auto md:w-[22rem] ${isLifted ? "bottom-24" : "bottom-4"}`}
+          className={`fixed right-4 left-4 z-40 md:left-auto md:w-[24rem] ${isLifted ? "bottom-32" : "bottom-4"}`}
           initial={hidden}
           animate={{ opacity: 1, y: 0 }}
           exit={hidden}
@@ -83,12 +96,10 @@ export const InviteMembersNudgeCard = ({
             else onDismiss();
           }}
         >
-          <Card className="gap-4 p-4 shadow-lg">
+          <Card>
             <div data-slot="invite-members-nudge-header" className="flex items-start gap-2">
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <CardTitle className="text-base">
-                  {isSuccess ? "Invites Sent" : "Invite Your Team"}
-                </CardTitle>
+                <CardTitle>{isSuccess ? "Invites Sent" : "Invite Your Team"}</CardTitle>
                 <CardDescription>
                   {isSuccess
                     ? "Your teammates will get an email to join this project."
@@ -100,7 +111,7 @@ export const InviteMembersNudgeCard = ({
                 variant="ghost-muted"
                 size="xs"
                 aria-label="Dismiss"
-                className="-mt-1 -mr-1"
+                isDisabled={isSubmitting}
                 onClick={isSuccess ? onClose : onDismiss}
               >
                 <XIcon />
@@ -131,9 +142,11 @@ export const InviteMembersNudgeCard = ({
                         type="text"
                         autoComplete="off"
                         isError={Boolean(error)}
+                        disabled={!canSubmit}
                         placeholder="email@example.com, email2@example.com"
                         {...field}
                       />
+                      <FieldDescription>{roleDescription}</FieldDescription>
                       <FieldError>{error?.message}</FieldError>
                     </Field>
                   )}
@@ -142,7 +155,13 @@ export const InviteMembersNudgeCard = ({
                   data-slot="invite-members-nudge-actions"
                   className="flex items-center justify-end gap-2"
                 >
-                  <Button variant="ghost" size="sm" type="button" onClick={onDismiss}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    isDisabled={isSubmitting}
+                    onClick={onDismiss}
+                  >
                     Not Now
                   </Button>
                   <Button
@@ -150,7 +169,7 @@ export const InviteMembersNudgeCard = ({
                     variant="project"
                     size="sm"
                     isPending={isSubmitting}
-                    isDisabled={isSubmitting}
+                    isDisabled={isSubmitting || !canSubmit}
                   >
                     <SendHorizontalIcon />
                     Send Invites
@@ -171,12 +190,36 @@ export const InviteMembersNudgeCard = ({
 export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { permission: projectPermission } = useProjectPermission();
 
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
 
   const [isSuccess, setIsSuccess] = useState(false);
   const autoDismissTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const isMountedRef = useRef(true);
+
+  const isOpen = Boolean(popUp?.inviteMembers?.isOpen);
+
+  // Same role source as the access control invite flow: project roles narrowed to the ones the
+  // caller's project permissions allow assigning, so the backend's assignable-role check passes.
+  const { data: roles, isPending: isRolesPending } = useGetProjectRoles(
+    isOpen ? projectId : "",
+    currentProject?.type
+  );
+
+  const defaultRole = useMemo(() => {
+    const assignRoleConditions = getMemberAssignRoleConditions(projectPermission);
+    const assignableRoles = filterByGrantConditions(roles ?? [], {
+      getKey: (role) => role.slug,
+      allowed: assignRoleConditions?.roles,
+      forbidden: assignRoleConditions?.forbiddenRoles
+    });
+    return (
+      assignableRoles.find((role) => role.slug === PREFERRED_PROJECT_ROLE_SLUG) ??
+      assignableRoles[0]
+    );
+  }, [roles, projectPermission]);
 
   const {
     control,
@@ -198,8 +241,6 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
     presentation: PRESENTATION
   };
 
-  const isOpen = Boolean(popUp?.inviteMembers?.isOpen);
-
   // Fire once each time the nudge surfaces. It opens at most once per session (see
   // useSecretsActivationNudge), so guarding on the open state is sufficient.
   useEffect(() => {
@@ -209,6 +250,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
 
   useEffect(
     () => () => {
+      isMountedRef.current = false;
       if (autoDismissTimeoutRef.current) clearTimeout(autoDismissTimeoutRef.current);
     },
     []
@@ -217,11 +259,15 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
   const close = () => {
     if (autoDismissTimeoutRef.current) clearTimeout(autoDismissTimeoutRef.current);
     handlePopUpToggle("inviteMembers", false);
+    if (!isMountedRef.current) return;
     reset();
     setIsSuccess(false);
   };
 
   const onDismiss = () => {
+    // A dismissal cannot race an in-flight invite: the controls are disabled while submitting and
+    // this guard covers anything that still reaches here, so Dismissed never follows Invited.
+    if (isSubmitting) return;
     telemetry.capture(ACTIVATION_EVENTS.Dismissed, baseEventProps);
     close();
   };
@@ -229,6 +275,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
   const onInvite = async ({ emails }: TInviteMembersNudgeForm) => {
     if (!currentProject) return;
     if (!currentOrg?.id) return;
+    if (!defaultRole) return;
 
     if (currentProject.version === ProjectVersion.V1) {
       createNotification({
@@ -246,7 +293,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
         orgId: currentOrg.id,
         projectId: currentProject.id,
         projectType: currentProject.type,
-        roleSlugs: [DEFAULT_PROJECT_ROLE_SLUG]
+        roleSlugs: [defaultRole.slug]
       });
     }
 
@@ -260,6 +307,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
       text: "Invites sent. Your teammates will get an email to join."
     });
 
+    if (!isMountedRef.current) return;
     setIsSuccess(true);
     autoDismissTimeoutRef.current = setTimeout(close, SUCCESS_AUTO_DISMISS_MS);
   };
@@ -270,6 +318,8 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
       isLifted={isLifted}
       isSuccess={isSuccess}
       isSubmitting={isSubmitting}
+      canSubmit={isRolesPending || Boolean(defaultRole)}
+      roleName={defaultRole?.name}
       control={control}
       onSubmit={handleSubmit(onInvite)}
       onDismiss={onDismiss}
@@ -283,7 +333,8 @@ export type TInviteMembersNudgeForm = z.infer<typeof inviteMembersNudgeFormSchem
 type Props = {
   popUp: UsePopUpState<["inviteMembers"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["inviteMembers"]>, state?: boolean) => void;
-  // Raises the card above the batch-mode commit bar, which shares the bottom edge of the viewport.
+  // Raises the card above the floating bars that share the bottom edge of the viewport (the
+  // selection action bar and the batch-mode commit bar).
   isLifted?: boolean;
 };
 
@@ -292,6 +343,10 @@ type CardProps = {
   isLifted?: boolean;
   isSuccess: boolean;
   isSubmitting: boolean;
+  // False once roles are known and the caller may not assign any of them.
+  canSubmit: boolean;
+  // Name of the role invitees will receive, once resolved.
+  roleName?: string;
   control: Control<TInviteMembersNudgeForm>;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
   // "Not now", X, or Escape before inviting: records the dismissal, then closes.

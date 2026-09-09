@@ -900,6 +900,10 @@ const OverviewPageContent = () => {
   const isBatchModeActive = isOverviewBatchMode && isSingleEnvView;
   const hasPendingBatchChanges =
     isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
+  // Mirrors SelectionPanel's selectedCount > 0, which is when its SelectedActionBar is visible.
+  const hasSelectedEntries = Object.values(selectedEntries).some(
+    (entries) => Object.keys(entries).length > 0
+  );
 
   useEffect(() => {
     if (hasPendingBatchChanges) {
@@ -4133,7 +4137,7 @@ const OverviewPageContent = () => {
       <InviteMembersNudge
         popUp={invitePopUp}
         handlePopUpToggle={handleInvitePopUpToggle}
-        isLifted={hasPendingBatchChanges}
+        isLifted={hasPendingBatchChanges || hasSelectedEntries}
       />
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm
