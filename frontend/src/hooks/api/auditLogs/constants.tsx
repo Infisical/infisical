@@ -434,6 +434,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration",
   [EventType.GATEWAY_CREATE]: "Create gateway",
   [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
+  [EventType.GATEWAY_CONNECT]: "Gateway connect",
   [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
   [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Resource login",
   [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Resource login failed",
