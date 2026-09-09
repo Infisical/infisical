@@ -13,6 +13,7 @@ import {
   ArrowUpAZIcon,
   ArrowUpDownIcon,
   CalendarArrowDownIcon,
+  CalendarArrowUpIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -314,20 +315,20 @@ const getSecretSortValue = (orderBy: DashboardSecretsOrderBy, orderDirection: Or
 
 const SECRET_RECENCY_SORT_OPTIONS = [
   {
-    label: "Last edited (New)",
+    label: "Last Edited (New)",
     Icon: ClockArrowUpIcon,
     orderBy: DashboardSecretsOrderBy.UpdatedAt,
     orderDirection: OrderByDirection.DESC
   },
   {
-    label: "Last edited (Old)",
+    label: "Last Edited (Old)",
     Icon: ClockArrowDownIcon,
     orderBy: DashboardSecretsOrderBy.UpdatedAt,
     orderDirection: OrderByDirection.ASC
   },
   {
     label: "Created (New)",
-    Icon: CalendarArrowDownIcon,
+    Icon: CalendarArrowUpIcon,
     orderBy: DashboardSecretsOrderBy.CreatedAt,
     orderDirection: OrderByDirection.DESC
   },
@@ -3192,10 +3193,10 @@ const OverviewPageContent = () => {
                                   <DropdownMenuSub>
                                     <DropdownMenuSubTrigger>
                                       <ArrowUpDownIcon />
-                                      Sort secrets by recency
+                                      Sort Secrets by Recency
                                     </DropdownMenuSubTrigger>
                                     <DropdownMenuSubContent>
-                                      <DropdownMenuLabel>Use {name} timestamps</DropdownMenuLabel>
+                                      <DropdownMenuLabel>Use {name} Timestamps</DropdownMenuLabel>
                                       <DropdownMenuRadioGroup
                                         value={
                                           sortEnvironment === slug

@@ -1191,8 +1191,7 @@ export const secretV2BridgeServiceFactory = ({
               limit: undefined,
               offset: undefined,
               orderBy: DashboardSecretsOrderBy.Name,
-              orderDirection: OrderByDirection.ASC,
-              sortFolderIds: undefined
+              orderDirection: OrderByDirection.ASC
             }
           })
         : [];
