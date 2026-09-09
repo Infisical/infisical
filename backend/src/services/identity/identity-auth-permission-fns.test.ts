@@ -23,7 +23,9 @@ import { assertIdentityAuthMutationAllowed } from "./identity-auth-permission-fn
 // carried none, and revoke carried one only on its org branch, so on the legacy privilege system a
 // principal holding `edit-auth` could repoint an identity that outranks it and authenticate as it.
 // `orgEditAuthOnly` models the actor that made this reachable: a custom role with `edit-auth` but
-// not full admin.
+// not full admin. The target's role set comes from `getActorRoleSlugs`, which reads the same
+// group-aware membership query the ability is built from, so a role held only through an identity
+// group is bounded like a direct one.
 
 const orgAdmin = createMongoAbility<MongoAbility<OrgPermissionSet>>(orgAdminPermissions);
 const orgMember = createMongoAbility<MongoAbility<OrgPermissionSet>>(orgMemberPermissions);
@@ -42,6 +44,7 @@ const projectCreateTokenOnly = createMongoAbility<MongoAbility<ProjectPermission
 ]);
 
 type TScopeCall = { scope: AccessScope; orgId: string; projectId?: string };
+type TPrincipal = { actorId: string; actorType: ActorType };
 
 const runBoundary = async ({
   shouldUseNewPrivilegeSystem = false,
@@ -50,7 +53,10 @@ const runBoundary = async ({
   projectId,
   action = OrgPermissionIdentityActions.EditAuth,
   scopeCalls = [],
-  roleLookups = []
+  roleLookups = [],
+  targetRoles = ["member"],
+  resolvedRoles = [],
+  principals = []
 }: {
   shouldUseNewPrivilegeSystem?: boolean;
   actorPermission: MongoAbility;
@@ -59,27 +65,33 @@ const runBoundary = async ({
   action?: OrgPermissionIdentityActions.EditAuth | OrgPermissionIdentityActions.CreateToken;
   scopeCalls?: TScopeCall[];
   roleLookups?: string[];
+  targetRoles?: string[];
+  resolvedRoles?: string[][];
+  principals?: TPrincipal[];
 }) => {
   const deps = {
     permissionService: {
       getOrgPermission: () => Promise.resolve({ permission: actorPermission }),
       getProjectPermission: () => Promise.resolve({ permission: actorPermission }),
-      getOrgPermissionByRoles: () => {
+      getOrgPermissionByRoles: (roles: string[]) => {
         roleLookups.push("org");
+        resolvedRoles.push(roles);
         return Promise.resolve(targetPermissions.map((permission) => ({ permission })));
       },
-      getProjectPermissionByRoles: () => {
+      getProjectPermissionByRoles: (roles: string[]) => {
         roleLookups.push("project");
+        resolvedRoles.push(roles);
         return Promise.resolve(targetPermissions.map((permission) => ({ permission })));
+      },
+      // Stands in for permissionDAL.getPermission, which returns direct and group-derived
+      // memberships together, so a group-inherited role is indistinguishable from a direct one here.
+      getActorRoleSlugs: ({ scopeData, actorId, actorType }: { scopeData: TScopeCall } & TPrincipal) => {
+        scopeCalls.push(scopeData);
+        principals.push({ actorId, actorType });
+        return Promise.resolve(targetRoles);
       }
     },
-    orgDAL: { findById: () => Promise.resolve({ shouldUseNewPrivilegeSystem }) },
-    membershipIdentityDAL: {
-      getIdentityById: ({ scopeData }: { scopeData: TScopeCall }) => {
-        scopeCalls.push(scopeData);
-        return Promise.resolve({ roles: [{ role: "member" }] });
-      }
-    }
+    orgDAL: { findById: () => Promise.resolve({ shouldUseNewPrivilegeSystem }) }
   } as unknown as Parameters<typeof assertIdentityAuthMutationAllowed>[0];
 
   await assertIdentityAuthMutationAllowed(deps, {
@@ -120,6 +132,27 @@ describe("assertIdentityAuthMutationAllowed", () => {
       const scopeCalls: TScopeCall[] = [];
       await runBoundary({ actorPermission: orgAdmin, targetPermissions: [orgMember], scopeCalls });
       expect(scopeCalls).toEqual([{ scope: AccessScope.Organization, orgId: "org-1" }]);
+    });
+
+    // `actorId` in the DTO is the caller, so passing it here instead of the target would compare the
+    // caller against itself and pass every time. Nothing else in this file would notice.
+    test("the roles resolved are the target's, not the caller's", async () => {
+      const principals: TPrincipal[] = [];
+      await runBoundary({ actorPermission: orgAdmin, targetPermissions: [orgMember], principals });
+      expect(principals).toEqual([{ actorId: "identity-1", actorType: ActorType.IDENTITY }]);
+    });
+
+    test("the whole effective role set is forwarded, group-inherited roles included", async () => {
+      const resolvedRoles: string[][] = [];
+      await expect(
+        runBoundary({
+          actorPermission: orgEditAuthOnly,
+          targetPermissions: [orgAdmin],
+          targetRoles: ["member", "admin"],
+          resolvedRoles
+        })
+      ).rejects.toThrow(PermissionBoundaryError);
+      expect(resolvedRoles).toEqual([["member", "admin"]]);
     });
 
     test("holding the action is sufficient under the new privilege system", async () => {
@@ -172,6 +205,17 @@ describe("assertIdentityAuthMutationAllowed", () => {
         scopeCalls
       });
       expect(scopeCalls).toEqual([{ scope: AccessScope.Project, orgId: "org-1", projectId: "project-1" }]);
+    });
+
+    test("the roles resolved are the target's, not the caller's", async () => {
+      const principals: TPrincipal[] = [];
+      await runBoundary({
+        actorPermission: projectAdmin,
+        targetPermissions: [projectMember],
+        projectId: "project-1",
+        principals
+      });
+      expect(principals).toEqual([{ actorId: "identity-1", actorType: ActorType.IDENTITY }]);
     });
 
     test("holding the action is sufficient under the new privilege system", async () => {

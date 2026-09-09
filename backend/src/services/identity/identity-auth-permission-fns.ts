@@ -6,8 +6,6 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
-import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 const PROJECT_ACTION_BY_ORG_ACTION = {
@@ -19,10 +17,13 @@ const PROJECT_ACTION_BY_ORG_ACTION = {
 type TIdentityAuthPermissionDeps = {
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getOrgPermissionByRoles" | "getProjectPermissionByRoles"
+    | "getOrgPermission"
+    | "getProjectPermission"
+    | "getOrgPermissionByRoles"
+    | "getProjectPermissionByRoles"
+    | "getActorRoleSlugs"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
 };
 
 type TAssertIdentityAuthMutationAllowedDTO = {
@@ -41,7 +42,7 @@ type TAssertIdentityAuthMutationAllowedDTO = {
 // identity, so the actor has to out-rank every role the target holds. Only bites on the legacy privilege system: on the new one
 // `assertRoleSetBoundary` reduces to the action check the caller already ran.
 export const assertIdentityAuthMutationAllowed = async (
-  { permissionService, orgDAL, membershipIdentityDAL }: TIdentityAuthPermissionDeps,
+  { permissionService, orgDAL }: TIdentityAuthPermissionDeps,
   {
     identityId,
     orgId,
@@ -61,13 +62,13 @@ export const assertIdentityAuthMutationAllowed = async (
   const resolveTargetPermissions = async () => {
     if (shouldUseNewPrivilegeSystem) return [];
 
-    const targetMembership = await membershipIdentityDAL.getIdentityById({
+    const targetRoles = await permissionService.getActorRoleSlugs({
       scopeData: projectId
         ? { scope: AccessScope.Project, orgId, projectId }
         : { scope: AccessScope.Organization, orgId },
-      identityId
+      actorId: identityId,
+      actorType: ActorType.IDENTITY
     });
-    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
 
     const rolePermissions = projectId
       ? await permissionService.getProjectPermissionByRoles(targetRoles, projectId, { ignoreUnresolvedRoles: true })

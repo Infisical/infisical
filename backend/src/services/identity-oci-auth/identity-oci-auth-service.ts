@@ -53,7 +53,11 @@ type TIdentityOciAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getOrgPermissionByRoles" | "getProjectPermissionByRoles"
+    | "getOrgPermission"
+    | "getProjectPermission"
+    | "getOrgPermissionByRoles"
+    | "getProjectPermissionByRoles"
+    | "getActorRoleSlugs"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -319,7 +323,7 @@ export const identityOciAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -444,7 +448,7 @@ export const identityOciAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -595,7 +599,7 @@ export const identityOciAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,

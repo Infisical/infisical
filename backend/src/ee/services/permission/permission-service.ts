@@ -50,6 +50,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import {
   applyOauthScopeToOrgRules,
   applyOauthScopeToProjectRules,
@@ -1197,6 +1198,15 @@ export const permissionServiceFactory = ({
     return sources;
   };
 
+  const getActorRoleSlugs: TPermissionServiceFactory["getActorRoleSlugs"] = async ({
+    scopeData,
+    actorId,
+    actorType
+  }) => {
+    const memberships = await permissionDAL.getPermission({ scopeData, actorId, actorType });
+    return resolveMembershipRoleSlugs(memberships.flatMap((membership) => membership.roles));
+  };
+
   const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({
     actor,
     actorId,
@@ -1426,6 +1436,7 @@ export const permissionServiceFactory = ({
     getOrgPermissionByRoles,
     getProjectPermissionByRoles,
     checkGroupProjectPermission,
+    getActorRoleSlugs,
     getMembershipPermissionAudit,
     getIdentityPermissionAudit,
     invalidateProjectFolderPermissionCache,

@@ -55,7 +55,11 @@ type TIdentityAwsAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getOrgPermissionByRoles" | "getProjectPermissionByRoles"
+    | "getOrgPermission"
+    | "getProjectPermission"
+    | "getOrgPermissionByRoles"
+    | "getProjectPermissionByRoles"
+    | "getActorRoleSlugs"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -405,7 +409,7 @@ export const identityAwsAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -531,7 +535,7 @@ export const identityAwsAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -681,7 +685,7 @@ export const identityAwsAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,

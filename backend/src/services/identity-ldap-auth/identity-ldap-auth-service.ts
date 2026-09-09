@@ -76,7 +76,11 @@ type TIdentityLdapAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getOrgPermissionByRoles" | "getProjectPermissionByRoles"
+    | "getOrgPermission"
+    | "getProjectPermission"
+    | "getOrgPermissionByRoles"
+    | "getProjectPermissionByRoles"
+    | "getActorRoleSlugs"
   >;
   kmsService: TKmsServiceFactory;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "findOne">;
@@ -393,7 +397,7 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -626,7 +630,7 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -897,7 +901,7 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,

@@ -171,7 +171,11 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getOrgPermissionByRoles" | "getProjectPermissionByRoles"
+    | "getOrgPermission"
+    | "getProjectPermission"
+    | "getOrgPermissionByRoles"
+    | "getProjectPermissionByRoles"
+    | "getActorRoleSlugs"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
@@ -536,7 +540,7 @@ export const identityTlsCertAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -672,7 +676,7 @@ export const identityTlsCertAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -854,7 +858,7 @@ export const identityTlsCertAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,

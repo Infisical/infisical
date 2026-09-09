@@ -72,7 +72,11 @@ type TIdentityOidcAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getOrgPermissionByRoles" | "getProjectPermissionByRoles"
+    | "getOrgPermission"
+    | "getProjectPermission"
+    | "getOrgPermissionByRoles"
+    | "getProjectPermissionByRoles"
+    | "getActorRoleSlugs"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -658,7 +662,7 @@ export const identityOidcAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -863,7 +867,7 @@ export const identityOidcAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
@@ -1132,7 +1136,7 @@ export const identityOidcAuthServiceFactory = ({
     }
 
     await assertIdentityAuthMutationAllowed(
-      { permissionService, orgDAL, membershipIdentityDAL },
+      { permissionService, orgDAL },
       {
         identityId,
         orgId: identityMembershipOrg.scopeOrgId,
