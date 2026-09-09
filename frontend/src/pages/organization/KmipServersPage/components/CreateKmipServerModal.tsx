@@ -3,7 +3,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Dialog,
@@ -81,11 +80,8 @@ export const CreateKmipServerModal = ({ isOpen, onOpenChange }: Props) => {
         to: "/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",
         params: { orgId, kmipServerId: kmipServer.id }
       });
-    } catch (err: any) {
-      createNotification({
-        type: "error",
-        text: err?.message || "Failed to create KMIP server"
-      });
+    } catch {
+      // MutationCache.onError already surfaces the API error.
     }
   };
 
