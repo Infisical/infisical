@@ -12,12 +12,12 @@ import {
   FieldGroup,
   FieldLabel,
   Input,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -332,7 +332,7 @@ export const IdentityTlsCertAuthForm = ({
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>
-                    <Switch
+                    <Toggle
                       id="verifyClientCertificateChain"
                       checked={field.value}
                       onCheckedChange={field.onChange}

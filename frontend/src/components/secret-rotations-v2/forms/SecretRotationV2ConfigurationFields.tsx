@@ -13,7 +13,7 @@ import {
   FilterableSelect,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   getRotateAtLocal,
@@ -137,7 +137,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
                   error={error?.message}
                 />
               </FieldContent>
-              <Switch
+              <Toggle
                 ref={ref}
                 id="auto-rotation-enabled"
                 variant="project"

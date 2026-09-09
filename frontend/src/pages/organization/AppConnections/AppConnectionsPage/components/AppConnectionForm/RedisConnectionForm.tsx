@@ -18,12 +18,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -211,7 +211,7 @@ export const RedisConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <FieldContent>
                       <Label htmlFor="ssl-enabled">Enable SSL</Label>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="ssl-enabled"
                       variant={scopeVariant}
                       checked={value}
@@ -254,7 +254,7 @@ export const RedisConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         trusted SSL certificate.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
                       checked={sslEnabled ? value : false}

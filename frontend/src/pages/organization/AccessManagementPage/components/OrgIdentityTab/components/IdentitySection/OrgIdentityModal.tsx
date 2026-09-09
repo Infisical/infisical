@@ -19,7 +19,7 @@ import {
   IconButton,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
@@ -191,7 +191,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           name="hasDeleteProtection"
           render={({ field: { onChange, value } }) => (
             <Field orientation="horizontal">
-              <Switch
+              <Toggle
                 id="delete-protection-enabled"
                 variant={isSubOrganization ? "sub-org" : "org"}
                 checked={value}

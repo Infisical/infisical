@@ -38,8 +38,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import {
   PamAccessStatus,
@@ -431,7 +431,7 @@ export const RequestAccessSheet = ({
                         Grant now, skipping the approvers. Every use is audited.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       checked={breakGlassOnSubmit}
                       variant="danger"
                       onCheckedChange={setBreakGlassOnSubmit}

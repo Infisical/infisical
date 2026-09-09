@@ -23,7 +23,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
@@ -445,7 +445,7 @@ export const ReplicateFolderFromBoard = ({
                   Turn this off to replicate secret keys without their current values.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="replicate-secrets-include-values"
                 variant="project"
                 checked={shouldIncludeValues}
