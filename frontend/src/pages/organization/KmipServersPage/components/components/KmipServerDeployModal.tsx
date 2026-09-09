@@ -110,11 +110,17 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
             name="name"
             render={({ field, fieldState: { error } }) => (
               <Field data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="kmip-server-name">Name</FieldLabel>
+                <FieldLabel htmlFor="kmip-server-name">
+                  Name
+                  <span aria-hidden className="text-danger">
+                    *
+                  </span>
+                </FieldLabel>
                 <Input
                   {...field}
                   id="kmip-server-name"
                   placeholder="my-kmip-server"
+                  aria-required
                   isError={Boolean(error)}
                   autoFocus
                 />
@@ -127,11 +133,17 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
             name="hostnamesOrIps"
             render={({ field, fieldState: { error } }) => (
               <Field data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="kmip-server-hostnames">Hostnames or IPs</FieldLabel>
+                <FieldLabel htmlFor="kmip-server-hostnames">
+                  Hostnames or IPs
+                  <span aria-hidden className="text-danger">
+                    *
+                  </span>
+                </FieldLabel>
                 <Input
                   {...field}
                   id="kmip-server-hostnames"
                   placeholder="kmip.example.com, 10.0.0.5"
+                  aria-required
                   isError={Boolean(error)}
                 />
                 <FieldDescription>

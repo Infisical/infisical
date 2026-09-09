@@ -228,7 +228,7 @@ export const KmipServerTab = withPermission(
         <DeleteConfirmDialog
           isOpen={popUp.deleteKmipServer.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("deleteKmipServer", isOpen)}
-          title="Delete KMIP Server?"
+          title={`Delete KMIP Server ${kmipServerToDelete?.name || ""}?`}
           description={
             <Alert variant="danger" appearance="borderless">
               <AlertDescription>
