@@ -70,7 +70,7 @@ describe("getAdminMemberOnlyProductLabel", () => {
   // permission resolver then upgrades to the member rule set.
   test.each([
     [ProjectType.CertificateManager, "Certificate Manager"],
-    [ProjectType.PAM, "PAM"],
+    [ProjectType.PAM, "Privileged Access Manager"],
     [ProjectType.AgentVault, "Agent Vault"]
   ])("covers %s", (type, label) => {
     expect(getAdminMemberOnlyProductLabel(type)).toBe(label);

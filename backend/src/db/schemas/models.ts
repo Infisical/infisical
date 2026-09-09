@@ -474,7 +474,7 @@ export enum ProjectType {
 // rows written before a product joined this list are not re-validated.
 const ADMIN_MEMBER_ONLY_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
-  [ProjectType.PAM]: "PAM",
+  [ProjectType.PAM]: "Privileged Access Manager",
   [ProjectType.AgentVault]: "Agent Vault"
 };
 
