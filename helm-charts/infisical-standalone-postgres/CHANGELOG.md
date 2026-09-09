@@ -1,3 +1,7 @@
+## 1.10.1 (September 9, 2026)
+Changes:
+* Updated the default `infisical.image.tag` value to `v0.165.8`. The chart had been pinning `v0.158.0` (January 2026), so fresh installs missed months of fixes - including the SSO-enforcement email-verification skip reported in #8052 (fixed in `v0.160.11`).
+
 ## 1.10.0 (July 3, 2026)
 Changes:
 * Added configurable `securityContext` via `infisical.podSecurityContext` and `infisical.containerSecurityContext`, with secure defaults so the Infisical Deployment and the auto-bootstrap Job run under the Kubernetes Pod Security "restricted" standard out of the box.
