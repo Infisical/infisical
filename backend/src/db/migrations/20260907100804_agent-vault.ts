@@ -119,6 +119,10 @@ export async function up(knex: Knex): Promise<void> {
     await knex.raw(
       `CREATE UNIQUE INDEX agent_vault_session_bundle_unique ON "${TableName.AgentVaultSessionAccessBundle}" ("sessionId", "accessBundleId") WHERE "accessBundleId" IS NOT NULL`
     );
+
+    await knex.raw(
+      `ALTER TABLE "${TableName.AgentVaultSessionAccessBundle}" ADD CONSTRAINT "agent_vault_session_bundles_position_check" CHECK ("position" >= 0)`
+    );
   }
 
   if (!(await knex.schema.hasTable(TableName.AgentVaultProxy))) {

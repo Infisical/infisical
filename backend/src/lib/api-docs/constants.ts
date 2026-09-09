@@ -98,6 +98,7 @@ export enum ApiDocsTags {
   PamMemberships = "PAM Memberships",
   PamRoles = "PAM Roles",
   PamDiscovery = "PAM Discovery",
+  AgentVault = "Agent Vault",
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",

@@ -45,7 +45,7 @@ The bundle on a session is fixed at mint. Whether the agent still gets its crede
 - Remove someone from the bundle, and every session they minted over it gets no credentials.
 - Demote an admin to member, and their sessions over bundles they weren't explicitly granted get no credentials.
 - Delete a bundle, and every session that carried it gets no credentials. The session still lists the bundle's name so you can see what it was.
-- Remove them from Agent Vault, and the proxy refuses every request on their sessions. Add them back and the sessions work again.
+- Remove them from Agent Vault, and the proxy refuses every request on their sessions. Removal also takes away a member's bundle grants, so adding them back leaves their sessions without credentials until you grant the bundle again. An admin reaches every bundle, so their sessions work as soon as they're back.
 
 In the first three cases the agent's requests still go out, and what it can reach without a credential is decided by the proxy's [unmatched hosts setting](/documentation/platform/agent-vault/proxies#unmatched-hosts). Nothing on the agent's machine needs to be restarted for any of this.
 

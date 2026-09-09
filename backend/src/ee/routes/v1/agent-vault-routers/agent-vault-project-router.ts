@@ -13,7 +13,7 @@ export const registerAgentVaultProjectRouter = async (server: FastifyZodProvider
       hide: true,
       operationId: "getAgentVaultProject",
       description: "Resolve the organization's Agent Vault project, creating it on first access",
-      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      tags: [ApiDocsTags.AgentVault],
       response: { 200: z.object({ projectId: z.string() }) }
     },
     config: { rateLimit: readLimit },
