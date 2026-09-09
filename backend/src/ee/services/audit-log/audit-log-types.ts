@@ -2818,6 +2818,9 @@ interface AddUserToGroupEvent {
     groupName: string;
     userId: string;
     username: string;
+    source?: "github-org-sync";
+    githubOrgName?: string;
+    syncTrigger?: "login" | "manual";
   };
 }
 
@@ -2828,6 +2831,9 @@ interface RemoveUserFromGroupEvent {
     groupName: string;
     userId: string;
     username: string;
+    source?: "github-org-sync";
+    githubOrgName?: string;
+    syncTrigger?: "login" | "manual";
   };
 }
 
@@ -6234,6 +6240,7 @@ interface PamApprovalConfigUpdateEvent {
     policyId: string | null;
     stepCount: number;
     notificationConfigCount?: number;
+    breakGlassUserCount?: number;
   };
 }
 
@@ -6462,9 +6469,15 @@ interface PamAccessPolicyBypassedEvent {
   metadata: {
     policyType: string;
     policyId: string | null;
+    policyName?: string;
     requestId: string;
     grantId: string;
     granteeUserId: string;
+    granteeName?: string;
+    granteeEmail?: string;
+    accountId?: string;
+    folderId?: string;
+    folderName?: string;
     resourceName?: string;
     accountName?: string;
     accessDuration: string;

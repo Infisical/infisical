@@ -454,6 +454,10 @@ export const PamAccountsPage = () => {
         onOpenChange={(open) => {
           if (!open) setRequestAccount(null);
         }}
+        onGranted={(account, grantedAccessType) => {
+          if (grantedAccessType === PamAccessType.Credential) setCredentialAccount(account);
+          else setLaunchAccount(account);
+        }}
       />
 
       <ViewCredentialsModal

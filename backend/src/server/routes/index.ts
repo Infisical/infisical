@@ -1,5 +1,7 @@
 import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
 import type { ClickHouseClient } from "@clickhouse/client";
+import type { FastifyCookieOptions } from "@fastify/cookie";
+import cookie from "@fastify/cookie";
 import { CronJob } from "cron";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
@@ -1281,10 +1283,12 @@ export const registerRoutes = async (
     groupDAL,
     userGroupMembershipDAL,
     orgMembershipDAL,
+    userAliasDAL,
     membershipRoleDAL,
     membershipGroupDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    auditLogService
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1702,6 +1706,7 @@ export const registerRoutes = async (
   const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
@@ -1962,6 +1967,7 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
+    approvalPolicyBypassersDAL,
     approvalRequestDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,
@@ -3564,8 +3570,6 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL
   });
 
-  const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
-
   const approvalPolicyService = approvalPolicyServiceFactory({
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
@@ -3994,6 +3998,10 @@ export const registerRoutes = async (
   }
 
   await kmsService.startService(hsmStatus);
+
+  server.decorate("cookieSigningKey", appCfg.COOKIE_SECRET_SIGN_KEY || kmsService.getCookieSigningKey());
+  await server.register<FastifyCookieOptions>(cookie, { secret: server.cookieSigningKey });
+
   // Register all cron jobs (synchronous registrations) before starting the scheduler
   encryptionKeyRotationService.init();
   telemetryQueue.startTelemetryCheck();

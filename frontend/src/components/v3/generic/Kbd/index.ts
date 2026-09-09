@@ -1,1 +1,1 @@
-export { Kbd, KbdGroup } from "./Kbd";
+export * from "./Kbd";

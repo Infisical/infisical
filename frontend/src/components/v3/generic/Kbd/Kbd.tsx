@@ -1,12 +1,13 @@
 import * as React from "react";
 
-import { cn } from "@app/components/v3/utils";
+import { cn } from "../../utils";
 
-export function Kbd({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
+function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd
+      data-slot="kbd"
       className={cn(
-        "pointer-events-none inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted select-none",
+        "pointer-events-none inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded border border-border bg-container px-1.5 font-mono text-[10px] leading-none font-medium text-foreground select-none",
         className
       )}
       {...props}
@@ -14,6 +15,10 @@ export function Kbd({ className, ...props }: React.HTMLAttributes<HTMLElement>) 
   );
 }
 
-export function KbdGroup({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex items-center gap-0.5", className)} {...props} />;
+function KbdGroup({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div data-slot="kbd-group" className={cn("flex items-center gap-0.5", className)} {...props} />
+  );
 }
+
+export { Kbd, KbdGroup };

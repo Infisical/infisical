@@ -2,7 +2,7 @@
 // if you pass array it will say it one by one giving user clear instruction on what's happening
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { twMerge } from "tailwind-merge";
 
 import { Loader } from "../../v3/generic/Loader";
