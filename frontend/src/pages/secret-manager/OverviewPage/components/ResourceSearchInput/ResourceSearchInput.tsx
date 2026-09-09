@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useDebounce } from "@app/hooks";
+import { useDebounce, useSlashFocusSearch } from "@app/hooks";
 
 import { QuickSearchModal, QuickSearchModalProps } from "../SecretSearchInput/components";
 import { getResourceSearchStateTransition } from "./resourceSearchState";
@@ -37,6 +37,7 @@ export const ResourceSearchInput = ({
   const [isOptionHighlighted, setIsOptionHighlighted] = useState(false);
   const deepSearchBtnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(inputRef);
 
   // local input state so typing doesn't re-render the whole table
   const [inputValue, setInputValue] = useState(externalValue);

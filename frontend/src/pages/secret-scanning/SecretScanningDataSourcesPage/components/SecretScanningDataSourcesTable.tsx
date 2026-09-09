@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -32,7 +32,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useSlashFocusSearch } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretScanningDataSource,
@@ -86,6 +86,8 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
     setOrderDirection,
     setOrderBy
   } = usePagination<DataSourcesOrderBy>(DataSourcesOrderBy.Name, { initPerPage: 20 });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const filteredDataSources = useMemo(
     () =>
@@ -217,6 +219,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          ref={searchInputRef}
           placeholder="Search data sources..."
           className="flex-1"
         />

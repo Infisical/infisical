@@ -15,6 +15,7 @@ export { useResetPageHelper } from "./useResetPageHelper";
 export * from "./useResizableHeaderHeight";
 export { useScopeVariant } from "./useScopeVariant";
 export { useSecretsActivationNudge } from "./useSecretsActivationNudge";
+export { useSlashFocusSearch } from "./useSlashFocusSearch";
 export { useSyntaxHighlight } from "./useSyntaxHighlight";
 export { useTimedReset } from "./useTimedReset";
 export { useToggle } from "./useToggle";
