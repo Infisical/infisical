@@ -206,6 +206,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { logger } from "@app/lib/logger";
 import { Redlock } from "@app/lib/red-lock";
+import { RunMode } from "@app/lib/types";
+import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
@@ -586,16 +588,31 @@ export const registerRoutes = async (
   const appCfg = getConfig();
 
   const redlock = new Redlock([redis], { retryCount: 0 });
-  const cronJob = cronJobFactory({ redis, redlock });
-  cronJob.start();
+  const cronJob = cronJobFactory({ redis, redlock, schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled });
+  if (envConfig.isGeneralWorkerRunModeEnabled) {
+    cronJob.start();
+  }
+
+  // An api-only deployment with no general-workers pod queues background work nobody consumes, so
+  // the fleet reports itself in Redis and every api pod complains when the reports stop.
+  const workerHeartbeat = workerHeartbeatFactory({ keyStore });
+  if (envConfig.isGeneralWorkerRunModeEnabled) {
+    workerHeartbeat.startReporting(RunMode.GeneralWorkers);
+  }
+
+  if (envConfig.isApiRunModeEnabled) {
+    workerHeartbeat.startMonitoring(RunMode.GeneralWorkers);
+  }
 
   // Reached from the gateway proxy layer in src/lib, which has no DI, so it is installed as a module
   // singleton rather than threaded through every call site.
   const gatewayLoadTracker = initGatewayLoadTracker(keyStore);
 
-  await server.register(registerSecretScanningV2Webhooks, {
-    prefix: "/secret-scanning/webhooks"
-  });
+  if (envConfig.isApiRunModeEnabled) {
+    await server.register(registerSecretScanningV2Webhooks, {
+      prefix: "/secret-scanning/webhooks"
+    });
+  }
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -4238,6 +4255,9 @@ export const registerRoutes = async (
     globalThis.testServices = server.services;
   }
 
+  // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
+  // (env overrides, license plan, rate limits, admin integration config), so an API pod that stopped
+  // running them would serve stale config rather than shed background work.
   const cronJobs: CronJob[] = [];
   if (appCfg.isProductionMode) {
     const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
@@ -4371,44 +4391,49 @@ export const registerRoutes = async (
     }
   });
 
-  // register special routes
-  await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
-  await server.register(registerPkiScepRouter, { prefix: "/scep" });
+  // A worker-only pod still serves /api/status so liveness and readiness probes keep working, but
+  // none of the product API.
+  if (envConfig.isApiRunModeEnabled) {
+    // register special routes
+    await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+    await server.register(registerPkiScepRouter, { prefix: "/scep" });
 
-  // register routes for v1
-  await server.register(
-    async (v1Server) => {
-      await v1Server.register(registerV1EERoutes);
-      await v1Server.register(registerV1Routes);
-    },
-    { prefix: "/api/v1" }
-  );
-  await server.register(
-    async (v2Server) => {
-      await v2Server.register(registerV2EERoutes);
-      await v2Server.register(registerV2Routes);
-    },
-    { prefix: "/api/v2" }
-  );
-  await server.register(
-    async (v3Server) => {
-      await v3Server.register(registerV3EERoutes);
-      await v3Server.register(registerV3Routes);
-    },
-    { prefix: "/api/v3" }
-  );
-  await server.register(registerV4Routes, { prefix: "/api/v4" });
+    // register routes for v1
+    await server.register(
+      async (v1Server) => {
+        await v1Server.register(registerV1EERoutes);
+        await v1Server.register(registerV1Routes);
+      },
+      { prefix: "/api/v1" }
+    );
+    await server.register(
+      async (v2Server) => {
+        await v2Server.register(registerV2EERoutes);
+        await v2Server.register(registerV2Routes);
+      },
+      { prefix: "/api/v2" }
+    );
+    await server.register(
+      async (v3Server) => {
+        await v3Server.register(registerV3EERoutes);
+        await v3Server.register(registerV3Routes);
+      },
+      { prefix: "/api/v3" }
+    );
+    await server.register(registerV4Routes, { prefix: "/api/v4" });
 
-  // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
-  // This route should NEVER BE ENABLED IN PRODUCTION!
-  if (getConfig().isBddNockApiEnabled) {
-    await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
+    // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
+    // This route should NEVER BE ENABLED IN PRODUCTION!
+    if (getConfig().isBddNockApiEnabled) {
+      await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
+    }
   }
 
   server.addHook("onClose", async () => {
     gatewayLoadTracker.shutdown();
     cronJobs.forEach((job) => job.stop());
     await cronJob.stop();
+    await workerHeartbeat.stop();
     await telemetryService.flushAll();
     await eventBusService.close();
     await projectEventsSSEService.close();

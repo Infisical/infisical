@@ -400,6 +400,29 @@ export const runMigrations = async ({ applicationDb, auditLogDb, clickhouseClien
   const generateSanitizedSchema = process.env.GENERATE_SANITIZED_SCHEMA === "true";
   const failOnSanitizedSchemaError = process.env.FAIL_ON_SANITIZED_SCHEMA_ERROR === "true";
 
+  // Only API should run migrations. Workers don't run them to prevent
+  // API nodes to fall behind the schema and start failing while they are not updated.
+  if (!getConfig().isApiRunModeEnabled) {
+    const bootState = await getMigrationBootState({ db: applicationDb, migrationConfig });
+
+    if (bootState.direction === "invalid") {
+      throwInvalidMigrationHistory({
+        databaseName: "application",
+        pendingMigrationNames: bootState.pendingMigrationNames,
+        unknownAppliedMigrationNames: bootState.unknownAppliedMigrationNames
+      });
+    }
+
+    if (bootState.direction === "behind") {
+      logger.warn(
+        `Skipping migrations: not an api run mode [direction=behind] [pendingCount=${bootState.pendingMigrationNames.length}]. Waiting on an api pod to apply them.`
+      );
+    } else {
+      logger.info(`Skipping migrations: not an api run mode [direction=${bootState.direction}]`);
+    }
+    return;
+  }
+
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
     if (isProduction) {
