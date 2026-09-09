@@ -1,50 +1,65 @@
 import { useState } from "react";
-import {
-  faCopy,
-  faEllipsisV,
-  faMagnifyingGlass,
-  faPlus,
-  faSearch,
-  faServer,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
+import {
+  CopyIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  SearchIcon,
+  ServerIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   Button,
-  DeleteActionModal,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DeleteConfirmDialog,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadLabel,
+  TableRow
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
   OrgKmipServerPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteKmipServerById, useGetKmipServers } from "@app/hooks/api/kmipServers";
+import { TKmipServer } from "@app/hooks/api/kmipServers/types";
 
 import { KmipServerDeployModal } from "./components/KmipServerDeployModal";
+
+const SKELETON_ROWS = ["first", "second", "third"];
+const SKELETON_CELLS = ["name", "created", "actions"];
 
 export const KmipServerTab = withPermission(
   () => {
@@ -52,6 +67,7 @@ export const KmipServerTab = withPermission(
     const { data: kmipServers, isPending: isLoading } = useGetKmipServers();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
+    const scopeVariant = useScopeVariant();
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deleteKmipServer",
@@ -77,60 +93,93 @@ export const KmipServerTab = withPermission(
       el.name.toLowerCase().includes(search.toLowerCase())
     );
 
+    const kmipServerToDelete = popUp.deleteKmipServer.data as TKmipServer | undefined;
+    const isTableEmpty = !isLoading && !filteredKmipServers?.length;
+
     return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <div className="flex grow items-center gap-x-2">
-            <h3 className="text-lg font-medium text-mineshaft-100">KMIP Servers</h3>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            KMIP Servers
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip" />
-            <div className="flex grow" />
+          </CardTitle>
+          <CardDescription>
+            Create and configure KMIP servers that proxy KMIP requests to Infisical KMS
+          </CardDescription>
+          <CardAction>
             <OrgPermissionCan
               I={OrgKmipServerPermissionActions.CreateKmipServers}
               a={OrgPermissionSubjects.KmipServer}
             >
               {(isAllowed) => (
                 <Button
-                  variant="outline_bg"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  variant={scopeVariant}
                   isDisabled={!isAllowed}
                   onClick={() => handlePopUpOpen("deployKmipServer")}
                 >
+                  <PlusIcon />
                   Create KMIP Server
                 </Button>
               )}
             </OrgPermissionCan>
-          </div>
-        </div>
-        <p className="mb-4 text-sm text-mineshaft-400">
-          Create and configure KMIP servers that proxy KMIP requests to Infisical KMS
-        </p>
-        <div>
-          <div className="flex gap-2">
-            <Input
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <InputGroup className="mb-4">
+            <InputGroupAddon align="inline-start">
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-              placeholder="Search KMIP server..."
-              className="flex-1"
+              placeholder="Search KMIP servers..."
             />
-          </div>
-          <TableContainer className="mt-4">
+          </InputGroup>
+          {isTableEmpty ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  {kmipServers?.length ? <SearchIcon /> : <ServerIcon />}
+                </EmptyMedia>
+                <EmptyTitle>
+                  {kmipServers?.length
+                    ? "No KMIP servers match your search"
+                    : "No KMIP servers configured"}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {kmipServers?.length
+                    ? "Try a different search term."
+                    : "Create a KMIP server to proxy KMIP requests to Infisical KMS."}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
             <Table>
-              <THead>
-                <Tr>
-                  <Th className="w-2/3">Name</Th>
-                  <Th>Created</Th>
-                  <Th className="w-5" />
-                </Tr>
-              </THead>
-              <TBody>
-                {isLoading && (
-                  <TableSkeleton innerKey="kmip-server-table" columns={3} key="kmip-server-table" />
-                )}
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-2/3">
+                    <TableHeadLabel>Name</TableHeadLabel>
+                  </TableHead>
+                  <TableHead>
+                    <TableHeadLabel>Created</TableHeadLabel>
+                  </TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading &&
+                  SKELETON_ROWS.map((row) => (
+                    <TableRow key={`kmip-server-skeleton-${row}`}>
+                      {SKELETON_CELLS.map((cell) => (
+                        <TableCell key={`kmip-server-skeleton-${row}-${cell}`}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
                 {filteredKmipServers?.map((el) => (
-                  <Tr
+                  <TableRow
                     key={el.id}
-                    className="cursor-pointer hover:bg-mineshaft-700"
                     onClick={() => {
                       navigate({
                         to: "/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",
@@ -138,83 +187,66 @@ export const KmipServerTab = withPermission(
                       });
                     }}
                   >
-                    <Td>{el.name}</Td>
-                    <Td>{formatRelative(new Date(el.createdAt), new Date())}</Td>
-                    <Td className="w-5">
-                      <Tooltip className="max-w-sm text-center" content="Options">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              ariaLabel="Options"
-                              colorSchema="secondary"
-                              className="w-6"
-                              variant="plain"
-                            >
-                              <FontAwesomeIcon icon={faEllipsisV} />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              icon={<FontAwesomeIcon icon={faCopy} />}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(el.id);
-                              }}
-                            >
-                              Copy ID
-                            </DropdownMenuItem>
-                            <OrgPermissionCan
-                              I={OrgKmipServerPermissionActions.DeleteKmipServers}
-                              a={OrgPermissionSubjects.KmipServer}
-                            >
-                              {(isAllowed: boolean) => (
-                                <DropdownMenuItem
-                                  isDisabled={!isAllowed}
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                  className="text-red"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteKmipServer", el);
-                                  }}
-                                >
-                                  Delete KMIP Server
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </Tooltip>
-                    </Td>
-                  </Tr>
+                    <TableCell isTruncatable>{el.name}</TableCell>
+                    <TableCell>{formatRelative(new Date(el.createdAt), new Date())}</TableCell>
+                    <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton aria-label="KMIP server options" variant="ghost" size="sm">
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(el.id)}>
+                            <CopyIcon />
+                            Copy ID
+                          </DropdownMenuItem>
+                          <OrgPermissionCan
+                            I={OrgKmipServerPermissionActions.DeleteKmipServers}
+                            a={OrgPermissionSubjects.KmipServer}
+                          >
+                            {(isAllowed: boolean) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed}
+                                variant="danger"
+                                onClick={() => handlePopUpOpen("deleteKmipServer", el)}
+                              >
+                                <TrashIcon />
+                                Delete KMIP Server
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </TBody>
+              </TableBody>
             </Table>
-            {!isLoading && !filteredKmipServers?.length && (
-              <EmptyState
-                title={
-                  kmipServers?.length
-                    ? "No KMIP servers match search..."
-                    : "No KMIP servers have been configured"
-                }
-                icon={kmipServers?.length ? faSearch : faServer}
-              />
-            )}
-            <DeleteActionModal
-              isOpen={popUp.deleteKmipServer.isOpen}
-              title={`Are you sure you want to delete KMIP server ${
-                (popUp?.deleteKmipServer?.data as { name: string })?.name || ""
-              }?`}
-              onChange={(isOpen) => handlePopUpToggle("deleteKmipServer", isOpen)}
-              deleteKey="confirm"
-              onDeleteApproved={() => handleDeleteKmipServer()}
-            />
-            <KmipServerDeployModal
-              isOpen={popUp.deployKmipServer.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle("deployKmipServer", isOpen)}
-            />
-          </TableContainer>
-        </div>
-      </div>
+          )}
+        </CardContent>
+        <DeleteConfirmDialog
+          isOpen={popUp.deleteKmipServer.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("deleteKmipServer", isOpen)}
+          title="Delete KMIP Server?"
+          description={
+            <Alert variant="danger" appearance="borderless">
+              <AlertDescription>
+                This permanently removes the KMIP server {kmipServerToDelete?.name} from your
+                organization. This cannot be undone.
+              </AlertDescription>
+            </Alert>
+          }
+          confirmKey={kmipServerToDelete?.name || ""}
+          confirmLabel="Delete KMIP Server"
+          isPending={deleteKmipServerById.isPending}
+          onConfirm={handleDeleteKmipServer}
+        />
+        <KmipServerDeployModal
+          isOpen={popUp.deployKmipServer.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("deployKmipServer", isOpen)}
+        />
+      </Card>
     );
   },
   {

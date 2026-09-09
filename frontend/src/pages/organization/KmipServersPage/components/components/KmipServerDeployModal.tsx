@@ -6,15 +6,26 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalClose,
-  ModalContent,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import {
   certKeyAlgorithms,
   certKeyAlgorithmToNameMap,
@@ -33,17 +44,13 @@ const schema = z.object({
   keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
 });
 
-type FormData = z.infer<typeof schema>;
-
-type Props = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-};
+const keyAlgorithmOptions = certKeyAlgorithms.filter(({ value }) => !isPqcAlgorithm(value));
 
 export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const navigate = useNavigate();
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: createKmipServer } = useCreateKmipServer();
 
   const {
@@ -88,82 +95,106 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={handleClose}>
-      <ModalContent
-        className="max-w-lg"
-        title="Create KMIP Server"
-        subTitle="Create a new KMIP server. You can generate an enrollment token and deploy it from the KMIP server detail page."
-        bodyClassName="overflow-visible"
-      >
-        <form onSubmit={handleSubmit(onSubmit)}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create KMIP Server</DialogTitle>
+          <DialogDescription>
+            Create a new KMIP server. You can generate an enrollment token and deploy it from the
+            KMIP server detail page.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Controller
             control={control}
             name="name"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Name"
-                isRequired
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="my-kmip-server" />
-              </FormControl>
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="kmip-server-name">Name</FieldLabel>
+                <Input
+                  {...field}
+                  id="kmip-server-name"
+                  placeholder="my-kmip-server"
+                  isError={Boolean(error)}
+                  autoFocus
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="hostnamesOrIps"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Hostnames or IPs"
-                isRequired
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="Comma-separated list of the hostnames or IPs that KMIP clients will use to reach this server. These become the server certificate's subject alternative names."
-              >
-                <Input {...field} placeholder="kmip.example.com, 10.0.0.5" />
-              </FormControl>
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="kmip-server-hostnames">Hostnames or IPs</FieldLabel>
+                <Input
+                  {...field}
+                  id="kmip-server-hostnames"
+                  placeholder="kmip.example.com, 10.0.0.5"
+                  isError={Boolean(error)}
+                />
+                <FieldDescription>
+                  Comma-separated list of the hostnames or IPs that KMIP clients will use to reach
+                  this server. These become the server certificate&apos;s subject alternative names.
+                </FieldDescription>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="keyAlgorithm"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Key Algorithm"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="Key algorithm used to sign the server certificate."
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {certKeyAlgorithms
-                    .filter(({ value }) => !isPqcAlgorithm(value))
-                    .map(({ value }) => (
-                      <SelectItem value={String(value || "")} key={value}>
-                        {certKeyAlgorithmToNameMap[value]}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="kmip-server-key-algorithm">Key algorithm</FieldLabel>
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger
+                    id="kmip-server-key-algorithm"
+                    isError={Boolean(error)}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {keyAlgorithmOptions.map(({ value: algorithm }) => (
+                      <SelectItem value={algorithm} key={algorithm}>
+                        {certKeyAlgorithmToNameMap[algorithm]}
                       </SelectItem>
                     ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+                <FieldDescription>
+                  Key algorithm used to sign the server certificate.
+                </FieldDescription>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
-          <div className="mt-6 flex items-center gap-2">
-            <Button type="submit" isLoading={isSubmitting} isDisabled={isSubmitting} size="sm">
-              Create KMIP Server
-            </Button>
-            <ModalClose asChild>
-              <Button size="sm" colorSchema="secondary">
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost" type="button">
                 Cancel
               </Button>
-            </ModalClose>
-          </div>
+            </DialogClose>
+            <Button
+              variant={scopeVariant}
+              type="submit"
+              isPending={isSubmitting}
+              isDisabled={isSubmitting}
+            >
+              Create KMIP Server
+            </Button>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
+};
+
+type FormData = z.infer<typeof schema>;
+
+type Props = {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
 };
