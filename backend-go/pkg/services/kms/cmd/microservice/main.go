@@ -11,6 +11,8 @@ import (
 	"syscall"
 
 	"github.com/redis/go-redis/v9"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/raft/v3/raftpb"
 
 	"github.com/infisical/api/internal/ee/services/externalkms"
 	"github.com/infisical/api/internal/ee/services/hsm"
@@ -20,6 +22,8 @@ import (
 	"github.com/infisical/api/internal/libs/logutil"
 	"github.com/infisical/api/pkg/services/kms"
 	"github.com/infisical/api/pkg/services/kms/config"
+	"github.com/infisical/api/pkg/services/kms/db/store"
+	"github.com/infisical/api/pkg/services/kms/db/store/lruraft"
 	kmsproto "github.com/infisical/api/pkg/services/kms/gen/proto"
 
 	internalConfig "github.com/infisical/api/internal/config"
@@ -132,6 +136,7 @@ func newKMS(
 		DB:                db,
 		HSM:               hsmSvc,
 		ExternalKms:       externalKmsSvc,
+		DisableCache:      cfg.DisableCache,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("initialize KMS: %w", err)
@@ -191,17 +196,59 @@ func start(cfg *config.Config) error {
 		return fmt.Errorf("external kms: %w", err)
 	}
 
-	kmsSvc, err := newKMS(
-		ctx,
-		cfg,
-		db,
-		hsmSvc,
-		externalKmsSvc,
-	)
+	kmsSvc, err := newKMS(ctx, cfg, db, hsmSvc, externalKmsSvc)
 	if err != nil {
 		return err
 	}
 	defer kmsSvc.Close()
+
+	var commitCh <-chan *lruraft.Commit
+	if !cfg.DisableCache && !cfg.DisableRaft {
+		proposeCh := make(chan []byte, lruraft.MaxInflightMessages)
+		modifyConfigCh := make(chan *raftpb.ConfChange)
+		defer close(proposeCh)
+		defer close(modifyConfigCh)
+
+		var raftErrCh <-chan error
+		var snapshotReadyCh <-chan *snap.Snapshotter
+		commitCh, raftErrCh, snapshotReadyCh, err = lruraft.NewLRURaftNode(lruraft.Options{
+			ID:                   cfg.RaftNodeID,
+			Peers:                cfg.RaftPeers,
+			ClusterBootstrapDone: cfg.RaftClusterBootstrapDone,
+			DirWal:               cfg.RaftWALDir,
+			DirSnapshot:          cfg.RaftSnapshotDir,
+			GetSnapshot:          kmsSvc.KmsStore.GetSnapshot,
+			ProposeCh:            proposeCh,
+			ModifyConfigCh:       modifyConfigCh,
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to start raft: %v", err)
+		}
+
+		go func() {
+			for raftErr := range raftErrCh {
+				if raftErr != nil {
+					kmsSvc.KmsStore.DisableCache()
+					logger.ErrorContext(ctx, "Raft error", slog.Any("error", raftErr))
+				}
+			}
+		}()
+
+		if snapshotter, ok := <-snapshotReadyCh; !ok || snapshotter == nil {
+			kmsSvc.KmsStore.DisableCache()
+			commitCh = nil
+			logger.WarnContext(ctx, "Raft stopped before its snapshot store was ready; continuing with the KMS metadata cache disabled")
+		} else {
+			kmsSvc.KmsStore.SetRaftBridge(store.NewRaftBridge(proposeCh, modifyConfigCh))
+		}
+	}
+
+	// handle callbacks from peers
+	if commitCh != nil {
+		raftListener := store.NewRaftListener(commitCh, kmsSvc.KmsStore)
+		go raftListener.Init()
+	}
 
 	listener, err := net.Listen("tcp", cfg.Addr())
 	if err != nil {

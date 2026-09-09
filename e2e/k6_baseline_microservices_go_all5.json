@@ -1,0 +1,37 @@
+{
+  "infisical-go-backend-go-0": {
+    "samples": 26,
+    "cpu_avg_m": 1.4615384615384615,
+    "cpu_peak_m": 2.0,
+    "memory_avg_mib": 15.26923076923077,
+    "memory_peak_mib": 16.0
+  },
+  "infisical-go-backend-go-1": {
+    "samples": 26,
+    "cpu_avg_m": 1.2692307692307692,
+    "cpu_peak_m": 2.0,
+    "memory_avg_mib": 17.46153846153846,
+    "memory_peak_mib": 19.0
+  },
+  "infisical-go-kms-0": {
+    "samples": 26,
+    "cpu_avg_m": 6.0,
+    "cpu_peak_m": 6.0,
+    "memory_avg_mib": 19.0,
+    "memory_peak_mib": 19.0
+  },
+  "infisical-go-kms-1": {
+    "samples": 26,
+    "cpu_avg_m": 5.730769230769231,
+    "cpu_peak_m": 6.0,
+    "memory_avg_mib": 12.0,
+    "memory_peak_mib": 12.0
+  },
+  "infisical-go-kms-2": {
+    "samples": 26,
+    "cpu_avg_m": 7.0,
+    "cpu_peak_m": 7.0,
+    "memory_avg_mib": 13.26923076923077,
+    "memory_peak_mib": 14.0
+  }
+}

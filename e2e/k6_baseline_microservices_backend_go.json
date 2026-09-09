@@ -1,0 +1,16 @@
+{
+  "infisical-go-backend-go-0": {
+    "samples": 26,
+    "cpu_avg_m": 1.0,
+    "cpu_peak_m": 1.0,
+    "memory_avg_mib": 8.461538461538462,
+    "memory_peak_mib": 9.0
+  },
+  "infisical-go-backend-go-1": {
+    "samples": 26,
+    "cpu_avg_m": 1.0,
+    "cpu_peak_m": 1.0,
+    "memory_avg_mib": 44.0,
+    "memory_peak_mib": 44.0
+  }
+}

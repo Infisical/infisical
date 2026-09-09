@@ -50,7 +50,7 @@ func (s *Service) validateReqAndRetrieveDecodedKey(ctx context.Context, keyId st
 		return nil, errutil.BadRequest("data must be base64 encoded").EncError()
 	}
 
-	kmsKey, err := s.kmsStore.GetKey(ctx, keyID)
+	kmsKey, err := s.KmsStore.GetKey(ctx, keyID)
 
 	if err != nil {
 		return nil, errutil.DatabaseErr("failed to retrieve KMS key").WithErr(err).EncError()

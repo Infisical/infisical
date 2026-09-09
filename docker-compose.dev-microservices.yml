@@ -1,0 +1,34 @@
+version: "3.9"
+
+# Use with the regular development stack:
+# docker compose -f docker-compose.dev.yml -f docker-compose.dev-microservices.yml --profile go up --build
+services:
+  backend-go:
+    depends_on:
+      kms:
+        condition: service_started
+    environment:
+      KMS_GRPC_ADDR: kms
+      KMS_GRPC_PORT: "4040"
+
+  kms:
+    container_name: infisical-dev-kms
+    build:
+      context: ./backend-go
+      dockerfile: pkg/services/kms/Dockerfile.fips
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      KMS_GRPC_ADDR: 0.0.0.0
+      KMS_GRPC_PORT: "4040"
+      KMS_GRPC_TLS_ENABLED: "false"
+      DB_CONNECTION_URI: postgres://infisical:infisical@db/infisical?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      FIPS_ENABLED: "true"
+    ports:
+      - "4041:4040"

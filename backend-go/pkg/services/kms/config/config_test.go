@@ -128,3 +128,42 @@ func TestLoadConfig_RejectsInvalidGRPCEndpoint(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadConfig_ParsesRaftConfiguration(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("DISABLE_RAFT", "false")
+	t.Setenv("RAFT_NODE_ID", "2")
+	t.Setenv("RAFT_PEERS", "http://kms-1:2380, http://kms-2:2380")
+	t.Setenv("RAFT_WAL_DIR", "/var/lib/kms/wal")
+	t.Setenv("RAFT_SNAPSHOT_DIR", "/var/lib/kms/snapshots")
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if len(cfg.RaftPeers) != 2 || cfg.RaftPeers[1] != "http://kms-2:2380" {
+		t.Fatalf("unexpected Raft peers: %+v", cfg.RaftPeers)
+	}
+}
+
+func TestLoadConfig_RejectsIncompleteRaftConfiguration(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("DISABLE_RAFT", "false")
+
+	if _, err := LoadConfig(); err == nil {
+		t.Fatal("LoadConfig() error = nil, want validation error")
+	}
+}
+
+func TestLoadConfig_RejectsInvalidRaftPeer(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("DISABLE_RAFT", "false")
+	t.Setenv("RAFT_NODE_ID", "1")
+	t.Setenv("RAFT_PEERS", "kms-1:2380")
+	t.Setenv("RAFT_WAL_DIR", "/var/lib/kms/wal")
+	t.Setenv("RAFT_SNAPSHOT_DIR", "/var/lib/kms/snapshots")
+
+	if _, err := LoadConfig(); err == nil {
+		t.Fatal("LoadConfig() error = nil, want validation error")
+	}
+}

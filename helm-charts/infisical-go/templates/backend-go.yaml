@@ -1,0 +1,88 @@
+{{- if .Values.backendGo.enabled }}
+{{- if ne (int .Values.backendGo.replicaCount) 2 }}
+{{- fail "backendGo.replicaCount must remain 2 because the weighted services target backend-go-0 and backend-go-1" }}
+{{- end }}
+{{- if ne .Values.backendGo.kubeSecretRef .Values.infisical.kubeSecretRef }}
+{{- fail "backendGo.kubeSecretRef must equal infisical.kubeSecretRef so both APIs use identical credentials" }}
+{{- end }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "infisical-go.backendGoFullname" . }}
+  labels:
+    {{- include "infisical-go.backendGoLabels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "infisical-go.backendGoFullname" . }}-headless
+  replicas: 2
+  selector:
+    matchLabels:
+      {{- include "infisical-go.backendGoLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infisical-go.backendGoLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: backend-go
+          image: "{{ .Values.backendGo.image.repository }}:{{ .Values.backendGo.image.tag }}"
+          imagePullPolicy: {{ .Values.backendGo.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backendGo.service.port }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.backendGo.kubeSecretRef }}
+          env:
+            - name: GOMAXPROCS
+              value: "1"
+            - name: GOMEMLIMIT
+              value: {{ .Values.backendGo.runtime.goMemLimit | quote }}
+            - name: GATEWAY_DISABLE_CACHE
+              value: {{ .Values.backendGo.cache.disabled | quote }}
+            - name: PORT
+              value: {{ .Values.backendGo.service.port | quote }}
+            - name: KMS_GRPC_ADDR
+              value: {{ include "infisical-go.kmsFullname" . }}
+            - name: KMS_GRPC_PORT
+              value: {{ .Values.kms.grpcPort | quote }}
+            - name: KMS_AUTH_HEADER
+              value: {{ .Values.kms.authHeader | quote }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+          livenessProbe:
+            tcpSocket:
+              port: http
+          resources:
+            {{- toYaml .Values.backendGo.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infisical-go.backendGoFullname" . }}-headless
+spec:
+  clusterIP: None
+  selector:
+    {{- include "infisical-go.backendGoLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.backendGo.service.port }}
+      targetPort: http
+{{- range $index := until 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infisical-go.backendGoFullname" $ }}-{{ $index }}
+  labels:
+    {{- include "infisical-go.backendGoLabels" $ | nindent 4 }}
+spec:
+  selector:
+    {{- include "infisical-go.backendGoLabels" $ | nindent 4 }}
+    statefulset.kubernetes.io/pod-name: {{ include "infisical-go.backendGoFullname" $ }}-{{ $index }}
+  ports:
+    - name: http
+      port: {{ $.Values.backendGo.service.port }}
+      targetPort: http
+{{- end }}
+{{- end }}

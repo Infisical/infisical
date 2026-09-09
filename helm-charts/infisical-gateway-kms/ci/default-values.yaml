@@ -1,0 +1,4 @@
+gateway:
+  existingSecret: kms-runtime
+kms:
+  existingSecret: kms-runtime

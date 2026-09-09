@@ -1,0 +1,3417 @@
+{
+  "measurement": "KMS Raft proposal queued to cache-apply completion",
+  "mode_precision_ms": 0.1,
+  "kms_replicas": [
+    "infisical-go-kms-0",
+    "infisical-go-kms-1",
+    "infisical-go-kms-2"
+  ],
+  "sampled_requests": 141,
+  "fully_converged_requests": 141,
+  "per_replica_apply": {
+    "count": 423,
+    "mean_ms": 1.0591323877068557,
+    "median_ms": 0.9940000000000001,
+    "mode_ms_0_1_bucket": [
+      0.9
+    ],
+    "p95_ms": 1.642,
+    "max_ms": 4.0569999999999995
+  },
+  "three_replica_convergence": {
+    "count": 141,
+    "mean_ms": 1.148290780141844,
+    "median_ms": 1.0679999999999998,
+    "mode_ms_0_1_bucket": [
+      0.9
+    ],
+    "p95_ms": 1.738,
+    "max_ms": 4.0569999999999995
+  },
+  "requests": [
+    {
+      "request_id": "bench-raft-1000-48",
+      "proposal_timestamp": "2026-09-09T07:34:58.859730+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 607,
+          "apply_timestamp": "2026-09-09T07:34:58.860504+00:00",
+          "proposal_to_apply_ms": 0.7739999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 607,
+          "apply_timestamp": "2026-09-09T07:34:58.860534+00:00",
+          "proposal_to_apply_ms": 0.804
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 607,
+          "apply_timestamp": "2026-09-09T07:34:58.860443+00:00",
+          "proposal_to_apply_ms": 0.713
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-105-22",
+      "proposal_timestamp": "2026-09-09T07:34:05.093440+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 551,
+          "apply_timestamp": "2026-09-09T07:34:05.094548+00:00",
+          "proposal_to_apply_ms": 1.108
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 551,
+          "apply_timestamp": "2026-09-09T07:34:05.094547+00:00",
+          "proposal_to_apply_ms": 1.107
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 551,
+          "apply_timestamp": "2026-09-09T07:34:05.094526+00:00",
+          "proposal_to_apply_ms": 1.0859999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-111-16",
+      "proposal_timestamp": "2026-09-09T07:33:53.067416+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 535,
+          "apply_timestamp": "2026-09-09T07:33:53.068192+00:00",
+          "proposal_to_apply_ms": 0.776
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 535,
+          "apply_timestamp": "2026-09-09T07:33:53.068262+00:00",
+          "proposal_to_apply_ms": 0.846
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 535,
+          "apply_timestamp": "2026-09-09T07:33:53.068188+00:00",
+          "proposal_to_apply_ms": 0.772
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-116-54",
+      "proposal_timestamp": "2026-09-09T07:35:09.093060+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 620,
+          "apply_timestamp": "2026-09-09T07:35:09.093976+00:00",
+          "proposal_to_apply_ms": 0.916
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 620,
+          "apply_timestamp": "2026-09-09T07:35:09.094190+00:00",
+          "proposal_to_apply_ms": 1.13
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 620,
+          "apply_timestamp": "2026-09-09T07:35:09.093927+00:00",
+          "proposal_to_apply_ms": 0.867
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-120-8",
+      "proposal_timestamp": "2026-09-09T07:33:37.112421+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 512,
+          "apply_timestamp": "2026-09-09T07:33:37.113647+00:00",
+          "proposal_to_apply_ms": 1.2260000000000002
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 512,
+          "apply_timestamp": "2026-09-09T07:33:37.113745+00:00",
+          "proposal_to_apply_ms": 1.324
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 512,
+          "apply_timestamp": "2026-09-09T07:33:37.113641+00:00",
+          "proposal_to_apply_ms": 1.22
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-126-1",
+      "proposal_timestamp": "2026-09-09T07:33:23.109777+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 493,
+          "apply_timestamp": "2026-09-09T07:33:23.110755+00:00",
+          "proposal_to_apply_ms": 0.9779999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 493,
+          "apply_timestamp": "2026-09-09T07:33:23.110793+00:00",
+          "proposal_to_apply_ms": 1.016
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 493,
+          "apply_timestamp": "2026-09-09T07:33:23.110710+00:00",
+          "proposal_to_apply_ms": 0.933
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-130-47",
+      "proposal_timestamp": "2026-09-09T07:34:55.117280+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 604,
+          "apply_timestamp": "2026-09-09T07:34:55.118849+00:00",
+          "proposal_to_apply_ms": 1.5690000000000002
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 604,
+          "apply_timestamp": "2026-09-09T07:34:55.118867+00:00",
+          "proposal_to_apply_ms": 1.5870000000000002
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 604,
+          "apply_timestamp": "2026-09-09T07:34:55.118780+00:00",
+          "proposal_to_apply_ms": 1.5
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-147-30",
+      "proposal_timestamp": "2026-09-09T07:34:21.154208+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 569,
+          "apply_timestamp": "2026-09-09T07:34:21.155054+00:00",
+          "proposal_to_apply_ms": 0.846
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 569,
+          "apply_timestamp": "2026-09-09T07:34:21.155282+00:00",
+          "proposal_to_apply_ms": 1.074
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 569,
+          "apply_timestamp": "2026-09-09T07:34:21.155003+00:00",
+          "proposal_to_apply_ms": 0.795
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-150-37",
+      "proposal_timestamp": "2026-09-09T07:34:35.198853+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 586,
+          "apply_timestamp": "2026-09-09T07:34:35.200007+00:00",
+          "proposal_to_apply_ms": 1.1540000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 586,
+          "apply_timestamp": "2026-09-09T07:34:35.200063+00:00",
+          "proposal_to_apply_ms": 1.21
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 586,
+          "apply_timestamp": "2026-09-09T07:34:35.199953+00:00",
+          "proposal_to_apply_ms": 1.1
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-150-58",
+      "proposal_timestamp": "2026-09-09T07:35:17.196422+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 629,
+          "apply_timestamp": "2026-09-09T07:35:17.197587+00:00",
+          "proposal_to_apply_ms": 1.165
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 629,
+          "apply_timestamp": "2026-09-09T07:35:17.197314+00:00",
+          "proposal_to_apply_ms": 0.892
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 629,
+          "apply_timestamp": "2026-09-09T07:35:17.197314+00:00",
+          "proposal_to_apply_ms": 0.892
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-153-40",
+      "proposal_timestamp": "2026-09-09T07:34:41.148600+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 589,
+          "apply_timestamp": "2026-09-09T07:34:41.149913+00:00",
+          "proposal_to_apply_ms": 1.313
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 589,
+          "apply_timestamp": "2026-09-09T07:34:41.149754+00:00",
+          "proposal_to_apply_ms": 1.1540000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 589,
+          "apply_timestamp": "2026-09-09T07:34:41.149714+00:00",
+          "proposal_to_apply_ms": 1.1139999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-159-49",
+      "proposal_timestamp": "2026-09-09T07:34:59.165366+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 608,
+          "apply_timestamp": "2026-09-09T07:34:59.166458+00:00",
+          "proposal_to_apply_ms": 1.092
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 608,
+          "apply_timestamp": "2026-09-09T07:34:59.166499+00:00",
+          "proposal_to_apply_ms": 1.1329999999999998
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 608,
+          "apply_timestamp": "2026-09-09T07:34:59.166447+00:00",
+          "proposal_to_apply_ms": 1.081
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-180-11",
+      "proposal_timestamp": "2026-09-09T07:33:43.211814+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 517,
+          "apply_timestamp": "2026-09-09T07:33:43.213061+00:00",
+          "proposal_to_apply_ms": 1.247
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 517,
+          "apply_timestamp": "2026-09-09T07:33:43.213261+00:00",
+          "proposal_to_apply_ms": 1.4469999999999998
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 517,
+          "apply_timestamp": "2026-09-09T07:33:43.212994+00:00",
+          "proposal_to_apply_ms": 1.1800000000000002
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-183-16",
+      "proposal_timestamp": "2026-09-09T07:33:53.233307+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 536,
+          "apply_timestamp": "2026-09-09T07:33:53.234573+00:00",
+          "proposal_to_apply_ms": 1.266
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 536,
+          "apply_timestamp": "2026-09-09T07:33:53.234441+00:00",
+          "proposal_to_apply_ms": 1.1340000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 536,
+          "apply_timestamp": "2026-09-09T07:33:53.234414+00:00",
+          "proposal_to_apply_ms": 1.107
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-190-4",
+      "proposal_timestamp": "2026-09-09T07:33:29.240278+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 500,
+          "apply_timestamp": "2026-09-09T07:33:29.244335+00:00",
+          "proposal_to_apply_ms": 4.0569999999999995
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 500,
+          "apply_timestamp": "2026-09-09T07:33:29.242911+00:00",
+          "proposal_to_apply_ms": 2.633
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 500,
+          "apply_timestamp": "2026-09-09T07:33:29.242913+00:00",
+          "proposal_to_apply_ms": 2.6350000000000002
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-192-7",
+      "proposal_timestamp": "2026-09-09T07:33:35.242327+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 509,
+          "apply_timestamp": "2026-09-09T07:33:35.243449+00:00",
+          "proposal_to_apply_ms": 1.1219999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 509,
+          "apply_timestamp": "2026-09-09T07:33:35.243704+00:00",
+          "proposal_to_apply_ms": 1.377
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 509,
+          "apply_timestamp": "2026-09-09T07:33:35.243482+00:00",
+          "proposal_to_apply_ms": 1.155
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-204-8",
+      "proposal_timestamp": "2026-09-09T07:33:37.274059+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 513,
+          "apply_timestamp": "2026-09-09T07:33:37.275671+00:00",
+          "proposal_to_apply_ms": 1.6119999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 513,
+          "apply_timestamp": "2026-09-09T07:33:37.275526+00:00",
+          "proposal_to_apply_ms": 1.467
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 513,
+          "apply_timestamp": "2026-09-09T07:33:37.275479+00:00",
+          "proposal_to_apply_ms": 1.42
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-223-30",
+      "proposal_timestamp": "2026-09-09T07:34:21.296242+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 570,
+          "apply_timestamp": "2026-09-09T07:34:21.296895+00:00",
+          "proposal_to_apply_ms": 0.653
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 570,
+          "apply_timestamp": "2026-09-09T07:34:21.296949+00:00",
+          "proposal_to_apply_ms": 0.707
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 570,
+          "apply_timestamp": "2026-09-09T07:34:21.296885+00:00",
+          "proposal_to_apply_ms": 0.643
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-225-50",
+      "proposal_timestamp": "2026-09-09T07:35:01.313240+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 612,
+          "apply_timestamp": "2026-09-09T07:35:01.315192+00:00",
+          "proposal_to_apply_ms": 1.952
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 612,
+          "apply_timestamp": "2026-09-09T07:35:01.315255+00:00",
+          "proposal_to_apply_ms": 2.0149999999999997
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 612,
+          "apply_timestamp": "2026-09-09T07:35:01.315188+00:00",
+          "proposal_to_apply_ms": 1.9480000000000002
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-234-57",
+      "proposal_timestamp": "2026-09-09T07:35:15.346685+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 626,
+          "apply_timestamp": "2026-09-09T07:35:15.347509+00:00",
+          "proposal_to_apply_ms": 0.824
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 626,
+          "apply_timestamp": "2026-09-09T07:35:15.347614+00:00",
+          "proposal_to_apply_ms": 0.929
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 626,
+          "apply_timestamp": "2026-09-09T07:35:15.347494+00:00",
+          "proposal_to_apply_ms": 0.809
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-236-12",
+      "proposal_timestamp": "2026-09-09T07:33:45.323452+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 523,
+          "apply_timestamp": "2026-09-09T07:33:45.324736+00:00",
+          "proposal_to_apply_ms": 1.284
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 523,
+          "apply_timestamp": "2026-09-09T07:33:45.324658+00:00",
+          "proposal_to_apply_ms": 1.206
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 523,
+          "apply_timestamp": "2026-09-09T07:33:45.324630+00:00",
+          "proposal_to_apply_ms": 1.178
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-236-49",
+      "proposal_timestamp": "2026-09-09T07:34:59.328011+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 609,
+          "apply_timestamp": "2026-09-09T07:34:59.328895+00:00",
+          "proposal_to_apply_ms": 0.884
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 609,
+          "apply_timestamp": "2026-09-09T07:34:59.328884+00:00",
+          "proposal_to_apply_ms": 0.873
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 609,
+          "apply_timestamp": "2026-09-09T07:34:59.328841+00:00",
+          "proposal_to_apply_ms": 0.83
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-242-33",
+      "proposal_timestamp": "2026-09-09T07:34:27.389813+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 572,
+          "apply_timestamp": "2026-09-09T07:34:27.391796+00:00",
+          "proposal_to_apply_ms": 1.9829999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 572,
+          "apply_timestamp": "2026-09-09T07:34:27.391045+00:00",
+          "proposal_to_apply_ms": 1.232
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 572,
+          "apply_timestamp": "2026-09-09T07:34:27.390898+00:00",
+          "proposal_to_apply_ms": 1.085
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-244-45",
+      "proposal_timestamp": "2026-09-09T07:34:51.335613+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 598,
+          "apply_timestamp": "2026-09-09T07:34:51.336714+00:00",
+          "proposal_to_apply_ms": 1.101
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 598,
+          "apply_timestamp": "2026-09-09T07:34:51.336841+00:00",
+          "proposal_to_apply_ms": 1.228
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 598,
+          "apply_timestamp": "2026-09-09T07:34:51.336677+00:00",
+          "proposal_to_apply_ms": 1.064
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-25-36",
+      "proposal_timestamp": "2026-09-09T07:34:32.947055+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 583,
+          "apply_timestamp": "2026-09-09T07:34:32.947744+00:00",
+          "proposal_to_apply_ms": 0.6890000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 583,
+          "apply_timestamp": "2026-09-09T07:34:32.947709+00:00",
+          "proposal_to_apply_ms": 0.6539999999999999
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 583,
+          "apply_timestamp": "2026-09-09T07:34:32.947681+00:00",
+          "proposal_to_apply_ms": 0.626
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-250-28",
+      "proposal_timestamp": "2026-09-09T07:34:17.356485+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 562,
+          "apply_timestamp": "2026-09-09T07:34:17.358107+00:00",
+          "proposal_to_apply_ms": 1.6219999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 562,
+          "apply_timestamp": "2026-09-09T07:34:17.358223+00:00",
+          "proposal_to_apply_ms": 1.738
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 562,
+          "apply_timestamp": "2026-09-09T07:34:17.358070+00:00",
+          "proposal_to_apply_ms": 1.585
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-26-6",
+      "proposal_timestamp": "2026-09-09T07:33:32.976419+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 505,
+          "apply_timestamp": "2026-09-09T07:33:32.977416+00:00",
+          "proposal_to_apply_ms": 0.9970000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 505,
+          "apply_timestamp": "2026-09-09T07:33:32.977512+00:00",
+          "proposal_to_apply_ms": 1.093
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 505,
+          "apply_timestamp": "2026-09-09T07:33:32.977392+00:00",
+          "proposal_to_apply_ms": 0.973
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-260-16",
+      "proposal_timestamp": "2026-09-09T07:33:53.410598+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 537,
+          "apply_timestamp": "2026-09-09T07:33:53.412499+00:00",
+          "proposal_to_apply_ms": 1.9009999999999998
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 537,
+          "apply_timestamp": "2026-09-09T07:33:53.412675+00:00",
+          "proposal_to_apply_ms": 2.077
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 537,
+          "apply_timestamp": "2026-09-09T07:33:53.412500+00:00",
+          "proposal_to_apply_ms": 1.9020000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-275-6",
+      "proposal_timestamp": "2026-09-09T07:33:33.415209+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 506,
+          "apply_timestamp": "2026-09-09T07:33:33.415983+00:00",
+          "proposal_to_apply_ms": 0.7739999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 506,
+          "apply_timestamp": "2026-09-09T07:33:33.415982+00:00",
+          "proposal_to_apply_ms": 0.773
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 506,
+          "apply_timestamp": "2026-09-09T07:33:33.415943+00:00",
+          "proposal_to_apply_ms": 0.734
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-276-47",
+      "proposal_timestamp": "2026-09-09T07:34:55.410256+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 605,
+          "apply_timestamp": "2026-09-09T07:34:55.411148+00:00",
+          "proposal_to_apply_ms": 0.892
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 605,
+          "apply_timestamp": "2026-09-09T07:34:55.411165+00:00",
+          "proposal_to_apply_ms": 0.909
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 605,
+          "apply_timestamp": "2026-09-09T07:34:55.411036+00:00",
+          "proposal_to_apply_ms": 0.78
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-288-28",
+      "proposal_timestamp": "2026-09-09T07:34:17.416210+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 563,
+          "apply_timestamp": "2026-09-09T07:34:17.417407+00:00",
+          "proposal_to_apply_ms": 1.1969999999999998
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 563,
+          "apply_timestamp": "2026-09-09T07:34:17.417449+00:00",
+          "proposal_to_apply_ms": 1.239
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 563,
+          "apply_timestamp": "2026-09-09T07:34:17.417462+00:00",
+          "proposal_to_apply_ms": 1.252
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-30-48",
+      "proposal_timestamp": "2026-09-09T07:34:56.969777+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 606,
+          "apply_timestamp": "2026-09-09T07:34:56.970840+00:00",
+          "proposal_to_apply_ms": 1.063
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 606,
+          "apply_timestamp": "2026-09-09T07:34:56.970747+00:00",
+          "proposal_to_apply_ms": 0.9700000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 606,
+          "apply_timestamp": "2026-09-09T07:34:56.970686+00:00",
+          "proposal_to_apply_ms": 0.909
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-303-17",
+      "proposal_timestamp": "2026-09-09T07:33:55.465157+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 540,
+          "apply_timestamp": "2026-09-09T07:33:55.466671+00:00",
+          "proposal_to_apply_ms": 1.514
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 540,
+          "apply_timestamp": "2026-09-09T07:33:55.466958+00:00",
+          "proposal_to_apply_ms": 1.8010000000000002
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 540,
+          "apply_timestamp": "2026-09-09T07:33:55.466768+00:00",
+          "proposal_to_apply_ms": 1.611
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-316-21",
+      "proposal_timestamp": "2026-09-09T07:34:03.498395+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 548,
+          "apply_timestamp": "2026-09-09T07:34:03.499457+00:00",
+          "proposal_to_apply_ms": 1.062
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 548,
+          "apply_timestamp": "2026-09-09T07:34:03.499330+00:00",
+          "proposal_to_apply_ms": 0.9349999999999999
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 548,
+          "apply_timestamp": "2026-09-09T07:34:03.499302+00:00",
+          "proposal_to_apply_ms": 0.907
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-318-28",
+      "proposal_timestamp": "2026-09-09T07:34:17.490014+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 564,
+          "apply_timestamp": "2026-09-09T07:34:17.491045+00:00",
+          "proposal_to_apply_ms": 1.031
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 564,
+          "apply_timestamp": "2026-09-09T07:34:17.491030+00:00",
+          "proposal_to_apply_ms": 1.016
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 564,
+          "apply_timestamp": "2026-09-09T07:34:17.491029+00:00",
+          "proposal_to_apply_ms": 1.0150000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-319-40",
+      "proposal_timestamp": "2026-09-09T07:34:41.501702+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 590,
+          "apply_timestamp": "2026-09-09T07:34:41.502488+00:00",
+          "proposal_to_apply_ms": 0.786
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 590,
+          "apply_timestamp": "2026-09-09T07:34:41.502407+00:00",
+          "proposal_to_apply_ms": 0.705
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 590,
+          "apply_timestamp": "2026-09-09T07:34:41.502390+00:00",
+          "proposal_to_apply_ms": 0.6880000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-320-42",
+      "proposal_timestamp": "2026-09-09T07:34:45.509026+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 595,
+          "apply_timestamp": "2026-09-09T07:34:45.509888+00:00",
+          "proposal_to_apply_ms": 0.862
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 595,
+          "apply_timestamp": "2026-09-09T07:34:45.509875+00:00",
+          "proposal_to_apply_ms": 0.8490000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 595,
+          "apply_timestamp": "2026-09-09T07:34:45.509829+00:00",
+          "proposal_to_apply_ms": 0.803
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-329-41",
+      "proposal_timestamp": "2026-09-09T07:34:43.497918+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 593,
+          "apply_timestamp": "2026-09-09T07:34:43.499111+00:00",
+          "proposal_to_apply_ms": 1.193
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 593,
+          "apply_timestamp": "2026-09-09T07:34:43.499077+00:00",
+          "proposal_to_apply_ms": 1.159
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 593,
+          "apply_timestamp": "2026-09-09T07:34:43.499000+00:00",
+          "proposal_to_apply_ms": 1.082
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-345-34",
+      "proposal_timestamp": "2026-09-09T07:34:29.533077+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 574,
+          "apply_timestamp": "2026-09-09T07:34:29.533783+00:00",
+          "proposal_to_apply_ms": 0.7060000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 574,
+          "apply_timestamp": "2026-09-09T07:34:29.533805+00:00",
+          "proposal_to_apply_ms": 0.728
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 574,
+          "apply_timestamp": "2026-09-09T07:34:29.533740+00:00",
+          "proposal_to_apply_ms": 0.6629999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-345-59",
+      "proposal_timestamp": "2026-09-09T07:35:19.532847+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 632,
+          "apply_timestamp": "2026-09-09T07:35:19.535089+00:00",
+          "proposal_to_apply_ms": 2.242
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 632,
+          "apply_timestamp": "2026-09-09T07:35:19.534463+00:00",
+          "proposal_to_apply_ms": 1.616
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 632,
+          "apply_timestamp": "2026-09-09T07:35:19.534444+00:00",
+          "proposal_to_apply_ms": 1.597
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-348-32",
+      "proposal_timestamp": "2026-09-09T07:34:25.558904+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 571,
+          "apply_timestamp": "2026-09-09T07:34:25.559926+00:00",
+          "proposal_to_apply_ms": 1.0219999999999998
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 571,
+          "apply_timestamp": "2026-09-09T07:34:25.559981+00:00",
+          "proposal_to_apply_ms": 1.077
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 571,
+          "apply_timestamp": "2026-09-09T07:34:25.559892+00:00",
+          "proposal_to_apply_ms": 0.988
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-356-49",
+      "proposal_timestamp": "2026-09-09T07:34:59.577169+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 610,
+          "apply_timestamp": "2026-09-09T07:34:59.577978+00:00",
+          "proposal_to_apply_ms": 0.809
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 610,
+          "apply_timestamp": "2026-09-09T07:34:59.578024+00:00",
+          "proposal_to_apply_ms": 0.855
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 610,
+          "apply_timestamp": "2026-09-09T07:34:59.577976+00:00",
+          "proposal_to_apply_ms": 0.8069999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-357-4",
+      "proposal_timestamp": "2026-09-09T07:33:29.567122+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 501,
+          "apply_timestamp": "2026-09-09T07:33:29.568321+00:00",
+          "proposal_to_apply_ms": 1.199
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 501,
+          "apply_timestamp": "2026-09-09T07:33:29.568170+00:00",
+          "proposal_to_apply_ms": 1.048
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 501,
+          "apply_timestamp": "2026-09-09T07:33:29.568126+00:00",
+          "proposal_to_apply_ms": 1.004
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-361-24",
+      "proposal_timestamp": "2026-09-09T07:34:09.654547+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 555,
+          "apply_timestamp": "2026-09-09T07:34:09.655509+00:00",
+          "proposal_to_apply_ms": 0.962
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 555,
+          "apply_timestamp": "2026-09-09T07:34:09.655554+00:00",
+          "proposal_to_apply_ms": 1.0070000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 555,
+          "apply_timestamp": "2026-09-09T07:34:09.655469+00:00",
+          "proposal_to_apply_ms": 0.9219999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-361-6",
+      "proposal_timestamp": "2026-09-09T07:33:33.650970+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 507,
+          "apply_timestamp": "2026-09-09T07:33:33.651603+00:00",
+          "proposal_to_apply_ms": 0.633
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 507,
+          "apply_timestamp": "2026-09-09T07:33:33.651604+00:00",
+          "proposal_to_apply_ms": 0.634
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 507,
+          "apply_timestamp": "2026-09-09T07:33:33.651583+00:00",
+          "proposal_to_apply_ms": 0.6130000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-377-4",
+      "proposal_timestamp": "2026-09-09T07:33:29.626986+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 502,
+          "apply_timestamp": "2026-09-09T07:33:29.627847+00:00",
+          "proposal_to_apply_ms": 0.861
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 502,
+          "apply_timestamp": "2026-09-09T07:33:29.627785+00:00",
+          "proposal_to_apply_ms": 0.799
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 502,
+          "apply_timestamp": "2026-09-09T07:33:29.627742+00:00",
+          "proposal_to_apply_ms": 0.756
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-381-57",
+      "proposal_timestamp": "2026-09-09T07:35:15.606809+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 627,
+          "apply_timestamp": "2026-09-09T07:35:15.607732+00:00",
+          "proposal_to_apply_ms": 0.923
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 627,
+          "apply_timestamp": "2026-09-09T07:35:15.607775+00:00",
+          "proposal_to_apply_ms": 0.966
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 627,
+          "apply_timestamp": "2026-09-09T07:35:15.607711+00:00",
+          "proposal_to_apply_ms": 0.902
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-389-58",
+      "proposal_timestamp": "2026-09-09T07:35:17.637758+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 630,
+          "apply_timestamp": "2026-09-09T07:35:17.639181+00:00",
+          "proposal_to_apply_ms": 1.423
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 630,
+          "apply_timestamp": "2026-09-09T07:35:17.639182+00:00",
+          "proposal_to_apply_ms": 1.424
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 630,
+          "apply_timestamp": "2026-09-09T07:35:17.639087+00:00",
+          "proposal_to_apply_ms": 1.3290000000000002
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-390-34",
+      "proposal_timestamp": "2026-09-09T07:34:29.709910+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 575,
+          "apply_timestamp": "2026-09-09T07:34:29.710695+00:00",
+          "proposal_to_apply_ms": 0.785
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 575,
+          "apply_timestamp": "2026-09-09T07:34:29.710745+00:00",
+          "proposal_to_apply_ms": 0.8350000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 575,
+          "apply_timestamp": "2026-09-09T07:34:29.710697+00:00",
+          "proposal_to_apply_ms": 0.787
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-402-39",
+      "proposal_timestamp": "2026-09-09T07:34:39.654117+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 588,
+          "apply_timestamp": "2026-09-09T07:34:39.655112+00:00",
+          "proposal_to_apply_ms": 0.995
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 588,
+          "apply_timestamp": "2026-09-09T07:34:39.655248+00:00",
+          "proposal_to_apply_ms": 1.131
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 588,
+          "apply_timestamp": "2026-09-09T07:34:39.655031+00:00",
+          "proposal_to_apply_ms": 0.914
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-402-57",
+      "proposal_timestamp": "2026-09-09T07:35:15.657727+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 628,
+          "apply_timestamp": "2026-09-09T07:35:15.658794+00:00",
+          "proposal_to_apply_ms": 1.067
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 628,
+          "apply_timestamp": "2026-09-09T07:35:15.658786+00:00",
+          "proposal_to_apply_ms": 1.059
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 628,
+          "apply_timestamp": "2026-09-09T07:35:15.658714+00:00",
+          "proposal_to_apply_ms": 0.987
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-404-46",
+      "proposal_timestamp": "2026-09-09T07:34:53.660274+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 599,
+          "apply_timestamp": "2026-09-09T07:34:53.661348+00:00",
+          "proposal_to_apply_ms": 1.074
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 599,
+          "apply_timestamp": "2026-09-09T07:34:53.661518+00:00",
+          "proposal_to_apply_ms": 1.244
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 599,
+          "apply_timestamp": "2026-09-09T07:34:53.661328+00:00",
+          "proposal_to_apply_ms": 1.054
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-409-20",
+      "proposal_timestamp": "2026-09-09T07:34:01.669613+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 546,
+          "apply_timestamp": "2026-09-09T07:34:01.670782+00:00",
+          "proposal_to_apply_ms": 1.1689999999999998
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 546,
+          "apply_timestamp": "2026-09-09T07:34:01.670951+00:00",
+          "proposal_to_apply_ms": 1.338
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 546,
+          "apply_timestamp": "2026-09-09T07:34:01.670801+00:00",
+          "proposal_to_apply_ms": 1.188
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-417-3",
+      "proposal_timestamp": "2026-09-09T07:33:27.697522+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 496,
+          "apply_timestamp": "2026-09-09T07:33:27.698420+00:00",
+          "proposal_to_apply_ms": 0.898
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 496,
+          "apply_timestamp": "2026-09-09T07:33:27.698419+00:00",
+          "proposal_to_apply_ms": 0.897
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 496,
+          "apply_timestamp": "2026-09-09T07:33:27.698383+00:00",
+          "proposal_to_apply_ms": 0.861
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-422-13",
+      "proposal_timestamp": "2026-09-09T07:33:47.721268+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 530,
+          "apply_timestamp": "2026-09-09T07:33:47.722137+00:00",
+          "proposal_to_apply_ms": 0.869
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 530,
+          "apply_timestamp": "2026-09-09T07:33:47.722142+00:00",
+          "proposal_to_apply_ms": 0.874
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 530,
+          "apply_timestamp": "2026-09-09T07:33:47.722004+00:00",
+          "proposal_to_apply_ms": 0.736
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-425-16",
+      "proposal_timestamp": "2026-09-09T07:33:53.694152+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 538,
+          "apply_timestamp": "2026-09-09T07:33:53.695332+00:00",
+          "proposal_to_apply_ms": 1.1800000000000002
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 538,
+          "apply_timestamp": "2026-09-09T07:33:53.695554+00:00",
+          "proposal_to_apply_ms": 1.4020000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 538,
+          "apply_timestamp": "2026-09-09T07:33:53.695282+00:00",
+          "proposal_to_apply_ms": 1.13
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-43-15",
+      "proposal_timestamp": "2026-09-09T07:33:50.903063+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 532,
+          "apply_timestamp": "2026-09-09T07:33:50.903918+00:00",
+          "proposal_to_apply_ms": 0.855
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 532,
+          "apply_timestamp": "2026-09-09T07:33:50.904034+00:00",
+          "proposal_to_apply_ms": 0.971
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 532,
+          "apply_timestamp": "2026-09-09T07:33:50.903980+00:00",
+          "proposal_to_apply_ms": 0.9169999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-438-27",
+      "proposal_timestamp": "2026-09-09T07:34:15.743640+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 561,
+          "apply_timestamp": "2026-09-09T07:34:15.744864+00:00",
+          "proposal_to_apply_ms": 1.224
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 561,
+          "apply_timestamp": "2026-09-09T07:34:15.744808+00:00",
+          "proposal_to_apply_ms": 1.168
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 561,
+          "apply_timestamp": "2026-09-09T07:34:15.744723+00:00",
+          "proposal_to_apply_ms": 1.083
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-45-20",
+      "proposal_timestamp": "2026-09-09T07:34:00.972417+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 545,
+          "apply_timestamp": "2026-09-09T07:34:00.973421+00:00",
+          "proposal_to_apply_ms": 1.004
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 545,
+          "apply_timestamp": "2026-09-09T07:34:00.973679+00:00",
+          "proposal_to_apply_ms": 1.262
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 545,
+          "apply_timestamp": "2026-09-09T07:34:00.973370+00:00",
+          "proposal_to_apply_ms": 0.953
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-450-5",
+      "proposal_timestamp": "2026-09-09T07:33:31.759641+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 503,
+          "apply_timestamp": "2026-09-09T07:33:31.760761+00:00",
+          "proposal_to_apply_ms": 1.1199999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 503,
+          "apply_timestamp": "2026-09-09T07:33:31.761209+00:00",
+          "proposal_to_apply_ms": 1.568
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 503,
+          "apply_timestamp": "2026-09-09T07:33:31.760606+00:00",
+          "proposal_to_apply_ms": 0.9650000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-457-12",
+      "proposal_timestamp": "2026-09-09T07:33:45.763001+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 524,
+          "apply_timestamp": "2026-09-09T07:33:45.763818+00:00",
+          "proposal_to_apply_ms": 0.8170000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 524,
+          "apply_timestamp": "2026-09-09T07:33:45.763847+00:00",
+          "proposal_to_apply_ms": 0.846
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 524,
+          "apply_timestamp": "2026-09-09T07:33:45.763766+00:00",
+          "proposal_to_apply_ms": 0.7649999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-463-23",
+      "proposal_timestamp": "2026-09-09T07:34:07.783145+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 553,
+          "apply_timestamp": "2026-09-09T07:34:07.784682+00:00",
+          "proposal_to_apply_ms": 1.537
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 553,
+          "apply_timestamp": "2026-09-09T07:34:07.784174+00:00",
+          "proposal_to_apply_ms": 1.029
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 553,
+          "apply_timestamp": "2026-09-09T07:34:07.784139+00:00",
+          "proposal_to_apply_ms": 0.9940000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-465-22",
+      "proposal_timestamp": "2026-09-09T07:34:05.790327+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 552,
+          "apply_timestamp": "2026-09-09T07:34:05.791351+00:00",
+          "proposal_to_apply_ms": 1.024
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 552,
+          "apply_timestamp": "2026-09-09T07:34:05.791310+00:00",
+          "proposal_to_apply_ms": 0.983
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 552,
+          "apply_timestamp": "2026-09-09T07:34:05.791249+00:00",
+          "proposal_to_apply_ms": 0.9219999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-477-55",
+      "proposal_timestamp": "2026-09-09T07:35:11.809516+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 623,
+          "apply_timestamp": "2026-09-09T07:35:11.810467+00:00",
+          "proposal_to_apply_ms": 0.9510000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 623,
+          "apply_timestamp": "2026-09-09T07:35:11.810471+00:00",
+          "proposal_to_apply_ms": 0.955
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 623,
+          "apply_timestamp": "2026-09-09T07:35:11.810425+00:00",
+          "proposal_to_apply_ms": 0.909
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-481-28",
+      "proposal_timestamp": "2026-09-09T07:34:17.806954+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 565,
+          "apply_timestamp": "2026-09-09T07:34:17.807969+00:00",
+          "proposal_to_apply_ms": 1.0150000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 565,
+          "apply_timestamp": "2026-09-09T07:34:17.807980+00:00",
+          "proposal_to_apply_ms": 1.026
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 565,
+          "apply_timestamp": "2026-09-09T07:34:17.807950+00:00",
+          "proposal_to_apply_ms": 0.9959999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-491-51",
+      "proposal_timestamp": "2026-09-09T07:35:03.842330+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 614,
+          "apply_timestamp": "2026-09-09T07:35:03.843270+00:00",
+          "proposal_to_apply_ms": 0.94
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 614,
+          "apply_timestamp": "2026-09-09T07:35:03.843254+00:00",
+          "proposal_to_apply_ms": 0.924
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 614,
+          "apply_timestamp": "2026-09-09T07:35:03.843136+00:00",
+          "proposal_to_apply_ms": 0.8059999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-496-25",
+      "proposal_timestamp": "2026-09-09T07:34:11.860833+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 559,
+          "apply_timestamp": "2026-09-09T07:34:11.862043+00:00",
+          "proposal_to_apply_ms": 1.21
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 559,
+          "apply_timestamp": "2026-09-09T07:34:11.861957+00:00",
+          "proposal_to_apply_ms": 1.124
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 559,
+          "apply_timestamp": "2026-09-09T07:34:11.861913+00:00",
+          "proposal_to_apply_ms": 1.08
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-500-33",
+      "proposal_timestamp": "2026-09-09T07:34:27.842845+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 573,
+          "apply_timestamp": "2026-09-09T07:34:27.843702+00:00",
+          "proposal_to_apply_ms": 0.857
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 573,
+          "apply_timestamp": "2026-09-09T07:34:27.843804+00:00",
+          "proposal_to_apply_ms": 0.959
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 573,
+          "apply_timestamp": "2026-09-09T07:34:27.843719+00:00",
+          "proposal_to_apply_ms": 0.874
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-517-29",
+      "proposal_timestamp": "2026-09-09T07:34:19.887682+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 567,
+          "apply_timestamp": "2026-09-09T07:34:19.889355+00:00",
+          "proposal_to_apply_ms": 1.673
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 567,
+          "apply_timestamp": "2026-09-09T07:34:19.889395+00:00",
+          "proposal_to_apply_ms": 1.7129999999999999
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 567,
+          "apply_timestamp": "2026-09-09T07:34:19.889375+00:00",
+          "proposal_to_apply_ms": 1.693
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-526-34",
+      "proposal_timestamp": "2026-09-09T07:34:29.911468+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 576,
+          "apply_timestamp": "2026-09-09T07:34:29.912439+00:00",
+          "proposal_to_apply_ms": 0.971
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 576,
+          "apply_timestamp": "2026-09-09T07:34:29.912364+00:00",
+          "proposal_to_apply_ms": 0.896
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 576,
+          "apply_timestamp": "2026-09-09T07:34:29.912336+00:00",
+          "proposal_to_apply_ms": 0.868
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-528-10",
+      "proposal_timestamp": "2026-09-09T07:33:41.915301+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 515,
+          "apply_timestamp": "2026-09-09T07:33:41.916699+00:00",
+          "proposal_to_apply_ms": 1.398
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 515,
+          "apply_timestamp": "2026-09-09T07:33:41.916654+00:00",
+          "proposal_to_apply_ms": 1.353
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 515,
+          "apply_timestamp": "2026-09-09T07:33:41.916617+00:00",
+          "proposal_to_apply_ms": 1.3159999999999998
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-551-46",
+      "proposal_timestamp": "2026-09-09T07:34:53.957373+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 600,
+          "apply_timestamp": "2026-09-09T07:34:53.958421+00:00",
+          "proposal_to_apply_ms": 1.048
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 600,
+          "apply_timestamp": "2026-09-09T07:34:53.958242+00:00",
+          "proposal_to_apply_ms": 0.869
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 600,
+          "apply_timestamp": "2026-09-09T07:34:53.958212+00:00",
+          "proposal_to_apply_ms": 0.839
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-552-54",
+      "proposal_timestamp": "2026-09-09T07:35:09.973082+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 621,
+          "apply_timestamp": "2026-09-09T07:35:09.973778+00:00",
+          "proposal_to_apply_ms": 0.696
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 621,
+          "apply_timestamp": "2026-09-09T07:35:09.973754+00:00",
+          "proposal_to_apply_ms": 0.6719999999999999
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 621,
+          "apply_timestamp": "2026-09-09T07:35:09.973691+00:00",
+          "proposal_to_apply_ms": 0.609
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-561-12",
+      "proposal_timestamp": "2026-09-09T07:33:45.976605+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 525,
+          "apply_timestamp": "2026-09-09T07:33:45.977350+00:00",
+          "proposal_to_apply_ms": 0.745
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 525,
+          "apply_timestamp": "2026-09-09T07:33:45.977436+00:00",
+          "proposal_to_apply_ms": 0.8310000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 525,
+          "apply_timestamp": "2026-09-09T07:33:45.977332+00:00",
+          "proposal_to_apply_ms": 0.727
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-571-18",
+      "proposal_timestamp": "2026-09-09T07:33:57.997423+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 544,
+          "apply_timestamp": "2026-09-09T07:33:57.998598+00:00",
+          "proposal_to_apply_ms": 1.175
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 544,
+          "apply_timestamp": "2026-09-09T07:33:57.998475+00:00",
+          "proposal_to_apply_ms": 1.052
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 544,
+          "apply_timestamp": "2026-09-09T07:33:57.998375+00:00",
+          "proposal_to_apply_ms": 0.9520000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-590-7",
+      "proposal_timestamp": "2026-09-09T07:33:36.052283+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 510,
+          "apply_timestamp": "2026-09-09T07:33:36.053049+00:00",
+          "proposal_to_apply_ms": 0.766
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 510,
+          "apply_timestamp": "2026-09-09T07:33:36.053156+00:00",
+          "proposal_to_apply_ms": 0.873
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 510,
+          "apply_timestamp": "2026-09-09T07:33:36.053033+00:00",
+          "proposal_to_apply_ms": 0.75
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-592-53",
+      "proposal_timestamp": "2026-09-09T07:35:08.030576+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 618,
+          "apply_timestamp": "2026-09-09T07:35:08.031388+00:00",
+          "proposal_to_apply_ms": 0.812
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 618,
+          "apply_timestamp": "2026-09-09T07:35:08.031465+00:00",
+          "proposal_to_apply_ms": 0.889
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 618,
+          "apply_timestamp": "2026-09-09T07:35:08.031385+00:00",
+          "proposal_to_apply_ms": 0.809
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-598-5",
+      "proposal_timestamp": "2026-09-09T07:33:32.036518+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 504,
+          "apply_timestamp": "2026-09-09T07:33:32.037392+00:00",
+          "proposal_to_apply_ms": 0.874
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 504,
+          "apply_timestamp": "2026-09-09T07:33:32.037390+00:00",
+          "proposal_to_apply_ms": 0.8720000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 504,
+          "apply_timestamp": "2026-09-09T07:33:32.037349+00:00",
+          "proposal_to_apply_ms": 0.8310000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-6-35",
+      "proposal_timestamp": "2026-09-09T07:34:30.948778+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 578,
+          "apply_timestamp": "2026-09-09T07:34:30.949494+00:00",
+          "proposal_to_apply_ms": 0.716
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 578,
+          "apply_timestamp": "2026-09-09T07:34:30.949422+00:00",
+          "proposal_to_apply_ms": 0.644
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 578,
+          "apply_timestamp": "2026-09-09T07:34:30.949383+00:00",
+          "proposal_to_apply_ms": 0.605
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-600-2",
+      "proposal_timestamp": "2026-09-09T07:33:26.053153+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 494,
+          "apply_timestamp": "2026-09-09T07:33:26.054634+00:00",
+          "proposal_to_apply_ms": 1.4809999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 494,
+          "apply_timestamp": "2026-09-09T07:33:26.054325+00:00",
+          "proposal_to_apply_ms": 1.1720000000000002
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 494,
+          "apply_timestamp": "2026-09-09T07:33:26.054144+00:00",
+          "proposal_to_apply_ms": 0.9909999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-604-16",
+      "proposal_timestamp": "2026-09-09T07:33:54.088469+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 539,
+          "apply_timestamp": "2026-09-09T07:33:54.089596+00:00",
+          "proposal_to_apply_ms": 1.127
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 539,
+          "apply_timestamp": "2026-09-09T07:33:54.089572+00:00",
+          "proposal_to_apply_ms": 1.103
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 539,
+          "apply_timestamp": "2026-09-09T07:33:54.089557+00:00",
+          "proposal_to_apply_ms": 1.088
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-604-53",
+      "proposal_timestamp": "2026-09-09T07:35:08.082511+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 619,
+          "apply_timestamp": "2026-09-09T07:35:08.083300+00:00",
+          "proposal_to_apply_ms": 0.789
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 619,
+          "apply_timestamp": "2026-09-09T07:35:08.083416+00:00",
+          "proposal_to_apply_ms": 0.905
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 619,
+          "apply_timestamp": "2026-09-09T07:35:08.083312+00:00",
+          "proposal_to_apply_ms": 0.8009999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-608-36",
+      "proposal_timestamp": "2026-09-09T07:34:34.068563+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 584,
+          "apply_timestamp": "2026-09-09T07:34:34.069266+00:00",
+          "proposal_to_apply_ms": 0.703
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 584,
+          "apply_timestamp": "2026-09-09T07:34:34.069485+00:00",
+          "proposal_to_apply_ms": 0.9219999999999999
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 584,
+          "apply_timestamp": "2026-09-09T07:34:34.069263+00:00",
+          "proposal_to_apply_ms": 0.7
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-619-17",
+      "proposal_timestamp": "2026-09-09T07:33:56.074743+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 541,
+          "apply_timestamp": "2026-09-09T07:33:56.075733+00:00",
+          "proposal_to_apply_ms": 0.99
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 541,
+          "apply_timestamp": "2026-09-09T07:33:56.075750+00:00",
+          "proposal_to_apply_ms": 1.0070000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 541,
+          "apply_timestamp": "2026-09-09T07:33:56.075765+00:00",
+          "proposal_to_apply_ms": 1.0219999999999998
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-65-42",
+      "proposal_timestamp": "2026-09-09T07:34:45.001854+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 594,
+          "apply_timestamp": "2026-09-09T07:34:45.003255+00:00",
+          "proposal_to_apply_ms": 1.4009999999999998
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 594,
+          "apply_timestamp": "2026-09-09T07:34:45.003185+00:00",
+          "proposal_to_apply_ms": 1.331
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 594,
+          "apply_timestamp": "2026-09-09T07:34:45.003108+00:00",
+          "proposal_to_apply_ms": 1.254
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-651-38",
+      "proposal_timestamp": "2026-09-09T07:34:38.136540+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 587,
+          "apply_timestamp": "2026-09-09T07:34:38.137655+00:00",
+          "proposal_to_apply_ms": 1.1150000000000002
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 587,
+          "apply_timestamp": "2026-09-09T07:34:38.138006+00:00",
+          "proposal_to_apply_ms": 1.466
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 587,
+          "apply_timestamp": "2026-09-09T07:34:38.137573+00:00",
+          "proposal_to_apply_ms": 1.0330000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-654-35",
+      "proposal_timestamp": "2026-09-09T07:34:32.151742+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 579,
+          "apply_timestamp": "2026-09-09T07:34:32.152807+00:00",
+          "proposal_to_apply_ms": 1.065
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 579,
+          "apply_timestamp": "2026-09-09T07:34:32.152929+00:00",
+          "proposal_to_apply_ms": 1.1869999999999998
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 579,
+          "apply_timestamp": "2026-09-09T07:34:32.152702+00:00",
+          "proposal_to_apply_ms": 0.9600000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-66-43",
+      "proposal_timestamp": "2026-09-09T07:34:46.994616+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 596,
+          "apply_timestamp": "2026-09-09T07:34:46.995414+00:00",
+          "proposal_to_apply_ms": 0.798
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 596,
+          "apply_timestamp": "2026-09-09T07:34:46.995409+00:00",
+          "proposal_to_apply_ms": 0.7929999999999999
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 596,
+          "apply_timestamp": "2026-09-09T07:34:46.995366+00:00",
+          "proposal_to_apply_ms": 0.75
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-663-21",
+      "proposal_timestamp": "2026-09-09T07:34:04.180373+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 549,
+          "apply_timestamp": "2026-09-09T07:34:04.181164+00:00",
+          "proposal_to_apply_ms": 0.791
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 549,
+          "apply_timestamp": "2026-09-09T07:34:04.181161+00:00",
+          "proposal_to_apply_ms": 0.7879999999999999
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 549,
+          "apply_timestamp": "2026-09-09T07:34:04.181123+00:00",
+          "proposal_to_apply_ms": 0.75
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-682-6",
+      "proposal_timestamp": "2026-09-09T07:33:34.234413+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 508,
+          "apply_timestamp": "2026-09-09T07:33:34.235348+00:00",
+          "proposal_to_apply_ms": 0.9349999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 508,
+          "apply_timestamp": "2026-09-09T07:33:34.235387+00:00",
+          "proposal_to_apply_ms": 0.9740000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 508,
+          "apply_timestamp": "2026-09-09T07:33:34.235176+00:00",
+          "proposal_to_apply_ms": 0.763
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-686-12",
+      "proposal_timestamp": "2026-09-09T07:33:46.231750+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 526,
+          "apply_timestamp": "2026-09-09T07:33:46.232537+00:00",
+          "proposal_to_apply_ms": 0.787
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 526,
+          "apply_timestamp": "2026-09-09T07:33:46.232549+00:00",
+          "proposal_to_apply_ms": 0.799
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 526,
+          "apply_timestamp": "2026-09-09T07:33:46.232496+00:00",
+          "proposal_to_apply_ms": 0.746
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-686-24",
+      "proposal_timestamp": "2026-09-09T07:34:10.233833+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 556,
+          "apply_timestamp": "2026-09-09T07:34:10.235124+00:00",
+          "proposal_to_apply_ms": 1.2910000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 556,
+          "apply_timestamp": "2026-09-09T07:34:10.235168+00:00",
+          "proposal_to_apply_ms": 1.335
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 556,
+          "apply_timestamp": "2026-09-09T07:34:10.235093+00:00",
+          "proposal_to_apply_ms": 1.26
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-697-46",
+      "proposal_timestamp": "2026-09-09T07:34:54.250327+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 601,
+          "apply_timestamp": "2026-09-09T07:34:54.251067+00:00",
+          "proposal_to_apply_ms": 0.74
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 601,
+          "apply_timestamp": "2026-09-09T07:34:54.251063+00:00",
+          "proposal_to_apply_ms": 0.736
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 601,
+          "apply_timestamp": "2026-09-09T07:34:54.251040+00:00",
+          "proposal_to_apply_ms": 0.713
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-702-11",
+      "proposal_timestamp": "2026-09-09T07:33:44.256157+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 518,
+          "apply_timestamp": "2026-09-09T07:33:44.257012+00:00",
+          "proposal_to_apply_ms": 0.855
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 518,
+          "apply_timestamp": "2026-09-09T07:33:44.256966+00:00",
+          "proposal_to_apply_ms": 0.809
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 518,
+          "apply_timestamp": "2026-09-09T07:33:44.256874+00:00",
+          "proposal_to_apply_ms": 0.717
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-706-35",
+      "proposal_timestamp": "2026-09-09T07:34:32.262518+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 580,
+          "apply_timestamp": "2026-09-09T07:34:32.264006+00:00",
+          "proposal_to_apply_ms": 1.488
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 580,
+          "apply_timestamp": "2026-09-09T07:34:32.263911+00:00",
+          "proposal_to_apply_ms": 1.393
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 580,
+          "apply_timestamp": "2026-09-09T07:34:32.263816+00:00",
+          "proposal_to_apply_ms": 1.2979999999999998
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-706-40",
+      "proposal_timestamp": "2026-09-09T07:34:42.260631+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 591,
+          "apply_timestamp": "2026-09-09T07:34:42.261565+00:00",
+          "proposal_to_apply_ms": 0.934
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 591,
+          "apply_timestamp": "2026-09-09T07:34:42.261439+00:00",
+          "proposal_to_apply_ms": 0.808
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 591,
+          "apply_timestamp": "2026-09-09T07:34:42.261400+00:00",
+          "proposal_to_apply_ms": 0.769
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-710-44",
+      "proposal_timestamp": "2026-09-09T07:34:50.265509+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 597,
+          "apply_timestamp": "2026-09-09T07:34:50.266456+00:00",
+          "proposal_to_apply_ms": 0.9470000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 597,
+          "apply_timestamp": "2026-09-09T07:34:50.266424+00:00",
+          "proposal_to_apply_ms": 0.915
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 597,
+          "apply_timestamp": "2026-09-09T07:34:50.266403+00:00",
+          "proposal_to_apply_ms": 0.894
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-72-18",
+      "proposal_timestamp": "2026-09-09T07:33:57.018450+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 543,
+          "apply_timestamp": "2026-09-09T07:33:57.019301+00:00",
+          "proposal_to_apply_ms": 0.851
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 543,
+          "apply_timestamp": "2026-09-09T07:33:57.019141+00:00",
+          "proposal_to_apply_ms": 0.691
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 543,
+          "apply_timestamp": "2026-09-09T07:33:57.019078+00:00",
+          "proposal_to_apply_ms": 0.628
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-723-23",
+      "proposal_timestamp": "2026-09-09T07:34:08.296405+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 554,
+          "apply_timestamp": "2026-09-09T07:34:08.297433+00:00",
+          "proposal_to_apply_ms": 1.028
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 554,
+          "apply_timestamp": "2026-09-09T07:34:08.297445+00:00",
+          "proposal_to_apply_ms": 1.0399999999999998
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 554,
+          "apply_timestamp": "2026-09-09T07:34:08.297428+00:00",
+          "proposal_to_apply_ms": 1.0230000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-727-56",
+      "proposal_timestamp": "2026-09-09T07:35:14.305401+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 624,
+          "apply_timestamp": "2026-09-09T07:35:14.306519+00:00",
+          "proposal_to_apply_ms": 1.118
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 624,
+          "apply_timestamp": "2026-09-09T07:35:14.306398+00:00",
+          "proposal_to_apply_ms": 0.9970000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 624,
+          "apply_timestamp": "2026-09-09T07:35:14.306378+00:00",
+          "proposal_to_apply_ms": 0.977
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-730-20",
+      "proposal_timestamp": "2026-09-09T07:34:02.320752+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 547,
+          "apply_timestamp": "2026-09-09T07:34:02.321501+00:00",
+          "proposal_to_apply_ms": 0.749
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 547,
+          "apply_timestamp": "2026-09-09T07:34:02.321666+00:00",
+          "proposal_to_apply_ms": 0.914
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 547,
+          "apply_timestamp": "2026-09-09T07:34:02.321546+00:00",
+          "proposal_to_apply_ms": 0.794
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-730-46",
+      "proposal_timestamp": "2026-09-09T07:34:54.323007+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 602,
+          "apply_timestamp": "2026-09-09T07:34:54.323848+00:00",
+          "proposal_to_apply_ms": 0.841
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 602,
+          "apply_timestamp": "2026-09-09T07:34:54.323958+00:00",
+          "proposal_to_apply_ms": 0.9510000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 602,
+          "apply_timestamp": "2026-09-09T07:34:54.323891+00:00",
+          "proposal_to_apply_ms": 0.884
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-732-21",
+      "proposal_timestamp": "2026-09-09T07:34:04.329118+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 550,
+          "apply_timestamp": "2026-09-09T07:34:04.330014+00:00",
+          "proposal_to_apply_ms": 0.896
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 550,
+          "apply_timestamp": "2026-09-09T07:34:04.330033+00:00",
+          "proposal_to_apply_ms": 0.915
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 550,
+          "apply_timestamp": "2026-09-09T07:34:04.329975+00:00",
+          "proposal_to_apply_ms": 0.857
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-736-24",
+      "proposal_timestamp": "2026-09-09T07:34:10.327387+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 557,
+          "apply_timestamp": "2026-09-09T07:34:10.328531+00:00",
+          "proposal_to_apply_ms": 1.1440000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 557,
+          "apply_timestamp": "2026-09-09T07:34:10.328522+00:00",
+          "proposal_to_apply_ms": 1.135
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 557,
+          "apply_timestamp": "2026-09-09T07:34:10.328483+00:00",
+          "proposal_to_apply_ms": 1.0959999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-74-13",
+      "proposal_timestamp": "2026-09-09T07:33:47.032154+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 529,
+          "apply_timestamp": "2026-09-09T07:33:47.032814+00:00",
+          "proposal_to_apply_ms": 0.66
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 529,
+          "apply_timestamp": "2026-09-09T07:33:47.032915+00:00",
+          "proposal_to_apply_ms": 0.761
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 529,
+          "apply_timestamp": "2026-09-09T07:33:47.032813+00:00",
+          "proposal_to_apply_ms": 0.6589999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-753-24",
+      "proposal_timestamp": "2026-09-09T07:34:10.367259+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 558,
+          "apply_timestamp": "2026-09-09T07:34:10.368319+00:00",
+          "proposal_to_apply_ms": 1.06
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 558,
+          "apply_timestamp": "2026-09-09T07:34:10.368524+00:00",
+          "proposal_to_apply_ms": 1.2650000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 558,
+          "apply_timestamp": "2026-09-09T07:34:10.368383+00:00",
+          "proposal_to_apply_ms": 1.124
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-763-17",
+      "proposal_timestamp": "2026-09-09T07:33:56.382758+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 542,
+          "apply_timestamp": "2026-09-09T07:33:56.384098+00:00",
+          "proposal_to_apply_ms": 1.34
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 542,
+          "apply_timestamp": "2026-09-09T07:33:56.384146+00:00",
+          "proposal_to_apply_ms": 1.388
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 542,
+          "apply_timestamp": "2026-09-09T07:33:56.384006+00:00",
+          "proposal_to_apply_ms": 1.248
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-764-15",
+      "proposal_timestamp": "2026-09-09T07:33:52.388500+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 533,
+          "apply_timestamp": "2026-09-09T07:33:52.389292+00:00",
+          "proposal_to_apply_ms": 0.7919999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 533,
+          "apply_timestamp": "2026-09-09T07:33:52.389227+00:00",
+          "proposal_to_apply_ms": 0.727
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 533,
+          "apply_timestamp": "2026-09-09T07:33:52.389190+00:00",
+          "proposal_to_apply_ms": 0.69
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-773-11",
+      "proposal_timestamp": "2026-09-09T07:33:44.407454+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 519,
+          "apply_timestamp": "2026-09-09T07:33:44.408728+00:00",
+          "proposal_to_apply_ms": 1.274
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 519,
+          "apply_timestamp": "2026-09-09T07:33:44.408763+00:00",
+          "proposal_to_apply_ms": 1.309
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 519,
+          "apply_timestamp": "2026-09-09T07:33:44.408569+00:00",
+          "proposal_to_apply_ms": 1.1150000000000002
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-775-56",
+      "proposal_timestamp": "2026-09-09T07:35:14.398169+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 625,
+          "apply_timestamp": "2026-09-09T07:35:14.398935+00:00",
+          "proposal_to_apply_ms": 0.766
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 625,
+          "apply_timestamp": "2026-09-09T07:35:14.399083+00:00",
+          "proposal_to_apply_ms": 0.914
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 625,
+          "apply_timestamp": "2026-09-09T07:35:14.398857+00:00",
+          "proposal_to_apply_ms": 0.6880000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-80-12",
+      "proposal_timestamp": "2026-09-09T07:33:44.929636+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 522,
+          "apply_timestamp": "2026-09-09T07:33:44.930667+00:00",
+          "proposal_to_apply_ms": 1.031
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 522,
+          "apply_timestamp": "2026-09-09T07:33:44.930704+00:00",
+          "proposal_to_apply_ms": 1.0679999999999998
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 522,
+          "apply_timestamp": "2026-09-09T07:33:44.930660+00:00",
+          "proposal_to_apply_ms": 1.024
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-81-16",
+      "proposal_timestamp": "2026-09-09T07:33:53.017201+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 534,
+          "apply_timestamp": "2026-09-09T07:33:53.018358+00:00",
+          "proposal_to_apply_ms": 1.157
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 534,
+          "apply_timestamp": "2026-09-09T07:33:53.018383+00:00",
+          "proposal_to_apply_ms": 1.1820000000000002
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 534,
+          "apply_timestamp": "2026-09-09T07:33:53.018334+00:00",
+          "proposal_to_apply_ms": 1.1329999999999998
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-810-12",
+      "proposal_timestamp": "2026-09-09T07:33:46.474110+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 527,
+          "apply_timestamp": "2026-09-09T07:33:46.475092+00:00",
+          "proposal_to_apply_ms": 0.982
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 527,
+          "apply_timestamp": "2026-09-09T07:33:46.475075+00:00",
+          "proposal_to_apply_ms": 0.9650000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 527,
+          "apply_timestamp": "2026-09-09T07:33:46.475010+00:00",
+          "proposal_to_apply_ms": 0.9
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-817-28",
+      "proposal_timestamp": "2026-09-09T07:34:18.487672+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 566,
+          "apply_timestamp": "2026-09-09T07:34:18.488829+00:00",
+          "proposal_to_apply_ms": 1.157
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 566,
+          "apply_timestamp": "2026-09-09T07:34:18.488718+00:00",
+          "proposal_to_apply_ms": 1.046
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 566,
+          "apply_timestamp": "2026-09-09T07:34:18.488638+00:00",
+          "proposal_to_apply_ms": 0.966
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-838-46",
+      "proposal_timestamp": "2026-09-09T07:34:54.540424+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 603,
+          "apply_timestamp": "2026-09-09T07:34:54.541660+00:00",
+          "proposal_to_apply_ms": 1.236
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 603,
+          "apply_timestamp": "2026-09-09T07:34:54.541368+00:00",
+          "proposal_to_apply_ms": 0.944
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 603,
+          "apply_timestamp": "2026-09-09T07:34:54.541304+00:00",
+          "proposal_to_apply_ms": 0.88
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-849-50",
+      "proposal_timestamp": "2026-09-09T07:35:02.563852+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 613,
+          "apply_timestamp": "2026-09-09T07:35:02.565088+00:00",
+          "proposal_to_apply_ms": 1.236
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 613,
+          "apply_timestamp": "2026-09-09T07:35:02.564739+00:00",
+          "proposal_to_apply_ms": 0.887
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 613,
+          "apply_timestamp": "2026-09-09T07:35:02.564687+00:00",
+          "proposal_to_apply_ms": 0.8350000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-854-51",
+      "proposal_timestamp": "2026-09-09T07:35:04.548464+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 615,
+          "apply_timestamp": "2026-09-09T07:35:04.549384+00:00",
+          "proposal_to_apply_ms": 0.92
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 615,
+          "apply_timestamp": "2026-09-09T07:35:04.549409+00:00",
+          "proposal_to_apply_ms": 0.945
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 615,
+          "apply_timestamp": "2026-09-09T07:35:04.549387+00:00",
+          "proposal_to_apply_ms": 0.923
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-857-9",
+      "proposal_timestamp": "2026-09-09T07:33:40.608345+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 514,
+          "apply_timestamp": "2026-09-09T07:33:40.609999+00:00",
+          "proposal_to_apply_ms": 1.6540000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 514,
+          "apply_timestamp": "2026-09-09T07:33:40.610046+00:00",
+          "proposal_to_apply_ms": 1.701
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 514,
+          "apply_timestamp": "2026-09-09T07:33:40.609890+00:00",
+          "proposal_to_apply_ms": 1.545
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-86-13",
+      "proposal_timestamp": "2026-09-09T07:33:47.019846+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 528,
+          "apply_timestamp": "2026-09-09T07:33:47.020584+00:00",
+          "proposal_to_apply_ms": 0.7380000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 528,
+          "apply_timestamp": "2026-09-09T07:33:47.020644+00:00",
+          "proposal_to_apply_ms": 0.798
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 528,
+          "apply_timestamp": "2026-09-09T07:33:47.020568+00:00",
+          "proposal_to_apply_ms": 0.722
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-864-49",
+      "proposal_timestamp": "2026-09-09T07:35:00.592384+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 611,
+          "apply_timestamp": "2026-09-09T07:35:00.593477+00:00",
+          "proposal_to_apply_ms": 1.093
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 611,
+          "apply_timestamp": "2026-09-09T07:35:00.593482+00:00",
+          "proposal_to_apply_ms": 1.098
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 611,
+          "apply_timestamp": "2026-09-09T07:35:00.593445+00:00",
+          "proposal_to_apply_ms": 1.0610000000000002
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-865-51",
+      "proposal_timestamp": "2026-09-09T07:35:04.578933+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 616,
+          "apply_timestamp": "2026-09-09T07:35:04.579634+00:00",
+          "proposal_to_apply_ms": 0.7010000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 616,
+          "apply_timestamp": "2026-09-09T07:35:04.579650+00:00",
+          "proposal_to_apply_ms": 0.717
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 616,
+          "apply_timestamp": "2026-09-09T07:35:04.579601+00:00",
+          "proposal_to_apply_ms": 0.6679999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-87-59",
+      "proposal_timestamp": "2026-09-09T07:35:19.049217+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 631,
+          "apply_timestamp": "2026-09-09T07:35:19.051142+00:00",
+          "proposal_to_apply_ms": 1.925
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 631,
+          "apply_timestamp": "2026-09-09T07:35:19.050686+00:00",
+          "proposal_to_apply_ms": 1.469
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 631,
+          "apply_timestamp": "2026-09-09T07:35:19.050568+00:00",
+          "proposal_to_apply_ms": 1.351
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-874-3",
+      "proposal_timestamp": "2026-09-09T07:33:28.598317+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 497,
+          "apply_timestamp": "2026-09-09T07:33:28.599245+00:00",
+          "proposal_to_apply_ms": 0.928
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 497,
+          "apply_timestamp": "2026-09-09T07:33:28.599245+00:00",
+          "proposal_to_apply_ms": 0.928
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 497,
+          "apply_timestamp": "2026-09-09T07:33:28.599209+00:00",
+          "proposal_to_apply_ms": 0.892
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-876-10",
+      "proposal_timestamp": "2026-09-09T07:33:42.670380+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 516,
+          "apply_timestamp": "2026-09-09T07:33:42.671441+00:00",
+          "proposal_to_apply_ms": 1.0610000000000002
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 516,
+          "apply_timestamp": "2026-09-09T07:33:42.672078+00:00",
+          "proposal_to_apply_ms": 1.6980000000000002
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 516,
+          "apply_timestamp": "2026-09-09T07:33:42.671417+00:00",
+          "proposal_to_apply_ms": 1.037
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-876-11",
+      "proposal_timestamp": "2026-09-09T07:33:44.671205+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 521,
+          "apply_timestamp": "2026-09-09T07:33:44.672077+00:00",
+          "proposal_to_apply_ms": 0.8720000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 521,
+          "apply_timestamp": "2026-09-09T07:33:44.672068+00:00",
+          "proposal_to_apply_ms": 0.8630000000000001
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 521,
+          "apply_timestamp": "2026-09-09T07:33:44.672022+00:00",
+          "proposal_to_apply_ms": 0.8170000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-879-11",
+      "proposal_timestamp": "2026-09-09T07:33:44.657369+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 520,
+          "apply_timestamp": "2026-09-09T07:33:44.659157+00:00",
+          "proposal_to_apply_ms": 1.788
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 520,
+          "apply_timestamp": "2026-09-09T07:33:44.659011+00:00",
+          "proposal_to_apply_ms": 1.642
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 520,
+          "apply_timestamp": "2026-09-09T07:33:44.658944+00:00",
+          "proposal_to_apply_ms": 1.575
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-887-29",
+      "proposal_timestamp": "2026-09-09T07:34:20.632427+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 568,
+          "apply_timestamp": "2026-09-09T07:34:20.633071+00:00",
+          "proposal_to_apply_ms": 0.644
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 568,
+          "apply_timestamp": "2026-09-09T07:34:20.633107+00:00",
+          "proposal_to_apply_ms": 0.68
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 568,
+          "apply_timestamp": "2026-09-09T07:34:20.633036+00:00",
+          "proposal_to_apply_ms": 0.609
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-892-52",
+      "proposal_timestamp": "2026-09-09T07:35:06.625822+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 617,
+          "apply_timestamp": "2026-09-09T07:35:06.626760+00:00",
+          "proposal_to_apply_ms": 0.9380000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 617,
+          "apply_timestamp": "2026-09-09T07:35:06.626793+00:00",
+          "proposal_to_apply_ms": 0.971
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 617,
+          "apply_timestamp": "2026-09-09T07:35:06.626745+00:00",
+          "proposal_to_apply_ms": 0.923
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-912-40",
+      "proposal_timestamp": "2026-09-09T07:34:42.709841+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 592,
+          "apply_timestamp": "2026-09-09T07:34:42.711244+00:00",
+          "proposal_to_apply_ms": 1.403
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 592,
+          "apply_timestamp": "2026-09-09T07:34:42.711272+00:00",
+          "proposal_to_apply_ms": 1.431
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 592,
+          "apply_timestamp": "2026-09-09T07:34:42.711202+00:00",
+          "proposal_to_apply_ms": 1.361
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-917-3",
+      "proposal_timestamp": "2026-09-09T07:33:28.700397+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 498,
+          "apply_timestamp": "2026-09-09T07:33:28.701414+00:00",
+          "proposal_to_apply_ms": 1.017
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 498,
+          "apply_timestamp": "2026-09-09T07:33:28.701448+00:00",
+          "proposal_to_apply_ms": 1.0510000000000002
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 498,
+          "apply_timestamp": "2026-09-09T07:33:28.701350+00:00",
+          "proposal_to_apply_ms": 0.953
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-923-35",
+      "proposal_timestamp": "2026-09-09T07:34:32.696029+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 582,
+          "apply_timestamp": "2026-09-09T07:34:32.696586+00:00",
+          "proposal_to_apply_ms": 0.5569999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 582,
+          "apply_timestamp": "2026-09-09T07:34:32.696617+00:00",
+          "proposal_to_apply_ms": 0.588
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 582,
+          "apply_timestamp": "2026-09-09T07:34:32.696549+00:00",
+          "proposal_to_apply_ms": 0.5199999999999999
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-927-35",
+      "proposal_timestamp": "2026-09-09T07:34:32.695473+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 581,
+          "apply_timestamp": "2026-09-09T07:34:32.696533+00:00",
+          "proposal_to_apply_ms": 1.06
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 581,
+          "apply_timestamp": "2026-09-09T07:34:32.696586+00:00",
+          "proposal_to_apply_ms": 1.113
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 581,
+          "apply_timestamp": "2026-09-09T07:34:32.696337+00:00",
+          "proposal_to_apply_ms": 0.864
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-933-25",
+      "proposal_timestamp": "2026-09-09T07:34:12.717030+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 560,
+          "apply_timestamp": "2026-09-09T07:34:12.718191+00:00",
+          "proposal_to_apply_ms": 1.161
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 560,
+          "apply_timestamp": "2026-09-09T07:34:12.718229+00:00",
+          "proposal_to_apply_ms": 1.199
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 560,
+          "apply_timestamp": "2026-09-09T07:34:12.718154+00:00",
+          "proposal_to_apply_ms": 1.124
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-936-0",
+      "proposal_timestamp": "2026-09-09T07:33:22.741585+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 492,
+          "apply_timestamp": "2026-09-09T07:33:22.743140+00:00",
+          "proposal_to_apply_ms": 1.555
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 492,
+          "apply_timestamp": "2026-09-09T07:33:22.743122+00:00",
+          "proposal_to_apply_ms": 1.537
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 492,
+          "apply_timestamp": "2026-09-09T07:33:22.742997+00:00",
+          "proposal_to_apply_ms": 1.4120000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-946-3",
+      "proposal_timestamp": "2026-09-09T07:33:28.760446+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 499,
+          "apply_timestamp": "2026-09-09T07:33:28.761451+00:00",
+          "proposal_to_apply_ms": 1.0050000000000001
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 499,
+          "apply_timestamp": "2026-09-09T07:33:28.761716+00:00",
+          "proposal_to_apply_ms": 1.27
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 499,
+          "apply_timestamp": "2026-09-09T07:33:28.761401+00:00",
+          "proposal_to_apply_ms": 0.955
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-956-7",
+      "proposal_timestamp": "2026-09-09T07:33:36.749833+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 511,
+          "apply_timestamp": "2026-09-09T07:33:36.750600+00:00",
+          "proposal_to_apply_ms": 0.767
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 511,
+          "apply_timestamp": "2026-09-09T07:33:36.750625+00:00",
+          "proposal_to_apply_ms": 0.7919999999999999
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 511,
+          "apply_timestamp": "2026-09-09T07:33:36.750571+00:00",
+          "proposal_to_apply_ms": 0.7380000000000001
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-965-54",
+      "proposal_timestamp": "2026-09-09T07:35:10.776902+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 622,
+          "apply_timestamp": "2026-09-09T07:35:10.777974+00:00",
+          "proposal_to_apply_ms": 1.072
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 622,
+          "apply_timestamp": "2026-09-09T07:35:10.778013+00:00",
+          "proposal_to_apply_ms": 1.111
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 622,
+          "apply_timestamp": "2026-09-09T07:35:10.777956+00:00",
+          "proposal_to_apply_ms": 1.054
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-972-34",
+      "proposal_timestamp": "2026-09-09T07:34:30.789268+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 577,
+          "apply_timestamp": "2026-09-09T07:34:30.790495+00:00",
+          "proposal_to_apply_ms": 1.227
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 577,
+          "apply_timestamp": "2026-09-09T07:34:30.790443+00:00",
+          "proposal_to_apply_ms": 1.175
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 577,
+          "apply_timestamp": "2026-09-09T07:34:30.790399+00:00",
+          "proposal_to_apply_ms": 1.131
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-975-2",
+      "proposal_timestamp": "2026-09-09T07:33:26.800837+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 495,
+          "apply_timestamp": "2026-09-09T07:33:26.801925+00:00",
+          "proposal_to_apply_ms": 1.088
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 495,
+          "apply_timestamp": "2026-09-09T07:33:26.801892+00:00",
+          "proposal_to_apply_ms": 1.055
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 495,
+          "apply_timestamp": "2026-09-09T07:33:26.801851+00:00",
+          "proposal_to_apply_ms": 1.014
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-992-36",
+      "proposal_timestamp": "2026-09-09T07:34:34.851711+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 585,
+          "apply_timestamp": "2026-09-09T07:34:34.853423+00:00",
+          "proposal_to_apply_ms": 1.712
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 585,
+          "apply_timestamp": "2026-09-09T07:34:34.853280+00:00",
+          "proposal_to_apply_ms": 1.5690000000000002
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 585,
+          "apply_timestamp": "2026-09-09T07:34:34.853233+00:00",
+          "proposal_to_apply_ms": 1.522
+        }
+      }
+    },
+    {
+      "request_id": "bench-raft-993-13",
+      "proposal_timestamp": "2026-09-09T07:33:48.832552+00:00",
+      "replicas_applied": 3,
+      "expected_replicas": 3,
+      "fully_converged": true,
+      "per_pod": {
+        "infisical-go-kms-0": {
+          "entry_index": 531,
+          "apply_timestamp": "2026-09-09T07:33:48.833474+00:00",
+          "proposal_to_apply_ms": 0.9219999999999999
+        },
+        "infisical-go-kms-1": {
+          "entry_index": 531,
+          "apply_timestamp": "2026-09-09T07:33:48.833491+00:00",
+          "proposal_to_apply_ms": 0.939
+        },
+        "infisical-go-kms-2": {
+          "entry_index": 531,
+          "apply_timestamp": "2026-09-09T07:33:48.833438+00:00",
+          "proposal_to_apply_ms": 0.886
+        }
+      }
+    }
+  ]
+}

@@ -121,7 +121,7 @@ func (s *Service) createKmsKey(ctx context.Context, req *kmsproto.CreateKmsKeyRe
 		encryptionAlgorithm = string(AESGCM256)
 	}
 
-	kmsResult, err := s.kmsStore.CreateKey(ctx, &store.CreateKeyParams{
+	kmsResult, err := s.KmsStore.CreateKey(ctx, &store.CreateKeyParams{
 		Name:                req.Name,
 		KeyUsage:            *req.KeyUsage,
 		OrgID:               orgID,
@@ -232,6 +232,7 @@ func (s *Service) findOrCreateRootConfig(ctx context.Context, hsmConfigured bool
 			return nil, fmt.Errorf("generating root key with HSM: %w", err)
 		}
 	} else {
+		// todo : [32]byte pool optmization
 		newRootKey = make([]byte, 32)
 		if _, err := rand.Read(newRootKey); err != nil {
 			return nil, fmt.Errorf("generating root key: %w", err)

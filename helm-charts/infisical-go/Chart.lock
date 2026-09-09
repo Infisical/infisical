@@ -1,0 +1,12 @@
+dependencies:
+- name: ingress-nginx
+  repository: https://kubernetes.github.io/ingress-nginx
+  version: 4.0.13
+- name: postgresql
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 14.1.10
+- name: redis
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 18.14.1
+digest: sha256:57a18fb5258fc153d27b633f6570104c7628af651f08f3ae7e1cf8920c2c31fa
+generated: "2025-10-21T22:30:21.313884+04:00"

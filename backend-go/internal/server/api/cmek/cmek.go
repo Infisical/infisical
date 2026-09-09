@@ -21,7 +21,6 @@ type Handler struct {
 	keyMetaCache *store.KeyMetaCache
 }
 
-
 // BulkExportKmsKeyPrivateKeys implements [ServiceInterface].
 func (h *Handler) BulkExportKmsKeyPrivateKeys(ctx context.Context, opts *BulkExportKmsKeyPrivateKeysServiceRequestOptions) (*BulkExportKmsKeyPrivateKeysResponseData, error) {
 	panic("unimplemented")
@@ -99,11 +98,6 @@ func (h *Handler) PostAPIGoV1ProjectsProjectIDKmsBackup(ctx context.Context, opt
 
 // RotateKmsKey implements [ServiceInterface].
 func (h *Handler) RotateKmsKey(ctx context.Context, opts *RotateKmsKeyServiceRequestOptions) (*RotateKmsKeyResponseData, error) {
-	panic("unimplemented")
-}
-
-// UpdateKmsKey implements [ServiceInterface].
-func (h *Handler) UpdateKmsKey(ctx context.Context, opts *UpdateKmsKeyServiceRequestOptions) (*UpdateKmsKeyResponseData, error) {
 	panic("unimplemented")
 }
 

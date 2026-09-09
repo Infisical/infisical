@@ -1,0 +1,129 @@
+{{- $infisicalValues := .Values.infisical }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infisical.fullname" . }}
+  annotations:
+    updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+    {{- with $infisicalValues.deploymentAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+spec:
+  replicas: {{ $infisicalValues.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "infisical.matchLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infisical.matchLabels" . | nindent 8 }}
+      annotations:
+        updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+        {{- with $infisicalValues.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "infisical.serviceAccountName" . }}
+    {{- with $infisicalValues.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with $infisicalValues.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with $infisicalValues.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with $infisicalValues.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with $infisicalValues.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- if $infisicalValues.image.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
+    {{- end }}
+    {{- with $infisicalValues.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      containers:
+      - name: {{ template "infisical.name" . }}-{{ $infisicalValues.name }}
+        image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"
+        imagePullPolicy: {{ $infisicalValues.image.pullPolicy }}
+        {{- with $infisicalValues.containerSecurityContext }}
+        securityContext: {{- toYaml . | nindent 10 }}
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        ports:
+        - containerPort: 8080
+        env:
+        {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
+        - name: DB_CONNECTION_URI
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.name }}
+              key: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.key }}
+        {{- end }}
+        {{- if .Values.postgresql.enabled }}
+        - name: DB_CONNECTION_URI
+          value: {{ include "infisical.postgresDBConnectionString" . }}
+        {{- end }}
+        {{- if .Values.redis.enabled }}
+        - name: REDIS_URL
+          value: {{ include "infisical.redisConnectionString" . }}
+        {{- end }}
+        {{- with $infisicalValues.extraEnv }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        envFrom:
+        - secretRef:
+            name: {{ $infisicalValues.kubeSecretRef }}
+        {{- if  $infisicalValues.resources }}
+        resources: {{- toYaml $infisicalValues.resources | nindent 12 }}
+        {{- end }}
+        {{- with $infisicalValues.extraVolumeMounts }}
+        volumeMounts:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- with $infisicalValues.extraContainers }}
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- with $infisicalValues.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infisical.fullname" . }}
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+  {{- with $infisicalValues.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $infisicalValues.service.type }}
+  selector:
+    {{- include "infisical.matchLabels" . | nindent 8 }}
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      {{- if eq $infisicalValues.service.type "NodePort" }}
+      nodePort: {{ $infisicalValues.service.nodePort }}
+      {{- end }}

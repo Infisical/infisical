@@ -1,0 +1,2059 @@
+{
+  "infisical-go-infisical-5bb7d79d47-922vm": {
+    "samples": 119,
+    "cpu_avg_m": 499.7647058823529,
+    "cpu_peak_m": 766.0,
+    "memory_avg_mib": 1180.420168067227,
+    "memory_peak_mib": 1505.0
+  },
+  "infisical-go-infisical-5bb7d79d47-n5wtr": {
+    "samples": 119,
+    "cpu_avg_m": 542.3025210084033,
+    "cpu_peak_m": 811.0,
+    "memory_avg_mib": 1170.18487394958,
+    "memory_peak_mib": 1493.0
+  },
+  "infisical-go-infisical-5bb7d79d47-nmb82": {
+    "samples": 119,
+    "cpu_avg_m": 543.9747899159664,
+    "cpu_peak_m": 792.0,
+    "memory_avg_mib": 1193.2436974789916,
+    "memory_peak_mib": 1488.0
+  },
+  "_deployment_total": {
+    "pod_count": 3,
+    "complete_samples": 119,
+    "cpu_mean_m": 1586.0420168067226,
+    "cpu_median_m": 2240.0,
+    "cpu_peak_m": 2343.0,
+    "memory_mean_mib": 3543.8487394957983,
+    "memory_median_mib": 3894.0,
+    "memory_peak_mib": 4486.0,
+    "peak_semantics": "sum across all pods in one timestamped sample"
+  },
+  "_snapshots": [
+    {
+      "timestamp_unix": 1788942152.5249133,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942153.7227674,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942154.9168525,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942156.1126394,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942157.2611532,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942158.443026,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942159.6212795,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942160.772367,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942161.9477086,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942163.1322966,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942164.3031332,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942165.4501626,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 11.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 5.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 6.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942166.61645,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942167.7640996,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942168.9230504,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942170.0879211,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942171.2421799,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942172.394977,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942173.5354285,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942174.699902,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942175.8239768,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942176.9680076,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942178.180038,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942179.2975626,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942180.421907,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 6.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 7.0,
+          "memory_mib": 902.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 8.0,
+          "memory_mib": 684.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942181.551705,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942182.6828823,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942183.8139703,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942184.9447026,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942186.0703475,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942187.2003226,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942188.3327787,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942189.4558065,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942190.5948305,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942191.7277806,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942192.859886,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942193.9889472,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942195.1178815,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 8.0,
+          "memory_mib": 712.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 130.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 232.0,
+          "memory_mib": 842.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942196.2437701,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942197.3714168,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942198.50009,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942199.6258905,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942200.7446177,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942201.869406,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942202.996163,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942204.119393,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942205.246446,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942206.3757045,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942207.4984608,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942208.6273265,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942209.7580318,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942210.885021,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 590.0,
+          "memory_mib": 905.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 792.0,
+          "memory_mib": 1021.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942212.0160515,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942213.1500487,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942214.2786064,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942215.4190564,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942216.5479572,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942217.6829364,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942218.8071194,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942219.9358075,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942221.0662448,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942222.1993692,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942223.329589,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942224.4612513,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942225.5951526,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 811.0,
+          "memory_mib": 904.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942226.7283683,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942227.8645258,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942228.985029,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942230.11517,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942231.2535367,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942232.37393,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942233.5023751,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942234.640099,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942235.7574456,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942236.8806915,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942238.0131714,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942239.1530004,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942240.2840762,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 766.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 766.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942241.4082036,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942242.5337207,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942243.6693954,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942244.7987852,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942245.9240263,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942247.0578318,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942248.1903138,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942249.31992,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942250.4481409,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942251.5759826,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942252.7032638,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942253.8316553,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942254.9602606,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942256.0952024,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 751.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 754.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 735.0,
+          "memory_mib": 1487.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942257.2179334,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942258.3457038,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942259.4764707,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942260.6066315,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942261.7379215,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942262.8672204,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942263.9969714,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942265.1294425,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942266.2616856,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942267.3839993,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942268.517015,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942269.6494935,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942270.780007,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 759.0,
+          "memory_mib": 1504.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 763.0,
+          "memory_mib": 1491.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 747.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942271.9109905,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942273.0427883,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942274.1772935,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942275.3032057,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942276.4244173,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942277.566595,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942278.695213,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942279.8283677,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942280.9615266,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942282.0886574,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942283.2160337,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942284.352289,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942285.4826982,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 757.0,
+          "memory_mib": 1503.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 750.0,
+          "memory_mib": 1492.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 752.0,
+          "memory_mib": 1488.0
+        }
+      }
+    },
+    {
+      "timestamp_unix": 1788942286.622629,
+      "pods": {
+        "infisical-go-infisical-5bb7d79d47-922vm": {
+          "cpu_m": 760.0,
+          "memory_mib": 1505.0
+        },
+        "infisical-go-infisical-5bb7d79d47-n5wtr": {
+          "cpu_m": 769.0,
+          "memory_mib": 1493.0
+        },
+        "infisical-go-infisical-5bb7d79d47-nmb82": {
+          "cpu_m": 760.0,
+          "memory_mib": 1488.0
+        }
+      }
+    }
+  ]
+}

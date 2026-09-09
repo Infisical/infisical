@@ -27,6 +27,12 @@ func FromContext(ctx context.Context) string {
 	return v
 }
 
+// WithID attaches a request ID after a trusted transport boundary has already
+// validated it. HTTP middleware remains responsible for untrusted headers.
+func WithID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, ctxKey{}, id)
+}
+
 // OriginPrefix returns the request ID prefix for this deployment. Infisical
 // Cloud IDs carry a region segment (req-us-, req-eu-) so an ID's origin is
 // identifiable at a glance; self-hosted and dedicated stay bare req-. Matches

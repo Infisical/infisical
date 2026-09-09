@@ -1,0 +1,85 @@
+name: kms-raft
+
+# A self-contained three-member KMS metadata-cache Raft cluster. The KMS nodes
+# share one Postgres database and one Redis instance; each node keeps its Raft
+# WAL and snapshots in its own named volumes.
+x-kms-environment: &kms-env
+  DB_CONNECTION_URI: postgres://infisical:infisical@db:5432/infisical?sslmode=disable
+  REDIS_URL: redis://redis:6379
+  ENCRYPTION_KEY: f13dbc92aaaf86fa7cb0ed8ac3265f47
+  FIPS_ENABLED: "false"
+  KMS_GRPC_ADDR: 0.0.0.0
+  KMS_GRPC_PORT: "4040"
+  KMS_AUTH_HEADER: ""
+  KMS_AUTH_SECRET: ""
+  LOG_LEVEL: debug
+  DISABLE_CACHE: "false"
+  DISABLE_RAFT: "false"
+  RAFT_PEERS: http://kms-raft-1:2380,http://kms-raft-2:2380,http://kms-raft-3:2380
+  RAFT_CLUSTER_BOOTSTRAP_DONE: "false"
+
+services:
+  db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: infisical
+      POSTGRES_PASSWORD: infisical
+      POSTGRES_USER: infisical
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infisical -d infisical"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - ./e2e/kms-raft-init.sql:/docker-entrypoint-initdb.d/01-kms-raft.sql:ro
+
+  redis:
+    image: redis:7-alpine
+
+  kms-raft-1: &kms
+    build:
+      context: ./backend-go
+      dockerfile: pkg/services/kms/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "4041:4040"
+    volumes:
+      - kms-raft-1-data:/var/lib/infisical-kms/raft
+    environment:
+      <<: *kms-env
+      RAFT_NODE_ID: "1"
+      RAFT_WAL_DIR: /var/lib/infisical-kms/raft/wal
+      RAFT_SNAPSHOT_DIR: /var/lib/infisical-kms/raft/snapshots
+
+  kms-raft-2:
+    <<: *kms
+    ports:
+      - "4042:4040"
+    volumes:
+      - kms-raft-2-data:/var/lib/infisical-kms/raft
+    environment:
+      <<: *kms-env
+      RAFT_NODE_ID: "2"
+      RAFT_WAL_DIR: /var/lib/infisical-kms/raft/wal
+      RAFT_SNAPSHOT_DIR: /var/lib/infisical-kms/raft/snapshots
+
+  kms-raft-3:
+    <<: *kms
+    ports:
+      - "4043:4040"
+    volumes:
+      - kms-raft-3-data:/var/lib/infisical-kms/raft
+    environment:
+      <<: *kms-env
+      RAFT_NODE_ID: "3"
+      RAFT_WAL_DIR: /var/lib/infisical-kms/raft/wal
+      RAFT_SNAPSHOT_DIR: /var/lib/infisical-kms/raft/snapshots
+
+volumes:
+  kms-raft-1-data:
+  kms-raft-2-data:
+  kms-raft-3-data:

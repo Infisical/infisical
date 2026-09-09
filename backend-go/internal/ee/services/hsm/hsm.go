@@ -117,6 +117,7 @@ func (s *Service) IsActive() bool {
 	return true
 }
 
+// todo: rewrite to decrease malloc operations
 // Encrypt encrypts data with the HSM AES key and appends an HMAC-SHA256.
 // Returns: IV (16) || ciphertext || HMAC (32).
 func (s *Service) Encrypt(data []byte) ([]byte, error) {
@@ -206,6 +207,7 @@ func (s *Service) Decrypt(blob []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
+// todo : importers use 32 byte mostly , allow the caller to pass []byte and verify length - optional
 // RandomBytes generates cryptographically secure random bytes from the HSM.
 func (s *Service) RandomBytes(n int) ([]byte, error) {
 	rng, err := s.ctx.NewRandomReader()

@@ -33,10 +33,10 @@ func RegisterCmekServiceRoutes(router chi.Router, logger *slog.Logger, svc *Plat
 			))
 			r.Use(svc.RateLimit.Middleware(ratelimit.PresetWrite))
 			r.Post("/keys", cmekAdapter.CreateKmsKey)
+			r.Patch("/keys/{keyId}", cmekAdapter.UpdateKmsKey)
 			r.Post("/keys/{keyId}/sign", cmekAdapter.SignWithKmsKey)
 			r.Post("/keys/{keyId}/verify", cmekAdapter.VerifyWithKmsKey)
 
-			r.Delete("/keys/{keyId}", cmekAdapter.DeleteKmsKey)
 			r.Delete("/keys/{keyId}", cmekAdapter.DeleteKmsKey)
 		})
 	})

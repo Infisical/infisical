@@ -1,0 +1,21 @@
+{
+  "organizations": [
+    {
+      "name": "bench-kms-seed-000",
+      "org_id": "1ec49150-fc9d-4e5c-8a4f-fce5b00aa455",
+      "project_id": "2fbe7f5f-e339-4e85-a5c5-274896ff096c",
+      "keys": [
+        "cbf0db9d-30c3-4421-bfb1-1daa20804072",
+        "f4ef5203-d136-4741-9fe1-55bdd555e3c7",
+        "766d6625-f0bd-4869-8934-28db346d3121",
+        "de630840-23b0-42eb-a330-40272320b2c0",
+        "626e8dbb-2533-44cd-ae26-6ba262ff3e76",
+        "3d439ee4-2ed6-49e2-b08e-89c1d4ab1e19",
+        "bbe01ca9-dbc5-429f-94dc-2a391205f43c",
+        "485dbcfd-9629-473b-aaea-3ce30d182058",
+        "117e158f-bc8e-4ccf-a26d-05cff9fc5433",
+        "9fbaa1ff-5b17-43f5-8e64-57b9118ec6c2"
+      ]
+    }
+  ]
+}

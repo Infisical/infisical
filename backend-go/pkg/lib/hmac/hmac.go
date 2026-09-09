@@ -102,6 +102,8 @@ func GenerateKeyMaterial(algorithm HmacAlgorithm) ([]byte, error) {
 		return nil, fmt.Errorf("unsupported HMAC algorithm: %s", algorithm)
 	}
 
+	// switch to pool , for deferred malloc operations
+	// HMAC_ALGORITHM_CONFIG.keyByteLength fpr keybyte lenghts
 	key := make([]byte, config.keyByteLength)
 
 	if _, err := rand.Read(key); err != nil {

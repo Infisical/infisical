@@ -21,6 +21,10 @@ func (c *CmekAccessChecker) CanCreate() bool {
 	return gocasl.Can(c.ability, project.CmekActionCreate, project.CmekSubject{})
 }
 
+func (c *CmekAccessChecker) CanEdit() bool {
+	return gocasl.Can(c.ability, project.CmekActionEdit, project.CmekSubject{})
+}
+
 func (c *CmekAccessChecker) CanDelete() bool {
 	return gocasl.Can(c.ability, project.CmekActionDelete, project.CmekSubject{})
 }

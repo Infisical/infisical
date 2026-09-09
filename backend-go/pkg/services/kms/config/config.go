@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -89,6 +90,14 @@ type Config struct {
 	RotationDevelopmentMode             bool `env:"ROTATION_DEVELOPMENT_MODE" envDefault:"false"`
 	DailyResourceCleanUpDevelopmentMode bool `env:"DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE" envDefault:"false"`
 
+	DisableCache             bool   `env:"DISABLE_CACHE" envDefault:"false"`
+	DisableRaft              bool   `env:"DISABLE_RAFT" envDefault:"true"`
+	RaftNodeID               uint64 `env:"RAFT_NODE_ID" envDefault:"0"`
+	RaftPeersRaw             string `env:"RAFT_PEERS" envDefault:""`
+	RaftWALDir               string `env:"RAFT_WAL_DIR" envDefault:""`
+	RaftSnapshotDir          string `env:"RAFT_SNAPSHOT_DIR" envDefault:""`
+	RaftClusterBootstrapDone bool   `env:"RAFT_CLUSTER_BOOTSTRAP_DONE" envDefault:"false"`
+
 	IsCloud                      bool
 	IsSmtpConfigured             bool
 	IsRedisConfigured            bool
@@ -105,6 +114,7 @@ type Config struct {
 	ParsedRedisSentinelHosts     []internalConfig.RedisHostPort
 	ParsedRedisClusterHosts      []internalConfig.RedisHostPort
 	ParsedRedisReadReplicas      []internalConfig.RedisHostPort
+	RaftPeers                    []string
 }
 
 func (c *Config) Addr() string {
@@ -153,6 +163,29 @@ func (c *Config) Validate() error {
 	if err != nil || port < 1 || port > 65535 {
 		return fmt.Errorf("KMS_GRPC_PORT must be a number between 1 and 65535 (got %q)", grpcPort)
 	}
+	if !c.DisableCache && !c.DisableRaft {
+		if c.RaftNodeID == 0 {
+			return fmt.Errorf("RAFT_NODE_ID must be greater than zero when Raft is enabled")
+		}
+		if len(c.RaftPeers) == 0 {
+			return fmt.Errorf("RAFT_PEERS must contain at least one peer URL when Raft is enabled")
+		}
+		for _, peer := range c.RaftPeers {
+			peerURL, err := url.Parse(peer)
+			if err != nil || peerURL.Scheme == "" || peerURL.Host == "" {
+				return fmt.Errorf("RAFT_PEERS contains an invalid peer URL %q", peer)
+			}
+		}
+		if c.RaftNodeID > uint64(len(c.RaftPeers)) {
+			return fmt.Errorf("RAFT_NODE_ID %d exceeds the %d configured RAFT_PEERS", c.RaftNodeID, len(c.RaftPeers))
+		}
+		if strings.TrimSpace(c.RaftWALDir) == "" {
+			return fmt.Errorf("RAFT_WAL_DIR is required when Raft is enabled")
+		}
+		if strings.TrimSpace(c.RaftSnapshotDir) == "" {
+			return fmt.Errorf("RAFT_SNAPSHOT_DIR is required when Raft is enabled")
+		}
+	}
 	return nil
 }
 
@@ -160,6 +193,13 @@ func LoadConfig() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("parse environment: %w", err)
+	}
+	if cfg.RaftPeersRaw != "" {
+		for _, peer := range strings.Split(cfg.RaftPeersRaw, ",") {
+			if peer = strings.TrimSpace(peer); peer != "" {
+				cfg.RaftPeers = append(cfg.RaftPeers, peer)
+			}
+		}
 	}
 
 	if err := cfg.Validate(); err != nil {

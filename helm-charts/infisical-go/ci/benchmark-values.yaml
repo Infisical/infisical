@@ -1,0 +1,52 @@
+infisical:
+  replicaCount: 3
+  kubeSecretRef: infisical-runtime
+  autoBootstrap:
+    enabled: true
+    organization: benchmark
+    credentialSecret:
+      name: infisical-bootstrap-credentials
+    secretDestination:
+      name: infisical-benchmark-admin
+      namespace: infisical-benchmark
+  resources:
+    requests:
+      cpu: 500m
+      memory: 5Gi
+    limits:
+      cpu: 500m
+      memory: 5Gi
+
+benchmarkTraefik:
+  enabled: true
+  host: infisical-benchmark.local
+
+backendGo:
+  kubeSecretRef: infisical-runtime
+  image:
+    tag: trace-raft-1
+  ingress:
+    enabled: true
+    host: infisical-go-benchmark.local
+
+kms:
+  kubeSecretRef: infisical-runtime
+  logLevel: debug
+  image:
+    tag: trace-raft-1
+
+postgresql:
+  enabled: false
+  useExistingPostgresSecret:
+    enabled: true
+    existingConnectionStringSecret:
+      name: infisical-runtime
+      key: DB_CONNECTION_URI
+
+redis:
+  enabled: false
+
+ingress:
+  enabled: false
+  nginx:
+    enabled: false

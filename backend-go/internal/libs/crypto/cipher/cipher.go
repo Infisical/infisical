@@ -20,6 +20,7 @@ const (
 	AESGCM128 SymmetricKeyAlgorithm = "aes-128-gcm"
 )
 
+// todo: use pool for ivlength
 // SymmetricEncrypt encrypts plaintext with a 128-bit or 256-bit AES key using AES-GCM.
 // Returns a single blob: IV (12) || ciphertext || GCM auth tag (16).
 func SymmetricEncrypt(plaintext, key []byte) ([]byte, error) {
@@ -81,6 +82,7 @@ func getKeyLengthForAlgorithm(algorithm SymmetricKeyAlgorithm) (uint, error) {
 	}
 }
 
+// todo: allow pool reference to pick from sizes byte[16,32]
 func GenerateKeyMaterial(algorithm SymmetricKeyAlgorithm) ([]byte, error) {
 	keyLength, err := getKeyLengthForAlgorithm(algorithm)
 	if err != nil {
@@ -95,4 +97,3 @@ func GenerateKeyMaterial(algorithm SymmetricKeyAlgorithm) ([]byte, error) {
 
 	return key, nil
 }
-

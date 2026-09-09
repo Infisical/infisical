@@ -105,6 +105,8 @@ func (h *ErrorHandler) writeValidationError(ctx context.Context, w http.Response
 		slog.Any("errors", validationErrors),
 	)
 
+	// todo: unnecessary array allocation , unlesss json.NewEncoder(w).Encode(resp) does the field validation
+	// extend the ValidationError to accpet runtime.ValidationErrors
 	fieldErrors := make([]FieldError, 0, len(validationErrors))
 	for _, ve := range validationErrors {
 		fieldErrors = append(fieldErrors, FieldError{

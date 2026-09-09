@@ -11,6 +11,7 @@ import (
 
 	internalConfig "github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/ee/services/license"
+	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api/platform/projects"
 
 	"github.com/infisical/api/pkg/services/kms/db/store"
@@ -152,10 +153,11 @@ func authInterceptor(authHeader string, value string) grpc.UnaryClientIntercepto
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
-		ctx = metadata.AppendToOutgoingContext(
-			ctx,
-			authHeader, value,
-		)
+		pairs := []string{authHeader, value}
+		if reqID := requestid.FromContext(ctx); reqID != "" {
+			pairs = append(pairs, requestid.Header, reqID)
+		}
+		ctx = metadata.AppendToOutgoingContext(ctx, pairs...)
 
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}

@@ -18,3 +18,29 @@ func NewKeyMetaCache() *KeyMetaCache {
 		ARCCache: cache,
 	}
 }
+
+type KeyResultCache struct {
+	*arc.ARCCache[uuid.UUID, *GetKeyResult]
+}
+
+func NewKeyResultCache() *KeyResultCache {
+	cache, _ := arc.NewARC[uuid.UUID, *GetKeyResult](DefaultSize)
+	return &KeyResultCache{
+		ARCCache: cache,
+	}
+}
+
+type CacheConsensus struct {
+	KeyMetaCache *KeyMetaCache
+}
+
+type CacheConsensusOptions struct {
+	KeyMetaCache *KeyMetaCache
+}
+
+func NewCacheConsensus(opts *CacheConsensusOptions) *CacheConsensus {
+	// pass default logger
+	return &CacheConsensus{
+		KeyMetaCache: opts.KeyMetaCache,
+	}
+}

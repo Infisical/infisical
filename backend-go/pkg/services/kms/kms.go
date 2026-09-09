@@ -41,7 +41,7 @@ const (
 )
 
 type Service struct {
-	kmsStore         store.KMSStore
+	KmsStore         store.KMSStore
 	kmsInternalStore store.InternalKMSStore
 
 	rootEncryptionKeyMu *sync.RWMutex
@@ -67,14 +67,19 @@ type Options struct {
 	EncryptionKey     string
 	RootEncryptionKey string
 	FipsEnabled       bool
+	DisableCache      bool
 }
 
 // New creates a new KMS service.
 // The encryption key is decoded during Start() based on FIPS mode determination.
 func New(_ context.Context, options *Options) (*Service, error) {
+	var keyMetaCache *store.KeyMetaCache
+	if !options.DisableCache {
+		keyMetaCache = store.NewKeyMetaCache()
+	}
 	return &Service{
-		kmsStore: store.NewKMSStore(options.DB, &store.KmsStoreOptions{
-			store.NewKeyMetaCache(),
+		KmsStore: store.NewKMSStore(options.DB, &store.KmsStoreOptions{
+			KmsMetaCache: keyMetaCache,
 		}),
 		kmsInternalStore:     store.NewInternalKMSStore(),
 		rootEncryptionKeyMu:  &sync.RWMutex{},

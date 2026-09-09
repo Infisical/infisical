@@ -1,0 +1,36 @@
+{{- if and .Values.gateway.enabled (eq .Values.gateway.loadBalancer.provider "traefik") }}
+apiVersion: traefik.io/v1alpha1
+kind: TraefikService
+metadata:
+  name: {{ include "infisical-gateway-kms.fullname" . }}-gateway-weighted
+  labels:
+    {{- include "infisical-gateway-kms.gatewayLabels" . | nindent 4 }}
+spec:
+  weighted:
+    services:
+      - name: {{ include "infisical-gateway-kms.fullname" . }}-gateway-0
+        port: {{ .Values.gateway.service.port }}
+        weight: {{ index .Values.gateway.loadBalancer.weights 0 }}
+      - name: {{ include "infisical-gateway-kms.fullname" . }}-gateway-1
+        port: {{ .Values.gateway.service.port }}
+        weight: {{ index .Values.gateway.loadBalancer.weights 1 }}
+{{- if .Values.gateway.ingress.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "infisical-gateway-kms.fullname" . }}-gateway
+spec:
+  entryPoints:
+    {{- toYaml .Values.gateway.ingress.entryPoints | nindent 4 }}
+  routes:
+    - match: Host(`{{ required "gateway.ingress.host is required when ingress is enabled" .Values.gateway.ingress.host }}`)
+      kind: Rule
+      services:
+        - name: {{ include "infisical-gateway-kms.fullname" . }}-gateway-weighted
+          kind: TraefikService
+  {{- if .Values.gateway.ingress.tls }}
+  tls: {}
+  {{- end }}
+{{- end }}
+{{- end }}

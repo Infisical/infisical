@@ -62,6 +62,18 @@ func (l *Loader) OptionalInt(dst *int, key string, defaultVal int) *Loader {
 	return l
 }
 
+// OptionalUint64 loads an optional uint64 env var with a default.
+func (l *Loader) OptionalUint64(dst *uint64, key string, defaultVal uint64) *Loader {
+	if val := os.Getenv(key); val != "" {
+		if value, err := strconv.ParseUint(val, 10, 64); err == nil {
+			*dst = value
+			return l
+		}
+	}
+	*dst = defaultVal
+	return l
+}
+
 // OptionalFloat loads an optional float64 env var with a default.
 func (l *Loader) OptionalFloat(dst *float64, key string, defaultVal float64) *Loader {
 	if val := os.Getenv(key); val != "" {

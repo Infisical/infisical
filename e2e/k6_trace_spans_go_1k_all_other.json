@@ -1,0 +1,312 @@
+{
+  "sampled_backend_requests": 21,
+  "correlated_kms_requests": 21,
+  "backend_go": {
+    "count": 21,
+    "median_ms": 1.558952,
+    "p95_ms": 2.187588,
+    "max_ms": 2.597019
+  },
+  "kms": {
+    "count": 21,
+    "median_ms": 0.621465,
+    "p95_ms": 0.960016,
+    "max_ms": 1.258941
+  },
+  "samples": [
+    {
+      "request_id": "bench-raft-497-114",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 1.230304,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.590536,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-897-114",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 1.601079,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.960016,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-trace-820-115",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 0.929864,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.1722,
+        "method": "/kms.KMSService/SignWithKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-359-116",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 1.281049,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.5662290000000001,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-292-117",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 1.551455,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.694574,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-494-117",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 1.643665,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.752364,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-658-117",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 2.597019,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.69087,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-863-117",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 1.956536,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.681705,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-981-118",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 1.478212,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.7968189999999999,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-222-119",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 2.055121,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 0.5553859999999999,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-858-119",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-0",
+        "duration_ms": 2.187588,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-0",
+        "duration_ms": 1.204606,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-trace-394-113",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 2.049038,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.372984,
+        "method": "/kms.KMSService/SignWithKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-592-113",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 1.656437,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.60035,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-449-115",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 1.337266,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.708963,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-trace-36-116",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 0.86346,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.157531,
+        "method": "/kms.KMSService/SignWithKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-trace-174-117",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 0.73527,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.133162,
+        "method": "/kms.KMSService/VerifyWithKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-216-117",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 1.429479,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.621465,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-308-118",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 1.58743,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.580469,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-766-118",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 2.533141,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 1.258941,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-raft-140-119",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 1.558952,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.946982,
+        "method": "/kms.KMSService/UpdateKmsKey",
+        "success": true
+      }
+    },
+    {
+      "request_id": "bench-trace-461-119",
+      "backend_go": {
+        "pod": "infisical-go-backend-go-1",
+        "duration_ms": 1.072106,
+        "status": 200
+      },
+      "kms": {
+        "pod": "infisical-go-kms-2",
+        "duration_ms": 0.22810400000000003,
+        "method": "/kms.KMSService/VerifyWithKmsKey",
+        "success": true
+      }
+    }
+  ]
+}

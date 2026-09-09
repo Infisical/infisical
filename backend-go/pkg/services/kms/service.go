@@ -36,11 +36,6 @@ func (s Service) GenerateMacWithKmsKey(context.Context, *kmsproto.GenerateMacWit
 	panic("unimplemented")
 }
 
-// GetKmsKeyById implements [kmsproto.KMSServiceServer].
-func (s Service) GetKmsKeyById(context.Context, *kmsproto.GetKmsKeyByIdRequest) (*kmsproto.KmsKeyResponse, error) {
-	panic("unimplemented")
-}
-
 // GetKmsKeyByName implements [kmsproto.KMSServiceServer].
 func (s Service) GetKmsKeyByName(context.Context, *kmsproto.GetKmsKeyByNameRequest) (*kmsproto.KmsKeyResponse, error) {
 	panic("unimplemented")
@@ -74,11 +69,6 @@ func (s Service) RotateKmsKey(context.Context, *kmsproto.RotateKmsKeyRequest) (*
 // SignWithKmsKey implements [kmsproto.KMSServiceServer].
 func (s Service) SignWithKmsKey(ctx context.Context, req *kmsproto.SignWithKmsKeyRequest) (*kmsproto.SignWithKmsKeyResponse, error) {
 	return s.sign(ctx, req)
-}
-
-// UpdateKmsKey implements [kmsproto.KMSServiceServer].
-func (s Service) UpdateKmsKey(context.Context, *kmsproto.UpdateKmsKeyRequest) (*kmsproto.KmsKeyResponse, error) {
-	panic("unimplemented")
 }
 
 // VerifyMacWithKmsKey implements [kmsproto.KMSServiceServer].

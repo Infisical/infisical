@@ -1,0 +1,23 @@
+{
+  "infisical-go-infisical-c85458657-6fndc": {
+    "samples": 100,
+    "cpu_avg_m": 316.9,
+    "cpu_peak_m": 500.0,
+    "memory_avg_mib": 1252.28,
+    "memory_peak_mib": 1530.0
+  },
+  "infisical-go-infisical-c85458657-gkrnf": {
+    "samples": 100,
+    "cpu_avg_m": 335.43,
+    "cpu_peak_m": 498.0,
+    "memory_avg_mib": 1257.52,
+    "memory_peak_mib": 1523.0
+  },
+  "infisical-go-infisical-c85458657-xmwtv": {
+    "samples": 100,
+    "cpu_avg_m": 342.33,
+    "cpu_peak_m": 498.0,
+    "memory_avg_mib": 927.02,
+    "memory_peak_mib": 972.0
+  }
+}

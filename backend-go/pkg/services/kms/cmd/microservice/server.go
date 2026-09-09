@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"crypto/subtle"
+	"log/slog"
+	"strings"
+	"time"
 
+	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/pkg/services/kms/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -12,27 +16,48 @@ import (
 )
 
 func newGRPCServer(cfg *config.Config) *grpc.Server {
-	var serverOptions []grpc.ServerOption
+	interceptors := []grpc.UnaryServerInterceptor{benchmarkTraceInterceptor()}
 
 	if cfg.KMSAuthHeader != "" && cfg.KMSAuthSecret != "" {
-		serverOptions = append(
-			serverOptions,
-			grpc.UnaryInterceptor(
-				authUnaryServerInterceptor(
-					cfg.KMSAuthHeader,
-					cfg.KMSAuthSecret,
-				),
-			),
+		interceptors = append([]grpc.UnaryServerInterceptor{
+			authUnaryServerInterceptor(cfg.KMSAuthHeader, cfg.KMSAuthSecret),
+		}, interceptors...)
+		serverOptions := []grpc.ServerOption{
+			grpc.ChainUnaryInterceptor(interceptors...),
 			grpc.StreamInterceptor(
 				authStreamServerInterceptor(
 					cfg.KMSAuthHeader,
 					cfg.KMSAuthSecret,
 				),
 			),
-		)
+		}
+		return grpc.NewServer(serverOptions...)
 	}
 
-	return grpc.NewServer(serverOptions...)
+	return grpc.NewServer(grpc.ChainUnaryInterceptor(interceptors...))
+}
+
+// benchmarkTraceInterceptor emits duration only for explicitly sampled load-test
+// requests. Normal production traffic never uses the bench-trace request-ID prefix.
+func benchmarkTraceInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		md, _ := metadata.FromIncomingContext(ctx)
+		reqIDs := md.Get("x-request-id")
+		if len(reqIDs) != 1 || !(strings.HasPrefix(reqIDs[0], "bench-trace-") || strings.HasPrefix(reqIDs[0], "bench-raft-")) {
+			return handler(ctx, req)
+		}
+		ctx = requestid.WithID(ctx, reqIDs[0])
+
+		started := time.Now()
+		response, err := handler(ctx, req)
+		slog.InfoContext(ctx, "benchmark KMS request completed",
+			slog.String("reqId", reqIDs[0]),
+			slog.String("method", info.FullMethod),
+			slog.String("duration", time.Since(started).String()),
+			slog.Bool("success", err == nil),
+		)
+		return response, err
+	}
 }
 
 func validateAuthMetadata(

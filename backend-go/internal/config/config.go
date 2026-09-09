@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -267,6 +268,14 @@ type Config struct {
 	GatewayRelayRealm               string
 	GatewayRelayAuthSecret          string
 	RelayAuthSecret                 string
+	GatewayDisableCache             bool
+	GatewayDisableRaft              bool
+	GatewayRaftNodeID               uint64
+	GatewayRaftPeersRaw             string
+	GatewayRaftWALDir               string
+	GatewayRaftSnapshotDir          string
+	GatewayRaftClusterBootstrapDone bool
+	GatewayRaftPeers                []string
 
 	// Dynamic Secrets
 	DynamicSecretAllowInternalIP    bool
@@ -642,6 +651,13 @@ func LoadConfig() (*Config, error) {
 		Optional(&cfg.GatewayRelayRealm, "GATEWAY_RELAY_REALM", "").
 		Optional(&cfg.GatewayRelayAuthSecret, "GATEWAY_RELAY_AUTH_SECRET", "").
 		Optional(&cfg.RelayAuthSecret, "RELAY_AUTH_SECRET", "").
+		OptionalBool(&cfg.GatewayDisableCache, "GATEWAY_DISABLE_CACHE", false).
+		OptionalBool(&cfg.GatewayDisableRaft, "GATEWAY_DISABLE_RAFT", true).
+		OptionalUint64(&cfg.GatewayRaftNodeID, "GATEWAY_RAFT_NODE_ID", 0).
+		Optional(&cfg.GatewayRaftPeersRaw, "GATEWAY_RAFT_PEERS", "").
+		Optional(&cfg.GatewayRaftWALDir, "GATEWAY_RAFT_WAL_DIR", "").
+		Optional(&cfg.GatewayRaftSnapshotDir, "GATEWAY_RAFT_SNAPSHOT_DIR", "").
+		OptionalBool(&cfg.GatewayRaftClusterBootstrapDone, "GATEWAY_RAFT_CLUSTER_BOOTSTRAP_DONE", false).
 
 		// Dynamic Secrets
 		OptionalBool(&cfg.DynamicSecretAllowInternalIP, "DYNAMIC_SECRET_ALLOW_INTERNAL_IP", false).
@@ -743,6 +759,13 @@ func LoadConfig() (*Config, error) {
 
 	if err := l.Err(); err != nil {
 		return nil, err
+	}
+	if cfg.GatewayRaftPeersRaw != "" {
+		for peer := range strings.SplitSeq(cfg.GatewayRaftPeersRaw, ",") {
+			if peer = strings.TrimSpace(peer); peer != "" {
+				cfg.GatewayRaftPeers = append(cfg.GatewayRaftPeers, peer)
+			}
+		}
 	}
 
 	// Parse NODE_ENV
@@ -908,6 +931,30 @@ func (c *Config) validate() []string {
 
 	if c.AuthSecret == "" {
 		issues = append(issues, "AUTH_SECRET is required")
+	}
+
+	if !c.GatewayDisableCache && !c.GatewayDisableRaft {
+		if c.GatewayRaftNodeID == 0 {
+			issues = append(issues, "GATEWAY_RAFT_NODE_ID must be greater than zero when Gateway Raft is enabled")
+		}
+		if len(c.GatewayRaftPeers) == 0 {
+			issues = append(issues, "GATEWAY_RAFT_PEERS must contain at least one peer URL when Gateway Raft is enabled")
+		}
+		for _, peer := range c.GatewayRaftPeers {
+			peerURL, err := url.Parse(peer)
+			if err != nil || peerURL.Scheme == "" || peerURL.Host == "" {
+				issues = append(issues, fmt.Sprintf("GATEWAY_RAFT_PEERS contains an invalid peer URL %q", peer))
+			}
+		}
+		if c.GatewayRaftNodeID > uint64(len(c.GatewayRaftPeers)) {
+			issues = append(issues, fmt.Sprintf("GATEWAY_RAFT_NODE_ID %d exceeds the %d configured GATEWAY_RAFT_PEERS", c.GatewayRaftNodeID, len(c.GatewayRaftPeers)))
+		}
+		if strings.TrimSpace(c.GatewayRaftWALDir) == "" {
+			issues = append(issues, "GATEWAY_RAFT_WAL_DIR is required when Gateway Raft is enabled")
+		}
+		if strings.TrimSpace(c.GatewayRaftSnapshotDir) == "" {
+			issues = append(issues, "GATEWAY_RAFT_SNAPSHOT_DIR is required when Gateway Raft is enabled")
+		}
 	}
 
 	return issues

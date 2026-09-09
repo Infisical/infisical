@@ -21,7 +21,7 @@ func (s Service) DeleteKmsKey(ctx context.Context, req *kmsproto.DeleteKmsKeyReq
 		return nil, errutil.BadRequest("invalid keyId: %s", req.GetKeyId()).EncError()
 	}
 
-	kmsKey, err := s.kmsStore.FindValidationFieldsById(ctx, keyID)
+	kmsKey, err := s.KmsStore.FindValidationFieldsById(ctx, keyID)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -49,7 +49,7 @@ func (s Service) DeleteKmsKey(ctx context.Context, req *kmsproto.DeleteKmsKeyReq
 	}
 	defer tx.Rollback(ctx)
 
-	deleted, err , onCommitForDelete := s.kmsStore.DeleteKeyById(ctx, req.GetKeyId(), tx)
+	deleted, err, onCommitForDelete := s.KmsStore.DeleteKeyById(ctx, req.GetKeyId(), tx)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to delete KMS key").WithErr(err).EncError()
 	}
@@ -60,8 +60,8 @@ func (s Service) DeleteKmsKey(ctx context.Context, req *kmsproto.DeleteKmsKeyReq
 	if err := tx.Commit(ctx); err != nil {
 		return nil, errutil.DatabaseErr("Failed to commit KMS key deletion").WithErr(err).EncError()
 	}
-	
-	if onCommitForDelete != nil { 
+
+	if onCommitForDelete != nil {
 		onCommitForDelete()
 	}
 
