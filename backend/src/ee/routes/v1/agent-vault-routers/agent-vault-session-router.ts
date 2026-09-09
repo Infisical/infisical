@@ -1,14 +1,15 @@
 import { z } from "zod";
 
+import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
-  AgentVaultSessionScope,
-  AgentVaultSessionStatus,
-  AgentVaultSessionTtl
-} from "@app/ee/services/agent-vault/agent-vault-enums";
-import { AGENT_VAULT_MAX_SESSION_BUNDLES } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+  AGENT_VAULT_MAX_SESSION_BUNDLES,
+  AGENT_VAULT_SESSION_DEFAULT_TTL,
+  AGENT_VAULT_SESSION_TTL_NEVER
+} from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
@@ -88,8 +89,24 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .max(AGENT_VAULT_MAX_SESSION_BUNDLES)
           .describe(AGENT_VAULT.SESSION.accessBundles),
         ttl: z
-          .nativeEnum(AgentVaultSessionTtl)
-          .default(AgentVaultSessionTtl.SevenDays)
+          .string()
+          .trim()
+          .default(AGENT_VAULT_SESSION_DEFAULT_TTL)
+          .superRefine((val, ctx) => {
+            if (val === AGENT_VAULT_SESSION_TTL_NEVER) return;
+            let parsed: number | undefined;
+            try {
+              parsed = ms(val);
+            } catch {
+              parsed = undefined;
+            }
+            if (typeof parsed !== "number" || Number.isNaN(parsed) || parsed < 60 * 1000) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "TTL must be a duration of at least 1 minute, such as 30m, 8h or 7d, or never"
+              });
+            }
+          })
           .describe(AGENT_VAULT.SESSION.ttl)
       }),
       response: {

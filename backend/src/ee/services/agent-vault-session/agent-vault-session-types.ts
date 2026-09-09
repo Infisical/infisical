@@ -1,9 +1,5 @@
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
-import {
-  AgentVaultSessionScope,
-  AgentVaultSessionStatus,
-  AgentVaultSessionTtl
-} from "../agent-vault/agent-vault-enums";
+import { AgentVaultSessionScope, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 
 export type TMintSessionDTO = {
   projectId: string;
@@ -11,7 +7,7 @@ export type TMintSessionDTO = {
   accessBundles: string[];
   actorName: string;
   actorEmail: string | null;
-  ttl: AgentVaultSessionTtl;
+  ttl: string;
 };
 
 export type TListSessionsDTO = {

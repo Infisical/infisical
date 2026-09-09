@@ -9,14 +9,6 @@ export enum AgentVaultUnmatchedHost {
   Deny = "deny"
 }
 
-export enum AgentVaultSessionTtl {
-  OneHour = "1h",
-  EightHours = "8h",
-  OneDay = "24h",
-  SevenDays = "7d",
-  Never = "never"
-}
-
 export enum AgentVaultSessionStatus {
   Active = "active",
   Revoked = "revoked",

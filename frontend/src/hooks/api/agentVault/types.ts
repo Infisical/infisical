@@ -2,7 +2,6 @@ import {
   AgentVaultCredentialType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
-  AgentVaultSessionTtl,
   AgentVaultUnmatchedHost
 } from "./enums";
 
@@ -162,7 +161,7 @@ export type TAddAgentVaultMembersDTO = {
 
 export type TCreateAgentVaultSessionDTO = {
   accessBundles: string[];
-  ttl: AgentVaultSessionTtl;
+  ttl: string;
 };
 
 export type TAgentVaultProxySettingsDTO = {

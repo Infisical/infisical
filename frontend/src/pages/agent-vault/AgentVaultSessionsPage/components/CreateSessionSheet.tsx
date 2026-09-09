@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PackageIcon } from "lucide-react";
+import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -9,7 +10,9 @@ import {
   Field,
   FieldContent,
   FieldDescription,
+  FieldError,
   FieldLabel,
+  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -24,7 +27,6 @@ import {
 } from "@app/components/v3";
 import { useDiscardChangesGuard } from "@app/hooks";
 import {
-  AgentVaultSessionTtl,
   useCreateAgentVaultSession,
   useListAgentVaultAccessBundles
 } from "@app/hooks/api/agentVault";
@@ -33,12 +35,26 @@ import {
   TAgentVaultMintedSession
 } from "@app/hooks/api/agentVault/types";
 
-const TTL_LABELS: Record<AgentVaultSessionTtl, string> = {
-  [AgentVaultSessionTtl.OneHour]: "1 hour",
-  [AgentVaultSessionTtl.EightHours]: "8 hours",
-  [AgentVaultSessionTtl.OneDay]: "24 hours",
-  [AgentVaultSessionTtl.SevenDays]: "7 days",
-  [AgentVaultSessionTtl.Never]: "Never"
+const NEVER_TTL = "never";
+const CUSTOM_TTL = "custom";
+
+const TTL_PRESETS = [
+  { value: "1h", label: "1 hour" },
+  { value: "8h", label: "8 hours" },
+  { value: "24h", label: "24 hours" },
+  { value: "7d", label: "7 days" },
+  { value: NEVER_TTL, label: "Never" },
+  { value: CUSTOM_TTL, label: "Custom" }
+];
+const DEFAULT_TTL_PRESET = "7d";
+
+const isValidCustomTtl = (value: string) => {
+  try {
+    const parsed = ms(value.trim() as Parameters<typeof ms>[0]);
+    return typeof parsed === "number" && parsed >= 60 * 1000;
+  } catch {
+    return false;
+  }
 };
 
 type Props = {
@@ -54,12 +70,18 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
   const [selectedBundle, setSelectedBundle] = useState<TAgentVaultAccessBundleListItem | null>(
     null
   );
-  const [ttl, setTtl] = useState(AgentVaultSessionTtl.SevenDays);
+  const [ttlPreset, setTtlPreset] = useState(DEFAULT_TTL_PRESET);
+  const [customTtl, setCustomTtl] = useState("");
+
+  const isCustomTtl = ttlPreset === CUSTOM_TTL;
+  const ttl = isCustomTtl ? customTtl.trim() : ttlPreset;
+  const isTtlValid = !isCustomTtl || isValidCustomTtl(customTtl);
 
   useEffect(() => {
     if (isOpen) {
       setSelectedBundle(null);
-      setTtl(AgentVaultSessionTtl.SevenDays);
+      setTtlPreset(DEFAULT_TTL_PRESET);
+      setCustomTtl("");
     }
   }, [isOpen]);
 
@@ -139,19 +161,33 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
           <Field>
             <FieldLabel>Expires</FieldLabel>
             <FieldContent>
-              <Select value={ttl} onValueChange={(value) => setTtl(value as AgentVaultSessionTtl)}>
+              <Select value={ttlPreset} onValueChange={setTtlPreset}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(AgentVaultSessionTtl).map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {TTL_LABELS[value]}
+                  {TTL_PRESETS.map((preset) => (
+                    <SelectItem key={preset.value} value={preset.value}>
+                      {preset.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {ttl === AgentVaultSessionTtl.Never && (
+              {isCustomTtl && (
+                <>
+                  <Input
+                    value={customTtl}
+                    onChange={(e) => setCustomTtl(e.target.value)}
+                    placeholder="90m"
+                    isError={customTtl.length > 0 && !isTtlValid}
+                  />
+                  <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
+                  {customTtl.length > 0 && !isTtlValid && (
+                    <FieldError>At least 1 minute.</FieldError>
+                  )}
+                </>
+              )}
+              {ttlPreset === NEVER_TTL && (
                 <FieldDescription>
                   This session keeps working until someone revokes it.
                 </FieldDescription>
@@ -163,7 +199,7 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
         <SheetFooter className="border-t">
           <Button
             variant="av"
-            isDisabled={!selectedBundle}
+            isDisabled={!selectedBundle || !isTtlValid}
             isPending={createSession.isPending}
             onClick={async () => handleCreate()}
           >

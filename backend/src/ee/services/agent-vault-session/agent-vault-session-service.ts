@@ -8,14 +8,11 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
-import {
-  AGENT_VAULT_SESSION_TTL_SECONDS,
-  AgentVaultSessionScope,
-  AgentVaultSessionTtl
-} from "../agent-vault/agent-vault-enums";
+import { AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
@@ -25,6 +22,8 @@ import { TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-va
 
 // V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
 export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
+export const AGENT_VAULT_SESSION_DEFAULT_TTL = "7d";
+export const AGENT_VAULT_SESSION_TTL_NEVER = "never";
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
@@ -86,8 +85,7 @@ export const agentVaultSessionServiceFactory = ({
       });
     }
 
-    const ttlSeconds = AGENT_VAULT_SESSION_TTL_SECONDS[ttl];
-    const expiresAt = ttlSeconds === null ? null : new Date(Date.now() + ttlSeconds * 1000);
+    const expiresAt = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : new Date(Date.now() + ms(ttl));
     const { token, tokenHash } = generateSessionToken();
 
     const session = await agentVaultSessionDAL.transaction(async (tx) => {
@@ -226,7 +224,6 @@ export const agentVaultSessionServiceFactory = ({
     mintSession,
     listSessions,
     revokeSession,
-    sweepRetiredSessions,
-    ttlOptions: Object.values(AgentVaultSessionTtl)
+    sweepRetiredSessions
   };
 };

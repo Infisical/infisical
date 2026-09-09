@@ -823,6 +823,28 @@ describe("Agent Vault V1 Router", async () => {
       expect(res.statusCode).toBe(422);
     });
 
+    test("ttl is a free-form duration with a one minute floor", async () => {
+      const bundle = await createAccessBundle("session-ttl-free");
+      const before = Date.now();
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "90m" });
+      expect(mint.statusCode).toBe(200);
+      const { session } = JSON.parse(mint.payload) as { session: { expiresAt: string } };
+      const lifetimeMs = new Date(session.expiresAt).getTime() - before;
+      expect(lifetimeMs).toBeGreaterThanOrEqual(90 * 60 * 1000 - 5_000);
+      expect(lifetimeMs).toBeLessThanOrEqual(90 * 60 * 1000 + 60_000);
+
+      const tooShort = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "30s"
+      });
+      expect(tooShort.statusCode).toBe(422);
+      const garbage = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "soon"
+      });
+      expect(garbage.statusCode).toBe(422);
+    });
+
     test("ttl never stores a null expiry, and revoke is idempotent", async () => {
       const bundle = await createAccessBundle("session-never");
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
