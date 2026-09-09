@@ -21,24 +21,4 @@
         ![Generate Secret](/images/app-connections/databricks/service-principal-secrets.png)
         ![Copy IDs](/images/app-connections/databricks/service-principal-ids.png)
     </Step>
-    <Step title="Grant rotation permissions (optional)" titleSize="h3">
-        Skip this step if you're only using the connection to sync secrets into Databricks. For Secret Rotation, the Infisical service principal needs to manage the secrets of every service principal you want to rotate.
-
-        <Accordion title="Grant Manage permission for rotation">
-            1. Navigate to **Settings > Identity & Access > Groups** and select the admin group (typically named `admins` or `workspace-admins`). Select **Add** and pick the Infisical service principal.
-
-                ![Admin Group](/images/app-connections/databricks/admin-group.png)
-                ![Add to Admin Group](/images/app-connections/databricks/add-to-admin-group.png)
-                ![Add to Admin Group Modal](/images/app-connections/databricks/add-to-admin-group-form.png)
-
-            2. For every service principal whose secrets you want to rotate, open **Settings > Identity & Access > Service Principals**, select the target, open its **Permissions** tab, and select **Grant access**.
-
-                ![Select Target Service Principal](/images/app-connections/databricks/select-target-service-principal.png)
-                ![Permissions Tab](/images/app-connections/databricks/permissions-tab.png)
-
-            3. In **User, Group or Service Principal**, select the Infisical service principal. In **Permission**, select **Manage**. Select **Save**. Repeat for every target.
-
-                ![Assign Manage Permission](/images/app-connections/databricks/assign-manage-permission.png)
-        </Accordion>
-    </Step>
 </Steps>
