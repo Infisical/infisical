@@ -21,7 +21,6 @@ import {
   AlertDialogTitle,
   AlertTitle,
   Button,
-  ButtonGroup,
   Combobox,
   DocumentationLinkBadge,
   Empty,
@@ -57,15 +56,12 @@ import type {
   CopySecretsEnvironment,
   CopySecretsFolder,
   CopySecretsInvocation,
-  CopySecretsMode,
   CopySecretsSource
 } from "./copySecrets.types";
 import {
   chunkCopySecretIds,
   getCopyDestinationFolderPaths,
-  getCopyDestinationPath,
   getCopyFolderCreationSteps,
-  getCopyPathName,
   getCopySecretConflicts,
   getInitialCopyState,
   getInvocationCopySelection,
@@ -121,7 +117,6 @@ const CopySecretsSession = ({
     skipMultilineEncoding: true
   });
   const includeValues = attributes.value;
-  const [mode, setMode] = useState<CopySecretsMode>(initialState.mode);
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [debouncedSourcePath] = useDebounce(sourcePath, 250);
@@ -172,20 +167,16 @@ const CopySecretsSession = ({
   const sourceEnvironment = environments.find(({ slug }) => slug === sourceEnvironmentSlug) ?? null;
   const destinationEnvironment =
     environments.find(({ slug }) => slug === destinationEnvironmentSlug) ?? null;
-  const sourceFolderName = getCopyPathName(normalizedSourcePath);
-  const effectiveMode = sourceFolderName ? mode : "contents";
   const requestGroups = groupCopySecretsRequests({
     secrets: selectedSecrets,
     sourceRootPath: normalizedSourcePath,
     destinationRootPath: normalizedDestinationPath,
-    mode: effectiveMode,
     includeValues
   });
   const destinationFolderPaths = getCopyDestinationFolderPaths({
     folderPaths: selectedFolderPaths,
     sourceRootPath: normalizedSourcePath,
-    destinationRootPath: normalizedDestinationPath,
-    mode: effectiveMode
+    destinationRootPath: normalizedDestinationPath
   });
   const previewFolders: CopySecretsFolder[] = [...destinationFolders];
   const existingFolderPaths = new Set(destinationFolders.map(({ path }) => path));
@@ -289,8 +280,7 @@ const CopySecretsSession = ({
         sourceEnvironment: sourceEnvironmentSlug,
         destinationEnvironment: destinationEnvironmentSlug,
         sourcePath: normalizedSourcePath,
-        destinationPath: normalizedDestinationPath,
-        mode: effectiveMode
+        destinationPath: normalizedDestinationPath
       })
     )
       return "Choose a different destination path";
@@ -612,7 +602,6 @@ const CopySecretsSession = ({
                           onChange={(path) => {
                             setSourcePath(path);
                             setSelection(null);
-                            if (!getCopyPathName(path)) setMode("contents");
                           }}
                         />
                       </Field>
@@ -697,44 +686,10 @@ const CopySecretsSession = ({
               </div>
 
               <p className="text-xs text-muted">
-                Copies shared secrets and selected folders, including empty folders. Managed
-                secrets, dynamic secrets, and imports are excluded.
+                Selected shared secrets and folders are copied directly into{" "}
+                <span className="font-mono text-foreground">{normalizedDestinationPath}</span>,
+                including empty folders. Managed secrets, dynamic secrets, and imports are excluded.
               </p>
-              {sourceFolderName && (
-                <div className="flex flex-wrap items-center gap-3">
-                  <ButtonGroup aria-label="Folder copy mode">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={mode === "folder" ? "neutral" : "outline"}
-                      aria-pressed={mode === "folder"}
-                      isDisabled={isSubmitting}
-                      onClick={() => setMode("folder")}
-                    >
-                      Include {sourceFolderName}/
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={mode === "contents" ? "neutral" : "outline"}
-                      aria-pressed={mode === "contents"}
-                      isDisabled={isSubmitting}
-                      onClick={() => setMode("contents")}
-                    >
-                      Selected contents only
-                    </Button>
-                  </ButtonGroup>
-                  <span className="font-mono text-xs text-muted">
-                    {normalizedSourcePath} →{" "}
-                    {getCopyDestinationPath({
-                      sourcePath: normalizedSourcePath,
-                      sourceRootPath: normalizedSourcePath,
-                      destinationRootPath: normalizedDestinationPath,
-                      mode: effectiveMode
-                    })}
-                  </span>
-                </div>
-              )}
             </div>
 
             <SheetFooter className="flex-wrap items-center border-t">

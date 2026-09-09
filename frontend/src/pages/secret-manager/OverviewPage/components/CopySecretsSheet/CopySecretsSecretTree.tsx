@@ -4,7 +4,6 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   FolderIcon,
-  FolderOpenIcon,
   KeyRoundIcon,
   SearchIcon
 } from "lucide-react";
@@ -151,8 +150,7 @@ const Folder = ({
   includeValues,
   isChangePreview,
   idPrefix,
-  onSelectionChange,
-  isRoot = false
+  onSelectionChange
 }: {
   node: FolderNode;
   selectionNode: FolderNode;
@@ -164,7 +162,6 @@ const Folder = ({
   isChangePreview: boolean;
   idPrefix: string;
   onSelectionChange: (ids: string[], folderPaths: string[]) => void;
-  isRoot?: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const selectableIds = getSelectableIds(selectionNode);
@@ -190,11 +187,11 @@ const Folder = ({
       <CollapsiblePrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
         <div
           className={cn(
-            "grid min-h-9 items-center gap-2 rounded-sm px-2 hover:bg-container-hover",
+            "group/folder grid min-h-9 items-center gap-2 rounded-sm px-2 hover:bg-container-hover",
             isChangePreview && !node.hasPreviewChanges && "opacity-50",
             isReadOnly
-              ? "grid-cols-[1rem_1rem_minmax(0,1fr)_auto]"
-              : "grid-cols-[1rem_1rem_1rem_minmax(0,1fr)_auto]"
+              ? "grid-cols-[1rem_minmax(0,1fr)_auto]"
+              : "grid-cols-[1rem_1rem_minmax(0,1fr)_auto]"
           )}
         >
           <CollapsiblePrimitive.Trigger
@@ -205,14 +202,15 @@ const Folder = ({
             {isOpen ? (
               <ChevronDownIcon className="size-4" />
             ) : (
-              <ChevronRightIcon className="size-4" />
+              <>
+                <FolderIcon
+                  className="size-4 text-folder group-focus-within/folder:hidden group-hover/folder:hidden"
+                  aria-hidden
+                />
+                <ChevronRightIcon className="hidden size-4 group-focus-within/folder:block group-hover/folder:block" />
+              </>
             )}
           </CollapsiblePrimitive.Trigger>
-          {isOpen ? (
-            <FolderOpenIcon className="size-4 text-folder" aria-hidden />
-          ) : (
-            <FolderIcon className="size-4 text-folder" aria-hidden />
-          )}
           {!isReadOnly && (
             <Checkbox
               id={checkboxId}
@@ -224,21 +222,13 @@ const Folder = ({
             />
           )}
           {isReadOnly ? (
-            <span
-              className={cn(
-                "min-w-0 flex-1 truncate font-mono text-xs text-foreground",
-                isRoot && "font-medium"
-              )}
-            >
+            <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
               {node.name}
             </span>
           ) : (
             <label
               htmlFor={checkboxId}
-              className={cn(
-                "min-w-0 flex-1 cursor-pointer truncate font-mono text-xs text-foreground",
-                isRoot && "font-medium"
-              )}
+              className="min-w-0 flex-1 cursor-pointer truncate font-mono text-xs text-foreground"
             >
               {node.name}
             </label>
@@ -252,7 +242,7 @@ const Folder = ({
           </span>
         </div>
         <CollapsiblePrimitive.Content>
-          <ul className={cn(!isRoot && "ml-4 border-l border-border pl-2")}>
+          <ul className="ml-4 border-l border-border pl-2">
             {[...node.secrets]
               .sort((left, right) => left.name.localeCompare(right.name))
               .map((secret) => {
@@ -272,11 +262,10 @@ const Folder = ({
                       "grid min-h-9 items-center gap-2 rounded-sm px-2 hover:bg-container-hover",
                       isChangePreview && !secret.previewStatus && "opacity-50",
                       isReadOnly
-                        ? "grid-cols-[1rem_1rem_minmax(0,1fr)_auto]"
-                        : "grid-cols-[1rem_1rem_1rem_minmax(0,1fr)_auto]"
+                        ? "grid-cols-[1rem_minmax(0,1fr)_auto]"
+                        : "grid-cols-[1rem_1rem_minmax(0,1fr)_auto]"
                     )}
                   >
-                    <span className="size-4" aria-hidden />
                     <KeyRoundIcon className="size-4 text-secret" aria-hidden />
                     {!isReadOnly && (
                       <Checkbox
@@ -476,7 +465,6 @@ export const CopySecretsSecretTree = ({
           isChangePreview={showChangesFilter}
           idPrefix={idPrefix}
           onSelectionChange={onSelectionChange}
-          isRoot
         />
       </ul>
     ) : (

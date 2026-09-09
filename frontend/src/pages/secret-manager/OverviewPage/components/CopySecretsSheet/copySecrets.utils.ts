@@ -2,7 +2,6 @@ import type {
   CopySecretsEnvironment,
   CopySecretsFolder,
   CopySecretsInvocation,
-  CopySecretsMode,
   CopySecretsSource
 } from "./copySecrets.types";
 
@@ -58,40 +57,34 @@ export const isCopySecretSelectable = (secret: CopySecretsSource) =>
 export const getCopyDestinationPath = ({
   sourcePath,
   sourceRootPath,
-  destinationRootPath,
-  mode
+  destinationRootPath
 }: {
   sourcePath: string;
   sourceRootPath: string;
   destinationRootPath: string;
-  mode: CopySecretsMode;
 }) => {
   const relativePath = getRelativeCopyPath(sourcePath, sourceRootPath);
   if (relativePath === null) return null;
 
-  const sourceFolderName = mode === "folder" ? getCopyPathName(sourceRootPath) : undefined;
-  return joinCopyPath(destinationRootPath, sourceFolderName ?? "", relativePath);
+  return joinCopyPath(destinationRootPath, relativePath);
 };
 
 export const isCopyingToSameLocation = ({
   sourceEnvironment,
   destinationEnvironment,
   sourcePath,
-  destinationPath,
-  mode
+  destinationPath
 }: {
   sourceEnvironment: string;
   destinationEnvironment: string;
   sourcePath: string;
   destinationPath: string;
-  mode: CopySecretsMode;
 }) =>
   sourceEnvironment === destinationEnvironment &&
   getCopyDestinationPath({
     sourcePath,
     sourceRootPath: sourcePath,
-    destinationRootPath: destinationPath,
-    mode
+    destinationRootPath: destinationPath
   }) === normalizeCopyPath(sourcePath);
 
 export type CopyFolderCreationStep = {
@@ -158,13 +151,11 @@ export const groupCopySecretsRequests = ({
   secrets,
   sourceRootPath,
   destinationRootPath,
-  mode,
   includeValues = true
 }: {
   secrets: CopySecretsSource[];
   sourceRootPath: string;
   destinationRootPath: string;
-  mode: CopySecretsMode;
   includeValues?: boolean;
 }) => {
   const groups = new Map<string, CopySecretsRequestGroup>();
@@ -175,8 +166,7 @@ export const groupCopySecretsRequests = ({
     const destinationPath = getCopyDestinationPath({
       sourcePath,
       sourceRootPath,
-      destinationRootPath,
-      mode
+      destinationRootPath
     });
     if (!destinationPath) return;
 
@@ -215,16 +205,15 @@ export const getInitialCopyState = (
       : [];
   const sourceEnvironmentSlug =
     invocation.sourceEnvironmentSlug ?? (availableSlugs.length === 1 ? availableSlugs[0] : "");
+  const sourceFolderName =
+    invocation.origin === "toolbar" ? getCopyPathName(invocation.sourcePath) : undefined;
   return {
     sourceEnvironmentSlug,
     sourcePath: invocation.sourcePath,
     destinationEnvironmentSlug: sourceEnvironmentSlug
       ? getOtherCopyEnvironmentSlug(environments, sourceEnvironmentSlug) || sourceEnvironmentSlug
       : "",
-    destinationPath: "/",
-    mode: (invocation.origin === "toolbar" && getCopyPathName(invocation.sourcePath)
-      ? "folder"
-      : "contents") as CopySecretsMode
+    destinationPath: sourceFolderName ? joinCopyPath("/", sourceFolderName) : "/"
   };
 };
 
@@ -267,21 +256,18 @@ export const getInvocationCopySelection = ({
 export const getCopyDestinationFolderPaths = ({
   folderPaths,
   sourceRootPath,
-  destinationRootPath,
-  mode
+  destinationRootPath
 }: {
   folderPaths: string[];
   sourceRootPath: string;
   destinationRootPath: string;
-  mode: CopySecretsMode;
 }) => [
   ...new Set(
     folderPaths.flatMap((sourcePath) => {
       const path = getCopyDestinationPath({
         sourcePath,
         sourceRootPath,
-        destinationRootPath,
-        mode
+        destinationRootPath
       });
       return path ? [path] : [];
     })

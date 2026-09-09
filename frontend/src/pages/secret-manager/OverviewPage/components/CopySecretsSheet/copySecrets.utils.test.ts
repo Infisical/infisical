@@ -78,22 +78,12 @@ describe("copy secrets paths", () => {
     );
   });
 
-  it("supports copying a folder or only its contents", () => {
+  it("copies source-relative contents into the exact destination path", () => {
     assert.equal(
       getCopyDestinationPath({
         sourcePath: "/auth/session",
         sourceRootPath: "/auth",
-        destinationRootPath: "/services",
-        mode: "folder"
-      }),
-      "/services/auth/session"
-    );
-    assert.equal(
-      getCopyDestinationPath({
-        sourcePath: "/auth/session",
-        sourceRootPath: "/auth",
-        destinationRootPath: "/services",
-        mode: "contents"
+        destinationRootPath: "/services"
       }),
       "/services/session"
     );
@@ -105,8 +95,7 @@ describe("copy secrets paths", () => {
         sourceEnvironment: "development",
         destinationEnvironment: "development",
         sourcePath: "/",
-        destinationPath: "/services",
-        mode: "contents"
+        destinationPath: "/services"
       }),
       false
     );
@@ -115,8 +104,7 @@ describe("copy secrets paths", () => {
         sourceEnvironment: "development",
         destinationEnvironment: "development",
         sourcePath: "/services",
-        destinationPath: "/",
-        mode: "contents"
+        destinationPath: "/"
       }),
       false
     );
@@ -125,18 +113,7 @@ describe("copy secrets paths", () => {
         sourceEnvironment: "development",
         destinationEnvironment: "development",
         sourcePath: "/services",
-        destinationPath: "/services",
-        mode: "contents"
-      }),
-      true
-    );
-    assert.equal(
-      isCopyingToSameLocation({
-        sourceEnvironment: "development",
-        destinationEnvironment: "development",
-        sourcePath: "/services",
-        destinationPath: "/",
-        mode: "folder"
+        destinationPath: "/services"
       }),
       true
     );
@@ -145,8 +122,7 @@ describe("copy secrets paths", () => {
         sourceEnvironment: "development",
         destinationEnvironment: "production",
         sourcePath: "/services",
-        destinationPath: "/services",
-        mode: "contents"
+        destinationPath: "/services"
       }),
       false
     );
@@ -169,8 +145,7 @@ describe("copy secrets paths", () => {
           { id: "three", name: "THREE", path: "/auth/session" }
         ],
         sourceRootPath: "/auth",
-        destinationRootPath: "/",
-        mode: "folder"
+        destinationRootPath: "/auth"
       }),
       [
         { sourcePath: "/auth", destinationPath: "/auth", secretIds: ["one"], includeValues: true },
@@ -193,8 +168,7 @@ describe("copy secrets paths", () => {
     const requestGroups = groupCopySecretsRequests({
       secrets,
       sourceRootPath: "/auth",
-      destinationRootPath: "/services",
-      mode: "contents"
+      destinationRootPath: "/services"
     });
 
     assert.deepEqual(
@@ -239,7 +213,7 @@ describe("copy invocation selection", () => {
     foldersByEnvironment: { dev: [{ path: "/app/empty" }, { path: "/app/nested" }] }
   };
 
-  it("opens the dropdown from the current source environment and folder", () => {
+  it("opens a folder copy with that folder as the exact destination", () => {
     assert.deepEqual(
       getInitialCopyState(
         { origin: "toolbar", sourceEnvironmentSlug: "dev", sourcePath: "/app" },
@@ -249,14 +223,16 @@ describe("copy invocation selection", () => {
         sourceEnvironmentSlug: "dev",
         sourcePath: "/app",
         destinationEnvironmentSlug: "prod",
-        destinationPath: "/",
-        mode: "folder"
+        destinationPath: "/app"
       }
     );
   });
 
   it("uses the current environment for bulk entry and leaves multi-environment sources to the user", () => {
-    assert.equal(getInitialCopyState(invocation, environments).sourceEnvironmentSlug, "");
+    const initialState = getInitialCopyState(invocation, environments);
+
+    assert.equal(initialState.sourceEnvironmentSlug, "");
+    assert.equal(initialState.destinationPath, "/");
     assert.equal(
       getInitialCopyState({ ...invocation, sourceEnvironmentSlug: "prod" }, environments)
         .sourceEnvironmentSlug,
@@ -347,7 +323,6 @@ describe("copy requests", () => {
       secrets,
       sourceRootPath: "/app",
       destinationRootPath: "/copy",
-      mode: "contents",
       includeValues: true
     });
     assert.deepEqual(groups, [
@@ -379,7 +354,6 @@ describe("copy requests", () => {
       secrets,
       sourceRootPath: "/app",
       destinationRootPath: "/",
-      mode: "folder",
       includeValues: false
     });
     assert.deepEqual(
@@ -395,8 +369,7 @@ describe("copy requests", () => {
       getCopyDestinationFolderPaths({
         folderPaths: ["/app/empty", "/app/nested", "/app/nested/empty", "/unrelated"],
         sourceRootPath: "/app",
-        destinationRootPath: "/copy",
-        mode: "contents"
+        destinationRootPath: "/copy"
       }),
       ["/copy/empty", "/copy/nested", "/copy/nested/empty"]
     );
@@ -404,10 +377,9 @@ describe("copy requests", () => {
       getCopyDestinationFolderPaths({
         folderPaths: ["/app"],
         sourceRootPath: "/app",
-        destinationRootPath: "/copy",
-        mode: "folder"
+        destinationRootPath: "/copy"
       }),
-      ["/copy/app"]
+      ["/copy"]
     );
   });
 });

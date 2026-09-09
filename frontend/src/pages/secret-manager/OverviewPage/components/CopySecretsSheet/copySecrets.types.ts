@@ -48,5 +48,3 @@ export type CopySecretsEnvironment = {
   name: string;
   slug: string;
 };
-
-export type CopySecretsMode = "folder" | "contents";
