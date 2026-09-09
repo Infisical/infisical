@@ -7,8 +7,8 @@ import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries"
 import { TServerConfig } from "@app/hooks/api/admin/types";
 import { authKeys } from "@app/hooks/api/auth/queries";
 import { fetchAuthToken, shouldRetryAuthTokenFetch } from "@app/hooks/api/auth/refresh";
-import { queryClient } from "@app/hooks/api/reactQuery";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { queryClient } from "@app/hooks/api/reactQuery";
 
 type TRouterContext = {
   serverConfig: TServerConfig | null;

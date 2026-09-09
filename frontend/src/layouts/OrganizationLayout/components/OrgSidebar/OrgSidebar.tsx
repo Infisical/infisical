@@ -2,12 +2,12 @@ import { useLocation, useParams } from "@tanstack/react-router";
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useImplicitProduct } from "@app/hooks";
 import {
   hasIntermediateProjectsView,
   parseProjectSlugFromPath,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { useImplicitProduct } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { OrgNav } from "./OrgNav";
