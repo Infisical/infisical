@@ -57,7 +57,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       tags: [ApiDocsTags.AgentVaultProxies],
       response: { 200: z.object({ proxies: z.union([ProxyAdminViewSchema, ProxyMemberViewSchema]).array() }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const proxies = await server.services.agentVaultProxy.listProxies({
         projectId: req.internalAgentVaultProjectId,

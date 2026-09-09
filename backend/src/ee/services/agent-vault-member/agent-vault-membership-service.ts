@@ -455,7 +455,7 @@ export const agentVaultMembershipServiceFactory = ({
       }
     }
 
-    await membershipDAL.transaction(async (tx) => {
+    const membershipId = await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
         { tx }
@@ -468,10 +468,12 @@ export const agentVaultMembershipServiceFactory = ({
 
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
+
+      return membership.id;
     });
 
     usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
-    return { ...dto, ...(await resolveActorLabel(dto)) };
+    return { membershipId, ...dto, ...(await resolveActorLabel(dto)) };
   };
 
   // The whole set rather than a page: the grant picker filters client-side.

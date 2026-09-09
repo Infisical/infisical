@@ -110,9 +110,9 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
         role
       },
       {
-        onSuccess: ({ addedCount }) => {
+        onSuccess: ({ memberships }) => {
           createNotification({
-            text: `${addedCount} user${addedCount === 1 ? "" : "s"} added`,
+            text: `${memberships.length} user${memberships.length === 1 ? "" : "s"} added`,
             type: "success"
           });
           handleClose();

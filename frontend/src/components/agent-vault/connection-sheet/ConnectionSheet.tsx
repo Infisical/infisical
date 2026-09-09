@@ -239,7 +239,12 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
           setStep(stepKeys.indexOf(ConnectionStep.Details));
         }
         if (hostIssues.length < serverResponse.message.length) onRequestError(error);
+        return;
       }
+
+      // The mutation suppresses the global toast for bad requests so the conflict above shows once.
+      // Every other bad request has nothing rendering it, so hand those back.
+      onRequestError(error);
     }
   };
 

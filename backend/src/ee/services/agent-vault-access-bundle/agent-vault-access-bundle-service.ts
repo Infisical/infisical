@@ -640,7 +640,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const connection = await agentVaultConnectionDAL.findOne({ id: connectionId, accessBundleId: bundle.id });
     if (!connection) throw new NotFoundError({ message: `Connection with ID '${connectionId}' not found` });
 
-    return agentVaultConnectionDAL.deleteById(connection.id);
+    const deleted = await agentVaultConnectionDAL.deleteById(connection.id);
+    return { ...deleted, credential: summarizeCredential(deleted) };
   };
 
   const listMembers = async ({ accessBundleId, ...rest }: TListMembersDTO) => {
@@ -737,7 +738,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (!member) throw new NotFoundError({ message: `Access bundle membership with ID '${memberId}' not found` });
 
     await membershipDAL.deleteById(member.id);
-    return { id: member.id, accessBundleName: bundle.name };
+    return {
+      id: member.id,
+      accessBundleId: bundle.id,
+      userId: member.actorUserId ?? null,
+      identityId: member.actorIdentityId ?? null,
+      groupId: member.actorGroupId ?? null,
+      createdAt: member.createdAt,
+      accessBundleName: bundle.name
+    };
   };
 
   return {

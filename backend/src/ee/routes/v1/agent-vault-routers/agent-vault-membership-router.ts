@@ -31,6 +31,16 @@ const MemberSchema = z.object({
   createdAt: z.date()
 });
 
+// Mirrors PAM's MemberResultSchema so every membership write reports the row it touched.
+const MemberResultSchema = z.object({
+  membershipId: z.string().uuid(),
+  userId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.userId),
+  identityId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.identityId),
+  groupId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.groupId),
+  role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
+  createdAt: z.date()
+});
+
 export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -112,7 +122,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         .refine((val) => val.userIds.length + val.emails.length > 0, {
           message: "Provide at least one userId or email."
         }),
-      response: { 200: z.object({ addedCount: z.number(), skipped: z.string().array() }) }
+      response: { 200: z.object({ memberships: MemberResultSchema.array(), skipped: z.string().array() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -136,7 +146,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         )
       );
 
-      return { addedCount: memberships.length, skipped };
+      return { memberships, skipped };
     }
   });
 
@@ -150,7 +160,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       tags: [ApiDocsTags.AgentVaultMemberships],
       params: z.object({ userId: z.string().uuid().describe(AGENT_VAULT.MEMBER.userId) }),
       body: z.object({ role: ProductRoleSchema }),
-      response: { 200: z.object({ membershipId: z.string().uuid(), role: z.string() }) }
+      response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -175,7 +185,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
-      return { membershipId: member.membershipId, role: member.role };
+      return member;
     }
   });
 
@@ -188,7 +198,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       description: "Remove a user from Agent Vault, and with it every bundle they hold",
       tags: [ApiDocsTags.AgentVaultMemberships],
       params: z.object({ userId: z.string().uuid().describe(AGENT_VAULT.MEMBER.userId) }),
-      response: { 200: z.object({ removed: z.literal(true) }) }
+      response: { 200: MemberResultSchema.pick({ membershipId: true, userId: true }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -208,7 +218,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
-      return { removed: true as const };
+      return { membershipId: removed.membershipId, userId: req.params.userId };
     }
   });
 
@@ -222,7 +232,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       tags: [ApiDocsTags.AgentVaultMemberships],
       params: z.object({ groupId: z.string().uuid().describe(AGENT_VAULT.MEMBER.groupId) }),
       body: z.object({ role: ProductRoleSchema }),
-      response: { 200: z.object({ membershipId: z.string().uuid(), role: z.string() }) }
+      response: { 200: MemberResultSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -247,7 +257,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
-      return { membershipId: member.membershipId, role: member.role };
+      return member;
     }
   });
 
@@ -261,7 +271,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       tags: [ApiDocsTags.AgentVaultMemberships],
       params: z.object({ groupId: z.string().uuid().describe(AGENT_VAULT.MEMBER.groupId) }),
       body: z.object({ role: ProductRoleSchema }),
-      response: { 200: z.object({ membershipId: z.string().uuid(), role: z.string() }) }
+      response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -286,7 +296,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
-      return { membershipId: member.membershipId, role: member.role };
+      return member;
     }
   });
 
@@ -299,7 +309,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       description: "Remove a group from Agent Vault, and with it every bundle they hold",
       tags: [ApiDocsTags.AgentVaultMemberships],
       params: z.object({ groupId: z.string().uuid().describe(AGENT_VAULT.MEMBER.groupId) }),
-      response: { 200: z.object({ removed: z.literal(true) }) }
+      response: { 200: MemberResultSchema.pick({ membershipId: true, groupId: true }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -319,7 +329,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
-      return { removed: true as const };
+      return { membershipId: removed.membershipId, groupId: req.params.groupId };
     }
   });
 
@@ -333,7 +343,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       tags: [ApiDocsTags.AgentVaultMemberships],
       params: z.object({ identityId: z.string().uuid().describe(AGENT_VAULT.MEMBER.identityId) }),
       body: z.object({ role: ProductRoleSchema }),
-      response: { 200: z.object({ membershipId: z.string().uuid(), role: z.string() }) }
+      response: { 200: MemberResultSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -358,7 +368,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
-      return { membershipId: member.membershipId, role: member.role };
+      return member;
     }
   });
 
@@ -372,7 +382,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       tags: [ApiDocsTags.AgentVaultMemberships],
       params: z.object({ identityId: z.string().uuid().describe(AGENT_VAULT.MEMBER.identityId) }),
       body: z.object({ role: ProductRoleSchema }),
-      response: { 200: z.object({ membershipId: z.string().uuid(), role: z.string() }) }
+      response: { 200: MemberResultSchema.omit({ createdAt: true }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -397,7 +407,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
-      return { membershipId: member.membershipId, role: member.role };
+      return member;
     }
   });
 
@@ -410,7 +420,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       description: "Remove a machine identity from Agent Vault, and with it every bundle they hold",
       tags: [ApiDocsTags.AgentVaultMemberships],
       params: z.object({ identityId: z.string().uuid().describe(AGENT_VAULT.MEMBER.identityId) }),
-      response: { 200: z.object({ removed: z.literal(true) }) }
+      response: { 200: MemberResultSchema.pick({ membershipId: true, identityId: true }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -430,7 +440,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
-      return { removed: true as const };
+      return { membershipId: removed.membershipId, identityId: req.params.identityId };
     }
   });
 };

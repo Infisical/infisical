@@ -21,6 +21,18 @@ const SessionAccessBundleSchema = z.object({
   position: z.number()
 });
 
+const SessionSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+  userId: z.string().uuid().nullable(),
+  identityId: z.string().uuid().nullable(),
+  actorName: z.string(),
+  actorEmail: z.string().nullable(),
+  status: z.nativeEnum(AgentVaultSessionStatus),
+  expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
+  revokedAt: z.date().nullable(),
+  createdAt: z.date()
+});
+
 export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -42,25 +54,12 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          sessions: z
-            .object({
-              id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
-              userId: z.string().uuid().nullable(),
-              identityId: z.string().uuid().nullable(),
-              actorName: z.string(),
-              actorEmail: z.string().nullable(),
-              status: z.nativeEnum(AgentVaultSessionStatus),
-              expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
-              revokedAt: z.date().nullable(),
-              createdAt: z.date(),
-              accessBundles: SessionAccessBundleSchema.array()
-            })
-            .array(),
+          sessions: SessionSchema.extend({ accessBundles: SessionAccessBundleSchema.array() }).array(),
           totalCount: z.number()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) =>
       server.services.agentVaultSession.listSessions({
         projectId: req.internalAgentVaultProjectId,
@@ -159,16 +158,9 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       description: "Revoke an Agent Vault session",
       tags: [ApiDocsTags.AgentVaultSessions],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
-      response: {
-        200: z.object({
-          session: z.object({
-            id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
-            revokedAt: z.date().nullable()
-          })
-        })
-      }
+      response: { 200: z.object({ session: SessionSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { session, revokedNow } = await server.services.agentVaultSession.revokeSession({
         projectId: req.internalAgentVaultProjectId,
@@ -194,7 +186,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         });
       }
 
-      return { session: { id: session.id, revokedAt: session.revokedAt ?? null } };
+      return { session };
     }
   });
 };

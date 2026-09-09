@@ -190,16 +190,29 @@ export const agentVaultSessionServiceFactory = ({
       throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }
 
+    // The row type leaves nullable columns optional; the response contract does not.
+    const withStatus = (row: typeof session) => {
+      const normalized = {
+        ...row,
+        userId: row.userId ?? null,
+        identityId: row.identityId ?? null,
+        actorEmail: row.actorEmail ?? null,
+        expiresAt: row.expiresAt ?? null,
+        revokedAt: row.revokedAt ?? null
+      };
+      return { ...normalized, status: deriveSessionStatus(normalized) };
+    };
+
     // revokedNow lets the caller audit a real revocation without auditing a repeat. Revoking twice stays a
     // 200 with the original revokedAt, so the second caller is not the one who revoked it.
-    if (session.revokedAt) return { session, revokedNow: false };
+    if (session.revokedAt) return { session: withStatus(session), revokedNow: false };
 
     const revoked = await agentVaultSessionDAL.revokeIfActive(session.id, new Date());
-    if (revoked) return { session: revoked, revokedNow: true };
+    if (revoked) return { session: withStatus(revoked), revokedNow: true };
 
     // A concurrent revoke won. Report its timestamp rather than the one this request read.
     const current = await agentVaultSessionDAL.findOne({ id: session.id, projectId });
-    return { session: current ?? session, revokedNow: false };
+    return { session: withStatus(current ?? session), revokedNow: false };
   };
 
   // Expiry needs no sweep: it is enforced against the clock on every resolve and derived per row on read.

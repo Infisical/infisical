@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { projectKeys } from "../projects/query-keys";
+import { ApiErrorTypes } from "../types";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
@@ -79,7 +80,9 @@ export const useCreateAgentVaultConnection = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    meta: { skipValidationToast: true },
+    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
+    // so the global toast must not also fire for it.
+    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultConnectionDTO) => {
       const { data } = await apiRequest.post<{ connection: TAgentVaultConnection }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/connections`,
@@ -100,7 +103,9 @@ export const useUpdateAgentVaultConnection = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    meta: { skipValidationToast: true },
+    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
+    // so the global toast must not also fire for it.
+    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
     mutationFn: async ({
       accessBundleId,
       connectionId,
@@ -341,10 +346,10 @@ export const useAddAgentVaultProductUserMembers = () => {
       emails: string[];
       role: string;
     }) => {
-      const { data } = await apiRequest.post<{ addedCount: number; skipped: string[] }>(
-        "/api/v1/agent-vault/memberships/users",
-        dto
-      );
+      const { data } = await apiRequest.post<{
+        memberships: { membershipId: string; userId?: string; role: string; createdAt: string }[];
+        skipped: string[];
+      }>("/api/v1/agent-vault/memberships/users", dto);
       return data;
     },
     onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, currentOrg.id, projectId)

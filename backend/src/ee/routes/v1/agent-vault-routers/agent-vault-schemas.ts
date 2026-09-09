@@ -143,6 +143,17 @@ export const AgentVaultMemberInputSchema = z
     "Name exactly one user, machine identity or group"
   );
 
+// A removed grant is gone, so this reports the row's own columns rather than joining the actor's name,
+// the way every other membership delete on the platform does.
+export const AgentVaultRemovedMemberSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
+  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+  userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),
+  identityId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.identityId),
+  groupId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.groupId),
+  createdAt: z.date()
+});
+
 export const AgentVaultMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),

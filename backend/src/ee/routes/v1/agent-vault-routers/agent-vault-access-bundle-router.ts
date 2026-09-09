@@ -23,7 +23,8 @@ import {
   AgentVaultHostPatternSchema,
   AgentVaultMemberInputSchema,
   AgentVaultMemberSchema,
-  AgentVaultNameSchema
+  AgentVaultNameSchema,
+  AgentVaultRemovedMemberSchema
 } from "./agent-vault-schemas";
 
 const AccessBundleDescriptionSchema = z
@@ -78,7 +79,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const accessBundles = await server.services.agentVaultAccessBundle.listAccessBundles({
         projectId: req.internalAgentVaultProjectId,
@@ -102,7 +103,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }),
       response: { 200: z.object({ accessBundle: AccessBundleSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const accessBundle = await server.services.agentVaultAccessBundle.createAccessBundle({
         projectId: req.internalAgentVaultProjectId,
@@ -148,7 +149,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const accessBundle = await server.services.agentVaultAccessBundle.getAccessBundleById({
         projectId: req.internalAgentVaultProjectId,
@@ -181,7 +182,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         ),
       response: { 200: z.object({ accessBundle: AccessBundleSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const accessBundle = await server.services.agentVaultAccessBundle.updateAccessBundle({
         projectId: req.internalAgentVaultProjectId,
@@ -221,7 +222,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }),
       response: { 200: z.object({ accessBundle: AccessBundleSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const accessBundle = await server.services.agentVaultAccessBundle.deleteAccessBundle({
         projectId: req.internalAgentVaultProjectId,
@@ -263,7 +264,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         200: z.object({ connection: AgentVaultConnectionSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connection } = await server.services.agentVaultAccessBundle.createConnection({
         projectId: req.internalAgentVaultProjectId,
@@ -326,7 +327,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         200: z.object({ connection: AgentVaultConnectionSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connection } = await server.services.agentVaultAccessBundle.updateConnection({
         projectId: req.internalAgentVaultProjectId,
@@ -378,9 +379,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
         connectionId: z.string().uuid().describe(AGENT_VAULT.CONNECTION.connectionId)
       }),
-      response: { 200: z.object({ connection: z.object({ id: z.string().uuid(), name: z.string() }) }) }
+      response: { 200: z.object({ connection: AgentVaultConnectionSchema }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const connection = await server.services.agentVaultAccessBundle.deleteConnection({
         projectId: req.internalAgentVaultProjectId,
@@ -403,7 +404,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
-      return { connection: { id: connection.id, name: connection.name } };
+      return { connection };
     }
   });
 
@@ -498,7 +499,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
         memberId: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId)
       }),
-      response: { 200: z.object({ member: z.object({ id: z.string().uuid() }) }) }
+      response: { 200: z.object({ member: AgentVaultRemovedMemberSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -523,7 +524,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
-      return { member: { id: member.id } };
+      return { member };
     }
   });
 };
