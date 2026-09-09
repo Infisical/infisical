@@ -977,6 +977,42 @@ describe("Agent Vault V1 Router", async () => {
       const row = await testDb("agent_vault_proxies").where({ id: proxy.id }).first();
       expect(row.tokenVersion).toBe(1);
       expect(row.heartbeat).toBeNull();
+      expect(row.heartbeatTTL).toBeNull();
+    });
+
+    test("lowering the poll interval does not report a live proxy as unreachable", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", {
+        name: "poll-interval-health",
+        pollInterval: 60
+      });
+      expect(created.statusCode).toBe(200);
+      const { proxy } = JSON.parse(created.payload) as { proxy: { id: string } };
+
+      const isHealthy = async () => {
+        const list = await inject("GET", "/api/v1/agent-vault/proxies");
+        const found = (JSON.parse(list.payload) as { proxies: { id: string; isHealthy: boolean }[] }).proxies.find(
+          (p) => p.id === proxy.id
+        );
+        return found?.isHealthy;
+      };
+
+      // A check-in 40s ago on a 60s interval: inside 60 x 3, and the proxy is still on that schedule.
+      await testDb("agent_vault_proxies")
+        .where({ id: proxy.id })
+        .update({ heartbeat: new Date(Date.now() - 40_000), heartbeatTTL: 60 });
+      expect(await isHealthy()).toBe(true);
+
+      // Dropping to 10 would make 40s look like four missed check-ins, but the proxy has not been told
+      // yet: it learns the new interval on its next poll, which is still 60s out from the last one.
+      const patched = await inject("PATCH", `/api/v1/agent-vault/proxies/${proxy.id}`, { pollInterval: 10 });
+      expect(patched.statusCode).toBe(200);
+      expect(await isHealthy()).toBe(true);
+
+      // Once it checks in, both sides are on 10 and the tighter window applies.
+      await testDb("agent_vault_proxies")
+        .where({ id: proxy.id })
+        .update({ heartbeat: new Date(Date.now() - 40_000), heartbeatTTL: 10 });
+      expect(await isHealthy()).toBe(false);
     });
   });
 

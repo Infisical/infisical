@@ -72,9 +72,13 @@ export const agentVaultProxyServiceFactory = ({
   kmsService,
   resourceAuthMethodService
 }: TAgentVaultProxyServiceFactoryDep) => {
-  const isHealthy = (proxy: Pick<TAgentVaultProxies, "heartbeat" | "pollInterval">) => {
+  const isHealthy = (proxy: Pick<TAgentVaultProxies, "heartbeat" | "pollInterval" | "heartbeatTTL">) => {
     if (!proxy.heartbeat) return false;
-    return proxy.heartbeat.getTime() > Date.now() - proxy.pollInterval * HEARTBEAT_MISSES_BEFORE_UNHEALTHY * 1000;
+    // Judged against the interval the proxy is running, not the one an admin may have just saved: it
+    // only learns a new interval on its next poll, which is still scheduled at the old one. Lowering
+    // the interval would otherwise report a live proxy as unreachable until that poll landed.
+    const interval = proxy.heartbeatTTL ?? proxy.pollInterval;
+    return proxy.heartbeat.getTime() > Date.now() - interval * HEARTBEAT_MISSES_BEFORE_UNHEALTHY * 1000;
   };
 
   const toConfig = (proxy: TAgentVaultProxies): TAgentVaultProxyConfig => ({
@@ -258,7 +262,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
-    const proxy = await agentVaultProxyDAL.updateById(proxyId, { heartbeat: new Date() });
+    const proxy = await agentVaultProxyDAL.recordHeartbeat(proxyId);
     if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
     return { config: toConfig(proxy) };
   };

@@ -19,7 +19,8 @@ export const AgentVaultProxiesSchema = z.object({
   bypassHosts: z.string().nullable().optional(),
   pollInterval: z.number().default(60),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  heartbeatTTL: z.number().nullable().optional()
 });
 
 export type TAgentVaultProxies = z.infer<typeof AgentVaultProxiesSchema>;

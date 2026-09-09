@@ -48,5 +48,21 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithOrg, findByIdInProject, findForProject };
+  // heartbeatTTL is copied from the row's own pollInterval in the same statement, so it records the
+  // interval the proxy is about to be handed back rather than whatever the settings said earlier.
+  const recordHeartbeat = async (id: string, tx?: Knex): Promise<TAgentVaultProxies | undefined> => {
+    try {
+      // Raw because the typed update builder will not take a column reference as a value, and copying
+      // pollInterval across in one statement is the point: two statements could straddle a settings save.
+      const updated = await (tx || db).raw<{ rows: TAgentVaultProxies[] }>(
+        `UPDATE ?? SET "heartbeat" = ?, "heartbeatTTL" = "pollInterval" WHERE "id" = ? RETURNING *`,
+        [TableName.AgentVaultProxy, new Date(), id]
+      );
+      return updated.rows[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Record agent vault proxy heartbeat" });
+    }
+  };
+
+  return { ...orm, findByIdWithOrg, findByIdInProject, findForProject, recordHeartbeat };
 };

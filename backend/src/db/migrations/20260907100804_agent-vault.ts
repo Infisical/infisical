@@ -144,6 +144,10 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamp("rootCaExpiresAt", { useTz: true });
 
       t.timestamp("heartbeat", { useTz: true });
+      // The poll interval the proxy was running when it last checked in. Health cannot be judged by
+      // pollInterval, which changes the moment an admin saves: the proxy only learns a new interval on
+      // its next poll, which is still scheduled at the old one. Gateways keep heartbeatTTL for this.
+      t.integer("heartbeatTTL");
 
       t.string("unmatchedHost", 16).notNullable().defaultTo("allow");
       t.string("bypassHosts", 1024);

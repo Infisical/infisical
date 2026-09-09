@@ -194,8 +194,8 @@ export const resourceAuthMethodServiceFactory = ({
     return kmipServer ? { id: kmipServer.id, name: kmipServer.name, orgId: kmipServer.orgId, identityId: null } : null;
   };
 
-  // Bumps tokenVersion (invalidating outstanding JWTs) and clears heartbeat. Gateways
-  // additionally clear heartbeatTTL; KMIP servers have neither heartbeat column.
+  // Bumps tokenVersion (invalidating outstanding JWTs) and clears heartbeat. Gateways and Agent Vault
+  // proxies additionally clear heartbeatTTL; KMIP servers have neither heartbeat column.
   const $bumpTokenVersion = async (resource: ResourceRef, tx?: Knex): Promise<number> => {
     if (resource.type === RESOURCE_TYPE_GATEWAY) {
       const refreshed = await gatewayV2DAL.updateById(
@@ -212,7 +212,7 @@ export const resourceAuthMethodServiceFactory = ({
     if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
       const refreshed = await agentVaultProxyDAL.updateById(
         resource.id,
-        { $incr: { tokenVersion: 1 }, heartbeat: null },
+        { $incr: { tokenVersion: 1 }, heartbeat: null, heartbeatTTL: null },
         tx
       );
       return refreshed.tokenVersion;
