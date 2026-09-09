@@ -1,3 +1,14 @@
+export const AGENT_PROMPT = [
+  "Help me get set up with Infisical for secrets management. Do the following:",
+  "1. Install the Infisical CLI. Detect my OS and available package managers (npm, Homebrew, Winget, apt-get) and run the right command without asking: `npm install -g @infisical/cli` if this is a Node project or npm is on my PATH; `brew install infisical/get-cli/infisical` on macOS with Homebrew; `winget install infisical` on Windows with Winget; `curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash && sudo apt-get update && sudo apt-get install -y infisical` on Debian or Ubuntu. Only ask me if none of these apply.",
+  "2. If `.infisical.json` already exists in this directory, skip to step 6.",
+  "3. Tell me a browser is about to open on my machine and that I should complete the login there. Then run `infisical login --domain https://app.infisical.com` yourself with a subprocess timeout of at least 10 minutes. The command blocks until I finish in the browser and exits automatically when I'm done. If I mention I'm on EU Cloud or a self-hosted instance, swap the domain to `https://eu.infisical.com` or my instance URL. If the subprocess errors or times out (e.g., no display server), fall back to asking me to run it in my own terminal.",
+  "4. Run `infisical org list --json`. If I belong to more than one organization, ask me which to use.",
+  "5. Create a project named after this repo's directory: run `infisical projects create --name <dir-name> --json`, capture the returned `id`, then run `infisical init --yes --project-id <id>` to link this directory.",
+  "6. If `.env`, `.env.local`, or `.env.development` exists here, run `infisical import --yes --add-gitignore` and show me the CLI's summary (which files it scanned and how many keys it uploaded). Don't open, read, or delete those files yourself; the CLI parses them and preserves the source.",
+  "7. Read my `package.json` scripts (or `Makefile`, `Procfile`, or equivalent) and print the exact `infisical run -- <my start command>` I should use from now on. Also mention that I can browse or edit values with `infisical secrets`, and switch environments with `--env <slug>`."
+].join(" ");
+
 export const HomeHero = ({ title, description, aside, children }) => (
   <div className="ifx-home__hero">
     <div className="ifx-home__hero-main">
@@ -10,7 +21,8 @@ export const HomeHero = ({ title, description, aside, children }) => (
   </div>
 );
 
-export const HomeSteps = ({ steps }) => {
+export const HomeSteps = ({ steps, panels }) => {
+  const [panel, setPanel] = useState(0);
   const [tab, setTab] = useState(0);
   const [copied, setCopied] = useState(null);
 
@@ -20,8 +32,21 @@ export const HomeSteps = ({ steps }) => {
     setTimeout(() => setCopied(null), 1500);
   };
 
+  // outer panels reset the inner OS-picker state so a switch from one panel to another
+  // doesn't leave the second panel showing the last-clicked tab index of the first
+  const switchPanel = (i) => {
+    setPanel(i);
+    setTab(0);
+  };
+
+  const activePanel = panels ? panels[panel] : null;
+  const activeSteps = activePanel ? activePanel.steps : steps;
+
   const commandRow = (command) => (
-    <div key={command} className="ifx-steps__cmd">
+    <div
+      key={command}
+      className={`ifx-steps__cmd${command.includes("\n") ? " ifx-steps__cmd--block" : ""}`}
+    >
       <code className="ifx-steps__code">{command}</code>
       <button
         type="button"
@@ -65,8 +90,25 @@ export const HomeSteps = ({ steps }) => {
 
   return (
     <div className="ifx-steps">
+      {panels ? (
+        <div className="ifx-steps__panels">
+          {panels.map((p, i) => (
+            <button
+              key={p.label}
+              type="button"
+              className={`ifx-steps__panel${i === panel ? " ifx-steps__panel--active" : ""}`}
+              onClick={() => switchPanel(i)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {activePanel && activePanel.content ? (
+        <div className="ifx-steps__prose">{activePanel.content}</div>
+      ) : (
       <ol className="ifx-steps__list">
-        {steps.map((step, i) => (
+        {activeSteps.map((step, i) => (
           <li key={i} className="ifx-steps__item">
             <span className="ifx-steps__num">{i + 1}</span>
             {step.label ? (
@@ -105,6 +147,131 @@ export const HomeSteps = ({ steps }) => {
           </li>
         ))}
       </ol>
+      )}
+    </div>
+  );
+};
+
+// Standalone copiable code block for use in prose contexts (panel `content`).
+// Owns its own copied state so it can render outside HomeSteps' scope.
+export const CopyBlock = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+  const isBlock = text.includes("\n");
+  const copy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div className={`ifx-steps__cmd${isBlock ? " ifx-steps__cmd--block" : ""}`}>
+      <code className="ifx-steps__code">{text}</code>
+      <button
+        type="button"
+        className="ifx-steps__copy"
+        aria-label={`Copy: ${text.slice(0, 40)}`}
+        onClick={copy}
+      >
+        {copied ? (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        ) : (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+};
+
+// PromptBlock renders a copyable AI-agent prompt as prose: paragraphs separated by
+// blank lines, backticked segments as inline code, and a copy button in the corner.
+// The copied payload is the raw markdown source (with backticks intact) so pasting
+// into an agent preserves the code fencing.
+export const PromptBlock = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  const paragraphs = text.split("\n\n");
+  return (
+    <div className="ifx-prompt">
+      <div className="ifx-prompt__body">
+        {paragraphs.map((paragraph, i) => (
+          <p key={i} className="ifx-prompt__p">
+            {paragraph.split(/(`[^`]+`)/g).map((segment, j) =>
+              segment.startsWith("`") && segment.endsWith("`") ? (
+                <code key={j} className="ifx-prompt__code">
+                  {segment.slice(1, -1)}
+                </code>
+              ) : (
+                segment
+              )
+            )}
+          </p>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="ifx-prompt__copy"
+        aria-label="Copy prompt"
+        onClick={copy}
+      >
+        {copied ? (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        ) : (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </svg>
+        )}
+      </button>
     </div>
   );
 };

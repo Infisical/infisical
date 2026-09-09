@@ -189,9 +189,167 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   }
 }
 
+.ifx-steps__panels {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.ifx-steps__panel {
+  padding: 0 0 0.5rem;
+  border: 0;
+  background: none;
+  font-size: 0.8125rem;
+  color: #6f6f6f;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.ifx-steps__panel:hover {
+  color: #171718;
+}
+
+.ifx-steps__panel--active {
+  color: #171718;
+  border-bottom-color: #171718;
+}
+
+.dark .ifx-steps__panels {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .ifx-steps__panel:hover,
+.dark .ifx-steps__panel--active {
+  color: #f4f4f4;
+}
+
+.dark .ifx-steps__panel--active {
+  border-bottom-color: #f4f4f4;
+}
+
+.ifx-steps__prose {
+  min-height: 11rem;
+  font-size: 0.9375rem;
+  color: #171718;
+  line-height: 1.55;
+}
+
+.ifx-prompt {
+  --prompt-lines: 5;
+  position: relative;
+  margin-top: 0.75rem;
+  padding: 0.75rem 2.5rem 0.75rem 0.875rem;
+  background-color: #fbfbfa;
+  border: 1px solid #ebebeb;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #26272b;
+}
+
+.ifx-prompt__body {
+  /* fallback for browsers without `lh` (pre Chrome 111 / Firefox 120 / Safari 16.4):
+     approximates 1lh as font-size * line-height. */
+  max-height: calc(var(--prompt-lines) * 0.8125rem * 1.55);
+  max-height: calc(var(--prompt-lines) * 1lh);
+  overflow-y: auto;
+}
+
+.ifx-prompt__p {
+  margin: 0 0 0.5rem;
+}
+
+.ifx-prompt__p:last-child {
+  margin-bottom: 0;
+}
+
+.ifx-prompt__code {
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background-color: #ebebeb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  color: #171718;
+}
+
+.ifx-prompt__copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-bottom-left-radius: 4px;
+  background-color: rgba(251, 251, 250, 0.95);
+  color: #6f6f6f;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.ifx-prompt__copy:hover {
+  color: #171718;
+  background-color: #f4f4f4;
+}
+
+.dark .ifx-prompt {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #dfdfdf;
+}
+
+.dark .ifx-prompt__code {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #f4f4f4;
+}
+
+.dark .ifx-prompt__copy {
+  background-color: rgba(23, 23, 24, 0.95);
+  color: #adaeb0;
+}
+
+.dark .ifx-prompt__copy:hover {
+  color: #f4f4f4;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.ifx-steps__prose p {
+  margin: 0 0 0.625rem;
+}
+
+.ifx-steps__prose a {
+  color: #26272b;
+  border-bottom: 1px solid #b6d69a;
+  transition: border-color 0.2s;
+}
+
+.ifx-steps__prose a:hover {
+  border-bottom-color: #56a600;
+}
+
+.dark .ifx-steps__prose {
+  color: #dfdfdf;
+}
+
+.dark .ifx-steps__prose a {
+  color: #dfdfdf;
+  border-bottom-color: rgba(86, 166, 0, 0.55);
+}
+
+.dark .ifx-steps__prose a:hover {
+  border-bottom-color: #56a600;
+}
+
 .ifx-steps__list {
   margin: 0;
   padding: 0;
+  min-height: 11rem;
   list-style: none;
 }
 
@@ -294,6 +452,35 @@ a.ifx-steps__label:hover {
   margin-top: 0.5rem;
   background-color: #fbfbfa;
   border: 1px solid #ebebeb;
+}
+
+.ifx-steps__cmd--block {
+  position: relative;
+}
+
+.ifx-steps__cmd--block .ifx-steps__code {
+  max-height: 6rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding-right: 2.5rem;
+}
+
+.ifx-steps__cmd--block .ifx-steps__copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2rem;
+  height: 2rem;
+  border-left: 0;
+  border-bottom: 1px solid #ebebeb;
+  border-bottom-left-radius: 4px;
+  background-color: rgba(251, 251, 250, 0.92);
+}
+
+.dark .ifx-steps__cmd--block .ifx-steps__copy {
+  background-color: rgba(23, 23, 24, 0.92);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
 }
 
 .ifx-steps__code {
@@ -954,7 +1141,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 @media (min-width: 1024px) {
   .ifx-home__hero-aside {
-    align-self: stretch;
+    align-self: center;
   }
 }
 
