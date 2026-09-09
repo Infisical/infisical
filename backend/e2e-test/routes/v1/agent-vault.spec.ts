@@ -465,7 +465,7 @@ describe("Agent Vault V1 Router", async () => {
       });
 
       const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        members: [{ userId: user.id }]
+        userIds: [user.id]
       });
       expect(granted.statusCode).toBe(200);
       expect(await grantRows(bundle.id, { actorUserId: user.id })).toHaveLength(1);
@@ -493,7 +493,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-            members: [{ identityId: identity.id }]
+            identityIds: [identity.id]
           })
         ).statusCode
       ).toBe(200);
@@ -1073,7 +1073,7 @@ describe("Agent Vault V1 Router", async () => {
       const outsider = await createOrgIdentity(`av-outsider-${Date.now()}`);
 
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        members: [{ identityId: outsider.id }]
+        identityIds: [outsider.id]
       });
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).message).toContain("not a member of Agent Vault");
@@ -1105,13 +1105,13 @@ describe("Agent Vault V1 Router", async () => {
 
       try {
         const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-          members: [{ identityId: insider.id }]
+          identityIds: [insider.id]
         });
         expect(res.statusCode).toBe(400);
         expect(JSON.parse(res.payload).message).toContain("through a group");
 
         const asGroup = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-          members: [{ groupId: group.id }]
+          groupIds: [group.id]
         });
         expect(asGroup.statusCode).toBe(200);
       } finally {
@@ -1122,26 +1122,25 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("exactly one actor id is required", async () => {
+    test("a grant has to name at least one actor", async () => {
       const bundle = await createAccessBundle("member-one-actor");
 
-      // Every one of these is refused by the schema: the member object carries a refine for
-      // naming exactly one actor, so nothing reaches the service to answer with a 400.
+      // The three lists each default to empty, so a body naming nobody is refused by the schema and
+      // never reaches the service.
       const none = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {});
       expect(none.statusCode).toBe(422);
 
-      const empty = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, { members: [] });
+      const empty = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+        userIds: [],
+        identityIds: [],
+        groupIds: []
+      });
       expect(empty.statusCode).toBe(422);
 
-      const nobody = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        members: [{}]
+      const notAnId = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+        userIds: ["not-a-uuid"]
       });
-      expect(nobody.statusCode).toBe(422);
-
-      const both = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        members: [{ userId: seedData1.id, identityId: seedData1.machineIdentity.id }]
-      });
-      expect(both.statusCode).toBe(422);
+      expect(notAnId.statusCode).toBe(422);
     });
 
     test("one call grants several actors, dedupes repeats and skips the already granted", async () => {
@@ -1152,7 +1151,7 @@ describe("Agent Vault V1 Router", async () => {
 
       try {
         const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-          members: [{ groupId: first.id }, { groupId: second.id }, { groupId: first.id }]
+          groupIds: [first.id, second.id, first.id]
         });
         expect(granted.statusCode).toBe(200);
         expect(JSON.parse(granted.payload)).toMatchObject({ skippedCount: 0 });
@@ -1161,7 +1160,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(await grantRows(bundle.id, { actorGroupId: second.id })).toHaveLength(1);
 
         const again = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-          members: [{ groupId: first.id }, { groupId: second.id }]
+          groupIds: [first.id, second.id]
         });
         expect(again.statusCode).toBe(200);
         expect(JSON.parse(again.payload)).toMatchObject({ members: [], skippedCount: 2 });
@@ -1276,7 +1275,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(
           (
             await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-              members: [{ groupId: group.id }]
+              groupIds: [group.id]
             })
           ).statusCode
         ).toBe(200);
@@ -1308,7 +1307,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(
           (
             await inject("POST", `/api/v1/agent-vault/access-bundles/${second.id}/members`, {
-              members: [{ groupId: group.id }]
+              groupIds: [group.id]
             })
           ).statusCode
         ).toBe(200);
@@ -1356,7 +1355,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(
         (
           await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-            members: [{ groupId: group.id }]
+            groupIds: [group.id]
           })
         ).statusCode
       ).toBe(200);
@@ -1482,16 +1481,16 @@ describe("Agent Vault V1 Router", async () => {
         const extra = await createAccessBundle(name);
         // eslint-disable-next-line no-await-in-loop
         const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${extra.id}/members`, {
-          members: [{ identityId: identity.id }]
+          identityIds: [identity.id]
         });
         expect(granted.statusCode).toBe(200);
       }
       const duplicate = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        members: [{ identityId: identity.id }]
+        identityIds: [identity.id]
       });
       expect(duplicate.statusCode).toBe(200);
       const again = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        members: [{ identityId: identity.id }]
+        identityIds: [identity.id]
       });
       expect(again.statusCode).toBe(200);
       expect(JSON.parse(again.payload)).toMatchObject({ members: [], skippedCount: 1 });
@@ -1530,7 +1529,7 @@ describe("Agent Vault V1 Router", async () => {
       await testDb("membership_roles").insert({ membershipId: membership.id, role: ProjectMembershipRole.Member });
 
       const grant = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        members: [{ userId: user.id }]
+        userIds: [user.id]
       });
       expect(grant.statusCode).toBe(200);
 

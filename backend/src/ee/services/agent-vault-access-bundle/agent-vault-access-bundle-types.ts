@@ -57,15 +57,11 @@ export type TDeleteConnectionDTO = TAgentVaultProjectScoped & {
 
 export type TListMembersDTO = TAgentVaultProjectScoped & { accessBundleId: string };
 
-export type TAgentVaultMemberInput = {
-  userId?: string;
-  identityId?: string;
-  groupId?: string;
-};
-
 export type TAddMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
-  members: TAgentVaultMemberInput[];
+  userIds: string[];
+  groupIds: string[];
+  identityIds: string[];
 };
 
 export type TRemoveMemberDTO = TAgentVaultProjectScoped & {

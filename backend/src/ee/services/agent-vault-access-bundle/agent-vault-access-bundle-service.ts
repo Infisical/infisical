@@ -59,6 +59,9 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
 
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
 
+// The old shape capped the array at 100 entries; the cap moves here now that the body is three lists.
+export const AGENT_VAULT_MAX_GRANTEES = 100;
+
 export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBundleServiceFactoryDep) => {
   const {
     agentVaultAccessBundleDAL,
@@ -653,7 +656,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return agentVaultAccessBundleDAL.findMembers({ projectId: rest.projectId, accessBundleId: bundle.id });
   };
 
-  const addMembers = async ({ accessBundleId, members, ...rest }: TAddMembersDTO) => {
+  const addMembers = async ({ accessBundleId, userIds, groupIds, identityIds, ...rest }: TAddMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
@@ -661,19 +664,16 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
 
     const requested = new Map<string, TGrantActor>();
-    members.forEach(({ userId, identityId, groupId }) => {
-      const supplied = [userId, identityId, groupId].filter(Boolean);
-      if (supplied.length !== 1) {
-        throw new BadRequestError({
-          message: "Grant an access bundle to exactly one user, machine identity or group per entry"
-        });
-      }
-
-      let actorColumn: TGrantActorColumn = "actorGroupId";
-      if (userId) actorColumn = "actorUserId";
-      else if (identityId) actorColumn = "actorIdentityId";
-      const actor = { actorColumn, actorId: (userId ?? identityId ?? groupId)! };
-      requested.set(actorKey(actor), actor);
+    const byColumn: [TGrantActorColumn, string[]][] = [
+      ["actorUserId", userIds],
+      ["actorGroupId", groupIds],
+      ["actorIdentityId", identityIds]
+    ];
+    byColumn.forEach(([actorColumn, ids]) => {
+      ids.forEach((actorId) => {
+        const actor = { actorColumn, actorId };
+        requested.set(actorKey(actor), actor);
+      });
     });
 
     const actors = [...requested.values()];

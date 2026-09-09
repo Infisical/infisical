@@ -21,7 +21,7 @@ import {
   AgentVaultCredentialInputSchema,
   AgentVaultCredentialUpdateSchema,
   AgentVaultHostPatternSchema,
-  AgentVaultMemberInputSchema,
+  AgentVaultMemberIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
   AgentVaultRemovedMemberSchema
@@ -443,9 +443,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
-      body: z.object({
-        members: AgentVaultMemberInputSchema.array().min(1).max(100).describe(AGENT_VAULT.MEMBER.members)
-      }),
+      body: AgentVaultMemberIdsSchema,
       response: {
         200: z.object({
           members: AgentVaultCreatedMemberSchema.array(),
@@ -459,7 +457,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
-        members: req.body.members
+        ...req.body
       });
 
       await Promise.all(

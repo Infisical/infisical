@@ -8,6 +8,7 @@ import {
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
+import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
 
@@ -132,15 +133,21 @@ export const AgentVaultConnectionSchema = z.object({
   createdAt: z.date().describe(AGENT_VAULT.CONNECTION.createdAt)
 });
 
-export const AgentVaultMemberInputSchema = z
+// One list per actor type rather than a list of one-of-three objects: the field name carries the type,
+// so nothing has to be validated after parsing, and the grant stays a single atomic request.
+export const AgentVaultMemberIdsSchema = z
   .object({
-    userId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.userId),
-    identityId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.identityId),
-    groupId: z.string().uuid().optional().describe(AGENT_VAULT.MEMBER.groupId)
+    userIds: z.string().uuid().array().default([]).describe(AGENT_VAULT.MEMBER.userIds),
+    identityIds: z.string().uuid().array().default([]).describe(AGENT_VAULT.MEMBER.identityIds),
+    groupIds: z.string().uuid().array().default([]).describe(AGENT_VAULT.MEMBER.groupIds)
   })
   .refine(
-    (member) => [member.userId, member.identityId, member.groupId].filter(Boolean).length === 1,
-    "Name exactly one user, machine identity or group"
+    (body) => body.userIds.length + body.identityIds.length + body.groupIds.length > 0,
+    "Name at least one user, machine identity or group"
+  )
+  .refine(
+    (body) => body.userIds.length + body.identityIds.length + body.groupIds.length <= AGENT_VAULT_MAX_GRANTEES,
+    `Grant an access bundle to at most ${AGENT_VAULT_MAX_GRANTEES} users, machine identities and groups at a time`
   );
 
 // A removed grant is gone, so this reports the row's own columns rather than joining the actor's name,

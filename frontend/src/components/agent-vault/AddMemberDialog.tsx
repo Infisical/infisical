@@ -110,13 +110,14 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     try {
       if (!selected.length) return;
 
+      const idsOfKind = (kind: MemberKind) =>
+        selected.filter((option) => option.kind === kind).map((option) => option.id);
+
       const { members: granted, skippedCount } = await addMembers.mutateAsync({
         accessBundleId,
-        members: selected.map((option) => ({
-          ...(option.kind === MemberKind.User && { userId: option.id }),
-          ...(option.kind === MemberKind.Identity && { identityId: option.id }),
-          ...(option.kind === MemberKind.Group && { groupId: option.id })
-        }))
+        userIds: idsOfKind(MemberKind.User),
+        identityIds: idsOfKind(MemberKind.Identity),
+        groupIds: idsOfKind(MemberKind.Group)
       });
 
       if (!granted.length) {

@@ -4193,7 +4193,9 @@ export const AGENT_VAULT = {
     userId: "The ID of the user to grant the access bundle to.",
     identityId: "The ID of the machine identity to grant the access bundle to.",
     groupId: "The ID of the group to grant the access bundle to.",
-    members: "The users, machine identities and groups to grant the access bundle to, one actor per entry.",
+    userIds: "The IDs of the users to grant the access bundle to.",
+    identityIds: "The IDs of the machine identities to grant the access bundle to.",
+    groupIds: "The IDs of the groups to grant the access bundle to.",
     skippedCount: "How many of the requested grantees already had the access bundle."
   },
   MEMBERSHIP: {
