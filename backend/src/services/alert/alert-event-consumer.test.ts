@@ -88,8 +88,8 @@ describe("alert outbox consumer", () => {
     expect(result.progress).toEqual({ deliveredChannelIds: ["c-1"] });
   });
 
-  // The alert was deleted or disabled between the gate and the worker. Nothing owes anyone a
-  // notification, so this is a completed event rather than something to retry forever.
+  // The alert was deleted or disabled between the gate and the worker, so nobody is owed a
+  // notification. That's a completed event, not something to retry forever.
   test("marks the row delivered when no alert matches any more", async () => {
     const { consumer, runs } = buildConsumer({ alerts: [] });
 
@@ -118,8 +118,7 @@ describe("alert outbox consumer", () => {
     expect(runs[0].skipChannelIds).toEqual(["c-1"]);
   });
 
-  // Retrying cannot fix a payload the consumer cannot read, so it fails terminally instead of burning
-  // every attempt first.
+  // Retrying can't fix a payload the consumer can't read, so don't burn every attempt on it first.
   test("fails terminally on an unreadable payload", async () => {
     const { consumer } = buildConsumer();
 
@@ -144,9 +143,8 @@ describe("alert outbox consumer", () => {
     expect(result.progress).toEqual({ deliveredChannelIds: ["c-1", "c-2"] });
   });
 
-  // subscribesTo only sees the event type, so an emitter that pairs a real event key with the wrong
-  // resourceType gets through the gate. Silently marking that delivered would hide the misconfigured
-  // emit site; failing terminally with both halves named is what surfaces it.
+  // Marking a mismatched pair delivered would hide the misconfigured emit site. Failing terminally
+  // with both halves named is what surfaces it.
   test("fails terminally when no provider declares the event for that resource type", async () => {
     const { consumer, runs, getLookups } = buildConsumer();
 
@@ -158,8 +156,8 @@ describe("alert outbox consumer", () => {
     expect(getLookups()).toBe(0);
   });
 
-  // Throwing out of handle() sends the whole batch back for retry, re-notifying on rows that had already
-  // delivered. One row's failure has to stay that row's failure.
+  // Throwing out of handle() sends the whole batch back for retry, re-notifying on rows that already
+  // delivered, so one row's failure has to stay that row's failure.
   test("retries only the row whose lookup threw", async () => {
     let calls = 0;
     const { consumer, runs } = buildConsumer({
@@ -198,7 +196,7 @@ describe("alert outbox consumer", () => {
     expect(getLookups()).toBe(1);
   });
 
-  // Rows arrive in id order and share one resource, so handling them concurrently would deliver a
+  // Rows arrive in id order and share one resource, so handling them concurrently would deliver that
   // resource's events out of order.
   test("handles rows serially, in the order given", async () => {
     const { consumer, runs } = buildConsumer();

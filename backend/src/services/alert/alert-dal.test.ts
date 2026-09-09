@@ -113,7 +113,7 @@ describe("alert dal", () => {
     expect(calls.where).toContainEqual([`${TableName.Alert}.resourceType`, "approval.workflow"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.resourceId`, "policy-1"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.eventType`, "approval.workflow.request_opened"]);
-    // The mirror of the cron's filter: the outbox must never pick up a scheduled alert.
+    // Mirrors the cron's filter: the outbox must never pick up a scheduled alert.
     expect(calls.where).toContainEqual([`${TableName.Alert}.triggerType`, "event"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
   });
@@ -133,8 +133,6 @@ describe("alert dal", () => {
     expect(calls.existsWhere).toContainEqual([`${TableName.AlertChannel}.enabled`, true]);
   });
 
-  // A resource inside a project can be watched by a project-scoped alert and by an org-wide one, so
-  // both have to be in scope; without a projectId only the org-scoped row can match.
   test("findEnabledForEvent matches the project-scoped and org-scoped alert when given a project", async () => {
     const { dal, calls } = buildDAL();
 

@@ -24,8 +24,8 @@ describe("alert provider registry", () => {
     expect(() => registry.register(baseProvider({}))).toThrow(/already registered/);
   });
 
-  // Both guards fail the boot in routes/index.ts rather than letting a dispatch silently no-op in
-  // production, which is the failure mode they exist to prevent.
+  // Both guards fail the boot in routes/index.ts, rather than letting a dispatch silently no-op in
+  // production.
   test("rejects a scheduled event with no findDueTargets", () => {
     const registry = alertProviderRegistryFactory();
 

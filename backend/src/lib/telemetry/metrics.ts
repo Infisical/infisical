@@ -724,8 +724,7 @@ export enum AlertDispatchOutcome {
   AlertDisabled = "alert_disabled",
   // No provider registered for the alert's resource type (misconfiguration).
   NoProvider = "no_provider",
-  // Nothing to alert on: on the scheduled path nothing matched the condition, on the event path the
-  // targets the event named no longer exist (deleted between the event and its delivery).
+  // Nothing to alert on: nothing matched the condition, or the targets an event named are gone.
   NoDueTargets = "no_due_targets",
   // The alert has no enabled channels, so the run is skipped before scanning for targets.
   NoChannels = "no_channels",
@@ -735,8 +734,8 @@ export enum AlertDispatchOutcome {
   NoRecipients = "no_recipients",
   // Targets matched, but every one had already been alerted inside the dedup window.
   AllDeduped = "all_deduped",
-  // Event path only: the event reached the worker and no alert was configured for it. Expected in
-  // steady state, but a rate of zero across the board means emits are wired up and alerts are not.
+  // Event path only: the event reached the worker with no alert configured for it. Expected in steady
+  // state, but a rate of zero everywhere means emits are wired up and alerts are not.
   NoMatchingAlert = "no_matching_alert"
 }
 
@@ -755,9 +754,8 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
 };
 
 // -- Event outbox (InfisicalCore meter) --------------------------------------------------------------
-// The outbox's own health, distinct from what any consumer does with an event. The canonical canary is
-// the oldest-pending-age gauge, registered in event-outbox-queue.ts because it is fed by the relay tick
-// rather than by a delivery.
+// The outbox's own health, as opposed to what a consumer does with an event. The canonical canary is
+// the oldest-pending-age gauge, which lives in event-outbox-queue.ts because the relay tick feeds it.
 
 export const eventOutboxLagHistogram = infisicalCoreMeter.createHistogram("infisical.event_outbox.lag", {
   description:

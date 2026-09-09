@@ -91,8 +91,8 @@ export type TFindDueTargetsInput = {
   asOf: Date;
 };
 
-// Narrowed views for providers that commit to one trigger, so a provider's own factory can declare
-// which discovery method it guarantees rather than leaving callers to assert it.
+// Lets a provider's factory declare which discovery method it guarantees, instead of leaving callers
+// to assert it.
 export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
   Required<Pick<IResourceAlertProvider<TTarget>, "findDueTargets">>;
 
@@ -115,9 +115,9 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // Required for any Scheduled event; the registry enforces that at boot.
   findDueTargets?(input: TFindDueTargetsInput): Promise<TTarget[]>;
 
-  // Rehydrate the targets an event named, by id. The event path knows its targets already, so nothing
-  // is scanned for; this exists so the row is read at delivery time rather than copied into the event.
-  // A target whose row is gone is dropped, not an error — it was deleted between emit and dispatch.
+  // Rehydrate the targets an event named, by id. Nothing is scanned for: this exists so the row is
+  // read at delivery time rather than copied into the event. A target whose row is gone was deleted
+  // between emit and dispatch, so it's dropped rather than an error.
   // Required for any Event event; the registry enforces that at boot.
   findTargetsByIds?(input: TFindTargetsByIdsInput): Promise<TTarget[]>;
 

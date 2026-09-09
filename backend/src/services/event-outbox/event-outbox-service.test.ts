@@ -29,8 +29,8 @@ const makeConsumer = (overrides?: Partial<IEventOutboxConsumer>): IEventOutboxCo
     ...overrides
   }) as IEventOutboxConsumer;
 
-// `tx` is a sentinel: emit must thread the caller's transaction through untouched, since a call that
-// silently opened its own connection is how the pool deadlocks.
+// `tx` is a sentinel: emit has to thread the caller's transaction through untouched, since a call
+// that silently opens its own connection is how the pool deadlocks.
 const TX = { sentinel: true } as never;
 
 const buildService = (consumers: IEventOutboxConsumer[]) => {
@@ -82,9 +82,8 @@ describe("event outbox emit", () => {
     expect(inserted[0].tx).toBe(TX);
   });
 
-  // A payload the consumer cannot read is a statically wrong emit site. Failing loudly beats dropping
-  // a notification because a field was misspelled, and this runs before any DB access so it cannot
-  // poison the caller's transaction.
+  // A payload the consumer can't read means a statically wrong emit site, and failing loudly beats
+  // dropping a notification over a misspelled field.
   test("throws when the payload does not match the consumer's schema", async () => {
     const { service, inserted } = buildService([makeConsumer()]);
 
@@ -111,8 +110,7 @@ describe("event outbox emit", () => {
     await expect(service.emit(makeEvent({ orgId: "not-a-uuid" }), TX)).rejects.toThrow(/Invalid outbox event/);
   });
 
-  // Postgres aborts the whole transaction on a failed statement, so swallowing this would hand the
-  // caller a poisoned transaction instead of the real error.
+  // Swallowing it would hand the caller a poisoned transaction instead of the real error.
   test("propagates a failing insert rather than swallowing it", async () => {
     const registry = eventOutboxRegistryFactory();
     registry.register(makeConsumer());
@@ -245,8 +243,8 @@ describe("event outbox drain", () => {
     expect(commits[0].retriable).toEqual([]);
   });
 
-  // One UPDATE per distinct outcome, not one per row: a batch of a hundred deliveries is a single
-  // statement, and the retry delay is shared by rows on the same attempt so they group too.
+  // One UPDATE per distinct outcome, not one per row, so a batch of a hundred deliveries is a single
+  // statement. Rows on the same attempt share a retry delay, so they group too.
   test("groups rows that share an outcome into one commit entry", async () => {
     const { service, commits } = buildDrain({
       batches: [[makeRow({ id: 1 }), makeRow({ id: 2 }), makeRow({ id: 3 }), makeRow({ id: 4 })]],
@@ -282,8 +280,8 @@ describe("event outbox drain", () => {
     expect(commits[0].delivered.map((group) => group.ids)).toEqual([["1"], ["2"]]);
   });
 
-  // A batch that legitimately outlives the sweeper's threshold (a slow webhook, many rows) must keep
-  // its claim fresh, or the sweeper hands the same rows to a second worker mid-delivery.
+  // A batch that legitimately outlives the sweeper's threshold (a slow webhook, many rows) has to
+  // keep its claim fresh, or the sweeper hands its rows to a second worker mid-delivery.
   test("extends the claim while the consumer is still handling a batch", async () => {
     vi.useFakeTimers();
     try {

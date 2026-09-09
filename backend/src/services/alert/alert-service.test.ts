@@ -267,8 +267,8 @@ describe("alert service", () => {
     );
   });
 
-  // triggerType is derived from the provider's event definition, never taken from the request, so an
-  // alert on an event-triggered key is invisible to the daily scan and reachable only from the outbox.
+  // triggerType comes from the provider's event definition, never from the request, so an alert on an
+  // event-triggered key is invisible to the daily scan and reachable only from the outbox.
   test("stores the trigger type its event declares", async () => {
     const { service, alerts } = buildService();
 

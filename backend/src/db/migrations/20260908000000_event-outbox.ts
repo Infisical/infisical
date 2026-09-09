@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("resourceId").notNullable();
       t.uuid("orgId").notNullable();
       t.string("projectId");
-      // Opaque to the outbox: each consumer validates it against its own payloadSchema at emit.
+      // Opaque here: each consumer validates it against its own payloadSchema at emit.
       t.jsonb("payload").notNullable();
       t.string("idempotencyKey");
       t.timestamp("occurredAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
@@ -29,9 +29,9 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    // Backs both the relay's discovery query and the per-resource claim. Leads with the flush key,
-    // then `id` so the claim's ORDER BY is index-ordered with no sort, then `nextRetryAt` so
-    // discovery's MIN() can be answered from the index rather than the heap.
+    // Backs both the relay's discovery query and the per-resource claim. `id` comes before
+    // `nextRetryAt` so the claim's ORDER BY needs no sort node, and discovery's MIN() still gets
+    // answered from the index.
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.EventOutbox}_drain_idx"
       ON "${TableName.EventOutbox}" ("consumer", "resourceType", "resourceId", "id", "nextRetryAt")
@@ -44,9 +44,9 @@ export async function up(knex: Knex): Promise<void> {
       WHERE status = 'processing'
     `);
 
-    // Backs the oldest-pending health gauge, which runs on every relay tick forever. Without it that
-    // query seq-scans the whole table to find a handful of undelivered rows, and the cost grows with
-    // the delivered backlog rather than with the work outstanding.
+    // Backs the oldest-pending health gauge, which runs on every relay tick forever. Without it the
+    // gauge seq-scans the whole table for a handful of rows, at a cost that tracks the delivered
+    // backlog rather than the work outstanding.
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.EventOutbox}_undelivered_idx"
       ON "${TableName.EventOutbox}" ("consumer", "occurredAt")

@@ -55,8 +55,8 @@ describe("event outbox relay", () => {
     expect(queued[0].data).toEqual(KEY);
   });
 
-  // One flush per aggregate at a time is what keeps a resource's events in order, and it dedupes the
-  // relay rediscovering a key whose flush is still queued.
+  // One flush per aggregate at a time is what keeps a resource's events in order, and it dedupes a
+  // key the relay rediscovers while its flush is still queued.
   test("keys the job per aggregate so flushes for one resource cannot overlap", async () => {
     const { factory, queued } = buildQueue({ keys: [KEY] });
 
@@ -65,8 +65,8 @@ describe("event outbox relay", () => {
     expect(queued[0].jobId).toBe("outbox-flush-alert-approval.workflow-policy-1");
   });
 
-  // BullMQ throws on a custom id containing ':'; with Promise.all that would fail the whole tick, every
-  // tick, for as long as the row sat pending. Encoding keeps the id both legal and collision-free.
+  // BullMQ throws on a custom id containing ':', and under Promise.all that fails the whole tick, on
+  // every tick, for as long as the row sits pending.
   test("encodes a resource id BullMQ would otherwise reject", async () => {
     const { factory, queued } = buildQueue({ keys: [{ ...KEY, resourceId: "arn:aws:iam::123:role/x" }] });
 
@@ -76,7 +76,7 @@ describe("event outbox relay", () => {
     expect(queued[0].jobId).not.toContain(":");
   });
 
-  // Retry lives on the outbox row, where it is inspectable and survives a Redis flush. BullMQ retrying
+  // Retry lives on the outbox row, where it's inspectable and survives a Redis flush. BullMQ retrying
   // the job would re-run drain against rows already flipped to 'processing'.
   test("does not ask BullMQ to retry a flush", async () => {
     const { factory, queued } = buildQueue({ keys: [KEY] });

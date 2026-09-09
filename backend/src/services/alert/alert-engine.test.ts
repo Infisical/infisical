@@ -70,8 +70,8 @@ const makeProvider = (targets: TTarget[], onFindDueTargets?: () => void): IResou
     onFindDueTargets?.();
     return targets;
   },
-  // Mirrors a real provider: only ids that still resolve to a row come back, so a target deleted
-  // between the event and its delivery simply drops out.
+  // Mirrors a real provider: a target deleted between the event and its delivery drops out rather
+  // than coming back.
   findTargetsByIds: async ({ targetIds }) => targets.filter((target) => targetIds.includes(target.id)),
   assertPermission: async () => undefined,
   assertResourceInScope: async () => undefined,
@@ -508,14 +508,14 @@ describe("alert engine, event path", () => {
     expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(result.deliveredChannelIds).toEqual(["c-email"]);
     expect(sentMail).toHaveLength(1);
-    // t2 exists but the event did not name it, so it is not delivered.
+    // t2 exists but the event didn't name it.
     expect(historyWrites[0].deliveries).toEqual([
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.SUCCESS }
     ]);
   });
 
-  // The whole reason the event path exists: a daily scan rediscovers the same target every day and
-  // needs dedup, an event does not. If someone reintroduces the dedup lookup here, this fails.
+  // The whole reason the event path exists: a daily scan rediscovers the same target tomorrow and
+  // needs dedup, an event doesn't. Reintroduce the dedup lookup here and this fails.
   test("delivers the same target again even though it was just alerted on", async () => {
     const { engine, sentMail } = buildEngine({
       targets: [{ id: "t1" }],
@@ -542,8 +542,8 @@ describe("alert engine, event path", () => {
     expect(historyWrites).toHaveLength(0);
   });
 
-  // A retry must not re-notify a channel that already succeeded, which is what makes retrying an
-  // event with no dedup behind it safe.
+  // A retry must not re-notify a channel that already succeeded. That's what makes retrying an event
+  // safe with no dedup behind it.
   test("skips channels a previous attempt already delivered to", async () => {
     const { engine, sentMail, historyWrites } = buildEngine({
       targets: [{ id: "t1" }],
@@ -577,8 +577,8 @@ describe("alert engine, event path", () => {
     expect(result.outcome).toBe(AlertDispatchOutcome.NoChannels);
   });
 
-  // Everything that can throw happens before the first send. A history write that fails afterwards
-  // must not turn a delivered event into a retry, or the retry would re-notify.
+  // A history write that fails after the sends must not turn a delivered event into a retry, or the
+  // retry re-notifies.
   test("still reports success when the history write fails after delivery", async () => {
     const { engine, sentMail } = buildEngine({
       targets: [{ id: "t1" }],

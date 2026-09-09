@@ -57,8 +57,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  // One statement, no explicit transaction: the row locks live only for the duration of the UPDATE,
-  // and a claim costs one round trip instead of four.
+  // One statement, no explicit transaction: the row locks live only as long as the UPDATE, and a
+  // claim costs one round trip instead of four.
   const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TEventOutboxRow[]> => {
     try {
       const claimed = await db(TableName.EventOutbox)
@@ -69,10 +69,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             .where(key)
             .whereIn("status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry])
             .andWhere("nextRetryAt", "<=", db.fn.now())
-            // Ordered by the autoincrement id, never by a timestamp: id is the only column that reflects
-            // the order the events actually happened. Sorting by nextRetryAt instead lets a later event
-            // overtake an earlier one that took a backoff, because a fresh row's nextRetryAt is its
-            // insert time and so sorts ahead of a retried row's future one.
+            // By id, never by a timestamp: a fresh row's nextRetryAt is its insert time, so sorting on
+            // that would let a later event overtake an earlier one that took a backoff.
             .orderBy("id", "asc")
             .limit(limit)
             .forUpdate()
@@ -87,9 +85,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Keeps a long-running claim from looking abandoned. The stale-claim sweeper treats any claim older
-  // than its threshold as a dead worker and hands the rows back out, so a batch that legitimately
-  // outlives the threshold has to keep refreshing lockedAt or its rows get delivered twice.
+  // The sweeper reads a claim older than its threshold as a dead worker and hands the rows back out,
+  // so a batch that legitimately runs that long has to keep lockedAt fresh or it delivers twice.
   const extendClaims = async (ids: string[]): Promise<void> => {
     if (ids.length === 0) return;
     try {

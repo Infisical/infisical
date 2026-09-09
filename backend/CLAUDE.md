@@ -610,7 +610,7 @@ See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `sr
 
 Adding a new alertable resource type:
 
-1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), an `events` list, a `conditionSchema` for the "when", `buildViewUrl` / `buildPayload` / `targetId`, one discovery method per trigger type you declare (below), and the two authorization hooks `assertPermission` + `assertResourceInScope`. Test sends do **not** need anything from you — they go through the generic `buildTestAlertPayload` (`alert-test-payload-fns.ts`).
+1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), an `events` list, a `conditionSchema` for the "when", `buildViewUrl` / `buildPayload` / `targetId`, one discovery method per trigger type you declare (below), and the two authorization hooks `assertPermission` + `assertResourceInScope`. Test sends need nothing from you: they go through the generic `buildTestAlertPayload` (`alert-test-payload-fns.ts`).
 2. Register it on the singleton registry in `src/server/routes/index.ts` (`alertProviderRegistry.register(...)`).
 
 That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example.
@@ -618,7 +618,7 @@ That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS 
 **Each event declares how it fires**, and the trigger decides which discovery method the provider owes:
 
 - `AlertTriggerType.Scheduled` → **`findDueTargets`**. The daily cron asks what is currently due, and the engine dedups per `(channel, target)` so a target rediscovered tomorrow is not alerted on twice.
-- `AlertTriggerType.Event` → **`findTargetsByIds`**. The target is already known, so nothing is scanned for and **nothing is deduped** — an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron.
+- `AlertTriggerType.Event` → **`findTargetsByIds`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron.
 
 `alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findTargetsByIds` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
 
@@ -634,19 +634,18 @@ Invariants worth knowing before extending it:
 
   Wire it into **every** path that deletes or detaches the resource, not just the obvious one. A resource usually has several (a hard delete, an org-membership removal, a project-membership removal), and each needs its own reap. Call it **inside the delete transaction** and pass `tx`; the reap is pure DB (no KMS or network), so it is safe there. The `(resourceType, resourceId)` index on `alerts` is what keeps the unscoped reap off a seq scan, so a provider whose resource is deleted in bulk depends on it.
 
-### Event Outbox (transactional, generic — alerting is its first consumer)
+### Event Outbox (transactional and generic; alerting is its first consumer)
 
 `src/services/event-outbox/` records "this happened" as a row written **inside the caller's own
 transaction**, so an event is exactly as durable as the business write that produced it. Redis cannot
-participate in a Postgres commit, so the alternative — enqueueing after commit — loses the event
-whenever the pod dies or Redis is unreachable in that window, with nothing but a log line to show for
-it.
+participate in a Postgres commit, so enqueueing after commit instead loses the event whenever the pod
+dies or Redis is unreachable in that window, with nothing but a log line to show for it.
 
 It is deliberately **not** alert-specific. `src/services/alert/alert-event-consumer.ts` is one consumer
-registered on the shared registry; anything else that needs guaranteed at-least-once delivery of a
-domain event registers alongside it.
+on the shared registry; anything else needing at-least-once delivery of a domain event registers
+alongside it.
 
-**To emit:** `eventOutboxService.emit(event, tx)`. `tx` is required, not optional — that is the whole
+**To emit:** `eventOutboxService.emit(event, tx)`. `tx` is required, not optional: that is the whole
 point, and there is deliberately no weaker path to reach for.
 
 ```ts
@@ -666,87 +665,76 @@ await someDAL.transaction(async (tx) => {
 });
 ```
 
-**Only one thing is consulted before a row is written:** `subscribesTo(eventType)`, a pure in-memory
-check for "is this event type handled at all". Whether a customer has actually configured anything for
-*this* resource is settled later, in the worker. That is deliberate: `emit` adds exactly one statement
-to the caller's transaction and never calls back into a consumer, so a consumer cannot reach into a
-transaction it knows nothing about. The cost is a throwaway row when nobody was listening, which
-`handle` marks `Delivered` and the prune reaps within the day. If a high-volume event type ever makes
-that amplification matter, cache the answer *inside the consumer* rather than adding a read to the
-emit path.
+**Only `subscribesTo(eventType)` is consulted before a row is written**, a pure in-memory check for
+"is this event type handled at all". Whether a customer configured anything for *this* resource is
+settled later, in the worker, so `emit` adds exactly one statement to the caller's transaction and
+never calls back into a consumer. The cost is a throwaway row when nobody was listening, which `handle`
+marks `Delivered` and the prune reaps within the day. If a high-volume event type ever makes that
+amplification matter, cache the answer *inside the consumer* rather than adding a read to the emit path.
 
-**The insert is not caught.** Postgres aborts a whole transaction on a failed statement, so swallowing
-it would hand the caller a poisoned transaction (`25P02` on its next statement) instead of the real
-error, and a row that cannot be written means the operation did not happen. A payload that fails its
-consumer's `payloadSchema` throws too: the emit site is statically wrong and fails on the first request
-in dev, and silently dropping a notification because a field was misspelled is the worse outcome. Both
-of those run before any database access, so neither can poison the transaction.
+**Nothing in `emit` is caught.** A swallowed insert failure would hand the caller a poisoned
+transaction (`25P02` on its next statement) instead of the real error, and a row that cannot be written
+means the operation did not happen. A payload that fails its consumer's `payloadSchema` throws too:
+that emit site is statically wrong and fails on the first request in dev, which beats dropping a
+notification over a misspelled field. Both checks run before any database access, so neither can poison
+the transaction.
 
-**Who owns what, because this is the part that is easy to get wrong:**
-
-| Layer | Owns | Does not own |
-|---|---|---|
-| `emit` | validation, consumer matching, the insert on the caller's `tx` | anything after commit |
-| Relay ticker (~10s) | noticing due work | delivery, retry |
-| The flush job | parallelism. `attempts: 1`, no backoff | correctness — a lost job costs one interval |
-| Stale-claim cron | rescuing rows whose worker died | delivery |
-| The row + `drain` | the retry state machine: `attempts`, `nextRetryAt`, backoff, terminal `failed`; the claim heartbeat; the lag and exhausted metrics | what "delivered" means |
-| `consumer.handle` | delivery, and reporting per-row `Delivered`/`Retry`/`Failed` + `progress` | when the retry happens, outbox metrics |
+**The row owns the retry state machine** (`attempts`, `nextRetryAt`, backoff, terminal `failed`) and the
+outbox owns the lag and exhausted metrics. `consumer.handle` owns delivery and what "delivered" means,
+reporting per row: `Delivered` / `Retry` / `Failed` plus `progress`.
 
 **A claim is a lease, and `drain` keeps it alive.** The sweeper treats any `processing` row whose
 `lockedAt` is older than `STALE_CLAIM_THRESHOLD_MS` as a dead worker and hands it back out. A batch can
-legitimately outlive that (one slow webhook endpoint times out on every row of a resource), so `drain`
+legitimately outlive that (one slow webhook endpoint timing out on every row of a resource), so `drain`
 refreshes `lockedAt` on the claimed ids every quarter of the threshold while `handle` runs. Without it
-the sweeper re-queues rows a live worker is still delivering, and the customer is notified twice.
+the sweeper re-queues rows a live worker is still delivering and the customer is notified twice.
 
 **A consumer must not let one row's failure escape `handle`.** The outbox retries the whole batch when
-`handle` throws, because it has no way to know which rows already delivered. A consumer that processes
-rows one at a time catches per row and reports `Retry` for that row alone; see
-`alert-event-consumer.ts`. The batch-level catch in `drain` is the backstop, not the plan.
+`handle` throws, because it cannot know which rows already delivered. A consumer that processes rows one
+at a time catches per row and reports `Retry` for that row alone; see `alert-event-consumer.ts`. The
+batch-level catch in `drain` is the backstop, not the plan.
 
 **BullMQ owns latency here, never correctness.** `attempts: 1` on the flush job is intentional: retry
-lives on the outbox row, where an operator can query it and where it survives a Redis flush. If an
-enqueue fails outright, the row simply stays `pending` and the next relay tick picks it up.
+lives on the outbox row, where an operator can query it and where it survives a Redis flush. A failed
+enqueue leaves the row `pending` for the next relay tick, so a lost job costs one interval.
 
 **The relay is a `setInterval`, not a cron registration**, which bends the rule above that all recurring
-work goes through the cron manager. The reason: that rule exists to prevent duplicate execution, and
-the cron manager answers it with slot election plus redlocks to get fleet-wide exactly-once. This relay
-does not need exactly-once — `claimBatch`'s `FOR UPDATE SKIP LOCKED` plus the flush `jobId` make
-concurrent pollers correct by construction. What it does need is a sub-minute cadence, and the cron
-manager's floor is sixty seconds. Every pod polling is the shape the outbox pattern assumes.
+work goes through the cron manager. That rule exists to prevent duplicate execution, which the cron
+manager buys with slot election plus redlocks. This relay does not need exactly-once, because
+`claimBatch`'s `FOR UPDATE SKIP LOCKED` plus the flush `jobId` make concurrent pollers correct by
+construction. What it does need is a sub-minute cadence, and the cron manager's floor is sixty seconds.
+Every pod polling is the shape the outbox pattern assumes.
 
 **Ordering is per resource, and the claim must sort by `id`.** The flush `jobId` is keyed on
-`(consumer, resourceType, resourceId)`, so at most one flush per aggregate runs at a time, which is the
-standard rule for a polling relay: never parallelize publishing within one aggregate across workers,
-even though `SKIP LOCKED` makes it safe across different aggregates. Within a claim, order by the
-autoincrement `id` and never by a timestamp. `nextRetryAt` is a *filter*, not a sort key: a fresh row's
-`nextRetryAt` is its insert time, so it sorts ahead of a retried row's future one and a later event
-overtakes an earlier one that happened to fail once. `event_outbox_drain_idx` is shaped
-`(consumer, resourceType, resourceId, id, nextRetryAt)` so that ordering comes from the index with no
+`(consumer, resourceType, resourceId)`, so at most one flush per aggregate runs at a time: never
+parallelize publishing within one aggregate, even though `SKIP LOCKED` makes it safe across different
+ones. Within a claim, `nextRetryAt` is a *filter*, not a sort key. A fresh row's `nextRetryAt` is its
+insert time, so it sorts ahead of a retried row's future one and a later event overtakes an earlier one
+that happened to fail once. `event_outbox_drain_idx` is shaped
+`(consumer, resourceType, resourceId, id, nextRetryAt)` so the id ordering comes from the index with no
 sort node.
 
-One gap remains by choice: while an earlier row is still inside its backoff window it is not eligible,
-so a later row for the same resource can be delivered first. Closing that would mean blocking the whole
-aggregate behind its oldest undelivered row, which trades a rare reorder for one failing event stalling
-everything behind it. For notifications that is the wrong trade, so do not promise callers strict
-ordering.
+One gap remains by choice: a row inside its backoff window is not eligible, so a later row for the same
+resource can be delivered first. Closing it would mean blocking the whole aggregate behind its oldest
+undelivered row, trading a rare reorder for one failing event stalling everything behind it. For
+notifications that is the wrong trade, so do not promise callers strict ordering.
 
 **Delivery is at-least-once.** A send that succeeds and whose `commitResults` then fails is redelivered.
-Consumers narrow the blast radius with `progress` (alerting stores the channels that already
-succeeded, and skips them on the retry), and an emitter that needs to dedupe its own retries passes an
+Consumers narrow the blast radius with `progress` (alerting stores the channels that already succeeded
+and skips them on the retry), and an emitter that needs to dedupe its own retries passes an
 `idempotencyKey`.
 
-**Watch `infisical.event_outbox.oldest_pending_age`.** It is the canonical outbox canary — the one
-signal that catches a dead relay, a wedged consumer and a stuck claim alike. Alarm when it exceeds a
-small multiple of the relay interval. `infisical.event_outbox.lag` and `infisical.event_outbox.exhausted.count`
-are recorded by the outbox itself as it commits results, labelled by consumer, so a new consumer gets
-them without writing any telemetry code.
+**Watch `infisical.event_outbox.oldest_pending_age`.** It is the canonical canary, the one signal that
+catches a dead relay, a wedged consumer and a stuck claim alike. Alarm when it exceeds a small multiple
+of the relay interval. `infisical.event_outbox.lag` and `infisical.event_outbox.exhausted.count` are
+recorded by the outbox itself as it commits results, labelled by consumer, so a new consumer gets them
+without writing any telemetry code.
 
 **Adding an event-triggered alert** needs no outbox code at all. The provider declares the event with
 `triggerType: AlertTriggerType.Event` and implements `findTargetsByIds`; the emitter calls
-`eventOutbox.emit` with `resourceType` equal to the provider's and `payload: { targetIds }`. The alert
-consumer fails a row terminally, with both halves named, when the emitted `resourceType` does not
-declare that `eventType`, so a mismatched emit site shows up in the logs on its first event rather than
+`eventOutbox.emit` with `resourceType` equal to the provider's and `payload: { targetIds }`. When the
+emitted `resourceType` does not declare that `eventType`, the alert consumer fails the row terminally
+with both halves named, so a mismatched emit site shows up in the logs on its first event rather than
 being marked delivered as "no matching alert".
 
 ### Soft-Delete + Async Cleanup

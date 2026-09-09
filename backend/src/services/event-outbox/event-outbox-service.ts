@@ -27,8 +27,8 @@ import {
 const PRUNE_BATCH_SIZE = 5_000;
 const PRUNE_MAX_BATCHES = 20;
 
-// Well inside the sweeper's threshold, so a heartbeat can be missed once (a slow query, a paused event
-// loop) without the claim going stale.
+// Frequent enough that one missed beat (a slow query, a paused event loop) doesn't let the sweeper
+// call a live claim stale.
 const CLAIM_HEARTBEAT_INTERVAL_MS = STALE_CLAIM_THRESHOLD_MS / 4;
 
 const computeBackoffMs = (attemptsAfterIncrement: number): number => {
@@ -41,8 +41,7 @@ const computeBackoffMs = (attemptsAfterIncrement: number): number => {
 const formatIssues = (issues: { path: (string | number)[]; message: string }[]) =>
   issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ");
 
-// Groups rows that share an outcome so commitResults issues one UPDATE per distinct outcome rather than
-// one per row.
+// Lets commitResults issue one UPDATE per distinct outcome instead of one per row.
 const groupByOutcome = <TItem extends { id: string }>(
   items: TItem[],
   keyOf: (item: TItem) => string
@@ -69,23 +68,17 @@ export type TEventOutboxServiceFactoryDep = {
 export type TEventOutboxServiceFactory = ReturnType<typeof eventOutboxServiceFactory>;
 
 export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry }: TEventOutboxServiceFactoryDep) => {
-  // Records an event as part of the caller's unit of work. `tx` is required rather than optional:
-  // the whole point is that the row commits with the business write, so there is deliberately no
-  // weaker path to reach for.
+  // `tx` is required, not optional: the row has to commit with the business write, so there is
+  // deliberately no weaker path to reach for.
   //
-  // Nothing here reads the database. Validation and consumer matching are in-memory, so the only
-  // statement this adds to the caller's transaction is one insert. Whether any customer actually
-  // wants a given event is decided later, in the worker: guessing wrong costs a row that is marked
-  // delivered and pruned, which is a far better trade than letting a consumer run a query inside a
-  // transaction it knows nothing about.
+  // Nothing here reads the database. Validation and consumer matching are in-memory, so this adds a
+  // single insert to the caller's transaction and never calls back into a consumer. Whether anyone
+  // actually wants the event is settled later in the worker, where guessing wrong only costs a row
+  // that gets marked delivered and pruned.
   //
-  // The insert is not caught. Postgres aborts a whole transaction on a failed statement, so
-  // swallowing it would hand the caller a poisoned transaction (25P02 on its next statement)
-  // instead of the real error, and a row that cannot be written means the operation did not happen.
-  //
-  // Validation failures are 500s, not 400s: the event is built by our code from data that already
-  // passed the route's own validation, so a rejected event is a bug at the emit site and nothing the
-  // API caller can act on.
+  // Nothing is caught either. A bad event is a bug at the emit site rather than something the API
+  // caller can act on (hence 500, not 400), and swallowing a failed insert would hand the caller a
+  // poisoned transaction instead of the real error.
   const emit = async (event: TOutboxEvent, tx: Knex): Promise<void> => {
     const parsed = OutboxEventSchema.safeParse(event);
     if (!parsed.success) {
@@ -201,9 +194,8 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  // Runs the consumer against one claimed batch while keeping the claim fresh. The heartbeat is what
-  // lets a batch legitimately outlive STALE_CLAIM_THRESHOLD_MS (a slow webhook endpoint, many rows)
-  // without the sweeper handing its rows to a second worker mid-delivery.
+  // The heartbeat is what lets a batch legitimately outlive STALE_CLAIM_THRESHOLD_MS (a slow webhook
+  // endpoint, many rows) without the sweeper handing its rows to a second worker mid-delivery.
   const $handleClaimed = async (
     consumer: IEventOutboxConsumer,
     key: TOutboxFlushKey,
@@ -233,9 +225,8 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  // Worker entrypoint for one flush key. Loops claim -> handle -> commit while rows remain, bounded
-  // so one wedged resource cannot hold a worker indefinitely; whatever is left is picked up by the
-  // relay's next tick.
+  // Bounded so one wedged resource can't hold a worker indefinitely; whatever is left over gets
+  // picked up by the relay's next tick.
   const drain = async (key: TOutboxFlushKey): Promise<{ handled: number; unknownConsumer: boolean }> => {
     const consumer = eventOutboxRegistry.get(key.consumer);
     if (!consumer) {

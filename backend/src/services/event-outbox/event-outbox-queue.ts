@@ -60,9 +60,9 @@ export const eventOutboxQueueFactory = ({
     });
   };
 
-  // BullMQ rejects a custom id containing ':' and resourceId is any string, so it is percent-encoded.
-  // The encoding is injective, so two distinct keys can never share a job id. consumer and
-  // resourceType are already restricted to [a-z0-9._-] by the emit schema.
+  // BullMQ rejects a custom id containing ':' and resourceId is any string, so it gets percent-encoded
+  // (injectively, so two keys can't collide on one job id). consumer and resourceType are already
+  // restricted to [a-z0-9._-] by the emit schema.
   const $enqueueFlush = async (key: TOutboxFlushKey) =>
     queueService.queue(QueueName.EventOutboxFlush, QueueJobs.EventOutboxFlush, key, {
       jobId: `outbox-flush-${key.consumer}-${key.resourceType}-${encodeURIComponent(key.resourceId)}`,

@@ -42,9 +42,8 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The event path's counterpart to findEnabledByResourceType. Same enabled-channel and
-  // soft-deleted-project filters, narrowed to one resource and one event key. Runs in the outbox
-  // worker only; the emit path never touches the alerts table.
+  // The event path's counterpart to findEnabledByResourceType, narrowed to one resource and one
+  // event key. Runs in the outbox worker only; the emit path never touches the alerts table.
   const findEnabledForEvent = async (
     filter: {
       orgId: string;

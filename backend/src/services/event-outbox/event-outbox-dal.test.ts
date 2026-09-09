@@ -3,9 +3,9 @@ import { TableName } from "@app/db/schemas";
 import { eventOutboxDALFactory } from "./event-outbox-dal";
 import { EventOutboxStatus } from "./event-outbox-types";
 
-// These assert query *shape*, in the style of alert-dal.test.ts. The runtime concurrency property
-// (two claimers never take the same row) is a Postgres guarantee that only a real database can
-// demonstrate; what a unit test can protect is that the clauses buying it are still there.
+// These assert query *shape*, in the style of alert-dal.test.ts. Only a real database can show that
+// two claimers never take the same row, so what a unit test protects is that the clauses buying that
+// guarantee are still there.
 const buildDAL = () => {
   const calls = {
     where: [] as unknown[][],
@@ -89,7 +89,7 @@ const buildDAL = () => {
     },
     returning: async () => [],
     del: async () => 0,
-    // Returns the chain so a subquery can keep building; awaiting it resolves through `then` below.
+    // Returns the chain so a subquery keeps building; awaiting it resolves through `then` below.
     select: () => chain,
     then: (resolve: (v: unknown) => unknown) => resolve([])
   });
@@ -106,10 +106,9 @@ const buildDAL = () => {
 };
 
 describe("event outbox dal", () => {
-  // The conflict target has to repeat the index predicate: Postgres cannot infer a *partial* unique
-  // index from a bare column list and answers a plain ON CONFLICT (consumer, idempotencyKey) with
-  // 42P10 at runtime. Only rows carrying a key are in the index, so an event without one never
-  // collides.
+  // The conflict target repeats the index predicate because Postgres can't infer a *partial* unique
+  // index from a bare column list: a plain ON CONFLICT (consumer, idempotencyKey) is a 42P10 at
+  // runtime.
   test("insertEvents ignores a conflict on the partial idempotency index", async () => {
     const { dal, calls, tx } = buildDAL();
 
@@ -140,8 +139,8 @@ describe("event outbox dal", () => {
     expect(calls.insert).toHaveLength(0);
   });
 
-  // SKIP LOCKED is what makes concurrent relays and overlapping flushes correct by construction, which
-  // is the reason the relay does not need the cron manager's fleet-wide exactly-once scheduling.
+  // SKIP LOCKED is what makes concurrent relays correct by construction, and so the reason the relay
+  // doesn't need the cron manager's fleet-wide exactly-once scheduling.
   test("claimBatch locks rows with FOR UPDATE SKIP LOCKED", async () => {
     const { dal, calls } = buildDAL();
 
@@ -151,9 +150,6 @@ describe("event outbox dal", () => {
     expect(calls.skipLocked).toBe(1);
   });
 
-  // The autoincrement id is the only column that reflects the order events actually happened. Sorting
-  // by nextRetryAt instead lets a later event overtake an earlier one that took a backoff, because a
-  // fresh row's nextRetryAt is its insert time and so sorts ahead of a retried row's future one.
   test("claimBatch orders by id, not by a timestamp", async () => {
     const { dal, calls } = buildDAL();
 
@@ -162,8 +158,6 @@ describe("event outbox dal", () => {
     expect(calls.orderBy[0]).toEqual(["id", "asc"]);
   });
 
-  // The single-statement shape is what keeps the row locks scoped to the UPDATE itself: a claim never
-  // holds a connection across two round trips.
   test("claimBatch flips the locked rows to processing in the same statement", async () => {
     const { dal, calls } = buildDAL();
 
@@ -174,8 +168,8 @@ describe("event outbox dal", () => {
     expect(calls.update[0].lockedAt).toBe("NOW()");
   });
 
-  // Only a row still held by this worker gets its lease renewed. One the sweeper already handed back
-  // must not be pulled into 'processing' again by a late heartbeat.
+  // A row the sweeper already handed back must not be pulled into 'processing' again by a late
+  // heartbeat.
   test("extendClaims refreshes lockedAt only on rows still processing", async () => {
     const { dal, calls } = buildDAL();
 
@@ -214,8 +208,7 @@ describe("event outbox dal", () => {
     expect(calls.limit).toContain(200);
   });
 
-  // Computed DB-side so the retry schedule uses the same clock the claim compares against, with no
-  // app/DB skew.
+  // Same clock the claim compares against, so app/DB skew can't shift the retry schedule.
   test("commitResults computes the next retry time in SQL, not in JS", async () => {
     const { dal, calls } = buildDAL();
 

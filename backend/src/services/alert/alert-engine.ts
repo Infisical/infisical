@@ -187,9 +187,8 @@ export const alertEngineFactory = ({
       logger.error(`Alert delivery failed on one or more channels [alertId=${alert.id}]: ${errorText}`);
     }
 
-    // Deliberately not allowed to fail the run. On the event path the caller may retry, and a throw
-    // after channels have already sent would re-notify; every other failure mode is handled above,
-    // before the first send.
+    // Deliberately not allowed to fail the run: the event path may retry, and a throw after channels
+    // have already sent would re-notify.
     try {
       await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
     } catch (err) {
@@ -294,7 +293,7 @@ export const alertEngineFactory = ({
       condition: alert.condition,
       targetIds: input.targetIds
     });
-    // The rows were deleted between the event being recorded and it being delivered. Nothing to say.
+    // The rows were deleted between the event being recorded and delivered, so there is nothing to say.
     if (resolved.length === 0) return { outcome: AlertDispatchOutcome.NoDueTargets, deliveredChannelIds: [] };
 
     const targets = resolved.map((target) => ({ target, id: provider.targetId(target) }));
@@ -303,8 +302,8 @@ export const alertEngineFactory = ({
       const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
       const cap = definition?.maxTargetsPerRun;
       if (cap && targets.length > cap) {
-        // On the scheduled path the tail defers to tomorrow's run. Here there is no next run, so this
-        // is a real drop — MAX_TARGET_IDS_PER_EVENT is set at or below every channel cap to keep it
+        // The scheduled path defers the tail to tomorrow's run, but an event has no next run, so this
+        // is a real drop. MAX_TARGET_IDS_PER_EVENT sits at or below every channel cap to keep it
         // unreachable, and the log names what was lost if that ever stops holding.
         logger.warn(
           `Alert ${channel.channelType} channel caps at ${cap} targets; dropping ${targets.length - cap} from this event [alertId=${alert.id}] [channelId=${channel.id}] [dropped=${targets

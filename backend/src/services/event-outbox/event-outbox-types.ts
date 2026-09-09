@@ -57,8 +57,7 @@ export type TOutboxRowResult = {
   id: string;
   status: EventOutboxStatus.Delivered | EventOutboxStatus.Retry | EventOutboxStatus.Failed;
   error?: string;
-  // Persisted on the row and handed back on the next attempt, so a retry can resume rather than
-  // repeat. Opaque to the outbox.
+  // Handed back on the next attempt so a retry can resume instead of repeating. Opaque to the outbox.
   progress?: Record<string, unknown> | null;
 };
 
@@ -69,20 +68,19 @@ export type TOutboxFlushKey = {
 };
 
 export interface IEventOutboxConsumer<TPayload = unknown> {
-  // Stored in every row and part of the flush job id. Renaming it orphans in-flight rows.
+  // Stored on every row and part of the flush job id, so renaming it orphans in-flight rows.
   name: string;
 
-  // The body this consumer expects. Parsed at emit so a malformed event fails at its source rather
-  // than in a worker later. Must not be `.strict()`: one event can feed several consumers, so a
-  // schema has to tolerate fields it does not care about.
+  // Parsed at emit, so a malformed event fails at its source instead of in a worker later. Must not
+  // be `.strict()`: one event can feed several consumers, so a schema has to tolerate fields it
+  // doesn't care about.
   payloadSchema: z.ZodType<TPayload>;
 
-  // Called on the request path for every emit, so it must stay pure and in-memory. This is the only
-  // thing consulted before a row is written: whether *this* event is one anyone actually wants is
-  // decided in handle(), off the caller's transaction, where getting it wrong costs a throwaway row
-  // rather than the business write.
+  // Runs on the request path for every emit, so keep it pure and in-memory. Whether anyone actually
+  // wants the event is decided later in handle(), off the caller's transaction, where guessing wrong
+  // costs a throwaway row rather than the business write.
   subscribesTo(eventType: string): boolean;
 
-  // Rows for a single (resourceType, resourceId), in id order. Returns one result per row.
+  // Rows for a single (resourceType, resourceId), in id order. Must return one result per row.
   handle(rows: TEventOutboxRow[]): Promise<TOutboxRowResult[]>;
 }
