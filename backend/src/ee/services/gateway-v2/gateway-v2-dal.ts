@@ -5,7 +5,7 @@ import { GatewaysV2Schema, TableName, TGatewaysV2 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
-import { buildGatewayProbedSql, buildGatewayReachableSql } from "./gateway-v2-constants";
+import { buildGatewayProbedSql, buildGatewayReachableSql } from "./gateway-v2-transport-fns";
 
 export type TGatewayV2DALFactory = ReturnType<typeof gatewayV2DalFactory>;
 

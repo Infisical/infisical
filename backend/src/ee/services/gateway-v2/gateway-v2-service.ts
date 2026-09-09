@@ -48,12 +48,10 @@ import {
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
   GatewayTransport,
-  PAM_INFO_OID,
-  parseDirectAddress,
-  resolveClientTransports,
-  resolveTransports
+  PAM_INFO_OID
 } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
+import { parseDirectAddress, resolveClientTransports, resolveTransports } from "./gateway-v2-transport-fns";
 import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 

@@ -2,7 +2,7 @@ import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { gatewayTransports } from "@app/ee/services/gateway-v2/gateway-v2-constants";
+import { gatewayTransports } from "@app/ee/services/gateway-v2/gateway-v2-transport-fns";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import {
   validateAllowedNames,

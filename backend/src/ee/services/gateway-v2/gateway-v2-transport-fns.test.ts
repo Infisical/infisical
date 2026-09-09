@@ -1,11 +1,10 @@
+import { GatewayTransport, HEARTBEAT_BUFFER_SECONDS } from "./gateway-v2-constants";
 import {
-  GatewayTransport,
-  HEARTBEAT_BUFFER_SECONDS,
   isTransportHealthy,
   parseDirectAddress,
   resolveClientTransports,
   resolveTransports
-} from "./gateway-v2-constants";
+} from "./gateway-v2-transport-fns";
 
 const secondsAgo = (seconds: number) => new Date(Date.now() - seconds * 1000);
 const TTL = 180;

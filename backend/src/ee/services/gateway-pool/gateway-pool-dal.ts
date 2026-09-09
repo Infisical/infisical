@@ -5,7 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-import { buildGatewayReachableSql } from "../gateway-v2/gateway-v2-constants";
+import { buildGatewayReachableSql } from "../gateway-v2/gateway-v2-transport-fns";
 
 export type TGatewayPoolDALFactory = ReturnType<typeof gatewayPoolDalFactory>;
 

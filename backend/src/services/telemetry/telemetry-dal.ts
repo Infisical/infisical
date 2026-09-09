@@ -1,6 +1,6 @@
 import { TDbClient } from "@app/db";
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
-import { buildGatewayReachableSql } from "@app/ee/services/gateway-v2/gateway-v2-constants";
+import { buildGatewayReachableSql } from "@app/ee/services/gateway-v2/gateway-v2-transport-fns";
 import { DatabaseError } from "@app/lib/errors";
 
 const BUILT_IN_ROLE_SLUGS = [...Object.values(OrgMembershipRole), ...Object.values(ProjectMembershipRole)] as string[];
