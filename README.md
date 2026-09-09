@@ -1,3 +1,5 @@
+KMS-Go benchmark setup: [setup-go.md](setup-go.md)
+
 <h1 align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="/img/logoname-white.svg">
