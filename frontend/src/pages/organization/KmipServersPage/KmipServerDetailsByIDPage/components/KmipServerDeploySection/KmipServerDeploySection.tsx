@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -23,7 +24,10 @@ import {
   OrgKmipServerPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { useGenerateKmipServerEnrollmentToken } from "@app/hooks/api/kmipServers";
+import {
+  kmipServerQueryKeys,
+  useGenerateKmipServerEnrollmentToken
+} from "@app/hooks/api/kmipServers";
 import { TKmipServerAuthMethodView } from "@app/hooks/api/kmipServers/types";
 
 import { AwsStartCommandContent } from "./AwsStartCommandContent";
@@ -33,10 +37,18 @@ const DEPLOYMENT_TABS = ["cli", "systemd"];
 
 export const KmipServerDeploySection = ({ kmipServerId, kmipServerName, authMethod }: Props) => {
   const [deploymentMethod, setDeploymentMethod] = useState("");
-  const [mintedEnrollment, setMintedEnrollment] = useState<MintedEnrollment | null>(null);
+  const queryClient = useQueryClient();
+  const enrollmentQueryKey = kmipServerQueryKeys.enrollment(kmipServerId);
+  // The minted command lives in the query cache so the auth-method and revoke mutations can drop
+  // it: both delete the server's token-auth record, which makes the command invalid.
+  const { data: enrollment } = useQuery<MintedEnrollment | null>({
+    queryKey: enrollmentQueryKey,
+    enabled: false,
+    gcTime: 0,
+    staleTime: Infinity
+  });
   const { mutateAsync: mint, isPending: isMinting } = useGenerateKmipServerEnrollmentToken();
   const { permission } = useOrgPermission();
-  const enrollment = mintedEnrollment?.kmipServerId === kmipServerId ? mintedEnrollment : null;
   const canEditKmipServer = permission.can(
     OrgKmipServerPermissionActions.EditKmipServers,
     OrgPermissionSubjects.KmipServer
@@ -52,7 +64,7 @@ export const KmipServerDeploySection = ({ kmipServerId, kmipServerName, authMeth
   const handleGenerate = async () => {
     try {
       const result = await mint({ kmipServerId });
-      setMintedEnrollment({ ...result, kmipServerId });
+      queryClient.setQueryData<MintedEnrollment>(enrollmentQueryKey, result);
     } catch {
       createNotification({ type: "error", text: "Failed to generate enrollment token" });
     }
@@ -140,4 +152,4 @@ type Props = {
   authMethod: TKmipServerAuthMethodView;
 };
 
-type MintedEnrollment = { token: string; expiresAt: string; kmipServerId: string };
+type MintedEnrollment = { token: string; expiresAt: string };

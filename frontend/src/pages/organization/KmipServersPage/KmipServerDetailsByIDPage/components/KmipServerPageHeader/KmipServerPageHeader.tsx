@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
   PageHeader
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   OrgKmipServerPermissionActions,
   OrgPermissionSubjects
@@ -32,6 +33,7 @@ import { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
 export const KmipServerPageHeader = ({ kmipServer, orgId }: Props) => {
   const navigate = useNavigate();
+  const { isSubOrganization } = useOrganization();
   const { mutateAsync: deleteKmipServer, isPending: isDeleting } = useDeleteKmipServerById();
   const { mutateAsync: revokeKmipServer, isPending: isRevoking } = useRevokeKmipServerAccess();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -63,7 +65,7 @@ export const KmipServerPageHeader = ({ kmipServer, orgId }: Props) => {
   return (
     <>
       <PageHeader
-        scope="org"
+        scope={isSubOrganization ? "namespace" : "org"}
         title={kmipServer.name}
         description="KMIP server configuration and authentication"
       >

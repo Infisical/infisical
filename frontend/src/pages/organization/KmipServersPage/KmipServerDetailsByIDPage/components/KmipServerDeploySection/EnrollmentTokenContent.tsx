@@ -34,9 +34,7 @@ export const EnrollmentTokenContent = ({ kmipServerName, enrollmentToken, expire
   const labelWithExpiry = (label: string) => (
     <span className="flex w-full items-center justify-between gap-2">
       <span>{label}</span>
-      <Badge className="tabular-nums" variant={isExpired ? "danger" : "neutral"}>
-        {expiryLabel}
-      </Badge>
+      <Badge variant={isExpired ? "danger" : "neutral"}>{expiryLabel}</Badge>
     </span>
   );
 
