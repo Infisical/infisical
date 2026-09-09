@@ -52,14 +52,26 @@ const setup = (
   const findOne = vi.fn().mockResolvedValue({ id: "env" });
   const findMetadataByFolderIds = vi.fn<TSecretV2BridgeDALFactory["findMetadataByFolderIds"]>().mockResolvedValue([]);
   const findById = vi.fn().mockResolvedValue({ version: ProjectVersion.V3 });
+  const cursorStore = new Map<string, { value: string; expiresAt: number }>();
+  const keyStore = {
+    getItemPrimary: vi.fn(async (key: string) => {
+      const entry = cursorStore.get(key);
+      return entry && entry.expiresAt > Date.now() ? entry.value : null;
+    }),
+    setItemWithExpiry: vi.fn(async (key: string, ttl: number | string, value: string | number | Buffer) => {
+      cursorStore.set(key, { value: String(value), expiresAt: Date.now() + Number(ttl) * 1000 });
+      return "OK" as const;
+    })
+  };
   const service = secretMetadataServiceFactory({
+    keyStore,
     permissionService: { getProjectPermission },
     folderDAL: { find },
     projectEnvDAL: { findOne },
     projectDAL: { findById },
     secretDAL: { findMetadataByFolderIds }
   });
-  return { ...service, findMetadataByFolderIds, getProjectPermission, find, findOne, findById };
+  return { ...service, keyStore, cursorStore, findMetadataByFolderIds, getProjectPermission, find, findOne, findById };
 };
 
 const paginateMetadata =
@@ -133,10 +145,7 @@ describe("recursive secret metadata", () => {
     service.findMetadataByFolderIds.mockImplementation(
       paginateMetadata(Array.from({ length: count }, (_, i) => metadata(`hidden-${i}`)))
     );
-    for (const cursor of [undefined, "hidden-0", "zzzz"]) {
-      // eslint-disable-next-line no-await-in-loop
-      expect(await service.getSecretMetadata({ ...dto, limit: 1, cursor })).toEqual({ secrets: [], nextCursor: null });
-    }
+    expect(await service.getSecretMetadata({ ...dto, limit: 1 })).toEqual({ secrets: [], nextCursor: null });
   });
 
   test("hidden rows do not change authorized pages, including duplicate names in different folders", async () => {
@@ -164,21 +173,27 @@ describe("recursive secret metadata", () => {
     );
 
     for (const limit of [1, 2]) {
-      for (const cursor of [undefined, "0500", "1000-one", "1500", "2000-two", "2001-three", "zzzz"]) {
-        const request = { ...dto, limit, cursor };
-        // eslint-disable-next-line no-await-in-loop
-        const expected = await unrestricted.getSecretMetadata(request);
-        // eslint-disable-next-line no-await-in-loop
-        expect(await restricted.getSecretMetadata(request)).toEqual(expected);
+      const collected: string[][] = [];
+      for (const service of [unrestricted, restricted]) {
+        const ids: string[] = [];
+        let cursor: string | undefined;
+        do {
+          // eslint-disable-next-line no-await-in-loop
+          const page = await service.getSecretMetadata({ ...dto, limit, cursor });
+          ids.push(...page.secrets.map(({ id }) => id));
+          cursor = page.nextCursor ?? undefined;
+        } while (cursor);
+        collected.push(ids);
       }
+      expect(collected[0]).toEqual(collected[1]);
     }
     const first = await restricted.getSecretMetadata(dto);
     expect(first.secrets.map(({ id, secretPath }) => ({ id, secretPath }))).toEqual([
       { id: "1000-one", secretPath: "/app" },
       { id: "2000-two", secretPath: "/app/nested" }
     ]);
-    expect(first.nextCursor).toBe("2000-two");
-    const last = await restricted.getSecretMetadata({ ...dto, cursor: "2000-two", limit: 1 });
+    expect(first.nextCursor).toEqual(expect.any(String));
+    const last = await restricted.getSecretMetadata({ ...dto, cursor: first.nextCursor!, limit: 1 });
     expect(last.secrets.map(({ id }) => id)).toEqual(["2001-three"]);
     expect(last.nextCursor).toBeNull();
     expect(restricted.findMetadataByFolderIds.mock.calls.every(([request]) => request.limit <= 501)).toBe(true);
@@ -204,8 +219,8 @@ describe("recursive secret metadata", () => {
     );
     const first = await service.getSecretMetadata({ ...dto, limit: 1 });
     expect(first.secrets.map(({ id }) => id)).toEqual(["one"]);
-    expect(first.nextCursor).toBe("one");
-    const last = await service.getSecretMetadata({ ...dto, limit: 1, cursor: "one" });
+    expect(first.nextCursor).toEqual(expect.any(String));
+    const last = await service.getSecretMetadata({ ...dto, limit: 1, cursor: first.nextCursor! });
     expect(last.secrets.map(({ id }) => id)).toEqual(["two"]);
     expect(last.nextCursor).toBeNull();
   });
@@ -222,7 +237,7 @@ describe("recursive secret metadata", () => {
       // eslint-disable-next-line no-await-in-loop
       const page = await service.getSecretMetadata({ ...dto, cursor, limit: 500 });
       ids.push(...page.secrets.map(({ id }) => id));
-      expect(page.nextCursor).toBe(ids.length < count ? ids[ids.length - 1] : null);
+      expect(page.nextCursor).toEqual(ids.length < count ? expect.any(String) : null);
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
     expect(ids).toEqual(visible.map(({ id }) => id));
@@ -251,7 +266,8 @@ describe("recursive secret metadata", () => {
         metadata("two", "child", { key: "ALLOWED", tagSlugs: ["readable"] })
       ])
     );
-    const result = await service.getSecretMetadata({ ...dto, limit: 1, cursor: "one" });
+    const first = await service.getSecretMetadata({ ...dto, limit: 1 });
+    const result = await service.getSecretMetadata({ ...dto, limit: 1, cursor: first.nextCursor! });
     expect(result.secrets.map(({ id }) => id)).toEqual(["two"]);
     expect(result.secrets[0].secretValueHidden).toBe(false);
     expect(result.nextCursor).toBeNull();
@@ -274,7 +290,9 @@ describe("recursive secret metadata", () => {
         metadata("04-four", "app", { key: "READABLE" })
       ])
     );
-    const result = await service.getSecretMetadata({ ...dto, cursor: "02-two" });
+    const first = await service.getSecretMetadata(dto);
+    service.findMetadataByFolderIds.mockClear();
+    const result = await service.getSecretMetadata({ ...dto, cursor: first.nextCursor! });
     expect(service.findMetadataByFolderIds.mock.calls[0][0].afterId).toBe("02-two");
     expect(service.findMetadataByFolderIds).toHaveBeenCalledTimes(1);
     expect(result.secrets.map(({ id, secretValueHidden }) => ({ id, secretValueHidden }))).toEqual([
@@ -282,6 +300,113 @@ describe("recursive secret metadata", () => {
       { id: "04-four", secretValueHidden: false }
     ]);
     expect(result.nextCursor).toBeNull();
+  });
+
+  test.each([false, true])("bounds sparse scans and resumes empty or partial pages (partial=%s)", async (partial) => {
+    const service = setup([
+      { action: Actions.DescribeSecret, subject: ProjectPermissionSub.Secrets, conditions: { secretName: "ALLOWED" } }
+    ]);
+    const rows = Array.from({ length: 4503 }, (_, i) =>
+      metadata(String(i).padStart(5, "0"), "app", {
+        key: (partial && i === 1) || i === 2000 || i === 4000 || i === 4502 ? "ALLOWED" : "HIDDEN"
+      })
+    );
+    service.findMetadataByFolderIds.mockImplementation(paginateMetadata(rows));
+    const first = await service.getSecretMetadata({ ...dto, limit: 2 });
+    expect(first.secrets.map(({ id }) => id)).toEqual(partial ? ["00001"] : []);
+    expect(service.findMetadataByFolderIds).toHaveBeenCalledTimes(4);
+    expect(service.findMetadataByFolderIds.mock.calls.reduce((sum, [request]) => sum + request.limit, 0)).toBe(2000);
+    expect(first.nextCursor).toMatch(/^[0-9a-f-]{36}$/);
+    expect(rows.some(({ id }) => id === first.nextCursor)).toBe(false);
+    expect(service.keyStore.setItemWithExpiry).toHaveBeenLastCalledWith(expect.any(String), 300, "01999");
+
+    let cursor = first.nextCursor;
+    const ids = first.secrets.map(({ id }) => id);
+    let pages = 1;
+    while (cursor && pages < 10) {
+      service.findMetadataByFolderIds.mockClear();
+      // eslint-disable-next-line no-await-in-loop
+      const page = await service.getSecretMetadata({ ...dto, cursor, limit: 1 });
+      expect(
+        service.findMetadataByFolderIds.mock.calls.reduce((sum, [request]) => sum + request.limit, 0)
+      ).toBeLessThanOrEqual(2000);
+      ids.push(...page.secrets.map(({ id }) => id));
+      cursor = page.nextCursor;
+      pages += 1;
+    }
+    expect(cursor).toBeNull();
+    expect(ids).toEqual(rows.filter(({ key }) => key === "ALLOWED").map(({ id }) => id));
+  });
+
+  test.each([1999, 2000, 2001, 4000])("terminates a fully restricted scan of %i rows", async (count) => {
+    const service = setup([
+      { action: Actions.DescribeSecret, subject: ProjectPermissionSub.Secrets, conditions: { secretName: "ALLOWED" } }
+    ]);
+    service.findMetadataByFolderIds.mockImplementation(
+      paginateMetadata(Array.from({ length: count }, (_, i) => metadata(String(i).padStart(5, "0"))))
+    );
+    let cursor: string | undefined;
+    let requests = 0;
+    do {
+      // eslint-disable-next-line no-await-in-loop
+      const page = await service.getSecretMetadata({ ...dto, cursor });
+      expect(page.secrets).toEqual([]);
+      cursor = page.nextCursor ?? undefined;
+      requests += 1;
+    } while (cursor && requests < 5);
+    expect(cursor).toBeUndefined();
+    expect(requests).toBe(Math.floor(count / 2000) + 1);
+  });
+
+  test("rejects unknown, expired and cross-scope cursors before scanning", async () => {
+    const service = setup();
+    service.findMetadataByFolderIds.mockImplementation(
+      paginateMetadata([metadata("one"), metadata("two"), metadata("three")])
+    );
+    const first = await service.getSecretMetadata({ ...dto, limit: 1 });
+    service.findMetadataByFolderIds.mockClear();
+    for (const changed of [
+      { cursor: "00000000-0000-4000-8000-000000000000" },
+      { actorId: "another-user" },
+      { actorOrgId: "another-org" },
+      { actor: "identity" },
+      { actorAuthMethod: "another-method" },
+      { projectId: "another-project" },
+      { environment: "prod" },
+      { secretPath: "/app/nested" }
+    ]) {
+      // eslint-disable-next-line no-await-in-loop
+      await expect(
+        service.getSecretMetadata({ ...dto, cursor: first.nextCursor!, ...changed } as TGetSecretMetadataDTO)
+      ).rejects.toThrow("cursor is invalid or expired");
+    }
+    service.cursorStore.forEach((entry, key) => {
+      service.cursorStore.set(key, { ...entry, expiresAt: Date.now() - 1 });
+    });
+    await expect(service.getSecretMetadata({ ...dto, cursor: first.nextCursor! })).rejects.toThrow(
+      "cursor is invalid or expired"
+    );
+    expect(service.findMetadataByFolderIds).not.toHaveBeenCalled();
+  });
+
+  test("rechecks permissions and permits retrying the same cursor", async () => {
+    const service = setup();
+    service.findMetadataByFolderIds.mockImplementation(
+      paginateMetadata([metadata("one"), metadata("three", "app", { key: "DENIED" }), metadata("two")])
+    );
+    const first = await service.getSecretMetadata({ ...dto, limit: 1 });
+    vi.mocked(service.getProjectPermission).mockResolvedValue({
+      permission: createMongoAbility<ProjectPermissionSet>([
+        {
+          action: Actions.DescribeSecret,
+          subject: ProjectPermissionSub.Secrets,
+          conditions: { secretName: "SHARED_KEY" }
+        }
+      ])
+    } as Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>);
+    const page = await service.getSecretMetadata({ ...dto, cursor: first.nextCursor! });
+    expect(page.secrets.map(({ id }) => id)).toEqual(["two"]);
+    expect(await service.getSecretMetadata({ ...dto, cursor: first.nextCursor! })).toEqual(page);
   });
 
   test("preserves managed flags and supports legacy read permissions", async () => {

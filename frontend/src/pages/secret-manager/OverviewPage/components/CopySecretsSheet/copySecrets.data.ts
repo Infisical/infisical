@@ -59,6 +59,7 @@ export const fetchCopySecrets = async (
     }
   };
 
+  const seenCursors = new Set<string>();
   let cursor: string | undefined;
   for (;;) {
     // eslint-disable-next-line no-await-in-loop
@@ -78,10 +79,11 @@ export const fetchCopySecrets = async (
     if (
       typeof page.nextCursor !== "string" ||
       !page.nextCursor ||
-      (cursor && page.nextCursor <= cursor)
+      seenCursors.has(page.nextCursor)
     ) {
       throw new Error("Couldn't finish loading secrets. Please try again.");
     }
+    seenCursors.add(page.nextCursor);
     cursor = page.nextCursor;
   }
 };

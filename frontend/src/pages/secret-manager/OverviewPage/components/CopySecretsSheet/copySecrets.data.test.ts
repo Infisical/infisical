@@ -76,7 +76,7 @@ describe("copy source metadata", () => {
     assert.equal(calls, 1);
   });
 
-  it("rejects a cursor that moves backwards", async () => {
+  it("rejects a repeated opaque cursor", async () => {
     const cursors: (string | undefined)[] = [];
     await assert.rejects(
       fetchCopySecrets(async (cursor) => {
@@ -85,7 +85,22 @@ describe("copy source metadata", () => {
       }),
       /Couldn't finish loading secrets/
     );
-    assert.deepEqual(cursors, [undefined, "page-2"]);
+    assert.deepEqual(cursors, [undefined, "page-2", "page-1"]);
+  });
+
+  it("follows unordered opaque cursors through empty and partial pages", async () => {
+    const cursors: (string | undefined)[] = [];
+    const result = await fetchCopySecrets(async (cursor) => {
+      cursors.push(cursor);
+      if (!cursor) return { secrets: [], nextCursor: "z-token" };
+      if (cursor === "z-token") return { secrets: [secret("one")], nextCursor: "a-token" };
+      return { secrets: [secret("two")], nextCursor: null };
+    });
+    assert.deepEqual(cursors, [undefined, "z-token", "a-token"]);
+    assert.deepEqual(
+      result.map(({ id }) => id),
+      ["one", "two"]
+    );
   });
 
   it("retries a rate-limited page without discarding previous pages", async () => {

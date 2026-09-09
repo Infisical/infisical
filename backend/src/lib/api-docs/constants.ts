@@ -1494,10 +1494,12 @@ export const DASHBOARD = {
     projectId: "The ID of the project containing the secrets.",
     environment: "The slug of the environment containing the secrets.",
     secretPath: "The root folder to list shared secret metadata from, including all descendant folders.",
-    cursor: "The nextCursor returned by the previous page. Omit it to start from the first accessible secret.",
+    cursor:
+      "The opaque nextCursor returned by the previous page, valid for five minutes for the same caller and query. Omit it to restart.",
     limit: "The maximum number of accessible shared secrets to return.",
     secrets: "Shared secrets the caller can describe. Values, comments, tags and custom metadata are not returned.",
-    nextCursor: "The last returned secret ID, or null when no more accessible secrets remain.",
+    nextCursor:
+      "An opaque continuation cursor, or null when scanning is complete. Continue even when the page is empty or shorter than the limit.",
     id: "The secret ID.",
     secretKey: "The secret key.",
     path: "The absolute folder path containing the secret.",

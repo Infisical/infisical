@@ -168,6 +168,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
+    | "getItemPrimary"
     | "getItem"
     | "getItemBuffer"
     | "setExpiry"
@@ -220,7 +221,8 @@ export const secretV2BridgeServiceFactory = ({
     folderDAL,
     projectEnvDAL,
     projectDAL,
-    secretDAL
+    secretDAL,
+    keyStore
   });
   const $validateSecretReferences = async (
     projectId: string,

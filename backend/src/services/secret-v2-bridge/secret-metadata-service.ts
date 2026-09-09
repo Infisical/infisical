@@ -1,7 +1,10 @@
+import { createHash, randomUUID } from "node:crypto";
+
 import { ActionProjectType, ProjectVersion, SecretType } from "@app/db/schemas";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -12,14 +15,18 @@ import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "./secret-v2-bridge-fns";
 
 const SECRET_METADATA_SCAN_BATCH_SIZE = 500;
+const SECRET_METADATA_MAX_SCAN_ROWS = 2000;
+const SECRET_METADATA_CURSOR_TTL_SECONDS = 300;
 
 export const secretMetadataServiceFactory = ({
   permissionService,
   folderDAL,
   projectEnvDAL,
   projectDAL,
-  secretDAL
+  secretDAL,
+  keyStore
 }: {
+  keyStore: Pick<TKeyStoreFactory, "getItemPrimary" | "setItemWithExpiry">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
@@ -53,6 +60,36 @@ export const secretMetadataServiceFactory = ({
     if (!hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret)) {
       return { secrets: [], nextCursor: null };
     }
+
+    const cursorScope = createHash("sha256")
+      .update(
+        JSON.stringify([
+          actor.actor,
+          actor.actorId,
+          actor.actorOrgId,
+          actor.actorAuthMethod,
+          projectId,
+          environment,
+          secretPath
+        ])
+      )
+      .digest("hex");
+    const cursorKey = (token: string) => `secret-metadata-cursor:${cursorScope}:${token}`;
+    let afterId: string | undefined;
+    if (cursor) {
+      const storedId = await keyStore.getItemPrimary(cursorKey(cursor));
+      if (!storedId) {
+        throw new BadRequestError({
+          message: "Secret metadata cursor is invalid or expired. Restart loading secrets."
+        });
+      }
+      afterId = storedId;
+    }
+    const createCursor = async (id: string) => {
+      const token = randomUUID();
+      await keyStore.setItemWithExpiry(cursorKey(token), SECRET_METADATA_CURSOR_TTL_SECONDS, id);
+      return token;
+    };
 
     const paths = await recursivelyGetSecretPaths({
       folderDAL,
@@ -101,21 +138,29 @@ export const secretMetadataServiceFactory = ({
     const scanLimit = Math.max(limit + 1, SECRET_METADATA_SCAN_BATCH_SIZE);
     const folderIds = paths.map(({ folderId }) => folderId);
     const secrets: ReturnType<typeof getAccessibleMetadata> = [];
-    let afterId = cursor;
+    let scannedRows = 0;
 
-    for (;;) {
+    while (scannedRows < SECRET_METADATA_MAX_SCAN_ROWS) {
+      const batchLimit = Math.min(scanLimit, SECRET_METADATA_MAX_SCAN_ROWS - scannedRows);
       // eslint-disable-next-line no-await-in-loop
-      const scanned = await secretDAL.findMetadataByFolderIds({ folderIds, afterId, limit: scanLimit });
+      const scanned = await secretDAL.findMetadataByFolderIds({ folderIds, afterId, limit: batchLimit });
+      scannedRows += scanned.length;
       for (const secret of getAccessibleMetadata(scanned)) {
         if (secrets.length === limit) {
-          return { secrets, nextCursor: secrets[secrets.length - 1].id };
+          // eslint-disable-next-line no-await-in-loop
+          return { secrets, nextCursor: await createCursor(secrets[secrets.length - 1].id) };
         }
         secrets.push(secret);
       }
 
-      if (scanned.length < scanLimit) return { secrets, nextCursor: null };
+      if (scanned.length < batchLimit) return { secrets, nextCursor: null };
       afterId = scanned[scanned.length - 1].id;
+      if (scannedRows === SECRET_METADATA_MAX_SCAN_ROWS) {
+        // eslint-disable-next-line no-await-in-loop
+        return { secrets, nextCursor: await createCursor(afterId) };
+      }
     }
+    return { secrets, nextCursor: null };
   };
 
   return { getSecretMetadata };
