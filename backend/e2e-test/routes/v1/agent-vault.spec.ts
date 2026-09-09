@@ -1125,21 +1125,23 @@ describe("Agent Vault V1 Router", async () => {
     test("exactly one actor id is required", async () => {
       const bundle = await createAccessBundle("member-one-actor");
 
+      // Every one of these is refused by the schema: the member object carries a refine for
+      // naming exactly one actor, so nothing reaches the service to answer with a 400.
       const none = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {});
-      expect(none.statusCode).toBe(400);
+      expect(none.statusCode).toBe(422);
 
       const empty = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, { members: [] });
-      expect(empty.statusCode).toBe(400);
+      expect(empty.statusCode).toBe(422);
 
       const nobody = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
         members: [{}]
       });
-      expect(nobody.statusCode).toBe(400);
+      expect(nobody.statusCode).toBe(422);
 
       const both = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
         members: [{ userId: seedData1.id, identityId: seedData1.machineIdentity.id }]
       });
-      expect(both.statusCode).toBe(400);
+      expect(both.statusCode).toBe(422);
     });
 
     test("one call grants several actors, dedupes repeats and skips the already granted", async () => {
@@ -1529,7 +1531,7 @@ describe("Agent Vault V1 Router", async () => {
       await testDb("membership_roles").insert({ membershipId: membership.id, role: ProjectMembershipRole.Member });
 
       const grant = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
-        userId: user.id
+        members: [{ userId: user.id }]
       });
       expect(grant.statusCode).toBe(200);
 
