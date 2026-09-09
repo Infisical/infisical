@@ -2594,7 +2594,22 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
-    const finalSubject = subjectOverride || csrObj.subject;
+    const finalSubject = subjectOverride ?? csrObj.subject;
+
+    if (finalSubject.trim().length === 0) {
+      if (basicConstraintsExtension.ca) {
+        throw new BadRequestError({
+          message:
+            "A CA certificate must have a subject. Add a subject attribute to the CSR (common name, organization, organizational unit, country, state, locality or domain component)."
+        });
+      }
+      if (altNamesArray.length === 0) {
+        throw new BadRequestError({
+          message:
+            "Certificate must have a subject or at least one subject alternative name. Add a subject attribute to the CSR (common name, organization, organizational unit, country, state, locality or domain component), or request a subject alternative name."
+        });
+      }
+    }
 
     if (altNamesArray.length) {
       // RFC 5280 4.1.2.6: subjectAltName must be marked critical when the subject is an empty sequence.
