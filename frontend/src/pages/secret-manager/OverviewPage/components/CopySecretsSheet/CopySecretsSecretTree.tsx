@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import {
-  ChevronDownIcon,
   ChevronRightIcon,
   FolderIcon,
+  FolderOpenIcon,
   KeyRoundIcon,
   SearchIcon
 } from "lucide-react";
@@ -49,11 +49,13 @@ type Props = {
   isReadOnly?: boolean;
   includeValues?: boolean;
   showChangesFilter?: boolean;
+  previewFilter?: PreviewFilter;
+  onPreviewFilterChange?: (filter: PreviewFilter) => void;
   idPrefix?: string;
   onSelectionChange: (selectedIds: string[], folderPaths: string[]) => void;
 };
 
-type PreviewFilter = "all" | "changes";
+export type PreviewFilter = "all" | "changes";
 
 const getRestrictionLabel = (secret: CopySecretsSource) => {
   if (secret.isRotated) return "Managed rotation";
@@ -200,7 +202,7 @@ const Folder = ({
             aria-label={`${isOpen ? "Collapse" : "Expand"} ${node.name}`}
           >
             {isOpen ? (
-              <ChevronDownIcon className="size-4" />
+              <FolderOpenIcon className="size-4 text-folder" aria-hidden />
             ) : (
               <>
                 <FolderIcon
@@ -375,11 +377,14 @@ export const CopySecretsSecretTree = ({
   isReadOnly = false,
   includeValues = false,
   showChangesFilter = false,
+  previewFilter: controlledPreviewFilter,
+  onPreviewFilterChange,
   idPrefix = "copy-secrets",
   onSelectionChange
 }: Props) => {
   const [search, setSearch] = useState("");
-  const [previewFilter, setPreviewFilter] = useState<PreviewFilter>("changes");
+  const [internalPreviewFilter, setInternalPreviewFilter] = useState<PreviewFilter>("changes");
+  const previewFilter = controlledPreviewFilter ?? internalPreviewFilter;
   const scopedSecrets = useMemo(
     () => filterCopyPreviewSecrets({ secrets, rootPath: sourcePath }),
     [secrets, sourcePath]
@@ -417,7 +422,8 @@ export const CopySecretsSecretTree = ({
   );
   const tree = createTree(filteredSecrets, filteredFolders, sourcePath);
   const selectionTree = createTree(scopedSecrets, scopedFolders, sourcePath);
-  let countLabel = `${selectedIds.length} secrets, ${selectedFolderPaths.length} folders selected`;
+  const selectionCountLabel = `${selectedIds.length} ${selectedIds.length === 1 ? "secret" : "secrets"} and ${selectedFolderPaths.length} ${selectedFolderPaths.length === 1 ? "folder" : "folders"} selected`;
+  let countLabel = selectionCountLabel;
   if (isReadOnly) {
     let countUnit = previewSecrets.length === 1 ? "item" : "items";
     if (previewFilter === "changes") countUnit = "changes";
@@ -481,7 +487,11 @@ export const CopySecretsSecretTree = ({
       <Tabs
         id={`${idPrefix}-selection`}
         value={previewFilter}
-        onValueChange={(value) => setPreviewFilter(value as PreviewFilter)}
+        onValueChange={(value) => {
+          const nextFilter = value as PreviewFilter;
+          setInternalPreviewFilter(nextFilter);
+          onPreviewFilterChange?.(nextFilter);
+        }}
         className={rootClassName}
       >
         <div className="flex items-center gap-2">
@@ -516,9 +526,26 @@ export const CopySecretsSecretTree = ({
     <div id={`${idPrefix}-selection`} className={`flex flex-col gap-2 ${rootClassName}`}>
       <div className="flex items-center gap-2">
         {searchInput}
-        <span className="mr-3 shrink-0 text-xs text-muted" aria-live="polite">
-          {countLabel}
-        </span>
+        {isReadOnly ? (
+          <span className="mr-3 shrink-0 text-xs text-muted" aria-live="polite">
+            {countLabel}
+          </span>
+        ) : (
+          <span
+            className="mr-3 flex shrink-0 items-center gap-2 text-xs text-muted"
+            aria-live="polite"
+          >
+            <span className="sr-only">{selectionCountLabel}</span>
+            <span className="flex items-center gap-1" aria-hidden>
+              <KeyRoundIcon className="size-3.5 text-secret" />
+              {selectedIds.length}
+            </span>
+            <span className="flex items-center gap-1" aria-hidden>
+              <FolderIcon className="size-3.5 text-folder" />
+              {selectedFolderPaths.length}
+            </span>
+          </span>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">{renderTree()}</div>
     </div>

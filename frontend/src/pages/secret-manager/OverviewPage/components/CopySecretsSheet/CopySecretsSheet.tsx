@@ -73,7 +73,7 @@ import {
   normalizeCopyPath
 } from "./copySecrets.utils";
 import { CopySecretsProperties } from "./CopySecretsProperties";
-import { CopySecretsSecretTree } from "./CopySecretsSecretTree";
+import { CopySecretsSecretTree, type PreviewFilter } from "./CopySecretsSecretTree";
 import { useCopySecretsQuery } from "./useCopySecretsQuery";
 
 type Props = {
@@ -105,6 +105,8 @@ const CopySecretsSession = ({
     initialState.destinationEnvironmentSlug
   );
   const [destinationPath, setDestinationPath] = useState(initialState.destinationPath);
+  const [destinationPreviewFilter, setDestinationPreviewFilter] =
+    useState<PreviewFilter>("changes");
   // Null keeps invocation selection pending until the current source has loaded.
   const [selection, setSelection] = useState<{ secretIds: string[]; folderPaths: string[] } | null>(
     null
@@ -485,6 +487,8 @@ const CopySecretsSession = ({
       selectedIds={[]}
       isReadOnly
       showChangesFilter
+      previewFilter={destinationPreviewFilter}
+      onPreviewFilterChange={setDestinationPreviewFilter}
       idPrefix="copy-secrets-destination"
       onSelectionChange={() => undefined}
     />
