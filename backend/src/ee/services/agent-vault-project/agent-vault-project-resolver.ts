@@ -1,10 +1,8 @@
 import { Knex } from "knex";
 
-import { AccessScope, OrgMembershipRole, ProjectType, TableName } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
-import { AgentVaultIdentities } from "@app/services/license-client";
-import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -17,13 +15,6 @@ type TResolverDeps = {
   membershipDAL: Pick<TMembershipDALFactory, "create">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
-};
-
-type TOrgAdminRow = {
-  actorUserId: string | null;
-  actorIdentityId: string | null;
-  actorGroupId: string | null;
 };
 
 export type TAgentVaultProjectResolverFactory = ReturnType<typeof agentVaultProjectResolverFactory>;
@@ -33,8 +24,7 @@ export const agentVaultProjectResolverFactory = ({
   projectDAL,
   membershipDAL,
   membershipRoleDAL,
-  keyStore,
-  usageMeteringService
+  keyStore
 }: TResolverDeps) => {
   const findDefaultProjectId = async (orgId: string, tx?: Knex): Promise<string | null> => {
     const projects = await projectDAL.find(
@@ -44,48 +34,23 @@ export const agentVaultProjectResolverFactory = ({
     return projects.length ? projects[0].id : null;
   };
 
-  const ensureDefaultProject = async (orgId: string): Promise<string> => {
-    const { projectId, created } = await db.transaction(async (tx) => {
+  const ensureDefaultProject = async (orgId: string): Promise<string> =>
+    db.transaction(async (tx) => {
       // Serialize concurrent bootstraps; a unique constraint won't work since zombie projects share type=agent-vault.
       await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [`agent-vault-bootstrap:${orgId}`]);
 
       const existingId = await findDefaultProjectId(orgId, tx);
-      if (existingId) return { projectId: existingId, created: false };
+      if (existingId) return existingId;
 
-      const adminRows = (await tx(TableName.Membership)
-        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where(`${TableName.Membership}.isActive`, true)
-        .where(`${TableName.MembershipRole}.role`, OrgMembershipRole.Admin)
-        .where(`${TableName.MembershipRole}.isTemporary`, false)
-        .select(
-          `${TableName.Membership}.actorUserId`,
-          `${TableName.Membership}.actorIdentityId`,
-          `${TableName.Membership}.actorGroupId`
-        )) as TOrgAdminRow[];
-
-      const uniq = (values: (string | null)[]) => [...new Set(values.filter((v): v is string => Boolean(v)))];
-
+      // The project starts with no members. Org admins join themselves through grant-admin-access the
+      // first time they open the product, which is also the only path for admins promoted later.
       const { project } = await bootstrapAgentVaultProject(
-        {
-          orgId,
-          adminUserIds: uniq(adminRows.map((r) => r.actorUserId)),
-          adminIdentityIds: uniq(adminRows.map((r) => r.actorIdentityId)),
-          adminGroupIds: uniq(adminRows.map((r) => r.actorGroupId))
-        },
+        { orgId },
         { projectDAL, membershipDAL, membershipRoleDAL },
         tx
       );
-
-      return { projectId: project.id, created: true };
+      return project.id;
     });
-
-    if (created) {
-      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
-    }
-    return projectId;
-  };
 
   return {
     resolve: (actorOrgId: string): Promise<string> =>

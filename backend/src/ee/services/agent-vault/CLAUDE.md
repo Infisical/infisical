@@ -34,6 +34,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `GET /agent-vault/project` creates it on first access. That REST deviation is deliberate.
 - Generic project create and delete are blocked for this type, and the project is excluded from
   `countOfBillableOrgProjects`. Break the exclusion and every org loses a workspace slot.
+- The lazy bootstrap seeds no members (PAM's sweeps in every org admin; this one deliberately does not). Org
+  admins join through `grant-admin-access`, from the product tile or the layout's `beforeLoad` when they arrive
+  by link, and that route is where the `agent_vault_identities` meter moves for them. Only org creation seeds
+  the creator.
 - Wherever code branches on `ProjectType.PAM`, add the Agent Vault arm: `AgentVaultIdentities` metering emits,
   the admin-or-member predefined roles filter, `AuditLogStreamProduct`, `grantAgentVaultAccess` on the org
   invite. See the root `CLAUDE.md`.

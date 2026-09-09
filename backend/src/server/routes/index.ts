@@ -1575,7 +1575,8 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    projectMembershipDAL
+    projectMembershipDAL,
+    usageMeteringService
   });
 
   const rateLimitService = rateLimitServiceFactory({
@@ -1819,8 +1820,7 @@ export const registerRoutes = async (
     projectDAL,
     membershipDAL,
     membershipRoleDAL,
-    keyStore,
-    usageMeteringService
+    keyStore
   });
 
   const agentVaultMembershipService = agentVaultMembershipServiceFactory({

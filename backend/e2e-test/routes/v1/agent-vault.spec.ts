@@ -151,7 +151,7 @@ const createAccessBundle = async (name: string) => {
 };
 
 describe("Agent Vault V1 Router", async () => {
-  test("resolving the project bootstraps it and seeds org admins", async () => {
+  test("resolving the project bootstraps it empty, and an org admin joins through grant-admin-access", async () => {
     const res = await inject("GET", "/api/v1/agent-vault/project");
     expect(res.statusCode).toBe(200);
 
@@ -161,6 +161,15 @@ describe("Agent Vault V1 Router", async () => {
     const project = await testDb("projects").where({ id: projectId }).first();
     expect(project.type).toBe(ProjectType.AgentVault);
     expect(project.orgId).toBe(seedData1.organization.id);
+
+    const seeded = await testDb("memberships").where({ scope: AccessScope.Project, scopeProjectId: projectId });
+    expect(seeded).toHaveLength(0);
+
+    const denied = await inject("GET", `/api/v1/projects/${projectId}/permissions`);
+    expect(denied.statusCode).toBe(403);
+
+    const join = await inject("POST", `/api/v1/organization-admin/projects/${projectId}/grant-admin-access`);
+    expect(join.statusCode).toBe(200);
 
     const membership = await testDb("memberships")
       .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
