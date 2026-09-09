@@ -55,7 +55,7 @@ export const RequestSecretTab = () => {
           Secret Requests
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-sharing" />
         </CardTitle>
-        <CardDescription>Request and manage secrets from your team</CardDescription>
+        <CardDescription>Manage links that let others send you a secret.</CardDescription>
         <CardAction>
           <Button
             variant="project"
@@ -88,7 +88,9 @@ export const RequestSecretTab = () => {
             </AlertDialogMedia>
             <AlertDialogTitle>Delete secret request?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The secret request link will no longer be accessible.
+              This action cannot be undone. The link for
+              {` ${popUp.deleteSecretRequestConfirmation.data?.name || "this request"} `}
+              will no longer accept a secret.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

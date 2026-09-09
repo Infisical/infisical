@@ -29,7 +29,7 @@ type Props = {
 export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const { isPending, data } = useGetSecretRequests({
+  const { isPending, isError, data } = useGetSecretRequests({
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -38,14 +38,14 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
 
   return (
     <div>
-      {(isPending || hasSecrets) && (
+      {(isPending || hasSecrets) && !isError && (
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-1/4">Name</TableHead>
               <TableHead>Access Type</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Expires</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead>Expires At</TableHead>
               <TableHead>Status</TableHead>
               <TableHead aria-label="button" className="w-5" />
             </TableRow>
@@ -70,20 +70,33 @@ export const RequestedSecretsTable = ({ handlePopUpOpen }: Props) => {
           </TableBody>
         </Table>
       )}
-      {hasSecrets && data.totalCount >= perPage && data.totalCount !== undefined && (
+      {hasSecrets && data.totalCount > perPage && (
         <Pagination
           count={data.totalCount}
           page={page}
           perPage={perPage}
           onChangePage={(newPage) => setPage(newPage)}
-          onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+          onChangePerPage={(newPerPage) => {
+            setPerPage(newPerPage);
+            setPage(1);
+          }}
         />
       )}
-      {!isPending && !data?.secrets?.length && (
+      {!isPending && isError && (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>No secrets requested yet</EmptyTitle>
-            <EmptyDescription>Request a secret to get started</EmptyDescription>
+            <EmptyTitle>Could Not Load Secret Requests</EmptyTitle>
+            <EmptyDescription>Refresh the page to try again.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+      {!isPending && !isError && !data?.secrets?.length && (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>No Secret Requests</EmptyTitle>
+            <EmptyDescription>
+              Create a link that lets someone send you a secret securely.
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}
