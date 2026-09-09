@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { OpenRouterLimitReset } from "@app/hooks/api/secretRotationsV2/types/open-router-api-key-rotation";
@@ -128,7 +128,7 @@ export const OpenRouterApiKeyRotationParametersFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field orientation="horizontal" data-invalid={Boolean(error)}>
-            <Switch
+            <Toggle
               id="include-byok-in-limit"
               checked={value ?? false}
               onCheckedChange={onChange}

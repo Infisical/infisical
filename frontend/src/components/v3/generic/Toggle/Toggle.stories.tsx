@@ -2,16 +2,16 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldTitle } from "../Field";
 import { Label } from "../Label";
-import { Switch } from "./Switch";
+import { Toggle } from "./Toggle";
 
 /**
- * Switches allow users to toggle between two states (on/off).
- * Use switches for binary settings that take effect immediately.
+ * Toggles allow users to switch between two states (on/off).
+ * Use toggles for binary settings that take effect immediately.
  * The variant determines the color when checked.
  */
 const meta = {
-  title: "Generic/Switch",
-  component: Switch,
+  title: "Generic/Toggle",
+  component: Toggle,
   parameters: {
     layout: "centered"
   },
@@ -46,7 +46,7 @@ const meta = {
   globals: {
     backgrounds: { value: "card" }
   }
-} satisfies Meta<typeof Switch>;
+} satisfies Meta<typeof Toggle>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -60,7 +60,7 @@ export const Outline: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant for general switch toggles."
+        story: "Use this variant for general-purpose toggles."
       }
     }
   }
@@ -195,7 +195,7 @@ export const Unchecked: Story = {
   parameters: {
     docs: {
       description: {
-        story: "All switches share the same unchecked state regardless of variant."
+        story: "All toggles share the same unchecked state regardless of variant."
       }
     }
   }
@@ -255,14 +255,14 @@ export const WithLabel: Story = {
     docs: {
       description: {
         story:
-          "The minimum accessible pairing — a `Label` whose `htmlFor` matches the `Switch`'s `id`. Clicking the label toggles the switch."
+          "The minimum accessible pairing — a `Label` whose `htmlFor` matches the `Toggle`'s `id`. Clicking the label flips the toggle."
       }
     }
   },
   render: () => (
     <div className="flex w-80 items-center gap-3">
-      <Switch id="switch-mfa" />
-      <Label htmlFor="switch-mfa">Require MFA on sign-in</Label>
+      <Toggle id="toggle-mfa" />
+      <Label htmlFor="toggle-mfa">Require MFA on sign-in</Label>
     </div>
   )
 };
@@ -273,7 +273,7 @@ export const WithDescription: Story = {
     docs: {
       description: {
         story:
-          "Pair a `Switch` with `FieldTitle` and `FieldDescription` inside a horizontal `Field` for the canonical settings-row layout — title and helper text on the left, control on the right."
+          "Pair a `Toggle` with `FieldTitle` and `FieldDescription` inside a horizontal `Field` for the canonical settings-row layout — title and helper text on the left, control on the right."
       }
     }
   },
@@ -285,7 +285,7 @@ export const WithDescription: Story = {
           Require a second factor when signing in from a new device.
         </FieldDescription>
       </FieldContent>
-      <Switch defaultChecked />
+      <Toggle defaultChecked />
     </Field>
   )
 };
@@ -309,7 +309,7 @@ export const InFieldGroup: Story = {
             Require a second factor when signing in from a new device.
           </FieldDescription>
         </FieldContent>
-        <Switch defaultChecked />
+        <Toggle defaultChecked />
       </Field>
       <Field orientation="horizontal">
         <FieldContent>
@@ -318,7 +318,7 @@ export const InFieldGroup: Story = {
             Send a digest of audit events every Monday at 09:00 UTC.
           </FieldDescription>
         </FieldContent>
-        <Switch />
+        <Toggle />
       </Field>
       <Field orientation="horizontal">
         <FieldContent>
@@ -327,7 +327,7 @@ export const InFieldGroup: Story = {
             Help us improve Infisical by sharing anonymous usage data.
           </FieldDescription>
         </FieldContent>
-        <Switch defaultChecked />
+        <Toggle defaultChecked />
       </Field>
     </FieldGroup>
   )

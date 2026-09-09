@@ -17,7 +17,7 @@ import {
   DocumentationLinkBadge,
   Input,
   Skeleton,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   useGetCertificateCleanupConfig,
@@ -121,7 +121,7 @@ export const CertificateCleanupTab = () => {
               control={control}
               name="isEnabled"
               render={({ field: { value, onChange } }) => (
-                <Switch variant="project" checked={value} onCheckedChange={onChange} />
+                <Toggle variant="project" checked={value} onCheckedChange={onChange} />
               )}
             />
           </CardAction>
@@ -180,7 +180,7 @@ export const CertificateCleanupTab = () => {
               name="skipCertsWithActiveSyncs"
               render={({ field: { value, onChange } }) => (
                 <div className="flex items-center gap-4 border-t border-border py-4">
-                  <Switch
+                  <Toggle
                     variant="project"
                     checked={isEnabled && value}
                     onCheckedChange={onChange}

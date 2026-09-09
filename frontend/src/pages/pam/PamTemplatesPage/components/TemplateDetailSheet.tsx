@@ -27,8 +27,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
@@ -626,7 +626,7 @@ const SettingsTab = ({
                         rotate only when triggered manually.
                       </p>
                     </div>
-                    <Switch
+                    <Toggle
                       variant="pam"
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
@@ -725,7 +725,7 @@ const SettingsTab = ({
               render={({ field }) => (
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-foreground">Check credentials</p>
-                  <Switch
+                  <Toggle
                     variant="pam"
                     checked={field.value ?? false}
                     onCheckedChange={field.onChange}

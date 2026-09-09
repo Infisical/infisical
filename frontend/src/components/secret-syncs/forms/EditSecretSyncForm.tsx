@@ -14,7 +14,7 @@ import {
   Stepper,
   StepperList,
   StepperStep,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
@@ -266,7 +266,7 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
                         Turn off to only sync manually.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="auto-sync-enabled"
                       variant="project"
                       checked={value}

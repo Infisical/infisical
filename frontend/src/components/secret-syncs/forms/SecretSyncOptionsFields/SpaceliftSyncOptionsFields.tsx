@@ -10,7 +10,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -39,7 +39,7 @@ export const SpaceliftSyncOptionsFields = () => {
                   the web GUI or through the API.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="spacelift-write-only"
                 variant="project"
                 checked={value}

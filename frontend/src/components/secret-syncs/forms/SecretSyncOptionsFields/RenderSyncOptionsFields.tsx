@@ -6,7 +6,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -28,7 +28,7 @@ export const RenderSyncOptionsFields = () => {
                 Services are automatically redeployed when secrets change.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id="render-auto-redeploy-services"
               variant="project"
               checked={value}
