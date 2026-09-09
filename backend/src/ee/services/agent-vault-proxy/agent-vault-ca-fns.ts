@@ -39,6 +39,12 @@ export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
     });
   }
 
+  if (certificate.notBefore > new Date()) {
+    throw new BadRequestError({
+      message: `The certificate authority is not valid until ${certificate.notBefore.toISOString()}. Nothing will accept the certificates it signs before then.`
+    });
+  }
+
   const digest = crypto.nativeCrypto
     .createHash("sha256")
     .update(Buffer.from(certificate.rawData))

@@ -39,7 +39,7 @@ const grantScope = (projectId: string, accessBundleId?: string) => ({
 export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundle);
 
-  const findForList = async (
+  const findSummaries = async (
     { projectId, accessBundleIds }: { projectId: string; accessBundleIds: string[] | null },
     tx?: Knex
   ): Promise<TAgentVaultAccessBundleListRow[]> => {
@@ -199,5 +199,5 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForList, findByIdInProject, lockByIdInProject, findMembers };
+  return { ...orm, findSummaries, findByIdInProject, lockByIdInProject, findMembers };
 };

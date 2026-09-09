@@ -167,16 +167,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     if (membership) return;
 
+    // Named, because a batch grant rejects on the first offender and the caller would otherwise have to bisect.
+    let actor = `group '${groupId}'`;
+    if (userId) actor = `user '${userId}'`;
+    else if (identityId) actor = `machine identity '${identityId}'`;
+
     if (!groupId && (await isInProjectThroughGroup({ projectId, userId, identityId }))) {
       throw new BadRequestError({
-        message:
-          "That user or machine identity is in Agent Vault through a group. Grant the access bundle to the group, or add them directly under Access Control first."
+        message: `The ${actor} is in Agent Vault through a group. Grant the access bundle to the group, or add them directly under Access Control first.`
       });
     }
 
     throw new BadRequestError({
-      message:
-        "That user, machine identity or group is not a member of Agent Vault. Add them under Access Control first."
+      message: `The ${actor} is not a member of Agent Vault. Add them under Access Control first.`
     });
   };
 
@@ -303,7 +306,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const reachability = await getAgentVaultReachability({ permissionService, membershipDAL }, { projectId, ctx });
 
     const bundle = await agentVaultAccessBundleDAL.findByIdInProject({ id: accessBundleId, projectId });
-    const unreachable = reachability.accessBundleIds && !reachability.accessBundleIds.includes(accessBundleId);
+    // Postgres compares uuids case-insensitively but this list does not, so an uppercase id would miss.
+    const unreachable =
+      reachability.accessBundleIds && !reachability.accessBundleIds.includes(accessBundleId.toLowerCase());
     if (!bundle || unreachable) {
       throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
     }
@@ -321,7 +326,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    return agentVaultAccessBundleDAL.findForList({ projectId, accessBundleIds });
+    return agentVaultAccessBundleDAL.findSummaries({ projectId, accessBundleIds });
   };
 
   const getAccessBundleById = async (dto: TGetAccessBundleDTO) => {
