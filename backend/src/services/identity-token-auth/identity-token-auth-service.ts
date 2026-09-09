@@ -516,38 +516,22 @@ export const identityTokenAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.CreateToken,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create token for identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.CreateToken,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
     }
+
+    await assertIdentityAuthMutationAllowed(
+      { permissionService, orgDAL, membershipIdentityDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.CreateToken,
+        baseMessage: "Failed to create token for identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 

@@ -12,7 +12,8 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 const PROJECT_ACTION_BY_ORG_ACTION = {
   [OrgPermissionIdentityActions.EditAuth]: ProjectPermissionIdentityActions.EditAuth,
-  [OrgPermissionIdentityActions.RevokeAuth]: ProjectPermissionIdentityActions.RevokeAuth
+  [OrgPermissionIdentityActions.RevokeAuth]: ProjectPermissionIdentityActions.RevokeAuth,
+  [OrgPermissionIdentityActions.CreateToken]: ProjectPermissionIdentityActions.CreateToken
 } as const;
 
 type TIdentityAuthPermissionDeps = {
@@ -36,8 +37,8 @@ type TAssertIdentityAuthMutationAllowedDTO = {
   actorOrgId: string;
 };
 
-// Repointing an identity's auth trust lets you authenticate as that identity, so the actor has to
-// out-rank every role the target holds. Only bites on the legacy privilege system: on the new one
+// Repointing an identity's auth trust, or minting a credential for it, lets you authenticate as that
+// identity, so the actor has to out-rank every role the target holds. Only bites on the legacy privilege system: on the new one
 // `assertRoleSetBoundary` reduces to the action check the caller already ran.
 export const assertIdentityAuthMutationAllowed = async (
   { permissionService, orgDAL, membershipIdentityDAL }: TIdentityAuthPermissionDeps,

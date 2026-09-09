@@ -37,6 +37,9 @@ const projectMember = createMongoAbility<MongoAbility<ProjectPermissionSet>>(pro
 const projectEditAuthOnly = createMongoAbility<MongoAbility<ProjectPermissionSet>>([
   { action: ProjectPermissionIdentityActions.EditAuth, subject: ProjectPermissionSub.Identity }
 ]);
+const projectCreateTokenOnly = createMongoAbility<MongoAbility<ProjectPermissionSet>>([
+  { action: ProjectPermissionIdentityActions.CreateToken, subject: ProjectPermissionSub.Identity }
+]);
 
 type TScopeCall = { scope: AccessScope; orgId: string; projectId?: string };
 
@@ -45,6 +48,7 @@ const runBoundary = async ({
   actorPermission,
   targetPermissions,
   projectId,
+  action = OrgPermissionIdentityActions.EditAuth,
   scopeCalls = [],
   roleLookups = []
 }: {
@@ -52,6 +56,7 @@ const runBoundary = async ({
   actorPermission: MongoAbility;
   targetPermissions: MongoAbility[];
   projectId?: string;
+  action?: OrgPermissionIdentityActions.EditAuth | OrgPermissionIdentityActions.CreateToken;
   scopeCalls?: TScopeCall[];
   roleLookups?: string[];
 }) => {
@@ -81,7 +86,7 @@ const runBoundary = async ({
     identityId: "identity-1",
     orgId: "org-1",
     projectId,
-    action: OrgPermissionIdentityActions.EditAuth,
+    action,
     baseMessage: "Failed to add token auth to identity with more privileged role",
     actor: ActorType.USER,
     actorId: "user-1",
@@ -201,6 +206,44 @@ describe("assertIdentityAuthMutationAllowed", () => {
       });
       expect(scopeCalls).toEqual([]);
       expect(roleLookups).toEqual([]);
+    });
+  });
+
+  describe("credential issuance", () => {
+    test("a create-token-only actor may not mint a credential for an admin identity", async () => {
+      await expect(
+        runBoundary({
+          actorPermission: projectCreateTokenOnly,
+          targetPermissions: [projectAdmin],
+          projectId: "project-1",
+          action: OrgPermissionIdentityActions.CreateToken
+        })
+      ).rejects.toThrow(PermissionBoundaryError);
+      await expect(
+        runBoundary({
+          actorPermission: orgMember,
+          targetPermissions: [orgAdmin],
+          action: OrgPermissionIdentityActions.CreateToken
+        })
+      ).rejects.toThrow(PermissionBoundaryError);
+    });
+
+    test("an admin actor may mint a credential for a member identity", async () => {
+      await expect(
+        runBoundary({
+          actorPermission: projectAdmin,
+          targetPermissions: [projectMember],
+          projectId: "project-1",
+          action: OrgPermissionIdentityActions.CreateToken
+        })
+      ).resolves.toBeUndefined();
+      await expect(
+        runBoundary({
+          actorPermission: orgAdmin,
+          targetPermissions: [orgMember],
+          action: OrgPermissionIdentityActions.CreateToken
+        })
+      ).resolves.toBeUndefined();
     });
   });
 });
