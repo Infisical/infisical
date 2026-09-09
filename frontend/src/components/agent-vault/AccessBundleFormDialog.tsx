@@ -59,21 +59,25 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
   }, [isOpen, accessBundle, reset]);
 
   const onSubmit = async ({ name, description }: FormData) => {
-    if (accessBundle) {
-      await updateAccessBundle.mutateAsync({
-        accessBundleId: accessBundle.id,
-        name,
-        description: description || null
-      });
-    } else {
-      await createAccessBundle.mutateAsync({ name, description: description || undefined });
-    }
+    try {
+      if (accessBundle) {
+        await updateAccessBundle.mutateAsync({
+          accessBundleId: accessBundle.id,
+          name,
+          description: description || null
+        });
+      } else {
+        await createAccessBundle.mutateAsync({ name, description: description || undefined });
+      }
 
-    createNotification({
-      text: `Access bundle "${name}" ${isUpdate ? "updated" : "created"}`,
-      type: "success"
-    });
-    onOpenChange(false);
+      createNotification({
+        text: `Access bundle "${name}" ${isUpdate ? "updated" : "created"}`,
+        type: "success"
+      });
+      onOpenChange(false);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

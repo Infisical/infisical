@@ -55,11 +55,18 @@ const schema = z
     name: slugSchema({ max: 64, field: "Name" }),
     unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost),
     bypassHosts: z.string().trim().max(1024).optional(),
-    pollInterval: z.coerce
-      .number({ invalid_type_error: "Poll interval is required" })
-      .int("Poll interval must be a whole number of seconds")
-      .min(10, "Poll interval must be at least 10 seconds")
-      .max(300, "Poll interval must be at most 300 seconds")
+    // Guarded before coercion: z.coerce turns "" into 0, which would report the range error instead.
+    pollInterval: z
+      .string()
+      .or(z.number())
+      .refine((value) => String(value).trim() !== "", "Poll interval is required")
+      .pipe(
+        z.coerce
+          .number({ invalid_type_error: "Poll interval is required" })
+          .int("Poll interval must be a whole number of seconds")
+          .min(10, "Poll interval must be at least 10 seconds")
+          .max(300, "Poll interval must be at most 300 seconds")
+      )
   })
   // Only under Deny, where the field is on screen: an Allow proxy ignores the list, and a stale
   // value in a hidden field would block Save with an error nothing shows.
@@ -111,23 +118,27 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
   }, [isOpen, proxy, reset]);
 
   const onSubmit = async (data: FormData) => {
-    const payload = {
-      name: data.name,
-      unmatchedHost: data.unmatchedHost,
-      bypassHosts: data.bypassHosts ? data.bypassHosts : null,
-      pollInterval: data.pollInterval
-    };
+    try {
+      const payload = {
+        name: data.name,
+        unmatchedHost: data.unmatchedHost,
+        bypassHosts: data.bypassHosts ? data.bypassHosts : null,
+        pollInterval: data.pollInterval
+      };
 
-    if (proxy) {
-      await updateProxy.mutateAsync({ proxyId: proxy.id, ...payload });
-      createNotification({ text: `Proxy "${data.name}" updated`, type: "success" });
-    } else {
-      const result = await createProxy.mutateAsync(payload);
-      createNotification({ text: `Proxy "${data.name}" created`, type: "success" });
-      onCreated?.(result.enrollment);
+      if (proxy) {
+        await updateProxy.mutateAsync({ proxyId: proxy.id, ...payload });
+        createNotification({ text: `Proxy "${data.name}" updated`, type: "success" });
+      } else {
+        const result = await createProxy.mutateAsync(payload);
+        createNotification({ text: `Proxy "${data.name}" created`, type: "success" });
+        onCreated?.(result.enrollment);
+      }
+
+      onOpenChange(false);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
-
-    onOpenChange(false);
   };
 
   return (
@@ -136,7 +147,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
         {/* DialogContent spaces its own children; the form is the only one, so it has to carry the layout. */}
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
           <DialogHeader>
-            <DialogTitle>{isUpdate ? "Edit Proxy" : "Create Proxy"}</DialogTitle>
+            <DialogTitle>{isUpdate ? "Edit Settings" : "Create Proxy"}</DialogTitle>
             <DialogDescription>
               Set how this proxy handles your agents&apos; traffic.
             </DialogDescription>

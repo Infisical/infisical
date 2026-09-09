@@ -92,16 +92,20 @@ export const MembersTab = () => {
   }, [members, search]);
 
   const handleRemove = async () => {
-    if (!memberToRemove) return;
-    await removeMember.mutateAsync({
-      projectId: currentProject.id,
-      userId: memberToRemove.user.id
-    });
-    createNotification({
-      text: `${displayName(memberToRemove)} removed`,
-      type: "success"
-    });
-    setMemberToRemove(null);
+    try {
+      if (!memberToRemove) return;
+      await removeMember.mutateAsync({
+        projectId: currentProject.id,
+        userId: memberToRemove.user.id
+      });
+      createNotification({
+        text: `${displayName(memberToRemove)} removed`,
+        type: "success"
+      });
+      setMemberToRemove(null);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

@@ -116,17 +116,21 @@ export const ConnectionsCard = ({
     );
 
   const handleDelete = async () => {
-    if (!connectionToDelete) return;
+    try {
+      if (!connectionToDelete) return;
 
-    await deleteConnection.mutateAsync({
-      accessBundleId,
-      connectionId: connectionToDelete.id
-    });
-    createNotification({
-      text: `Connection "${connectionToDelete.name}" deleted`,
-      type: "success"
-    });
-    setConnectionToDelete(null);
+      await deleteConnection.mutateAsync({
+        accessBundleId,
+        connectionId: connectionToDelete.id
+      });
+      createNotification({
+        text: `Connection "${connectionToDelete.name}" deleted`,
+        type: "success"
+      });
+      setConnectionToDelete(null);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (
@@ -226,9 +230,14 @@ export const ConnectionsCard = ({
                 </TableCell>
                 <TableCell>{CREDENTIAL_LABELS[connection.credential.type]}</TableCell>
                 <TableCell>
-                  <span className="font-mono text-xs">
-                    {displayHostPattern(connection.hostPattern)}
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="block max-w-72 truncate font-mono text-xs">
+                        {displayHostPattern(connection.hostPattern)}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{displayHostPattern(connection.hostPattern)}</TooltipContent>
+                  </Tooltip>
                 </TableCell>
                 <TableCell>
                   <Tooltip>

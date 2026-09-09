@@ -37,12 +37,16 @@ export const ProductRoleDialog = ({ isOpen, onOpenChange, subject, currentRole, 
   }, [isOpen, currentRole]);
 
   const handleSave = async () => {
-    await updateRole.mutateAsync({ projectId: currentProject.id, ...actor, role });
-    createNotification({
-      text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
-      type: "success"
-    });
-    onOpenChange(false);
+    try {
+      await updateRole.mutateAsync({ projectId: currentProject.id, ...actor, role });
+      createNotification({
+        text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
+        type: "success"
+      });
+      onOpenChange(false);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

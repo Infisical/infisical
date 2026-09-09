@@ -13,12 +13,16 @@ export const DeleteAccessBundleDialog = ({ accessBundle, onOpenChange, onDeleted
   const deleteAccessBundle = useDeleteAgentVaultAccessBundle();
 
   const handleDelete = async () => {
-    if (!accessBundle) return;
+    try {
+      if (!accessBundle) return;
 
-    await deleteAccessBundle.mutateAsync(accessBundle.id);
-    createNotification({ text: `Access bundle "${accessBundle.name}" deleted`, type: "success" });
-    onOpenChange(false);
-    onDeleted?.();
+      await deleteAccessBundle.mutateAsync(accessBundle.id);
+      createNotification({ text: `Access bundle "${accessBundle.name}" deleted`, type: "success" });
+      onOpenChange(false);
+      onDeleted?.();
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

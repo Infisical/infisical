@@ -52,17 +52,21 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   const members = bundleDetails?.members ?? [];
 
   const handleRemove = async () => {
-    if (!accessBundle || !memberToRemove) return;
+    try {
+      if (!accessBundle || !memberToRemove) return;
 
-    await removeMember.mutateAsync({
-      accessBundleId: accessBundle.id,
-      memberId: memberToRemove.id
-    });
-    createNotification({
-      text: `Access bundle revoked from "${memberDisplayName(memberToRemove)}"`,
-      type: "success"
-    });
-    setMemberToRemove(null);
+      await removeMember.mutateAsync({
+        accessBundleId: accessBundle.id,
+        memberId: memberToRemove.id
+      });
+      createNotification({
+        text: `Access bundle revoked from "${memberDisplayName(memberToRemove)}"`,
+        type: "success"
+      });
+      setMemberToRemove(null);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

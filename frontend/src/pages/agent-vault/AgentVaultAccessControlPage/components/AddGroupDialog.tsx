@@ -46,11 +46,15 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   }, [orgGroups, projectGroups]);
 
   const handleAdd = async () => {
-    if (!group) return;
-    await addMember.mutateAsync({ projectId: currentProject.id, groupId: group.value, role });
-    createNotification({ text: `"${group.label}" added`, type: "success" });
-    setGroup(null);
-    onOpenChange(false);
+    try {
+      if (!group) return;
+      await addMember.mutateAsync({ projectId: currentProject.id, groupId: group.value, role });
+      createNotification({ text: `"${group.label}" added`, type: "success" });
+      setGroup(null);
+      onOpenChange(false);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

@@ -11,7 +11,9 @@ const formatRemaining = (remainingSeconds: number) => {
 
 /** Live countdown to an expiry, ticking every second. */
 export const useTimeRemaining = (expiresAt?: string | null) => {
-  const [now, setNow] = useState(Date.now());
+  // Date.now() at render, not at mount: a value seeded once would render the first frame stale.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => setNow(Date.now()), [expiresAt]);
 
   useEffect(() => {
     if (!expiresAt) return undefined;

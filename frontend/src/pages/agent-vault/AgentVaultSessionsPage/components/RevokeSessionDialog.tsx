@@ -14,9 +14,13 @@ export const RevokeSessionDialog = ({ session, onOpenChange }: Props) => {
   const handleRevoke = async () => {
     if (!session) return;
 
-    await revokeSession.mutateAsync(session.id);
-    createNotification({ text: `Session for "${session.actorName}" revoked`, type: "success" });
-    onOpenChange(false);
+    try {
+      await revokeSession.mutateAsync(session.id);
+      createNotification({ text: `Session for "${session.actorName}" revoked`, type: "success" });
+      onOpenChange(false);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

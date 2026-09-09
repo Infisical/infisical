@@ -107,30 +107,34 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
   }, [users, groupMemberships, identities, grantedIds]);
 
   const handleAdd = async () => {
-    if (!selected.length) return;
+    try {
+      if (!selected.length) return;
 
-    const { members: granted, skippedCount } = await addMembers.mutateAsync({
-      accessBundleId,
-      members: selected.map((option) => ({
-        ...(option.kind === MemberKind.User && { userId: option.id }),
-        ...(option.kind === MemberKind.Identity && { identityId: option.id }),
-        ...(option.kind === MemberKind.Group && { groupId: option.id })
-      }))
-    });
-
-    if (!granted.length) {
-      createNotification({ text: "They already had this access bundle", type: "info" });
-    } else {
-      const grantedText =
-        granted.length === 1 && selected.length === 1
-          ? `Access bundle granted to "${selected[0].label}"`
-          : `Access bundle granted to ${granted.length} members`;
-      createNotification({
-        text: skippedCount ? `${grantedText}. ${skippedCount} already had it.` : grantedText,
-        type: "success"
+      const { members: granted, skippedCount } = await addMembers.mutateAsync({
+        accessBundleId,
+        members: selected.map((option) => ({
+          ...(option.kind === MemberKind.User && { userId: option.id }),
+          ...(option.kind === MemberKind.Identity && { identityId: option.id }),
+          ...(option.kind === MemberKind.Group && { groupId: option.id })
+        }))
       });
+
+      if (!granted.length) {
+        createNotification({ text: "They already had this access bundle", type: "info" });
+      } else {
+        const grantedText =
+          granted.length === 1 && selected.length === 1
+            ? `Access bundle granted to "${selected[0].label}"`
+            : `Access bundle granted to ${granted.length} members`;
+        createNotification({
+          text: skippedCount ? `${grantedText}. ${skippedCount} already had it.` : grantedText,
+          type: "success"
+        });
+      }
+      onOpenChange(false);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
-    onOpenChange(false);
   };
 
   return (

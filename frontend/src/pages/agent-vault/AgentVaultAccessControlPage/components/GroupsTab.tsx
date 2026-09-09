@@ -64,13 +64,17 @@ export const GroupsTab = () => {
   }, [groups, search]);
 
   const handleRemove = async () => {
-    if (!groupToRemove) return;
-    await removeMember.mutateAsync({ projectId: currentProject.id, groupId: groupToRemove.id });
-    createNotification({
-      text: `"${groupToRemove.name}" removed`,
-      type: "success"
-    });
-    setGroupToRemove(null);
+    try {
+      if (!groupToRemove) return;
+      await removeMember.mutateAsync({ projectId: currentProject.id, groupId: groupToRemove.id });
+      createNotification({
+        text: `"${groupToRemove.name}" removed`,
+        type: "success"
+      });
+      setGroupToRemove(null);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

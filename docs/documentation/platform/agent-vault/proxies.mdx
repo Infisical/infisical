@@ -44,7 +44,7 @@ A comma-separated list of hosts that stay reachable under **Deny**, with no cred
 
 How often, in seconds, the proxy re-checks each active session with Infisical and picks up settings changes. The default is 60 and the range is 10 to 300. Every "within one poll interval" on these pages means this number.
 
-If the proxy can't reach Infisical, it keeps serving what it last knew for five poll intervals, then stops attaching credentials until it can check again. The Proxies page marks a proxy **Unhealthy** after three missed check-ins.
+If the proxy can't reach Infisical, it keeps serving what it last knew for five poll intervals, then refuses the affected requests with a 502 until it can check again. It never forwards a request without the credential it was supposed to attach. The Proxies page marks a proxy **Unhealthy** after three missed check-ins.
 
 ## Certificate trust
 
@@ -52,7 +52,11 @@ The proxy terminates TLS to attach the credential, so each agent has to trust th
 
 `infisical av run` handles this. It fetches the certificate from the proxy on every run and sets `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT` for the agent. On macOS it also offers to add the certificate to your login keychain, for tools such as `gh` and `docker` that read the system trust store. Pass `--no-ca-trust` to skip the step on a machine that already trusts the proxy.
 
-An agent you start without the CLI, such as a container that sets `HTTPS_PROXY` itself, needs the certificate mounted and those variables set. Fetch it from `http://<proxy-address>/_agent-vault/ca`.
+An agent you start without the CLI, such as a container that sets `HTTPS_PROXY` itself, needs the certificate mounted and those variables set. `http://<proxy-address>/_agent-vault/ca` returns the certificate inside a JSON object, so write the `certificate` field out on its own:
+
+```bash
+curl -s http://<proxy-address>/_agent-vault/ca | jq -r .certificate > ca.pem
+```
 
 The session token travels to the proxy with every request, so run the proxy where only your agents can reach it: the same host, a private network, or a container network.
 

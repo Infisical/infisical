@@ -71,13 +71,18 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
 
   const handleCreate = async () => {
     if (!selectedBundle) return;
-    const session = await createSession.mutateAsync({
-      accessBundles: [selectedBundle.name],
-      ttl
-    });
-    createNotification({ text: "Session created", type: "success" });
-    onCreated(session);
-    onOpenChange(false);
+
+    try {
+      const session = await createSession.mutateAsync({
+        accessBundles: [selectedBundle.name],
+        ttl
+      });
+      createNotification({ text: "Session created", type: "success" });
+      onCreated(session);
+      onOpenChange(false);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (

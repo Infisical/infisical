@@ -168,24 +168,38 @@ export const AgentVaultProxiesPage = () => {
     );
 
   const handleDelete = async () => {
-    if (!proxyToDelete) return;
-    await deleteProxy.mutateAsync(proxyToDelete.id);
-    createNotification({ text: `Proxy "${proxyToDelete.name}" deleted`, type: "success" });
-    setProxyToDelete(null);
+    try {
+      if (!proxyToDelete) return;
+      await deleteProxy.mutateAsync(proxyToDelete.id);
+      createNotification({ text: `Proxy "${proxyToDelete.name}" deleted`, type: "success" });
+      setProxyToDelete(null);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   const handleRevoke = async () => {
     if (!proxyToRevoke) return;
-    await revokeProxy.mutateAsync(proxyToRevoke.id);
-    createNotification({ text: `Proxy "${proxyToRevoke.name}" revoked`, type: "success" });
-    setProxyToRevoke(null);
+
+    try {
+      await revokeProxy.mutateAsync(proxyToRevoke.id);
+      createNotification({ text: `Proxy "${proxyToRevoke.name}" revoked`, type: "success" });
+      setProxyToRevoke(null);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   const handleReissue = async () => {
     if (!proxyToReissue) return;
-    const result = await reissueToken.mutateAsync(proxyToReissue.id);
-    setProxyToReissue(null);
-    setEnrollment(result);
+
+    try {
+      const result = await reissueToken.mutateAsync(proxyToReissue.id);
+      setProxyToReissue(null);
+      setEnrollment(result);
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
   };
 
   return (
@@ -396,7 +410,9 @@ export const AgentVaultProxiesPage = () => {
               New enrollment token for &quot;{proxyToReissue?.name}&quot;
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The proxy keeps serving until it re-enrolls with the new token.
+              The proxy keeps serving until it re-enrolls with the new token. Re-enrolling gives it
+              a new certificate authority, so every agent running through it has to trust the new
+              one before its requests work again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
