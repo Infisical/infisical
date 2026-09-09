@@ -76,21 +76,6 @@ was 100,000 keys across approximately 100 organizations; this run additionally
 issued 359,784 create requests. Re-seed or remove the disposable test database
 before treating its contents as a fresh fixture.
 
-## Interpretation and limits
-
-- The TS 1k create cell is the only non-clean cell in this rerun. It had no
-  failed HTTP responses, but k6 could not supply a VU for 228 scheduled ticks.
-  Increase k6 `preAllocatedVUs`/`maxVUs` before using it as a strict 1k/s
-  result. This is distinct from a gateway 429/5xx response.
-- The earlier Traefik restart/connection-refused incident is not used in these
-  figures. All clean cells above recorded zero HTTP failures. This report does
-  not claim a per-pod request split because the old log-derived split was not
-  collected in the same fresh runs; it must be captured again if routing
-  distribution is a decision criterion.
-- The resource totals are inclusive of the selected application pods only.
-  They exclude k6, Traefik, PostgreSQL, Redis, and Kubernetes system pods.
-- Cache-disabled, monolith, and 10k/50k profiles are not represented by this
-  fresh two-minute matrix and remain separate required runs.
 
 ## Reproducibility
 
