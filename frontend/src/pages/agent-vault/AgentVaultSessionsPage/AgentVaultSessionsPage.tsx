@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -51,6 +51,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
@@ -77,6 +78,7 @@ export const AgentVaultSessionsPage = () => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
   const [statusFilter, setStatusFilter] = useState<AgentVaultSessionStatus | typeof ALL_STATUSES>(
     ALL_STATUSES
   );
@@ -92,6 +94,7 @@ export const AgentVaultSessionsPage = () => {
   const { data, isPending } = useListAgentVaultSessions({
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
     status: statusFilter === ALL_STATUSES ? undefined : statusFilter,
+    search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
   });
@@ -100,18 +103,11 @@ export const AgentVaultSessionsPage = () => {
   const sessions = data?.sessions ?? [];
   const totalCount = data?.totalCount ?? 0;
 
-  const displayedSessions = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return sessions;
-    return sessions.filter(
-      (session) =>
-        session.actorName.toLowerCase().includes(term) ||
-        Boolean(session.actorEmail?.toLowerCase().includes(term)) ||
-        session.accessBundles.some((bundle) => bundle.name.toLowerCase().includes(term))
-    );
-  }, [sessions, search]);
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
-  const isFiltered = Boolean(search.trim()) || statusFilter !== ALL_STATUSES;
+  // The debounced term, not the typed one: the rows on screen were fetched with this, so keying the copy
+  // off the live input would caption a stale result set.
+  const isFiltered = Boolean(debouncedSearch.trim()) || statusFilter !== ALL_STATUSES;
   const hasReachableBundles = (accessBundles?.length ?? 0) > 0;
 
   let emptyTitle: string;
@@ -168,8 +164,11 @@ export const AgentVaultSessionsPage = () => {
               </InputGroupAddon>
               <InputGroupInput
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search identity or access bundle..."
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search by identity, email, or access bundle..."
               />
             </InputGroup>
           </div>
@@ -209,7 +208,7 @@ export const AgentVaultSessionsPage = () => {
           )}
         </CardContent>
 
-        {!isPending && displayedSessions.length === 0 ? (
+        {!isPending && sessions.length === 0 ? (
           <CardContent>
             <Empty className="border">
               <EmptyHeader>
@@ -254,7 +253,7 @@ export const AgentVaultSessionsPage = () => {
                   </TableRow>
                 ))}
               {!isPending &&
-                displayedSessions.map((session) => (
+                sessions.map((session) => (
                   <TableRow key={session.id}>
                     <TableCell>
                       <Tooltip>
@@ -329,7 +328,8 @@ export const AgentVaultSessionsPage = () => {
         )}
 
         {totalCount > 0 && (
-          <CardContent>
+          // The card lays its children out with gap-5, which reads as a gap under the table.
+          <CardContent className="-mt-5 pt-0">
             <Pagination
               count={totalCount}
               page={page}

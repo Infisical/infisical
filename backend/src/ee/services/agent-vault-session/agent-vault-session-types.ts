@@ -21,6 +21,7 @@ export type TListSessionsDTO = {
   status?: AgentVaultSessionStatus;
   limit: number;
   offset: number;
+  search?: string;
 };
 
 export type TRevokeSessionDTO = {

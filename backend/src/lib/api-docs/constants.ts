@@ -4225,6 +4225,7 @@ export const AGENT_VAULT = {
     expiresAt: "When the session expires, or null when it never does.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status: "Filter by session status: active, revoked or expired.",
+    search: "Match sessions by actor name, actor email or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip."
   }

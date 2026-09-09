@@ -36,6 +36,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .default(AgentVaultSessionScope.Mine)
           .describe(AGENT_VAULT.SESSION.scope),
         status: z.nativeEnum(AgentVaultSessionStatus).optional().describe(AGENT_VAULT.SESSION.status),
+        search: z.string().trim().max(255).optional().describe(AGENT_VAULT.SESSION.search),
         limit: z.coerce.number().int().min(1).max(100).default(20).describe(AGENT_VAULT.SESSION.limit),
         offset: z.coerce.number().int().min(0).max(10000).default(0).describe(AGENT_VAULT.SESSION.offset)
       }),

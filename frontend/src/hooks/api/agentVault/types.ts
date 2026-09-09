@@ -124,6 +124,7 @@ export type TListAgentVaultSessionsDTO = {
   status?: AgentVaultSessionStatus;
   limit?: number;
   offset?: number;
+  search?: string;
 };
 
 export type TCreateAgentVaultAccessBundleDTO = {

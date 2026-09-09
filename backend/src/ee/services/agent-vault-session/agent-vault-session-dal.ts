@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TAgentVaultSessions } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -65,12 +66,14 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       projectId,
       actor,
       status,
+      search,
       limit,
       offset
     }: {
       projectId: string;
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
       status?: AgentVaultSessionStatus;
+      search?: string;
       limit: number;
       offset: number;
     },
@@ -85,6 +88,50 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         if (actor?.type === ActorType.USER) void query.where(`${TableName.AgentVaultSession}.userId`, actor.id);
         if (actor?.type === ActorType.IDENTITY) void query.where(`${TableName.AgentVaultSession}.identityId`, actor.id);
         if (status) statusFilter(query, status, now);
+        // Shared with the count query, so the pager describes the filtered set rather than the whole one.
+        if (search) {
+          const term = `%${sanitizeSqlLikeString(search)}%`;
+          // Joined so the search sees the same live-then-snapshot name the rows display; searching the
+          // snapshot alone would miss a renamed actor and match a name no longer shown.
+          void query
+            .leftJoin(TableName.Users, `${TableName.AgentVaultSession}.userId`, `${TableName.Users}.id`)
+            .leftJoin(TableName.Identity, `${TableName.AgentVaultSession}.identityId`, `${TableName.Identity}.id`);
+
+          void query.where((qb) => {
+            void qb
+              .orWhereILike(`${TableName.Identity}.name`, term)
+              .orWhereILike(`${TableName.Users}.username`, term)
+              // Covers a first name, a last name and the two together, so no separate checks are needed.
+              .orWhereRaw(`CONCAT_WS(' ', ??, ??) ILIKE ?`, [
+                `${TableName.Users}.firstName`,
+                `${TableName.Users}.lastName`,
+                term
+              ])
+              .orWhereILike(`${TableName.AgentVaultSession}.actorName`, term)
+              .orWhereILike(`${TableName.AgentVaultSession}.actorEmail`, term)
+              .orWhereExists((sub) => {
+                void sub
+                  .select(db.raw("1"))
+                  .from(TableName.AgentVaultSessionAccessBundle)
+                  .leftJoin(
+                    TableName.AgentVaultAccessBundle,
+                    `${TableName.AgentVaultAccessBundle}.id`,
+                    `${TableName.AgentVaultSessionAccessBundle}.accessBundleId`
+                  )
+                  .whereRaw(`?? = ??`, [
+                    `${TableName.AgentVaultSessionAccessBundle}.sessionId`,
+                    `${TableName.AgentVaultSession}.id`
+                  ])
+                  // The live name is what the row displays, with the snapshot standing in once the
+                  // bundle is gone, so the search has to look at whichever one is shown.
+                  .whereRaw(`COALESCE(??, ??) ILIKE ?`, [
+                    `${TableName.AgentVaultAccessBundle}.name`,
+                    `${TableName.AgentVaultSessionAccessBundle}.accessBundleName`,
+                    term
+                  ]);
+              });
+          });
+        }
         return query;
       };
 

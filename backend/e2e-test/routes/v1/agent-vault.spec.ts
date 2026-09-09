@@ -606,6 +606,183 @@ describe("Agent Vault V1 Router", async () => {
       expect(issues.some((issue) => issue.path.join(".") === "accessBundles")).toBe(true);
     });
 
+    test("search filters and counts on the server, not just the page", async () => {
+      const alpha = await createAccessBundle("search-alpha");
+      const beta = await createAccessBundle("search-beta");
+      for await (const bundle of [alpha, beta]) {
+        const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+          accessBundles: [bundle.name],
+          ttl: "1h"
+        });
+        expect(mint.statusCode).toBe(200);
+      }
+
+      const byBundle = await inject("GET", "/api/v1/agent-vault/sessions?search=search-alpha");
+      expect(byBundle.statusCode).toBe(200);
+      const matched = JSON.parse(byBundle.payload) as {
+        sessions: { accessBundles: { name: string }[] }[];
+        totalCount: number;
+      };
+      expect(matched.sessions).toHaveLength(1);
+      expect(matched.sessions[0].accessBundles[0].name).toBe("search-alpha");
+      // The count has to describe the filtered set, or the pager offers pages that do not exist.
+      expect(matched.totalCount).toBe(1);
+
+      // The list shows the live actor name, so the search has to reach it and not only the mint snapshot.
+      const byActor = await inject(
+        "GET",
+        `/api/v1/agent-vault/sessions?search=${encodeURIComponent(seedData1.username)}`
+      );
+      const byActorBody = JSON.parse(byActor.payload) as { totalCount: number };
+      expect(byActorBody.totalCount).toBeGreaterThan(0);
+
+      const noMatch = await inject("GET", "/api/v1/agent-vault/sessions?search=search-nothing");
+      const empty = JSON.parse(noMatch.payload) as { sessions: unknown[]; totalCount: number };
+      expect(empty.sessions).toHaveLength(0);
+      expect(empty.totalCount).toBe(0);
+    });
+
+    test("search covers every name a row can display, and pages within the match", async () => {
+      // scope=all throughout: a session whose actor was deleted has no userId, so it belongs to nobody and
+      // the default Mine scope filters it out. Only an admin listing everyone's sessions can see it.
+      const list = async (query: string) => {
+        const res = await inject("GET", `/api/v1/agent-vault/sessions?scope=all&${query}`);
+        expect(res.statusCode).toBe(200);
+        return JSON.parse(res.payload) as {
+          sessions: { id: string; actorName: string; accessBundles: { name: string }[] }[];
+          totalCount: number;
+        };
+      };
+
+      const bundles = await Promise.all(
+        ["matrix-stripe", "matrix-github", "matrix-openai"].map((name) => createAccessBundle(name))
+      );
+      const minted: string[] = [];
+      for await (const bundle of bundles) {
+        // Two sessions per bundle, so a match has to page rather than fit on one screen.
+        for await (const attempt of [1, 2]) {
+          const res = await inject("POST", "/api/v1/agent-vault/sessions", {
+            accessBundles: [bundle.name],
+            ttl: "1h"
+          });
+          expect(res.statusCode, `mint ${attempt} over ${bundle.name}`).toBe(200);
+          minted.push((JSON.parse(res.payload) as { session: { id: string } }).session.id);
+        }
+      }
+
+      // A deleted actor: the row keeps the snapshot the mint took, and nothing to join to.
+      const orphaned = minted[0];
+      await testDb("agent_vault_sessions")
+        .where({ id: orphaned })
+        .update({ userId: null, identityId: null, actorName: "Gone Person", actorEmail: "gone@example.com" });
+
+      // A deleted bundle: the junction keeps its snapshot name.
+      const deletedBundle = await createAccessBundle("matrix-retired");
+      const overRetired = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [deletedBundle.name],
+        ttl: "1h"
+      });
+      expect(overRetired.statusCode).toBe(200);
+      expect((await inject("DELETE", `/api/v1/agent-vault/access-bundles/${deletedBundle.id}`)).statusCode).toBe(200);
+
+      const cases: { why: string; query: string; expect: (r: Awaited<ReturnType<typeof list>>) => void }[] = [
+        {
+          why: "a live bundle name",
+          query: "search=matrix-stripe&limit=100",
+          expect: (r) => {
+            expect(r.totalCount).toBe(2);
+            expect(r.sessions.every((row) => row.accessBundles[0].name === "matrix-stripe")).toBe(true);
+          }
+        },
+        {
+          why: "a prefix shared by several bundles",
+          query: "search=matrix-&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(7)
+        },
+        {
+          why: "case is ignored",
+          query: "search=MATRIX-GITHUB&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(2)
+        },
+        {
+          why: "the live actor name, from the joined user",
+          query: `search=${encodeURIComponent(seedData1.username)}&limit=100`,
+          expect: (r) => expect(r.totalCount).toBeGreaterThan(0)
+        },
+        {
+          why: "the snapshot name once the actor is gone",
+          query: "search=Gone%20Person&limit=100",
+          expect: (r) => {
+            expect(r.totalCount).toBe(1);
+            expect(r.sessions[0].id).toBe(orphaned);
+          }
+        },
+        {
+          why: "the snapshot email once the actor is gone",
+          query: "search=gone@example.com&limit=100",
+          expect: (r) => expect(r.sessions.map((row) => row.id)).toEqual([orphaned])
+        },
+        {
+          why: "a deleted bundle, by the name the junction kept",
+          query: "search=matrix-retired&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(1)
+        },
+        {
+          why: "a LIKE wildcard is a literal, not a pattern",
+          query: "search=%25&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(0)
+        },
+        {
+          why: "an underscore is a literal too",
+          query: "search=matrix_stripe&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(0)
+        },
+        {
+          why: "no match reports nothing, so the pager can hide",
+          query: "search=matrix-nothing-here&limit=100",
+          expect: (r) => {
+            expect(r.sessions).toHaveLength(0);
+            expect(r.totalCount).toBe(0);
+          }
+        },
+        {
+          why: "the count describes the match, and the page is a slice of it",
+          query: "search=matrix-&limit=3&offset=0",
+          expect: (r) => {
+            expect(r.sessions).toHaveLength(3);
+            expect(r.totalCount).toBe(7);
+          }
+        },
+        {
+          why: "the last page of a match is partial, not empty",
+          query: "search=matrix-&limit=3&offset=6",
+          expect: (r) => {
+            expect(r.sessions).toHaveLength(1);
+            expect(r.totalCount).toBe(7);
+          }
+        },
+        {
+          why: "search and status narrow together",
+          query: "search=matrix-&status=active&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(7)
+        },
+        {
+          why: "a status with no members inside the match is empty",
+          query: "search=matrix-&status=revoked&limit=100",
+          expect: (r) => expect(r.totalCount).toBe(0)
+        }
+      ];
+
+      for await (const testCase of cases) {
+        const result = await list(testCase.query);
+        try {
+          testCase.expect(result);
+        } catch (err) {
+          throw new Error(`search case failed (${testCase.why}): ${(err as Error).message}`);
+        }
+      }
+    });
+
     test("a bundle name that is not a slug is rejected before the lookup", async () => {
       const bundle = await createAccessBundle("session-uppercase");
       const res = await inject("POST", "/api/v1/agent-vault/sessions", {
