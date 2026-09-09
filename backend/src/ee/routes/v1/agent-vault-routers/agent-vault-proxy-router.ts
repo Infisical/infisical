@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
 import { AgentVaultUnmatchedHost } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
+import { buildHostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -42,7 +42,7 @@ const EnrollmentSchema = z.object({
 
 const ProxySettingsSchema = {
   unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
-  bypassHosts: hostPatternSchema.nullable().describe(AGENT_VAULT.PROXY.bypassHosts),
+  bypassHosts: buildHostPatternSchema("bypass host").nullable().describe(AGENT_VAULT.PROXY.bypassHosts),
   pollInterval: z.number().int().min(10).max(300).describe(AGENT_VAULT.PROXY.pollInterval)
 };
 

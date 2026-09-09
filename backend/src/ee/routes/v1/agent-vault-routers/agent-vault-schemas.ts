@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import {
   AGENT_VAULT_HEADER_NAME_MESSAGE,
-  AGENT_VAULT_HEADER_NAME_RE
+  AGENT_VAULT_HEADER_NAME_RE,
+  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
+  AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
@@ -42,13 +44,28 @@ export const AgentVaultCredentialInputSchema = z
         .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
         .optional()
         .describe(AGENT_VAULT.CONNECTION.headerName),
-      headerPrefix: z.string().trim().max(64).optional().describe(AGENT_VAULT.CONNECTION.headerPrefix),
-      value: z.string().min(1).max(8192).describe(AGENT_VAULT.CONNECTION.value)
+      headerPrefix: z
+        .string()
+        .trim()
+        .max(64)
+        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+        .optional()
+        .describe(AGENT_VAULT.CONNECTION.headerPrefix),
+      value: z
+        .string()
+        .min(1)
+        .max(8192)
+        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+        .describe(AGENT_VAULT.CONNECTION.value)
     }),
     z.object({
       type: z.literal(AgentVaultCredentialType.Basic),
       username: z.string().trim().max(256).describe(AGENT_VAULT.CONNECTION.username),
-      password: z.string().max(8192).describe(AGENT_VAULT.CONNECTION.password)
+      password: z
+        .string()
+        .max(8192)
+        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+        .describe(AGENT_VAULT.CONNECTION.password)
     }),
     z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
   ])
@@ -67,13 +84,30 @@ export const AgentVaultCredentialUpdateSchema = z
         .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
         .optional()
         .describe(AGENT_VAULT.CONNECTION.headerName),
-      headerPrefix: z.string().trim().max(64).optional().describe(AGENT_VAULT.CONNECTION.headerPrefix),
-      value: z.string().min(1).max(8192).optional().describe(AGENT_VAULT.CONNECTION.updateValue)
+      headerPrefix: z
+        .string()
+        .trim()
+        .max(64)
+        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+        .optional()
+        .describe(AGENT_VAULT.CONNECTION.headerPrefix),
+      value: z
+        .string()
+        .min(1)
+        .max(8192)
+        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+        .optional()
+        .describe(AGENT_VAULT.CONNECTION.updateValue)
     }),
     z.object({
       type: z.literal(AgentVaultCredentialType.Basic),
       username: z.string().trim().max(256).optional().describe(AGENT_VAULT.CONNECTION.updateUsername),
-      password: z.string().max(8192).optional().describe(AGENT_VAULT.CONNECTION.updatePassword)
+      password: z
+        .string()
+        .max(8192)
+        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+        .optional()
+        .describe(AGENT_VAULT.CONNECTION.updatePassword)
     }),
     z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
   ])

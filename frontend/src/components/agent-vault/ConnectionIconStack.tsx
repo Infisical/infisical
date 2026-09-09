@@ -11,7 +11,9 @@ type TConnectionIcon = {
 
 const labelOf = (pattern: string) => {
   const trimmed = pattern.trim();
-  return trimmed.split(":")[0] || trimmed;
+  // A bracketed IPv6 host is full of colons, so only the one after the bracket separates the port.
+  const host = trimmed.startsWith("[") ? trimmed.slice(0, trimmed.indexOf("]") + 1) : trimmed.split(":")[0];
+  return host || trimmed;
 };
 
 const iconFromHostPattern = (hostPattern: string): TConnectionIcon => {

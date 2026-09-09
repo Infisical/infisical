@@ -59,6 +59,7 @@ describe("the grammar", () => {
     { pattern: "api.github.com:0", why: "port out of range" },
     { pattern: "api.github.com:70000", why: "port out of range" },
     { pattern: "api.github.com:https", why: "port must be numeric" },
+    { pattern: "api.github.com:0443", why: "a leading zero is kept as typed and would match nothing" },
     { pattern: "[::1", why: "unclosed IPv6 bracket" },
     { pattern: "[not-an-address]", why: "brackets must hold a valid IPv6 address" },
     { pattern: "api.*.github.com", why: "a wildcard is the leftmost label only" },
@@ -134,5 +135,17 @@ describe("errors name the offending entry", () => {
     const { patterns, errors } = parseHostPatterns("api.github.com, https://bad.com, *");
     expect(patterns.map((pattern) => pattern.key)).toEqual(["api.github.com:443"]);
     expect(errors).toHaveLength(2);
+  });
+
+  test.each([{ raw: "" }, { raw: "," }, { raw: " , " }])(
+    "an empty value is one error, not several ($raw)",
+    ({ raw }) => {
+      expect(parseHostPatterns(raw).errors).toEqual(["Host pattern is required"]);
+    }
+  );
+
+  test("the message names the field being edited", () => {
+    expect(parseHostPatterns("*", "connection").errors[0]).toContain("A connection must name specific hosts");
+    expect(parseHostPatterns("*", "bypass host").errors[0]).toContain("A bypass host must name specific hosts");
   });
 });

@@ -24,9 +24,11 @@ export type TAgentVaultHostPattern = {
   key: string;
 };
 
+// String(Number(...)) rejects a leading zero. The pattern keeps the port as typed and the Go matcher
+// compares it as text, so ":0443" would be disjoint from ":443" and quietly match no traffic at all.
 const isValidPort = (portStr: string) => {
   const port = Number(portStr);
-  return PORT_RE.test(portStr) && port >= 1 && port <= 65535;
+  return PORT_RE.test(portStr) && String(port) === portStr && port >= 1 && port <= 65535;
 };
 
 // Full eight-group lowercase form, so `[::1]` and `[0:0:0:0:0:0:0:1]` compare equal.
@@ -71,15 +73,18 @@ const collapseMappedIpv4 = (expanded: string): string | null => {
   return [Math.floor(high / 256), high % 256, Math.floor(low / 256), low % 256].join(".");
 };
 
+const EMPTY_ENTRY_ERROR = "Host pattern has an empty entry";
+const REQUIRED_ERROR = "Host pattern is required";
+
 type TParseResult = { pattern: TAgentVaultHostPattern } | { error: string };
 
-const parseSegment = (segment: string): TParseResult => {
+const parseSegment = (segment: string, subject: string): TParseResult => {
   const raw = segment.trim();
-  if (raw === "") return { error: "Host pattern has an empty entry" };
+  if (raw === "") return { error: EMPTY_ENTRY_ERROR };
   if (raw.includes("://")) return { error: `"${raw}" must not include a scheme (e.g. https://)` };
   if (raw.includes("/")) {
     return {
-      error: `"${raw}" must not include a path. A connection covers a whole host, so remove everything from the first "/".`
+      error: `"${raw}" must not include a path. A ${subject} covers a whole host, so remove everything from the first "/".`
     };
   }
 
@@ -102,7 +107,7 @@ const parseSegment = (segment: string): TParseResult => {
     const afterBracket = raw.slice(closingIdx + 1);
     if (afterBracket) {
       if (!afterBracket.startsWith(":") || !isValidPort(afterBracket.slice(1))) {
-        return { error: `"${raw}" has an invalid port` };
+        return { error: `"${raw}" has an invalid port. A port is 1 to 65535, with no leading zeros.` };
       }
       port = afterBracket.slice(1);
     }
@@ -112,14 +117,15 @@ const parseSegment = (segment: string): TParseResult => {
     if (colonIdx !== -1) {
       host = raw.slice(0, colonIdx);
       const portStr = raw.slice(colonIdx + 1);
-      if (!isValidPort(portStr)) return { error: `"${raw}" has an invalid port` };
+      if (!isValidPort(portStr))
+        return { error: `"${raw}" has an invalid port. A port is 1 to 65535, with no leading zeros.` };
       port = portStr;
     }
 
     host = host.replace(/\.$/, "");
 
     if (host === "*") {
-      return { error: `"${raw}" is too broad. A connection must name specific hosts.` };
+      return { error: `"${raw}" is too broad. A ${subject} must name specific hosts.` };
     }
 
     if (!HOST_LABELS_RE.test(host)) return { error: `"${raw}" is not a valid host pattern` };
@@ -137,12 +143,15 @@ const parseSegment = (segment: string): TParseResult => {
   };
 };
 
-export const parseHostPatterns = (raw: string): { patterns: TAgentVaultHostPattern[]; errors: string[] } => {
+export const parseHostPatterns = (
+  raw: string,
+  subject = "connection"
+): { patterns: TAgentVaultHostPattern[]; errors: string[] } => {
   const patterns: TAgentVaultHostPattern[] = [];
   const errors: string[] = [];
 
   raw.split(",").forEach((segment) => {
-    const result = parseSegment(segment);
+    const result = parseSegment(segment, subject);
     if ("error" in result) {
       errors.push(result.error);
       return;
@@ -154,22 +163,27 @@ export const parseHostPatterns = (raw: string): { patterns: TAgentVaultHostPatte
     patterns.push(result.pattern);
   });
 
-  if (!patterns.length && !errors.length) errors.push("Host pattern is required");
+  // An empty or comma-only value is one problem, not one per segment plus a summary.
+  if (!patterns.length && errors.every((error) => error === EMPTY_ENTRY_ERROR)) {
+    return { patterns, errors: [REQUIRED_ERROR] };
+  }
   return { patterns, errors };
 };
 
 // Stored as typed, not rewritten: normalising grows the string (`[::1]` becomes 45 characters) and could
 // overflow the column after the length check had passed.
-export const hostPatternSchema = z
-  .string()
-  .trim()
-  .min(1, "Host pattern is required")
-  .max(AGENT_VAULT_MAX_HOST_PATTERN_LENGTH)
-  .superRefine((raw, ctx) => {
-    parseHostPatterns(raw).errors.forEach((message) => {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+export const buildHostPatternSchema = (subject: string) =>
+  z
+    .string()
+    .trim()
+    .max(AGENT_VAULT_MAX_HOST_PATTERN_LENGTH)
+    .superRefine((raw, ctx) => {
+      parseHostPatterns(raw, subject).errors.forEach((message) => {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+      });
     });
-  });
+
+export const hostPatternSchema = buildHostPatternSchema("connection");
 
 export const matchesHost = (pattern: TAgentVaultHostPattern, host: string, port: string): boolean => {
   if (pattern.port !== port) return false;
