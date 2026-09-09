@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -56,6 +57,7 @@ import { ProductRoleDialog } from "./ProductRoleDialog";
 export const IdentitiesTab = () => {
   const { currentProject } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: identities = [], isPending } = useListAgentVaultProductIdentityMembers();
   const removeMember = useRemoveAgentVaultProductMember();
@@ -198,7 +200,17 @@ export const IdentitiesTab = () => {
               ))}
             {!isPending &&
               filtered.map((identity) => (
-                <TableRow key={identity.membershipId}>
+                <TableRow
+                  key={identity.membershipId}
+                  className={identity.identityId ? "cursor-pointer" : undefined}
+                  onClick={() => {
+                    if (!identity.identityId) return;
+                    navigate({
+                      to: "/organizations/$orgId/agent-vault/identities/$identityId",
+                      params: { orgId: currentOrg.id, identityId: identity.identityId }
+                    });
+                  }}
+                >
                   <TableCell>
                     <HighlightText text={identity.name} highlight={search} />
                   </TableCell>
@@ -210,7 +222,7 @@ export const IdentitiesTab = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>{renderManagedByBadge(identity)}</TableCell>
-                  <TableCell variant="action">
+                  <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <IconButton variant="ghost" size="xs" aria-label="Open identity actions">

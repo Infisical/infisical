@@ -51,6 +51,7 @@ import {
   useDeleteProjectIdentityMembership,
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
+import { useRemoveAgentVaultProductMember } from "@app/hooks/api/agentVault";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useRemovePamProductIdentityMember } from "@app/hooks/api/pam";
 import { projectIdentityQuery, useDeleteProjectIdentity } from "@app/hooks/api/projectIdentity";
@@ -81,18 +82,22 @@ const Page = () => {
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
   const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
+  const { mutateAsync: removeAgentVaultIdentityMutateAsync } = useRemoveAgentVaultProductMember();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
+  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
   // Products where the underlying project is an internal detail the user never sees
-  const isStandaloneProduct = isCertManager || isPam;
+  const isStandaloneProduct = isCertManager || isPam || isAgentVault;
 
   let removeMenuItemLabel = "Remove From Project";
   if (isProjectIdentity) {
     removeMenuItemLabel = "Delete Machine Identity";
   } else if (isPam) {
     removeMenuItemLabel = "Remove From PAM";
+  } else if (isAgentVault) {
+    removeMenuItemLabel = "Remove From Agent Vault";
   }
 
   let accessControlLabel = "project";
@@ -100,6 +105,8 @@ const Page = () => {
     accessControlLabel = "certificate manager";
   } else if (isPam) {
     accessControlLabel = "PAM";
+  } else if (isAgentVault) {
+    accessControlLabel = "Agent Vault";
   }
   const pageDescription = `Configure and manage${
     isProjectIdentity ? " machine identity and " : " "
@@ -134,6 +141,13 @@ const Page = () => {
         identityId,
         projectId
       });
+    } else if (isAgentVault) {
+      // Same reason as PAM: the product route keeps the last-admin guard, emits the Agent Vault event
+      // and reaps the identity's bundle grants, none of which the generic route does.
+      await removeAgentVaultIdentityMutateAsync({
+        identityId,
+        projectId
+      });
     } else {
       await removeIdentityMutateAsync({
         identityId,
@@ -141,7 +155,7 @@ const Page = () => {
       });
     }
     createNotification({
-      text: `Successfully removed machine identity from ${isPam ? "PAM" : "project"}`,
+      text: `Successfully removed machine identity from ${isStandaloneProduct ? accessControlLabel : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeIdentity");
@@ -388,8 +402,12 @@ const Page = () => {
           </div>
           <IdentityActionConfirmationDialog
             open={popUp.removeIdentity.isOpen}
-            title={`Remove ${identityMembershipDetails.identity.name} from ${isPam ? "PAM" : "the project"}?`}
-            description={`The machine identity will lose access to ${isPam ? "PAM" : "this project"} but remain available in its organization.`}
+            title={`Remove ${identityMembershipDetails.identity.name} from ${
+              isStandaloneProduct ? accessControlLabel : "the project"
+            }?`}
+            description={`The machine identity will lose access to ${
+              isStandaloneProduct ? accessControlLabel : "this project"
+            } but remain available in its organization.`}
             descriptionAsAlert
             confirmationText="remove"
             actionLabel="Remove"

@@ -52,12 +52,15 @@ export const ProjectIdentityDetailsSection = ({
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
+  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   let productLabel = "Project";
   if (isCertManager) {
     productLabel = "Certificate Manager";
   } else if (isPam) {
     productLabel = "PAM";
+  } else if (isAgentVault) {
+    productLabel = "Agent Vault";
   }
 
   let joinedLabel = "Joined project";
@@ -65,6 +68,8 @@ export const ProjectIdentityDetailsSection = ({
     joinedLabel = "Joined certificate manager";
   } else if (isPam) {
     joinedLabel = "Joined PAM";
+  } else if (isAgentVault) {
+    joinedLabel = "Joined Agent Vault";
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
@@ -144,7 +149,7 @@ export const ProjectIdentityDetailsSection = ({
                     {isSubOrgIdentity ? "Sub-" : ""}Organization
                   </Badge>
                 ) : (
-                  <Badge variant="project">
+                  <Badge variant={isAgentVault ? "av" : "project"}>
                     <ProjectIcon />
                     {productLabel}
                   </Badge>

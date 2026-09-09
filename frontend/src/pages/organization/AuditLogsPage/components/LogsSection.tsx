@@ -17,6 +17,7 @@ import {
   DateRangeQuickPresets,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { DateRangeFilterAccent } from "@app/components/v3/platform/DateRangeFilter/DateRangeFilter";
 import {
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
@@ -100,7 +101,9 @@ const LogsSectionComponent = ({
   });
 
   const timezone = dateRange.isUtc ? Timezone.UTC : Timezone.Local;
-  const dateRangeAccent = project ? "primary" : "secondary";
+  // An org-scoped product has its own colour, and "primary" would paint its chrome the secrets yellow.
+  let dateRangeAccent: DateRangeFilterAccent = project ? "primary" : "secondary";
+  if (project?.type === ProjectType.AgentVault) dateRangeAccent = "av";
 
   useEffect(() => {
     if (subscription && !subscription.auditLogs) {
