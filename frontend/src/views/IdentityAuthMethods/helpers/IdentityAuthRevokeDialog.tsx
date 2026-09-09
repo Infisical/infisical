@@ -1,22 +1,17 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-  Field,
-  FieldContent,
-  FieldLabel,
-  Input
+  AlertDialogTitle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -44,6 +39,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   identityId: string;
+  identityName?: string;
   authMethod: IdentityAuthMethod | null;
   onSuccess: () => void;
 };
@@ -52,6 +48,7 @@ export const IdentityAuthRevokeDialog = ({
   open,
   onOpenChange,
   identityId,
+  identityName,
   authMethod,
   onSuccess
 }: Props) => {
@@ -59,13 +56,7 @@ export const IdentityAuthRevokeDialog = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
-  const [removeConfirmInput, setRemoveConfirmInput] = useState("");
-
-  useEffect(() => {
-    if (!open) setRemoveConfirmInput("");
-  }, [open]);
-
-  const isRemoveConfirmed = removeConfirmInput === "confirm";
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const { mutateAsync: revokeUniversal } = useDeleteIdentityUniversalAuth();
   const { mutateAsync: revokeToken } = useDeleteIdentityTokenAuth();
@@ -97,64 +88,64 @@ export const IdentityAuthRevokeDialog = ({
     [IdentityAuthMethod.LDAP_AUTH]: revokeLdap as RevokeFn
   };
 
+  const authMethodName = authMethod ? identityAuthToNameMap[authMethod] : "this auth method";
+
   const handleDelete = async () => {
-    if (!authMethod || !isRemoveConfirmed) return;
+    if (!authMethod || isRemoving) return;
 
-    await revokeMap[authMethod]({
-      identityId,
-      ...(projectId ? { projectId } : { organizationId: orgId })
-    });
+    setIsRemoving(true);
+    try {
+      await revokeMap[authMethod]({
+        identityId,
+        ...(projectId ? { projectId } : { organizationId: orgId })
+      });
 
-    createNotification({
-      text: "Successfully removed auth method",
-      type: "success"
-    });
-    onOpenChange(false);
-    onSuccess();
+      createNotification({
+        text: "Successfully removed auth method",
+        type: "success"
+      });
+      onOpenChange(false);
+      onSuccess();
+    } finally {
+      setIsRemoving(false);
+    }
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog
+      open={open}
+      confirmationValue="confirm"
+      onOpenChange={(isOpen) => {
+        if (!isOpen && isRemoving) return;
+        onOpenChange(isOpen);
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogMedia>
-            <Trash2Icon />
-          </AlertDialogMedia>
-          <AlertDialogTitle>
-            Are you sure you want to remove{" "}
-            {authMethod ? identityAuthToNameMap[authMethod] : "this auth method"} on this identity?
-          </AlertDialogTitle>
-          <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+          <AlertDialogTitle>Remove Auth Method</AlertDialogTitle>
+          <AlertDialogDescription>
+            Remove <span className="font-medium text-foreground">{authMethodName}</span> from{" "}
+            <span className="font-medium text-foreground">{identityName ?? "this identity"}</span>.
+            Clients using this method can no longer authenticate as this identity, and its
+            configuration and issued credentials are deleted. The method can be configured again
+            later.
+          </AlertDialogDescription>
         </AlertDialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleDelete();
-          }}
-        >
-          <Field>
-            <FieldLabel htmlFor="remove-auth-confirm">
-              Type <span className="font-bold text-foreground">confirm</span> to perform this action
-            </FieldLabel>
-            <FieldContent>
-              <Input
-                id="remove-auth-confirm"
-                value={removeConfirmInput}
-                onChange={(e) => setRemoveConfirmInput(e.target.value)}
-                placeholder="Type confirm here"
-                autoComplete="off"
-              />
-            </FieldContent>
-          </Field>
-        </form>
+        <AlertDialogConfirmationField
+          inputProps={{ disabled: isRemoving }}
+          onConfirm={() => handleDelete().catch(() => undefined)}
+        />
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel isDisabled={isRemoving}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            onClick={handleDelete}
-            isDisabled={!isRemoveConfirmed}
+            isPending={isRemoving}
+            onClick={(event) => {
+              event.preventDefault();
+              handleDelete().catch(() => undefined);
+            }}
           >
-            Remove
+            Remove Auth Method
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
