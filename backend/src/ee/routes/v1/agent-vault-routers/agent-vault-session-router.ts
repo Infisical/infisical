@@ -155,7 +155,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const session = await server.services.agentVaultSession.revokeSession({
+      const { session, revokedNow } = await server.services.agentVaultSession.revokeSession({
         projectId: req.internalAgentVaultProjectId,
         ctx: {
           actorId: req.permission.id,
@@ -166,15 +166,18 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         sessionId: req.params.sessionId
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_SESSION_REVOKE,
-          metadata: { sessionId: session.id }
-        }
-      });
+      // Revoking is idempotent, so a repeat would otherwise credit the second caller with a revocation.
+      if (revokedNow) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalAgentVaultProjectId,
+          event: {
+            type: EventType.AGENT_VAULT_SESSION_REVOKE,
+            metadata: { sessionId: session.id }
+          }
+        });
+      }
 
       return { session: { id: session.id, revokedAt: session.revokedAt ?? null } };
     }

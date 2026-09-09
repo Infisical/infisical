@@ -176,16 +176,17 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findExpiredBetween = async (since: Date, until: Date, tx?: Knex) => {
+  // Conditional so two concurrent revokes cannot both believe they were the one that revoked it. The loser
+  // gets no row back, which is what keeps the audit trail down to a single revocation.
+  const revokeIfActive = async (id: string, revokedAt: Date, tx?: Knex) => {
     try {
-      return await (tx || db.replicaNode())(TableName.AgentVaultSession)
-        .whereNotNull("expiresAt")
-        .where("expiresAt", ">", since)
-        .where("expiresAt", "<=", until)
+      const [row] = (await (tx || db)(TableName.AgentVaultSession)
+        .where({ id })
         .whereNull("revokedAt")
-        .select("id", "projectId", "expiresAt");
+        .update({ revokedAt }, "*")) as TAgentVaultSessions[];
+      return row as TAgentVaultSessions | undefined;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find expired Agent Vault sessions" });
+      throw new DatabaseError({ error, name: "Revoke agent vault session" });
     }
   };
 
@@ -203,5 +204,5 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, findExpiredBetween, pruneRetiredBefore };
+  return { ...orm, findByTokenHash, findForList, revokeIfActive, pruneRetiredBefore };
 };

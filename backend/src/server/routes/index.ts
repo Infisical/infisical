@@ -1801,9 +1801,7 @@ export const registerRoutes = async (
     agentVaultSessionAccessBundleDAL,
     agentVaultAccessBundleDAL,
     membershipDAL,
-    permissionService,
-    auditLogService,
-    keyStore
+    permissionService
   });
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({

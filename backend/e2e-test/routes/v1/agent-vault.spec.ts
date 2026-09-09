@@ -805,25 +805,14 @@ describe("Agent Vault V1 Router", async () => {
       await testDb("agent_vault_sessions")
         .where({ id: recentlyExpired })
         .update({ expiresAt: new Date(Date.now() - 60 * 60 * 1000) });
-      await testKeyStore.deleteItem("agent-vault-session-expire-sweep");
-
-      const auditEvents: string[] = [];
       const sweeper = agentVaultSessionServiceFactory({
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         agentVaultSessionAccessBundleDAL: agentVaultSessionAccessBundleDALFactory(testDb),
         agentVaultAccessBundleDAL: agentVaultAccessBundleDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
-        permissionService: { getProjectPermission: () => Promise.reject(new Error("not used by the sweep")) },
-        auditLogService: {
-          createAuditLog: async (data) => {
-            auditEvents.push((data.event.metadata as { sessionId: string }).sessionId);
-          }
-        },
-        keyStore: testKeyStore
+        permissionService: { getProjectPermission: () => Promise.reject(new Error("not used by the sweep")) }
       });
       await sweeper.sweepRetiredSessions();
-
-      expect(auditEvents).toEqual([recentlyExpired]);
 
       const remaining = (await testDb("agent_vault_sessions")
         .whereIn("id", [longExpired, longRevoked, recentlyExpired, live, neverEnding])
@@ -835,7 +824,6 @@ describe("Agent Vault V1 Router", async () => {
         longRevoked
       ]);
       expect(orphans).toHaveLength(0);
-      expect(await testKeyStore.getItem("agent-vault-session-expire-sweep")).toBeTruthy();
     });
   });
 

@@ -762,7 +762,6 @@ export enum EventType {
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
-  AGENT_VAULT_SESSION_EXPIRE = "agent-vault-session-expire",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
@@ -6139,6 +6138,8 @@ interface AgentVaultConnectionCreateEvent {
     name: string;
     hostPattern: string;
     credentialType: string;
+    headerName?: string;
+    headerPrefix?: string;
   };
 }
 
@@ -6150,6 +6151,8 @@ interface AgentVaultConnectionUpdateEvent {
     name?: string;
     hostPattern?: string;
     credentialType?: string;
+    headerName?: string;
+    headerPrefix?: string;
     credentialReplaced: boolean;
   };
 }
@@ -6236,14 +6239,6 @@ interface AgentVaultSessionRevokeEvent {
   type: EventType.AGENT_VAULT_SESSION_REVOKE;
   metadata: {
     sessionId: string;
-  };
-}
-
-interface AgentVaultSessionExpireEvent {
-  type: EventType.AGENT_VAULT_SESSION_EXPIRE;
-  metadata: {
-    sessionId: string;
-    expiresAt: string;
   };
 }
 
@@ -7991,7 +7986,6 @@ export type Event =
   | AgentVaultMemberRemoveEvent
   | AgentVaultSessionMintEvent
   | AgentVaultSessionRevokeEvent
-  | AgentVaultSessionExpireEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent
   | AgentVaultProxyEnrollEvent

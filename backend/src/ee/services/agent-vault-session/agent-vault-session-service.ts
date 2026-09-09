@@ -1,13 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -34,12 +32,9 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItem">;
 };
 
 const SESSION_RETENTION_DAYS = 30;
-const FIRST_SWEEP_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
 
@@ -48,9 +43,7 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultSessionAccessBundleDAL,
   agentVaultAccessBundleDAL,
   membershipDAL,
-  permissionService,
-  auditLogService,
-  keyStore
+  permissionService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -194,34 +187,23 @@ export const agentVaultSessionServiceFactory = ({
       throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }
 
-    if (session.revokedAt) return session;
+    // revokedNow lets the caller audit a real revocation without auditing a repeat. Revoking twice stays a
+    // 200 with the original revokedAt, so the second caller is not the one who revoked it.
+    if (session.revokedAt) return { session, revokedNow: false };
 
-    return agentVaultSessionDAL.updateById(session.id, { revokedAt: new Date() });
+    const revoked = await agentVaultSessionDAL.revokeIfActive(session.id, new Date());
+    if (revoked) return { session: revoked, revokedNow: true };
+
+    // A concurrent revoke won. Report its timestamp rather than the one this request read.
+    const current = await agentVaultSessionDAL.findOne({ id: session.id, projectId });
+    return { session: current ?? session, revokedNow: false };
   };
 
+  // Expiry needs no sweep: it is enforced against the clock on every resolve and derived per row on read.
   const sweepRetiredSessions = async () => {
-    const now = new Date();
-    const watermark = await keyStore.getItem(KeyStorePrefixes.AgentVaultSessionExpireSweep);
-    const since = watermark ? new Date(watermark) : new Date(now.getTime() - FIRST_SWEEP_LOOKBACK_MS);
-
-    const expired = await agentVaultSessionDAL.findExpiredBetween(since, now);
-    for await (const session of expired) {
-      await auditLogService.createAuditLog({
-        projectId: session.projectId,
-        actor: { type: ActorType.PLATFORM, metadata: {} },
-        event: {
-          type: EventType.AGENT_VAULT_SESSION_EXPIRE,
-          metadata: { sessionId: session.id, expiresAt: session.expiresAt!.toISOString() }
-        }
-      });
-    }
-    await keyStore.setItem(KeyStorePrefixes.AgentVaultSessionExpireSweep, now.toISOString());
-
-    const cutoff = new Date(now.getTime() - SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const cutoff = new Date(Date.now() - SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
     const pruned = await agentVaultSessionDAL.pruneRetiredBefore(cutoff);
-    logger.info(
-      `agent-vault: session sweep emitted ${expired.length} expire event(s) and pruned ${pruned} retired session(s)`
-    );
+    logger.info(`agent-vault: session sweep pruned ${pruned} retired session(s)`);
   };
 
   return {

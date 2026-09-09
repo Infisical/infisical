@@ -465,8 +465,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_MEMBER_REMOVE]: "Revoke access bundle",
   [EventType.AGENT_VAULT_SESSION_MINT]: "Create session",
   [EventType.AGENT_VAULT_SESSION_REVOKE]: "Revoke session",
-
-  [EventType.AGENT_VAULT_SESSION_EXPIRE]: "Expire session",
   [EventType.AGENT_VAULT_PROXY_REGISTER]: "Create proxy",
   [EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE]: "Generate proxy enrollment token",
   [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
@@ -539,8 +537,6 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.AGENT_VAULT_MEMBER_REMOVE,
     EventType.AGENT_VAULT_SESSION_MINT,
     EventType.AGENT_VAULT_SESSION_REVOKE,
-
-    EventType.AGENT_VAULT_SESSION_EXPIRE,
     EventType.AGENT_VAULT_PROXY_REGISTER,
     EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
     EventType.AGENT_VAULT_PROXY_ENROLL,

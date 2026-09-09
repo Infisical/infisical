@@ -47,6 +47,18 @@ const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
   actorAuthMethod: req.permission.authMethod
 });
 
+// A passthrough switch is a replacement: mergeCredential returns a null secret and updateConnection nulls
+// the sealed column. The old check only looked at bearer and basic, so it reported no replacement for the
+// one case that destroys the credential outright.
+const isStoredSecretReplaced = (credential?: z.infer<typeof AgentVaultCredentialUpdateSchema>) => {
+  if (!credential) return false;
+  if (credential.type === AgentVaultCredentialType.Bearer) return credential.value !== undefined;
+  if (credential.type === AgentVaultCredentialType.Basic) {
+    return credential.username !== undefined || credential.password !== undefined;
+  }
+  return true;
+};
+
 export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -271,7 +283,15 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             connectionId: connection.id,
             name: connection.name,
             hostPattern: connection.hostPattern,
-            credentialType: connection.credentialType
+            credentialType: connection.credentialType,
+            headerName:
+              connection.credential.type === AgentVaultCredentialType.Bearer
+                ? connection.credential.headerName
+                : undefined,
+            headerPrefix:
+              connection.credential.type === AgentVaultCredentialType.Bearer
+                ? connection.credential.headerPrefix
+                : undefined
           }
         }
       });
@@ -322,17 +342,22 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_CONNECTION_UPDATE,
+          // Every field comes off the body, so an absent one means the PATCH did not touch it.
           metadata: {
             accessBundleId: req.params.accessBundleId,
             connectionId: connection.id,
             name: req.body.name,
             hostPattern: req.body.hostPattern,
             credentialType: req.body.credential?.type,
-            credentialReplaced:
+            headerName:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
-                ? req.body.credential.value !== undefined
-                : req.body.credential?.type === AgentVaultCredentialType.Basic &&
-                  (req.body.credential.username !== undefined || req.body.credential.password !== undefined)
+                ? req.body.credential.headerName
+                : undefined,
+            headerPrefix:
+              req.body.credential?.type === AgentVaultCredentialType.Bearer
+                ? req.body.credential.headerPrefix
+                : undefined,
+            credentialReplaced: isStoredSecretReplaced(req.body.credential)
           }
         }
       });
