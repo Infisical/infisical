@@ -91,7 +91,7 @@ function SelectedActionBar({
         data-slot="selected-action-bar"
         data-state={isVisible ? "open" : "closed"}
         className={cn(
-          "pointer-events-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-wrap items-center gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pl-4 text-foreground shadow-2xl",
+          "pointer-events-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-wrap items-center gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pl-4 text-foreground shadow-[0_8px_32px_rgba(0,0,0,0.6)]",
           className
         )}
       >
