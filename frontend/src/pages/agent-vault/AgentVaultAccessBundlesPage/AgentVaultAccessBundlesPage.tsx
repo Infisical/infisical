@@ -142,7 +142,7 @@ export const AgentVaultAccessBundlesPage = () => {
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
         title="Access Bundles"
-        description="What an agent can reach. Grant a bundle to a person, machine identity or group."
+        description="Define what's included and who can use it."
       />
 
       <Card>
