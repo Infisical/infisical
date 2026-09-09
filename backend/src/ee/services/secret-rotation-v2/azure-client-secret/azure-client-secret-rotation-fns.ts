@@ -134,16 +134,12 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/passwordCredentials`;
 
     try {
-      const { data } = await withAzureConcurrentRequestRetry(
-        () =>
-          request.get<{ value: Array<{ keyId: string }> }>(endpoint, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json"
-            }
-          }),
-        "list credentials"
-      );
+      const { data } = await request.get<{ value: Array<{ keyId: string }> }>(endpoint, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
 
       return data.value?.some((credential) => credential.keyId === keyId) || false;
     } catch (error: unknown) {
