@@ -11,7 +11,8 @@ export const AzureEntraIdScimSyncDestinationSchema = BaseSecretSyncSchema(
   z.object({
     destination: z.literal(SecretSync.AzureEntraIdScim),
     destinationConfig: z.object({
-      servicePrincipalId: z.string().trim().min(1, "Service Principal ID required")
+      servicePrincipalId: z.string().trim().min(1, "Service Principal ID required"),
+      servicePrincipalDisplayName: z.string().optional()
     })
   })
 );

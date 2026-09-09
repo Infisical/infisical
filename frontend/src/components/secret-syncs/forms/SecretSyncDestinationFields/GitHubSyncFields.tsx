@@ -201,7 +201,11 @@ export const GitHubSyncFields = () => {
                   isError={Boolean(error)}
                   isLoading={isRepositoriesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={repositories.find((repo) => repo.name === value) ?? null}
+                  value={
+                    repositories.find(
+                      (repo) => repo.name === value && repo.owner.login === currentOwner
+                    ) ?? null
+                  }
                   onValueChange={(option) => {
                     const repo = option;
 

@@ -26,6 +26,10 @@ export const AzureEntraIdScimSyncFields = () => {
   >();
 
   const connectionId = useWatch({ control, name: "connection.id" });
+  const servicePrincipalDisplayName = useWatch({
+    control,
+    name: "destinationConfig.servicePrincipalDisplayName"
+  });
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebounce(searchInput, 300);
@@ -40,6 +44,7 @@ export const AzureEntraIdScimSyncFields = () => {
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.servicePrincipalId", "");
+          setValue("destinationConfig.servicePrincipalDisplayName", undefined);
         }}
       />
 
@@ -65,10 +70,14 @@ export const AzureEntraIdScimSyncFields = () => {
                 isError={Boolean(error)}
                 value={value || null}
                 onValueChange={(option) => {
+                  const selected = servicePrincipals?.find((sp) => sp.id === option);
+                  if (!selected || option === value) return;
                   onChange(option);
+                  setValue("destinationConfig.servicePrincipalDisplayName", selected.displayName);
                 }}
                 onClear={() => {
                   onChange("");
+                  setValue("destinationConfig.servicePrincipalDisplayName", undefined);
                 }}
                 onInputValueChange={(newValue) => setSearchInput(newValue)}
                 shouldFilter={false}
@@ -77,7 +86,8 @@ export const AzureEntraIdScimSyncFields = () => {
                 options={(servicePrincipals ?? []).map((sp) => sp.id)}
                 placeholder="Search for a SCIM service principal..."
                 getOptionLabel={(option) =>
-                  servicePrincipals?.find((sp) => sp.id === option)?.displayName ?? option
+                  servicePrincipals?.find((sp) => sp.id === option)?.displayName ??
+                  (servicePrincipalDisplayName || option)
                 }
                 getOptionValue={(option) => option}
                 isDisabled={!connectionId}

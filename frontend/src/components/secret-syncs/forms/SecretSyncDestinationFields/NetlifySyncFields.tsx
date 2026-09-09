@@ -53,6 +53,8 @@ export const NetlifySyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.accountId", "");
           setValue("destinationConfig.accountName", "");
+          setValue("destinationConfig.siteId", "");
+          setValue("destinationConfig.siteName", undefined);
         }}
       />
       <Controller
@@ -71,6 +73,8 @@ export const NetlifySyncFields = () => {
                   const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.accountName", v?.name ?? "");
+                  setValue("destinationConfig.siteId", "");
+                  setValue("destinationConfig.siteName", undefined);
                 }}
                 options={accounts}
                 placeholder="Select an account..."
@@ -101,7 +105,7 @@ export const NetlifySyncFields = () => {
                   setValue("destinationConfig.siteName", option.name);
                 }}
                 onClear={() => {
-                  onChange(null);
+                  onChange("");
                   setValue("destinationConfig.siteName", undefined);
                 }}
                 options={sites}

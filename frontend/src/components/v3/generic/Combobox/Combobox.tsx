@@ -424,8 +424,11 @@ const SingleCombobox = <TOption,>({
         if (nextOpen) {
           // Clicking into a selected combobox starts from its current label. When
           // typing itself opens the popup, preserve the query emitted just before
-          // this event instead of replacing the user's first keystroke.
-          if (eventDetails.reason !== "input-change") setSearch(selectedLabel);
+          // this event instead of replacing the user's first keystroke. Consumers
+          // that search server-side never receive the seeded label (it would be
+          // sent as a query and match nothing), so their input must stay in step
+          // with the empty query the parent still holds.
+          if (eventDetails.reason !== "input-change") setSearch(shouldFilter ? selectedLabel : "");
         } else {
           highlightedOptionValueRef.current = null;
           setSearch("");

@@ -68,6 +68,8 @@ export const ChecklySyncFields = () => {
                   const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.accountName", v?.name ?? "");
+                  setValue("destinationConfig.groupId", "");
+                  setValue("destinationConfig.groupName", undefined);
                 }}
                 options={accounts}
                 placeholder="Select an account..."
@@ -91,8 +93,8 @@ export const ChecklySyncFields = () => {
             <FieldContent>
               <Combobox
                 isError={Boolean(error)}
-                isLoading={isGroupsLoading && Boolean(connectionId)}
-                isDisabled={!connectionId}
+                isLoading={isGroupsLoading && Boolean(connectionId && accountId)}
+                isDisabled={!connectionId || !accountId}
                 value={groups.find((p) => p.id === value) ?? null}
                 onValueChange={(option) => {
                   const v = option;
@@ -100,7 +102,7 @@ export const ChecklySyncFields = () => {
                   setValue("destinationConfig.groupName", v?.name ?? undefined);
                 }}
                 onClear={() => {
-                  onChange(null);
+                  onChange("");
                   setValue("destinationConfig.groupName", undefined);
                 }}
                 options={groups}
