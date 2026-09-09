@@ -46,6 +46,39 @@ type Props = {
   ) => Promise<void>;
 };
 
+const QueryOrFormError = ({
+  formError,
+  isQueryError,
+  queryMessage,
+  onRetry
+}: {
+  formError?: string;
+  isQueryError: boolean;
+  queryMessage: string;
+  onRetry: () => void;
+}) => {
+  if (formError) {
+    return <FieldError>{formError}</FieldError>;
+  }
+
+  if (!isQueryError) {
+    return <FieldError />;
+  }
+
+  return (
+    <FieldError>
+      {queryMessage}{" "}
+      <button
+        type="button"
+        className="underline underline-offset-4 hover:text-foreground"
+        onClick={onRetry}
+      >
+        Try again
+      </button>
+    </FieldError>
+  );
+};
+
 const formatConfigLabel = (config: TDopplerConfig) => {
   if (config.root) {
     return config.name;
@@ -101,12 +134,14 @@ export const DopplerSecretImportModal = ({
   const {
     data: dopplerProjects = [],
     isPending: isLoadingProjects,
-    isError: isProjectsError
+    isError: isProjectsError,
+    refetch: refetchProjects
   } = useGetDopplerProjects(connectionId);
   const {
     data: dopplerConfigs = [],
     isPending: isLoadingConfigs,
-    isError: isConfigsError
+    isError: isConfigsError,
+    refetch: refetchConfigs
   } = useGetDopplerConfigs(connectionId, selectedDopplerProject || undefined);
 
   const sortedDopplerConfigs = useMemo(() => {
@@ -176,12 +211,18 @@ export const DopplerSecretImportModal = ({
                         setValue("dopplerProject", "");
                         setValue("dopplerEnvironment", "");
                       }}
+                      onClear={() => {
+                        field.onChange("");
+                        setValue("dopplerProject", "");
+                        setValue("dopplerEnvironment", "");
+                      }}
                       options={connections}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => option.name}
                       placeholder="Select Doppler connection..."
                       searchPlaceholder="Search Doppler connections..."
                       searchAriaLabel="Search Doppler connections"
+                      clearAriaLabel="Clear Doppler connection"
                       emptyMessage="No Doppler connections found."
                       isError={Boolean(error)}
                       modal
@@ -205,6 +246,10 @@ export const DopplerSecretImportModal = ({
                       field.onChange(project.slug);
                       setValue("dopplerEnvironment", "");
                     }}
+                    onClear={() => {
+                      field.onChange("");
+                      setValue("dopplerEnvironment", "");
+                    }}
                     options={dopplerProjects}
                     getOptionValue={(option) => option.slug}
                     getOptionLabel={(option) => option.name}
@@ -217,10 +262,22 @@ export const DopplerSecretImportModal = ({
                     }
                     searchPlaceholder="Search Doppler projects..."
                     searchAriaLabel="Search Doppler projects"
-                    emptyMessage="No Doppler projects found."
+                    clearAriaLabel="Clear source project"
+                    emptyMessage={
+                      isProjectsError
+                        ? "Failed to load Doppler projects."
+                        : "No Doppler projects found."
+                    }
                     modal
                   />
-                  <FieldError>{error?.message}</FieldError>
+                  <QueryOrFormError
+                    formError={error?.message}
+                    isQueryError={isProjectsError}
+                    queryMessage="Failed to load Doppler projects."
+                    onRetry={() => {
+                      refetchProjects();
+                    }}
+                  />
                 </Field>
               )}
             />
@@ -237,6 +294,7 @@ export const DopplerSecretImportModal = ({
                       sortedDopplerConfigs.find((config) => config.name === field.value) ?? null
                     }
                     onValueChange={(config) => field.onChange(config.name)}
+                    onClear={() => field.onChange("")}
                     options={sortedDopplerConfigs}
                     getOptionValue={(option) => option.name}
                     getOptionLabel={formatConfigLabel}
@@ -251,7 +309,12 @@ export const DopplerSecretImportModal = ({
                     }
                     searchPlaceholder="Search Doppler configs..."
                     searchAriaLabel="Search Doppler configs"
-                    emptyMessage="No Doppler configs found."
+                    clearAriaLabel="Clear source config"
+                    emptyMessage={
+                      isConfigsError
+                        ? "Failed to load Doppler configs."
+                        : "No Doppler configs found."
+                    }
                     modal
                     renderOption={(option) => (
                       <div className="min-w-0">
@@ -269,7 +332,14 @@ export const DopplerSecretImportModal = ({
                       </span>
                     )}
                   />
-                  <FieldError>{error?.message}</FieldError>
+                  <QueryOrFormError
+                    formError={error?.message}
+                    isQueryError={isConfigsError}
+                    queryMessage="Failed to load Doppler configs."
+                    onRetry={() => {
+                      refetchConfigs();
+                    }}
+                  />
                 </Field>
               )}
             />
