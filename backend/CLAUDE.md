@@ -20,13 +20,54 @@ All commands run from the `backend/` directory:
 
 ### Testing
 
-- `npm run test:unit` — unit tests matching `./src/**/*.test.ts`
-- `npm run test:e2e` — e2e tests matching `./e2e-test/**/*.spec.ts` (single-threaded, requires running DB/Redis)
-- `npm run test:e2e-watch` — e2e tests in watch mode
+Run both suites from the repo root, which is the same entry point CI uses:
+
+- `make test-api-unit` — unit tests matching `./src/**/*.test.ts`
+- `make test-api-e2e` — e2e tests matching `./e2e-test/**/*.spec.ts`
+- `make test-api-e2e SPEC=<pattern>` — narrow to one spec, e.g. `SPEC=secret-sync`
+- `make down-test-suite-containers` — stop the backing services when finished
+
+Both run inside the FIPS image (`Dockerfile.dev.fips`), which carries the native dependencies
+the suites need (SoftHSM2, the Oracle client, the FIPS OpenSSL build) and pins the Node
+version, so the host's does not matter. `docker-compose.test.yml` declares the image,
+environment, mounts and services; `src`, `e2e-test` and both vitest configs are mounted, so
+editing a test needs no rebuild but changing `package.json` or `tsconfig.json` does.
+
+**`npm run test:e2e` directly is possible but destructive if misconfigured.** The Vitest
+environment runs `DROP SCHEMA public CASCADE` on whatever database `.env.test` points at,
+before every run. Copy `.env.test.example`, which targets the throwaway stack, and start it
+with `make up-test-suite-containers`. Never point it at the dev database.
 
 Unit tests go next to source as `*.test.ts` and test pure functions with Vitest globals (`describe`, `test`, `expect`).
 
 E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/vitest-environment-knex.ts`) bootstraps a full server with DB, Redis, and encryption. Tests use injected globals: `testServer` (Fastify instance), `jwtAuthToken` (pre-authenticated JWT). Use `testServer.inject()` for HTTP assertions. Test helpers in `e2e-test/testUtils/` provide CRUD wrappers for secrets, folders, and secret imports. See `e2e-test/routes/v1/org.spec.ts` for a representative e2e test.
+
+#### Faking a third-party provider
+
+**Never add test-only code to `src/`** — no test-mode enum members, no lookup map entries, no
+`isTestMode` branches. Replace the module instead, from `test.alias` in
+`vitest.e2e.config.mts`, with a double under `e2e-test/fakes/`. Production code stays unaware
+a fake exists. `e2e-test/fakes/aws-parameter-store-sync-fns.ts` and its connection counterpart
+are the worked examples, and the pre-existing `./license-fns` alias is the precedent.
+
+Four things decide whether this works:
+
+- **Alias the narrowest specifier.** Entries match the import string, so aliasing one a single
+  file imports (a barrel's `./x-fns` re-export) swaps that seam and leaves the constants,
+  schemas, types, router and lookup maps real.
+- **`test.alias` must stay an array.** Vite's `mergeAlias` concatenates arrays with
+  `test.alias` first, but merges two objects, where the generic `@app` prefix matches before a
+  specific `@app/...` entry and the fake silently stops applying with no error.
+- **Re-export whatever you do not replace.** The alias swaps the whole module, so an export you
+  omit stops existing for every importer of it.
+- **Assert the fake still matches.** Nothing otherwise checks it against the module it
+  replaces. Export an assignment typed as `Pick<typeof RealModule, …>` so a signature change
+  fails type-checking rather than leaving the fake quietly wrong.
+
+A fake must reproduce the contract under test, not merely record its input. The Parameter Store
+fake reimplements the real reconciliation rules (skip empty writes, delete absent keys unless
+deletion is disabled, respect the key schema), because those rules are the behavior the specs
+exist to pin.
 
 #### FIPS test image and the prebuilt toolchain
 
