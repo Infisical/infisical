@@ -18,8 +18,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -267,7 +267,7 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     no server certificate is required.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   aria-invalid={Boolean(error)}
                   id="ssl-enabled"
                   checked={value}
@@ -315,7 +315,7 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     certificate.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   aria-invalid={Boolean(error)}
                   id="ssl-reject-unauthorized"
                   checked={sslEnabled ? value : false}

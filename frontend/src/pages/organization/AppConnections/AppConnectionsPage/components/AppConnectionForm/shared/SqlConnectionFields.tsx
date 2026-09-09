@@ -10,12 +10,12 @@ import {
   Input,
   Label,
   SecretInput,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
 
@@ -145,7 +145,7 @@ export const SqlConnectionFields = ({
                   <FieldContent>
                     <Label htmlFor="ssl-enabled">Enable SSL</Label>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     aria-invalid={Boolean(error)}
                     id="ssl-enabled"
                     variant={scopeVariant}
@@ -190,7 +190,7 @@ export const SqlConnectionFields = ({
                       trusted SSL certificate.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     aria-invalid={Boolean(error)}
                     id="ssl-reject-unauthorized"
                     variant={scopeVariant}
@@ -219,7 +219,7 @@ export const SqlConnectionFields = ({
                     updating the password on creation.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   aria-invalid={Boolean(error)}
                   id="platform-managed"
                   variant={scopeVariant}

@@ -19,7 +19,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -93,7 +93,7 @@ const SecretProtectionOption = ({
         <Label htmlFor={id}>{title}</Label>
         <FieldDescription>{description}</FieldDescription>
       </FieldContent>
-      <Switch
+      <Toggle
         id={id}
         variant="project"
         checked={isEnabled}

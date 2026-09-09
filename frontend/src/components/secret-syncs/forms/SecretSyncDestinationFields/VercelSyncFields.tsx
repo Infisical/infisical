@@ -22,7 +22,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -284,7 +284,7 @@ export const VercelSyncFields = () => {
                     Vercel team.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="vercel-sync-all-custom-environments"
                   variant="project"
                   checked={Boolean(value)}
@@ -471,7 +471,7 @@ export const VercelSyncFields = () => {
                   </FieldDescription>
                   <FieldError errors={[error]} />
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="vercel-sync-sensitive"
                   variant="project"
                   checked={Boolean(value) && !isProjectDevTargeted}

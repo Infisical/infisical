@@ -10,7 +10,7 @@ import {
   FieldLabel,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 
@@ -86,7 +86,7 @@ export const SecretSyncKeySchemaField = () => {
             manages. Anything else is left untouched.
           </FieldDescription>
         </FieldContent>
-        <Switch
+        <Toggle
           id="customize-key-names"
           variant="project"
           checked={isEnabled}

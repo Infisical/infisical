@@ -17,7 +17,7 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useServerConfig, useUser } from "@app/context";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
@@ -148,7 +148,7 @@ export const AuthMethodSection = () => {
                       : `Allow sign-in with ${authMethodOpt.label}.`}
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   className="col-start-3 row-span-2 row-start-1 self-center"
                   id={`enable-${authMethodOpt.value}-auth`}
                   onCheckedChange={(value) => onAuthMethodToggle(value, authMethodOpt)}

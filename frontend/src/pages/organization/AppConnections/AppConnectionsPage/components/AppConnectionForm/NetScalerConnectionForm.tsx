@@ -19,12 +19,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -305,7 +305,7 @@ export const NetScalerConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         provide a CA certificate above.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       aria-invalid={Boolean(error)}
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}

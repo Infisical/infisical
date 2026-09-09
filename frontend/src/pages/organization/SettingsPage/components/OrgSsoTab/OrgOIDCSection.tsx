@@ -26,7 +26,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
   IconButton,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -195,7 +195,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
                   >
                     {(isAllowed) => (
                       <div>
-                        <Switch
+                        <Toggle
                           id="enable-oidc-sso"
                           variant="org"
                           checked={data.isActive}
@@ -251,7 +251,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-org-auth"
                     variant="org"
                     checked={data?.manageGroupMemberships ?? false}

@@ -31,8 +31,8 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -492,7 +492,7 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
                             Reject authorization requests that do not include a PKCE code challenge.
                           </FieldDescription>
                         </FieldContent>
-                        <Switch
+                        <Toggle
                           id="oauth-client-require-pkce"
                           variant="org"
                           checked={value}
@@ -539,7 +539,7 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
                             declare that your identity provider already enforces MFA.
                           </FieldDescription>
                         </FieldContent>
-                        <Switch
+                        <Toggle
                           id="oauth-client-token-exchange-idp-mfa"
                           variant="org"
                           checked={value}

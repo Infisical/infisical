@@ -27,8 +27,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { SecretInput } from "@app/components/v3/platform/SecretInput";
@@ -601,7 +601,7 @@ const SqlDatabaseFields = ({
                   <FieldTitle>Encrypt Connection (SSL)</FieldTitle>
                   <FieldError id="sql-database-ssl-enabled-error">{error?.message}</FieldError>
                 </FieldContent>
-                <Switch
+                <Toggle
                   ref={field.ref}
                   checked={field.value ?? false}
                   onBlur={field.onBlur}
@@ -647,7 +647,7 @@ const SqlDatabaseFields = ({
                   error={error?.message}
                 />
               </FieldContent>
-              <Switch
+              <Toggle
                 ref={field.ref}
                 checked={field.value ?? true}
                 onBlur={field.onBlur}

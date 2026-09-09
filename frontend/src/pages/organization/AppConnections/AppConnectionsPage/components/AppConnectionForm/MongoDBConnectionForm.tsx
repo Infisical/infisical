@@ -18,12 +18,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -228,7 +228,7 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <FieldContent>
                       <Label htmlFor="tls-enabled">Enable TLS</Label>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       aria-invalid={Boolean(error)}
                       id="tls-enabled"
                       variant={scopeVariant}
@@ -272,7 +272,7 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         trusted TLS certificate.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       aria-invalid={Boolean(error)}
                       id="tls-reject-unauthorized"
                       variant={scopeVariant}

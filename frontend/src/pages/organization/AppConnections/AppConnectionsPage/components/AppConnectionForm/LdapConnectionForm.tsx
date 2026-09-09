@@ -19,12 +19,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -343,7 +343,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         trusted SSL certificate.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       aria-invalid={Boolean(error)}
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
