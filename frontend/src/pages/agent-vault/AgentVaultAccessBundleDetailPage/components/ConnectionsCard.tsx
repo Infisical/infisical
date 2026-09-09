@@ -72,6 +72,27 @@ type Props = {
   onEdit: (connection: TAgentVaultConnection) => void;
 };
 
+// Two hosts is what the column fits comfortably; the rest go behind the count so the table keeps its
+// width no matter how many a connection covers.
+const HOSTS_SHOWN = 2;
+
+const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
+  const hosts = displayHostPattern(hostPattern).split(", ");
+  const hidden = hosts.slice(HOSTS_SHOWN);
+
+  return (
+    <div className="flex max-w-72 items-center gap-1.5 text-sm">
+      <span className="truncate">{hosts.slice(0, HOSTS_SHOWN).join(", ")}</span>
+      {hidden.length > 0 && (
+        <Tooltip>
+          <TooltipTrigger className="shrink-0 text-muted">+{hidden.length}</TooltipTrigger>
+          <TooltipContent>{hidden.join(", ")}</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
+};
+
 export const ConnectionsCard = ({
   accessBundleId,
   connections,
@@ -230,14 +251,7 @@ export const ConnectionsCard = ({
                 </TableCell>
                 <TableCell>{CREDENTIAL_LABELS[connection.credential.type]}</TableCell>
                 <TableCell>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="block max-w-72 truncate font-mono text-xs">
-                        {displayHostPattern(connection.hostPattern)}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{displayHostPattern(connection.hostPattern)}</TooltipContent>
-                  </Tooltip>
+                  <HostsCell hostPattern={connection.hostPattern} />
                 </TableCell>
                 <TableCell>
                   <Tooltip>
