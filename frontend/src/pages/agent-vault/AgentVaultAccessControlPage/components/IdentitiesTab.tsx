@@ -82,7 +82,7 @@ export const IdentitiesTab = () => {
   const renderManagedByBadge = (identity: TAgentVaultProductIdentityMember) => {
     if (isAgentVaultManaged(identity)) {
       return (
-        <Badge variant="project">
+        <Badge variant="av">
           <ProjectIcon />
           Agent Vault
         </Badge>

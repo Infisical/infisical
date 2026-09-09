@@ -379,10 +379,12 @@ const Page = () => {
                   </CardContent>
                 </Card>
               )}
-              <IdentityRoleDetailsSection
-                identityMembershipDetails={identityMembershipDetails}
-                isMembershipDetailsLoading={isMembershipDetailsLoading}
-              />
+              {!isAgentVault && (
+                <IdentityRoleDetailsSection
+                  identityMembershipDetails={identityMembershipDetails}
+                  isMembershipDetailsLoading={isMembershipDetailsLoading}
+                />
+              )}
               {!isStandaloneProduct && currentProject.isLegacyAdditionalPrivilegesEnabled && (
                 <IdentityProjectAdditionalPrivilegeSection
                   identityMembershipDetails={identityMembershipDetails}
@@ -456,11 +458,17 @@ const Page = () => {
 
 export const IdentityDetailsByIDPage = () => {
   const { t } = useTranslation();
+  const { currentProject } = useProject();
+  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+        <title>
+          {t("common.head-title", {
+            title: isAgentVault ? "Machine Identity" : t("settings.members.title")
+          })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <ProjectPermissionCan

@@ -19,6 +19,7 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { TProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
@@ -41,6 +42,7 @@ type ContentProps = {
 
 export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const { currentProject } = useProject();
+  const accentVariant = currentProject.type === ProjectType.AgentVault ? "av" : "project";
 
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
 
@@ -109,7 +111,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
           <Field orientation="horizontal">
             <Switch
               id="delete-protection-enabled"
-              variant="project"
+              variant={accentVariant}
               checked={value}
               onCheckedChange={onChange}
             />
@@ -196,7 +198,12 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          type="submit"
+          variant={accentVariant}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Update
         </Button>
       </div>

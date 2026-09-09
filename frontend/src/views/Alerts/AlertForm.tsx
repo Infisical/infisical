@@ -55,6 +55,7 @@ type Props = {
 
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
 const DEFAULT_ALERT_NAME = "Secret expiration alert";
+const ALERT_NAME_PLACEHOLDER = "Client secret expiration alert";
 
 const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   id: channel.id,
@@ -71,10 +72,10 @@ const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   hasIntegrationKey: Boolean(channel.config.hasIntegrationKey)
 });
 
-const buildFormDefaults = (alert?: TAlert): TAlertForm => {
+const buildFormDefaults = (alert: TAlert | undefined, defaultName: string): TAlertForm => {
   if (!alert) {
     return {
-      name: DEFAULT_ALERT_NAME,
+      name: defaultName,
       description: "",
       resourceType: AlertResourceType.IdentityAuthentication,
       eventType: AlertEventType.IdentityAuthenticationExpiry,
@@ -110,12 +111,13 @@ export const AlertForm = ({
 }: Props) => {
   const isEditing = Boolean(alert);
   const scopeVariant = useScopeVariant();
+  const isAgentVault = scopeVariant === "av";
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
 
   const formMethods = useForm<TAlertForm>({
     resolver: zodResolver(alertFormSchema),
-    defaultValues: buildFormDefaults(alert)
+    defaultValues: buildFormDefaults(alert, isAgentVault ? "" : DEFAULT_ALERT_NAME)
   });
 
   const {
@@ -186,7 +188,7 @@ export const AlertForm = ({
               <Input
                 id="alert-name"
                 autoFocus
-                placeholder={DEFAULT_ALERT_NAME}
+                placeholder={isAgentVault ? ALERT_NAME_PLACEHOLDER : DEFAULT_ALERT_NAME}
                 isError={Boolean(errors.name)}
                 {...register("name")}
               />
