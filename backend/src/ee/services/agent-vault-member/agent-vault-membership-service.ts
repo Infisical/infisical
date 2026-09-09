@@ -1,14 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ActionProjectType,
-  OrgMembershipStatus,
-  ProjectMembershipRole,
-  RESOURCE_SCOPE
-} from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole, RESOURCE_SCOPE } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -304,9 +299,15 @@ export const agentVaultMembershipServiceFactory = ({
   };
 
   const assertNotLastAdmin = async (projectId: string, membershipId: string, tx: Knex) => {
+    // Counting without serializing would let two concurrent demotions each see the other's admin and both
+    // pass, leaving the product with none. Same lock the project bootstrap takes for its own race.
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [`agent-vault-members:${projectId}`]);
+
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId }, { tx });
     const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } }, { tx });
-    const admins = roles.filter((r) => r.role === ProjectMembershipRole.Admin);
+    // A lapsed temporary role leaves its row behind, and every admin-gated route already ignores those, so
+    // counting them here would let the last acting admin be demoted.
+    const admins = roles.filter((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r));
 
     if (admins.length <= 1 && admins.some((r) => r.membershipId === membershipId)) {
       throw new BadRequestError({ message: "Agent Vault must keep at least one admin" });
@@ -338,11 +339,14 @@ export const agentVaultMembershipServiceFactory = ({
     }
 
     const actorId = dto.userId ?? dto.identityId!;
+    // Status is not required: an org invite that has not been accepted still gets project access
+    // everywhere else on the platform, and resolveSession refuses the actor until it is. isActive is the
+    // real gate, so a deactivated member is still refused.
     const membership = await orgDAL.findEffectiveOrgMembership({
       actorType: dto.userId ? ActorType.USER : ActorType.IDENTITY,
       actorId,
       orgId,
-      status: OrgMembershipStatus.Accepted
+      acceptAnyStatus: true
     });
     if (!membership?.isActive) {
       throw new BadRequestError({
@@ -410,6 +414,8 @@ export const agentVaultMembershipServiceFactory = ({
     }
 
     const { column, id, label } = resolveActorColumn(dto);
+    // The add paths check this; promoting did not, so a deactivated member could still be made an admin.
+    await assertActorIsInOrg(dto, ctx.actorOrgId, projectId, label);
 
     const updated = await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(

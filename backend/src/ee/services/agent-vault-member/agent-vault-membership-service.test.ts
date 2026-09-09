@@ -41,7 +41,8 @@ const buildService = ({
       find: vi.fn(({ scope }: { scope: string }) =>
         Promise.resolve(scope === AccessScope.Project ? productMemberships : [])
       ),
-      transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb({}))),
+      // raw() because assertNotLastAdmin takes an advisory lock before it counts admins.
+      transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb({ raw: vi.fn() }))),
       create: vi.fn().mockResolvedValue({ id: "mem-new", createdAt: new Date() }),
       delete: vi.fn().mockResolvedValue(undefined),
       deleteById: vi.fn().mockResolvedValue(undefined)

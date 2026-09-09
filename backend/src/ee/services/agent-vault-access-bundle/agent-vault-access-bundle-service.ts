@@ -446,16 +446,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
   };
 
-  const checkHostPatternConflicts = async ({
-    accessBundleId,
-    hostPattern,
-    excludeConnectionId
-  }: {
-    accessBundleId: string;
-    hostPattern: string;
-    excludeConnectionId?: string;
-  }) => {
-    const siblings = await agentVaultConnectionDAL.findByAccessBundleId(accessBundleId);
+  const checkHostPatternConflicts = async (
+    {
+      accessBundleId,
+      hostPattern,
+      excludeConnectionId
+    }: {
+      accessBundleId: string;
+      hostPattern: string;
+      excludeConnectionId?: string;
+    },
+    // Without a tx this reads the replica outside any lock, so two creates for the same host both pass.
+    tx?: Knex
+  ) => {
+    const siblings = await agentVaultConnectionDAL.findByAccessBundleId(accessBundleId, tx);
     const conflicts = findHostPatternConflicts(
       hostPattern,
       siblings.filter((candidate) => candidate.id !== excludeConnectionId)
@@ -479,22 +483,41 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern });
 
+    // Encrypt before the lock: KMS is a network call and the transaction has to stay short.
     const { config, secret } = splitCredential(credential);
     const { encryptor } = await getProjectCipher(rest.projectId);
     const encryptedCredential = secret
       ? encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob
       : null;
 
+    // The pre-check above is only a fast failure. The authoritative one runs under the bundle row lock,
+    // the same lock addMembers takes, because no database constraint can express host-pattern overlap.
+    const write = () =>
+      agentVaultConnectionDAL.transaction(async (tx) => {
+        const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
+          { id: bundle.id, projectId: rest.projectId },
+          tx
+        );
+        if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
+
+        await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern }, tx);
+
+        return agentVaultConnectionDAL.create(
+          {
+            accessBundleId: bundle.id,
+            name,
+            hostPattern,
+            credentialType: credential.type,
+            credentialConfig: config,
+            encryptedCredential
+          },
+          tx
+        );
+      });
+
     let connection;
     try {
-      connection = await agentVaultConnectionDAL.create({
-        accessBundleId: bundle.id,
-        name,
-        hostPattern,
-        credentialType: credential.type,
-        credentialConfig: config,
-        encryptedCredential
-      });
+      connection = await write();
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });
@@ -566,13 +589,37 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       };
     }
 
+    // Same lock as create, and below the credential work so no KMS call sits inside the transaction. The
+    // re-check only earns its place when the pattern actually changes.
+    const write = () =>
+      agentVaultConnectionDAL.transaction(async (tx) => {
+        const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
+          { id: bundle.id, projectId: rest.projectId },
+          tx
+        );
+        if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
+
+        if (hostPattern && hostPattern !== connection.hostPattern) {
+          await checkHostPatternConflicts(
+            { accessBundleId: bundle.id, hostPattern, excludeConnectionId: connection.id },
+            tx
+          );
+        }
+
+        return agentVaultConnectionDAL.updateById(
+          connection.id,
+          {
+            name,
+            hostPattern,
+            ...credentialUpdate
+          },
+          tx
+        );
+      });
+
     let updated;
     try {
-      updated = await agentVaultConnectionDAL.updateById(connection.id, {
-        name,
-        hostPattern,
-        ...credentialUpdate
-      });
+      updated = await write();
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });

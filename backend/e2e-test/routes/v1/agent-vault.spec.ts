@@ -221,6 +221,28 @@ describe("Agent Vault V1 Router", async () => {
       expect(accessBundle.members[0].userId).toBe(seedData1.id);
     });
 
+    test("two concurrent creates for the same host do not both get in", async () => {
+      const bundle = await createAccessBundle("race-hosts");
+      const attempts = await Promise.all(
+        [1, 2].map((n) =>
+          inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+            name: `race-${n}`,
+            hostPattern: "api.raced.example.com",
+            credential: { type: "passthrough" }
+          })
+        )
+      );
+
+      // One wins, the other is refused for the overlap rather than both landing.
+      expect(attempts.filter((res) => res.statusCode === 200)).toHaveLength(1);
+      const refused = attempts.find((res) => res.statusCode !== 200)!;
+      expect(refused.statusCode).toBe(400);
+      expect(JSON.parse(refused.payload).message).toContain("api.raced.example.com");
+
+      const rows = await testDb("agent_vault_connections").where({ accessBundleId: bundle.id });
+      expect(rows).toHaveLength(1);
+    });
+
     test("a connection is rejected when it shares a host with another in the same bundle", async () => {
       const bundle = await createAccessBundle("overlap-check");
 
@@ -1144,6 +1166,47 @@ describe("Agent Vault V1 Router", async () => {
       } finally {
         await first.cleanup();
         await second.cleanup();
+      }
+    });
+
+    test("two admins demoted at once cannot both slip past the last-admin guard", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const one = await createUaIdentity(`av-race-a-${Date.now()}`);
+      const two = await createUaIdentity(`av-race-b-${Date.now()}`);
+
+      try {
+        for await (const identity of [one, two]) {
+          const added = await inject("POST", `/api/v1/agent-vault/memberships/identities/${identity.id}`, {
+            role: ProjectMembershipRole.Admin
+          });
+          expect(added.statusCode).toBe(200);
+        }
+
+        // Demote everyone at once. Whatever interleaving wins, an admin has to be left standing.
+        const admins = (await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId })
+          .select("id")) as { id: string }[];
+
+        await Promise.all(
+          [one, two].map((identity) =>
+            inject("PATCH", `/api/v1/agent-vault/memberships/identities/${identity.id}`, {
+              role: ProjectMembershipRole.Member
+            })
+          )
+        );
+
+        const remainingAdmins = (await testDb("membership_roles")
+          .whereIn(
+            "membershipId",
+            admins.map((row) => row.id)
+          )
+          .where({ role: ProjectMembershipRole.Admin })) as unknown[];
+        expect(remainingAdmins.length).toBeGreaterThan(0);
+      } finally {
+        await deleteUaIdentity(one.id);
+        await deleteUaIdentity(two.id);
       }
     });
 
