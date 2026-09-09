@@ -10,11 +10,24 @@ export async function up(knex: Knex): Promise<void> {
     t.foreign("parentCaId").references("id").inTable(TableName.CertificateAuthority).onDelete("SET NULL");
   });
 
-  await knex(TableName.CertificateAuthority)
-    .whereNotIn("id", knex(TableName.InternalCertificateAuthority).select("caId"))
-    .whereNotIn("id", knex(TableName.ExternalCertificateAuthority).select("caId"))
-    .whereNotIn("id", knex(TableName.PkiCertificateProfile).select("caId").whereNotNull("caId"))
-    .delete();
+  const whereOrphaned = (query: Knex.QueryBuilder) =>
+    query
+      .whereNotIn("id", knex(TableName.InternalCertificateAuthority).select("caId"))
+      .whereNotIn("id", knex(TableName.ExternalCertificateAuthority).select("caId"));
+
+  await knex(TableName.PkiCertificateProfile)
+    .whereNotNull("caId")
+    .whereIn("caId", whereOrphaned(knex(TableName.CertificateAuthority).select("id")))
+    .update({
+      caId: null,
+      issuerType: "self-signed",
+      enrollmentType: "api",
+      estConfigId: null,
+      acmeConfigId: null,
+      scepConfigId: null
+    });
+
+  await whereOrphaned(knex(TableName.CertificateAuthority)).delete();
 }
 
 export async function down(knex: Knex): Promise<void> {
