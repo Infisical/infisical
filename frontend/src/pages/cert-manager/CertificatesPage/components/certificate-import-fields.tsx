@@ -100,7 +100,7 @@ export const CertificateProfileSelect = ({
 export const useCertificateImportReference = (profile: ProfileOption | null) => {
   const reference = getCertificateImportReference(profile?.caType);
 
-  const { data: cas = [] } = useListCasByProjectId();
+  const { data: cas = [], isPending: isCasLoading } = useListCasByProjectId();
   const selectedCa = cas.find((ca) => ca.id === profile?.caId && ca.status === CaStatus.ACTIVE);
   const digicertConfig =
     selectedCa?.type === CaType.DIGICERT && reference?.hasLiveOptions
@@ -120,16 +120,18 @@ export const useCertificateImportReference = (profile: ProfileOption | null) => 
 
   const referenceOptions: ReferenceOption[] = orders.map((order) => ({
     value: String(order.orderId),
-    label: `${order.commonName || "Certificate"} (#${order.orderId})`
+    label: `#${order.orderId} (${order.commonName || "Certificate"})`
   }));
+
+  const isResolvingOptions =
+    Boolean(reference?.hasLiveOptions) &&
+    (isCasLoading || (Boolean(digicertConfig) && isOptionsLoading));
 
   const useFreeText =
     !reference?.hasLiveOptions ||
-    !digicertConfig ||
-    isOptionsError ||
-    (!isOptionsLoading && !referenceOptions.length);
+    (!isResolvingOptions && (!digicertConfig || isOptionsError || !referenceOptions.length));
 
-  return { reference, referenceOptions, isOptionsLoading, useFreeText };
+  return { reference, referenceOptions, isOptionsLoading: isResolvingOptions, useFreeText };
 };
 
 export type TCertificateReferenceSource = ReturnType<typeof useCertificateImportReference>;
@@ -166,6 +168,26 @@ export const CertificateReferenceField = ({
       getOptionLabel={(option) => option.label}
       getOptionValue={(option) => option.value}
       placeholder={reference.optionsPlaceholder}
+      styles={{
+        control: (base) => ({ ...base, minHeight: "unset" }),
+        input: (base) => ({ ...base, "input:focus": { boxShadow: "none" } }),
+        menuPortal: (base) => ({ ...base, zIndex: 60, pointerEvents: "auto" }),
+        menu: (base) => ({
+          ...base,
+          width: "max-content",
+          minWidth: "100%",
+          maxWidth: "24rem",
+          overflowX: "auto"
+        }),
+        menuList: (base) => ({ ...base, width: "max-content", minWidth: "100%" }),
+        option: (base) => ({
+          ...base,
+          minWidth: "100%",
+          overflow: "visible",
+          textOverflow: "clip",
+          whiteSpace: "nowrap"
+        })
+      }}
     />
   );
 };

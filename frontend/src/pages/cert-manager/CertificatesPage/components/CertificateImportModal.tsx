@@ -338,7 +338,7 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
           </ItemMedia>
           <ItemContent className="min-w-0">
             <ItemTitle className="truncate">{outcome.subject}</ItemTitle>
-            <ItemDescription className="line-clamp-none">
+            <ItemDescription className="mt-1 line-clamp-none whitespace-pre-line">
               {outcome.error ?? "Imported"}
             </ItemDescription>
           </ItemContent>
@@ -388,11 +388,11 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
               />
             </TableHead>
             <TableHead className={STICKY_HEAD}>SAN / CN</TableHead>
-            <TableHead className={`w-40 ${STICKY_HEAD}`}>Private Key</TableHead>
-            <TableHead className={`w-24 ${STICKY_HEAD}`}>Chain</TableHead>
-            <TableHead className={`w-44 ${STICKY_HEAD}`}>Expires</TableHead>
+            <TableHead className={`w-28 ${STICKY_HEAD}`}>Private Key</TableHead>
+            <TableHead className={`w-20 ${STICKY_HEAD}`}>Chain</TableHead>
+            <TableHead className={`w-32 ${STICKY_HEAD}`}>Expires</TableHead>
             {keystoreReference && (
-              <TableHead className={`w-64 ${STICKY_HEAD}`}>{keystoreReference.label}</TableHead>
+              <TableHead className={`w-80 ${STICKY_HEAD}`}>{keystoreReference.label}</TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -575,14 +575,14 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle, applicationId
     if (entries && format === "pkcs12") {
       return (
         <DialogFooter>
-          <Button variant="outline" onClick={() => handlePopUpToggle("certificateImport", false)}>
-            Cancel
-          </Button>
           {isMissingKeystoreReference && keystoreReference && (
-            <span className="text-sm text-mineshaft-300">
+            <span className="self-center text-sm text-mineshaft-300">
               {`Enter the ${keystoreReference.label} for every selected certificate.`}
             </span>
           )}
+          <Button variant="outline" onClick={() => handlePopUpToggle("certificateImport", false)}>
+            Cancel
+          </Button>
           <Button
             variant="project"
             isDisabled={!selected.size || isImportingEntries || isMissingKeystoreReference}

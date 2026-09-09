@@ -832,9 +832,65 @@ export const certificateServiceFactory = ({
     };
   };
 
-  /**
-   * Import certificate
-   */
+  type TImportedCertificateFacts = {
+    serialNumber: string;
+    commonName: string;
+    altNames?: string;
+    keyUsages: CertKeyUsage[];
+    extendedKeyUsages: CertExtendedKeyUsage[];
+    notBefore: Date;
+    notAfter: Date;
+    fields: ReturnType<typeof extractCertificateFields>;
+    algorithms: ReturnType<typeof extractCertificateAlgorithms>;
+  };
+
+  const $buildImportCertificateVerifier =
+    ({
+      policyId,
+      profileName,
+      verifyWithProvider
+    }: {
+      policyId: string;
+      profileName: string;
+      verifyWithProvider?: (serialNumber: string) => Promise<void>;
+    }) =>
+    async (cert: TImportedCertificateFacts) => {
+      if (verifyWithProvider) {
+        await verifyWithProvider(cert.serialNumber);
+      }
+
+      const { keyAlgorithm, signatureAlgorithm } = cert.algorithms;
+      const validation = await certificatePolicyService.validateCertificateRequest(policyId, {
+        commonName: cert.commonName || undefined,
+        organization: cert.fields.subjectOrganization ?? undefined,
+        organizationalUnit: cert.fields.subjectOrganizationalUnit ?? undefined,
+        country: cert.fields.subjectCountry ?? undefined,
+        state: cert.fields.subjectState ?? undefined,
+        locality: cert.fields.subjectLocality ?? undefined,
+        domainComponents: cert.fields.subjectDomainComponents?.split(",") ?? undefined,
+        keyUsages: parseKeyUsages(cert.keyUsages),
+        extendedKeyUsages: parseExtendedKeyUsages(cert.extendedKeyUsages),
+        subjectAlternativeNames: cert.altNames ? cert.altNames.split(",").map((san) => detectSanType(san.trim())) : [],
+        validity: { ttl: certificateSpanToTtl(cert.notBefore, cert.notAfter) },
+        keyAlgorithm: Object.values(CertKeyAlgorithm).includes(keyAlgorithm as CertKeyAlgorithm)
+          ? keyAlgorithm
+          : undefined,
+        signatureAlgorithm: Object.values(CertSignatureAlgorithm).includes(signatureAlgorithm as CertSignatureAlgorithm)
+          ? signatureAlgorithm
+          : undefined,
+        ...(cert.fields.isCA && {
+          basicConstraints: { isCA: true, pathLength: cert.fields.pathLength ?? undefined }
+        })
+      });
+
+      if (!validation.isValid) {
+        const violations = validation.errors.map((error) => `- ${error}`).join("\n");
+        throw new BadRequestError({
+          message: `This certificate does not satisfy the policy of certificate profile '${profileName}':\n${violations}\nAttach a profile whose policy allows this certificate, or import it without one to track it for visibility and expiry alerts only.`
+        });
+      }
+    };
+
   const $resolveImportLinkage = async ({
     profileId,
     projectId,
@@ -915,8 +971,10 @@ export const certificateServiceFactory = ({
         profileName: profile.slug,
         caName: null,
         profileApiConfig: profile.apiConfig,
-        policyId: profile.certificatePolicyId,
-        verifyCertificate: undefined
+        verifyCertificate: $buildImportCertificateVerifier({
+          policyId: profile.certificatePolicyId,
+          profileName: profile.slug
+        })
       };
     }
 
@@ -942,8 +1000,10 @@ export const certificateServiceFactory = ({
         profileName: profile.slug,
         caName,
         profileApiConfig: profile.apiConfig,
-        policyId: profile.certificatePolicyId,
-        verifyCertificate: undefined
+        verifyCertificate: $buildImportCertificateVerifier({
+          policyId: profile.certificatePolicyId,
+          profileName: profile.slug
+        })
       };
     }
 
@@ -960,7 +1020,7 @@ export const certificateServiceFactory = ({
       });
     }
 
-    const caId = profile.caId;
+    const { caId } = profile;
     const parsedMetadata = parsed.data as TImportExternalMetadata;
     const { verifyCertificate } = linkage;
 
@@ -971,14 +1031,20 @@ export const certificateServiceFactory = ({
       profileName: profile.slug,
       caName,
       profileApiConfig: profile.apiConfig,
-      policyId: profile.certificatePolicyId,
-      verifyCertificate: verifyCertificate
-        ? (serialNumber: string) =>
-            verifyCertificate({ caId, externalMetadata: parsedMetadata, serialNumber }, { digicertFns })
-        : undefined
+      verifyCertificate: $buildImportCertificateVerifier({
+        policyId: profile.certificatePolicyId,
+        profileName: profile.slug,
+        verifyWithProvider: verifyCertificate
+          ? (serialNumber: string) =>
+              verifyCertificate({ caId, externalMetadata: parsedMetadata, serialNumber }, { digicertFns })
+          : undefined
+      })
     };
   };
 
+  /**
+   * Import certificate
+   */
   const importCert = async ({
     projectId: projectIdInput,
     projectSlug,
@@ -1146,8 +1212,6 @@ export const certificateServiceFactory = ({
 
     const { serialNumber, notBefore, notAfter } = leafCert;
 
-    await linkage?.verifyCertificate?.(serialNumber);
-
     const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
 
     let keyUsages: CertKeyUsage[] = [];
@@ -1168,38 +1232,17 @@ export const certificateServiceFactory = ({
     const certificateFields = extractCertificateFields(certificateBuffer);
     const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
 
-    if (linkage) {
-      const { keyAlgorithm, signatureAlgorithm } = certificateAlgorithms;
-
-      const validation = await certificatePolicyService.validateCertificateRequest(linkage.policyId, {
-        commonName: commonName || undefined,
-        organization: certificateFields.subjectOrganization ?? undefined,
-        organizationalUnit: certificateFields.subjectOrganizationalUnit ?? undefined,
-        country: certificateFields.subjectCountry ?? undefined,
-        state: certificateFields.subjectState ?? undefined,
-        locality: certificateFields.subjectLocality ?? undefined,
-        domainComponents: certificateFields.subjectDomainComponents?.split(",") ?? undefined,
-        keyUsages: parseKeyUsages(keyUsages),
-        extendedKeyUsages: parseExtendedKeyUsages(extendedKeyUsages),
-        subjectAlternativeNames: altNames ? altNames.split(",").map((san) => detectSanType(san.trim())) : [],
-        validity: { ttl: certificateSpanToTtl(notBefore, notAfter) },
-        keyAlgorithm: Object.values(CertKeyAlgorithm).includes(keyAlgorithm as CertKeyAlgorithm)
-          ? keyAlgorithm
-          : undefined,
-        signatureAlgorithm: Object.values(CertSignatureAlgorithm).includes(signatureAlgorithm as CertSignatureAlgorithm)
-          ? signatureAlgorithm
-          : undefined,
-        ...(certificateFields.isCA && {
-          basicConstraints: { isCA: true, pathLength: certificateFields.pathLength ?? undefined }
-        })
-      });
-
-      if (!validation.isValid) {
-        throw new BadRequestError({
-          message: `This certificate does not satisfy the policy of certificate profile '${linkage.profileName}', so that profile could not renew it: ${validation.errors.join(", ")}. Attach a profile whose policy allows this certificate, or import it without one to track it for visibility and expiry alerts only.`
-        });
-      }
-    }
+    await linkage?.verifyCertificate({
+      serialNumber,
+      commonName,
+      altNames,
+      keyUsages,
+      extendedKeyUsages,
+      notBefore,
+      notAfter,
+      fields: certificateFields,
+      algorithms: certificateAlgorithms
+    });
 
     // Encrypt certificate for storage
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
