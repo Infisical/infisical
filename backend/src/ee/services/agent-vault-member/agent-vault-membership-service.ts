@@ -317,6 +317,7 @@ export const agentVaultMembershipServiceFactory = ({
   const assertActorIsInOrg = async (
     dto: { userId?: string; groupId?: string; identityId?: string },
     orgId: string,
+    projectId: string,
     label: string
   ) => {
     if (dto.groupId) {
@@ -327,6 +328,13 @@ export const agentVaultMembershipServiceFactory = ({
     if (dto.identityId) {
       const [identity] = await identityDAL.find({ id: dto.identityId, orgId });
       if (!identity) throw new NotFoundError({ message: `Machine identity with ID '${dto.identityId}' not found` });
+      // An identity created inside another product still carries an org-scope NoAccess membership, so the
+      // org check below passes for it. Only Agent Vault's own identities and unscoped org ones belong here.
+      if (identity.projectId && identity.projectId !== projectId) {
+        throw new BadRequestError({
+          message: `Machine identity with ID '${dto.identityId}' belongs to another project and cannot be given Agent Vault access`
+        });
+      }
     }
 
     const actorId = dto.userId ?? dto.identityId!;
@@ -361,7 +369,7 @@ export const agentVaultMembershipServiceFactory = ({
     assertValidRole(role);
 
     const { column, id, label } = resolveActorColumn(dto);
-    await assertActorIsInOrg(dto, ctx.actorOrgId, label);
+    await assertActorIsInOrg(dto, ctx.actorOrgId, projectId, label);
 
     const result = await membershipDAL.transaction(async (tx) => {
       const existing = await membershipDAL.find(
@@ -397,6 +405,10 @@ export const agentVaultMembershipServiceFactory = ({
     await checkProductAdmin(projectId, ctx);
     assertValidRole(role);
 
+    if ((dto.userId && dto.userId === ctx.actorId) || (dto.identityId && dto.identityId === ctx.actorId)) {
+      throw new ForbiddenRequestError({ message: "You cannot change your own role" });
+    }
+
     const { column, id, label } = resolveActorColumn(dto);
 
     const updated = await membershipDAL.transaction(async (tx) => {
@@ -425,6 +437,17 @@ export const agentVaultMembershipServiceFactory = ({
     }
 
     const { column, id, label } = resolveActorColumn(dto);
+
+    // An identity scoped to this project exists only to be an Agent Vault member. Detaching it would leave
+    // a live identity no screen can reach: this tab lists by membership, and the org list hides scoped ones.
+    if (dto.identityId) {
+      const [identity] = await identityDAL.find({ id: dto.identityId });
+      if (identity?.projectId === projectId) {
+        throw new BadRequestError({
+          message: `Machine identity with ID '${dto.identityId}' is managed by Agent Vault. Delete the identity instead of removing its access`
+        });
+      }
+    }
 
     await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
