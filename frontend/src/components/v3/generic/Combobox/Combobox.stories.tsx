@@ -549,3 +549,29 @@ export const ViewportEdges: Story = {
   },
   render: () => <ViewportEdgesRender />
 };
+
+/** Saved IDs remain visible even when a server search returns a different page. */
+export const ServerFilteredSelection: Story = {
+  name: "Example: Server-filtered Saved Selection",
+  render: () => {
+    const [value, setValue] = useState<string | null>("saved-workspace");
+    const [query, setQuery] = useState("");
+    const options = ["first-page-workspace", "another-workspace"].filter((id) =>
+      id.includes(query)
+    );
+    return (
+      <Combobox
+        aria-label="Workspace"
+        options={options}
+        value={value}
+        onValueChange={setValue}
+        onClear={() => setValue(null)}
+        getOptionValue={(id) => id}
+        getOptionLabel={(id) => id}
+        shouldFilter={false}
+        includeMissingSelectedOptions={!query}
+        onInputValueChange={setQuery}
+      />
+    );
+  }
+};

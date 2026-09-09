@@ -73,7 +73,7 @@ export const GitHubSyncFields = () => {
           setValue("destinationConfig.org", "");
           setValue("destinationConfig.repo", "");
           setValue("destinationConfig.owner", "");
-          setValue("destinationConfig.selectedRepositoryIds", undefined);
+          setValue("destinationConfig.selectedRepositoryIds", []);
         }}
       />
       <Controller
@@ -178,6 +178,7 @@ export const GitHubSyncFields = () => {
                       placeholder="Select one or more repositories..."
                       getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
                       getOptionValue={(option) => option.id.toString()}
+                      getOptionKeywords={(option) => [option.id.toString()]}
                       modal
                     />
                     <FieldError errors={[error]} />
@@ -212,6 +213,7 @@ export const GitHubSyncFields = () => {
                   placeholder="Select a repository..."
                   getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
                 <FieldError errors={[error]} />
@@ -240,6 +242,7 @@ export const GitHubSyncFields = () => {
                   placeholder="Select an environment..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
                 <FieldError errors={[error]} />

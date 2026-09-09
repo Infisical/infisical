@@ -4,6 +4,7 @@ import { CheckIcon, ChevronDownIcon, Loader2Icon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 import { useScrollEdges } from "../../utils/useScrollEdges";
+import { mergeComboboxItems } from "./combobox-items";
 
 import "../../utils/ScrollEdgeFade.css";
 
@@ -34,6 +35,8 @@ type ComboboxSharedProps<TOption> = {
   contentClassName?: string;
   onInputValueChange?: (inputValue: string) => void;
   shouldFilter?: boolean;
+  /** Keep selected values in the option list even when absent from the latest results. */
+  includeMissingSelectedOptions?: boolean;
 };
 
 type ComboboxSingleProps<TOption> = ComboboxSharedProps<TOption> &
@@ -86,25 +89,11 @@ const useComboboxItems = <TOption,>(
   getOptionValue: (option: TOption) => string,
   includeMissingSelectedOptions: boolean
 ) =>
-  React.useMemo(() => {
-    const selectedByValue = new Map(
-      selectedOptions.map((option) => [getOptionValue(option), option] as const)
-    );
-    const optionValues = new Set<string>();
-    const stableOptions = options.map((option) => {
-      const optionValue = getOptionValue(option);
-      optionValues.add(optionValue);
-      return selectedByValue.get(optionValue) ?? option;
-    });
-
-    if (includeMissingSelectedOptions) {
-      selectedOptions.forEach((option) => {
-        if (!optionValues.has(getOptionValue(option))) stableOptions.push(option);
-      });
-    }
-
-    return stableOptions;
-  }, [getOptionValue, includeMissingSelectedOptions, options, selectedOptions]);
+  React.useMemo(
+    () =>
+      mergeComboboxItems(options, selectedOptions, getOptionValue, includeMissingSelectedOptions),
+    [getOptionValue, includeMissingSelectedOptions, options, selectedOptions]
+  );
 
 type ComboboxItem<TOption> = {
   option: TOption;
@@ -373,6 +362,7 @@ const SingleCombobox = <TOption,>({
   contentClassName,
   onInputValueChange,
   shouldFilter = true,
+  includeMissingSelectedOptions = true,
   id,
   onKeyDown,
   ...inputProps
@@ -383,9 +373,12 @@ const SingleCombobox = <TOption,>({
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
-  // Locally-filtered lists retain missing selections so the primitive can filter
-  // them normally. Externally-filtered lists must reflect only provider results.
-  const items = useComboboxItems(options, selectedOptions, getOptionValue, shouldFilter);
+  const items = useComboboxItems(
+    options,
+    selectedOptions,
+    getOptionValue,
+    includeMissingSelectedOptions
+  );
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
     getOptionValue,
@@ -592,6 +585,7 @@ const MultipleCombobox = <TOption,>({
   contentClassName,
   onInputValueChange,
   shouldFilter = true,
+  includeMissingSelectedOptions = true,
   id,
   onKeyDown,
   ...inputProps
@@ -604,7 +598,12 @@ const MultipleCombobox = <TOption,>({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
-  const items = useComboboxItems(options, selectedOptions, getOptionValue, shouldFilter);
+  const items = useComboboxItems(
+    options,
+    selectedOptions,
+    getOptionValue,
+    includeMissingSelectedOptions
+  );
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
     getOptionValue,

@@ -121,6 +121,7 @@ export const OctopusDeploySyncFields = () => {
                       placeholder={spaces?.length ? "Select a space..." : "No spaces found..."}
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
+                      getOptionKeywords={(option) => [option.id, option.slug]}
                       modal
                     />
                     <FieldError errors={[error]} />
@@ -200,6 +201,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id, option.slug]}
                         modal
                       />
                       <FieldError errors={[error]} />
@@ -243,6 +245,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                         modal
                       />
                       <FieldError errors={[error]} />
@@ -279,6 +282,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                         modal
                       />
                       <FieldError errors={[error]} />
@@ -316,6 +320,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                         modal
                       />
                       <FieldError errors={[error]} />
@@ -353,6 +358,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                         modal
                       />
                       <FieldError errors={[error]} />
@@ -390,6 +396,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                         modal
                       />
                       <FieldError errors={[error]} />
@@ -427,6 +434,7 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                         modal
                       />
                       <FieldError errors={[error]} />

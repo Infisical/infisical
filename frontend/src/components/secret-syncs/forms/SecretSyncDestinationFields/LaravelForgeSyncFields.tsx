@@ -85,6 +85,7 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id, option.slug]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -115,6 +116,7 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select a server..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -144,6 +146,7 @@ export const LaravelForgeSyncFields = () => {
                 placeholder="Select a site..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />

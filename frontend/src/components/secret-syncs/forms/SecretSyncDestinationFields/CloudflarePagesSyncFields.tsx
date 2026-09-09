@@ -69,6 +69,7 @@ export const CloudflarePagesSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                getOptionKeywords={(option) => [option.id.toString()]}
                 modal
               />
               <FieldError errors={[error]} />

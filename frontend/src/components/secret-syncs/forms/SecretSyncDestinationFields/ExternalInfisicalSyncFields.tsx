@@ -113,6 +113,7 @@ export const ExternalInfisicalSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id, option.slug]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -149,6 +150,7 @@ export const ExternalInfisicalSyncFields = () => {
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.slug}
+                getOptionKeywords={(option) => [option.slug]}
                 modal
               />
               <FieldError errors={[error]} />

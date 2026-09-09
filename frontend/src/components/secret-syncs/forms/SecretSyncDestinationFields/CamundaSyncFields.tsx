@@ -72,6 +72,7 @@ export const CamundaSyncFields = () => {
                 placeholder="Select a cluster..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.uuid}
+                getOptionKeywords={(option) => [option.uuid]}
                 modal
               />
               <FieldError errors={[error]} />

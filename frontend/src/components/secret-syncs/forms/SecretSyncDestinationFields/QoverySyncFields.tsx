@@ -86,6 +86,7 @@ export const QoverySyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -117,6 +118,7 @@ export const QoverySyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -152,6 +154,7 @@ export const QoverySyncFields = () => {
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldDescription>

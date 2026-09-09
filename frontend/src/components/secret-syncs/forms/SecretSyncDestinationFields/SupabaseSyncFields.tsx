@@ -57,6 +57,7 @@ export const SupabaseSyncFields = () => {
                 placeholder="Select project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />

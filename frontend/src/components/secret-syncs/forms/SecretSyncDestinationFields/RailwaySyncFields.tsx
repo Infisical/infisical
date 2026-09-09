@@ -76,6 +76,7 @@ export const RailwaySyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -105,6 +106,7 @@ export const RailwaySyncFields = () => {
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -145,6 +147,7 @@ export const RailwaySyncFields = () => {
                 placeholder="Select a service..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldDescription>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { Info } from "lucide-react";
 
@@ -14,10 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TAzureScimServicePrincipal,
-  useAzureEntraIdConnectionListScimServicePrincipals
-} from "@app/hooks/api/appConnections/azure";
+import { useAzureEntraIdConnectionListScimServicePrincipals } from "@app/hooks/api/appConnections/azure";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { useDebounce } from "@app/hooks/useDebounce";
 
@@ -32,27 +29,17 @@ export const AzureEntraIdScimSyncFields = () => {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch] = useDebounce(searchInput, 300);
-  const [selectedSp, setSelectedSp] = useState<TAzureScimServicePrincipal | null>(null);
 
   const { data: servicePrincipals, isLoading: isLoadingServicePrincipals } =
     useAzureEntraIdConnectionListScimServicePrincipals(connectionId, debouncedSearch || undefined, {
       enabled: Boolean(connectionId)
     });
 
-  const options = useMemo(() => {
-    const results = servicePrincipals ?? [];
-    if (selectedSp && !results.some((sp) => sp.id === selectedSp.id)) {
-      return [selectedSp, ...results];
-    }
-    return results;
-  }, [servicePrincipals, selectedSp]);
-
   return (
     <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.servicePrincipalId", "");
-          setSelectedSp(null);
         }}
       />
 
@@ -76,23 +63,23 @@ export const AzureEntraIdScimSyncFields = () => {
             <FieldContent>
               <Combobox
                 isError={Boolean(error)}
-                value={options.find((sp) => sp.id === value) ?? null}
+                value={value || null}
                 onValueChange={(option) => {
-                  const selected = option as TAzureScimServicePrincipal | null;
-                  setSelectedSp(selected);
-                  onChange(selected?.id ?? "");
+                  onChange(option);
                 }}
                 onClear={() => {
-                  setSelectedSp(null);
                   onChange("");
                 }}
                 onInputValueChange={(newValue) => setSearchInput(newValue)}
                 shouldFilter={false}
+                includeMissingSelectedOptions={!searchInput}
                 isLoading={isLoadingServicePrincipals}
-                options={options}
+                options={(servicePrincipals ?? []).map((sp) => sp.id)}
                 placeholder="Search for a SCIM service principal..."
-                getOptionLabel={(option) => option.displayName}
-                getOptionValue={(option) => option.id}
+                getOptionLabel={(option) =>
+                  servicePrincipals?.find((sp) => sp.id === option)?.displayName ?? option
+                }
+                getOptionValue={(option) => option}
                 isDisabled={!connectionId}
                 emptyMessage={() =>
                   debouncedSearch

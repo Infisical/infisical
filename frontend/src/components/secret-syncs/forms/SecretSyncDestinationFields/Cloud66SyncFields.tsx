@@ -62,6 +62,7 @@ export const Cloud66SyncFields = () => {
                 placeholder="Select a stack..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />

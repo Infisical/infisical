@@ -82,6 +82,7 @@ export const TerraformCloudSyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                getOptionKeywords={(option) => [option.id.toString()]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -230,6 +231,7 @@ export const TerraformCloudSyncFields = () => {
                   placeholder="Select a variable set..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
                 <FieldError errors={[error]} />
@@ -265,6 +267,7 @@ export const TerraformCloudSyncFields = () => {
                   placeholder="Select a workspace..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
                 <FieldError errors={[error]} />

@@ -28,11 +28,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
-import {
-  TVercelConnectionApp,
-  TVercelConnectionOrganization,
-  useVercelConnectionListOrganizations
-} from "@app/hooks/api/appConnections/vercel";
+import { useVercelConnectionListOrganizations } from "@app/hooks/api/appConnections/vercel";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import {
   VercelEnvironmentType,
@@ -98,32 +94,6 @@ export const VercelSyncFields = () => {
 
     return allApps.filter((app) => app.teamId === teamId);
   }, [allApps, scope, teamId]);
-
-  const teamOptions = useMemo(() => {
-    const options = teams ?? [];
-    if (teamId && teamName && !options.some((team) => team.id === teamId)) {
-      return [{ id: teamId, name: teamName, slug: teamName, apps: [] }, ...options];
-    }
-    return options;
-  }, [teamId, teamName, teams]);
-
-  const projectOptions = useMemo(() => {
-    if (
-      currentApp &&
-      currentAppName &&
-      !availableApps.some((project) => project.id === currentApp)
-    ) {
-      const selectedFallback: TVercelConnectionApp & { teamId: string; teamName: string } = {
-        id: currentApp,
-        projectId: currentApp,
-        name: currentAppName,
-        teamId,
-        teamName: teamName || "Selected Team"
-      };
-      return [selectedFallback, ...availableApps];
-    }
-    return availableApps;
-  }, [availableApps, currentApp, currentAppName, teamId, teamName]);
 
   const environmentOptions = useMemo(() => {
     return standardVercelEnvironments
@@ -225,15 +195,23 @@ export const VercelSyncFields = () => {
                 <FieldContent>
                   <Combobox
                     isError={Boolean(error)}
-                    value={teamOptions.find((team) => team.id === value) ?? null}
-                    onValueChange={(option: TVercelConnectionOrganization) => {
-                      onChange(option.id);
+                    value={value || null}
+                    onValueChange={(id) => {
+                      const option = teams?.find((team) => team.id === id);
+                      if (!option || id === value) return;
+                      onChange(id);
                       setValue("destinationConfig.teamName", option.name);
                     }}
-                    options={teamOptions}
+                    options={(teams ?? []).map((team) => team.id)}
                     placeholder="Select a team..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.id}
+                    getOptionLabel={(id) =>
+                      teams?.find((team) => team.id === id)?.name ?? (teamName || id)
+                    }
+                    getOptionValue={(id) => id}
+                    getOptionKeywords={(id) => [
+                      id,
+                      teams?.find((team) => team.id === id)?.slug ?? ""
+                    ]}
                     modal
                   />
                   <FieldError errors={[error]} />
@@ -258,6 +236,7 @@ export const VercelSyncFields = () => {
                     placeholder="Select target environments..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.slug}
+                    getOptionKeywords={(option) => [option.slug]}
                     modal
                   />
                   <FieldError errors={[error]} />
@@ -282,6 +261,7 @@ export const VercelSyncFields = () => {
                     placeholder="Select target projects..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.id}
+                    getOptionKeywords={(option) => [option.id]}
                     modal
                   />
                   <FieldError errors={[error]} />
@@ -353,9 +333,11 @@ export const VercelSyncFields = () => {
                     }}
                     isLoading={isTeamsLoading && Boolean(connectionId)}
                     isDisabled={!connectionId}
-                    value={projectOptions.find((app) => app.id === value) ?? null}
-                    onValueChange={(selected) => {
-                      onChange(selected.id);
+                    value={value || null}
+                    onValueChange={(id) => {
+                      const selected = availableApps.find((app) => app.id === id);
+                      if (!selected || id === value) return;
+                      onChange(id);
                       setValue("destinationConfig.branch", "");
                       setValue("destinationConfig.teamId", selected.teamId);
                       setValue("destinationConfig.teamName", selected.teamName);
@@ -363,11 +345,18 @@ export const VercelSyncFields = () => {
                     }}
                     onInputValueChange={setProjectSearch}
                     shouldFilter={false}
-                    options={projectOptions}
+                    includeMissingSelectedOptions={!projectSearch}
+                    options={availableApps.map((app) => app.id)}
                     placeholder="Search for a project..."
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.id.toString()}
-                    getOptionGroup={(option) => option.teamName}
+                    getOptionLabel={(id) =>
+                      availableApps.find((app) => app.id === id)?.name ?? (currentAppName || id)
+                    }
+                    getOptionValue={(id) => id}
+                    getOptionGroup={(id) =>
+                      availableApps.find((app) => app.id === id)?.teamName ??
+                      teamName ??
+                      "Selected Team"
+                    }
                     modal
                   />
                   <FieldError errors={[error]} />
@@ -409,6 +398,7 @@ export const VercelSyncFields = () => {
                     placeholder="Select an environment..."
                     getOptionLabel={(option) => option.name || option.key || ""}
                     getOptionValue={(option) => option.key || ""}
+                    getOptionKeywords={(option) => [option.key || ""]}
                     modal
                   />
                   <FieldError errors={[error]} />

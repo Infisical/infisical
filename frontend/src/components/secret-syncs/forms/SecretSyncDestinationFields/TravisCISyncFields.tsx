@@ -44,7 +44,7 @@ export const TravisCISyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.repositoryId", "");
           setValue("destinationConfig.repositorySlug", "");
-          setValue("destinationConfig.branch", undefined);
+          setValue("destinationConfig.branch", "");
         }}
       />
       <Controller
@@ -63,12 +63,13 @@ export const TravisCISyncFields = () => {
                   const repo = option;
                   onChange(repo?.id ?? "");
                   setValue("destinationConfig.repositorySlug", repo?.slug ?? "");
-                  setValue("destinationConfig.branch", undefined);
+                  setValue("destinationConfig.branch", "");
                 }}
                 options={repositories}
                 placeholder="Select a repository..."
                 getOptionLabel={(option) => option.slug}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -92,7 +93,7 @@ export const TravisCISyncFields = () => {
                 value={branches.find((branch) => branch.name === value) ?? null}
                 onValueChange={(option) => {
                   const branch = option;
-                  onChange(branch?.name ?? undefined);
+                  onChange(branch.name);
                 }}
                 onClear={() => onChange(null)}
                 options={branches}

@@ -26,6 +26,7 @@ export const AwsRegionSelect = ({ value, onChange, isError }: Props) => {
       placeholder="Select region..."
       getOptionLabel={(option) => option.name}
       getOptionValue={(option) => option.slug}
+      getOptionKeywords={(option) => [option.slug]}
       renderOption={renderRegion}
       renderValue={renderRegion}
       modal

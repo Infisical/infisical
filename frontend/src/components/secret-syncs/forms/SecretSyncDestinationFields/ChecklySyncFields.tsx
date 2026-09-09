@@ -48,7 +48,7 @@ export const ChecklySyncFields = () => {
         onChange={() => {
           setValue("destinationConfig.accountId", "");
           setValue("destinationConfig.accountName", "");
-          setValue("destinationConfig.groupId", undefined);
+          setValue("destinationConfig.groupId", "");
           setValue("destinationConfig.groupName", undefined);
         }}
       />
@@ -73,6 +73,7 @@ export const ChecklySyncFields = () => {
                 placeholder="Select an account..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -106,6 +107,7 @@ export const ChecklySyncFields = () => {
                 placeholder="Select a group..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldDescription>

@@ -129,6 +129,7 @@ export const RenderSyncFields = () => {
                   placeholder="Select a service..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
                 <FieldError errors={[error]} />
@@ -159,6 +160,7 @@ export const RenderSyncFields = () => {
                   placeholder="Select an environment group..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
                 <FieldError errors={[error]} />

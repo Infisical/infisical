@@ -140,6 +140,7 @@ const AzureEntraIdFields = ({
                 onValueChange={field.onChange}
                 getOptionLabel={(user) => `${user.name} (${user.email})`}
                 getOptionValue={(user) => user.id}
+                getOptionKeywords={(user) => [user.id]}
                 placeholder="Select users..."
                 searchPlaceholder="Search users..."
                 searchAriaLabel="Search Azure Entra ID users"

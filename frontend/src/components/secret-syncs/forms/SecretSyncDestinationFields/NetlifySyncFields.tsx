@@ -76,6 +76,7 @@ export const NetlifySyncFields = () => {
                 placeholder="Select an account..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -107,6 +108,7 @@ export const NetlifySyncFields = () => {
                 placeholder="Select a site..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldDescription>
@@ -134,6 +136,7 @@ export const NetlifySyncFields = () => {
                 placeholder="Select a context..."
                 getOptionLabel={(option) => option.label}
                 getOptionValue={(option) => option.value}
+                getOptionKeywords={(option) => [option.value]}
                 modal
               />
               <FieldDescription>

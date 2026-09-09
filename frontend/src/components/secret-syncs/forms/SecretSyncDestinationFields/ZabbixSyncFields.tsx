@@ -135,6 +135,7 @@ export const ZabbixSyncFields = () => {
                   placeholder="Select a host..."
                   getOptionLabel={(option) => option.host}
                   getOptionValue={(option) => option.hostId}
+                  getOptionKeywords={(option) => [option.hostId]}
                   modal
                 />
                 <FieldError errors={[error]} />

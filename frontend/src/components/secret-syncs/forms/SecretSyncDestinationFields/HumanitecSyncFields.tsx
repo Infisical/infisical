@@ -74,6 +74,7 @@ export const HumanitecSyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                getOptionKeywords={(option) => [option.id.toString()]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -118,6 +119,7 @@ export const HumanitecSyncFields = () => {
                 placeholder="Select an app..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                getOptionKeywords={(option) => [option.id.toString()]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -204,6 +206,7 @@ export const HumanitecSyncFields = () => {
                   placeholder="Select an env..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
                 <FieldError errors={[error]} />

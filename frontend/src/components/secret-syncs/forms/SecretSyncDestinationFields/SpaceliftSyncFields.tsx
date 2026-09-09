@@ -84,6 +84,7 @@ export const SpaceliftSyncFields = () => {
                 placeholder="Select a context..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />

@@ -12,9 +12,6 @@ import {
 } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
-  TBitbucketEnvironment,
-  TBitbucketRepo,
-  TBitbucketWorkspace,
   useBitbucketConnectionListEnvironments,
   useBitbucketConnectionListRepositories,
   useBitbucketConnectionListWorkspaces
@@ -77,19 +74,20 @@ export const BitbucketSyncFields = () => {
                 isError={Boolean(error)}
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={workspaces.find((w) => w.slug === value) ?? null}
+                value={value || null}
                 onValueChange={(option) => {
-                  const v = option as TBitbucketWorkspace;
-                  onChange(v?.slug ?? "");
+                  if (option === value) return;
+                  onChange(option);
                   setValue("destinationConfig.repositorySlug", "");
                   setValue("destinationConfig.environmentId", "");
                 }}
                 onInputValueChange={(newValue) => setWorkspaceSearch(newValue)}
                 shouldFilter={false}
-                options={workspaces}
+                includeMissingSelectedOptions={!workspaceSearch}
+                options={workspaces.map((w) => w.slug)}
                 placeholder="Search for a workspace..."
-                getOptionLabel={(option) => option.slug}
-                getOptionValue={(option) => option.slug}
+                getOptionLabel={(option) => option}
+                getOptionValue={(option) => option}
                 emptyMessage={(inputValue) =>
                   inputValue ? "No workspaces found matching your search." : "No workspaces found."
                 }
@@ -112,18 +110,21 @@ export const BitbucketSyncFields = () => {
                 isError={Boolean(error)}
                 isLoading={isRepositoriesLoading && Boolean(workspace)}
                 isDisabled={!workspace}
-                value={repositories.find((r) => r.slug === value) ?? null}
+                value={value || null}
                 onValueChange={(option) => {
-                  const v = option as TBitbucketRepo;
-                  onChange(v?.slug ?? "");
+                  if (option === value) return;
+                  onChange(option);
                   setValue("destinationConfig.environmentId", "");
                 }}
                 onInputValueChange={(newValue) => setRepoSearch(newValue)}
                 shouldFilter={false}
-                options={repositories}
+                includeMissingSelectedOptions={!repoSearch}
+                options={repositories.map((r) => r.slug)}
                 placeholder="Search for a repository..."
-                getOptionLabel={(option) => option.full_name}
-                getOptionValue={(option) => option.slug}
+                getOptionLabel={(option) =>
+                  repositories.find((r) => r.slug === option)?.full_name ?? `${workspace}/${option}`
+                }
+                getOptionValue={(option) => option}
                 emptyMessage={(inputValue) =>
                   inputValue
                     ? "No repositories found matching your search."
@@ -148,16 +149,18 @@ export const BitbucketSyncFields = () => {
                 isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(repository)}
                 isDisabled={!repository}
-                value={environments.find((e) => e.uuid === value) ?? null}
+                value={value || null}
                 onValueChange={(option) => {
-                  const v = option as TBitbucketEnvironment;
-                  onChange(v?.uuid ?? "");
+                  onChange(option);
                 }}
                 onClear={() => onChange("")}
-                options={environments}
+                options={environments.map((e) => e.uuid)}
                 placeholder="Select environment..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.uuid}
+                getOptionLabel={(option) =>
+                  environments.find((e) => e.uuid === option)?.name ?? option
+                }
+                getOptionValue={(option) => option}
+                getOptionKeywords={(option) => [option]}
                 modal
               />
               <FieldError errors={[error]} />

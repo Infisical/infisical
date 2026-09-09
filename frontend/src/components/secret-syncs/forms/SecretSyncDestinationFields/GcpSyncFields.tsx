@@ -189,6 +189,7 @@ export const GcpSyncFields = () => {
                   placeholder="Select a GCP project..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
                 <FieldError errors={[error]} />

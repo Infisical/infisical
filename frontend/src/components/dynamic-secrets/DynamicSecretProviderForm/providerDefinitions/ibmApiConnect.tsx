@@ -190,6 +190,7 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                   searchAriaLabel="Search IBM API Connect organizations"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
+                  getOptionKeywords={(option) => [option.id, option.name]}
                   isError={Boolean(error)}
                   modal
                   aria-describedby={
@@ -240,6 +241,7 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                   searchAriaLabel="Search IBM API Connect catalogs"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
+                  getOptionKeywords={(option) => [option.id, option.name]}
                   isError={Boolean(error)}
                   modal
                   aria-describedby={
@@ -287,6 +289,7 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                   searchAriaLabel="Search IBM API Connect applications"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
+                  getOptionKeywords={(option) => [option.id, option.name]}
                   isError={Boolean(error)}
                   modal
                   aria-describedby={

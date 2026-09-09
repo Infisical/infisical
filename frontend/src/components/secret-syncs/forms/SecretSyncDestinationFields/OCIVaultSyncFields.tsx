@@ -93,6 +93,7 @@ export const OCIVaultSyncFields = () => {
                 placeholder="Select a compartment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -132,6 +133,7 @@ export const OCIVaultSyncFields = () => {
                 placeholder="Select a vault..."
                 getOptionLabel={(option) => option.displayName}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />
@@ -170,6 +172,7 @@ export const OCIVaultSyncFields = () => {
                 placeholder="Select a key..."
                 getOptionLabel={(option) => option.displayName}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />

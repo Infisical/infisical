@@ -57,6 +57,7 @@ export const DigitalOceanAppPlatformSyncFields = () => {
                 placeholder="Select an app..."
                 getOptionLabel={(option) => option.spec.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 modal
               />
               <FieldError errors={[error]} />

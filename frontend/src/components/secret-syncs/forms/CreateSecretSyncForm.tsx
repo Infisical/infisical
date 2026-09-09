@@ -40,7 +40,7 @@ import {
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
-import { SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
+import { getSecretSyncDestinationConfig, SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
 import {
@@ -230,7 +230,7 @@ export const CreateSecretSyncForm = ({
     projectId: currentProject?.id || "",
     connectionId: watch("connection")?.id,
     enabled: true,
-    destinationConfig: watch("destinationConfig")
+    destinationConfig: getSecretSyncDestinationConfig(destination, watch("destinationConfig"))
   });
 
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");

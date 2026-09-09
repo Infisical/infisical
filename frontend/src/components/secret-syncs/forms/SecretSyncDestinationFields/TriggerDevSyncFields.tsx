@@ -108,6 +108,7 @@ export const TriggerDevSyncFields = () => {
             placeholder="Select an organization..."
             getOptionLabel={(option) => `${option.name} (${option.slug})`}
             getOptionValue={(option) => option.id}
+            getOptionKeywords={(option) => [option.id]}
             modal
           />
         </FieldContent>
@@ -162,6 +163,7 @@ export const TriggerDevSyncFields = () => {
                 placeholder={projectRef ? "Select an environment..." : "Select a project first"}
                 getOptionLabel={(option) => getEnvironmentLabel(option)}
                 getOptionValue={(option) => option.slug}
+                getOptionKeywords={(option) => [option.slug]}
                 modal
               />
               <FieldError errors={[error]} />
