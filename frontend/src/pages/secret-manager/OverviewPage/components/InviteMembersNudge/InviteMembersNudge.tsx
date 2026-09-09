@@ -26,6 +26,8 @@ import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
+import { FLOATING_BAR_DEFAULT_BOTTOM_PX, useFloatingBarClearance } from "./useFloatingBarClearance";
+
 // PostHog event names for the secrets activation nudge. They are intentionally the same names the
 // blocking modal fired so the shown -> invited/dismissed funnel stays on one timeline; the
 // `presentation` property tells the two surfaces apart when comparing conversion.
@@ -52,7 +54,7 @@ export const inviteMembersNudgeFormSchema = z.object({
 // without router, query, or org/project context.
 export const InviteMembersNudgeCard = ({
   isOpen,
-  isLifted = false,
+  bottomOffset = FLOATING_BAR_DEFAULT_BOTTOM_PX,
   isSuccess,
   isSubmitting,
   canSubmit,
@@ -65,7 +67,10 @@ export const InviteMembersNudgeCard = ({
   const prefersReducedMotion = useReducedMotion();
 
   const transition = { duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" as const };
-  const hidden = prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12 };
+  const hidden = prefersReducedMotion
+    ? { opacity: 0, bottom: bottomOffset }
+    : { opacity: 0, y: 12, bottom: bottomOffset };
+  const shown = { opacity: 1, y: 0, bottom: bottomOffset };
 
   let roleDescription: string | undefined;
   if (roleName) {
@@ -84,9 +89,9 @@ export const InviteMembersNudgeCard = ({
           aria-label="Invite your team"
           data-slot="invite-members-nudge"
           data-state={isSuccess ? "success" : "idle"}
-          className={`fixed right-4 left-4 z-40 md:left-auto md:w-[24rem] ${isLifted ? "bottom-32" : "bottom-4"}`}
+          className="fixed right-4 left-4 z-40 md:left-auto md:w-[24rem]"
           initial={hidden}
-          animate={{ opacity: 1, y: 0 }}
+          animate={shown}
           exit={hidden}
           transition={transition}
           onKeyDown={(e) => {
@@ -200,6 +205,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
   const isMountedRef = useRef(true);
 
   const isOpen = Boolean(popUp?.inviteMembers?.isOpen);
+  const bottomOffset = useFloatingBarClearance(isOpen && isLifted);
 
   // Same role source as the access control invite flow: project roles narrowed to the ones the
   // caller's project permissions allow assigning, so the backend's assignable-role check passes.
@@ -315,7 +321,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
   return (
     <InviteMembersNudgeCard
       isOpen={isOpen}
-      isLifted={isLifted}
+      bottomOffset={bottomOffset}
       isSuccess={isSuccess}
       isSubmitting={isSubmitting}
       canSubmit={isRolesPending || Boolean(defaultRole)}
@@ -333,14 +339,15 @@ export type TInviteMembersNudgeForm = z.infer<typeof inviteMembersNudgeFormSchem
 type Props = {
   popUp: UsePopUpState<["inviteMembers"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["inviteMembers"]>, state?: boolean) => void;
-  // Raises the card above the floating bars that share the bottom edge of the viewport (the
-  // selection action bar and the batch-mode commit bar).
+  // True while a floating bar (selection actions or batch commit) shares the bottom edge of the
+  // viewport; the card then measures that bar and sits above it.
   isLifted?: boolean;
 };
 
 type CardProps = {
   isOpen: boolean;
-  isLifted?: boolean;
+  // Distance from the viewport bottom in px; animated so the card slides when a bar appears.
+  bottomOffset?: number;
   isSuccess: boolean;
   isSubmitting: boolean;
   // False once roles are known and the caller may not assign any of them.
