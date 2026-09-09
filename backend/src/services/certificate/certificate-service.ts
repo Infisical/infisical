@@ -1271,7 +1271,7 @@ export const certificateServiceFactory = ({
       const effectiveApiConfig = await resolveEffectiveApiConfig({
         applicationId,
         profileId,
-        profileApiConfig: linkage.profileApiConfig,
+        profileApiConfig: applicationId ? undefined : linkage.profileApiConfig,
         pkiApplicationProfileDAL,
         apiEnrollmentConfigDAL
       });
