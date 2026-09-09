@@ -4,7 +4,12 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ShieldIcon } from "lucide-react";
 
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import {
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub,
+  useOrganization
+} from "@app/context";
+import { withProjectPermission } from "@app/hoc";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupsTab } from "./components/GroupsTab";
@@ -19,7 +24,7 @@ export enum AgentVaultAccessControlTab {
   Groups = "groups"
 }
 
-export const AgentVaultAccessControlPage = () => {
+const AgentVaultAccessControlPageContent = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -70,3 +75,14 @@ export const AgentVaultAccessControlPage = () => {
     </div>
   );
 };
+
+// Built at module scope: wrapping inside the render makes a new component type each pass, which
+// remounts the tabs and replays the gate.
+export const AgentVaultAccessControlPage = withProjectPermission(
+  AgentVaultAccessControlPageContent,
+  {
+    action: ProjectPermissionMemberActions.Read,
+    subject: ProjectPermissionSub.Member,
+    accessRestrictedMode: "dialog"
+  }
+);
