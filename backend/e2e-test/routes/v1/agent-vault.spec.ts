@@ -1213,13 +1213,12 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("an actor from outside the organization is refused, and an unknown id does not 500", async () => {
-      const stranger = await inject(
-        "POST",
-        "/api/v1/agent-vault/memberships/users/99999999-8888-7777-6666-555555555555",
-        {
-          role: ProjectMembershipRole.Member
-        }
-      );
+      // Users join through the bulk route; only groups and identities are named in the URL.
+      const stranger = await inject("POST", "/api/v1/agent-vault/memberships/users", {
+        userIds: ["99999999-8888-7777-6666-555555555555"],
+        emails: [],
+        role: ProjectMembershipRole.Member
+      });
       expect(stranger.statusCode).toBe(400);
       expect(JSON.parse(stranger.payload).message).toContain("not an active member of this organization");
 
