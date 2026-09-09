@@ -65,7 +65,8 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
           db.ref("credentialType").withSchema(TableName.AgentVaultConnection),
           db.ref("credentialConfig").withSchema(TableName.AgentVaultConnection),
           db.ref("encryptedCredential").withSchema(TableName.AgentVaultConnection),
-          db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
+          // Resolve only reaches live bundles, so the current name is always the truthful one here.
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName"),
           db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
         )
         .orderBy(`${TableName.AgentVaultSessionAccessBundle}.position`, "asc")

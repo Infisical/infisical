@@ -281,7 +281,7 @@ export const AgentVaultSessionsPage = () => {
                           items={session.accessBundles}
                           getKey={(bundle) => bundle.id ?? bundle.name}
                           getLabel={(bundle) => bundle.name}
-                          getClassName={(bundle) => (bundle.id ? undefined : "line-through")}
+                          getClassName={(bundle) => (bundle.id ? undefined : "text-muted")}
                           getTooltip={(bundle) =>
                             bundle.id ? bundle.name : `${bundle.name} (deleted)`
                           }

@@ -12,6 +12,8 @@ export const AgentVaultSessionsSchema = z.object({
   projectId: z.string(),
   userId: z.string().uuid().nullable().optional(),
   identityId: z.string().uuid().nullable().optional(),
+  actorName: z.string(),
+  actorEmail: z.string().nullable().optional(),
   tokenHash: z.string(),
   expiresAt: z.date().nullable().optional(),
   revokedAt: z.date().nullable().optional(),

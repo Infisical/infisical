@@ -11,6 +11,7 @@ import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -105,7 +106,20 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      // Snapshotted from the request, the way PAM's session create does it, so a deleted actor still names
+      // the session it held. Nothing extra is queried for it.
+      let actorEmail: string | null = null;
+      let actorName = "";
+      if (isUserSessionAuth(req.auth)) {
+        actorEmail = req.auth.user.email ?? null;
+        actorName = `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim() || (actorEmail ?? "");
+      } else if (req.auth.authMode === AuthMode.IDENTITY_ACCESS_TOKEN) {
+        actorName = req.auth.identityName;
+      }
+
       const { session, token } = await server.services.agentVaultSession.mintSession({
+        actorName,
+        actorEmail,
         projectId: req.internalAgentVaultProjectId,
         ctx: {
           actorId: req.permission.id,

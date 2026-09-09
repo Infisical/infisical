@@ -947,6 +947,14 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
+    // The org-scoped products own one implicit project each, so its name, slug and delete protection are
+    // not the caller's to change. Create and delete are already guarded; this route was not.
+    if (project.type === ProjectType.AgentVault || project.type === ProjectType.PAM) {
+      throw new BadRequestError({
+        message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type]} is managed for your organization and cannot be renamed or reconfigured here.`
+      });
+    }
+
     if (update.secretDetectionIgnoreValues && !hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
         message: "Only admins can update secret detection ignore values"

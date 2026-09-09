@@ -59,10 +59,14 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
       t.uuid("userId");
-      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("SET NULL");
 
       t.uuid("identityId");
-      t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
+      t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("SET NULL");
+
+      // Snapshotted so a deleted actor still names the session it held, the way pam_sessions does.
+      t.string("actorName", 255).notNullable();
+      t.string("actorEmail", 255);
 
       t.string("tokenHash", 64).notNullable().unique();
 
@@ -75,7 +79,7 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await knex.raw(
-      `ALTER TABLE "${TableName.AgentVaultSession}" ADD CONSTRAINT "agent_vault_sessions_one_actor" CHECK (num_nonnulls("userId", "identityId") = 1)`
+      `ALTER TABLE "${TableName.AgentVaultSession}" ADD CONSTRAINT "agent_vault_sessions_one_actor" CHECK (num_nonnulls("userId", "identityId") <= 1)`
     );
 
     await knex.raw(
@@ -181,6 +185,10 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.ResourceAuthMethod)) {
     const hasAgentVaultProxyId = await knex.schema.hasColumn(TableName.ResourceAuthMethod, "agentVaultProxyId");
     if (hasAgentVaultProxyId) {
+      // The column is the only handle on these rows, so they go before it does. Their enrollment tokens
+      // in resource_token_auths cascade with them.
+      await knex(TableName.ResourceAuthMethod).whereNotNull("agentVaultProxyId").delete();
+
       await knex.schema.raw(`DROP INDEX IF EXISTS one_method_per_agent_vault_proxy`);
       await knex.schema.alterTable(TableName.ResourceAuthMethod, (t) => {
         t.dropColumn("agentVaultProxyId");

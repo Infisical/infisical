@@ -9,6 +9,8 @@ export type TMintSessionDTO = {
   projectId: string;
   ctx: TAgentVaultActorContext;
   accessBundles: string[];
+  actorName: string;
+  actorEmail: string | null;
   ttl: AgentVaultSessionTtl;
 };
 

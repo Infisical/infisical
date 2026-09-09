@@ -113,6 +113,13 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultSessionAccessBundle}.sessionId`,
           `${TableName.AgentVaultSession}.id`
         )
+        // The snapshot on the junction row is what a deleted bundle leaves behind; while the bundle is
+        // still there its current name is the truthful one, so a rename shows on every session at once.
+        .leftJoin(
+          TableName.AgentVaultAccessBundle,
+          `${TableName.AgentVaultAccessBundle}.id`,
+          `${TableName.AgentVaultSessionAccessBundle}.accessBundleId`
+        )
         .select(
           db.ref("id").withSchema(TableName.AgentVaultSession),
           db.ref("userId").withSchema(TableName.AgentVaultSession),
@@ -124,8 +131,11 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
+          db.ref("actorName").withSchema(TableName.AgentVaultSession),
+          db.ref("actorEmail").withSchema(TableName.AgentVaultSession),
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
           db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
         )
         .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")
@@ -140,8 +150,11 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         userFirstName: string | null;
         userLastName: string | null;
         identityName: string | null;
+        actorName: string;
+        actorEmail: string | null;
         accessBundleId: string | null;
         accessBundleName: string | null;
+        liveAccessBundleName: string | null;
         position: number | null;
       }[];
 
@@ -153,8 +166,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             id: row.id,
             userId: row.userId,
             identityId: row.identityId,
-            actorName: row.identityName ?? userDisplayName(row) ?? row.userUsername ?? "",
-            actorEmail: row.identityId ? null : row.userUsername,
+            actorName: row.identityName ?? userDisplayName(row) ?? row.userUsername ?? row.actorName,
+            actorEmail: row.identityId ? null : (row.userUsername ?? row.actorEmail),
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,
             createdAt: row.createdAt,
@@ -165,7 +178,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         if (row.accessBundleName === null || row.position === null) return;
         session.accessBundles.push({
           id: row.accessBundleId,
-          name: row.accessBundleName,
+          name: row.liveAccessBundleName ?? row.accessBundleName,
           position: row.position
         });
       });

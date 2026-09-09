@@ -52,7 +52,7 @@ export const agentVaultSessionServiceFactory = ({
     return { type: ctx.actor, id: ctx.actorId };
   };
 
-  const mintSession = async ({ projectId, ctx, accessBundles, ttl }: TMintSessionDTO) => {
+  const mintSession = async ({ projectId, ctx, accessBundles, actorName, actorEmail, ttl }: TMintSessionDTO) => {
     const actor = requireSessionActor(ctx);
     const { permission, accessBundleIds: reachable } = await getAgentVaultReachability(
       { permissionService, membershipDAL },
@@ -96,6 +96,8 @@ export const agentVaultSessionServiceFactory = ({
           projectId,
           userId: actor.type === ActorType.USER ? actor.id : null,
           identityId: actor.type === ActorType.IDENTITY ? actor.id : null,
+          actorName,
+          actorEmail,
           tokenHash,
           expiresAt
         },
