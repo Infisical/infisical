@@ -19,6 +19,13 @@ func (r AbsoluteSecretRef) CacheKey() string {
 
 // ExpandOpts configures the expansion behavior.
 type ExpandOpts struct {
+	// BoardEnv and BoardPath identify the requested board. An absolute
+	// reference that points back at it resolves its nested relative references
+	// through localLookup, keeping the board's import fallback and priority
+	// ordering. Leave empty to treat every absolute reference as foreign.
+	BoardEnv  string
+	BoardPath string
+
 	// CanAccessAbsolute checks if the actor can access an absolute reference.
 	// Called AFTER fetching, with actual tags from the database.
 	// Return false to deny (ref becomes empty string and is tracked as denied).
@@ -32,6 +39,18 @@ type ExpandOpts struct {
 }
 
 const maxExpansionDepth = 10
+
+// expansionCtx identifies which board a value being expanded belongs to.
+// Relative references (${KEY}) resolve against this context, so a value pulled
+// in through an absolute reference resolves its own relative references in the
+// referenced environment/path rather than in the requesting board.
+type expansionCtx struct {
+	// local marks the requested board (plus its imports), whose secrets are
+	// resolved through localLookup with import priority ordering.
+	local bool
+	env   string
+	path  string
+}
 
 var interpolationRegex = regexp.MustCompile(`\${([a-zA-Z0-9-_.]+)}`)
 
@@ -149,7 +168,7 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 			continue
 		}
 
-		expanded, needed := e.expandValue(sec.Value, make(map[string]struct{}), 0)
+		expanded, needed := e.expandValue(sec.Value, expansionCtx{local: true}, make(map[string]struct{}), 0)
 		sec.Value = expanded
 
 		if len(needed) == 0 && !hasReferences(expanded) {
@@ -168,6 +187,16 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 	return result
 }
 
+// contextFor returns the expansion context for a value fetched from another
+// board. An absolute reference that resolves back to the requested board keeps
+// the local context so its imports and priority ordering still apply.
+func (e *SecretExpander) contextFor(sec *ProcessedSecret) expansionCtx {
+	if sec.Environment == e.opts.BoardEnv && sec.SecretPath == e.opts.BoardPath {
+		return expansionCtx{local: true}
+	}
+	return expansionCtx{env: sec.Environment, path: sec.SecretPath}
+}
+
 // expandValue recursively expands references in a value.
 // Returns the expanded string and any absolute refs that couldn't be resolved.
 //
@@ -179,8 +208,14 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 // This happens because the outer ${A} resolves to the inner expansion result,
 // where the cycle was detected and replaced with empty string. This is intentional
 // behavior matching the Node.js implementation.
-func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, depth int) (string, []AbsoluteSecretRef) {
+func (e *SecretExpander) expandValue(value string, ctx expansionCtx, visited map[string]struct{}, depth int) (string, []AbsoluteSecretRef) {
 	if depth > maxExpansionDepth {
+		if !ctx.local {
+			// Relative references in a foreign value cannot be resolved past the
+			// depth limit. Leaving them in place would let a later pass resolve
+			// them against the requesting board, so blank them instead.
+			return blankRelativeRefs(value), nil
+		}
 		return value, nil
 	}
 
@@ -200,15 +235,16 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 		var secretID string
 		var found bool
 
-		if len(parts) == 1 {
-			// Relative reference: ${KEY}
+		switch {
+		case len(parts) == 1 && ctx.local:
+			// Relative reference on the requested board: ${KEY}
 			found = true // Always replace relative refs (with empty if not found)
 			if sec := e.localLookup[parts[0]]; sec != nil {
 				secretID = sec.Environment + ":" + sec.SecretPath + ":" + sec.Secret.Key
 
 				if _, cyclic := visited[secretID]; !cyclic {
 					visited[secretID] = struct{}{}
-					expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1)
+					expandedValue, moreNeeded := e.expandValue(sec.Value, ctx, visited, depth+1)
 					delete(visited, secretID)
 					resolvedValue = expandedValue
 					neededRefs = append(neededRefs, moreNeeded...)
@@ -216,7 +252,41 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 				// else: cyclic, resolvedValue stays ""
 			}
 			// else: not found, resolvedValue stays "" (missing ref becomes empty)
-		} else {
+		case len(parts) == 1:
+			// Relative reference inside a value fetched from another board:
+			// resolve it against that board, not against the requesting one.
+			ref := AbsoluteSecretRef{Env: ctx.env, Path: ctx.path, Key: parts[0]}
+			secretID = ref.CacheKey()
+
+			sec := e.absoluteLookup[ctx.env+":"+ctx.path][parts[0]]
+			if sec == nil {
+				if _, requested := e.requestedRefs[secretID]; !requested {
+					// Not fetched yet — leave the reference in place and retry
+					// once the value is available.
+					neededRefs = append(neededRefs, ref)
+					continue
+				}
+				// Fetched and missing (or denied): resolves to empty string.
+				found = true
+			} else {
+				found = true
+
+				if _, cyclic := visited[secretID]; !cyclic {
+					visited[secretID] = struct{}{}
+					expandedValue, moreNeeded := e.expandValue(sec.Value, e.contextFor(sec), visited, depth+1)
+					delete(visited, secretID)
+
+					if len(moreNeeded) > 0 {
+						// Substituting now would inline unresolved relative refs
+						// into the requesting board and lose their context.
+						neededRefs = append(neededRefs, moreNeeded...)
+						continue
+					}
+					resolvedValue = expandedValue
+				}
+				// else: cyclic, resolvedValue stays ""
+			}
+		default:
 			// Absolute reference: ${env.path.KEY}
 			env := parts[0]
 			secretKey := parts[len(parts)-1]
@@ -236,18 +306,28 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 
 					if _, cyclic := visited[secretID]; !cyclic {
 						visited[secretID] = struct{}{}
-						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1)
+						expandedValue, moreNeeded := e.expandValue(sec.Value, e.contextFor(sec), visited, depth+1)
 						delete(visited, secretID)
+
+						if len(moreNeeded) > 0 {
+							// Substituting now would inline unresolved relative refs
+							// into the requesting board and lose their context.
+							neededRefs = append(neededRefs, moreNeeded...)
+							continue
+						}
 						resolvedValue = expandedValue
-						neededRefs = append(neededRefs, moreNeeded...)
 					}
 					// else: cyclic, resolvedValue stays ""
 				}
 			}
 
 			if !found {
-				neededRefs = append(neededRefs, ref)
-				continue
+				if _, requested := e.requestedRefs[secretID]; !requested {
+					neededRefs = append(neededRefs, ref)
+					continue
+				}
+				// Fetched and missing (or denied): resolves to empty string.
+				found = true
 			}
 		}
 
@@ -339,6 +419,17 @@ func (e *SecretExpander) replaceAbsoluteRefsWith(refs map[string]struct{}, repla
 			}
 		}
 	}
+}
+
+// blankRelativeRefs replaces relative references with empty string, leaving
+// absolute references untouched since those carry their own context.
+func blankRelativeRefs(value string) string {
+	return interpolationRegex.ReplaceAllStringFunc(value, func(syntax string) string {
+		if strings.Contains(interpolationRegex.FindStringSubmatch(syntax)[1], ".") {
+			return syntax
+		}
+		return ""
+	})
 }
 
 func hasReferences(value string) bool {
