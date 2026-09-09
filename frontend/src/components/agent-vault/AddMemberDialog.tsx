@@ -23,6 +23,8 @@ import {
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api/projects/queries";
 
+import { PendingInvitationBadge } from "./PendingInvitationBadge";
+
 enum MemberKind {
   User = "user",
   Identity = "identity",
@@ -35,7 +37,13 @@ const KIND_ICON: Record<MemberKind, typeof UserIcon> = {
   [MemberKind.Group]: UsersIcon
 };
 
-type Option = { kind: MemberKind; id: string; label: string; subtitle: string };
+type Option = {
+  kind: MemberKind;
+  id: string;
+  label: string;
+  subtitle: string;
+  isPendingInvitation?: boolean;
+};
 
 type Props = {
   isOpen: boolean;
@@ -80,7 +88,8 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
           kind: MemberKind.User,
           id: membership.user.id,
           label: fullName || membership.user.username || membership.user.email,
-          subtitle: membership.user.email || membership.user.username
+          subtitle: membership.user.email || membership.user.username,
+          isPendingInvitation: membership.user.isOrgMembershipPending
         };
       })
       .filter((option) => !grantedIds.has(option.id));
@@ -163,7 +172,11 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
               placeholder="Pick users, groups, or machine identities..."
               searchPlaceholder="Pick users, groups, or machine identities..."
               searchAriaLabel="Search users, groups, and machine identities"
-              emptyMessage="Nobody left to grant. Add them under Access Control first."
+              emptyMessage={
+                options.length
+                  ? "No matches."
+                  : "Nobody left to grant. Add them under Access Control first."
+              }
               clearAriaLabel="Clear all grantees"
               modal
               onValueChange={(next) => setSelected([...next])}
@@ -187,6 +200,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
                         {option.subtitle}
                       </span>
                     </span>
+                    <PendingInvitationBadge isPending={Boolean(option.isPendingInvitation)} />
                   </span>
                 );
               }}

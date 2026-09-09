@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
+import { PendingInvitationBadge } from "@app/components/agent-vault/PendingInvitationBadge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/v2/HighlightText";
@@ -46,7 +47,6 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { InviteMembersDialog } from "./InviteMembersDialog";
-import { PendingInvitationBadge } from "./PendingInvitationBadge";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
 const displayName = (member: TWorkspaceUser) => {
