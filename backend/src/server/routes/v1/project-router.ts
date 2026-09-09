@@ -2,7 +2,6 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
-  CertificatesSchema,
   IntegrationsSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
@@ -26,6 +25,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
@@ -1301,7 +1301,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema.omit({ orderId: true }).extend({ hasPrivateKey: z.boolean() })),
+          certificates: z.array(SanitizedCertificateSchema.extend({ hasPrivateKey: z.boolean() })),
           totalCount: z.number()
         })
       }
@@ -1392,7 +1392,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificates: z.array(
-            CertificatesSchema.omit({ orderId: true }).extend({
+            SanitizedCertificateSchema.extend({
               hasPrivateKey: z.boolean(),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
