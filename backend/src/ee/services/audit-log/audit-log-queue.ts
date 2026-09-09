@@ -334,12 +334,16 @@ export const auditLogQueueServiceFactory = async ({
   // "audit-log-clickhouse-batch" so the existing Redis scheduler key isn't orphaned on upgrade.
   queueService.start(QueueName.AuditLogClickHouseBatch, consumeAuditLogStream);
 
-  await queueService.upsertJobScheduler(
-    QueueName.AuditLogClickHouseBatch,
-    `${JOB_SCHEDULER_PREFIX}:audit-log-clickhouse-batch`,
-    { every: 5000 },
-    { name: QueueJobs.AuditLogClickHouseBatch }
-  );
+  // Only the fleet that consumes this queue arms its scheduler. An api or secret-scanning pod has
+  // no worker on it, so registering from there would re-arm a 5s schedule nobody drains.
+  if (getConfig().isGeneralWorkerRunModeEnabled) {
+    await queueService.upsertJobScheduler(
+      QueueName.AuditLogClickHouseBatch,
+      `${JOB_SCHEDULER_PREFIX}:audit-log-clickhouse-batch`,
+      { every: 5000 },
+      { name: QueueJobs.AuditLogClickHouseBatch }
+    );
+  }
 
   return {
     pushToLog

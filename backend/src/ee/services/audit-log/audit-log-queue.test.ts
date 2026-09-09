@@ -11,7 +11,8 @@ const mockConfig = {
   CLICKHOUSE_AUDIT_LOG_TABLE_NAME: "audit_logs",
   CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: {},
   AUDIT_LOG_STREAMS_ENABLED: false,
-  DISABLE_POSTGRES_AUDIT_LOG_STORAGE: false
+  DISABLE_POSTGRES_AUDIT_LOG_STORAGE: false,
+  isGeneralWorkerRunModeEnabled: true
 };
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
@@ -52,9 +53,10 @@ const collectResult = (payloads: Record<string, unknown>[], lastId = "9-0") => (
   lastId
 });
 
-const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}) => {
+const createHarness = async ({ clickhouse = false, streamsEnabled = false, generalWorkers = true } = {}) => {
   mockConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = clickhouse;
   mockConfig.AUDIT_LOG_STREAMS_ENABLED = streamsEnabled;
+  mockConfig.isGeneralWorkerRunModeEnabled = generalWorkers;
 
   const startHandlers = new Map<string, (job?: unknown) => Promise<void>>();
   const queueService = {
@@ -137,10 +139,19 @@ beforeEach(() => {
 });
 
 describe("audit-log-queue construction", () => {
-  test("registers the batch scheduler when queue workers are enabled", async () => {
+  test("registers the batch scheduler in the general-workers run mode", async () => {
     const { queueService } = await createHarness();
 
     expect(queueService.upsertJobScheduler).toHaveBeenCalledTimes(1);
+  });
+
+  test("skips scheduler registration outside the general-workers run mode", async () => {
+    // An api or secret-scanning pod has no worker on this queue, so arming the 5s schedule from
+    // there leaves iterations nobody drains.
+    const { queueService } = await createHarness({ generalWorkers: false });
+
+    expect(queueService.upsertJobScheduler).not.toHaveBeenCalled();
+    expect(queueService.start).toHaveBeenCalledWith(QueueName.AuditLogClickHouseBatch, expect.any(Function));
   });
 });
 
