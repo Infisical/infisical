@@ -836,7 +836,7 @@ export const Navbar = () => {
             <DialogTitle>Server Administrators</DialogTitle>
             <DialogDescription>View all server administrators</DialogDescription>
           </DialogHeader>
-          <DialogBody>
+          <DialogBody className="flex flex-col overflow-visible">
             <ServerAdminsPanel />
           </DialogBody>
         </DialogContent>

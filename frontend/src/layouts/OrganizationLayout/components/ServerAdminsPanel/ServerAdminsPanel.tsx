@@ -43,7 +43,7 @@ export const ServerAdminsPanel = () => {
   const isEmpty = !isPending && adminUsers.length === 0;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <InputGroup>
         <InputGroupAddon>
           <SearchIcon />
@@ -54,52 +54,54 @@ export const ServerAdminsPanel = () => {
           placeholder="Search server admins..."
         />
       </InputGroup>
-      {isPending && (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 3 }).map((_, idx) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <Skeleton key={`server-admins-skeleton-${idx}`} className="h-10 w-full" />
-          ))}
-        </div>
-      )}
-      {isEmpty && (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>
-              {serverAdmins.length ? "No server admins match your search" : "No server admins"}
-            </EmptyTitle>
-            <EmptyDescription>
-              {serverAdmins.length
-                ? "Try a different name or email."
-                : "Promote a user to server admin in the Admin Console to see them listed here."}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
-      {!isPending && adminUsers.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-1/2">Name</TableHead>
-              <TableHead className="w-1/2">Email</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {adminUsers.map(({ user }) => {
-              const name =
-                user.firstName || user.lastName
-                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
-                  : user.username;
-              return (
-                <TableRow key={`admin-${user.id}`}>
-                  <TableCell className="w-1/2 break-words">{name}</TableCell>
-                  <TableCell className="w-1/2 break-words">{user.email}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      )}
+      <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto">
+        {isPending && (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <Skeleton key={`server-admins-skeleton-${idx}`} className="h-10 w-full" />
+            ))}
+          </div>
+        )}
+        {isEmpty && (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>
+                {serverAdmins.length ? "No server admins match your search" : "No server admins"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {serverAdmins.length
+                  ? "Try a different name or email."
+                  : "Promote a user to server admin in the Admin Console to see them listed here."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+        {!isPending && adminUsers.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-1/2">Name</TableHead>
+                <TableHead className="w-1/2">Email</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {adminUsers.map(({ user }) => {
+                const name =
+                  user.firstName || user.lastName
+                    ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
+                    : user.username;
+                return (
+                  <TableRow key={`admin-${user.id}`}>
+                    <TableCell className="w-1/2 break-words">{name}</TableCell>
+                    <TableCell className="w-1/2 break-words">{user.email}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 };
