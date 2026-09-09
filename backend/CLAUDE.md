@@ -143,6 +143,15 @@ DALs extend these with custom queries — typically complex joins using Knex que
 
 `updateById` and `update` support atomic `$incr` and `$decr` operators alongside regular field updates.
 
+**A dropped column does not fail type checking if the insert is built in a `.map()`.** TypeScript's
+excess-property check only fires on a fresh object literal at the assignment site, so a stale field
+survives when the literal is returned from a callback:
+
+```ts
+insertMany(names.map((name) => ({ name, role: "member", orgId })));  // compiles, then 500s at runtime
+insertMany([{ name, role: "member", orgId }]);                       // TS2353
+```
+
 See `src/services/secret/secret-dal.ts` for a DAL that overrides the base `update` to auto-increment version and adds complex join queries.
 
 ### Service Module Structure
@@ -421,6 +430,55 @@ audit-log entitlement, so on those deployments only the `logger.info` line survi
 Do not special-case this event past the retention gate; treat the application log as the floor and
 the audit event as the addition for licensed instances.
 
+### Profile Sync From The IdP (SSO-enforced orgs)
+
+An IdP keyed on a stable identifier lets someone change mailbox and display name without changing
+who they are, so our copy of both goes stale: notification mail goes to an address that no longer
+exists, and every audit entry written from then on records it. `syncSsoUserProfile`
+(`src/services/user-alias/user-alias-fns.ts`) carries the asserted email and name onto the account,
+and is called from all three login services right after `ensureSsoAccountVerified`, outside the
+caller's transaction, with its result flowing into the session.
+
+The gate is `organization.authEnforced` **and** a verified alias, and both halves matter. Enforcement
+is the org saying the IdP is authoritative for identity, which is the same claim that already skips
+email verification at signup. The verified alias is the proof that the IdP controls *this* account:
+an unverified alias asserting an unrecognized email is exactly what `isStaleSsoAlias` exists to
+catch, and reading that as a rename would let a stale alias rewrite somebody else's account. One
+consequence to know: a legacy unverified alias whose email changed before its next login is stale,
+so it gets the email-verification fallback (a code sent to the dead mailbox) rather than a sync.
+
+Three invariants:
+
+- **It never fails a login.** A rename that could not be applied leaves stale data, which is what we
+  already had; a throw locks the person out of an org that has no other way in. Every failure path
+  returns the unchanged user.
+- **It only renames an address the org owns, onto another address the org owns.** Both halves are
+  checked in the helper against the org's verified domains. The user row is global rather than
+  org-scoped, so without the first half an org could rename an account that merely carries one of
+  its aliases and rewrite the identity every other org of that user sees. Every login path
+  establishes both already (`verifyEmailDomainOwnership` is a positive check: the domain must be
+  verified *for this org*, and the alias branch runs it against the existing account's username),
+  so the helper's copy is there to keep the rename from outliving those checks. It is unreachable
+  today, and audits the skip anyway (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "domain-not-owned"`) so a refactor that removes a caller's check leaves a trail rather
+  than a silently stale account.
+- **It never renames onto an occupied address.** `users.username` is globally unique and the row is
+  global rather than org-scoped, so the asserted address may already be a personal signup or an
+  unmerged duplicate. The conflict is recorded (`SSO_USER_EMAIL_SYNC_SKIPPED` with
+  `reason: "address-taken"`) and the email is left alone; the name still syncs. The preceding read
+  is not a lock, so a unique violation lands on the same path.
+
+SCIM is the other half of the same story and moves with it. `updateScimUser` / `replaceScimUser`
+rejected every email change outright, which left the data stale *and* put the provisioning job in a
+permanent error state (Entra quarantines after repeated failures). Both now accept the change under
+the same `authEnforced` gate via `$resolveScimEmailChange`, and answer an occupied address with
+`409 uniqueness` rather than a constraint-shaped 500. Self-service email change
+(`user-service.ts`) is refused when the next login would overwrite it anyway, which
+`$getManagedEmailReason` narrows to the case that actually would: the account's own address sits on a
+domain one of its SSO-enforced orgs has verified. Membership in an enforced org is not the test, since
+the user row is global and an address outside that org's domains is one `syncSsoUserProfile` will not
+touch. SCIM stays a blanket refusal, because the directory provisions the address either way.
+
 ### Permission System (CASL)
 
 Uses CASL (`@casl/ability`) with MongoDB-style rules. Permission logic lives in `src/ee/services/permission/`:
@@ -647,8 +705,9 @@ Key plugins in `src/server/plugins/`:
 OpenTelemetry metric setup lives in `src/lib/telemetry/`. Instruments are defined in `metrics.ts` (resolved lazily so they bind to the real MeterProvider installed by `instrumentation.ts` after boot).
 
 **Meter split by cardinality:**
-- **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the single choke point: any attribute passed at a call site that isn't in the allowlist is silently dropped.
+- **`InfisicalCore`** — the meter for all new metrics. A strict attribute allowlist (`INFISICAL_CORE_METER_ATTRIBUTES` in `telemetry-attributes.ts`) is applied via an SDK View, so **only bounded labels survive** — HTTP method, parameterized `http.route` template, and low-cardinality enums. This is the choke point for our own call sites: any attribute passed at a call site that isn't in the allowlist is silently dropped.
 - **Legacy `Infisical` / `API` / `SecretSyncs` / `PkiSyncs` / `Integrations`** — carry unbounded per-actor labels (`HIGH_CARDINALITY_METER_NAMES`). Disabled wholesale via `OTEL_DROP_HIGH_CARDINALITY_METERS=true` in multi-tenant/cloud.
+- **`@opentelemetry/instrumentation-http`** — the second allowlist (`HTTP_INSTRUMENTATION_METER_ATTRIBUTES`). `instrumentation.ts` defaults `OTEL_SEMCONV_STABILITY_OPT_IN` to the stable HTTP semconv, because the old conventions label the server metric with the raw `Host` header. An operator's explicit `http/dup` is honoured instead (it is the OTel migration path, emitting both name sets while dashboards move over), which is why the allowlist also carries the old `http.method` / `http.status_code` / `http.flavor` / `http.scheme` names — without them the dup'd metric arrives with an empty attribute set. The `net.*` host and peer names stay off the list in both conventions.
 
 **Recording is fire-and-forget.** Every `.add()` / `.record()` and every `record*Metric` helper is wrapped in `safely()` in `metrics.ts`, so a broken exporter, a bad instrument name, or a config read before `initEnvConfig()` can never throw into the code being measured. A measurement is an observation of the work, never a step in it — so call sites do not need their own try/catch, and must not treat a metric as something that can fail. The swallow is silent because the logger is itself initialised from config.
 
@@ -659,7 +718,7 @@ The gate has to sit at the call site because **a `DROP` aggregation does not bou
 **Rules for InfisicalCore metrics:**
 - **No per-tenant / per-actor identifiers** as labels — no org id, user id/email, identity id, ip, user agent, request id, or free-form values (e.g. environment slug). These scale series count with customer count, which breaks CloudWatch's 1000-datapoint-per-OTLP-request limit and drives per-GB ingestion cost. Use the **audit log table** for per-org / per-actor breakdowns.
 - Adding a new label means adding it to the allowlist in `telemetry-attributes.ts`. Only add **bounded** keys (fixed enums / static route templates), and document why.
-- `http.route` must be the parameterized template (`req.routeOptions.url`), never the raw request path.
+- `http.route` must be the parameterized template (`req.routeOptions.url`), never the raw request path. `api-metrics.ts` skips routes generated by `@fastify/static` for the same reason: in `STANDALONE_MODE` `serve-ui.ts` registers it with `wildcard: false`, so every built asset gets its own route and `http.route` would be a content-hashed filename.
 
 ### PostHog Product Analytics
 

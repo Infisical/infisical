@@ -10,7 +10,8 @@ import {
   InternalCas,
   PamIdentities,
   SecretIdentities,
-  UserIdentities
+  UserIdentities,
+  WildcardCerts
 } from "../features";
 import { buildMeteredFeatures, METERED_DIMENSION_KEYS } from "./usage-counters";
 import { usageEventQueueFactory } from "./usage-event-queue";
@@ -237,7 +238,9 @@ describe("buildMeteredFeatures", () => {
     };
     const usageCounterDAL = {
       countInternalCas: vi.fn(async () => 1),
-      countActiveCerts: vi.fn(async () => 2),
+      resolveRootOrgId: vi.fn(async (id: string) => id),
+      countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 2, wildcard: 1 })),
+      isCertificateQuotaKeyActiveInOrg: vi.fn(async () => false),
       countPamResources: vi.fn(async () => 3),
       countSecretManagementIdentities: vi.fn(async () => 4),
       countPamIdentities: vi.fn(async () => 5),
@@ -251,6 +254,7 @@ describe("buildMeteredFeatures", () => {
         IdentitiesMeter.key,
         InternalCas.key,
         ActiveCerts.key,
+        WildcardCerts.key,
         SecretIdentities.key,
         PamIdentities.key,
         AgentVaultIdentities.key,
@@ -260,7 +264,11 @@ describe("buildMeteredFeatures", () => {
 
     expect(await byKey[IdentitiesMeter.key](ORG_ID)).toBe(7);
     expect(await byKey[InternalCas.key](ORG_ID)).toBe(1);
+    // Billed on the same unit the cap enforces: distinct quota keys, not certificate rows.
     expect(await byKey[ActiveCerts.key](ORG_ID)).toBe(2);
+    expect(usageCounterDAL.countActiveCertificateQuotaKeysByOrg).toHaveBeenCalledWith(ORG_ID);
+    // Wildcards read the other half of that same result, so the two can never disagree.
+    expect(await byKey[WildcardCerts.key](ORG_ID)).toBe(1);
     expect(await byKey[SecretIdentities.key](ORG_ID)).toBe(4);
     expect(await byKey[PamIdentities.key](ORG_ID)).toBe(5);
     expect(await byKey[AgentVaultIdentities.key](ORG_ID)).toBe(6);
@@ -273,6 +281,35 @@ describe("buildMeteredFeatures", () => {
     expect(licenseDAL.countOfOrgMembers).toHaveBeenCalledWith(ORG_ID);
   });
 
+  // The self-hosted report identity is the literal "self-hosted", not a uuid, so a PKI counter handed
+  // it would reach Postgres as an invalid uuid and throw.
+  test("self-hosted meters the PKI dimensions instance-wide, never passing the report identity to the DB", async () => {
+    const licenseDAL = {
+      countOrgUsersAndIdentities: vi.fn(async () => 0),
+      countOfOrgMembers: vi.fn(async () => 0)
+    };
+    const usageCounterDAL = {
+      countInternalCas: vi.fn(async () => 3),
+      resolveRootOrgId: vi.fn(async (id: string) => id),
+      countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 5, wildcard: 2 })),
+      isCertificateQuotaKeyActiveInOrg: vi.fn(async () => false),
+      countPamResources: vi.fn(async () => 0),
+      countSecretManagementIdentities: vi.fn(async () => 0),
+      countPamIdentities: vi.fn(async () => 0),
+      countAgentVaultIdentities: vi.fn(async () => 0)
+    };
+    const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: false });
+    const byKey = Object.fromEntries(metered.map((m) => [m.feature.key, m.count]));
+
+    expect(await byKey[InternalCas.key]("self-hosted")).toBe(3);
+    expect(await byKey[ActiveCerts.key]("self-hosted")).toBe(5);
+    expect(await byKey[WildcardCerts.key]("self-hosted")).toBe(2);
+
+    expect(usageCounterDAL.countInternalCas).toHaveBeenCalledWith(undefined);
+    expect(usageCounterDAL.countActiveCertificateQuotaKeysByOrg).toHaveBeenCalledWith(undefined);
+    expect(usageCounterDAL.countActiveCertificateQuotaKeysByOrg).not.toHaveBeenCalledWith("self-hosted");
+  });
+
   test("self-hosted meters secret identities across the whole instance (no org scope)", async () => {
     const licenseDAL = {
       countOrgUsersAndIdentities: vi.fn(async () => 0),
@@ -280,7 +317,9 @@ describe("buildMeteredFeatures", () => {
     };
     const usageCounterDAL = {
       countInternalCas: vi.fn(async () => 0),
-      countActiveCerts: vi.fn(async () => 0),
+      resolveRootOrgId: vi.fn(async (id: string) => id),
+      countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
+      isCertificateQuotaKeyActiveInOrg: vi.fn(async () => false),
       countPamResources: vi.fn(async () => 0),
       countSecretManagementIdentities: vi.fn(async () => 9),
       countPamIdentities: vi.fn(async () => 6),
@@ -302,7 +341,17 @@ describe("buildMeteredFeatures", () => {
 });
 
 describe("usageEventQueue.handleUsageEvent (worker)", () => {
-  const meteredFeatures = [{ feature: IdentitiesMeter, count: vi.fn(async () => 42) }];
+  const ROOT_ORG_ID = "00000000-0000-0000-0000-0000000000aa";
+  const activeCertsCount = vi.fn(async () => 7);
+  const meteredFeatures = [
+    { feature: IdentitiesMeter, count: vi.fn(async () => 42) },
+    // Tree-scoped: reports at the root so a family is counted once, not once per sub-org.
+    {
+      feature: ActiveCerts,
+      count: activeCertsCount,
+      resolveReportOrgId: vi.fn(async () => ROOT_ORG_ID)
+    }
+  ];
 
   const buildQueue = (
     overrides: {
@@ -402,14 +451,36 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     expect(reportSnapshots).toHaveBeenCalledTimes(1);
   });
 
-  test("skips the internal-CA and certificate meters entirely (before any plan lookup)", async () => {
-    const { queue, reportSnapshots, getPlan } = buildQueue({ isCloud: true });
+  // A tree-scoped meter counts the whole family, so reporting under the triggering sub-org would file
+  // that same total once per org in the tree.
+  test("reports a tree-scoped meter at the root org, counting from the root", async () => {
+    const { queue, reportSnapshots } = buildQueue({ isCloud: true });
 
-    await queue.handleUsageEvent(ORG_ID, InternalCas.key, new Date());
     await queue.handleUsageEvent(ORG_ID, ActiveCerts.key, new Date());
 
-    expect(getPlan).not.toHaveBeenCalled();
-    expect(reportSnapshots).not.toHaveBeenCalled();
+    expect(activeCertsCount).toHaveBeenCalledWith(ROOT_ORG_ID);
+    expect(reportSnapshots).toHaveBeenCalledWith(ROOT_ORG_ID, [
+      expect.objectContaining({ dimension_key: ActiveCerts.key, value: 7 })
+    ]);
+  });
+
+  test("dedups a tree-scoped meter across sub-orgs, so a family reports once", async () => {
+    const { queue, reportSnapshots } = buildQueue({ isCloud: true });
+
+    await queue.handleUsageEvent(ORG_ID, ActiveCerts.key, new Date());
+    await queue.handleUsageEvent("11111111-1111-1111-1111-111111111111", ActiveCerts.key, new Date());
+
+    expect(reportSnapshots).toHaveBeenCalledTimes(1);
+  });
+
+  test("leaves a per-org meter keyed on the triggering org", async () => {
+    const { queue, reportSnapshots } = buildQueue({ isCloud: true });
+
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
+
+    expect(reportSnapshots).toHaveBeenCalledWith(ORG_ID, [
+      expect.objectContaining({ dimension_key: IdentitiesMeter.key })
+    ]);
   });
 
   test("skips the report when the count is unchanged", async () => {
@@ -495,7 +566,9 @@ describe("canUse enforcement (using the framework from a call site)", () => {
     };
     const usageCounterDAL = {
       countInternalCas: async () => counts.internalCas ?? 0,
-      countActiveCerts: async () => 0,
+      resolveRootOrgId: async (id: string) => id,
+      countActiveCertificateQuotaKeysByOrg: async () => ({ total: 0, wildcard: 0 }),
+      isCertificateQuotaKeyActiveInOrg: async () => false,
       countPamResources: async () => 0,
       countSecretManagementIdentities: async () => 0,
       countPamIdentities: async () => 0,

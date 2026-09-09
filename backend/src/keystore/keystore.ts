@@ -58,8 +58,13 @@ export const KeyStorePrefixes = {
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
-  AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
-  AppConnectionCommandLock: (connectionId: string) => `app-connection-command-mutex-${connectionId}` as const,
+  AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
+    `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
+    `app-connection-command-mutex-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,
+  LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
+    `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
@@ -187,6 +192,8 @@ export const KeyStorePrefixes = {
   LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
+  PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
+  PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,
   // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
@@ -205,6 +212,9 @@ export const KeyStorePrefixes = {
 };
 
 export const KeyStoreTtls = {
+  LdapDirectoryMachinesInSeconds: 60,
+  LdapHostLoginInSeconds: 3600,
+  LdapGuessedHostLoginInSeconds: 30,
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
@@ -252,6 +262,9 @@ export const KeyStoreTtls = {
   // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
   LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
+  // Short: the count drifts high as certificates expire and low when an ungated path such as a
+  // discovery scan inserts rows, and only this expiry corrects either.
+  PkiCertificateQuotaCountInSeconds: 60,
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,

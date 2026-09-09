@@ -9,7 +9,7 @@ export const AccessManagementPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="h-full bg-background text-foreground">
+    <div className="h-full text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Access Control" })}</title>
       </Helmet>

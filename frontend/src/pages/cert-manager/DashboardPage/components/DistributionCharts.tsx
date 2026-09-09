@@ -1,4 +1,5 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
+import { twMerge } from "tailwind-merge";
 
 import {
   Card,
@@ -16,7 +17,12 @@ import {
 import type { TDashboardDistribution, TDashboardStats } from "@app/hooks/api/certificates";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
 
-import { CHART_COLORS, CHART_COLORS_HEX } from "./chart-theme";
+import {
+  CHART_COLORS_HEX,
+  CHART_OTHER_COLOR,
+  formatShare,
+  MAX_DONUT_SEGMENTS
+} from "./chart-theme";
 
 type Props = {
   stats: TDashboardStats;
@@ -24,6 +30,31 @@ type Props = {
 };
 
 type ChartKey = "enrollmentMethod" | "algorithm" | "ca";
+
+type Segment = TDashboardDistribution & { groupedCount?: number };
+
+const foldTail = (data: TDashboardDistribution[]): Segment[] => {
+  const sorted = data.filter((d) => d.count > 0).sort((a, b) => b.count - a.count);
+  if (sorted.length <= MAX_DONUT_SEGMENTS) return sorted;
+
+  const head = sorted.slice(0, MAX_DONUT_SEGMENTS - 1);
+  const tail = sorted.slice(MAX_DONUT_SEGMENTS - 1);
+  return [
+    ...head,
+    {
+      label: "Other",
+      count: tail.reduce((sum, d) => sum + d.count, 0),
+      groupedCount: tail.length
+    }
+  ];
+};
+
+const OTHER_KEY = "__other__";
+
+const segmentKey = (segment: Segment) => (segment.groupedCount ? OTHER_KEY : segment.label);
+
+const colorAt = (segment: Segment, idx: number) =>
+  segment.groupedCount ? CHART_OTHER_COLOR : CHART_COLORS_HEX[idx % CHART_COLORS_HEX.length];
 
 const DonutChart = ({
   title,
@@ -38,7 +69,7 @@ const DonutChart = ({
   chartKey: ChartKey;
   onSegmentClick?: (entry: TDashboardDistribution) => void;
 }) => {
-  const nonZeroData = data.filter((d) => d.count > 0);
+  const nonZeroData = foldTail(data);
   const total = data.reduce((sum, d) => sum + d.count, 0);
   const chartId = title.replace(/\s+/g, "-").toLowerCase();
   const formatLabel = (label: string) => {
@@ -52,7 +83,7 @@ const DonutChart = ({
   };
 
   return (
-    <Card className="flex h-auto min-w-[250px] flex-1 flex-col">
+    <Card className="flex h-auto min-w-0 flex-col">
       <CardHeader className="pb-0">
         <CardTitle className="text-base font-semibold">{title}</CardTitle>
         {subtitle && <CardDescription className="text-xs">{subtitle}</CardDescription>}
@@ -71,10 +102,10 @@ const DonutChart = ({
                 <PieChart>
                   <defs>
                     {nonZeroData.map((entry, idx) => {
-                      const hex = CHART_COLORS_HEX[idx % CHART_COLORS_HEX.length];
+                      const hex = colorAt(entry, idx);
                       return (
                         <linearGradient
-                          key={`grad-${entry.label}`}
+                          key={`grad-${segmentKey(entry)}`}
                           id={`grad-${chartId}-${idx}`}
                           x1="0"
                           y1="0"
@@ -98,10 +129,13 @@ const DonutChart = ({
                     paddingAngle={2}
                     cursor="pointer"
                     stroke="none"
-                    onClick={(_entry, idx) => onSegmentClick?.(nonZeroData[idx])}
+                    onClick={(_entry, idx) => {
+                      const segment = nonZeroData[idx];
+                      if (!segment.groupedCount) onSegmentClick?.(segment);
+                    }}
                   >
                     {nonZeroData.map((entry, idx) => (
-                      <Cell key={entry.label} fill={`url(#grad-${chartId}-${idx})`} />
+                      <Cell key={segmentKey(entry)} fill={`url(#grad-${chartId}-${idx})`} />
                     ))}
                   </Pie>
                   <RechartsTooltip
@@ -118,17 +152,23 @@ const DonutChart = ({
             <div className="min-w-0 flex-1">
               <div className="space-y-1.5">
                 {nonZeroData.map((entry, idx) => {
-                  const pct = total > 0 ? Math.round((entry.count / total) * 100) : 0;
+                  const pct = formatShare(entry.count, total);
+                  const isOther = Boolean(entry.groupedCount);
                   return (
                     <button
-                      key={entry.label}
+                      key={segmentKey(entry)}
                       type="button"
-                      className="flex w-full cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors hover:bg-foreground/5"
-                      onClick={() => onSegmentClick?.(entry)}
+                      className={twMerge(
+                        "flex w-full items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors",
+                        isOther ? "cursor-default" : "cursor-pointer hover:bg-foreground/5"
+                      )}
+                      onClick={() => {
+                        if (!isOther) onSegmentClick?.(entry);
+                      }}
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                        style={{ backgroundColor: colorAt(entry, idx) }}
                       />
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -136,9 +176,11 @@ const DonutChart = ({
                             {formatLabel(entry.label)}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent side="top">{formatLabel(entry.label)}</TooltipContent>
+                        <TooltipContent side="top">
+                          {isOther ? `${entry.groupedCount} more` : formatLabel(entry.label)}
+                        </TooltipContent>
                       </Tooltip>
-                      <span className="shrink-0 text-right text-muted">{pct}%</span>
+                      <span className="shrink-0 text-right text-muted">{pct}</span>
                       <span className="shrink-0 text-right font-medium text-foreground">
                         {entry.count}
                       </span>

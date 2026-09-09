@@ -337,7 +337,7 @@ export const IsPending: Story = {
     docs: {
       description: {
         story:
-          "Use `isPending` to show a loading spinner inside the button and disable interaction. The Lottie spinner swaps to a dark version automatically for the filled `default` variant."
+          "Use `isPending` to show a loading animation inside the button and disable interaction. The `Loader` swaps to its `inverse` tint automatically for the filled `default` variant."
       }
     }
   }

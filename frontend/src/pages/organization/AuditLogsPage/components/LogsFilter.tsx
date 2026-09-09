@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
 import { ListFilter } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { twMerge } from "tailwind-merge";
 
 import {

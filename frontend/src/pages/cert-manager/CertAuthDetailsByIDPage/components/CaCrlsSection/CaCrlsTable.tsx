@@ -1,7 +1,6 @@
 import FileSaver from "file-saver";
 import { ClipboardListIcon, DownloadIcon, EllipsisIcon } from "lucide-react";
 
-import { Lottie } from "@app/components/v2";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +10,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  Loader,
   Table,
   TableBody,
   TableCell,
@@ -35,7 +35,7 @@ export const CaCrlsTable = ({ caId }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-40 w-full items-center justify-center">
-        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+        <Loader />
       </div>
     );
   }

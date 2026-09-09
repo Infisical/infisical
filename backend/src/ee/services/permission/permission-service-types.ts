@@ -103,6 +103,10 @@ export type TGetOrgPermissionArg = {
   scope: OrganizationActionScope;
 };
 
+export type TResolveRolesOpts = {
+  ignoreUnresolvedRoles?: boolean;
+};
+
 export type TPermissionServiceFactory = {
   getOrgPermission: (arg: TGetOrgPermissionArg) => Promise<{
     permission: MongoAbility<OrgPermissionSet, MongoQuery>;
@@ -168,7 +172,8 @@ export type TPermissionServiceFactory = {
   }>;
   getOrgPermissionByRoles: (
     roles: string[],
-    orgId: string
+    orgId: string,
+    opts?: TResolveRolesOpts
   ) => Promise<
     {
       permission: MongoAbility<OrgPermissionSet, MongoQuery>;
@@ -185,7 +190,8 @@ export type TPermissionServiceFactory = {
   >;
   getProjectPermissionByRoles: (
     roles: string[],
-    projectId: string
+    projectId: string,
+    opts?: TResolveRolesOpts
   ) => Promise<
     {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;

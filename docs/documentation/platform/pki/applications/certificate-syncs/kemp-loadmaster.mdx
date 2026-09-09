@@ -21,7 +21,7 @@ Deploy certificates to Progress Kemp LoadMaster load balancers via the RESTful A
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **Kemp LoadMaster** option.
 
@@ -122,7 +122,7 @@ The Kemp LoadMaster Certificate Sync provides:
 - **Expiration Handling**: Optionally remove expired or revoked certificates from the LoadMaster (if enabled).
 
 <Note>
-  Kemp LoadMaster Certificate Syncs support both automatic and manual synchronization modes. When auto-sync is enabled, certificates are automatically deployed as they are issued or renewed.
+  Kemp LoadMaster Certificate Syncs support both automatic and manual synchronization modes. When auto-sync is enabled, certificates are automatically deployed as they're issued or renewed.
 </Note>
 
 ## How it works
@@ -139,7 +139,7 @@ Infisical automatically keeps your LoadMaster certificates in sync:
 When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
 
 - **Preserve enabled (default)**: The renewed certificate reuses the original certificate's identifier and replaces that entry in place, so the name and any Virtual Service binding are preserved. This matters when your name schema is certificate-specific (for example it includes `{{certificateId}}`, which would otherwise resolve to a new name on renewal). Ideal for production environments.
-- **Preserve disabled**: The renewed certificate is imported under a newly generated identifier, and the original certificate remains on the LoadMaster until it is revoked or removed.
+- **Preserve disabled**: The renewed certificate is imported under a newly generated identifier, and the original certificate remains on the LoadMaster until it's revoked or removed.
 
 ## Removing certificates
 
@@ -162,11 +162,11 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
 ## FAQ
 
 <Accordion title="Can I import certificates from the LoadMaster back into Infisical?">
-  The LoadMaster does not support importing certificates back into Infisical, because private keys cannot be extracted from the appliance.
+  The LoadMaster doesn't support importing certificates back into Infisical, because private keys can't be extracted from the appliance.
 </Accordion>
 
 <Accordion title="What happens to other certificates already bound to my Virtual Service?">
-  Certificates that this sync does not manage are left in place. Infisical reads the Virtual Service's current certificate list, keeps the certificates it does not manage, and ensures its own managed certificates are bound. This supports serving multiple certificates on one Virtual Service through SNI.
+  Certificates that this sync doesn't manage are left in place. Infisical reads the Virtual Service's current certificate list, keeps the certificates it doesn't manage, and ensures its own managed certificates are bound. This supports serving multiple certificates on one Virtual Service through SNI.
 </Accordion>
 
 ## What's next?

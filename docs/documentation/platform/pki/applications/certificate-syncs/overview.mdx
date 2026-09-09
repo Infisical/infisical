@@ -111,7 +111,7 @@ flowchart LR
     If you haven't already, create an [App Connection](/integrations/app-connections/overview) for your destination service. This provides the credentials needed to push certificates.
   </Step>
   <Step title="Configure the sync">
-    In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+    In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
     
     Configure:
     - **Destination**: Select the App Connection and target endpoint
@@ -137,7 +137,7 @@ flowchart LR
 
 ## Certificate name schema
 
-The **Certificate Name Schema** controls the name each certificate is given in the destination. It is a template that supports the following placeholders, which are resolved per certificate at sync time:
+The **Certificate Name Schema** controls the name each certificate is given in the destination. It's a template that supports the following placeholders, which are resolved per certificate at sync time:
 
 <Note>
   - `{{certificateId}}` - The unique ID of the certificate (32 characters). **Required** (or `{{shortCertificateId}}`) so that each synced certificate resolves to a unique, stable name.

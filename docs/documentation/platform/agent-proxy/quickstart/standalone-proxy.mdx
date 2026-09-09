@@ -6,7 +6,7 @@ description: "Run an Agent Proxy on a host of its own and launch agents behind i
 
 A standalone proxy runs as a long-lived process on a machine of its own, and your agents run elsewhere. Each agent is launched so that its outbound requests route through the proxy, which applies the real credentials on the way out and leaves everything else untouched. This is the setup for agents that run unattended, and for one proxy shared across a team.
 
-The agent is on a different host from the proxy, so it has no access at all to the process holding the real credentials. The two authenticate as **two separate machine identities with opposite access**: the proxy can read your secrets, the agent never can. That split is the security model, and it is why this page creates two identities rather than one.
+The agent is on a different host from the proxy, so it has no access at all to the process holding the real credentials. The two authenticate as **two separate machine identities with opposite access**: the proxy can read your secrets, the agent never can. That split is the security model, and it's why this page creates two identities rather than one.
 
 ```text
         agent host          proxy host
@@ -22,11 +22,11 @@ By the end of this page an agent on one host makes authenticated GitHub calls th
 - [Set up credentials](/documentation/platform/agent-proxy/quickstart/credentials) finished, so you have a `GITHUB_PAT` secret and a `github` proxied service in `/coding-agent`.
 - **Two hosts in the same private network**, one for the proxy and one for the agent, with the agent host able to reach the proxy on port `17322`.
 - The [Infisical CLI](/cli/overview) installed on both hosts.
-- Optional: [GitHub's `gh` CLI](https://cli.github.com/), used for the check at the end. A `curl` fallback is provided, so this is not required.
+- Optional: [GitHub's `gh` CLI](https://cli.github.com/), used for the check at the end. A `curl` fallback is provided, so this isn't required.
 
 ## 1. Create the proxy identity
 
-**This identity reads the secrets.** In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it `agent-proxy`, leave the **Role** as **No Access**, select the **Agent Proxy Policies** template under **Additional Privileges**, and create it.
+**This identity reads the secrets.** In your project, go to **Access Control → Machine Identities** and select **Add Machine Identity to Project → Create New**. Name it `agent-proxy`, leave the **Role** as **No Access**, select the **Agent Proxy Policies** template under **Additional Privileges**, and create it.
 
 ![Creating the agent-proxy identity with the Agent Proxy Policies template selected under Additional Privileges](/images/platform/agent-proxy/quickstart-create-identity.png)
 
@@ -38,11 +38,11 @@ Now open the identity and go to its [Universal Auth](/documentation/platform/ide
 
 ![The machine identity's Universal Auth authentication method highlighted](/images/platform/agent-proxy/quickstart-universal-auth.png)
 
-Click **Add Client Secret**.
+Select **Add Client Secret**.
 
 ![The Add Client Secret button highlighted on the Universal Auth panel](/images/platform/agent-proxy/quickstart-add-client-secret.png)
 
-Save the **Client ID** and the **Client Secret**. You will pass both to the proxy in a moment.
+Save the **Client ID** and the **Client Secret**. You'll pass both to the proxy in a moment.
 
 ## 2. Create the agent identity
 
@@ -129,7 +129,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 </Tabs>
 
 <Note>
-  Getting a `401`? The credential was not applied and the placeholder went out unchanged. Confirm the agent identity has `Proxy` on the service and the proxy identity has `Read Value` on `GITHUB_PAT`. A `407` or `403` from the proxy itself means the agent's token was missing, invalid, or revoked.
+  Getting a `401`? The credential wasn't applied and the placeholder went out unchanged. Confirm the agent identity has `Proxy` on the service and the proxy identity has `Read Value` on `GITHUB_PAT`. A `407` or `403` from the proxy itself means the agent's token was missing, invalid, or revoked.
 </Note>
 
 For more depth, the [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) reference covers deployment, network placement, high availability, and how each agent is authorized on every request.

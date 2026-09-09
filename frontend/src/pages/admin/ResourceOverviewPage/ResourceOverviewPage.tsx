@@ -20,7 +20,7 @@ export const ResourceOverviewPage = () => {
   const activeTab = selectedTab || "organizations";
 
   return (
-    <div className="h-full bg-background text-foreground">
+    <div className="h-full text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Resource Overview" })}</title>
       </Helmet>

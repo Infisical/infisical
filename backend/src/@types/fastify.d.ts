@@ -41,6 +41,7 @@ import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamAccountHeartbeatServiceFactory } from "@app/ee/services/pam-account-heartbeat/pam-account-heartbeat-service";
 import { TPamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import { TPamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
@@ -291,6 +292,7 @@ declare module "fastify" {
 
   interface FastifyInstance {
     redis: Redis | Cluster;
+    cookieSigningKey: string;
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
@@ -454,6 +456,7 @@ declare module "fastify" {
       pamAccount: TPamAccountServiceFactory;
       pamDiscovery: TPamDiscoverySourceServiceFactory;
       pamAccountRotation: TPamAccountRotationServiceFactory;
+      pamAccountHeartbeat: TPamAccountHeartbeatServiceFactory;
       pamMembership: TPamMembershipServiceFactory;
       pamSession: TPamSessionServiceFactory;
       pamSessionChunk: TPamSessionChunkServiceFactory;

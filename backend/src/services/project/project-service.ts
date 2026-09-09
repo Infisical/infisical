@@ -7,6 +7,7 @@ import {
   ActionProjectType,
   OrganizationActionScope,
   OrgMembershipRole,
+  OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
@@ -18,6 +19,7 @@ import {
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
@@ -175,7 +177,7 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
@@ -889,7 +891,7 @@ export const projectServiceFactory = ({
       });
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
       const customRoles = await roleDAL.find({
         $in: {
           projectId: workspaces.map((workspace) => workspace.id)
@@ -914,6 +916,28 @@ export const projectServiceFactory = ({
     }
 
     return workspaces;
+  };
+
+  const getAccessibleProjectsWithSubOrgs = async ({
+    actorId,
+    actorOrgId
+  }: Pick<TListProjectsDTO, "actorId" | "actorOrgId">) => {
+    const organizations = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
+    const currentOrganization = organizations.find((organization) => organization.id === actorOrgId);
+    const organizationIds = [actorOrgId];
+    for (const organization of currentOrganization?.subOrganizations ?? []) {
+      // eslint-disable-next-line no-await-in-loop -- Keep membership reads bounded to one database connection.
+      const membership = await orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.USER,
+        actorId,
+        orgId: organization.id,
+        status: OrgMembershipStatus.Accepted
+      });
+      if (membership?.isActive) organizationIds.push(organization.id);
+    }
+
+    const projects = await projectDAL.findUserProjects(actorId, organizationIds);
+    return projects.map(({ id, orgId, name, slug, type }) => ({ id, orgId, name, slug, type }));
   };
 
   const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
@@ -2387,6 +2411,7 @@ export const projectServiceFactory = ({
     createProject,
     deleteProject,
     getProjects,
+    getAccessibleProjectsWithSubOrgs,
     updateProject,
     getProjectUpgradeStatus,
     getAProject,

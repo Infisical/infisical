@@ -32,7 +32,8 @@ new deps with `Pick<>`).
 ## Permissions
 
 Two tiers: **product membership** (`PamProductRole`: Admin/Member) + **resource membership** scoped to a
-folder or account (`PamResourceRole`: Admin/Connector/Auditor). Shared helpers live in
+folder or account (`PamResourceRole`: Admin/Operator/Connector/Auditor; Operator is Connector plus
+`ViewCredentials`, with no approval rights so credential approval can't be self-served). Shared helpers live in
 `pam/pam-permission.ts` (`verifyProductMembership`, `checkAccountAccess`, `getResourceIdsWithActions`, …) —
 use them instead of re-implementing. Every list/mutation endpoint checks an **action**, not just
 membership. There is **no org-admin fallback**: permission needs project-scoped membership.
@@ -59,6 +60,13 @@ Gotchas:
   product-level bucket and is hidden from resource viewers.
 - Gated accounts (`requiresApproval`) require `LaunchSessions` **and** a valid approval grant, enforced in
   both the session and web-access services.
+- **Session launch and credential reveal (`pamAccountService.getCredentials`) are separately approved
+  behind one switch.** The template's `requiresApproval` gates both; they share the same `PamAccess`
+  policy and approvers, told apart by `accessType` on the request data and grant attributes.
+  **A missing `accessType` means session**, so a grant predating credential access can never unlock a
+  reveal — never treat it as a wildcard. Hence `checkGrant`/`getAccessStatusBatch` take an `accessType`,
+  pending requests dedupe per (account, accessType), and `revokeGrantRow` skips session termination for a
+  credential grant.
 - PAM endpoints accept JWT + identity tokens, including CLI session launch (`POST /pam/sessions/access`)
   and raising access requests (`POST /pam/access-requests`); web access stays JWT-only, as does
   reviewing/revoking (identities are never approvers). MFA-gated accounts still reject machine actors,
@@ -128,6 +136,17 @@ registry-driven in `pam/pam-policies.ts` and stored in the template's `policies`
 policies apply before the session starts; gateway-enforced ones flow to the gateway via `policyRules`.
 **Settings** (recording, password constraints, log masking) are a separate concept — they live in the
 template's `settings` column, not `policies`. Both are edited on the template detail sheet's "General" tab.
+
+**Break-glass** lets a requester self-approve their own pending request, and needs **both** gates open:
+the account's template carries `allow-break-glass`, *and* the folder's approval policy names the actor in
+`approval_policy_bypassers`. Neither alone is sufficient, and an empty bypasser list means **nobody** —
+the shared `approval-policy-service` treats an empty list as everybody, which is the opposite rule, so do
+not reuse its predicate. `allow-break-glass` resolves to false without `requires-approval`, since there is
+then no approval to skip. Saving the folder config keeps the policy's `enforcementLevel` in step with the
+list (`soft` when non-empty), and omitting `breakGlassUsers` entirely leaves the stored list alone so a
+steps-only client can't switch break-glass off by accident. The grant records `isBreakGlass` +
+`bypassReason`, and `PAM_ACCESS_POLICY_BYPASSED` must carry `accountId`/`folderId` or the event is hidden
+from folder and account auditors (see the audit-log gotcha under Permissions).
 
 ## Discovery
 

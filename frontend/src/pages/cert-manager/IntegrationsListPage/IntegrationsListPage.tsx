@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tabs, TabsContent } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -53,10 +53,10 @@ export const IntegrationsListPage = () => {
             description="Manage integrations with third-party certificate services."
           />
           <Tabs orientation="vertical" value={currentTab} onValueChange={updateSelectedTab}>
-            <TabPanel value={IntegrationsListPageTabs.AppConnections}>
+            <TabsContent value={IntegrationsListPageTabs.AppConnections}>
               <AppConnectionsTab />
-            </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.PkiSyncs}>
+            </TabsContent>
+            <TabsContent value={IntegrationsListPageTabs.PkiSyncs}>
               <ProjectPermissionCan
                 renderGuardBanner
                 I={ProjectPermissionPkiSyncActions.Read}
@@ -64,7 +64,7 @@ export const IntegrationsListPage = () => {
               >
                 <PkiSyncsTab />
               </ProjectPermissionCan>
-            </TabPanel>
+            </TabsContent>
           </Tabs>
         </div>
       </div>

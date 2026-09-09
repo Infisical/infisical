@@ -59,7 +59,6 @@ const SanitizedSuperAdminSchema = z.object({
   kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
-  isCrossProjectSecretSharingEnabled: z.boolean().optional(),
   isClickhouseAuditLogEnabled: z.boolean().optional(),
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
@@ -90,10 +89,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
 
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
-      const orgId = req.auth?.orgId ?? "";
 
       const latestAvailableVersion = await server.services.updateCheck.getAvailableUpdateVersion();
-      const plan = await server.services.license.getPlan(orgId);
 
       const isClickhouseAuditLogEnabled = Boolean(
         serverEnvs.isClickHouseConfigured && serverEnvs.CLICKHOUSE_AUDIT_LOG_ENABLED
@@ -116,7 +113,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             authConsentContent: config.authConsentContent,
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
-            isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
             isClickhouseAuditLogEnabled,
             latestAvailableVersion
           }
@@ -134,7 +130,6 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
-          isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
           isClickhouseAuditLogEnabled,
           latestAvailableVersion
         }

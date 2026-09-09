@@ -9,6 +9,7 @@ export const AuditRetentionDays = defineFeature("audit_retention_days", 30);
 export const IdentitiesMeter = defineLimitFeature("identities", 0);
 export const InternalCas = defineLimitFeature("internal_cas", 0);
 export const ActiveCerts = defineLimitFeature("active_certs", 0);
+export const WildcardCerts = defineLimitFeature("wildcard_certs", 0);
 export const SecretIdentities = defineLimitFeature("secret_identities", 0);
 export const PamIdentities = defineLimitFeature("pam_identities", 0);
 export const AgentVaultIdentities = defineLimitFeature("agent_vault_identities", 0);

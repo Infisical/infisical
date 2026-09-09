@@ -70,6 +70,91 @@ export const triggerWebhookRequest = async (
   return req;
 };
 
+type TTestEventFields = {
+  projectId: string;
+  projectName?: string;
+  environment: string;
+  environmentName: string;
+  secretPath?: string;
+};
+
+const TEST_EVENT_MESSAGE = "This is a test message from Infisical webhooks.";
+
+// Keyed by webhook type rather than switched on, so a new WebhookType fails the type check here
+// until it has a body its provider accepts. Slack rejects a body without `text` with 400 no_text.
+export const TEST_EVENT_PAYLOAD_BUILDERS: Record<WebhookType, (fields: TTestEventFields) => Record<string, unknown>> = {
+  [WebhookType.SLACK]: ({ projectName, environment, environmentName, secretPath }) => ({
+    text: TEST_EVENT_MESSAGE,
+    attachments: [
+      {
+        color: "#E7F256",
+        fields: [
+          {
+            title: "Project",
+            value: projectName,
+            short: false
+          },
+          {
+            title: "Environment",
+            value: environment,
+            short: false
+          },
+          {
+            title: "Environment Name",
+            value: environmentName,
+            short: false
+          },
+          {
+            title: "Secret Path",
+            value: secretPath,
+            short: false
+          }
+        ]
+      }
+    ]
+  }),
+  [WebhookType.MICROSOFT_TEAMS]: ({ projectName, environment, environmentName, secretPath }) => ({
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          type: "AdaptiveCard",
+          version: "1.2",
+          body: [
+            {
+              type: "TextBlock",
+              size: "Medium",
+              weight: "Bolder",
+              text: TEST_EVENT_MESSAGE
+            },
+            {
+              type: "FactSet",
+              facts: [
+                { title: "Project", value: projectName || "" },
+                { title: "Environment", value: environment },
+                { title: "Environment Name", value: environmentName || "" },
+                { title: "Secret Path", value: secretPath || "" }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }),
+  [WebhookType.GENERAL]: ({ projectName, projectId, environment, environmentName, secretPath }) => ({
+    event: WebhookEvents.TestEvent,
+    project: {
+      workspaceId: projectId,
+      projectId,
+      projectName,
+      environment,
+      environmentName,
+      secretPath
+    }
+  })
+};
+
 export const getWebhookPayload = (event: TWebhookPayloads) => {
   if (event.type === WebhookEvents.SecretModified) {
     const { projectName, projectId, environment, environmentName, secretPath, type, changedBy, changedByActorType } =
@@ -578,18 +663,11 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
   }
 
   if (event.type === WebhookEvents.TestEvent) {
-    const { projectName, projectId, environment, environmentName, secretPath } = event.payload;
-    return {
-      event: event.type,
-      project: {
-        workspaceId: projectId,
-        projectId,
-        projectName,
-        environment,
-        environmentName,
-        secretPath
-      }
-    };
+    const { type, ...fields } = event.payload;
+    const buildPayload =
+      TEST_EVENT_PAYLOAD_BUILDERS[type as WebhookType] ?? TEST_EVENT_PAYLOAD_BUILDERS[WebhookType.GENERAL];
+
+    return buildPayload(fields);
   }
 
   logger.warn({ event }, "Unhandled webhook event");

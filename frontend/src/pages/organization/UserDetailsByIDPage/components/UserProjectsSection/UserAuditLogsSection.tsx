@@ -1,4 +1,4 @@
-import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { OrgPermissionMemberActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { OrgUser } from "@app/hooks/api/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
@@ -27,5 +27,5 @@ export const UserAuditLogsSection = withPermission(
       )
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Member }
+  { action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member }
 );

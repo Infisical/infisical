@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
 import {
   Button,
@@ -13,12 +14,14 @@ import {
   DocumentationLinkBadge,
   PageLoader
 } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiSyncsTable } from "../../IntegrationsListPage/components/PkiSyncsTab/PkiSyncTable";
 import { PkiDocsUrls } from "../../pki-docs-urls";
@@ -27,6 +30,17 @@ type Props = { applicationId: string; applicationName: string; projectId: string
 
 export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId }: Props) => {
   const [isAddSyncOpen, setIsAddSyncOpen] = useState(false);
+  const { subscription } = useSubscription();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+
+  // Every sync destination is enterprise, so refuse here rather than after the destination picker.
+  const handleAddSync = () => {
+    if (!subscription.pkiSyncs) {
+      handlePopUpOpen("upgradePlan");
+      return;
+    }
+    setIsAddSyncOpen(true);
+  };
 
   const { data, isPending } = useListPkiSyncs(projectId, {
     enabled: Boolean(projectId),
@@ -56,11 +70,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
           other destinations.
         </CardDescription>
         <CardAction>
-          <Button
-            variant="outline"
-            onClick={() => setIsAddSyncOpen(true)}
-            isDisabled={!canCreateSync}
-          >
+          <Button variant="outline" onClick={handleAddSync} isDisabled={!canCreateSync}>
             <PlusIcon />
             Add Sync
           </Button>
@@ -77,6 +87,11 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
         isOpen={isAddSyncOpen}
         onOpenChange={setIsAddSyncOpen}
         applicationId={applicationId}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Certificate Syncs are available on Infisical's Enterprise plan."
       />
     </Card>
   );

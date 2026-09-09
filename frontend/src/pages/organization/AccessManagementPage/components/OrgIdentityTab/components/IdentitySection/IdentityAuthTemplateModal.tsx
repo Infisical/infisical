@@ -49,6 +49,7 @@ import {
   type KubernetesTemplateFields,
   type LdapTemplateFields,
   MachineIdentityAuthMethod,
+  type OidcTemplateFields,
   useCreateIdentityAuthTemplate,
   useUpdateIdentityAuthTemplate
 } from "@app/hooks/api/identityAuthTemplates";
@@ -71,6 +72,11 @@ export const templateAuthMethods = [
     label: "Kubernetes Auth",
     value: MachineIdentityAuthMethod.KUBERNETES,
     icon: getMethodIcon(IdentityAuthMethod.KUBERNETES_AUTH)
+  },
+  {
+    label: "OIDC Auth",
+    value: MachineIdentityAuthMethod.OIDC,
+    icon: getMethodIcon(IdentityAuthMethod.OIDC_AUTH)
   }
 ];
 
@@ -99,9 +105,58 @@ const schema = z
     gatewayPoolId: z.string().optional().nullable(),
     caCert: z.string().optional(),
     verifyTlsCertificate: z.boolean().default(true),
-    allowedAudience: z.string().optional()
+    allowedAudience: z.string().optional(),
+    oidcDiscoveryUrl: z.string().optional(),
+    boundIssuer: z.string().optional(),
+    boundAudiences: z.string().optional()
   })
   .superRefine((data, ctx) => {
+    if (data.method === MachineIdentityAuthMethod.OIDC) {
+      if (!data.oidcDiscoveryUrl) {
+        ctx.addIssue({
+          path: ["oidcDiscoveryUrl"],
+          code: z.ZodIssueCode.custom,
+          message: "OIDC discovery URL is required"
+        });
+      } else {
+        if (!z.string().url().safeParse(data.oidcDiscoveryUrl).success) {
+          ctx.addIssue({
+            path: ["oidcDiscoveryUrl"],
+            code: z.ZodIssueCode.custom,
+            message: "OIDC discovery URL must be a valid URL"
+          });
+        } else {
+          const { search, hash } = new URL(data.oidcDiscoveryUrl);
+          if (search || hash) {
+            ctx.addIssue({
+              path: ["oidcDiscoveryUrl"],
+              code: z.ZodIssueCode.custom,
+              message: "Please remove the query string or fragment."
+            });
+          }
+        }
+        // the server strips trailing slashes before it checks, so match it or the two
+        // disagree on ".../.well-known/openid-configuration/"
+        if (
+          data.oidcDiscoveryUrl.replace(/\/+$/, "").endsWith("/.well-known/openid-configuration")
+        ) {
+          ctx.addIssue({
+            path: ["oidcDiscoveryUrl"],
+            code: z.ZodIssueCode.custom,
+            message: "Please remove /.well-known/openid-configuration."
+          });
+        }
+      }
+      if (!data.boundIssuer) {
+        ctx.addIssue({
+          path: ["boundIssuer"],
+          code: z.ZodIssueCode.custom,
+          message: "Issuer is required"
+        });
+      }
+      return;
+    }
+
     if (data.method === MachineIdentityAuthMethod.LDAP) {
       if (!data.url) {
         ctx.addIssue({
@@ -156,7 +211,10 @@ const emptyFormValues: FormData = {
   gatewayPoolId: null,
   caCert: "",
   verifyTlsCertificate: true,
-  allowedAudience: ""
+  allowedAudience: "",
+  oidcDiscoveryUrl: "",
+  boundIssuer: "",
+  boundAudiences: ""
 };
 
 type Props = {
@@ -208,6 +266,18 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
           verifyTlsCertificate: fields?.verifyTlsCertificate ?? Boolean(fields?.caCert),
           allowedAudience: fields?.allowedAudience || ""
         });
+      } else if (template.authMethod === MachineIdentityAuthMethod.OIDC) {
+        const fields = template.templateFields;
+        reset({
+          ...emptyFormValues,
+          name: template.name || "",
+          method: MachineIdentityAuthMethod.OIDC,
+          isEdit: true,
+          oidcDiscoveryUrl: fields?.oidcDiscoveryUrl || "",
+          boundIssuer: fields?.boundIssuer || "",
+          boundAudiences: fields?.boundAudiences || "",
+          caCert: fields?.caCert || ""
+        });
       } else {
         reset({
           ...emptyFormValues,
@@ -236,35 +306,45 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
 
   const onFormSubmit = async (data: FormData) => {
     const isApiMode = data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api;
-    const templateFields: LdapTemplateFields | KubernetesTemplateFields =
-      data.method === MachineIdentityAuthMethod.LDAP
-        ? {
-            url: data.url || "",
-            bindDN: data.bindDN || "",
-            bindPass: data.bindPass || "",
-            searchBase: data.searchBase || "",
-            // send an explicit empty string so clearing the field persists through the
-            // merge-on-update semantics (an absent key means "keep the stored value")
-            ldapCaCertificate: data.ldapCaCertificate || ""
-          }
-        : ({
-            tokenReviewMode: data.tokenReviewMode,
-            kubernetesHost: isApiMode ? data.kubernetesHost || null : null,
-            caCert: isApiMode ? data.caCert || "" : "",
-            verifyTlsCertificate: isApiMode
-              ? Boolean(data.caCert) || data.verifyTlsCertificate
-              : false,
-            tokenReviewerJwt: isApiMode ? data.tokenReviewerJwt || "" : "",
-            gatewayId: data.gatewayPoolId ? null : data.gatewayId || null,
-            gatewayPoolId: data.gatewayPoolId || null,
-            allowedAudience: data.allowedAudience || ""
-          } satisfies KubernetesTemplateFields);
+    let templateFields: LdapTemplateFields | KubernetesTemplateFields | OidcTemplateFields;
+    if (data.method === MachineIdentityAuthMethod.LDAP) {
+      templateFields = {
+        url: data.url || "",
+        bindDN: data.bindDN || "",
+        bindPass: data.bindPass || "",
+        searchBase: data.searchBase || "",
+        // send an explicit empty string so clearing the field persists through the
+        // merge-on-update semantics (an absent key means "keep the stored value")
+        ldapCaCertificate: data.ldapCaCertificate || ""
+      };
+    } else if (data.method === MachineIdentityAuthMethod.OIDC) {
+      templateFields = {
+        oidcDiscoveryUrl: data.oidcDiscoveryUrl || "",
+        boundIssuer: data.boundIssuer || "",
+        boundAudiences: data.boundAudiences || "",
+        caCert: data.caCert || ""
+      } satisfies OidcTemplateFields;
+    } else {
+      templateFields = {
+        tokenReviewMode: data.tokenReviewMode,
+        kubernetesHost: isApiMode ? data.kubernetesHost || null : null,
+        caCert: isApiMode ? data.caCert || "" : "",
+        verifyTlsCertificate: isApiMode ? Boolean(data.caCert) || data.verifyTlsCertificate : false,
+        tokenReviewerJwt: isApiMode ? data.tokenReviewerJwt || "" : "",
+        gatewayId: data.gatewayPoolId ? null : data.gatewayId || null,
+        gatewayPoolId: data.gatewayPoolId || null,
+        allowedAudience: data.allowedAudience || ""
+      } satisfies KubernetesTemplateFields;
+    }
 
     if (isEdit && template) {
       // secrets are write-only, so an empty field on edit means "keep the stored value"
       // and the key must be omitted from the patch (an explicit "" would clear it and
       // propagate the cleared credential to every linked identity)
-      const patchFields: Partial<LdapTemplateFields> | Partial<KubernetesTemplateFields> = {
+      const patchFields:
+        | Partial<LdapTemplateFields>
+        | Partial<KubernetesTemplateFields>
+        | Partial<OidcTemplateFields> = {
         ...templateFields
       };
       if (data.method === MachineIdentityAuthMethod.LDAP && !data.bindPass) {
@@ -322,6 +402,9 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
       | "kubernetesHost"
       | "tokenReviewerJwt"
       | "allowedAudience"
+      | "oidcDiscoveryUrl"
+      | "boundIssuer"
+      | "boundAudiences"
   >(
     id: string,
     label: string,
@@ -728,6 +811,87 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                     />
                   </>
                 )}
+              </>
+            )}
+
+            {selectedMethod === MachineIdentityAuthMethod.OIDC && (
+              <>
+                <Controller
+                  control={control}
+                  name="oidcDiscoveryUrl"
+                  render={({ field, fieldState: { error } }) =>
+                    renderField(
+                      "identity-auth-template-oidc-discovery-url",
+                      "OIDC Discovery URL",
+                      field,
+                      error,
+                      { placeholder: "https://token.actions.githubusercontent.com" }
+                    )
+                  }
+                />
+
+                <Controller
+                  control={control}
+                  name="boundIssuer"
+                  render={({ field, fieldState: { error } }) =>
+                    renderField("identity-auth-template-bound-issuer", "Issuer", field, error, {
+                      placeholder: "https://token.actions.githubusercontent.com"
+                    })
+                  }
+                />
+
+                <Controller
+                  control={control}
+                  name="boundAudiences"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="identity-auth-template-bound-audiences">
+                        Audiences (optional)
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id="identity-auth-template-bound-audiences"
+                        placeholder="service1, service2"
+                        aria-invalid={Boolean(error)}
+                        aria-describedby="identity-auth-template-bound-audiences-description"
+                      />
+                      <p
+                        id="identity-auth-template-bound-audiences-description"
+                        className="text-xs text-muted"
+                      >
+                        A comma-separated list of values the token&apos;s aud claim must match.
+                      </p>
+                      <FieldError errors={[error]} />
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="caCert"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="identity-auth-template-oidc-ca-certificate">
+                        CA Certificate (optional)
+                      </FieldLabel>
+                      <TextArea
+                        {...field}
+                        id="identity-auth-template-oidc-ca-certificate"
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        aria-invalid={Boolean(error)}
+                        aria-describedby="identity-auth-template-oidc-ca-certificate-description"
+                      />
+                      <p
+                        id="identity-auth-template-oidc-ca-certificate-description"
+                        className="text-xs text-muted"
+                      >
+                        An optional PEM-encoded CA certificate used for secure communication with
+                        the identity provider endpoints.
+                      </p>
+                      <FieldError errors={[error]} />
+                    </Field>
+                  )}
+                />
               </>
             )}
           </FieldGroup>

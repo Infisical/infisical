@@ -1,3 +1,4 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgServiceActor } from "@app/lib/types";
 
 export interface TCreateGithubOrgSyncDTO {
@@ -24,6 +25,15 @@ export interface TGetGithubOrgSyncDTO {
 
 export interface TSyncAllTeamsDTO {
   orgPermission: OrgServiceActor;
+  auditLogInfo: AuditLogInfo;
+}
+
+export interface TSyncUserGroupsDTO {
+  orgId: string;
+  userId: string;
+  username: string;
+  accessToken: string;
+  auditLogInfo: AuditLogInfo;
 }
 
 export interface TSyncResult {

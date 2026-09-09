@@ -1,7 +1,8 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
-ARG CAPTCHA_SITE_KEY=captcha-site-key
+
+ARG INFISICAL_CLI_VERSION=0.43.129
 
 FROM node:22.22.0-trixie-slim AS base
 
@@ -36,8 +37,6 @@ ENV VITE_INTERCOM_ID $INTERCOM_ID
 ARG INFISICAL_PLATFORM_VERSION
 ENV INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
-ARG CAPTCHA_SITE_KEY
-ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
 # Build
@@ -166,7 +165,7 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
-RUN rm -rf ./node_modules ./bdd ./e2e-test
+RUN rm -rf ./node_modules ./bdd ./e2e-test ./src
 COPY --from=backend-prod-deps /app/node_modules ./node_modules
 
 RUN mkdir frontend-build
@@ -199,18 +198,23 @@ FROM base AS production
 
 # Runtime dependencies only. The PQC OpenSSL toolchain lives in
 # openssl-pqc-builder; nothing here compiles.
-RUN apt-get update && apt-get install -y \
+ARG INFISICAL_CLI_VERSION
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     bash \
     curl \
     git \
     unixodbc \
     freetds-bin \
+    # the ECS container health check shells out to wget; dropping it fails the
+    # probe with exit 127 even while the server is serving /api/status fine
+    wget \
     openssh-client \
     libaio1t64 \
     smbclient \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.90 \
+    && test -n "$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
     # Patch CVEs in base image packages (pinned versions for reproducibility)
     && apt-get install -y --only-upgrade \
     libgnutls30t64=3.8.9-3+deb13u4 \
@@ -223,6 +227,19 @@ RUN apt-get update && apt-get install -y \
     libngtcp2-16=1.11.0-1+deb13u1 \
     libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
     libsqlite3-0=3.46.1-7+deb13u1 \
+    util-linux=2.41.5-0+deb13u1 \
+    mount=2.41.5-0+deb13u1 \
+    libblkid1=2.41.5-0+deb13u1 \
+    libuuid1=2.41.5-0+deb13u1 \
+    libmount1=2.41.5-0+deb13u1 \
+    libsmartcols1=2.41.5-0+deb13u1 \
+    liblastlog2-2=2.41.5-0+deb13u1 \
+    bsdutils=1:2.41.5-0+deb13u1 \
+    login=1:4.16.0-2+really2.41.5-0+deb13u1 \
+    libsystemd0=257.13-1~deb13u1 \
+    libudev1=257.13-1~deb13u1 \
+    liblzma5=5.8.1-1+deb13u1 \
+    sed=4.9-2+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
@@ -260,8 +277,6 @@ ARG POSTHOG_API_KEY
 ENV POSTHOG_API_KEY=$POSTHOG_API_KEY
 ARG INTERCOM_ID=intercom-id
 ENV INTERCOM_ID=$INTERCOM_ID
-ARG CAPTCHA_SITE_KEY
-ENV CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 
 COPY --from=backend-runner /app /backend
 COPY --from=frontend-runner /app ./backend/frontend-build

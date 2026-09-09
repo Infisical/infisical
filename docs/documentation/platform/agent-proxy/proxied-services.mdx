@@ -5,7 +5,7 @@ description: "Define how the agent proxy applies credentials to traffic bound fo
 
 A proxied service tells the agent proxy how to apply credentials to traffic bound for an external service. It lives in a folder alongside your secrets, defines which hosts it covers, and applies wherever your agent runs: on your own computer, or behind a proxy you deploy.
 
-To create one, open a folder in the secrets dashboard, click the dropdown arrow next to **Add Secret**, and select **Add Proxied Service**.
+To create one, open a folder in the secrets dashboard, select the dropdown arrow next to **Add Secret**, and select **Add Proxied Service**.
 
 ![The Add Secret dropdown with Add Proxied Service](/images/platform/agent-proxy/add-proxied-service-menu.png)
 
@@ -24,7 +24,7 @@ Every service has these core fields, plus one or more credential rules described
 </ParamField>
 
 <ParamField path="Enabled" type="boolean" optional default="true">
-  Toggle a service off without deleting it. A disabled service is skipped entirely: its placeholder environment variables are not set, no credentials are applied, and traffic to its hosts falls back to the [unmatched host policy](/documentation/platform/agent-proxy/standalone-agent-proxy#unmatched-hosts).
+  Toggle a service off without deleting it. A disabled service is skipped entirely: its placeholder environment variables aren't set, no credentials are applied, and traffic to its hosts falls back to the [unmatched host policy](/documentation/platform/agent-proxy/standalone-agent-proxy#unmatched-hosts).
 </ParamField>
 
 ![The Details step of the proxied service editor with the name and host pattern](/images/platform/agent-proxy/service-details.png)
@@ -46,7 +46,7 @@ A few rules to keep in mind:
 
 - A `*.` wildcard matches exactly **one** label: `*.github.com` matches `api.github.com` but not `a.b.github.com` or bare `github.com`.
 - Host matching is case-insensitive. A pattern without a port matches any port.
-- Do not include a scheme (`https://`); patterns are hosts, not URLs.
+- Don't include a scheme (`https://`); patterns are hosts, not URLs.
 
 When a request could match more than one service, the agent proxy picks the best match:
 
@@ -61,7 +61,7 @@ When a request could match more than one service, the agent proxy picks the best
 
 ## Header rewrites
 
-A header rewrite adds or replaces an HTTP header on the outbound request. The agent does not need to send any credential; if it sends a made-up one, the header is overwritten with the real value. This covers most APIs:
+A header rewrite adds or replaces an HTTP header on the outbound request. The agent doesn't need to send any credential; if it sends a made-up one, the header is overwritten with the real value. This covers most APIs:
 
 | Auth style | Configuration | Resulting header |
 | --- | --- | --- |
@@ -78,7 +78,7 @@ A service can rewrite multiple distinct headers (for example, an API key header 
 
 ## Secret substitution
 
-With secret substitution, the agent is handed a dummy placeholder value. The agent proxy swaps it for the real credential wherever it appears in the request. It is useful in two situations:
+With secret substitution, the agent is handed a dummy placeholder value. The agent proxy swaps it for the real credential wherever it appears in the request. It's useful in two situations:
 
 - The API carries the credential somewhere other than a header. Telegram, for example, puts the bot token in the URL path: `api.telegram.org/bot<token>/sendMessage`.
 - The agent has to see a value before it will make the call at all, headers included. Some HTTP clients validate that a credential is set, and agents often refuse to attempt a request without a real-looking key. The placeholder satisfies them, and the proxy swaps in the real value on the way out.
@@ -105,7 +105,7 @@ The placeholder is also delivered for you: both [`agent-proxy connect`](/documen
 
 ## Using secrets from other folders and environments
 
-You cannot point a proxied service at another folder directly, but you can bring an outside value into its folder so the service can use it. There are two ways, both using features that already exist in Infisical:
+You can't point a proxied service at another folder directly, but you can bring an outside value into its folder so the service can use it. There are two ways, both using features that already exist in Infisical:
 
 | Approach | What you do | Example |
 | --- | --- | --- |

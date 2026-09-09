@@ -397,8 +397,9 @@ export const extractCertificateFields = (decryptedCertificate: Buffer) => {
     isCA: parsed.basicConstraints?.isCA ?? null,
     pathLength: parsed.basicConstraints?.pathLength ?? null,
 
-    // Callers spread these last so the issued usages win over the requested ones. Absent when the
-    // certificate carries no such extension, leaving the requested values in place.
+    // Callers spread these last so the issued values win over the requested ones. Absent when the
+    // certificate does not carry them, leaving the requested values in place.
+    ...(parsed.subject?.commonName && { commonName: parsed.subject.commonName }),
     ...(parsed.keyUsages && { keyUsages: parsed.keyUsages }),
     ...(parsed.extendedKeyUsages && { extendedKeyUsages: parsed.extendedKeyUsages })
   };

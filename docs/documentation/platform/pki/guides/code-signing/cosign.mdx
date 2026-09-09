@@ -52,7 +52,7 @@ For the full set of options, see the [PKCS#11 module configuration reference](/d
 ## Step 2: Install cosign with PKCS#11 support
 
 <Warning>
-  Pre-built cosign binaries (including Homebrew) do **not** include PKCS#11 support. You must build cosign from source with the `pkcs11key` build tag enabled.
+  Pre-built cosign binaries (including Homebrew) don't include PKCS#11 support. You must build cosign from source with the `pkcs11key` build tag enabled.
 </Warning>
 
 <Tabs>
@@ -106,7 +106,7 @@ cosign sign \
 <Note>
   - The `--key` flag uses a PKCS#11 URI. The `token` must match your signer's token label and `object` must match the key label. Use `cosign pkcs11-tool list-keys-uris` to find the exact URI.
   - Set `COSIGN_PKCS11_MODULE_PATH` to the absolute path of the Infisical PKCS#11 shared library.
-  - Use `--tlog-upload=false` if you are not using a Sigstore transparency log.
+  - Use `--tlog-upload=false` if you aren't using a Sigstore transparency log.
   - cosign pushes the signature to the same registry alongside the image.
   - You may need to authenticate to your container registry first (e.g., `docker login` or `cosign login`).
   - Prefer signing by digest (`@sha256:...`) rather than tag for reproducible builds.
@@ -195,7 +195,7 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
 
 <AccordionGroup>
   <Accordion title="'unimplemented' or 'not built with pkcs11-tool support'">
-    Your cosign binary was not built with PKCS#11 support. Pre-built binaries (including Homebrew) do not include it. Rebuild from source with `CGO_ENABLED=1 go install -tags pkcs11key github.com/sigstore/cosign/v2/cmd/cosign@latest`.
+    Your cosign binary wasn't built with PKCS#11 support. Pre-built binaries (including Homebrew) don't include it. Rebuild from source with `CGO_ENABLED=1 go install -tags pkcs11key github.com/sigstore/cosign/v2/cmd/cosign@latest`.
   </Accordion>
   <Accordion title="Error getting signer or key not found">
     Ensure the PKCS#11 URI includes both `token` and `object` fields matching your signer name, and that `COSIGN_PKCS11_MODULE_PATH` is set to the absolute path of the module. Use `cosign pkcs11-tool list-keys-uris` to find the correct URI.
