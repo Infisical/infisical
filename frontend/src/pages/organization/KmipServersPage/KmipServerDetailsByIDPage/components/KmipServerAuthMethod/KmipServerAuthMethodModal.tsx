@@ -119,7 +119,7 @@ export const KmipServerAuthMethodModal = ({
       createNotification({ type: "success", text: "Auth method updated" });
       onOpenChange(false);
     } catch {
-      createNotification({ type: "error", text: "Failed to update auth method" });
+      // MutationCache.onError already surfaces the API error.
     }
   };
 

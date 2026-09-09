@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
@@ -66,7 +65,7 @@ export const KmipServerDeploySection = ({ kmipServerId, kmipServerName, authMeth
       const result = await mint({ kmipServerId });
       queryClient.setQueryData<MintedEnrollment>(enrollmentQueryKey, result);
     } catch {
-      createNotification({ type: "error", text: "Failed to generate enrollment token" });
+      // MutationCache.onError already surfaces the API error.
     }
   };
 

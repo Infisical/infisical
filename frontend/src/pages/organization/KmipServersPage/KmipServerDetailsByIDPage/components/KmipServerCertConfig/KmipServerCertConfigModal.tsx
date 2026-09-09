@@ -82,7 +82,7 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
       });
       onOpenChange(false);
     } catch {
-      createNotification({ type: "error", text: "Failed to update certificate configuration" });
+      // MutationCache.onError already surfaces the API error.
     }
   };
 
@@ -128,7 +128,7 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
             name="keyAlgorithm"
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <Field data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="kmip-server-cert-key-algorithm">Key Algorithm</FieldLabel>
+                <FieldLabel htmlFor="kmip-server-cert-key-algorithm">Key algorithm</FieldLabel>
                 <Select value={value} onValueChange={onChange}>
                   <SelectTrigger
                     id="kmip-server-cert-key-algorithm"

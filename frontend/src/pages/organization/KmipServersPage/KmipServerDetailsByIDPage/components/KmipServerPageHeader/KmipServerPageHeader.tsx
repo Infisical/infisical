@@ -56,7 +56,7 @@ export const KmipServerPageHeader = ({ kmipServer, orgId }: Props) => {
       createNotification({ type: "success", text: "KMIP server access revoked" });
       handlePopUpToggle("revokeKmipServer", false);
     } catch {
-      createNotification({ type: "error", text: "Failed to revoke KMIP server access" });
+      // MutationCache.onError already surfaces the API error.
     }
   };
 
