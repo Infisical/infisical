@@ -337,7 +337,7 @@ export const agentVaultProxyServiceFactory = ({
         actionProjectType: ActionProjectType.AgentVault
       });
       if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
-        throw new UnauthorizedError({ message: "Session revoked" });
+        throw new UnauthorizedError({ message: "The role this session's actor held has expired" });
       }
       isAdmin = hasRole(ProjectMembershipRole.Admin);
       liveGroupIds = liveGroupIdsFrom(memberships);
@@ -345,7 +345,7 @@ export const agentVaultProxyServiceFactory = ({
       // A 403 reads to the proxy as "Infisical is unreachable", which would keep a removed member's agent
       // running through its grace window.
       if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") {
-        throw new UnauthorizedError({ message: "Session revoked" });
+        throw new UnauthorizedError({ message: "The actor no longer has Agent Vault access" });
       }
       throw error;
     }
