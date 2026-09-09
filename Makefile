@@ -48,7 +48,10 @@ reviewable: reviewable-ui reviewable-api
 # That is not a preference: the e2e harness runs `DROP SCHEMA public CASCADE` on whatever
 # database it is pointed at, so aiming it at the dev database takes your data with it.
 # Everything else (image, environment, mounts, service dependencies) is declared there.
-TEST_SUITE_COMPOSE = docker compose -f docker-compose.test.yml --profile runner
+# CI adds -f docker-compose.test.ci.yml here, which is the only difference between how CI and a
+# developer run the suites. Everything else is shared.
+TEST_SUITE_COMPOSE_OVERRIDE ?=
+TEST_SUITE_COMPOSE = docker compose -f docker-compose.test.yml $(TEST_SUITE_COMPOSE_OVERRIDE) --profile runner
 
 build-test-suite-image:
 	$(TEST_SUITE_COMPOSE) build api-tests

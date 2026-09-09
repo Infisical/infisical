@@ -1,0 +1,17 @@
+# CI-only override for docker-compose.test.yml.
+#
+# The secret rotation specs address their databases as 127.0.0.1 on published ports
+# (backend/e2e-test/routes/v3/secret-rotations.spec.ts), so the suite has to share the host's
+# network namespace to reach the docker-compose.e2e-dbs.yml stack. Host networking only behaves
+# this way on Linux, so it stays out of the base file, which has to work on Docker Desktop too.
+#
+# Sharing the host namespace means Postgres and Redis are no longer reachable by service name,
+# so those two connection strings move to the ports the base file publishes.
+name: infisical-test
+
+services:
+  api-tests:
+    network_mode: host
+    environment:
+      DB_CONNECTION_URI: postgres://infisical:infisical@localhost:5436/infisical-test?sslmode=disable
+      REDIS_URL: redis://localhost:6380
