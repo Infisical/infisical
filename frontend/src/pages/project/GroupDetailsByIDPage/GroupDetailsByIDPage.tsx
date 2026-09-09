@@ -116,22 +116,17 @@ const Page = () => {
     );
   }
 
-  const backLink = (
-    <Link
-      to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-      params={{
-        projectId: currentProject.id,
-        orgId: currentOrg.id
-      }}
-      search={{
-        selectedTab: ProjectAccessControlTabs.Groups
-      }}
-      className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-    >
-      <ChevronLeftIcon aria-hidden className="size-4" />
-      {isCertManager ? "Groups" : "Project Groups"}
-    </Link>
-  );
+  const backLinkProps = {
+    to: `${getProjectBaseURL(currentProject.type)}/access-management`,
+    params: {
+      projectId: currentProject.id,
+      orgId: currentOrg.id
+    },
+    search: {
+      selectedTab: ProjectAccessControlTabs.Groups
+    }
+  } as const;
+  const backLinkLabel = isCertManager ? "Groups" : "Project Groups";
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col gap-8">
@@ -145,7 +140,12 @@ const Page = () => {
                 ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
             }
-            backLink={backLink}
+            backLink={
+              <Link {...backLinkProps}>
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {backLinkLabel}
+              </Link>
+            }
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -191,7 +191,13 @@ const Page = () => {
         </>
       ) : (
         <>
-          {backLink}
+          <Link
+            {...backLinkProps}
+            className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <ChevronLeftIcon aria-hidden className="size-4" />
+            {backLinkLabel}
+          </Link>
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>Group Not Found</EmptyTitle>
