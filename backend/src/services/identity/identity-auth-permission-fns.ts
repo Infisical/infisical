@@ -57,15 +57,23 @@ export const assertIdentityAuthMutationAllowed = async (
     orgDAL.findById(orgId)
   );
 
-  // Roles rather than the target's own ability, because `getProjectPermission` stamps whichever actor
-  // it was called for onto the request context the audit log reads.
-  const targetMembership = await membershipIdentityDAL.getIdentityById({
-    scopeData: projectId
-      ? { scope: AccessScope.Project, orgId, projectId }
-      : { scope: AccessScope.Organization, orgId },
-    identityId
-  });
-  const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+  const resolveTargetPermissions = async () => {
+    if (shouldUseNewPrivilegeSystem) return [];
+
+    const targetMembership = await membershipIdentityDAL.getIdentityById({
+      scopeData: projectId
+        ? { scope: AccessScope.Project, orgId, projectId }
+        : { scope: AccessScope.Organization, orgId },
+      identityId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+
+    const rolePermissions = projectId
+      ? await permissionService.getProjectPermissionByRoles(targetRoles, projectId, { ignoreUnresolvedRoles: true })
+      : await permissionService.getOrgPermissionByRoles(targetRoles, orgId, { ignoreUnresolvedRoles: true });
+
+    return rolePermissions.map(({ permission: rolePermission }) => ({ permission: rolePermission }));
+  };
 
   if (projectId) {
     const { permission } = await permissionService.getProjectPermission({
@@ -76,18 +84,13 @@ export const assertIdentityAuthMutationAllowed = async (
       actorAuthMethod,
       actorOrgId
     });
-    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, projectId, {
-      ignoreUnresolvedRoles: true
-    });
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: PROJECT_ACTION_BY_ORG_ACTION[action],
       opSubject: ProjectPermissionSub.Identity,
       actorPermission: permission,
-      // Dropping `role` keeps `assignableRole` out of the subject, so the fields match the gate the
-      // caller already passed and nothing tightens for new-privilege-system orgs.
-      targetPermissions: targetPermissions.map(({ permission: rolePermission }) => ({ permission: rolePermission })),
+      targetPermissions: await resolveTargetPermissions(),
       baseMessage,
       subjectFields: { identityId }
     });
@@ -102,16 +105,13 @@ export const assertIdentityAuthMutationAllowed = async (
     actorAuthMethod,
     actorOrgId
   });
-  const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, orgId, {
-    ignoreUnresolvedRoles: true
-  });
 
   assertRoleSetBoundary({
     shouldUseNewPrivilegeSystem,
     opActions: action,
     opSubject: OrgPermissionSubjects.Identity,
     actorPermission: permission,
-    targetPermissions: targetPermissions.map(({ permission: rolePermission }) => ({ permission: rolePermission })),
+    targetPermissions: await resolveTargetPermissions(),
     baseMessage
   });
 };

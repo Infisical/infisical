@@ -45,20 +45,28 @@ const runBoundary = async ({
   actorPermission,
   targetPermissions,
   projectId,
-  scopeCalls = []
+  scopeCalls = [],
+  roleLookups = []
 }: {
   shouldUseNewPrivilegeSystem?: boolean;
   actorPermission: MongoAbility;
   targetPermissions: MongoAbility[];
   projectId?: string;
   scopeCalls?: TScopeCall[];
+  roleLookups?: string[];
 }) => {
   const deps = {
     permissionService: {
       getOrgPermission: () => Promise.resolve({ permission: actorPermission }),
       getProjectPermission: () => Promise.resolve({ permission: actorPermission }),
-      getOrgPermissionByRoles: () => Promise.resolve(targetPermissions.map((permission) => ({ permission }))),
-      getProjectPermissionByRoles: () => Promise.resolve(targetPermissions.map((permission) => ({ permission })))
+      getOrgPermissionByRoles: () => {
+        roleLookups.push("org");
+        return Promise.resolve(targetPermissions.map((permission) => ({ permission })));
+      },
+      getProjectPermissionByRoles: () => {
+        roleLookups.push("project");
+        return Promise.resolve(targetPermissions.map((permission) => ({ permission })));
+      }
     },
     orgDAL: { findById: () => Promise.resolve({ shouldUseNewPrivilegeSystem }) },
     membershipIdentityDAL: {
@@ -121,6 +129,20 @@ describe("assertIdentityAuthMutationAllowed", () => {
         runBoundary({ shouldUseNewPrivilegeSystem: true, actorPermission: orgMember, targetPermissions: [orgMember] })
       ).rejects.toThrow(PermissionBoundaryError);
     });
+
+    test("the target is not looked up at all under the new privilege system", async () => {
+      const scopeCalls: TScopeCall[] = [];
+      const roleLookups: string[] = [];
+      await runBoundary({
+        shouldUseNewPrivilegeSystem: true,
+        actorPermission: orgEditAuthOnly,
+        targetPermissions: [orgAdmin],
+        scopeCalls,
+        roleLookups
+      });
+      expect(scopeCalls).toEqual([]);
+      expect(roleLookups).toEqual([]);
+    });
   });
 
   describe("project-level identity", () => {
@@ -164,6 +186,21 @@ describe("assertIdentityAuthMutationAllowed", () => {
           projectId: "project-1"
         })
       ).rejects.toThrow(PermissionBoundaryError);
+    });
+
+    test("the target is not looked up at all under the new privilege system", async () => {
+      const scopeCalls: TScopeCall[] = [];
+      const roleLookups: string[] = [];
+      await runBoundary({
+        shouldUseNewPrivilegeSystem: true,
+        actorPermission: projectEditAuthOnly,
+        targetPermissions: [projectAdmin],
+        projectId: "project-1",
+        scopeCalls,
+        roleLookups
+      });
+      expect(scopeCalls).toEqual([]);
+      expect(roleLookups).toEqual([]);
     });
   });
 });
