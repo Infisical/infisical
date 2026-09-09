@@ -187,9 +187,11 @@ export const DopplerSecretImportModal = ({
             <InfoIcon />
             <AlertTitle>Import destination</AlertTitle>
             <AlertDescription>
-              Secrets will be imported into environment{" "}
-              <code className="text-xs">{environment}</code> at path{" "}
-              <code className="text-xs">{secretPath}</code>.
+              <p>
+                Secrets will be imported into environment{" "}
+                <code className="text-xs">{environment}</code> at path{" "}
+                <code className="text-xs">{secretPath}</code>.
+              </p>
             </AlertDescription>
           </Alert>
 
