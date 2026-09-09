@@ -4209,7 +4209,7 @@ export const AGENT_VAULT = {
   },
   SESSION: {
     sessionId: "The ID of the session.",
-    accessBundleIds: "The access bundle this session carries. A list that accepts exactly one ID.",
+    accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
     ttl: "How long the session lasts. One of 1h, 8h, 24h, 7d or never.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",

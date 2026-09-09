@@ -8,7 +8,7 @@ import {
 export type TMintSessionDTO = {
   projectId: string;
   ctx: TAgentVaultActorContext;
-  accessBundleIds: string[];
+  accessBundles: string[];
   ttl: AgentVaultSessionTtl;
 };
 

@@ -164,7 +164,7 @@ export type TAddAgentVaultMembersDTO = {
 };
 
 export type TCreateAgentVaultSessionDTO = {
-  accessBundleIds: string[];
+  accessBundles: string[];
   ttl: AgentVaultSessionTtl;
 };
 

@@ -56,7 +56,11 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   conditions can interpolate only `identity.id`, `username` and `metadata`.
 - The creator grant exists only for a creator with a direct project membership. A group-inherited admin gets
   none, so no individual grant row ever outlives its owner's membership.
-- A cross-org or ungranted id is 404, never 403, and mint uses one message for unknown and ungranted.
+- A cross-org or ungranted id is 404, never 403, and mint uses one message for an unknown and an ungranted
+  name, so the error never confirms a bundle exists.
+- Mint is the only endpoint addressed by bundle name; every resource path stays on ids. It is the only one a
+  human or the CLI hand-writes, and names are slugs unique per project, so the CLI posts the name straight
+  through instead of resolving it first. PAM does the same with `path: "folderName/accountName"`.
 
 ## Sessions and resolve
 

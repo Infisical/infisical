@@ -6226,7 +6226,8 @@ interface AgentVaultSessionMintEvent {
   type: EventType.AGENT_VAULT_SESSION_MINT;
   metadata: {
     sessionId: string;
-    accessBundleIds: string[];
+    accessBundleId: string;
+    accessBundleName: string;
     expiresAt: string | null;
   };
 }

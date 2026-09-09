@@ -59,7 +59,7 @@ export const agentVaultSessionServiceFactory = ({
     return { type: ctx.actor, id: ctx.actorId };
   };
 
-  const mintSession = async ({ projectId, ctx, accessBundleIds, ttl }: TMintSessionDTO) => {
+  const mintSession = async ({ projectId, ctx, accessBundles, ttl }: TMintSessionDTO) => {
     const actor = requireSessionActor(ctx);
     const { permission, accessBundleIds: reachable } = await getAgentVaultReachability(
       { permissionService, membershipDAL },
@@ -70,24 +70,25 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    if (!accessBundleIds.length) {
-      throw new BadRequestError({ message: "Name the access bundle for the session" });
+    if (!accessBundles.length) {
+      throw new BadRequestError({ message: "Name the access bundle the session should carry" });
     }
-    if (accessBundleIds.length > AGENT_VAULT_MAX_SESSION_BUNDLES) {
-      throw new BadRequestError({ message: "A session carries one access bundle" });
+    if (accessBundles.length > AGENT_VAULT_MAX_SESSION_BUNDLES) {
+      throw new BadRequestError({ message: "A session carries one access bundle. Name a single bundle." });
     }
-    if (new Set(accessBundleIds).size !== accessBundleIds.length) {
-      throw new BadRequestError({ message: "The same access bundle is named more than once" });
+    if (new Set(accessBundles).size !== accessBundles.length) {
+      throw new BadRequestError({ message: "The same access bundle is named more than once. Name it once." });
     }
 
-    const bundles = await agentVaultAccessBundleDAL.find({ projectId, $in: { id: accessBundleIds } });
-    const bundlesById = new Map(bundles.map((bundle) => [bundle.id, bundle]));
+    const bundles = await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } });
+    const bundlesByName = new Map(bundles.map((bundle) => [bundle.name, bundle]));
 
-    const unreachable = accessBundleIds.find(
-      (id) => !bundlesById.has(id) || (reachable !== null && !reachable.includes(id))
-    );
+    const unreachable = accessBundles.find((name) => {
+      const bundle = bundlesByName.get(name);
+      return !bundle || (reachable !== null && !reachable.includes(bundle.id));
+    });
     if (unreachable) {
-      throw new BadRequestError({ message: `Access bundle '${unreachable}' is not one you can reach` });
+      throw new BadRequestError({ message: `No access bundle named '${unreachable}' is granted to you` });
     }
 
     const ttlSeconds = AGENT_VAULT_SESSION_TTL_SECONDS[ttl];
@@ -107,10 +108,10 @@ export const agentVaultSessionServiceFactory = ({
       );
 
       await agentVaultSessionAccessBundleDAL.insertMany(
-        accessBundleIds.map((accessBundleId, position) => ({
+        accessBundles.map((name, position) => ({
           sessionId: created.id,
-          accessBundleId,
-          accessBundleName: bundlesById.get(accessBundleId)!.name,
+          accessBundleId: bundlesByName.get(name)!.id,
+          accessBundleName: name,
           position
         })),
         tx
@@ -124,9 +125,9 @@ export const agentVaultSessionServiceFactory = ({
         id: session.id,
         expiresAt: session.expiresAt ?? null,
         createdAt: session.createdAt,
-        accessBundles: accessBundleIds.map((id, position) => ({
-          id,
-          name: bundlesById.get(id)!.name,
+        accessBundles: accessBundles.map((name, position) => ({
+          id: bundlesByName.get(name)!.id,
+          name,
           position
         }))
       },

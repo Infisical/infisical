@@ -72,7 +72,7 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
   const handleCreate = async () => {
     if (!selectedBundle) return;
     const session = await createSession.mutateAsync({
-      accessBundleIds: [selectedBundle.id],
+      accessBundles: [selectedBundle.name],
       ttl
     });
     createNotification({ text: "Session created", type: "success" });

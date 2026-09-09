@@ -10,6 +10,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -80,13 +81,11 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       description: "Mint an Agent Vault session over an access bundle you can reach",
       tags: [ApiDocsTags.AgentVaultSessions],
       body: z.object({
-        accessBundleIds: z
-          .string()
-          .uuid()
+        accessBundles: slugSchema({ max: 64, field: "Access bundle" })
           .array()
           .min(1)
           .max(AGENT_VAULT_MAX_SESSION_BUNDLES)
-          .describe(AGENT_VAULT.SESSION.accessBundleIds),
+          .describe(AGENT_VAULT.SESSION.accessBundles),
         ttl: z
           .nativeEnum(AgentVaultSessionTtl)
           .default(AgentVaultSessionTtl.SevenDays)
@@ -125,7 +124,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           type: EventType.AGENT_VAULT_SESSION_MINT,
           metadata: {
             sessionId: session.id,
-            accessBundleIds: req.body.accessBundleIds,
+            accessBundleId: session.accessBundles[0].id,
+            accessBundleName: session.accessBundles[0].name,
             expiresAt: session.expiresAt?.toISOString() ?? null
           }
         }
