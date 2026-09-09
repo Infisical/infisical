@@ -203,9 +203,7 @@ export const CertManagerNav = ({
 
   return (
     <>
-      <SidebarCollapsibleGroup label="General">
-        <ProjectNavList items={generalItemsForRole} onSubmenuOpen={onSubmenuOpen} />
-      </SidebarCollapsibleGroup>
+      <ProjectNavList items={generalItemsForRole} onSubmenuOpen={onSubmenuOpen} />
       {isLegacyCertManagerProject ? null : (
         <SidebarCollapsibleGroup label="Applications">
           <ProjectNavList items={applicationItems} onSubmenuOpen={onSubmenuOpen} />
