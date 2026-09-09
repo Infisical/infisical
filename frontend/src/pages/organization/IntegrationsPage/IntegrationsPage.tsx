@@ -93,7 +93,7 @@ export const IntegrationsPage = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
       <div className="flex w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-8xl">
+        <div className="flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             title="Integrations"

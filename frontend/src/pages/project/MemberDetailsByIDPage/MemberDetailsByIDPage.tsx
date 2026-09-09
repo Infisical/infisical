@@ -153,23 +153,9 @@ export const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="mx-auto flex max-w-8xl flex-col gap-8">
       {membershipDetails ? (
         <>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId: currentProject.id,
-              orgId: currentOrg.id
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Member
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition-colors hover:text-foreground"
-          >
-            <ChevronLeftIcon className="size-4" />
-            {isCertManager ? "Users" : "Project Users"}
-          </Link>
           <PageHeader
             scope={currentProject.type}
             title={memberDisplayName}
@@ -177,6 +163,21 @@ export const Page = () => {
               isCertManager
                 ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
+            }
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId: currentProject.id,
+                  orgId: currentOrg.id
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Member
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {isCertManager ? "Users" : "Project Users"}
+              </Link>
             }
           >
             <div className="flex items-center gap-2">

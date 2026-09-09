@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { OrgOauthClientsTab } from "@app/pages/organization/SettingsPage/components/OrgOauthClientsTab";
 
@@ -15,7 +15,7 @@ export const OauthApplicationsPage = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
       <div className="flex w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-8xl">
+        <div className="flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             title="OAuth Applications"
