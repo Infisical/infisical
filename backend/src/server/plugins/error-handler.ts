@@ -389,4 +389,17 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       });
     }
   });
+
+  // Unknown routes: keep Fastify's default shape and message prefix, but point the caller at the
+  // OpenAPI spec so a client guessing at URLs (typically a headless agent) can self-correct.
+  server.setNotFoundHandler((req, res) => {
+    const path = req.url.split("?")[0];
+    void res.status(HttpStatusCodes.NotFound).send({
+      reqId: req.id,
+      statusCode: HttpStatusCodes.NotFound,
+      error: "Not Found",
+      message: `Route ${req.method}:${path} not found. The OpenAPI spec listing all available routes is at GET /api/docs/json.`,
+      docs: "/api/docs/json"
+    });
+  });
 });
