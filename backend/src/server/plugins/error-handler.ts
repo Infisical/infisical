@@ -85,7 +85,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       error instanceof PolicyViolationError ||
       (error instanceof ScimRequestError && error.status < 500) ||
       (error instanceof AcmeError && error.status < 500) ||
-      error instanceof jwt.JsonWebTokenError;
+      error instanceof jwt.JsonWebTokenError ||
+      error instanceof URIError;
 
     if (isExpectedClientError) {
       // Log structured fields (NOT the Error instance) so these stay searchable by name/route
@@ -108,7 +109,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       req.log.error(error);
     }
 
-    if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+    if (appCfg?.OTEL_TELEMETRY_COLLECTION_ENABLED) {
       // Normalized only for the InfisicalCore instrument, we drop the per-actor meters there.
       const coreMethod = normalizeHttpMethod(req.method);
       const { method } = req;
@@ -218,6 +219,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         message: error.message,
         error: error.name,
         details: error.details
+      });
+    } else if (error instanceof URIError) {
+      void res.status(HttpStatusCodes.BadRequest).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.BadRequest,
+        message: "Malformed URL encoding in query parameters",
+        error: "BadRequest"
       });
     } else if (error instanceof ConflictError) {
       void res

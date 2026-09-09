@@ -12,6 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
+import { safeDecodeURIComponent } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -78,7 +79,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         .object({
           projectId: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.projectId),
           operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).optional(),
-          tags: z.string().trim().transform(decodeURIComponent).optional()
+          tags: z.string().trim().transform(safeDecodeURIComponent).optional()
         })
         .describe(
           "Metadata conditions are passed as nested `filters[<n>][key|value|operator]` params (qs syntax); `operator` is the top-level and/or combinator. `tags` is an optional comma-separated list of tag slugs that further narrows results to secrets carrying at least one of them."
@@ -160,7 +161,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         environments: z
           .string()
           .trim()
-          .transform(decodeURIComponent)
+          .transform(safeDecodeURIComponent)
           .describe(DASHBOARD.SECRET_OVERVIEW_LIST.environments),
         secretPath: z
           .string()
@@ -181,7 +182,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .describe(DASHBOARD.SECRET_OVERVIEW_LIST.orderDirection)
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.search).optional(),
-        tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_OVERVIEW_LIST.tags).optional(),
+        tags: z
+          .string()
+          .trim()
+          .transform(safeDecodeURIComponent)
+          .describe(DASHBOARD.SECRET_OVERVIEW_LIST.tags)
+          .optional(),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeFolders),
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
@@ -856,7 +862,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .describe(DASHBOARD.SECRET_DETAILS_LIST.orderDirection)
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.search).optional(),
-        tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_DETAILS_LIST.tags).optional(),
+        tags: z
+          .string()
+          .trim()
+          .transform(safeDecodeURIComponent)
+          .describe(DASHBOARD.SECRET_DETAILS_LIST.tags)
+          .optional(),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
@@ -1492,10 +1503,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       ],
       querystring: z.object({
         projectId: z.string().trim(),
-        environments: z.string().trim().transform(decodeURIComponent),
+        environments: z.string().trim().transform(safeDecodeURIComponent),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         search: z.string().trim().optional(),
-        tags: z.string().trim().transform(decodeURIComponent).optional(),
+        tags: z.string().trim().transform(safeDecodeURIComponent).optional(),
         limit: z.coerce
           .number({ invalid_type_error: "Limit must be a number" })
           .int({ message: "Limit must be a whole number" })
@@ -1826,7 +1837,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        keys: z.string().trim().transform(decodeURIComponent),
+        keys: z.string().trim().transform(safeDecodeURIComponent),
         viewSecretValue: booleanSchema.default(false)
       }),
       response: {

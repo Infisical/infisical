@@ -22,7 +22,7 @@ import { CharacterType, characterValidator } from "@app/lib/validator/validate-s
 import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
 import { projectCreationLimit, readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { safeDecodeURIComponent, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -146,7 +146,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         roles: z
           .string()
           .trim()
-          .transform(decodeURIComponent)
+          .transform(safeDecodeURIComponent)
           .refine((value) => {
             if (!value) return true;
             const slugs = value.split(",");
