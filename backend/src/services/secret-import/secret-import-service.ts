@@ -91,12 +91,13 @@ export const secretImportServiceFactory = ({
     const crossProject = imports.filter((imp) => imp.importEnv.projectId !== projectId);
     if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
 
-    // If org-level toggle is disabled, strip cross-project imports entirely
+    // Losing the cross-project entitlement must not hide imports created while it was active
+    // (see backend/CODE_QUALITY.md#license-checks) - mark them revoked the same way an
+    // out-of-scope grant is, rather than removing them from the response.
     const plan = await licenseService.getPlan(actorOrgId);
     if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
-      return imports
-        .filter((imp) => imp.importEnv.projectId === projectId)
-        .map((imp) => ({ ...imp, isAccessRevoked: false }));
+      const crossProjectIds = new Set(crossProject.map((imp) => imp.id));
+      return imports.map((imp) => ({ ...imp, isAccessRevoked: crossProjectIds.has(imp.id) }));
     }
 
     const sourceFolders = await folderDAL.findByManySecretPath(
