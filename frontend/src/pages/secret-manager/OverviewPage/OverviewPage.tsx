@@ -228,7 +228,7 @@ import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceB
 import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
-import { InviteMembersModal } from "./components/InviteMembersModal";
+import { InviteMembersNudge } from "./components/InviteMembersNudge";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -770,7 +770,7 @@ const OverviewPageContent = () => {
   } = overview ?? {};
 
   // Growth nudge: when the user creates a secret, ask the backend whether to surface the
-  // "Invite your team" modal. The check runs at most once per session, opens the modal only if
+  // "Invite your team" card. The check runs at most once per session, opens the card only if
   // the backend says so, and is a no-op on failure.
   const {
     popUp: invitePopUp,
@@ -4130,9 +4130,11 @@ const OverviewPageContent = () => {
           environment={singleEnvSlug}
         />
       )}
-      {invitePopUp.inviteMembers.isOpen && (
-        <InviteMembersModal popUp={invitePopUp} handlePopUpToggle={handleInvitePopUpToggle} />
-      )}
+      <InviteMembersNudge
+        popUp={invitePopUp}
+        handlePopUpToggle={handleInvitePopUpToggle}
+        isLifted={hasPendingBatchChanges}
+      />
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm
           onCommit={handleCreateCommit}
