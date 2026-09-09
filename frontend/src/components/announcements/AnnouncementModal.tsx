@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { KeyboardEvent, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, XIcon } from "lucide-react";
 
 import {
@@ -35,6 +35,7 @@ const formatPublished = (iso: string) => {
 // Belt to the server-side allowlist: refuse anything that isn't an http(s) URL
 // so a stale self-hosted bundle can't sneak a `javascript:` href into <a>.
 const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+const TEXT_ENTRY_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 const safeLink = (link: string | null): string | null => {
   if (!link) return null;
   try {
@@ -93,11 +94,29 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
   const hasNext = safeIndex < total - 1;
   const showPager = total > 1;
 
+  const showPrev = () => setIndex(Math.max(0, safeIndex - 1));
+  const showNext = () => setIndex(Math.min(total - 1, safeIndex + 1));
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    if ((event.target as HTMLElement | null)?.closest(TEXT_ENTRY_SELECTOR)) return;
+
+    if (event.key === "ArrowLeft" && hasPrev) {
+      event.preventDefault();
+      showPrev();
+    } else if (event.key === "ArrowRight" && hasNext) {
+      event.preventDefault();
+      showNext();
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
         className="h-[40rem] max-w-xl gap-0 overflow-hidden p-0"
+        onKeyDown={handleKeyDown}
       >
         <DialogClose asChild>
           <IconButton
@@ -109,7 +128,7 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
             <XIcon />
           </IconButton>
         </DialogClose>
-        <DialogBody key={announcement.id}>
+        <DialogBody key={announcement.id} className="overscroll-contain">
           {announcement.imageUrl && (
             <AnnouncementImage key={announcement.imageUrl} src={announcement.imageUrl} />
           )}
@@ -148,7 +167,7 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
                 variant="ghost"
                 size="xs"
                 aria-label="Previous announcement"
-                onClick={() => setIndex(Math.max(0, safeIndex - 1))}
+                onClick={showPrev}
                 isDisabled={!hasPrev}
               >
                 <ChevronLeft />
@@ -160,7 +179,7 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
                 variant="ghost"
                 size="xs"
                 aria-label="Next announcement"
-                onClick={() => setIndex(Math.min(total - 1, safeIndex + 1))}
+                onClick={showNext}
                 isDisabled={!hasNext}
               >
                 <ChevronRight />
