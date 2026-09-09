@@ -8,13 +8,15 @@ import { TServerConfig } from "@app/hooks/api/admin/types";
 import { authKeys } from "@app/hooks/api/auth/queries";
 import { fetchAuthToken, shouldRetryAuthTokenFetch } from "@app/hooks/api/auth/refresh";
 import { queryClient } from "@app/hooks/api/reactQuery";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 type TRouterContext = {
   serverConfig: TServerConfig | null;
   queryClient: QueryClient;
   // Published by the PAM and Agent Vault layouts, whose URLs carry no $projectId. Optional because
-  // only those two branches of the tree set it; see useImplicitProjectId.
+  // only those two branches of the tree set them; see useImplicitProjectId and useImplicitProduct.
   implicitProjectId?: string;
+  implicitProductType?: ProjectType;
 };
 
 const RootPage = () => {

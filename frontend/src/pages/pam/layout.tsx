@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { BreadcrumbTypes } from "@app/components/v2";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { projectKeys } from "@app/hooks/api";
 import { organizationKeys } from "@app/hooks/api/organization/queries";
 import { Organization } from "@app/hooks/api/organization/types";
@@ -53,6 +54,7 @@ export const Route = createFileRoute(
 
     return {
       implicitProjectId: pamProjectId,
+      implicitProductType: ProjectType.PAM,
       breadcrumbs: [
         {
           type: BreadcrumbTypes.Component,

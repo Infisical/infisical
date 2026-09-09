@@ -2,8 +2,8 @@ import { useLocation, useParams } from "@tanstack/react-router";
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useImplicitProduct } from "@app/hooks";
 import {
-  getOrgScopedProductFromPath,
   hasIntermediateProjectsView,
   parseProjectSlugFromPath,
   urlSlugToProjectType
@@ -25,7 +25,7 @@ export const OrgSidebar = () => {
     })
   });
   const { pathname } = useLocation();
-  const orgScopedProduct = getOrgScopedProductFromPath(pathname);
+  const orgScopedProduct = useImplicitProduct();
   const isInsideProject = Boolean(projectId) || Boolean(orgScopedProduct);
   // The org-wide KMIP servers and Secret Sharing pages live at literal /projects/<slug>/<resource>
   // paths with no $type route param, so fall back to parsing the product slug from the pathname.

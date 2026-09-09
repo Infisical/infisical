@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, linkOptions, useLocation, useParams } from "@tanstack/react-router";
+import { Link, linkOptions, useParams } from "@tanstack/react-router";
 import { Check, Plus, Star } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -24,12 +24,8 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import {
-  getOrgScopedProductFromPath,
-  getProjectHomePage,
-  isOrgScopedProduct
-} from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { getProjectHomePage, isOrgScopedProduct } from "@app/helpers/project";
+import { useImplicitProduct, usePopUp } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
@@ -276,9 +272,7 @@ const ProjectSelectInner = () => {
 
 export const ProjectSelect = () => {
   const params = useParams({ strict: false });
-  const { pathname } = useLocation();
-
-  const orgScopedProduct = getOrgScopedProductFromPath(pathname);
+  const orgScopedProduct = useImplicitProduct();
 
   if (!params.projectId && !orgScopedProduct) {
     return null;

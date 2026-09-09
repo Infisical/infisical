@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { BreadcrumbTypes } from "@app/components/v2";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { projectKeys } from "@app/hooks/api";
 import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { organizationKeys } from "@app/hooks/api/organization/queries";
@@ -48,6 +49,7 @@ export const Route = createFileRoute(
 
     return {
       implicitProjectId: agentVaultProjectId,
+      implicitProductType: ProjectType.AgentVault,
       breadcrumbs: [{ type: BreadcrumbTypes.Component, component: ProjectSelect }]
     };
   }
