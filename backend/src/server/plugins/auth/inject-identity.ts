@@ -526,11 +526,17 @@ export const injectIdentity = fp(
 
           // The tokenVersion check is the only kill switch for an issued proxy token, so no proxy route may skip it.
           if (!proxy || proxy.tokenVersion !== token.tokenVersion) {
-            throw new UnauthorizedError({ message: "Agent Vault proxy token has been revoked" });
+            throw new UnauthorizedError({
+              name: "ProxyTokenRejected",
+              message: "Agent Vault proxy token has been revoked"
+            });
           }
 
           if (proxy.orgId !== token.orgId) {
-            throw new UnauthorizedError({ message: "Agent Vault proxy token org mismatch" });
+            throw new UnauthorizedError({
+              name: "ProxyTokenRejected",
+              message: "Agent Vault proxy token org mismatch"
+            });
           }
 
           requestContext.set(RequestContextKey.OrgId, token.orgId);
