@@ -303,6 +303,7 @@ export enum ProjectPermissionAgentVaultProxyActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
+  IssueToken = "issue-token",
   Revoke = "revoke"
 }
 

@@ -310,6 +310,8 @@ export enum ProjectPermissionAgentVaultProxyActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
+  // Issuing a replacement enrollment token mints a credential that enrolls a new box, so it is not Edit.
+  IssueToken = "issue-token",
   Revoke = "revoke"
 }
 

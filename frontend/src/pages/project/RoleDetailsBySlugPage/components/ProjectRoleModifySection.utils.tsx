@@ -306,6 +306,7 @@ const AgentVaultProxyPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultProxyActions.Create]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultProxyActions.IssueToken]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.Revoke]: z.boolean().optional()
 });
 
@@ -2542,12 +2543,17 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Modify",
         value: ProjectPermissionAgentVaultProxyActions.Edit,
-        description: "Update proxy settings and reissue enrollment tokens"
+        description: "Update proxy settings"
       },
       {
         label: "Remove",
         value: ProjectPermissionAgentVaultProxyActions.Delete,
         description: "Delete proxies"
+      },
+      {
+        label: "Issue token",
+        value: ProjectPermissionAgentVaultProxyActions.IssueToken,
+        description: "Issue a replacement enrollment token for a proxy"
       },
       {
         label: "Revoke",

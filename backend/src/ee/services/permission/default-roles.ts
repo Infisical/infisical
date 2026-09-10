@@ -812,6 +812,7 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultProxyActions.Create,
       ProjectPermissionAgentVaultProxyActions.Edit,
       ProjectPermissionAgentVaultProxyActions.Delete,
+      ProjectPermissionAgentVaultProxyActions.IssueToken,
       ProjectPermissionAgentVaultProxyActions.Revoke
     ],
     ProjectPermissionSub.AgentVaultProxies

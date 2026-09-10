@@ -114,18 +114,26 @@ export type TResourceAuthMethodServiceFactory = ReturnType<typeof resourceAuthMe
 const GATEWAY_PERMISSION_MAP = {
   list: OrgPermissionGatewayActions.ListGateways,
   edit: OrgPermissionGatewayActions.EditGateways,
+  create: OrgPermissionGatewayActions.EditGateways,
+  issue: OrgPermissionGatewayActions.EditGateways,
   revoke: OrgPermissionGatewayActions.RevokeGatewayAccess
 } as const;
 
 const RELAY_PERMISSION_MAP = {
   list: OrgPermissionRelayActions.ListRelays,
   edit: OrgPermissionRelayActions.EditRelays,
+  create: OrgPermissionRelayActions.EditRelays,
+  issue: OrgPermissionRelayActions.EditRelays,
   revoke: OrgPermissionRelayActions.RevokeRelayAccess
 } as const;
 
+// create and issue exist for products that gate them separately; these three keep them on edit, which
+// is the action that has always covered minting here.
 const KMIP_SERVER_PERMISSION_MAP = {
   list: OrgPermissionKmipServerActions.ListKmipServers,
   edit: OrgPermissionKmipServerActions.EditKmipServers,
+  create: OrgPermissionKmipServerActions.EditKmipServers,
+  issue: OrgPermissionKmipServerActions.EditKmipServers,
   revoke: OrgPermissionKmipServerActions.RevokeKmipServerAccess
 } as const;
 
@@ -139,6 +147,8 @@ const RESOURCE_LABEL: Record<ResourceRef["type"], string> = {
 const AGENT_VAULT_PROXY_PERMISSION_MAP = {
   list: ProjectPermissionAgentVaultProxyActions.Read,
   edit: ProjectPermissionAgentVaultProxyActions.Edit,
+  create: ProjectPermissionAgentVaultProxyActions.Create,
+  issue: ProjectPermissionAgentVaultProxyActions.IssueToken,
   revoke: ProjectPermissionAgentVaultProxyActions.Revoke
 } as const;
 
@@ -236,7 +246,7 @@ export const resourceAuthMethodServiceFactory = ({
 
   const $checkPermission = async (
     actor: TSetAuthMethodDTO["actor"],
-    intent: "list" | "edit" | "revoke",
+    intent: "list" | "edit" | "create" | "issue" | "revoke",
     resourceType: ResourceRef["type"],
     resourceId?: string
   ) => {
@@ -971,8 +981,8 @@ export const resourceAuthMethodServiceFactory = ({
 
   // Non-destructive: minting a new token does NOT bump tokenVersion or clear heartbeat,
   // so a running resource keeps working. The next login (with the new token) does the bump.
-  const mintToken = async ({ resource, actor }: TMintTokenDTO) => {
-    await $checkPermission(actor, "edit", resource.type, resource.id);
+  const mintToken = async ({ resource, actor, intent = "issue" }: TMintTokenDTO) => {
+    await $checkPermission(actor, intent, resource.type, resource.id);
 
     const resourceLabel = RESOURCE_LABEL[resource.type];
     const loaded = await $loadResource(resource);

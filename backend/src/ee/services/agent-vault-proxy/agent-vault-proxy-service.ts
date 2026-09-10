@@ -138,10 +138,13 @@ export const agentVaultProxyServiceFactory = ({
     authMethod: ctx.actorAuthMethod
   });
 
-  const $issueEnrollmentToken = async (proxyId: string, ctx: TCreateProxyDTO["ctx"]) => {
+  // The first token belongs to creating the proxy; a replacement is its own permission, since enrolling
+  // again rotates the CA and breaks every agent that trusted the old one.
+  const $issueEnrollmentToken = async (proxyId: string, ctx: TCreateProxyDTO["ctx"], intent: "create" | "issue") => {
     const enrollment = await resourceAuthMethodService.mintToken({
       resource: { type: RESOURCE_TYPE_AGENT_VAULT_PROXY, id: proxyId },
-      actor: $resourceActor(ctx)
+      actor: $resourceActor(ctx),
+      intent
     });
     return { token: enrollment.token, expiresAt: enrollment.expiresAt };
   };
@@ -182,15 +185,15 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     // Outside the transaction: minting hits KMS.
-    const enrollment = await $issueEnrollmentToken(proxy.id, ctx);
+    const enrollment = await $issueEnrollmentToken(proxy.id, ctx, "create");
     return { proxy: toAdminView(proxy), enrollment };
   };
 
   // Does NOT bump tokenVersion, so a running proxy keeps serving until the replacement enrolls.
   const reissueEnrollmentToken = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
-    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Edit);
+    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.IssueToken);
     const proxy = await $findProxyOr404({ projectId, proxyId });
-    const enrollment = await $issueEnrollmentToken(proxy.id, ctx);
+    const enrollment = await $issueEnrollmentToken(proxy.id, ctx, "issue");
     return { proxy: toAdminView(proxy), enrollment };
   };
 
