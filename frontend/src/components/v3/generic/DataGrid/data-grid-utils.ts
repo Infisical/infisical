@@ -153,20 +153,21 @@ export function getColumnPinningStyle<TData>(params: {
       ? // eslint-disable-next-line no-nested-ternary
         isLastLeftPinnedColumn
         ? isRtl
-          ? "4px 0 4px -4px var(--border) inset"
-          : "-4px 0 4px -4px var(--border) inset"
+          ? "4px 0 4px -4px var(--color-border) inset"
+          : "-4px 0 4px -4px var(--color-border) inset"
         : // eslint-disable-next-line no-nested-ternary
           isFirstRightPinnedColumn
           ? isRtl
-            ? "-4px 0 4px -4px var(--border) inset"
-            : "4px 0 4px -4px var(--border) inset"
+            ? "-4px 0 4px -4px var(--color-border) inset"
+            : "4px 0 4px -4px var(--color-border) inset"
           : undefined
       : undefined,
     left: isRtl ? rightPosition : leftPosition,
     right: isRtl ? leftPosition : rightPosition,
-    opacity: isPinned ? 0.97 : 1,
     position: isPinned ? "sticky" : "relative",
-    background: isPinned ? "var(--container)" : "var(--container)",
+    // A pinned column has to be opaque, or the columns scrolling underneath it show
+    // through. Unpinned cells keep whatever background the consumer's chrome sets.
+    background: isPinned ? "var(--color-container)" : undefined,
     width: column.getSize(),
     zIndex: isPinned ? 1 : undefined
   };
