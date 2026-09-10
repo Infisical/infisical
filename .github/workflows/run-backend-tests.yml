@@ -97,11 +97,11 @@ jobs:
         run: df -h /
       - name: Wait for Secret Rotation testing databases
         run: docker compose -f docker-compose.e2e-dbs.yml up -d --wait --wait-timeout 300
-      # Same entry point a developer uses. The override adds host networking, which the
-      # rotation specs need to reach the databases above and which only behaves this way on
-      # Linux. Connection strings, mounts and the image build all live in the compose files.
+      # The same command a developer runs. The rotation databases above share the test stack's
+      # compose project, so the suite reaches them by service name and CI needs no networking of
+      # its own. Connection strings, mounts and the image build all live in the compose files.
       - name: Run integration test
-        run: make test-api-e2e TEST_SUITE_COMPOSE_OVERRIDE="-f docker-compose.test.ci.yml"
+        run: make test-api-e2e
         env:
           E2E_TEST_ORACLE_DB_19_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}
           E2E_TEST_ORACLE_DB_19_USERNAME: ${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}
@@ -110,5 +110,4 @@ jobs:
       - name: cleanup
         if: always()
         run: |
-          make down-test-suite-containers TEST_SUITE_COMPOSE_OVERRIDE="-f docker-compose.test.ci.yml"
-          docker compose -f "docker-compose.e2e-dbs.yml" down
+          make down-test-suite-containers

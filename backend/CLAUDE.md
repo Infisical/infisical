@@ -25,7 +25,13 @@ Run both suites from the repo root, which is the same entry point CI uses:
 - `make test-api-unit` — unit tests matching `./src/**/*.test.ts`
 - `make test-api-e2e` — e2e tests matching `./e2e-test/**/*.spec.ts`
 - `make test-api-e2e SPEC=<pattern>` — narrow to one spec, e.g. `SPEC=secret-sync`
-- `make down-test-suite-containers` — stop the backing services when finished
+- `make up-rotation-databases` — start the databases the secret rotation specs need, required
+  only for a full run (`docker-compose.e2e-dbs.yml`, and the Oracle image is large)
+- `make down-test-suite-containers` — stop everything when finished
+
+The secret rotation specs reach their databases by compose service name, so
+`docker-compose.e2e-dbs.yml` pins the same compose project as the test stack and shares its
+network. Without `make up-rotation-databases`, those specs fail on connection; the rest pass.
 
 Both run inside the FIPS image (`Dockerfile.dev.fips`), which carries the native dependencies
 the suites need (SoftHSM2, the Oracle client, the FIPS OpenSSL build) and pins the Node

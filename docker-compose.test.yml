@@ -4,8 +4,8 @@
 # That separation is not tidiness. The e2e harness (backend/e2e-test/vitest-environment-knex.ts)
 # runs `DROP SCHEMA public CASCADE` on whatever database it is pointed at, before every run.
 #
-# Started by `make test-api-services`; torn down by `make test-api-down`. There are no volumes,
-# so nothing here outlives the containers.
+# Run through `make test-api-e2e`, which starts what it needs; `make down-test-suite-containers`
+# tears it down. There are no volumes, so nothing here outlives the containers.
 
 # Fixed so the project, and therefore the network name the test container joins, does not
 # depend on the checkout directory.
@@ -14,8 +14,8 @@ name: infisical-test
 services:
   db:
     image: postgres:14-alpine
-    # A full suite run brings this stack up alongside the dev stack and the rotation databases
-    # in docker-compose.e2e-dbs.yml, so host ports here must not clash with either.
+    # Published so a suite can also be run from the host. A full run brings this stack up
+    # alongside the dev stack, so the ports must not clash with it.
     ports:
       - "5436:5432"
     environment:
@@ -75,8 +75,8 @@ services:
       # setup, before a single spec runs. Booting the whole server needs more than 2GB.
       NODE_OPTIONS: --force-fips --max-old-space-size=4096
       TELEMETRY_ENABLED: "false"
-      # The secret rotation specs need these plus `docker compose -f docker-compose.e2e-dbs.yml
-      # up -d`. Left empty otherwise, which is how a run without them behaves anyway.
+      # The secret rotation specs need these plus `make up-rotation-databases`. Left empty
+      # otherwise, which is how a run without them behaves anyway.
       E2E_TEST_ORACLE_DB_19_HOST: ${E2E_TEST_ORACLE_DB_19_HOST:-}
       E2E_TEST_ORACLE_DB_19_USERNAME: ${E2E_TEST_ORACLE_DB_19_USERNAME:-}
       E2E_TEST_ORACLE_DB_19_PASSWORD: ${E2E_TEST_ORACLE_DB_19_PASSWORD:-}

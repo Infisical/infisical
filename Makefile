@@ -48,10 +48,11 @@ reviewable: reviewable-ui reviewable-api
 # That is not a preference: the e2e harness runs `DROP SCHEMA public CASCADE` on whatever
 # database it is pointed at, so aiming it at the dev database takes your data with it.
 # Everything else (image, environment, mounts, service dependencies) is declared there.
-# CI adds -f docker-compose.test.ci.yml here, which is the only difference between how CI and a
-# developer run the suites. Everything else is shared.
-TEST_SUITE_COMPOSE_OVERRIDE ?=
-TEST_SUITE_COMPOSE = docker compose -f docker-compose.test.yml $(TEST_SUITE_COMPOSE_OVERRIDE) --profile runner
+TEST_SUITE_COMPOSE = docker compose -f docker-compose.test.yml --profile runner
+# The secret rotation specs reach these by service name on the shared test network, which is why
+# docker-compose.e2e-dbs.yml pins the same compose project. A full suite run needs them up; the
+# rest of the specs do not, and the Oracle image is large, so they are a separate target.
+ROTATION_DB_COMPOSE = docker compose -f docker-compose.e2e-dbs.yml
 
 build-test-suite-image:
 	$(TEST_SUITE_COMPOSE) build api-tests
@@ -61,6 +62,11 @@ build-test-suite-image:
 up-test-suite-containers:
 	$(TEST_SUITE_COMPOSE) up -d --wait db redis
 
+# Needed only for a full suite run, and only for the secret rotation specs.
+up-rotation-databases:
+	$(ROTATION_DB_COMPOSE) up -d --wait --wait-timeout 300
+
+# Shares a compose project with the test stack, so this removes the rotation databases too.
 down-test-suite-containers:
 	$(TEST_SUITE_COMPOSE) down -v
 
