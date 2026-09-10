@@ -155,6 +155,9 @@ export const createGatewayConnection = async (
     [GatewayProxyProtocol.WinRm]: ["infisical-winrm"]
   };
 
+  // SNI cannot carry an IP literal (RFC 6066), so an address goes in host and a name in servername.
+  const isIpLiteral = Boolean(net.isIP(serverName));
+
   const tlsOptions: tls.ConnectionOptions = {
     socket: relayConn,
     cert: gateway.clientCertificate,
@@ -163,7 +166,8 @@ export const createGatewayConnection = async (
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.3",
     rejectUnauthorized: true,
-    servername: serverName,
+    host: isIpLiteral ? serverName : undefined,
+    servername: isIpLiteral ? undefined : serverName,
     ALPNProtocols: protocolToAlpn[protocol],
     checkServerIdentity: appCfg.isDevelopmentMode ? () => undefined : tls.checkServerIdentity
   };
