@@ -47,12 +47,12 @@ const CodeSigningDetailsSection = ({
 }) => {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="rounded-lg border border-border-control bg-surface-base p-4">
         <h2 className="text-lg font-medium text-foreground">
           Signing access for {requestData.signerName}
         </h2>
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-container-hover text-sm font-medium text-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-foreground-secondary">
             {(requesterName || "U")
               .split(" ")
               .map((n) => n[0])
@@ -66,7 +66,7 @@ const CodeSigningDetailsSection = ({
           </div>
         </div>
       </div>
-      <div className="rounded-lg border border-border bg-card p-5">
+      <div className="rounded-lg border border-border-control bg-surface-base p-5">
         <h3 className="mb-4 text-lg font-medium text-foreground">Signing Access Details</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -89,7 +89,7 @@ const CodeSigningDetailsSection = ({
           )}
         </div>
         {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
-          <div className="mt-4 border-t border-border pt-4">
+          <div className="mt-4 border-t border-border-control pt-4">
             <h4 className="mb-1 text-sm font-medium text-foreground">Request Scope</h4>
             <p className="mb-3 text-xs text-muted">
               Signing is only allowed when every parameter below matches exactly.
@@ -257,7 +257,7 @@ const PageContent = () => {
           </div>
           <p className="mt-1 text-sm text-muted">
             Signing request for signer{" "}
-            <span className="font-medium text-foreground">{reqData.signerName}</span> by{" "}
+            <span className="font-medium text-foreground-secondary">{reqData.signerName}</span> by{" "}
             {request.requesterName || "Unknown"}
           </p>
         </>
@@ -275,7 +275,7 @@ const PageContent = () => {
         </div>
         <p className="mt-1 text-sm text-muted">
           Certificate issuance request for{" "}
-          <span className="font-medium text-foreground">
+          <span className="font-medium text-foreground-secondary">
             {reqData.certificateRequest?.commonName || reqData.profileName}
           </span>{" "}
           by {request.requesterName || "Unknown"}
@@ -290,7 +290,7 @@ const PageContent = () => {
                   projectId: currentProject.id,
                   applicationName: requestApplication.name
                 }}
-                className="font-medium text-foreground underline hover:text-foreground"
+                className="font-medium text-foreground-secondary underline hover:text-foreground"
               >
                 {requestApplication.name}
               </Link>
@@ -316,7 +316,8 @@ const PageContent = () => {
   };
 
   const renderBackLink = () => {
-    const linkClass = "mb-4 flex items-center gap-x-2 text-sm text-muted hover:text-foreground";
+    const linkClass =
+      "mb-4 flex items-center gap-x-2 text-sm text-muted hover:text-foreground-secondary";
 
     if (applicationName) {
       return (
@@ -385,7 +386,7 @@ const PageContent = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-background font-inter text-foreground">
+    <div className="container mx-auto flex flex-col justify-between bg-page font-inter text-foreground-inverse">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         {renderBackLink()}
 

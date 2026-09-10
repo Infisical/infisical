@@ -67,7 +67,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
   return (
     <Tr
       className={twMerge(
-        "group h-10 transition-colors duration-100 hover:bg-container-hover",
+        "group h-10 transition-colors duration-100 hover:bg-surface-hover",
         status === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`scan-${id}`}

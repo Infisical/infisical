@@ -148,12 +148,12 @@ export const RequestsTab = () => {
   const isTableFiltered = filter !== ApprovalRequestStatus.Pending;
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-4">
+    <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4">
         <div className="flex items-center gap-x-2">
           <p className="text-xl font-medium text-foreground">Certificate Approval Requests</p>
         </div>
-        <p className="text-sm text-label">
+        <p className="text-sm text-label-secondary">
           Review and manage certificate requests that require approval
         </p>
       </div>
@@ -166,7 +166,7 @@ export const RequestsTab = () => {
                 variant="plain"
                 size="sm"
                 className={twMerge(
-                  "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                  "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
                   isTableFiltered && "border-project/50 text-project"
                 )}
               >
@@ -197,7 +197,7 @@ export const RequestsTab = () => {
                   Closed Requests
                 </DropdownSubMenuTrigger>
                 <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                  <DropdownMenuLabel className="sticky top-0 bg-card">
+                  <DropdownMenuLabel className="sticky top-0 bg-surface-base">
                     Filter by Status
                   </DropdownMenuLabel>
                   <DropdownMenuItem
@@ -288,7 +288,7 @@ export const RequestsTab = () => {
                   return (
                     <Tr
                       key={request.id}
-                      className="h-14 cursor-pointer transition-colors hover:bg-container-hover"
+                      className="h-14 cursor-pointer transition-colors hover:bg-surface-hover"
                       onClick={() =>
                         navigate({
                           to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
@@ -312,10 +312,12 @@ export const RequestsTab = () => {
                         </div>
                       </Td>
                       <Td>
-                        <span className="text-sm text-foreground">{requestData.profileName}</span>
+                        <span className="text-sm text-foreground-secondary">
+                          {requestData.profileName}
+                        </span>
                       </Td>
                       <Td>
-                        <span className="text-sm text-foreground">
+                        <span className="text-sm text-foreground-secondary">
                           {requestData.certificateRequest?.commonName || "-"}
                         </span>
                       </Td>

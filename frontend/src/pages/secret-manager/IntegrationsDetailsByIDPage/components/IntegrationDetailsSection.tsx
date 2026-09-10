@@ -14,8 +14,8 @@ type Props = {
 export const IntegrationDetailsSection = ({ integration }: Props) => {
   return (
     <div>
-      <div className="w-full rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center justify-between border-b border-border pb-4">
+      <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
+        <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
           <h3 className="text-lg font-medium text-foreground">Integration Details</h3>
         </div>
         <div className="mt-4">

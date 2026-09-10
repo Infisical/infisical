@@ -57,7 +57,7 @@ export const CloudflarePagesAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="mb-12 max-w-lg rounded-md border border-border">
+      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left"
           subTitle="After adding your API-key, you will be prompted to set up an integration for a particular Infisical project and environment."

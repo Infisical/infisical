@@ -145,7 +145,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
             to your next invoice, and your other products are unaffected.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="rounded-md border border-border bg-container-hover/40 px-4 py-3 text-sm">
+        <div className="rounded-md border border-border bg-surface-hover/40 px-4 py-3 text-sm">
           {preview.isPending && (
             <span className="text-label">Calculating your prorated credit...</span>
           )}

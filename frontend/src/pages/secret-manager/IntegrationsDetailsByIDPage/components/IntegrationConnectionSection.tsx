@@ -194,15 +194,15 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
   };
 
   return (
-    <div className="mt-4 rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between border-b border-border pb-4">
+    <div className="mt-4 rounded-lg border border-border-control bg-surface-base p-4">
+      <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
         <h3 className="text-lg font-medium text-foreground">Connection</h3>
       </div>
 
       <div className="mt-4">
         <FormLabel className="my-2" label="Source" />
 
-        <div className="space-y-2 rounded-lg border border-border bg-container p-2">
+        <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-raised p-2">
           <div className="flex flex-col">
             <FormLabel className="text-sm font-medium text-label" label="Environment" />
             <div className="text-sm text-label">{integration.environment.name}</div>
@@ -214,7 +214,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
         </div>
 
         <FormLabel className="my-2" label="Destination" />
-        <div className="space-y-2 rounded-lg border border-border bg-container p-2">
+        <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-raised p-2">
           <FormLabel className="text-sm font-medium text-label" label="Platform" />
           <div className="text-sm text-label">
             {integrationSlugNameMapping?.[integration.integration]}

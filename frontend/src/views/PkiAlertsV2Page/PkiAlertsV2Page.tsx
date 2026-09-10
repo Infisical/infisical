@@ -121,7 +121,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
 
     return (
       <Tr>
-        <Td colSpan={6} className="py-8 text-center text-muted">
+        <Td colSpan={6} className="py-8 text-center text-muted-cool">
           {search ? "No alerts found matching your search." : "No PKI alerts configured yet."}
         </Td>
       </Tr>
@@ -130,22 +130,22 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
 
   return (
     <div className={hideContainer ? "" : "container mx-auto p-6"}>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3">
-        <div className="flex items-center justify-between border-b border-border pb-2">
+      <div className="flex w-full flex-col gap-3 rounded-lg border border-border-control bg-surface-base px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border-emphasis pb-2">
           <div className="flex items-center gap-x-2">
             <h3 className="text-lg font-medium text-foreground">Certificate Alerts</h3>
-            <span className="rounded bg-foreground/10 px-2 py-0.5 text-xs tracking-wide text-foreground uppercase">
+            <span className="rounded bg-surface-active px-2 py-0.5 text-xs tracking-wide text-foreground-secondary uppercase">
               Legacy
             </span>
           </div>
-          <p className="text-xs text-label">Create new alerts inside an Application.</p>
+          <p className="text-xs text-label-secondary">Create new alerts inside an Application.</p>
         </div>
 
         <div className="mb-4 flex items-center">
           <div className="relative w-full">
             <FontAwesomeIcon
               icon={faSearch}
-              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-muted"
+              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-muted-cool"
             />
             <Input
               placeholder="Search alerts..."

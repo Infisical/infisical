@@ -100,8 +100,8 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
           }
         />
       ) : (
-        <div className="w-full rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
+          <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
             <div>
               <h2 className="text-lg font-medium">Project Roles</h2>
               <p className="text-sm text-muted">
@@ -148,7 +148,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                       return (
                         <Tr
                           key={role.slug}
-                          className="group w-full cursor-pointer transition-colors duration-100 hover:bg-container-hover"
+                          className="group w-full cursor-pointer transition-colors duration-100 hover:bg-surface-hover"
                           role="button"
                           tabIndex={0}
                           onKeyDown={(evt) => {

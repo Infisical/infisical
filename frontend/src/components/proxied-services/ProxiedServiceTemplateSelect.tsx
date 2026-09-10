@@ -27,12 +27,12 @@ const TemplateCard = ({
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-container-hover/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-container-hover">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
           {imgError ? (
-            <GlobeIcon className="h-5 w-5 text-label" />
+            <GlobeIcon className="h-5 w-5 text-label-secondary" />
           ) : (
             <img
               src={`/images/integrations/${template.image}`}
@@ -58,11 +58,11 @@ const CustomCard = ({ onClick }: { onClick: () => void }) => (
   <button
     type="button"
     onClick={onClick}
-    className="group flex cursor-pointer flex-col gap-3 rounded-md border border-dashed border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-container-hover/50"
+    className="group flex cursor-pointer flex-col gap-3 rounded-md border border-dashed border-border-strong bg-card p-4 text-left transition-colors hover:border-border-emphasis hover:bg-surface-hover/50"
   >
     <div className="flex items-start gap-2">
-      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-container-hover">
-        <PlusIcon className="h-5 w-5 text-label" />
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
+        <PlusIcon className="h-5 w-5 text-label-secondary" />
       </div>
     </div>
     <div className="flex flex-col gap-1">

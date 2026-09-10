@@ -124,8 +124,8 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
                     <div
                       key={el.value}
                       className={twMerge(
-                        "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-border px-2 py-4 opacity-75 transition-all hover:border-project hover:bg-foreground/10",
-                        field.value === el.value && "border-project bg-foreground/10 opacity-100"
+                        "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-border-control px-2 py-4 opacity-75 transition-all hover:border-project hover:bg-surface-active",
+                        field.value === el.value && "border-project bg-surface-active opacity-100"
                       )}
                       onClick={() => field.onChange(el.value)}
                       role="button"

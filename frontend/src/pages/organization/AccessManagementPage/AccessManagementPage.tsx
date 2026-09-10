@@ -105,7 +105,7 @@ export const AccessManagementPage = () => {
   const activeTab = selectedTabSection ? selectedTab : (visibleTabSections[0]?.key ?? selectedTab);
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
       </Helmet>
@@ -123,7 +123,7 @@ export const AccessManagementPage = () => {
               <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-project" />
               Your organization is using legacy privilege management
             </div>
-            <p className="mt-1 mb-2 text-sm text-label">
+            <p className="mt-1 mb-2 text-sm text-label-secondary">
               We&apos;ve developed an improved privilege management system to better serve your
               security needs. Upgrade to our new permission-based approach that allows you to
               explicitly designate who can modify specific access levels, rather than relying on

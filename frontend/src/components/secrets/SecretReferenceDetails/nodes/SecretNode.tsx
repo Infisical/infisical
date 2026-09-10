@@ -120,10 +120,10 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
           )}
           <div
             className={twMerge(
-              "flex h-full w-full items-stretch gap-2.5 rounded-md border border-border bg-container p-2 font-inter shadow-lg",
+              "flex h-full w-full items-stretch gap-2.5 rounded-md border border-border-strong bg-surface-raised p-2 font-inter shadow-lg",
               isCircular && "border-danger/40",
               isRoot && "border-project/40",
-              !isRoot && "cursor-pointer transition-colors hover:border-foreground/20"
+              !isRoot && "cursor-pointer transition-colors hover:border-border-emphasis"
             )}
             onClick={!isRoot ? handleNavigate : undefined}
             role={!isRoot ? "button" : undefined}

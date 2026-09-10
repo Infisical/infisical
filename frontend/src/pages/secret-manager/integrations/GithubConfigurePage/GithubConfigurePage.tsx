@@ -293,14 +293,14 @@ export const GithubConfigurePage = () => {
       <Helmet>
         <title>Set Up GitHub Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border p-0">
+      <Card className="max-w-lg rounded-md border border-border-control p-0">
         <form onSubmit={handleSubmit(onFormSubmit)} className="px-6">
           <CardTitle
             className="px-0 text-left text-xl"
             subTitle="Choose which environment in Infisical you want to sync to environment variables in GitHub."
           >
             <div className="flex flex-row items-center">
-              <div className="flex items-center rounded-full bg-foreground">
+              <div className="flex items-center rounded-full bg-foreground-secondary">
                 <img
                   src="/images/integrations/GitHub.png"
                   height={30}
@@ -327,7 +327,7 @@ export const GithubConfigurePage = () => {
           </CardTitle>
           <Tabs defaultValue={TabSections.Connection}>
             <TabList>
-              <div className="flex w-full flex-row border-b border-border">
+              <div className="flex w-full flex-row border-b border-border-control">
                 <Tab value={TabSections.Connection}>Connection</Tab>
                 <Tab value={TabSections.Options}>Options</Tab>
               </div>
@@ -352,7 +352,7 @@ export const GithubConfigurePage = () => {
                       <Select
                         defaultValue={field.value}
                         onValueChange={onChange}
-                        className="w-full border border-border"
+                        className="w-full border border-border-strong"
                       >
                         {currentProject?.environments.map((sourceEnvironment) => (
                           <SelectItem
@@ -390,7 +390,7 @@ export const GithubConfigurePage = () => {
                           setValue("repoIds", []);
                           onChange(e);
                         }}
-                        className="w-full border border-border"
+                        className="w-full border border-border-strong"
                       >
                         <SelectItem value="github-org">Organization</SelectItem>
                         <SelectItem value="github-repo">Repository</SelectItem>
@@ -412,7 +412,7 @@ export const GithubConfigurePage = () => {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             {integrationAuthApps.length > 0 ? (
-                              <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-card px-3 py-2 font-inter text-sm font-normal text-foreground outline-hidden data-placeholder:text-foreground">
+                              <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
                                 {repoIds?.length === 1
                                   ? integrationAuthApps?.reduce(
                                       (acc, { appId, name, owner }) =>
@@ -423,7 +423,7 @@ export const GithubConfigurePage = () => {
                                 <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
                               </div>
                             ) : (
-                              <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-border bg-card px-3 py-2 font-inter text-sm font-normal text-foreground outline-hidden data-placeholder:text-foreground">
+                              <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
                                 No repositories found
                               </div>
                             )}
@@ -498,7 +498,7 @@ export const GithubConfigurePage = () => {
                           <Select
                             value={field.value}
                             onValueChange={onChange}
-                            className="w-full border border-border"
+                            className="w-full border border-border-strong"
                           >
                             {integrationAuthOrgs &&
                               integrationAuthOrgs.map(({ name, orgId }) => (
@@ -524,7 +524,7 @@ export const GithubConfigurePage = () => {
                           <Select
                             value={field.value}
                             onValueChange={onChange}
-                            className="w-full border border-border"
+                            className="w-full border border-border-strong"
                           >
                             {secretsVisibility.map(({ label, value }) => (
                               <SelectItem key={`github-visibility-${value}`} value={value}>
@@ -549,7 +549,7 @@ export const GithubConfigurePage = () => {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 {integrationAuthApps.length > 0 ? (
-                                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-card px-3 py-2 font-inter text-sm font-normal text-foreground outline-hidden data-placeholder:text-foreground">
+                                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
                                     {repoIds?.length === 1
                                       ? integrationAuthApps?.reduce(
                                           (acc, { appId, name, owner }) =>
@@ -560,7 +560,7 @@ export const GithubConfigurePage = () => {
                                     <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
                                   </div>
                                 ) : (
-                                  <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-border bg-card px-3 py-2 font-inter text-sm font-normal text-foreground outline-hidden data-placeholder:text-foreground">
+                                  <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden data-placeholder:text-foreground-secondary">
                                     No repositories found
                                   </div>
                                 )}
@@ -639,7 +639,7 @@ export const GithubConfigurePage = () => {
                             setValue("repoOwner", selectedRepo?.owner);
                             onChange(e);
                           }}
-                          className="w-full border border-border"
+                          className="w-full border border-border-strong"
                         >
                           {integrationAuthApps?.length ? (
                             integrationAuthApps.map((app) => {
@@ -680,7 +680,7 @@ export const GithubConfigurePage = () => {
                           onValueChange={onChange}
                           isDisabled={!repoId}
                           className={twMerge(
-                            "w-full border border-border",
+                            "w-full border border-border-strong",
                             !repoId && "h-10 cursor-not-allowed"
                           )}
                         >
@@ -762,10 +762,10 @@ export const GithubConfigurePage = () => {
           </div>
         </form>
       </Card>
-      <div className="mt-6 w-full max-w-md border-t border-border" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border bg-container p-4">
+      <div className="mt-6 w-full max-w-md border-t border-border-faint" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground" />{" "}
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground-secondary" />{" "}
           <span className="text-md ml-3 text-foreground">Pro Tip</span>
         </div>
         <span className="mt-4 text-sm text-label">
@@ -787,7 +787,7 @@ export const GithubConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="li my-2 inline text-6xl" />
           <p>
             Something went wrong. Please contact{" "}

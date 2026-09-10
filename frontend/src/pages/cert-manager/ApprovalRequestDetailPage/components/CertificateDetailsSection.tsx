@@ -91,13 +91,13 @@ export const CertificateDetailsSection = ({ request }: Props) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="rounded-lg border border-border-control bg-surface-base p-4">
         <h2 className="text-lg font-medium text-foreground">
           Request for {certRequest?.altNames?.[0]?.value || certRequest?.commonName || "-"}
         </h2>
 
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-container-hover text-sm font-medium text-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-foreground-secondary">
             {(request.requesterName || "U")
               .split(" ")
               .map((n) => n[0])
@@ -114,7 +114,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="rounded-lg border border-border-control bg-surface-base p-4">
         <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
           <FontAwesomeIcon icon={faLock} className="text-sm text-muted" />
           Certificate Specifications
@@ -174,7 +174,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="rounded-lg border border-border-control bg-surface-base p-4">
         <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
           <FontAwesomeIcon icon={faGlobe} className="text-sm text-muted" />
           Subject Information
@@ -220,13 +220,13 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         </div>
 
         {hasDomainComponents && (
-          <div className="mt-4 border-t border-border pt-4">
+          <div className="mt-4 border-t border-border-control pt-4">
             <p className="mb-3 text-xs text-muted">Domain Components (DC)</p>
             <div className="flex flex-wrap gap-2">
               {domainComponents!.map((dc) => (
                 <span
                   key={dc}
-                  className="rounded bg-container-hover px-2.5 py-1 text-sm text-foreground"
+                  className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
                 >
                   {dc}
                 </span>
@@ -236,13 +236,13 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         )}
 
         {hasAltNames && (
-          <div className="mt-4 border-t border-border pt-4">
+          <div className="mt-4 border-t border-border-control pt-4">
             <p className="mb-3 text-xs text-muted">Subject Alternative Names (SANs)</p>
             <div className="flex flex-wrap gap-2">
               {filteredAltNames.map((san: { type: string; value: string }) => (
                 <span
                   key={`${san.type}-${san.value}`}
-                  className="rounded bg-container-hover px-2.5 py-1 text-sm text-foreground"
+                  className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
                 >
                   {san.value}
                 </span>
@@ -262,7 +262,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
       </div>
 
       {basicConstraints?.isCA && (
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border-control bg-surface-base p-4">
           <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
             <FontAwesomeIcon icon={faShieldHalved} className="text-sm text-muted" />
             Basic Constraints
@@ -284,7 +284,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
       )}
 
       {(hasKeyUsages || hasExtendedKeyUsages) && (
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border-control bg-surface-base p-4">
           <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
             <FontAwesomeIcon icon={faKey} className="text-sm text-muted" />
             Key Usages
@@ -297,7 +297,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
                 {certRequest.keyUsages.map((usage: string) => (
                   <span
                     key={usage}
-                    className="rounded bg-container-hover px-2.5 py-1 text-sm text-foreground"
+                    className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
                   >
                     {formatKeyUsageDisplay(usage)}
                   </span>
@@ -307,13 +307,13 @@ export const CertificateDetailsSection = ({ request }: Props) => {
           )}
 
           {hasExtendedKeyUsages && certRequest?.extendedKeyUsages && (
-            <div className={hasKeyUsages ? "border-t border-border pt-4" : ""}>
+            <div className={hasKeyUsages ? "border-t border-border-control pt-4" : ""}>
               <p className="mb-3 text-xs text-muted">Extended Key Usages</p>
               <div className="flex flex-wrap gap-2">
                 {certRequest.extendedKeyUsages.map((usage: string) => (
                   <span
                     key={usage}
-                    className="rounded bg-container-hover px-2.5 py-1 text-sm text-foreground"
+                    className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
                   >
                     {formatExtendedKeyUsageDisplay(usage)}
                   </span>
@@ -324,7 +324,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
         </div>
       )}
 
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="rounded-lg border border-border-control bg-surface-base p-4">
         <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
           <FontAwesomeIcon icon={faTags} className="text-sm text-muted" />
           Metadata

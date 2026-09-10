@@ -56,7 +56,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl bg-background text-foreground">
+        <div className="mx-auto h-full w-full max-w-8xl bg-page text-foreground-inverse">
           <Button
             variant="ghost"
             type="button"
@@ -74,7 +74,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
                 {getProjectTitle(projectType)}
                 {projectTemplate?.description && (
                   <>
-                    <span className="px-2 text-muted">&bull;</span>
+                    <span className="px-2 text-surface-selected">&bull;</span>
                     {projectTemplate.description}
                   </>
                 )}

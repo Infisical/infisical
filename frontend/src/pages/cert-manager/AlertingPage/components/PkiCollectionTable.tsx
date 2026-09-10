@@ -62,7 +62,7 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
               data?.collections.map((pkiCollection) => {
                 return (
                   <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover"
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover"
                     key={`pki-collection-${pkiCollection.id}`}
                     onClick={() =>
                       navigate({

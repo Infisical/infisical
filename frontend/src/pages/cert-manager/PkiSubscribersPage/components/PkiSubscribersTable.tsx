@@ -73,7 +73,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
               data.map((subscriber) => {
                 return (
                   <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover"
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover"
                     key={`pki-subscriber-${subscriber.id}`}
                     onClick={() =>
                       navigate({

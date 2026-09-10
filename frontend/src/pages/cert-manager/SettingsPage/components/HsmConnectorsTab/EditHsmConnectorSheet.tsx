@@ -346,7 +346,7 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                     PIN or point to a different slot on the same HSM.
                   </li>
                 </ul>
-                <div className="mt-6 rounded-md border border-border bg-container p-3 text-xs text-muted">
+                <div className="mt-6 rounded-md border border-border bg-surface-raised p-3 text-xs text-muted">
                   If you change the PIN, slot, or Gateway, Infisical re-runs a Verify against the
                   HSM before saving. A bad PIN or unreachable Gateway will surface here.
                 </div>

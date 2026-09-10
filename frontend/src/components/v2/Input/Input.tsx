@@ -16,7 +16,7 @@ type Props = {
 };
 
 const inputVariants = cva(
-  "input w-full py-1.5 text-muted placeholder:text-sm placeholder:text-muted/50 outline-hidden focus:ring-2 hover:ring-ring/60 duration-100",
+  "input w-full py-1.5 text-muted-cool placeholder:text-sm placeholder:text-muted-cool-secondary/50 outline-hidden focus:ring-2 hover:ring-muted-secondary/60 duration-100",
   {
     variants: {
       size: {
@@ -30,7 +30,7 @@ const inputVariants = cva(
         false: ""
       },
       variant: {
-        filled: ["bg-card", "text-muted"],
+        filled: ["bg-surface-base", "text-muted-cool"],
         outline: ["bg-transparent"],
         plain: "bg-transparent outline-hidden"
       },
@@ -51,14 +51,14 @@ const inputParentContainerVariants = cva("inline-flex font-inter items-center bo
     },
     isError: {
       true: "border-danger",
-      false: "border-border"
+      false: "border-border-strong"
     },
     isFullWidth: {
       true: "w-full",
       false: ""
     },
     variant: {
-      filled: ["bg-background", "text-muted"],
+      filled: ["bg-page", "text-muted-cool"],
       outline: ["bg-transparent"],
       plain: "border-none"
     }

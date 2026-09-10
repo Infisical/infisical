@@ -37,11 +37,11 @@ export const SecretScanningResourceSection = ({ dataSource }: Props) => {
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
 
   return (
-    <div className="w-full rounded-lg border border-border bg-card p-4">
+    <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xl font-medium text-foreground">{resourceDetails.pluralTitle}</p>
-          <p className="text-sm text-label">
+          <p className="text-sm text-label-secondary">
             {resourceDetails.pluralTitle} associated with this{" "}
             {SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type].name} Data Source
           </p>

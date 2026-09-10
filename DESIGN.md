@@ -18,7 +18,8 @@ infrastructure: dense, calm, and legible. Decorative treatments are reserved
 for brand-forward surfaces such as authentication and onboarding; the core
 product remains utilitarian. Dark is the default medium, with a light theme
 available through the same semantic token system. The page canvas is
-`--color-background` in both themes.
+`--color-page` in both themes; `--color-background` remains a separate
+surface role.
 
 Color carries **meaning before brand**. A danger badge is red because the
 action is destructive, not because red is the accent. A project-colored button
@@ -31,7 +32,7 @@ values are masked by default; revealing one is an intentional act.
 
 **Key characteristics:**
 
-- Dark-default with a light alternative; `--color-background` page canvas
+- Dark-default with a light alternative; `--color-page` page canvas
 - Semantic-first color (danger / success / warning / info / neutral)
 - Scope-aware (org / sub-org / project / admin)
 - Border-defined depth; overlapping labels retain the shared Badge styling
@@ -83,6 +84,42 @@ Used to signal the scope a surface, badge, or action belongs to.
 | Accent text       | `--color-accent`          |
 | Muted text        | `--color-muted`           |
 | Label text        | `--color-label`           |
+
+### Neutral surface depth
+
+Keep the page canvas, existing v3 surfaces, and migrated neutral surfaces distinct.
+A shared light value does not mean two roles have the same dark value. Use the
+role that matches the component's surface or state; do not replace these tokens
+with `container`, `border`, or a translucent foreground merely to reduce the
+palette.
+
+| Role | Token | Dark value | Original shade |
+| --- | --- | --- | --- |
+| Page canvas | `page` | `#0e1014` | `page`, `bunker-800` |
+| Deep page / gradient endpoint | `page-deep` | `#0b0d10` | `bunker-900` |
+| Base control or panel | `surface-base` | `#19191c` | `mineshaft-900` |
+| Raised panel, legacy dialog, or table | `surface-raised` | `#1e1f22` | `mineshaft-800` |
+| Hover surface | `surface-hover` | `#26272b` | `mineshaft-700` |
+| Active surface | `surface-active` | `#2d2f33` | `mineshaft-600` |
+| Selected surface | `surface-selected` | `#323439` | `mineshaft-500` |
+| Recessed surface | `surface-recessed` | `#171b21` | `bunker-500` |
+| Inset surface | `surface-inset` | `#15181e` | `bunker-600` |
+| Sunken overlay surface | `surface-sunken` | `#111419` | `bunker-700` |
+| Faint border | `border-faint` | `#1e1f22` | `mineshaft-800` |
+| Subtle border | `border-subtle` | `#26272b` | `mineshaft-700` |
+| Control border | `border-control` | `#2d2f33` | `mineshaft-600` |
+| Strong border | `border-strong` | `#323439` | `mineshaft-500` |
+| Emphasized border | `border-emphasis` | `#707174` | `mineshaft-400` |
+| Bright border | `border-bright` | `#adaeb0` | `mineshaft-300` |
+
+Existing v3 `background`, `card`, `popover`, `container`, and `container-hover`
+retain their own values. In particular, v3 sheets use `popover`; legacy dialogs
+and drawers that inherited the old Card surface use `surface-raised`.
+
+Content variants (`foreground-*`, `label-*`, `muted-*`) and cool/secondary border
+variants retain the distinct neutral text and control tones of existing surfaces.
+Their light values are defined alongside the surface overrides in `index.css`.
+Keep opacity modifiers and state selectors on the consumer when migrating.
 
 The semantic roles in `index.css` are the complete application palette. Use
 them directly rather than coupling a component to a raw color scale.

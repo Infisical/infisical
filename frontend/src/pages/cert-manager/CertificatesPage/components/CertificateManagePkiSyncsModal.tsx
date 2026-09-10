@@ -204,7 +204,7 @@ export const CertificateManagePkiSyncsModal = ({
         <div className="mt-4 max-h-96 overflow-y-auto">
           {isPending && (
             <div className="flex h-32 items-center justify-center">
-              <div className="text-label">Loading PKI syncs...</div>
+              <div className="text-label-secondary">Loading PKI syncs...</div>
             </div>
           )}
           {!isPending && pkiSyncs.length === 0 && (
@@ -243,7 +243,7 @@ export const CertificateManagePkiSyncsModal = ({
                   {paginatedSyncs.map((sync) => (
                     <Tr
                       key={sync.id}
-                      className="cursor-pointer hover:bg-container-hover"
+                      className="cursor-pointer hover:bg-surface-hover"
                       onClick={() => handleSyncToggle(sync.id)}
                     >
                       <Td>

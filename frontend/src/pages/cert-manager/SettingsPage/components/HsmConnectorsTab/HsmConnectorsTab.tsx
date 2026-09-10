@@ -220,7 +220,7 @@ export const HsmConnectorsTab = () => {
                   {filtered.map((c) => (
                     <TableRow
                       key={c.id}
-                      className="cursor-pointer hover:bg-container-hover"
+                      className="cursor-pointer hover:bg-surface-hover"
                       onClick={() => openDetail(c.id)}
                     >
                       <TableCell>{c.name}</TableCell>

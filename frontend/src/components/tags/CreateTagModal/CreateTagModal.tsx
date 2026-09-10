@@ -168,13 +168,13 @@ export const CreateTagModal = ({ isOpen, onToggle, append, currentSecret }: Prop
           <div className="mt-2">
             <div className="mb-0.5 ml-1 block text-sm font-normal text-muted">Tag Color</div>
             <div className="flex space-x-2">
-              <div className="flex items-center justify-center rounded-sm border border-border bg-card p-2">
+              <div className="flex items-center justify-center rounded-sm border border-border-strong bg-surface-base p-2">
                 <div
                   className="h-6 w-6 rounded-full"
                   style={{ background: `${selectedTagColor}` }}
                 />
               </div>
-              <div className="flex grow items-center rounded-sm border-border bg-card px-1 pr-2">
+              <div className="flex grow items-center rounded-sm border-border-strong bg-surface-base px-1 pr-2">
                 {!showHexInput ? (
                   <div className="inline-flex items-center gap-3 pl-3">
                     {secretTagsColors.map(($tagColor: TagColor) => {
@@ -211,7 +211,7 @@ export const CreateTagModal = ({ isOpen, onToggle, append, currentSecret }: Prop
                         </div>
                       )}
                       {!isValidHexColor(selectedTagColor) && (
-                        <div className="h-7 w-7 rounded-full border border-dashed border-border bg-info" />
+                        <div className="h-7 w-7 rounded-full border border-dashed border-border-strong bg-info" />
                       )}
                     </div>
                     <div className="grow">
@@ -225,10 +225,10 @@ export const CreateTagModal = ({ isOpen, onToggle, append, currentSecret }: Prop
                     </div>
                   </div>
                 )}
-                <div className="mx-4 h-8 border border-border" />
+                <div className="mx-4 h-8 border border-border-strong" />
                 <div className="flex h-7 w-7 items-center justify-center">
                   <div
-                    className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-xs border border-border bg-card bg-transparent p-2 hover:ring-2 hover:ring-offset-1 ${
+                    className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-xs border border-border-strong bg-surface-base bg-transparent p-2 hover:ring-2 hover:ring-offset-1 ${
                       showHexInput ? "tags-conic-bg rounded-full" : ""
                     }`}
                     onClick={() => setShowHexInput((prev) => !prev)}

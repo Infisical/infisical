@@ -202,7 +202,9 @@ export const MachineIdentitiesTable = () => {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xl font-medium text-foreground">Machine Identities</p>
-          <p className="text-sm text-label">Manage machine identities across your instance.</p>
+          <p className="text-sm text-label-secondary">
+            Manage machine identities across your instance.
+          </p>
         </div>
       </div>
       <IdentityPanelTable handlePopUpOpen={handlePopUpOpen} />

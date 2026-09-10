@@ -30,9 +30,13 @@ const buttonVariants = cva(
     variants: {
       colorSchema: {
         primary: ["bg-project", "text-black", "border-project bg-opacity-90 hover:bg-opacity-100"],
-        secondary: ["bg-foreground/10", "text-label", "border-border hover:bg-opacity-80"],
+        secondary: [
+          "bg-surface-selected",
+          "text-label-cool",
+          "border-border-strong hover:bg-opacity-80"
+        ],
         danger: ["bg-danger!", "text-white!", "border-danger! hover:!bg-opacity-90"],
-        gray: ["bg-container", "text-foreground"]
+        gray: ["bg-surface-recessed", "text-foreground-soft"]
       },
       variant: {
         solid: "",
@@ -41,11 +45,11 @@ const buttonVariants = cva(
         selected: "",
         outline_bg: "",
         // a constant color not in use on hover or click goes colorSchema color
-        star: "text-foreground bg-container-hover border-border",
+        star: "text-foreground-soft bg-surface-hover border-border-control",
         link: "text-project p-0! bg-transparent outline-hidden border-none"
       },
       isDisabled: {
-        true: "bg-container-hover border border-border text-foreground opacity-50 cursor-not-allowed",
+        true: "bg-surface-hover border border-border-control text-foreground-inverse opacity-50 cursor-not-allowed",
         false: "border"
       },
       isFullWidth: {
@@ -68,7 +72,7 @@ const buttonVariants = cva(
         colorSchema: "primary",
         variant: "star",
         className:
-          "bg-container-hover border border-border hover:bg-project hover:text-black hover:border-project duration-100"
+          "bg-surface-hover border border-border-control hover:bg-project hover:text-black hover:border-project duration-100"
       },
       {
         colorSchema: "primary",
@@ -78,19 +82,19 @@ const buttonVariants = cva(
       {
         colorSchema: "primary",
         variant: "selected",
-        className: "bg-project/10 border border-project/50 text-foreground"
+        className: "bg-project/10 border border-project/50 text-foreground-soft"
       },
       {
         colorSchema: "primary",
         variant: "outline_bg",
         className:
-          "bg-foreground/10 border border-border hover:bg-project/10 hover:border-project/40 text-foreground"
+          "bg-surface-active border border-border-strong hover:bg-project/10 hover:border-project/40 text-foreground-soft"
       },
       {
         colorSchema: "secondary",
         variant: "star",
         className:
-          "bg-container-hover border border-border hover:bg-foreground/10 hover:text-foreground"
+          "bg-surface-hover border border-border-control hover:bg-surface-selected hover:text-foreground-inverse"
       },
       {
         colorSchema: "danger",
@@ -105,7 +109,7 @@ const buttonVariants = cva(
       {
         colorSchema: "secondary",
         variant: "outline",
-        className: "border-border hover:border-foreground/20"
+        className: "border-border-subtle hover:border-border-strong"
       },
       {
         colorSchema: "danger",
@@ -116,7 +120,7 @@ const buttonVariants = cva(
         colorSchema: "danger",
         variant: "outline_bg",
         className:
-          "bg-foreground/10 border border-danger/40 hover:bg-danger/15 bg-danger/10 hover:border-danger text-danger"
+          "bg-surface-active border border-danger/40 hover:bg-danger/15 bg-danger/10 hover:border-danger text-danger"
       },
       {
         colorSchema: "primary",
@@ -126,12 +130,12 @@ const buttonVariants = cva(
       {
         colorSchema: "gray",
         variant: "plain",
-        className: "bg-transparent text-foreground"
+        className: "bg-transparent text-foreground-soft"
       },
       {
         colorSchema: "secondary",
         variant: "plain",
-        className: "text-label hover:text-foreground border-none"
+        className: "text-label hover:text-foreground-secondary border-none"
       },
       {
         colorSchema: "danger",

@@ -63,7 +63,7 @@ export const EditInstallationModal = ({ isOpen, onClose, projectId, installation
     <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
       <ModalContent title="Edit Installation" subTitle="Update the name for this installation">
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="mb-4 rounded bg-container-hover p-3">
+          <div className="mb-4 rounded bg-surface-hover p-3">
             <p className="text-sm text-label">
               <span className="font-medium">Location:</span>{" "}
               {installation.locationDetails.fqdn ||

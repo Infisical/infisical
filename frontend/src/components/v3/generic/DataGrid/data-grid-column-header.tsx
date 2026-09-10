@@ -49,7 +49,7 @@ export function DataGridColumnHeader<TData, TValue>({
               )}
             </Tooltip>
           ) : null}
-          <span className="truncate text-foreground">{label}</span>
+          <span className="truncate text-foreground-secondary">{label}</span>
           {column.columnDef.meta?.typeLabel && (
             <span className="shrink-0 font-normal text-accent">
               {column.columnDef.meta.typeLabel}

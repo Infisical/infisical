@@ -47,8 +47,8 @@ type ResourceRowProps = {
 
 const ResourceRow = ({ name, subtitle, to, params, isLast }: ResourceRowProps) => {
   const className = `flex items-center justify-between px-4 py-2.5 ${
-    to ? "transition-colors hover:bg-container-hover/30" : ""
-  } ${!isLast ? "border-b border-border" : ""}`;
+    to ? "transition-colors hover:bg-surface-hover/30" : ""
+  } ${!isLast ? "border-b border-border-control" : ""}`;
   const inner = (
     <>
       <div className="flex flex-col gap-0.5">
@@ -87,7 +87,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto">
-        <SheetHeader className="border-b border-border">
+        <SheetHeader className="border-b border-border-control">
           <SheetTitle>Connected Resources</SheetTitle>
           <SheetDescription>{poolName}</SheetDescription>
         </SheetHeader>

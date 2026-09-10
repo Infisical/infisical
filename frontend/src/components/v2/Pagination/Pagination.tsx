@@ -49,7 +49,7 @@ export const Pagination = ({
   return (
     <div
       className={twMerge(
-        "flex w-full items-center justify-end border-t border-border bg-container px-4 py-3 text-foreground",
+        "flex w-full items-center justify-end border-t border-border-control bg-surface-raised px-4 py-3 text-foreground-inverse",
         className
       )}
     >

@@ -73,7 +73,10 @@ export const OctopusDeployScopeValues = ({ integration }: OctopusDeployScopeValu
 
         return (
           <div className="mt-4" key={key}>
-            <FormLabel className="text-sm font-medium text-foreground" label={getLabel(key)} />
+            <FormLabel
+              className="text-sm font-medium text-foreground-secondary"
+              label={getLabel(key)}
+            />
 
             <div className="text-sm text-label">
               {values

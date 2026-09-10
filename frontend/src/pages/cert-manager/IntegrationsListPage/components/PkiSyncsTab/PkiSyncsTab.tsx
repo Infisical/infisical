@@ -91,7 +91,7 @@ export const PkiSyncsTab = () => {
 
   return (
     <>
-      <div className="w-full rounded-lg border border-border bg-card p-4">
+      <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-start gap-1">
@@ -100,7 +100,7 @@ export const PkiSyncsTab = () => {
                 <DocumentationLinkBadge href={PkiDocsUrls.applications.syncs.overview} />
               </div>
             </div>
-            <p className="text-sm text-label">
+            <p className="text-sm text-label-secondary">
               Existing project-level syncs remain editable. Create new syncs inside an Application.
             </p>
           </div>

@@ -29,7 +29,7 @@ export const useSyntaxHighlight = () => {
 
     // append a space on last new line this to show new line in ui for code component
     const val = text.at(-1) === "\n" ? text.concat(" ") : text;
-    if (val?.length === 0) return <span className="font-mono text-muted/80">EMPTY</span>;
+    if (val?.length === 0) return <span className="font-mono text-muted-secondary/80">EMPTY</span>;
     return val?.split(REGEX).map((word, i) =>
       word.match(REGEX) !== null ? (
         <span className="ph-no-capture text-warning" key={`${val}-${i + 1}`}>

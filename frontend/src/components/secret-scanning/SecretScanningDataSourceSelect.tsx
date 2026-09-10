@@ -18,7 +18,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-muted" />
+        <Spinner size="lg" className="text-surface-selected" />
         <p className="mt-4 text-sm text-muted">Loading options...</p>
       </div>
     );
@@ -34,7 +34,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             type="button"
             key={type}
             onClick={() => onSelect(type)}
-            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-border bg-container-hover p-4 duration-200 hover:bg-foreground/10"
+            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-border-control bg-surface-hover p-4 duration-200 hover:bg-surface-active"
           >
             <img
               src={`/images/integrations/${image}`}
@@ -42,7 +42,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
               className="mt-auto"
               alt={`${name} logo`}
             />
-            <div className="mt-auto max-w-xs text-center text-xs font-medium text-label duration-200 group-hover:text-foreground">
+            <div className="mt-auto max-w-xs text-center text-xs font-medium text-label-cool duration-200 group-hover:text-foreground-cool">
               {name}
             </div>
           </button>
@@ -79,9 +79,9 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
           </>
         }
       >
-        <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-border bg-container p-4 hover:bg-card/50">
+        <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-border-control bg-surface-raised p-4 hover:bg-surface-base/50">
           <FontAwesomeIcon className="mt-auto text-3xl" icon={faWrench} />
-          <div className="mt-auto max-w-xs text-center text-xs font-medium text-label duration-200 group-hover:text-foreground">
+          <div className="mt-auto max-w-xs text-center text-xs font-medium text-label-cool duration-200 group-hover:text-foreground-cool">
             Coming Soon
           </div>
         </div>

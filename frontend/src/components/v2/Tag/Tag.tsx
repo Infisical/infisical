@@ -11,12 +11,12 @@ type Props = {
 } & VariantProps<typeof tagVariants>;
 
 const tagVariants = cva(
-  "inline-flex items-center whitespace-nowrap text-sm rounded-sm mr-1.5 text-foreground text-muted ",
+  "inline-flex items-center whitespace-nowrap text-sm rounded-sm mr-1.5 text-foreground-soft text-muted-cool ",
   {
     variants: {
       colorSchema: {
-        gray: "bg-foreground/10",
-        red: "bg-danger/80 text-foreground",
+        gray: "bg-surface-selected",
+        red: "bg-danger/80 text-foreground-default",
         green: "bg-success text-white"
       },
       size: {

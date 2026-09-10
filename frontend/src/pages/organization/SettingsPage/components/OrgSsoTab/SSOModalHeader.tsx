@@ -16,7 +16,7 @@ const docsBaseUrl = "https://infisical.com/docs/documentation/platform/sso";
 
 export const SSOModalHeader = ({ providerDetails, isConnected }: Props) => {
   return (
-    <div className="mb-4 flex w-full items-start gap-2 border-b border-border pb-4">
+    <div className="mb-4 flex w-full items-start gap-2 border-b border-border-strong pb-4">
       <img
         alt={`${providerDetails.label} logo`}
         src={`/images/sso/${providerDetails.image}`}

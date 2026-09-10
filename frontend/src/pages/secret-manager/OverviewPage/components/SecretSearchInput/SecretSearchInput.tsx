@@ -37,7 +37,7 @@ export const SecretSearchInput = ({
           <>
             <div className="flex w-full items-center whitespace-nowrap">
               <Tooltip content="Search Options">
-                <Combobox.Button className="button user-select-none relative inline-flex h-[2.42rem] cursor-pointer items-center justify-center rounded-md rounded-r-none border border-border bg-foreground/10 p-3 font-inter text-sm font-medium text-foreground transition-all duration-100 hover:border-project/50 hover:bg-project/10 hover:text-foreground">
+                <Combobox.Button className="button user-select-none relative inline-flex h-[2.42rem] cursor-pointer items-center justify-center rounded-md rounded-r-none border border-border-control bg-surface-active p-3 font-inter text-sm font-medium text-foreground-soft transition-all duration-100 hover:border-project/50 hover:bg-project/10 hover:text-foreground-default">
                   <FontAwesomeIcon
                     icon={faSearch}
                     size="sm"
@@ -46,14 +46,14 @@ export const SecretSearchInput = ({
                   />
                 </Combobox.Button>
               </Tooltip>
-              <div className="relative inline-flex w-full items-center rounded-md rounded-l-none border border-border bg-background font-inter text-muted">
+              <div className="relative inline-flex w-full items-center rounded-md rounded-l-none border border-border-strong bg-page font-inter text-muted-cool">
                 <Combobox.Input
                   onKeyDown={(e) => {
                     if (activeIndex === 0 && e.key === "Enter") setIsOpen(true);
                   }}
                   autoComplete="off"
                   className={twMerge(
-                    "input text-md h-[2.3rem] w-full rounded-md rounded-l-none bg-container py-1.5 pl-2.5 text-muted outline-hidden duration-200 placeholder:text-sm placeholder:text-foreground/50 hover:ring-ring/60 focus:bg-container-hover/80 focus:ring-1 focus:ring-project/50",
+                    "input text-md h-[2.3rem] w-full rounded-md rounded-l-none bg-surface-raised py-1.5 pl-2.5 text-muted-cool outline-hidden duration-200 placeholder:text-sm placeholder:text-foreground-bright/50 hover:ring-muted-secondary/60 focus:bg-surface-hover/80 focus:ring-1 focus:ring-project/50",
                     hasSearch ? "pr-8" : "pr-2.5"
                   )}
                   placeholder={
@@ -82,13 +82,13 @@ export const SecretSearchInput = ({
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <Combobox.Options className="absolute z-30 mt-2 w-full min-w-[220px] overflow-y-auto rounded-md border border-border bg-card text-label shadow-sm focus:outline-hidden">
+              <Combobox.Options className="absolute z-30 mt-2 w-full min-w-[220px] overflow-y-auto rounded-md border border-border-control bg-surface-base text-label-secondary shadow-sm focus:outline-hidden">
                 <Combobox.Option
                   onClick={() => setIsOpen(true)}
                   value={value}
                   className={({ active }) =>
-                    `flex w-full cursor-pointer items-start rounded-xs px-4 py-2 font-inter text-sm text-foreground outline-hidden hover:bg-muted ${
-                      active ? "bg-foreground/10" : ""
+                    `flex w-full cursor-pointer items-start rounded-xs px-4 py-2 font-inter text-sm text-foreground-secondary outline-hidden hover:bg-muted ${
+                      active ? "bg-surface-selected" : ""
                     }`
                   }
                 >

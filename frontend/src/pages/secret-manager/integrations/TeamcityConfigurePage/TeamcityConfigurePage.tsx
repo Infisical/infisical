@@ -113,7 +113,7 @@ export const TeamcityConfigurePage = () => {
       <Helmet>
         <title>Set Up TeamCity Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border">
+      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Choose which environment or folders in Infisical you want to sync to which project in TeamCity."
@@ -148,7 +148,7 @@ export const TeamcityConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -171,7 +171,7 @@ export const TeamcityConfigurePage = () => {
           <Select
             value={targetAppId}
             onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -194,7 +194,7 @@ export const TeamcityConfigurePage = () => {
           <Select
             value={targetBuildConfigId}
             onValueChange={(val) => setTargetBuildConfigId(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={targetBuildConfigs.length === 0}
           >
             {targetBuildConfigs.length ? (
@@ -238,7 +238,7 @@ export const TeamcityConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}

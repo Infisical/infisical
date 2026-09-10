@@ -424,10 +424,10 @@ export const SecretItem = memo(
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div
           className={twMerge(
-            "border-b border-border bg-container shadow-none hover:bg-container-hover",
+            "border-b border-border-control bg-surface-raised shadow-none hover:bg-surface-hover",
             isDirty && "border-project/50",
-            isManagedSecret && "bg-container-hover/60",
-            isPending && "bg-container-hover/60",
+            isManagedSecret && "bg-surface-hover/60",
+            isPending && "bg-surface-hover/60",
             pendingAction === PendingAction.Delete && "border-l-2 border-l-danger/75",
             pendingAction === PendingAction.Update && "border-l-2 border-l-warning/75",
             pendingAction === PendingAction.Create && "border-l-2 border-l-success/75"
@@ -496,7 +496,7 @@ export const SecretItem = memo(
                               Secret key contains whitespaces.
                               <br />
                               <br /> If this is the desired format, you need to provide it as{" "}
-                              <code className="rounded-md bg-foreground/10 px-1 py-0.5">
+                              <code className="rounded-md bg-surface-selected px-1 py-0.5">
                                 {encodeURIComponent(field.value.trim())}
                               </code>{" "}
                               when making API requests.
@@ -508,13 +508,13 @@ export const SecretItem = memo(
                       ) : undefined
                     }
                     {...field}
-                    className="w-full px-0 placeholder:text-danger focus:text-foreground focus:ring-transparent"
+                    className="w-full px-0 placeholder:text-danger focus:text-foreground-default focus:ring-transparent"
                   />
                 )}
               />
             </div>
             <div
-              className="flex w-80 grow items-center border-x border-border py-1 pr-2 pl-4"
+              className="flex w-80 grow items-center border-x border-border-control py-1 pr-2 pl-4"
               tabIndex={0}
               role="button"
             >
@@ -825,12 +825,12 @@ export const SecretItem = memo(
                       </Tooltip>
                     </IconButton>
                     <PopoverContent
-                      className="w-auto border border-border bg-container p-2 drop-shadow-2xl"
+                      className="w-auto border border-border-control bg-surface-raised p-2 drop-shadow-2xl"
                       sticky="always"
                     >
                       <FormControl label="Comment" className="mb-0">
                         <TextArea
-                          className="border border-border text-sm"
+                          className="border border-border-control text-sm"
                           rows={8}
                           cols={30}
                           {...register("comment")}

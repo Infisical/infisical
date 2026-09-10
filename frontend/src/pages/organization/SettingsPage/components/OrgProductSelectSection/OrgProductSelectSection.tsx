@@ -63,9 +63,11 @@ export const OrgProductSelectSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card px-6 py-5">
+    <div className="mb-6 rounded-lg border border-border-control bg-surface-base px-6 py-5">
       <h2 className="text-xl font-medium text-foreground">Enabled Products</h2>
-      <p className="mb-4 text-muted">Select which products are available for your organization.</p>
+      <p className="mb-4 text-muted-cool">
+        Select which products are available for your organization.
+      </p>
 
       <div className="grid grid-cols-2 gap-3">
         {Object.entries(toggledProducts).map(([key, product]) => (

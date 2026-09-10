@@ -82,7 +82,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
     <div className="space-y-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <span className="text-sm font-medium text-foreground">Approval Steps</span>
+          <span className="text-sm font-medium text-foreground-secondary">Approval Steps</span>
           <p className="text-xs text-muted">Define the approval workflow with sequential steps</p>
         </div>
         <Button
@@ -105,7 +105,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
 
       <div className="space-y-4">
         {stepFields.map((field, index) => (
-          <div key={field.id} className="rounded border border-border bg-container-hover p-4">
+          <div key={field.id} className="rounded border border-border-control bg-surface-hover p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-project/20 text-xs font-semibold text-project">
@@ -166,7 +166,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
               />
 
               <div className="space-y-3">
-                <div className="text-sm font-medium text-foreground">Approvers</div>
+                <div className="text-sm font-medium text-foreground-secondary">Approvers</div>
                 <Controller
                   control={control}
                   name={`steps.${index}.approvers`}
@@ -248,9 +248,9 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
       </div>
 
       {stepFields.length === 0 && (
-        <div className="rounded border border-dashed border-border bg-container/50 p-8 text-center">
+        <div className="rounded border border-dashed border-border-control bg-surface-raised/50 p-8 text-center">
           <p className="text-sm text-muted">No approval steps defined</p>
-          <p className="mt-1 text-xs text-muted">
+          <p className="mt-1 text-xs text-surface-selected">
             Click &quot;Add Step&quot; to create your first approval step
           </p>
         </div>

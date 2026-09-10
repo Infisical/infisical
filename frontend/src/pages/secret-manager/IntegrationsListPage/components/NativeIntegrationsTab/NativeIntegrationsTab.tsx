@@ -59,7 +59,7 @@ export const NativeIntegrationsTab = () => {
   return (
     <>
       <NativeIntegrationsDeprecationAlert />
-      <div className="w-full rounded-lg border border-border bg-card p-4">
+      <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xl font-medium text-foreground">Native Integrations</p>
           <Button

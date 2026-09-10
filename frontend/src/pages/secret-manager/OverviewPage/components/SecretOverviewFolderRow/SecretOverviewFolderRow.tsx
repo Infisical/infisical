@@ -34,8 +34,8 @@ export const SecretOverviewFolderRow = ({
   };
   return (
     <Tr isHoverable isSelectable className="group" onClick={handleClick}>
-      <Td className="sticky left-0 z-10 border-0 bg-container bg-clip-padding p-0 group-hover:bg-container-hover">
-        <div className="flex items-center space-x-5 border-r border-border px-5 py-2.5">
+      <Td className="sticky left-0 z-10 border-0 bg-surface-raised bg-clip-padding p-0 group-hover:bg-surface-hover">
+        <div className="flex items-center space-x-5 border-r border-border-control px-5 py-2.5">
           <div className="text-warning">
             <Checkbox
               id={`checkbox-${folderName}`}
@@ -75,7 +75,7 @@ export const SecretOverviewFolderRow = ({
           <Td
             key={`sec-overview-${slug}-${i + 1}-folder`}
             className={twMerge(
-              "border-r border-border py-3 group-hover:bg-container-hover",
+              "border-r border-border-control py-3 group-hover:bg-surface-hover",
               isPresent ? "text-success" : "text-danger"
             )}
           >

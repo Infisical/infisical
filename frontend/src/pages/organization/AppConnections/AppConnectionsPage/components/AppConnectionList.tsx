@@ -33,10 +33,10 @@ const ProviderCard = ({ app, onClick }: { app: AppConnection; onClick: () => voi
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-container-hover/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="relative flex h-9 w-9 items-center justify-center rounded-md bg-container-hover">
+        <div className="relative flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
           <img
             src={`/images/integrations/${image}`}
             alt={`${name} logo`}

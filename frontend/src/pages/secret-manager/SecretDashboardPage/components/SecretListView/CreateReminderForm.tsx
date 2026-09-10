@@ -304,7 +304,7 @@ export const CreateReminderForm = ({
                     onChange(val);
                     handleReminderTypeChange(val);
                   }}
-                  className="w-full border border-border capitalize"
+                  className="w-full border border-border-strong capitalize"
                   position="popper"
                   placeholder="Select reminder recurrence"
                   dropdownContainerClassName="max-w-none"
@@ -428,7 +428,7 @@ export const CreateReminderForm = ({
           <FormControl label="Note" className="mb-0">
             <TextArea
               placeholder="Remember to rotate the AWS secret every month."
-              className="border border-border text-sm"
+              className="border border-border-control text-sm"
               rows={DEFAULT_TEXTAREA_ROWS}
               reSize="none"
               cols={30}

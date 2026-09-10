@@ -462,21 +462,21 @@ const MyProjectsForType = ({
             <Card key={`workspace-cards-loading-${i + 1}`} className="h-full bg-container">
               <CardHeader>
                 <div className="flex items-start gap-3">
-                  <Skeleton className="h-9 w-9 shrink-0 rounded-sm bg-foreground/10" />
+                  <Skeleton className="h-9 w-9 shrink-0 rounded-sm bg-surface-active" />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <Skeleton className="h-4 w-1/2 bg-foreground/10" />
-                    <Skeleton className="h-3 w-1/3 bg-foreground/10" />
+                    <Skeleton className="h-4 w-1/2 bg-surface-active" />
+                    <Skeleton className="h-3 w-1/3 bg-surface-active" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2">
-                  <Skeleton className="h-3 w-full bg-foreground/10" />
-                  <Skeleton className="h-3 w-2/3 bg-foreground/10" />
+                  <Skeleton className="h-3 w-full bg-surface-active" />
+                  <Skeleton className="h-3 w-2/3 bg-surface-active" />
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                  <Skeleton className="h-3 w-16 bg-foreground/10" />
-                  <Skeleton className="h-3 w-24 bg-foreground/10" />
+                  <Skeleton className="h-3 w-16 bg-surface-active" />
+                  <Skeleton className="h-3 w-24 bg-surface-active" />
                 </div>
               </CardContent>
             </Card>
@@ -497,19 +497,19 @@ const MyProjectsForType = ({
             {Array.apply(0, Array(3)).map((_x, i) => (
               <TableRow key={`workspace-rows-loading-${i + 1}`}>
                 <TableCell>
-                  <Skeleton className="h-4 w-4 bg-foreground/10" />
+                  <Skeleton className="h-4 w-4 bg-surface-active" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-1/2 bg-foreground/10" />
+                  <Skeleton className="h-4 w-1/2 bg-surface-active" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-3/4 bg-foreground/10" />
+                  <Skeleton className="h-4 w-3/4 bg-surface-active" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-24 bg-foreground/10" />
+                  <Skeleton className="h-4 w-24 bg-surface-active" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-7 bg-foreground/10" />
+                  <Skeleton className="h-4 w-7 bg-surface-active" />
                 </TableCell>
               </TableRow>
             ))}
@@ -726,19 +726,19 @@ const AllProjectsForType = ({
           {Array.apply(0, Array(3)).map((_x, i) => (
             <TableRow key={`workspace-rows-loading-${i + 1}`}>
               <TableCell>
-                <Skeleton className="h-4 w-4 bg-foreground/10" />
+                <Skeleton className="h-4 w-4 bg-surface-active" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-1/2 bg-foreground/10" />
+                <Skeleton className="h-4 w-1/2 bg-surface-active" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-3/4 bg-foreground/10" />
+                <Skeleton className="h-4 w-3/4 bg-surface-active" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-24 bg-foreground/10" />
+                <Skeleton className="h-4 w-24 bg-surface-active" />
               </TableCell>
               <TableCell>
-                <Skeleton className="h-4 w-20 bg-foreground/10" />
+                <Skeleton className="h-4 w-20 bg-surface-active" />
               </TableCell>
             </TableRow>
           ))}

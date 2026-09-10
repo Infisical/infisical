@@ -96,8 +96,8 @@ export const PkiTemplateListPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "PKI Templates" })}</title>
       </Helmet>
-      <div className="h-full bg-background">
-        <div className="mx-auto flex flex-col justify-between text-foreground">
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
               scope={ProjectType.CertificateManager}
@@ -105,7 +105,7 @@ export const PkiTemplateListPage = () => {
               description="Manage certificate template to request and issue dynamic certificates following a strict format."
             />
           </div>
-          <div className="container mx-auto mb-6 max-w-8xl rounded-lg border border-border bg-card p-4">
+          <div className="container mx-auto mb-6 max-w-8xl rounded-lg border border-border-control bg-surface-base p-4">
             {/* TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation */}
             <div className="mb-4 flex justify-between">
               <p className="text-xl font-medium text-foreground">Templates</p>

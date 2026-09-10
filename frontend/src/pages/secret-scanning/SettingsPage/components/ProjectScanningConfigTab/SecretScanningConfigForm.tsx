@@ -50,7 +50,7 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-medium text-foreground">Project Configuration</h2>

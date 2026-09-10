@@ -65,7 +65,7 @@ export const GitlabAuthorizePage = () => {
       <Helmet>
         <title>Authorize GitLab Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border">
+      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Authorize this integration to sync secrets from Infisical to GitLab. If no self-hosted GitLab URL is specified, then Infisical will connect you to GitLab Cloud."

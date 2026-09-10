@@ -125,7 +125,7 @@ export const TerraformCloudConfigurePage = () => {
       <Helmet>
         <title>Create Terraform Cloud Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border">
+      <Card className="max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Specify the encironment and path within Infisical that you want to push to which project in Terraform."
@@ -160,7 +160,7 @@ export const TerraformCloudConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -188,7 +188,7 @@ export const TerraformCloudConfigurePage = () => {
           <Select
             value={variableType}
             onValueChange={(val) => setVariableType(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
           >
             {variableTypes.map((variable) => (
               <SelectItem value={variable.name} key={`target-app-${variable.name}`}>
@@ -201,7 +201,7 @@ export const TerraformCloudConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -224,7 +224,7 @@ export const TerraformCloudConfigurePage = () => {
           <Select
             value={initialSyncBehavior}
             onValueChange={(e) => setInitialSyncBehavior(e)}
-            className="w-full border border-border"
+            className="w-full border border-border-control"
           >
             {initialSyncBehaviors.map((b) => {
               return (

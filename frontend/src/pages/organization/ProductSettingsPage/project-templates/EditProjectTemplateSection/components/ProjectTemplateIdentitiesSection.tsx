@@ -499,7 +499,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                   You can add machine identities to your template in one of two ways:
                 </p>
                 <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                  <li className="text-foreground">
+                  <li className="text-foreground-secondary">
                     <strong className="font-medium text-foreground">Create New</strong> - Define a
                     new machine identity that will be created when a project is made from this
                     template.

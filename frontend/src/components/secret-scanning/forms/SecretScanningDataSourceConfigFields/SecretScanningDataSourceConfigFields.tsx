@@ -25,7 +25,7 @@ export const SecretScanningDataSourceConfigFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-label">Connect and configure your Data Source.</p>
+      <p className="mb-4 text-sm text-label-secondary">Connect and configure your Data Source.</p>
       <Component />
       <Controller
         control={control}
@@ -44,7 +44,7 @@ export const SecretScanningDataSourceConfigFields = () => {
               <Switch
                 className="bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
                 id="auto-scan-enabled"
-                thumbClassName="bg-container"
+                thumbClassName="bg-surface-raised"
                 onCheckedChange={onChange}
                 isChecked={value}
               >

@@ -115,7 +115,7 @@ export const NorthflankConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -138,7 +138,7 @@ export const NorthflankConfigurePage = () => {
           <Select
             value={targetAppId}
             onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -162,7 +162,7 @@ export const NorthflankConfigurePage = () => {
             <Select
               value={targetSecretGroupId}
               onValueChange={(val) => setTargetSecretGroupId(val)}
-              className="w-full border border-border"
+              className="w-full border border-border-strong"
               isDisabled={integrationAuthSecretGroups.length === 0}
             >
               {integrationAuthSecretGroups.length > 0 ? (

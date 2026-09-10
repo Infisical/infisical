@@ -105,7 +105,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               return (
                 <Tr
                   onClick={() => onEdit(template)}
-                  className="cursor-pointer hover:bg-container-hover"
+                  className="cursor-pointer hover:bg-surface-hover"
                   key={id}
                 >
                   <Td>

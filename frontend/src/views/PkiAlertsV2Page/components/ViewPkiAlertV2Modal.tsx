@@ -35,7 +35,9 @@ const formatDate = (dateString: string) =>
   });
 
 const SectionHeader = ({ title }: { title: string }) => (
-  <h3 className="border-b border-border pb-2 text-sm font-semibold text-foreground">{title}</h3>
+  <h3 className="border-b border-border-subtle pb-2 text-sm font-semibold text-foreground">
+    {title}
+  </h3>
 );
 
 export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) => {
@@ -112,7 +114,7 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
                 {(alert.channels || []).map((channel) => (
                   <div
                     key={channel.id}
-                    className="flex items-start gap-3 rounded-md border border-border bg-container/40 p-3"
+                    className="flex items-start gap-3 rounded-md border border-border-control bg-surface-raised/40 p-3"
                   >
                     <FontAwesomeIcon
                       icon={getChannelIcon(channel.channelType)}

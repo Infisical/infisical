@@ -25,8 +25,8 @@ export const SecretScanningDataSourceSection = ({ dataSource }: Props) => {
 
   return (
     <>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3">
-        <div className="flex items-center justify-between border-b border-border pb-2">
+      <div className="flex w-full flex-col gap-3 rounded-lg border border-border-control bg-surface-base px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border-emphasis pb-2">
           <div className="mr-2 flex flex-1 items-center justify-between">
             <h3 className="font-medium text-foreground">Details</h3>
             {isDisconnected && (

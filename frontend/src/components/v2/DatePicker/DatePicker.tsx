@@ -105,7 +105,7 @@ export const DatePicker = ({
       <PopoverContent
         {...popUpContentProps}
         className={twMerge(
-          "w-fit border border-border bg-popover p-2 font-inter",
+          "w-fit border border-border-control bg-surface-raised p-2 font-inter",
           popUpContentProps.className
         )}
       >
@@ -115,11 +115,11 @@ export const DatePicker = ({
             mode="single"
             selected={value ? new TZDate(value, displayUtc ? "UTC" : undefined) : undefined}
             onSelect={(date) => handleDaySelect(date ? new TZDate(date, undefined) : undefined)}
-            className="font-inter text-foreground"
+            className="font-inter text-foreground-secondary"
             timeZone={displayUtc ? "UTC" : undefined}
             classNames={{
               today: "text-project border-project",
-              selected: " text-foreground bg-foreground/10",
+              selected: " text-foreground bg-surface-selected",
               root: `text-label  ${defaultClassNames}`,
               [UI.DayButton]:
                 "p-3 w-full cursor-pointer text-center  rounded-sm hover:text-foreground",
@@ -153,7 +153,7 @@ export const DatePicker = ({
               type="time"
               value={displayUtc ? localTimeToUTC(timeValue) : timeValue}
               onChange={handleTimeChange}
-              className="bg-container-hover text-foreground scheme-dark"
+              className="bg-surface-hover text-foreground-inverse scheme-dark"
             />
           </div>
         )}

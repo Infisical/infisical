@@ -57,7 +57,7 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
     <Tr>
       <Td>
         <div className="flex items-center gap-2">
-          <div className="font-medium text-foreground">{alert.name}</div>
+          <div className="font-medium text-foreground-cool">{alert.name}</div>
           {alert.description && (
             <Tooltip content={alert.description}>
               <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
@@ -66,18 +66,18 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
         </div>
       </Td>
       <Td>
-        <span className="text-label">{formatEventType(alert.eventType)}</span>
+        <span className="text-label-cool">{formatEventType(alert.eventType)}</span>
       </Td>
       <Td>
         <Badge variant={alert.enabled ? "success" : "neutral"}>
           {alert.enabled ? "Enabled" : "Disabled"}
         </Badge>
       </Td>
-      <Td className="text-label">
+      <Td className="text-label-cool">
         {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
           formatAlertBefore(alert.alertBefore)
         ) : (
-          <span className="text-muted">—</span>
+          <span className="text-surface-selected">—</span>
         )}
       </Td>
       <Td>
@@ -104,7 +104,7 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
             </Badge>
           </Tooltip>
         ) : (
-          <span className="text-muted">—</span>
+          <span className="text-surface-selected">—</span>
         )}
       </Td>
       <Td className="text-right">

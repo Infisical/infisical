@@ -70,7 +70,10 @@ export const Accordion = ({
   children,
   ...props
 }: AccordionPrimitive.AccordionSingleProps | AccordionPrimitive.AccordionMultipleProps) => (
-  <AccordionPrimitive.Root {...props} className={twMerge("w-80 text-label", props.className)}>
+  <AccordionPrimitive.Root
+    {...props}
+    className={twMerge("w-80 text-label-secondary", props.className)}
+  >
     {children}
   </AccordionPrimitive.Root>
 );

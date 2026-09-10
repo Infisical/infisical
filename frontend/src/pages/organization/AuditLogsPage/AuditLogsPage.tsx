@@ -47,13 +47,13 @@ export const AuditLogsPage = () => {
   };
 
   return (
-    <div className="h-full bg-background">
+    <div className="h-full bg-page">
       <Helmet>
         <title>Infisical | Audit Logs</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex w-full justify-center bg-background pb-6 text-foreground">
+      <div className="flex w-full justify-center bg-page pb-6 text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}

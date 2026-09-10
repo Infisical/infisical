@@ -170,12 +170,12 @@ export const PermissionAuditSheet = ({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-full flex-col gap-y-0 p-0 sm:max-w-6xl">
-        <SheetHeader className="border-b border-border px-6 py-5">
+        <SheetHeader className="border-b border-border-subtle px-6 py-5">
           <div className="min-w-0 flex-1">
             <SheetTitle className="flex items-center gap-2">
               Permission Audit
               <span className="text-muted">·</span>
-              <span className="inline-flex items-center gap-1 text-sm font-normal text-foreground">
+              <span className="inline-flex items-center gap-1 text-sm font-normal text-foreground-secondary">
                 <TargetIcon className="size-3.5" />
                 {targetName}
               </span>
@@ -195,7 +195,7 @@ export const PermissionAuditSheet = ({
           </div>
         </SheetHeader>
 
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border-subtle px-6 py-3">
           <Select
             value={stateFilter}
             onValueChange={(value) => setStateFilter(value as StateFilter)}

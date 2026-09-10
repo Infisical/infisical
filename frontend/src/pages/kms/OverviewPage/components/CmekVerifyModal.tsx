@@ -122,13 +122,13 @@ const VerifyForm = ({ cmek }: FormProps) => {
           </div>
           <div className="mt-3">
             <span className="text-sm opacity-60">Signature:</span>{" "}
-            <div className="rounded-md border border-border bg-card p-2 text-sm break-words whitespace-pre-wrap">
+            <div className="rounded-md border border-border-subtle bg-surface-base p-2 text-sm break-words whitespace-pre-wrap">
               {signature}
             </div>
           </div>
           <div>
             <span className="text-sm opacity-60">Data:</span>{" "}
-            <div className="rounded-md border border-border bg-card p-2 text-sm">
+            <div className="rounded-md border border-border-subtle bg-surface-base p-2 text-sm">
               {isBase64Encoded ? decodeBase64(data).toString() : data}
             </div>
           </div>

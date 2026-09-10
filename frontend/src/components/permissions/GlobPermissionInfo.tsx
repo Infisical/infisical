@@ -5,7 +5,7 @@ import { Field, FieldDescription, FieldLabel, Input } from "../v3";
 
 export const GlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
-    <p className="font-medium text-foreground">This field supports glob patterns:</p>
+    <p className="font-medium text-foreground-secondary">This field supports glob patterns:</p>
     <div className="text-label">
       <code className="text-warning/80">*</code> matches a single path segment
       <br />
@@ -21,7 +21,7 @@ export const GlobPatternTooltip = () => (
 
 export const BashGlobPatternTooltip = () => (
   <div className="space-y-1.5 text-left text-xs">
-    <p className="font-medium text-foreground">This field supports glob patterns:</p>
+    <p className="font-medium text-foreground-secondary">This field supports glob patterns:</p>
     <p className="text-label">
       <code className="text-warning/80">*</code> matches any characters
     </p>

@@ -139,7 +139,7 @@ export const RailwayConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -162,7 +162,7 @@ export const RailwayConfigurePage = () => {
           <Select
             value={targetAppId}
             onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -185,7 +185,7 @@ export const RailwayConfigurePage = () => {
           <Select
             value={targetEnvironmentId}
             onValueChange={(val) => setTargetEnvironmentId(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={targetEnvironments.length === 0}
           >
             {targetEnvironments.length > 0 ? (
@@ -208,7 +208,7 @@ export const RailwayConfigurePage = () => {
           <Select
             value={targetServiceId}
             onValueChange={(val) => setTargetServiceId(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={targetServices.length === 0}
           >
             {filteredTargetServices.map((targetService) => (

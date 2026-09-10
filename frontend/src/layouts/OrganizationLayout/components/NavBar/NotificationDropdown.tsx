@@ -77,9 +77,9 @@ export const NotificationDropdown = () => {
         className="z-999 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
       >
         <div className="flex w-full flex-col">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <div className="flex items-center justify-between border-b border-border-strong px-3 py-2">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-foreground">Notifications</span>
+              <span className="font-medium text-foreground-inverse">Notifications</span>
               {hasCritical && (
                 <span className="rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-medium text-white">
                   {criticalCount > 99 ? "99+" : criticalCount} critical

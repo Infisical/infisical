@@ -136,7 +136,7 @@ export const KmipServerDeployCommandDialog = ({
           href="https://infisical.com/docs/cli/overview"
           target="_blank"
           rel="noreferrer"
-          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-border text-sm text-muted transition-colors hover:border-warning hover:text-warning"
+          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-border-emphasis text-sm text-muted transition-colors hover:border-warning hover:text-warning"
         >
           <span>Install the Infisical CLI</span>
           <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />

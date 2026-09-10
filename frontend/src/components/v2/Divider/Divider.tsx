@@ -7,7 +7,7 @@ interface IProps {
 export const Divider = ({ className }: IProps): JSX.Element => {
   return (
     <div className={twMerge("flex items-center px-2 opacity-50", className)}>
-      <div aria-hidden="true" className="h-1 w-full grow border-t border-border" />
+      <div aria-hidden="true" className="h-1 w-full grow border-t border-border-bright" />
     </div>
   );
 };

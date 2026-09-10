@@ -61,7 +61,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           <SelectPrimitive.Trigger
             ref={ref}
             className={twMerge(
-              "inline-flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 font-inter text-sm font-normal text-foreground outline-hidden focus:bg-container-hover/80 data-placeholder:text-muted",
+              "inline-flex items-center justify-between rounded-md border border-border-control bg-surface-base px-3 py-2 font-inter text-sm font-normal text-foreground-soft outline-hidden focus:bg-surface-hover/80 data-placeholder:text-muted",
               className,
               isDisabled && "cursor-not-allowed opacity-50"
             )}
@@ -86,7 +86,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             <SelectPrimitive.Content
               side={side}
               className={twMerge(
-                "relative top-1 z-100 max-w-sm overflow-hidden rounded-md border border-border bg-popover font-inter text-foreground shadow-md",
+                "relative top-1 z-100 max-w-sm overflow-hidden rounded-md border border-border-control bg-surface-base font-inter text-foreground-default shadow-md",
                 position === "popper" && "max-h-72",
                 dropdownContainerClassName
               )}
@@ -102,7 +102,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <Spinner size="xs" />
-                    <span className="ml-2 text-xs text-muted">Loading...</span>
+                    <span className="ml-2 text-xs text-muted-cool-secondary">Loading...</span>
                   </div>
                 ) : (
                   children
@@ -136,9 +136,10 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         {...props}
         disabled={isDisabled}
         className={twMerge(
-          "relative mb-0.5 cursor-pointer items-center truncate overflow-hidden rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-foreground/10 data-highlighted:bg-container-hover/80",
+          "relative mb-0.5 cursor-pointer items-center truncate overflow-hidden rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-surface-selected data-highlighted:bg-surface-hover/80",
           isSelected && "bg-project",
-          isDisabled && "cursor-not-allowed text-muted opacity-80 hover:bg-transparent!",
+          isDisabled &&
+            "cursor-not-allowed text-surface-cool-active opacity-80 hover:bg-transparent!",
           className
         )}
         ref={forwardedRef}
@@ -171,9 +172,10 @@ export const SelectClear = forwardRef<HTMLDivElement, SelectClearProps>(
         onSelect={() => onClear()}
         onClick={() => onClear()}
         className={twMerge(
-          "relative mb-0.5 flex cursor-pointer items-center rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-foreground/10 data-highlighted:bg-container-hover/80",
+          "relative mb-0.5 flex cursor-pointer items-center rounded-md py-2 pr-4 pl-10 text-sm outline-hidden transition-all select-none hover:bg-surface-selected data-highlighted:bg-surface-hover/80",
           isSelected && "bg-project",
-          isDisabled && "cursor-not-allowed text-muted hover:bg-transparent hover:text-muted",
+          isDisabled &&
+            "cursor-not-allowed text-surface-cool-active hover:bg-transparent hover:text-surface-active",
           className
         )}
         ref={forwardedRef}

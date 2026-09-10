@@ -167,7 +167,7 @@ export const ViewSecretRequestByIDPage = () => {
 
   if (isPending) {
     return (
-      <div className="h-screen w-screen bg-background">
+      <div className="h-screen w-screen bg-page">
         <PageLoader lottieClassName="w-34" />
       </div>
     );
@@ -250,7 +250,7 @@ export const ViewSecretRequestByIDPage = () => {
 
   // Default: Infisical auth page layout
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-background px-4 text-foreground scheme-dark">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-page px-4 text-foreground scheme-dark">
       <AuthPageBackground />
       <Helmet>
         <title>Secret Request | Infisical</title>

@@ -115,7 +115,7 @@ export const ScepDetailsModal = ({ isOpen, onClose, profile }: Props) => {
           className="mt-4"
           tooltipText="The Registration Authority certificate used by SCEP clients."
         />
-        <div className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3">
+        <div className="flex items-center justify-between rounded-md border border-border-control bg-surface-base px-4 py-3">
           <p className="text-xs text-muted">Expires: {raCertExpiresAt}</p>
           <IconButton
             ariaLabel="download RA certificate"

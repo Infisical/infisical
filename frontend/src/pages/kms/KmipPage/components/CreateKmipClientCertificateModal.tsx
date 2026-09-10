@@ -230,8 +230,8 @@ const KmipClientCertificateForm = ({
           />
 
           {kmipClient && (
-            <div className="mt-4 rounded-md border border-border bg-container-hover p-4">
-              <div className="mb-3 flex items-center text-sm font-medium text-foreground">
+            <div className="mt-4 rounded-md border border-border-control bg-surface-hover p-4">
+              <div className="mb-3 flex items-center text-sm font-medium text-foreground-secondary">
                 <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
                 Certificate Subject Values
               </div>
@@ -241,7 +241,7 @@ const KmipClientCertificateForm = ({
                 below.
               </p>
               <div className="space-y-2">
-                <div className="flex items-center justify-between rounded bg-foreground/10 px-3 py-2">
+                <div className="flex items-center justify-between rounded bg-surface-active px-3 py-2">
                   <div>
                     <div className="text-xs text-muted">CN (Common Name) = KMIP Client ID</div>
                     <div className="font-mono text-sm text-foreground">{kmipClient.id}</div>
@@ -255,7 +255,7 @@ const KmipClientCertificateForm = ({
                     <FontAwesomeIcon icon={faCopy} />
                   </IconButton>
                 </div>
-                <div className="flex items-center justify-between rounded bg-foreground/10 px-3 py-2">
+                <div className="flex items-center justify-between rounded bg-surface-active px-3 py-2">
                   <div>
                     <div className="text-xs text-muted">OU (Organizational Unit) = Project ID</div>
                     <div className="font-mono text-sm text-foreground">{kmipClient.projectId}</div>

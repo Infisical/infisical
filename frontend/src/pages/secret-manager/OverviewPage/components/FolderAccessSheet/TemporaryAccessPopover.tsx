@@ -38,7 +38,7 @@ export const TemporaryAccessPopover = ({
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="neutral" size="md" className="w-full justify-between">
-          <span className="flex items-center gap-2 text-foreground">
+          <span className="flex items-center gap-2 text-foreground-secondary">
             <ClockIcon className="size-3.5" />
             {label}
           </span>

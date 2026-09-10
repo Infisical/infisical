@@ -47,7 +47,7 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
 
   return (
     <>
-      <div className="mb-4 flex items-start justify-between border-b border-border pb-4">
+      <div className="mb-4 flex items-start justify-between border-b border-border-secondary-strong pb-4">
         <div className="flex-col">
           <h3 className="text-xl font-medium">{name}</h3>
           <h2 className="text-sm text-muted">

@@ -15,7 +15,7 @@ export const SecretScanningDataSourceModalHeader = ({ type, isConfigured }: Prop
       <img
         alt={`${dataSourceDetails.name} logo`}
         src={`/images/integrations/${dataSourceDetails.image}`}
-        className="h-12 rounded-md bg-container p-2"
+        className="h-12 rounded-md bg-surface-recessed p-2"
       />
       <div>
         <div className="flex items-center gap-x-2 text-label">

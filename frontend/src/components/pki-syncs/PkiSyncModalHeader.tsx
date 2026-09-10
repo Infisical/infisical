@@ -15,7 +15,7 @@ export const PkiSyncModalHeader = ({ destination, isConfigured }: Props) => {
       <img
         alt={`${destinationDetails.name} logo`}
         src={`/images/integrations/${destinationDetails.image}`}
-        className="h-12 w-12 rounded-md bg-container object-contain p-2"
+        className="h-12 w-12 rounded-md bg-surface-recessed object-contain p-2"
       />
       <div>
         <div className="flex items-center gap-x-2 text-label">

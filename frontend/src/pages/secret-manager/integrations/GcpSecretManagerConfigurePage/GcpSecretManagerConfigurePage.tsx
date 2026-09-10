@@ -178,7 +178,7 @@ export const GcpSecretManagerConfigurePage = () => {
       })}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <Card className="max-w-lg rounded-md border border-border">
+      <Card className="max-w-lg rounded-md border border-border-control">
         <Helmet>
           <title>Set Up GCP Secret Manager Integration</title>
         </Helmet>
@@ -214,7 +214,7 @@ export const GcpSecretManagerConfigurePage = () => {
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <div className="flex w-full flex-row border-b border-border">
+            <div className="flex w-full flex-row border-b border-border-control">
               <Tab value={TabSections.Connection}>Connection</Tab>
               <Tab value={TabSections.Options}>Options</Tab>
             </div>
@@ -405,10 +405,10 @@ export const GcpSecretManagerConfigurePage = () => {
           Create Integration
         </Button>
       </Card>
-      {/* <div className="border-t border-border w-full max-w-md mt-6"/>
-      <div className="flex flex-col bg-container border border-border w-full p-4 max-w-lg mt-6 rounded-md">
+      {/* <div className="border-t border-border-faint w-full max-w-md mt-6"/>
+      <div className="flex flex-col bg-surface-raised border border-border-control w-full p-4 max-w-lg mt-6 rounded-md">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-foreground text-xl"/>
+          <FontAwesomeIcon icon={faCircleInfo} className="text-foreground-secondary text-xl"/>
           <span className="ml-3 text-md text-foreground">Pro Tip</span>
         </div>
         <span className="text-label text-sm mt-4">
@@ -459,7 +459,7 @@ export const GcpSecretManagerConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}

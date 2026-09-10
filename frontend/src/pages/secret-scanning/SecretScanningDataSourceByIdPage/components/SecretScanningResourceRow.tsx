@@ -121,7 +121,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   return (
     <Tr
       className={twMerge(
-        "group h-10 transition-colors duration-100 hover:bg-container-hover",
+        "group h-10 transition-colors duration-100 hover:bg-surface-hover",
         lastScanStatus === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`resource-${id}`}
@@ -244,7 +244,11 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
                       >
                         <div className="flex h-full w-full items-center justify-between gap-1">
                           <span>Trigger Scan</span>
-                          <FontAwesomeIcon className="text-label" size="sm" icon={faInfoCircle} />
+                          <FontAwesomeIcon
+                            className="text-label-secondary"
+                            size="sm"
+                            icon={faInfoCircle}
+                          />
                         </div>
                       </Tooltip>
                     </DropdownMenuItem>

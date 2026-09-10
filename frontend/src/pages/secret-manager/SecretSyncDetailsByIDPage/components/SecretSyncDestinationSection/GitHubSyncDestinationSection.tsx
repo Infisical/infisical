@@ -43,7 +43,7 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
                 {destinationConfig.selectedRepositoryIds?.length ?? 0} Repositories
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoIcon className="ml-1 inline size-3 text-label" />
+                    <InfoIcon className="ml-1 inline size-3 text-label-secondary" />
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <GitHubSyncSelectedRepositoriesTooltipContent secretSync={secretSync} />

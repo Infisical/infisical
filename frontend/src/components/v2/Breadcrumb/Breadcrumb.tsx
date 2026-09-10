@@ -26,7 +26,7 @@ const BreadcrumbList = React.forwardRef<HTMLOListElement, React.ComponentPropsWi
     <ol
       ref={ref}
       className={twMerge(
-        "flex flex-wrap items-center text-sm break-words text-foreground",
+        "flex flex-wrap items-center text-sm break-words text-foreground-default",
         className
       )}
       {...props}
@@ -69,7 +69,7 @@ const BreadcrumbPage = React.forwardRef<HTMLSpanElement, React.ComponentPropsWit
       role="link"
       aria-disabled="true"
       aria-current="page"
-      className={twMerge("font-normal text-foreground last:text-label", className)}
+      className={twMerge("font-normal text-foreground-soft last:text-label-secondary", className)}
       {...props}
     />
   )
@@ -126,7 +126,7 @@ const BreadcrumbContainer = ({
   breadcrumbs: TBreadcrumbFormat[];
   className?: string;
 }) => (
-  <div className={twMerge("mx-auto max-w-8xl overflow-hidden text-foreground", className)}>
+  <div className={twMerge("mx-auto max-w-8xl overflow-hidden text-foreground-inverse", className)}>
     <Breadcrumb className="overflow-hidden">
       <BreadcrumbList className="overflow-hidden">
         {(breadcrumbs as TBreadcrumbFormat[]).map((el, index) => {
@@ -141,7 +141,11 @@ const BreadcrumbContainer = ({
                     <BreadcrumbItem>
                       <BreadcrumbSegment className="rounded-md py-1 py-2">
                         {el.label}{" "}
-                        <FontAwesomeIcon icon={faCaretDown} size="sm" className="ml-2 text-label" />
+                        <FontAwesomeIcon
+                          icon={faCaretDown}
+                          size="sm"
+                          className="ml-2 text-label-secondary"
+                        />
                       </BreadcrumbSegment>
                     </BreadcrumbItem>
                   </DropdownMenuTrigger>

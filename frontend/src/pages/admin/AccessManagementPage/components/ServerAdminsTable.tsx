@@ -417,7 +417,7 @@ export const ServerAdminsTable = () => {
           buttonText="Remove"
         >
           <div className="mt-4 text-sm text-muted">The following users will be deleted:</div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border bg-danger/10 p-4 pl-8 text-sm text-danger">
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;

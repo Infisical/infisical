@@ -87,7 +87,7 @@ export const SecretScanningFindingRow = ({
       <Tr
         onClick={setIsExpanded.toggle}
         className={twMerge(
-          "group h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover"
+          "group h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover"
         )}
         key={`resource-${id}`}
       >
@@ -163,7 +163,7 @@ export const SecretScanningFindingRow = ({
       <Tr>
         <Td colSpan={7} className="border-none! p-0">
           <div
-            className={`w-full bg-card/75 transition-all duration-500 ${
+            className={`w-full bg-surface-base/75 transition-all duration-500 ${
               isExpanded ? "max-h-200 overflow-y-auto opacity-100" : "max-h-0 overflow-hidden"
             }`}
           >
@@ -203,7 +203,7 @@ export const SecretScanningFindingRow = ({
                   {details.link}
                 </a>
               </GenericFieldLabel>
-              <div className="col-span-full flex items-center border-t border-border" />
+              <div className="col-span-full flex items-center border-t border-border-strong" />
               <ProjectPermissionCan
                 I={ProjectPermissionSecretScanningFindingActions.Update}
                 a={ProjectPermissionSub.SecretScanningFindings}

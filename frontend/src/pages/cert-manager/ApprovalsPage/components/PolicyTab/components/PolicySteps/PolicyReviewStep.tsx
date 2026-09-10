@@ -12,7 +12,7 @@ import { TPolicyForm } from "../PolicySchema";
 const ReviewField = ({ label, value }: { label: string; value: string | number }) => (
   <div className="flex gap-x-8">
     <span className="min-w-[140px] text-sm text-muted">{label}</span>
-    <span className="text-sm text-foreground">{value}</span>
+    <span className="text-sm text-foreground-secondary">{value}</span>
   </div>
 );
 
@@ -44,8 +44,8 @@ export const PolicyReviewStep = () => {
   return (
     <div className="space-y-6">
       <div>
-        <div className="mb-3 border-b border-border pb-2">
-          <h3 className="text-sm font-medium text-foreground">Policy Configuration</h3>
+        <div className="mb-3 border-b border-border-control pb-2">
+          <h3 className="text-sm font-medium text-foreground-secondary">Policy Configuration</h3>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
@@ -64,8 +64,8 @@ export const PolicyReviewStep = () => {
       </div>
 
       <div>
-        <div className="mb-3 border-b border-border pb-2">
-          <h3 className="text-sm font-medium text-foreground">Approval Sequence</h3>
+        <div className="mb-3 border-b border-border-control pb-2">
+          <h3 className="text-sm font-medium text-foreground-secondary">Approval Sequence</h3>
         </div>
         <div className="space-y-3">
           {steps.map((step, index) => {
@@ -75,7 +75,7 @@ export const PolicyReviewStep = () => {
             return (
               <div
                 key={`step-${index + 1}`}
-                className="rounded border border-border bg-container-hover p-3"
+                className="rounded border border-border-control bg-surface-hover p-3"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export const PolicyReviewStep = () => {
                       {index + 1}
                     </span>
                     <div>
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="text-sm font-medium text-foreground-secondary">
                         Step {index + 1}
                         {step.name && (
                           <span className="ml-2 text-xs text-muted">({step.name})</span>
@@ -107,10 +107,10 @@ export const PolicyReviewStep = () => {
                         {userApprovers.map((approver, approverIndex) => (
                           <div
                             key={`step-${index + 1}-user-${approverIndex + 1}`}
-                            className="flex items-center gap-1.5 rounded bg-container-hover px-2 py-1 text-xs text-label"
+                            className="flex items-center gap-1.5 rounded bg-surface-hover px-2 py-1 text-xs text-label"
                           >
                             <FontAwesomeIcon icon={faUsers} className="text-muted" />
-                            <span className="text-foreground">
+                            <span className="text-foreground-secondary">
                               {getApproverLabel(approver.id, ApproverType.User)}
                             </span>
                           </div>
@@ -128,10 +128,10 @@ export const PolicyReviewStep = () => {
                         {groupApprovers.map((approver, approverIndex) => (
                           <div
                             key={`step-${index + 1}-group-${approverIndex + 1}`}
-                            className="flex items-center gap-1.5 rounded bg-container-hover px-2 py-1 text-xs text-label"
+                            className="flex items-center gap-1.5 rounded bg-surface-hover px-2 py-1 text-xs text-label"
                           >
                             <FontAwesomeIcon icon={faUsers} className="text-muted" />
-                            <span className="text-foreground">
+                            <span className="text-foreground-secondary">
                               {getApproverLabel(approver.id, ApproverType.Group)}
                             </span>
                           </div>
@@ -141,7 +141,7 @@ export const PolicyReviewStep = () => {
                   )}
 
                   {step.approvers.length === 0 && (
-                    <span className="text-xs text-muted">No approvers defined</span>
+                    <span className="text-xs text-surface-selected">No approvers defined</span>
                   )}
                 </div>
               </div>

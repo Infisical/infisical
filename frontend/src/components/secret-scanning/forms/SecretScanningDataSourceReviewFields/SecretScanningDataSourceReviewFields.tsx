@@ -25,7 +25,7 @@ export const SecretScanningDataSourceReviewFields = () => {
     <div className="mb-4 flex flex-col gap-6">
       <Component />
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-border">
+        <div className="w-full border-b border-border-control">
           <span className="text-sm text-label">Details</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">

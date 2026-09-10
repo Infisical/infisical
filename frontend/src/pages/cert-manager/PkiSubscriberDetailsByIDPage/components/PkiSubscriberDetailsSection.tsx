@@ -100,8 +100,8 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
   );
 
   return pkiSubscriber ? (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between border-b border-border pb-4">
+    <div className="rounded-lg border border-border-control bg-surface-base p-4">
+      <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
         <h3 className="text-lg font-medium text-foreground">PKI Subscriber Details</h3>
         <ProjectPermissionCan
           I={ProjectPermissionPkiSubscriberActions.Edit}
@@ -174,7 +174,7 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
         {pkiSubscriber.lastOperationStatus === SubscriberOperationStatus.FAILED && (
           <div className="mb-4">
             <GenericFieldLabel labelClassName="text-danger" label="Last Operation Status">
-              <p className="rounded-sm bg-foreground/10 p-2 text-xs break-words">
+              <p className="rounded-sm bg-surface-active p-2 text-xs break-words">
                 {pkiSubscriber.lastOperationMessage}
               </p>
             </GenericFieldLabel>

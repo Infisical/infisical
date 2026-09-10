@@ -267,7 +267,7 @@ export const SecretSyncRow = ({
                           <RefreshCwIcon />
                           Trigger Sync
                         </span>
-                        <InfoIcon className="size-3.5 text-label" />
+                        <InfoIcon className="size-3.5 text-label-secondary" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="left" sideOffset={20}>
@@ -298,7 +298,7 @@ export const SecretSyncRow = ({
                             <DownloadIcon />
                             Import Secrets
                           </span>
-                          <InfoIcon className="size-3.5 text-label" />
+                          <InfoIcon className="size-3.5 text-label-secondary" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={20}>
@@ -330,7 +330,7 @@ export const SecretSyncRow = ({
                             <EraserIcon />
                             Remove Secrets
                           </span>
-                          <InfoIcon className="size-3.5 text-label" />
+                          <InfoIcon className="size-3.5 text-label-secondary" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={20}>

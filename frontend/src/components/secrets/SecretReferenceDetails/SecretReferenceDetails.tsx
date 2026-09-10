@@ -257,7 +257,7 @@ const SecretDependencyTree = ({ secretPath, environment, secretKey }: Props) => 
 
   return (
     <div>
-      <div className="h-72 w-full rounded-md border border-border">
+      <div className="h-72 w-full rounded-md border border-border-control">
         {isError ? (
           <div className="flex h-full items-center justify-center">
             <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-danger" />
@@ -388,7 +388,7 @@ export const SecretReferenceTree = ({
             key="value-overriden"
             isReadOnly
             value={secretValue}
-            containerClassName="text-label hover:border-project/50 border border-border bg-popover px-2 py-1.5"
+            containerClassName="text-label-secondary hover:border-project/50 border border-border-control bg-surface-sunken px-2 py-1.5"
           />
         </FormControl>
 
@@ -397,7 +397,7 @@ export const SecretReferenceTree = ({
           className="mb-2"
           label="Reference Tree"
         />
-        <div className="secret-tree-container relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-border bg-popover p-3 text-sm text-foreground">
+        <div className="secret-tree-container relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-border-control bg-surface-sunken p-3 text-sm text-foreground-secondary">
           {isError && (
             <div className="flex items-center justify-center py-4">
               <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-danger" />

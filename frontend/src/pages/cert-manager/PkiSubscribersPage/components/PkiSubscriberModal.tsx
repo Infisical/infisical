@@ -403,7 +403,11 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
             <TabPanel value={FormTab.Configuration}>
               {pkiSubscriber && (
                 <FormControl label="Subscriber ID">
-                  <Input value={pkiSubscriber.id} isDisabled className="bg-foreground/5" />
+                  <Input
+                    value={pkiSubscriber.id}
+                    isDisabled
+                    className="bg-foreground-inverse/[0.07]"
+                  />
                 </FormControl>
               )}
               <Controller

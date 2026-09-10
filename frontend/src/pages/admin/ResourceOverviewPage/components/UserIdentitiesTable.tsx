@@ -444,7 +444,9 @@ export const UserIdentitiesTable = () => {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <p className="text-xl font-medium text-foreground">User Identities</p>
-            <p className="text-sm text-label">Manage user identities across your instance.</p>
+            <p className="text-sm text-label-secondary">
+              Manage user identities across your instance.
+            </p>
           </div>
         </div>
         <UserPanelTable
@@ -513,7 +515,7 @@ export const UserIdentitiesTable = () => {
           buttonText="Delete"
         >
           <div className="mt-4 text-sm text-muted">The following users will be deleted:</div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border bg-danger/10 p-4 pl-8 text-sm text-danger">
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;

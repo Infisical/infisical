@@ -225,7 +225,7 @@ export const AwsSecretManagerConfigurePage = () => {
         <title>Set Up AWS Secrets Manager Integration</title>
       </Helmet>
       <form onSubmit={handleSubmit(handleButtonClick)}>
-        <Card className="max-w-lg rounded-md border border-border">
+        <Card className="max-w-lg rounded-md border border-border-control">
           <CardTitle
             className="px-6 text-left text-xl"
             subTitle="Choose which environment in Infisical you want to sync to secerts in AWS Secrets Manager."
@@ -258,7 +258,7 @@ export const AwsSecretManagerConfigurePage = () => {
           </CardTitle>
           <Tabs defaultValue={TabSections.Connection} className="px-6">
             <TabList>
-              <div className="flex w-full flex-row border-b border-border">
+              <div className="flex w-full flex-row border-b border-border-control">
                 <Tab value={TabSections.Connection}>Connection</Tab>
                 <Tab value={TabSections.Options}>Options</Tab>
               </div>
@@ -281,7 +281,7 @@ export const AwsSecretManagerConfigurePage = () => {
                       isError={Boolean(error)}
                     >
                       <Select
-                        className="w-full border border-border"
+                        className="w-full border border-border-strong"
                         dropdownContainerClassName="max-w-full"
                         value={field.value}
                         onValueChange={(val) => {
@@ -325,7 +325,7 @@ export const AwsSecretManagerConfigurePage = () => {
                       <Select
                         defaultValue={field.value}
                         onValueChange={(e) => onChange(e)}
-                        className="w-full border border-border"
+                        className="w-full border border-border-strong"
                         dropdownContainerClassName="max-w-full"
                       >
                         {awsRegions.map((awsRegion) => (
@@ -358,7 +358,7 @@ export const AwsSecretManagerConfigurePage = () => {
                           }
                           onChange(e);
                         }}
-                        className="w-full border border-border"
+                        className="w-full border border-border-strong"
                         dropdownContainerClassName="max-w-full"
                       >
                         {mappingBehaviors.map((option) => (
@@ -447,7 +447,7 @@ export const AwsSecretManagerConfigurePage = () => {
                               setValue("tags", []);
                               onChange(e);
                             }}
-                            className="w-full border border-border"
+                            className="w-full border border-border-strong"
                             dropdownContainerClassName="max-w-full"
                           >
                             <SelectItem
@@ -527,7 +527,7 @@ export const AwsSecretManagerConfigurePage = () => {
                       <Select
                         defaultValue={field.value}
                         onValueChange={(e) => onChange(e)}
-                        className="w-full border border-border"
+                        className="w-full border border-border-strong"
                         dropdownContainerClassName="max-w-full"
                       >
                         {integrationAuthAwsKmsKeys?.length ? (
@@ -564,10 +564,10 @@ export const AwsSecretManagerConfigurePage = () => {
             Create Integration
           </Button>
         </Card>
-        <div className="mt-6 w-full max-w-md border-t border-border" />
-        <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border bg-container p-4">
+        <div className="mt-6 w-full max-w-md border-t border-border-faint" />
+        <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
           <div className="flex flex-row items-center">
-            <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground" />{" "}
+            <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground-secondary" />{" "}
             <span className="text-md ml-3 text-foreground">Pro Tip</span>
           </div>
           <span className="mt-4 text-sm text-label">
@@ -591,7 +591,7 @@ export const AwsSecretManagerConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}

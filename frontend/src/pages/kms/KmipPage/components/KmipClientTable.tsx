@@ -141,7 +141,7 @@ export const KmipClientTable = () => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: 30 }}
     >
-      <div className="mb-6 rounded-lg border border-border bg-card p-4">
+      <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xl font-medium whitespace-nowrap text-foreground">KMIP Clients</p>
           <div className="flex w-full justify-end pr-4">
@@ -150,7 +150,7 @@ export const KmipClientTable = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/documentation/platform/kms"
             >
-              <span className="flex w-max cursor-pointer items-center rounded-md border border-border bg-foreground/10 px-4 py-2 text-foreground duration-200 hover:border-project/40 hover:bg-project/10 hover:text-foreground">
+              <span className="flex w-max cursor-pointer items-center rounded-md border border-border-strong bg-surface-active px-4 py-2 text-foreground-secondary duration-200 hover:border-project/40 hover:bg-project/10 hover:text-foreground-inverse">
                 Documentation{" "}
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
@@ -224,7 +224,7 @@ export const KmipClientTable = () => {
                   const { name, id, description, permissions } = kmipClient;
 
                   return (
-                    <Tr className="group h-10 hover:bg-container-hover" key={`st-v3-${id}`}>
+                    <Tr className="group h-10 hover:bg-surface-hover" key={`st-v3-${id}`}>
                       <Td>{name}</Td>
                       <Td className="max-w-80 break-all">{description}</Td>
                       <Td className="max-w-40">{[permissions.join(", ")]}</Td>

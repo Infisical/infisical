@@ -210,7 +210,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
                 isTableFiltered && "border-project/50 text-project"
               )}
             >
@@ -428,7 +428,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
         findings={popUp.updateFinding.data}
       />
       {selectedRows.length > 0 && (
-        <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-container p-2 pl-4">
+        <div className="mt-4 flex items-center justify-between rounded-lg border border-border-control bg-surface-raised p-2 pl-4">
           <span>
             {selectedRows.length} finding{selectedRows.length === 1 ? "" : "s"} selected
           </span>

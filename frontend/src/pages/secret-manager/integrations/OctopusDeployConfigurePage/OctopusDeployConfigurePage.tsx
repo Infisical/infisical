@@ -211,9 +211,9 @@ export const OctopusDeployConfigurePage = () => {
             )}
           />
           <div className="col-span-2 flex w-full flex-row items-center pb-2">
-            <div className="w-full border-t border-border" />
+            <div className="w-full border-t border-border-strong" />
             <span className="mx-2 text-xs whitespace-nowrap text-muted">Sync To</span>
-            <div className="w-full border-t border-border" />
+            <div className="w-full border-t border-border-strong" />
           </div>
           <Controller
             control={control}

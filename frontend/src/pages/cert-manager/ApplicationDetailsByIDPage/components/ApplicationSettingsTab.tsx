@@ -304,7 +304,7 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
         {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
           formatAlertBefore(alert.alertBefore)
         ) : (
-          <span className="text-foreground0">—</span>
+          <span className="text-surface-selected">—</span>
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -330,7 +330,7 @@ const AlertRow = ({ alert, onView, onEdit, onDelete, canEdit, canDelete }: Alert
             </TooltipContent>
           </Tooltip>
         ) : (
-          <span className="text-foreground0">—</span>
+          <span className="text-surface-selected">—</span>
         )}
       </TableCell>
       <TableCell className="text-right">

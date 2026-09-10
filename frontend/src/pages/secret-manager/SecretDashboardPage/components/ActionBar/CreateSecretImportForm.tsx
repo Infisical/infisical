@@ -359,7 +359,7 @@ export const CreateSecretImportForm = ({
 
         {selectedGrant && (
           <Item variant="outline">
-            <ItemMedia className="flex h-9 w-9 items-center justify-center rounded-md bg-container-hover">
+            <ItemMedia className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
               <Key className="size-4 text-warning" />
             </ItemMedia>
             <ItemContent>
@@ -453,7 +453,7 @@ export const CreateSecretImportForm = ({
                     You can import secrets into your project in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-foreground">
+                    <li className="text-foreground-secondary">
                       <strong className="font-medium text-foreground">This Project</strong> —
                       Inherit secrets from another environment or folder within{" "}
                       <strong className="font-medium text-foreground">
@@ -465,7 +465,7 @@ export const CreateSecretImportForm = ({
                         the same project.
                       </p>
                     </li>
-                    <li className="text-foreground">
+                    <li className="text-foreground-secondary">
                       <strong className="font-medium text-foreground">Another Project</strong> —
                       Import a folder or environment from a different project that has granted
                       access to this one.

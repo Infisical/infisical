@@ -699,7 +699,7 @@ export const OrganizationsTable = () => {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xl font-medium text-foreground">Organizations</p>
-          <p className="text-sm text-label">
+          <p className="text-sm text-label-secondary">
             Manage, join and view organizations across your instance.
           </p>
         </div>

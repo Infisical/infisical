@@ -69,7 +69,7 @@ export const PkiSubscriberSection = () => {
   const subscriberName = subscriberStatusData?.subscriberName || "";
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-4">
+    <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-medium text-foreground">Subscribers</p>
         <div className="flex w-full justify-end">
@@ -78,7 +78,7 @@ export const PkiSubscriberSection = () => {
             rel="noopener noreferrer"
             href="https://infisical.com/docs/documentation/platform/pki/subscribers"
           >
-            <span className="flex w-max cursor-pointer items-center rounded-md border border-border bg-foreground/10 px-4 py-2 text-foreground duration-200 hover:border-project/40 hover:bg-project/10 hover:text-foreground">
+            <span className="flex w-max cursor-pointer items-center rounded-md border border-border-strong bg-surface-active px-4 py-2 text-foreground-secondary duration-200 hover:border-project/40 hover:bg-project/10 hover:text-foreground-inverse">
               Documentation{" "}
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}

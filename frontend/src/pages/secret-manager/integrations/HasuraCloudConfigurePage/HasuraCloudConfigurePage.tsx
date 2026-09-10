@@ -89,7 +89,7 @@ export const HasuraCloudConfigurePage = () => {
       <Helmet>
         <title>Set Up {APP_NAME} Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border">
+      <Card className="max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle={`Choose which environment or folder in Infisical you want to sync to ${APP_NAME} environment variables.`}
@@ -132,7 +132,7 @@ export const HasuraCloudConfigurePage = () => {
                 isError={Boolean(error)}
               >
                 <Select
-                  className="w-full border border-border"
+                  className="w-full border border-border-strong"
                   value={field.value}
                   onValueChange={(val) => {
                     field.onChange(val);
@@ -171,7 +171,7 @@ export const HasuraCloudConfigurePage = () => {
                 isError={Boolean(error)}
               >
                 <Select
-                  className="w-full border border-border"
+                  className="w-full border border-border-strong"
                   value={field.value}
                   isDisabled={integrationAuthApps?.length === 0}
                   onValueChange={(val) => {
@@ -213,7 +213,7 @@ export const HasuraCloudConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}

@@ -37,26 +37,29 @@ export const CreatableSelect = <T,>({
         container: () => "w-full font-inter",
         control: ({ isFocused }) =>
           twMerge(
-            isFocused ? "border-project/50" : "border-border hover:border-foreground/20",
-            "w-full rounded-md border bg-card p-0.5 font-inter text-foreground hover:cursor-pointer"
+            isFocused
+              ? "border-project/50"
+              : "border-border-control hover:border-border-cool-emphasis",
+            "w-full rounded-md border bg-surface-base p-0.5 font-inter text-foreground-secondary hover:cursor-pointer"
           ),
         placeholder: () => "text-muted text-sm pl-1 py-0.5",
         input: () => "pl-1 py-0.5",
         valueContainer: () => `p-1 max-h-56 ${isMulti ? "overflow-y-auto!" : ""} gap-1`,
         singleValue: () => "leading-7 ml-1",
-        multiValue: () => "bg-foreground/10 rounded-sm items-center py-0.5 px-2 gap-1.5",
+        multiValue: () => "bg-surface-active rounded-sm items-center py-0.5 px-2 gap-1.5",
         multiValueLabel: () => "leading-6 text-sm",
-        multiValueRemove: () => "hover:text-danger text-muted",
+        multiValueRemove: () => "hover:text-danger text-muted-secondary",
         indicatorsContainer: () => "p-1 gap-1",
-        clearIndicator: () => "p-1 hover:text-danger text-muted",
-        indicatorSeparator: () => "bg-muted",
-        dropdownIndicator: () => "text-foreground p-1",
-        menu: () => "mt-2 border text-sm text-foreground bg-popover border-border rounded-md",
+        clearIndicator: () => "p-1 hover:text-danger text-muted-secondary",
+        indicatorSeparator: () => "bg-muted-secondary",
+        dropdownIndicator: () => "text-foreground-soft p-1",
+        menu: () =>
+          "mt-2 border text-sm text-foreground-secondary bg-surface-base border-border-control rounded-md",
         groupHeading: () => "ml-3 mt-2 mb-1 text-muted text-sm",
         option: ({ isFocused, isSelected }) =>
           twMerge(
-            isFocused && "bg-container-hover active:bg-foreground/10",
-            isSelected && "text-foreground",
+            isFocused && "bg-surface-hover active:bg-surface-active",
+            isSelected && "text-foreground-secondary",
             "px-3 py-2 text-xs hover:cursor-pointer"
           ),
         noOptionsMessage: () => "text-muted p-2 rounded-md",

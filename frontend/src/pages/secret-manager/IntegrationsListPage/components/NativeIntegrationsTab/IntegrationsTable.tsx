@@ -257,7 +257,7 @@ export const IntegrationsTable = ({
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border bg-container p-0 transition-all hover:border-project/60 hover:bg-project/10",
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
                 isTableFiltered && "border-project/50 text-project"
               )}
             >

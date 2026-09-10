@@ -283,7 +283,7 @@ export const CertificateRequestsSection = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium text-foreground">Filters</h3>
-                  <span className="text-xs text-label">
+                  <span className="text-xs text-label-secondary">
                     {isTableFiltered && (
                       <button
                         type="button"
@@ -298,7 +298,7 @@ export const CertificateRequestsSection = ({
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-label uppercase">
+                    <span className="text-xs font-medium text-label-secondary uppercase">
                       Certificate Profiles
                     </span>
                     {pendingProfileIds.length > 0 && (
@@ -329,7 +329,7 @@ export const CertificateRequestsSection = ({
                       })) || []
                     }
                     placeholder="Select certificate profiles..."
-                    className="w-full border-border bg-container-hover text-foreground"
+                    className="w-full border-border-control bg-surface-hover text-foreground-soft"
                     isMulti
                     isLoading={!profilesData}
                     maxMenuHeight={120}
@@ -338,7 +338,9 @@ export const CertificateRequestsSection = ({
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-label uppercase">Events</label>
+                    <label className="text-xs font-medium text-label-secondary uppercase">
+                      Events
+                    </label>
                     {pendingFilters.status && (
                       <button
                         type="button"
@@ -358,7 +360,7 @@ export const CertificateRequestsSection = ({
                       }));
                     }}
                     placeholder="All events"
-                    className="w-full border-border bg-container-hover text-foreground"
+                    className="w-full border-border-control bg-surface-hover text-foreground-soft"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
                   >

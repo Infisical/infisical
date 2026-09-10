@@ -207,7 +207,7 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
                   <Switch
                     id="disableManagedCrlDistributionPointUrl"
                     className="bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
-                    thumbClassName="bg-container"
+                    thumbClassName="bg-surface-raised"
                     isChecked={value}
                     onCheckedChange={onChange}
                   >

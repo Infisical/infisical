@@ -65,7 +65,7 @@ export const TerraformCloudAuthorizePage = () => {
       <Helmet>
         <title>Authorize Terraform Cloud Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border">
+      <Card className="max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."

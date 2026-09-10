@@ -75,7 +75,7 @@ export const IntegrationRow = ({
         })
       }
       className={twMerge(
-        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-container-hover",
+        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover",
         isSynced === false && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`integration-${id}`}
@@ -131,7 +131,7 @@ export const IntegrationRow = ({
                       />
                       <div className="text-xs">Last Synced</div>
                     </div>
-                    <div className="rounded-sm bg-foreground/10 p-2 text-xs">
+                    <div className="rounded-sm bg-surface-active p-2 text-xs">
                       {format(new Date(integration.lastUsed!), "yyyy-MM-dd, hh:mm aaa")}
                     </div>
                   </div>
@@ -142,7 +142,7 @@ export const IntegrationRow = ({
                       <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                       <div className="text-xs">Failure Reason</div>
                     </div>
-                    <div className="rounded-sm bg-foreground/10 p-2 text-xs">{failureMessage}</div>
+                    <div className="rounded-sm bg-surface-active p-2 text-xs">{failureMessage}</div>
                   </div>
                 )}
               </div>

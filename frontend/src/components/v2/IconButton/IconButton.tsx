@@ -23,14 +23,18 @@ const iconButtonVariants = cva(
     variants: {
       colorSchema: {
         primary: ["bg-project", "text-black", "border-project hover:opacity-80"],
-        secondary: ["bg-foreground/10", "text-label", "border-border hover:bg-muted"],
+        secondary: [
+          "bg-surface-selected",
+          "text-label-cool",
+          "border-border-strong hover:bg-muted-secondary"
+        ],
         danger: ["bg-[#973939]", "text-white", "border-danger"]
       },
       variant: {
         solid: "",
         outline: ["bg-transparent", "border-2", "border-solid"],
         plain: "",
-        star: "text-foreground bg-foreground/10",
+        star: "text-foreground-soft bg-surface-selected",
         outline_bg: ""
       },
       isDisabled: {
@@ -58,7 +62,7 @@ const iconButtonVariants = cva(
         colorSchema: "primary",
         variant: "outline_bg",
         className:
-          "bg-container-hover border border-border hover:bg-project/15 hover:border-project/60 text-foreground hover:text-foreground duration-100"
+          "bg-surface-hover border border-border-control hover:bg-project/15 hover:border-project/60 text-foreground-soft hover:text-foreground-default duration-100"
       },
       {
         colorSchema: "danger",
@@ -73,7 +77,7 @@ const iconButtonVariants = cva(
       {
         colorSchema: "secondary",
         variant: "outline",
-        className: "hover:bg-foreground/10"
+        className: "hover:bg-surface-selected"
       },
       {
         colorSchema: "danger",
@@ -88,7 +92,7 @@ const iconButtonVariants = cva(
       {
         colorSchema: "secondary",
         variant: "plain",
-        className: "text-muted"
+        className: "text-surface-selected"
       },
       {
         colorSchema: "danger",
@@ -98,7 +102,7 @@ const iconButtonVariants = cva(
       {
         colorSchema: ["danger", "primary", "secondary"],
         variant: ["plain"],
-        className: "bg-transparent py-1 px-1 text-label"
+        className: "bg-transparent py-1 px-1 text-label-secondary"
       }
     ]
   }

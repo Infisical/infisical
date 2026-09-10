@@ -40,7 +40,7 @@ export function AzureKeyVaultAuthorizePage() {
         <title>Authorize Azure Key Vault Integration</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border">
+      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Authenticate with a specific tenant ID or let OAuth handle it automatically."

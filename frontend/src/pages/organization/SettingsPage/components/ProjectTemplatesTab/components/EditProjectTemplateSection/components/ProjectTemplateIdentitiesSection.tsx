@@ -290,9 +290,9 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
     <>
       <form
         onSubmit={handleSubmit(onFormSubmit)}
-        className="mb-6 rounded-lg border border-border bg-card p-4"
+        className="mb-6 rounded-lg border border-border-control bg-surface-base p-4"
       >
-        <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
+        <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
           <div>
             <h2 className="text-lg font-medium">Project Machine Identities</h2>
             <p className="text-sm text-muted">
@@ -487,7 +487,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
           subTitle="Create a new machine identity or assign an existing one"
         >
           <div className="mb-4 flex items-center justify-center gap-x-2">
-            <div className="flex w-3/4 gap-x-0.5 rounded-md border border-border bg-container p-1">
+            <div className="flex w-3/4 gap-x-0.5 rounded-md border border-border-control bg-surface-raised p-1">
               <Button
                 variant="outline_bg"
                 onClick={() => {
@@ -495,9 +495,9 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 }}
                 size="xs"
                 className={twMerge(
-                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-foreground/10",
+                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-surface-active",
                   addMachineIdentityType === AddIdentityType.CreateNew
-                    ? "bg-foreground/10"
+                    ? "bg-surface-selected"
                     : "bg-transparent"
                 )}
               >
@@ -510,9 +510,9 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 }}
                 size="xs"
                 className={twMerge(
-                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-foreground/10",
+                  "min-w-[2.4rem] flex-1 rounded border-none hover:bg-surface-active",
                   addMachineIdentityType === AddIdentityType.AssignExisting
-                    ? "bg-foreground/10"
+                    ? "bg-surface-selected"
                     : "bg-transparent"
                 )}
               >
@@ -529,7 +529,7 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                     You can add machine identities to your template in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-foreground">
+                    <li className="text-foreground-secondary">
                       <strong className="font-medium text-foreground">Create New</strong> - Define a
                       new machine identity that will be created when a project is made from this
                       template.

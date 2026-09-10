@@ -168,14 +168,14 @@ export const GitLabDataSourceConfigFields = () => {
                 <ul className="flex list-disc flex-col gap-3 pl-4">
                   <li>
                     <p className="text-label">
-                      <span className="font-medium text-foreground">Project</span>: Scan an
+                      <span className="font-medium text-foreground-soft">Project</span>: Scan an
                       individual GitLab project.
                     </p>
                   </li>
                   <li>
                     <p className="text-label">
-                      <span className="font-medium text-foreground">Group</span>: Scan one or more
-                      projects belonging to a GitLab group.
+                      <span className="font-medium text-foreground-soft">Group</span>: Scan one or
+                      more projects belonging to a GitLab group.
                     </p>
                   </li>
                 </ul>
@@ -188,7 +188,7 @@ export const GitLabDataSourceConfigFields = () => {
                 onChange(v);
                 clearAllFields();
               }}
-              className="w-full border border-border capitalize"
+              className="w-full border border-border-strong capitalize"
               position="popper"
               isDisabled={isUpdate}
               dropdownContainerClassName="max-w-none"
@@ -311,7 +311,7 @@ export const GitLabDataSourceConfigFields = () => {
               onValueChange={(val) => {
                 setValue("config.includeProjects", val === ScanMethod.AllProjects ? ["*"] : []);
               }}
-              className="w-full border border-border capitalize"
+              className="w-full border border-border-strong capitalize"
               position="popper"
               dropdownContainerClassName="max-w-none"
               isDisabled={!connectionId}

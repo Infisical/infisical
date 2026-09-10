@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import { isDarkAuthPath } from "./auth-theme";
+
 export type Theme = "dark" | "light" | "system";
 
 type ThemeContextValue = {
@@ -28,7 +30,8 @@ const getSystemTheme = () =>
   window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 
 const applyTheme = (theme: Theme) => {
-  const resolvedTheme = theme === "system" ? getSystemTheme() : theme;
+  const preferredTheme = theme === "system" ? getSystemTheme() : theme;
+  const resolvedTheme = isDarkAuthPath(window.location.pathname) ? "dark" : preferredTheme;
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.style.colorScheme = resolvedTheme;
 };
@@ -47,12 +50,15 @@ export const initializeTheme = () => {
   return theme;
 };
 
-export const ThemeProvider = ({ children }: React.PropsWithChildren) => {
+export const ThemeProvider = ({
+  children,
+  pathname
+}: React.PropsWithChildren<{ pathname: string }>) => {
   const [theme, setThemeState] = React.useState<Theme>(readStoredTheme);
 
   React.useLayoutEffect(() => {
     applyTheme(theme);
-  }, [theme]);
+  }, [theme, pathname]);
 
   React.useEffect(() => {
     const handleStorage = (event: StorageEvent) => {

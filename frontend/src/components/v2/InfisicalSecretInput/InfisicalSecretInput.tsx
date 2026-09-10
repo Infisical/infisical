@@ -499,7 +499,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onMouseDown={(e) => {
               if (showWizard) e.preventDefault();
             }}
-            className={`relative top-2 z-100 max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover font-inter text-foreground shadow-md ${showWizard ? "w-64" : "min-w-80"}`}
+            className={`relative top-2 z-100 max-h-80 thin-scrollbar overflow-auto rounded-md border border-border-control bg-surface-base font-inter text-foreground-default shadow-md ${showWizard ? "w-64" : "min-w-80"}`}
             style={showWizard ? undefined : { width: "var(--radix-popover-trigger-width)" }}
           >
             {showWizard ? (
@@ -511,7 +511,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               />
             ) : (
               <div
-                className="h-full w-full flex-col items-center justify-center rounded-md text-foreground"
+                className="h-full w-full flex-col items-center justify-center rounded-md text-foreground-inverse"
                 ref={popoverContentRef}
               >
                 {suggestions.map((item, i) => {
@@ -520,10 +520,10 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                   const isNoMatchMessage = item.slug === "__no_match__";
 
                   if (isNoMatchMessage) {
-                    entryIcon = <FontAwesomeIcon icon={faSearch} className="text-muted" />;
+                    entryIcon = <FontAwesomeIcon icon={faSearch} className="text-muted-cool" />;
                     subText = "No results";
                   } else if (item.type === ReferenceType.SECRET) {
-                    entryIcon = <FontAwesomeIcon icon={faKey} className="text-label" />;
+                    entryIcon = <FontAwesomeIcon icon={faKey} className="text-label-secondary" />;
                     subText = "Secret";
                   } else if (item.type === ReferenceType.ENVIRONMENT) {
                     entryIcon = <FontAwesomeIcon icon={faLayerGroup} className="text-success" />;
@@ -537,15 +537,15 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                     <div
                       role="status"
                       aria-label="no-match-message"
-                      className="flex w-full items-center justify-between border-border text-left"
+                      className="flex w-full items-center justify-between border-border-control text-left"
                       key={`secret-reference-secret-${i + 1}`}
                     >
                       <div className="text-md relative flex w-full cursor-default items-center justify-between px-2 py-2 opacity-75 outline-hidden transition-all select-none">
                         <div className="flex w-full items-start gap-2">
                           <div className="mt-1 flex items-center">{entryIcon}</div>
                           <div className="text-md w-10/12 truncate text-left">
-                            <span className="text-muted">{item.label}</span>
-                            <div className="mb-[0.1rem] text-xs leading-3 text-muted">
+                            <span className="text-muted-cool">{item.label}</span>
+                            <div className="mb-[0.1rem] text-xs leading-3 text-muted-secondary">
                               {subText}
                             </div>
                           </div>
@@ -566,19 +566,19 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                         handleSuggestionSelect(i);
                       }}
                       onMouseEnter={() => setHighlightedIndex(i)}
-                      className="flex w-full items-center justify-between border-none border-border bg-transparent p-0 text-left"
+                      className="flex w-full items-center justify-between border-none border-border-control bg-transparent p-0 text-left"
                       key={`secret-reference-secret-${i + 1}`}
                     >
                       <div
                         className={`${
-                          highlightedIndex === i ? "bg-foreground/10" : ""
-                        } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-container-hover data-highlighted:bg-container-hover`}
+                          highlightedIndex === i ? "bg-surface-selected" : ""
+                        } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-surface-hover data-highlighted:bg-surface-hover`}
                       >
                         <div className="flex w-full items-start gap-2">
                           <div className="mt-1 flex items-center">{entryIcon}</div>
                           <div className="text-md w-10/12 truncate text-left">
                             <span>{item.label}</span>
-                            <div className="mb-[0.1rem] text-xs leading-3 text-muted">
+                            <div className="mb-[0.1rem] text-xs leading-3 text-muted-secondary">
                               {subText}
                             </div>
                           </div>

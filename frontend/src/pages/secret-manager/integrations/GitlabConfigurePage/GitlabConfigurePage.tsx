@@ -212,7 +212,7 @@ export const GitlabConfigurePage = () => {
       <Helmet>
         <title>Set Up GitLab Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border">
+      <Card className="max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Select which environment or folder in Infisical you want to sync to GitLab's environment variables."
@@ -240,7 +240,7 @@ export const GitlabConfigurePage = () => {
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <div className="flex w-full flex-row border-b border-border">
+            <div className="flex w-full flex-row border-b border-border-control">
               <Tab value={TabSections.Connection}>Connection</Tab>
               <Tab value={TabSections.Options}>Options</Tab>
             </div>
@@ -412,7 +412,7 @@ export const GitlabConfigurePage = () => {
                     <Select
                       defaultValue={field.value}
                       onValueChange={(e) => onChange(e)}
-                      className="w-full border border-border"
+                      className="w-full border border-border-strong"
                       dropdownContainerClassName="max-w-full"
                     >
                       {initialSyncBehaviors.map((b) => {
@@ -556,7 +556,7 @@ export const GitlabConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}

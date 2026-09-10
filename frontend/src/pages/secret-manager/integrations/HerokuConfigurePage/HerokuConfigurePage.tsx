@@ -117,7 +117,7 @@ export const HerokuConfigurePage = () => {
       <Helmet>
         <title>Set Up Heroku Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border p-0">
+      <Card className="max-w-lg rounded-md border border-border-control p-0">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Select which environment or folder in Infisical you want to sync to Heroku's environment variables."
@@ -253,10 +253,10 @@ export const HerokuConfigurePage = () => {
         </form>
       </Card>
       {/* {integrationType === "App" && <>
-      <div className="mt-6 w-full max-w-md border-t border-border" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border bg-container p-4">
+      <div className="mt-6 w-full max-w-md border-t border-border-faint" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground" />{" "}
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground-secondary" />{" "}
           <span className="text-md ml-3 text-foreground">Pro Tip</span>
         </div>
         <span className="mt-4 text-sm text-label">
@@ -278,7 +278,7 @@ export const HerokuConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-border bg-container p-6 text-center text-foreground">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-border-control bg-surface-raised p-6 text-center text-foreground-secondary">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}

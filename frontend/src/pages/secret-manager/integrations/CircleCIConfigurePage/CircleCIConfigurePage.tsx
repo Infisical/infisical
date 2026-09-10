@@ -234,7 +234,7 @@ export const CircleCIConfigurePage = () => {
                 onValueChange={(e) => {
                   onChange(e);
                 }}
-                className="w-full border border-border"
+                className="w-full border border-border-strong"
               >
                 <SelectItem value={CircleCiScope.Project}>Project</SelectItem>
                 <SelectItem value={CircleCiScope.Context}>Context</SelectItem>

@@ -33,9 +33,11 @@ export const FormLabel = ({
   >
     {label}
     {isRequired && <span className="ml-1 text-danger">*</span>}
-    {isOptional && <span className="ml-1 text-xs text-muted italic">- Optional</span>}
+    {isOptional && (
+      <span className="ml-1 text-xs text-muted-cool-secondary italic">- Optional</span>
+    )}
     {icon && !tooltipText && (
-      <span className="ml-2 cursor-default text-label hover:text-foreground">{icon}</span>
+      <span className="ml-2 cursor-default text-label hover:text-foreground-secondary">{icon}</span>
     )}
     {tooltipText && (
       <Tooltip content={tooltipText} className={tooltipClassName}>

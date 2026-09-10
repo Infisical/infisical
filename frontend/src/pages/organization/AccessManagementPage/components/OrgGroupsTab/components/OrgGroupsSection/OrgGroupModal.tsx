@@ -245,7 +245,7 @@ export const OrgGroupModal = ({
                     You can add groups to your sub-organization in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-foreground">
+                    <li className="text-foreground-secondary">
                       <strong className="text-foreground">Create New</strong> – Create a new group
                       for this sub-organization. It will be managed at the sub-organization level.
                     </li>

@@ -127,7 +127,7 @@ export const TagsDiffRenderer = ({
         return (
           <Tag
             className={twMerge(
-              "mr-0 flex w-min items-center space-x-1.5 rounded border bg-card/60 py-0.5 text-xs",
+              "mr-0 flex w-min items-center space-x-1.5 rounded border bg-surface-base/60 py-0.5 text-xs",
               isRemoved && "border-danger/35 bg-danger/20",
               isAdded && "border-success/35 bg-success/20",
               !isRemoved && !isAdded && "border-border"
@@ -202,7 +202,7 @@ export const MetadataDiffRenderer = ({
 
         const valueBgClass = twMerge(
           valueHighlighted && (isOldVersion ? "bg-danger/30" : "bg-success/30"),
-          !valueHighlighted && "bg-card/60"
+          !valueHighlighted && "bg-surface-base/60"
         );
 
         const lockIconClass = twMerge(

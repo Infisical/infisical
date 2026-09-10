@@ -121,7 +121,7 @@ export const BitbucketDataSourceConfigFields = () => {
           onValueChange={(val) => {
             setValue("config.includeRepos", val === ScanMethod.AllRepositories ? ["*"] : []);
           }}
-          className="w-full border border-border capitalize"
+          className="w-full border border-border-strong capitalize"
           position="popper"
           dropdownContainerClassName="max-w-none"
           isDisabled={!connectionId}

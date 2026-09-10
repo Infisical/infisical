@@ -66,7 +66,7 @@ export const DeleteSecretRotationV2Modal = ({
       <Switch
         containerClassName="mt-4"
         className="bg-muted/50 shadow-inner data-[state=checked]:bg-danger/50"
-        thumbClassName="bg-container"
+        thumbClassName="bg-surface-raised"
         isChecked={revokeGeneratedCredentials}
         onCheckedChange={setRevokeGeneratedCredentials}
         id="revoke-credentials"
@@ -80,7 +80,7 @@ export const DeleteSecretRotationV2Modal = ({
       <Switch
         containerClassName="mt-4"
         className="bg-muted/50 shadow-inner data-[state=checked]:bg-danger/50"
-        thumbClassName="bg-container"
+        thumbClassName="bg-surface-raised"
         isChecked={deleteSecrets}
         onCheckedChange={setDeleteSecrets}
         id="delete-secrets"

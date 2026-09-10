@@ -18,9 +18,9 @@ export const Notification = ({ notification, onDelete }: Props) => {
   return (
     <div
       className={twMerge(
-        "group relative flex cursor-pointer items-start border-b border-border p-2 transition-colors",
-        notification.link ? "hover:bg-container-hover" : "cursor-default",
-        !notification.isRead && "bg-container",
+        "group relative flex cursor-pointer items-start border-b border-border-control p-2 transition-colors",
+        notification.link ? "hover:bg-surface-hover" : "cursor-default",
+        !notification.isRead && "bg-surface-raised",
         isCritical && !notification.isRead && "border-l-2 border-l-danger"
       )}
     >

@@ -153,7 +153,7 @@ export const AzureAppConfigurationConfigurePage = () => {
       <Helmet>
         <title>Set Up Azure App Configuration Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border">
+      <Card className="max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to your Azure App Configuration."
@@ -196,7 +196,7 @@ export const AzureAppConfigurationConfigurePage = () => {
                   isError={Boolean(error)}
                 >
                   <Select
-                    className="w-full border border-border"
+                    className="w-full border border-border-strong"
                     dropdownContainerClassName="max-w-full"
                     value={field.value}
                     onValueChange={(val) => {
@@ -295,7 +295,7 @@ export const AzureAppConfigurationConfigurePage = () => {
                 <Select
                   defaultValue={field.value}
                   onValueChange={(e) => onChange(e)}
-                  className="w-full border border-border"
+                  className="w-full border border-border-strong"
                   dropdownContainerClassName="max-w-full"
                 >
                   {initialSyncBehaviors.map((b) => {

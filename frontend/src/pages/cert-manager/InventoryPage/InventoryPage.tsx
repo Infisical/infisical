@@ -93,7 +93,7 @@ export const InventoryPage = () => {
   }
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between bg-background text-foreground">
+    <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
       <Helmet>
         <title>{t("common.head-title", { title: "Inventory" })}</title>
       </Helmet>

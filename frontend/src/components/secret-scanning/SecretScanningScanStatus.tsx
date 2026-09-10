@@ -41,7 +41,7 @@ export const SecretScanningScanStatusBadge = ({
                 <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-foreground/10 p-2 text-xs break-words">
+              <div className="rounded-sm bg-surface-active p-2 text-xs break-words">
                 {errorMessage}
               </div>
               {scannedAt && (

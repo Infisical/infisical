@@ -118,7 +118,7 @@ const RadioCard = ({
     className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors ${
       isSelected
         ? "border-project/50 bg-project/5"
-        : "border-border bg-container-hover hover:bg-foreground/10"
+        : "border-border-control bg-surface-hover hover:bg-surface-active"
     } ${className ?? ""}`}
   >
     {icon}
@@ -131,7 +131,7 @@ const RadioCard = ({
     </div>
     <div
       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-        isSelected ? "border-none bg-project/30" : "border-border"
+        isSelected ? "border-none bg-project/30" : "border-border-strong"
       }`}
     >
       {isSelected && <div className="h-2 w-2 rounded-full bg-label" />}
@@ -205,7 +205,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             isSelected={selectedMethod === option.value}
             onClick={() => setSelectedMethod(option.value)}
             icon={
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-foreground/10">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active">
                 <option.icon className="h-5 w-5 text-label" />
               </div>
             }
@@ -245,7 +245,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <img
                   src={integration.image}
                   alt={`${integration.name} logo`}
-                  className="h-8 w-8 rounded-md bg-container object-contain p-1"
+                  className="h-8 w-8 rounded-md bg-surface-recessed object-contain p-1"
                 />
               ) : undefined
             }
@@ -288,11 +288,11 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             <img
               src={displayImage}
               alt={`${displayName} logo`}
-              className="mt-0.5 h-8 w-8 shrink-0 rounded-md bg-container object-contain p-1"
+              className="mt-0.5 h-8 w-8 shrink-0 rounded-md bg-surface-recessed object-contain p-1"
             />
           ) : (
             DisplayIcon && (
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-container">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-recessed">
                 <DisplayIcon className="h-4 w-4 text-label" />
               </div>
             )
@@ -311,7 +311,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             <p className="mt-0.5 text-xs text-muted">{displayDesc}</p>
           </div>
         </div>
-        <hr className="-mx-6 mb-4 border-border" />
+        <hr className="-mx-6 mb-4 border-border-control" />
         {renderForm()}
       </>
     );

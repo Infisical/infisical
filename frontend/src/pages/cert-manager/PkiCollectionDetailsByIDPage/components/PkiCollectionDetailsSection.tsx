@@ -21,8 +21,8 @@ export const PkiCollectionDetailsSection = ({ collectionId, handlePopUpOpen }: P
   const { data: pkiCollection } = useGetPkiCollectionById(collectionId);
 
   return pkiCollection ? (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between border-b border-border pb-4">
+    <div className="rounded-lg border border-border-control bg-surface-base p-4">
+      <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
         <h3 className="text-lg font-medium text-foreground">Collection Details</h3>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Edit}

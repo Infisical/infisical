@@ -90,9 +90,11 @@ export const FilterableSelect = <T,>({
           twMerge("w-full font-inter text-sm", isDisabled && "pointer-events-auto! opacity-50"),
         control: ({ isFocused, isDisabled }) =>
           twMerge(
-            isFocused ? "border-project/50" : "border-border",
-            `w-full rounded-md border bg-card p-0.5 font-inter text-foreground ${
-              isDisabled ? "cursor-not-allowed!" : "hover:cursor-pointer hover:border-foreground/20"
+            isFocused ? "border-project/50" : "border-border-control",
+            `w-full rounded-md border bg-surface-base p-0.5 font-inter text-foreground-secondary ${
+              isDisabled
+                ? "cursor-not-allowed!"
+                : "hover:cursor-pointer hover:border-border-cool-emphasis"
             } `
           ),
         placeholder: () => `${isMulti ? "py-[0.22rem]" : "leading-7"} text-muted text-sm pl-1`,
@@ -102,21 +104,21 @@ export const FilterableSelect = <T,>({
             isMulti ? "overflow-y-auto! thin-scrollbar py-1" : "py-[0.1rem]"
           } gap-1`,
         singleValue: () => "leading-7 ml-1",
-        multiValue: () => "bg-foreground/10 text-sm rounded-sm items-center py-0.5 px-2 gap-1.5",
+        multiValue: () => "bg-surface-active text-sm rounded-sm items-center py-0.5 px-2 gap-1.5",
         multiValueLabel: () => "leading-6 text-sm",
-        multiValueRemove: () => "hover:text-danger text-muted",
+        multiValueRemove: () => "hover:text-danger text-muted-secondary",
         indicatorsContainer: () => "p-1 gap-1",
-        clearIndicator: () => "p-1 hover:text-danger text-muted",
-        indicatorSeparator: () => "bg-muted",
-        dropdownIndicator: () => "text-foreground p-1",
+        clearIndicator: () => "p-1 hover:text-danger text-muted-secondary",
+        indicatorSeparator: () => "bg-muted-secondary",
+        dropdownIndicator: () => "text-foreground-soft p-1",
         menuList: () => twMerge("flex flex-col gap-1", menuListClassName),
         menu: () =>
-          "my-2 p-2 border text-sm text-foreground thin-scrollbar bg-popover border-border rounded-md",
+          "my-2 p-2 border text-sm text-foreground-secondary thin-scrollbar bg-surface-base border-border-control rounded-md",
         groupHeading: () => "ml-3 mt-2 mb-1 text-muted text-sm",
         option: ({ isFocused, isSelected }) =>
           twMerge(
-            isFocused && "bg-container-hover active:bg-foreground/10",
-            isSelected && "text-foreground",
+            isFocused && "bg-surface-hover active:bg-surface-active",
+            isSelected && "text-foreground-secondary",
             "rounded-sm px-3 py-2 text-xs hover:cursor-pointer"
           ),
         noOptionsMessage: () => "text-muted p-2 rounded-md",

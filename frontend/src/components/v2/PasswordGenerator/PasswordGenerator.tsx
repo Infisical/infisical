@@ -109,12 +109,12 @@ const PasswordGeneratorModal = ({
     <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
       <div
         ref={modalRef}
-        className="w-full max-w-lg rounded-lg border border-border bg-container shadow-xl"
+        className="w-full max-w-lg rounded-lg border border-border-control bg-surface-raised shadow-xl"
       >
         <div className="p-6">
-          <h2 className="mb-1 text-xl font-medium text-foreground">Generate Random Value</h2>
-          <p className="mb-6 text-sm text-muted">Generate strong unique values</p>
-          <div className="relative mb-4 rounded-md bg-card p-4">
+          <h2 className="mb-1 text-xl font-medium text-foreground-soft">Generate Random Value</h2>
+          <p className="mb-6 text-sm text-muted-secondary">Generate strong unique values</p>
+          <div className="relative mb-4 rounded-md bg-surface-base p-4">
             <div className="flex items-center justify-between">
               <div className="w-4/5 pr-2 font-mono text-lg break-all select-all">{password}</div>
               <div className="flex flex-col gap-1">
@@ -123,7 +123,7 @@ const PasswordGeneratorModal = ({
                   colorSchema="secondary"
                   variant="outline_bg"
                   onClick={() => setRefresh((prev) => !prev)}
-                  className="w-full text-label hover:text-foreground"
+                  className="w-full text-label-secondary hover:text-foreground-default"
                 >
                   <FontAwesomeIcon icon={faRefresh} className="mr-1 h-3 w-3" />
                   Refresh
@@ -134,7 +134,7 @@ const PasswordGeneratorModal = ({
                   colorSchema="secondary"
                   variant="outline_bg"
                   onClick={copyToClipboard}
-                  className="w-full text-label hover:text-foreground"
+                  className="w-full text-label-secondary hover:text-foreground-default"
                 >
                   <FontAwesomeIcon icon={isCopying ? faCheck : faCopy} className="mr-1 h-3 w-3" />
                   {copyText}
@@ -145,7 +145,7 @@ const PasswordGeneratorModal = ({
 
           <div className="mb-6">
             <div className="mb-1 flex items-center justify-between">
-              <label htmlFor="value-length" className="text-sm text-label">
+              <label htmlFor="value-length" className="text-sm text-label-secondary">
                 Length: {passwordOptions.length}
               </label>
             </div>

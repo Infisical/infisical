@@ -129,12 +129,12 @@ const RotationConfirmation = ({
 
   return (
     <div className="p-4">
-      <div className="flex flex-col rounded-xs border border-l-2 border-border border-l-project bg-container-hover/80 px-4 py-3">
+      <div className="flex flex-col rounded-xs border border-l-2 border-border-control border-l-project bg-surface-hover/80 px-4 py-3">
         <div className="mb-1 flex items-center text-sm">
           <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-project" />
           Automatic Credential Rotation
         </div>
-        <p className="bor mt-1 text-sm text-foreground">
+        <p className="bor mt-1 text-sm text-foreground-soft">
           Enabling automatic credential rotation will give Infisical full control over the lifecycle
           of this credential. Infisical will automatically rotate the credential on the schedule you
           configured and you will no longer be able to manage it manually. The original credential

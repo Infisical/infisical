@@ -123,7 +123,7 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
               onCheckedChange={onChange}
               checkIndicatorBg="text-project"
             >
-              <span className="text-sm text-foreground">
+              <span className="text-sm text-foreground-secondary">
                 Bypass approval for machine identities
               </span>
               <p className="text-xs text-muted">

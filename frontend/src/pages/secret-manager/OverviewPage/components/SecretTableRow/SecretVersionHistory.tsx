@@ -414,7 +414,7 @@ function VersionItem({
         {/* Value input display */}
         {version.isRedacted ? (
           <>
-            <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm text-foreground">
+            <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm text-foreground-soft">
               <span className="blur-sm select-none">xxxxxxxxxxxxxxxxxxxx</span>
             </div>
             {version.redactedByActor && (
@@ -439,7 +439,7 @@ function VersionItem({
         ) : (
           <Tooltip open={canReadValue && !version.secretValueHidden ? false : undefined}>
             <TooltipTrigger asChild>
-              <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-foreground">
+              <div className="mb-2 min-w-0 rounded-md border border-border bg-container px-3 py-2 font-mono text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-foreground-soft">
                 {/* eslint-disable-next-line no-nested-ternary */}
                 {isValueVisible ? (
                   isFetchingValue ? (

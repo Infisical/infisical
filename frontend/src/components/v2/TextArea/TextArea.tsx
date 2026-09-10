@@ -11,7 +11,7 @@ type Props = {
 };
 
 const textAreaVariants = cva(
-  "textarea w-full p-2 focus:ring-2 ring-project outline-hidden border text-muted font-inter placeholder:text-muted/50",
+  "textarea w-full p-2 focus:ring-2 ring-project outline-hidden border text-muted-cool font-inter placeholder:text-muted-cool-secondary/50",
   {
     variants: {
       size: {
@@ -25,13 +25,13 @@ const textAreaVariants = cva(
         false: ""
       },
       variant: {
-        filled: ["bg-card", "text-muted"],
+        filled: ["bg-surface-base", "text-muted-cool"],
         outline: ["bg-transparent"],
         plain: "bg-transparent outline-hidden"
       },
       isError: {
         true: "focus:ring-danger/50 placeholder:text-danger border-danger",
-        false: "focus:ring-project/50 focus:ring-1 border-border"
+        false: "focus:ring-project/50 focus:ring-1 border-border-strong"
       }
     },
     compoundVariants: [

@@ -25,8 +25,8 @@ export const MenuIconButton = <T extends ElementType = "button">({
         type="button"
         role="menuitem"
         className={twMerge(
-          "group relative my-1 flex w-full cursor-pointer flex-col items-center justify-center rounded-sm p-2 font-inter text-sm text-foreground transition-all duration-150 hover:bg-container-hover",
-          isSelected && "rounded-none bg-background hover:bg-foreground/10",
+          "group relative my-1 flex w-full cursor-pointer flex-col items-center justify-center rounded-sm p-2 font-inter text-sm text-foreground-default transition-all duration-150 hover:bg-surface-hover",
+          isSelected && "rounded-none bg-page hover:bg-surface-active",
           isDisabled && "cursor-not-allowed hover:bg-transparent",
           className
         )}

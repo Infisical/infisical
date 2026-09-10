@@ -64,7 +64,7 @@ const Content = ({ secretRotation }: ContentProps) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-muted" />
+        <Spinner size="lg" className="text-surface-selected" />
         <p className="mt-4 text-sm text-muted">Loading generated credentials...</p>
       </div>
     );
@@ -270,7 +270,7 @@ const Content = ({ secretRotation }: ContentProps) => {
               target="_blank"
               href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
               rel="noopener noreferrer"
-              className="underline decoration-project underline-offset-2 hover:text-foreground"
+              className="underline decoration-project underline-offset-2 hover:text-foreground-secondary"
             >
               inactive period
             </a>
@@ -279,7 +279,7 @@ const Content = ({ secretRotation }: ContentProps) => {
         </NoticeBannerV2>
       )}
       {nextRotationAt && (
-        <div className="flex items-center gap-x-1.5 text-sm text-foreground">
+        <div className="flex items-center gap-x-1.5 text-sm text-foreground-secondary">
           <FontAwesomeIcon icon={faRotate} className="text-muted" />
           <span>
             Next rotation occurs on: {format(nextRotationAt, "MM/dd/yyyy")} at{" "}

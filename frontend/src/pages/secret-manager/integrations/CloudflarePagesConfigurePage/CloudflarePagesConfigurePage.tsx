@@ -112,8 +112,8 @@ export const CloudflarePagesConfigurePage = () => {
     integrationAuthApps &&
     targetEnvironment &&
     targetApp ? (
-    <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-card to-background">
-      <Card className="max-w-lg rounded-md border border-border p-0">
+    <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-surface-base to-page-deep">
+      <Card className="max-w-lg rounded-md border border-border-control p-0">
         <CardTitle
           className="px-6 text-left"
           subTitle="Choose which environment in Infisical you want to sync with your Cloudflare Pages project."
@@ -124,7 +124,7 @@ export const CloudflarePagesConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
           >
             {workspace?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -148,7 +148,7 @@ export const CloudflarePagesConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -171,7 +171,7 @@ export const CloudflarePagesConfigurePage = () => {
           <Select
             value={targetEnvironment}
             onValueChange={(val) => setTargetEnvironment(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
           >
             {cloudflareEnvironments.map((cloudflareEnvironment) => (
               <SelectItem

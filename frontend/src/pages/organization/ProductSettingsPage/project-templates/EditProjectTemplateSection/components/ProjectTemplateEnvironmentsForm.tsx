@@ -253,7 +253,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                               </IconButton>
                             )}
                           </OrgPermissionCan>
-                          <div className="h-7 w-px bg-foreground/10" />
+                          <div className="h-7 w-px bg-surface-active" />
                           <OrgPermissionCan
                             I={OrgPermissionActions.Edit}
                             a={OrgPermissionSubjects.ProjectTemplates}

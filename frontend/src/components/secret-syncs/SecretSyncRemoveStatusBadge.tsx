@@ -70,7 +70,7 @@ export const SecretSyncRemoveStatusBadge = ({ secretSync, mini }: Props) => {
                   {mini ? "Failed to Remove Secrets" : "Failure Reason"}
                 </div>
               </div>
-              <div className="rounded-sm bg-foreground/10 p-2 text-xs">{failureMessage}</div>
+              <div className="rounded-sm bg-surface-active p-2 text-xs">{failureMessage}</div>
             </div>
           )}
         </div>

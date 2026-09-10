@@ -428,7 +428,7 @@ export const CaDetailsSection = ({ caId }: Props) => {
                   <SwitchV2
                     id="auto-renewal-enabled"
                     className="bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
-                    thumbClassName="bg-container"
+                    thumbClassName="bg-surface-raised"
                     isChecked={value}
                     onCheckedChange={onChange}
                   >

@@ -62,7 +62,7 @@ export const HasuraCloudAuthorizePage = () => {
       <Helmet>
         <title>Authorize {APP_NAME} Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border">
+      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="After adding your access token, you will be prompted to set up an integration for a particular Infisical project and environment."

@@ -90,9 +90,9 @@ export const ProjectTemplateEnvironmentsForm = ({
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="mb-6 rounded-lg border border-border bg-card p-4"
+      className="mb-6 rounded-lg border border-border-control bg-surface-base p-4"
     >
-      <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
+      <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">
         <div>
           <h2 className="text-lg font-medium">Project Environments</h2>
           {!isInfisicalTemplate && (

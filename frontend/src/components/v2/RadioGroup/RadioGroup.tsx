@@ -14,25 +14,25 @@ export const RadioGroup = ({ className, children, ...props }: RadioGroupProps) =
   >
     <div className="flex items-center">
       <RadioGroupPrimitive.Item
-        className="h-[20px] w-[20px] cursor-default rounded-full border border-border/60 bg-muted/20 outline-hidden duration-200 hover:bg-muted/40"
+        className="h-[20px] w-[20px] cursor-default rounded-full border border-border-secondary-strong/60 bg-muted-secondary/20 outline-hidden duration-200 hover:bg-muted-secondary/40"
         value="App"
         id="r1"
       >
         <RadioGroupPrimitive.Indicator className="relative flex h-full w-full items-center justify-center after:block after:h-[11px] after:w-[11px] after:rounded-[50%] after:bg-project after:content-['']" />
       </RadioGroupPrimitive.Item>
-      <label className="pl-2 text-sm leading-none text-foreground" htmlFor="r1">
+      <label className="pl-2 text-sm leading-none text-foreground-soft" htmlFor="r1">
         App
       </label>
     </div>
     <div className="flex items-center">
       <RadioGroupPrimitive.Item
-        className="h-[22px] w-[22px] cursor-default rounded-full border border-border/60 bg-muted/20 outline-hidden duration-200 hover:bg-muted/40"
+        className="h-[22px] w-[22px] cursor-default rounded-full border border-border-secondary-strong/60 bg-muted-secondary/20 outline-hidden duration-200 hover:bg-muted-secondary/40"
         value="Pipeline"
         id="r2"
       >
         <RadioGroupPrimitive.Indicator className="relative flex h-full w-full items-center justify-center after:block after:h-[13px] after:w-[13px] after:rounded-[50%] after:bg-project after:content-['']" />
       </RadioGroupPrimitive.Item>
-      <label className="pl-2 text-sm leading-none text-foreground" htmlFor="r2">
+      <label className="pl-2 text-sm leading-none text-foreground-soft" htmlFor="r2">
         Pipeline
       </label>
     </div>

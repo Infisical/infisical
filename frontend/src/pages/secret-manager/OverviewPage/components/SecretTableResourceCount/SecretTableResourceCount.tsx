@@ -25,7 +25,7 @@ export const SecretTableResourceCount = ({
   secretRotationCount = 0
 }: Props) => {
   return (
-    <div className="flex items-center divide-x divide-border text-sm text-muted [&>*]:pr-2">
+    <div className="flex items-center divide-x divide-border-strong text-sm text-muted [&>*]:pr-2">
       {importCount > 0 && (
         <Tooltip
           className="max-w-sm"
@@ -98,7 +98,7 @@ export const SecretTableResourceCount = ({
           }
         >
           <div className="flex items-center gap-2 pl-2">
-            <FontAwesomeIcon icon={faKey} className="text-label" />
+            <FontAwesomeIcon icon={faKey} className="text-label-secondary" />
             <span>{secretCount}</span>
           </div>
         </Tooltip>

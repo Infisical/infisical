@@ -103,7 +103,7 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-background text-foreground">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
         <ProjectPermissionCan
           renderGuardBanner

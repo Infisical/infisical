@@ -97,7 +97,7 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
               be renewed when it has the specified number of days remaining before expiration.
             </p>
 
-            <div className="mb-4 rounded border bg-container p-3">
+            <div className="mb-4 rounded border bg-surface-raised p-3">
               <p className="text-sm text-label">
                 <strong>Certificate TTL:</strong> {certificateData?.ttlDays} days
               </p>

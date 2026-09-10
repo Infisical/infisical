@@ -75,7 +75,7 @@ const getStepNumberClass = (status: ApprovalRequestStepStatus) => {
   if (status === ApprovalRequestStepStatus.InProgress) {
     return "bg-project/20 text-project";
   }
-  return "bg-foreground/10 text-muted";
+  return "bg-surface-active text-muted";
 };
 
 const getStepBadgeVariant = (status: ApprovalRequestStepStatus) => {
@@ -258,8 +258,8 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-foreground">Requester</h4>
-            <div className="rounded border border-border bg-container-hover p-3">
+            <h4 className="mb-2 text-sm font-medium text-foreground-secondary">Requester</h4>
+            <div className="rounded border border-border-control bg-surface-hover p-3">
               <div className="text-sm font-medium text-foreground">
                 {request.requesterName || "Unknown"}
               </div>
@@ -268,23 +268,25 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-foreground">Certificate Details</h4>
-            <div className="space-y-2 rounded border border-border bg-container-hover p-3">
+            <h4 className="mb-2 text-sm font-medium text-foreground-secondary">
+              Certificate Details
+            </h4>
+            <div className="space-y-2 rounded border border-border-control bg-surface-hover p-3">
               <div className="flex justify-between">
                 <span className="text-sm text-muted">Profile</span>
-                <span className="text-sm text-foreground">{requestData.profileName}</span>
+                <span className="text-sm text-foreground-secondary">{requestData.profileName}</span>
               </div>
               {requestData.certificateRequest?.commonName && (
                 <div className="flex justify-between">
                   <span className="text-sm text-muted">Common Name</span>
-                  <span className="text-sm text-foreground">
+                  <span className="text-sm text-foreground-secondary">
                     {requestData.certificateRequest.commonName}
                   </span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-sm text-muted">Validity</span>
-                <span className="text-sm text-foreground">
+                <span className="text-sm text-foreground-secondary">
                   {requestData.certificateRequest?.validity?.ttl
                     ? formatValidity(requestData.certificateRequest.validity.ttl)
                     : "Not specified"}
@@ -298,7 +300,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
                       {requestData.certificateRequest.domainComponents.map((dc) => (
                         <span
                           key={dc}
-                          className="rounded bg-foreground/10 px-2 py-0.5 text-xs text-foreground"
+                          className="rounded bg-surface-active px-2 py-0.5 text-xs text-foreground-secondary"
                         >
                           {dc}
                         </span>
@@ -315,7 +317,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
                         (san: { type: string; value: string }) => (
                           <span
                             key={`${san.type}-${san.value}`}
-                            className="rounded bg-foreground/10 px-2 py-0.5 text-xs text-foreground"
+                            className="rounded bg-surface-active px-2 py-0.5 text-xs text-foreground-secondary"
                           >
                             {san.type}: {san.value}
                           </span>
@@ -329,18 +331,23 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
 
           {request.justification && (
             <div>
-              <h4 className="mb-2 text-sm font-medium text-foreground">Justification</h4>
-              <div className="rounded border border-border bg-container-hover p-3 text-sm text-label">
+              <h4 className="mb-2 text-sm font-medium text-foreground-secondary">Justification</h4>
+              <div className="rounded border border-border-control bg-surface-hover p-3 text-sm text-label">
                 {request.justification}
               </div>
             </div>
           )}
 
           <div>
-            <h4 className="mb-2 text-sm font-medium text-foreground">Approval Progress</h4>
+            <h4 className="mb-2 text-sm font-medium text-foreground-secondary">
+              Approval Progress
+            </h4>
             <div className="space-y-2">
               {request.steps.map((step, index) => (
-                <div key={step.id} className="rounded border border-border bg-container-hover p-3">
+                <div
+                  key={step.id}
+                  className="rounded border border-border-control bg-surface-hover p-3"
+                >
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
@@ -348,7 +355,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
                       >
                         {index + 1}
                       </span>
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="text-sm font-medium text-foreground-secondary">
                         {step.name || `Step ${index + 1}`}
                       </span>
                     </div>
@@ -412,7 +419,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
           )}
 
           {!showCommentForm && (showApprovalButtons || showCancelButton) && (
-            <div className="flex gap-2 border-t border-border pt-4">
+            <div className="flex gap-2 border-t border-border-control pt-4">
               {showApprovalButtons && (
                 <>
                   <Button

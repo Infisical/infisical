@@ -37,11 +37,13 @@ export const Checkbox = ({
   ...props
 }: CheckboxProps): JSX.Element => {
   return (
-    <div className={twMerge("flex items-center font-inter text-label", containerClassName)}>
+    <div
+      className={twMerge("flex items-center font-inter text-label-secondary", containerClassName)}
+    >
       <CheckboxPrimitive.Root
         className={twMerge(
-          "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-border/50 bg-container-hover shadow-sm transition-all hover:bg-foreground/10",
-          isDisabled && "cursor-not-allowed bg-foreground/10 opacity-40",
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-border-emphasis/50 bg-surface-hover shadow-sm transition-all hover:bg-surface-selected",
+          isDisabled && "cursor-not-allowed bg-surface-active opacity-40",
           isChecked && "border-project/50 bg-project/30",
           Boolean(children) && "mr-3",
           className
@@ -54,7 +56,7 @@ export const Checkbox = ({
       >
         <CheckboxPrimitive.Indicator
           className={twMerge(
-            `${checkIndicatorBg || "mt-[0.1rem] text-foreground"}`,
+            `${checkIndicatorBg || "mt-[0.1rem] text-foreground-secondary"}`,
             indicatorClassName
           )}
         >

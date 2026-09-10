@@ -71,7 +71,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
               controls work in your organization.
             </p>
 
-            <div className="mb-4 rounded-lg border border-border bg-container p-4">
+            <div className="mb-4 rounded-lg border border-border-control bg-surface-raised p-4">
               <div className="mb-3">
                 <div className="mb-3">
                   <p className="mb-3 text-sm text-label">
@@ -91,7 +91,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/organization-permissions#subject%3A-groups"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-foreground hover:decoration-project"
+                      className="underline hover:text-foreground-soft hover:decoration-project"
                     >
                       Group
                     </a>{" "}
@@ -100,7 +100,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/organization-permissions#subject%3A-identity"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-foreground hover:decoration-project"
+                      className="underline hover:text-foreground-soft hover:decoration-project"
                     >
                       Identity
                     </a>{" "}
@@ -109,7 +109,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-member"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-foreground hover:decoration-project"
+                      className="underline hover:text-foreground-soft hover:decoration-project"
                     >
                       Member,
                     </a>{" "}
@@ -117,7 +117,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-groups"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-foreground hover:decoration-project"
+                      className="underline hover:text-foreground-soft hover:decoration-project"
                     >
                       Group,
                     </a>{" "}
@@ -126,7 +126,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-identity"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-foreground hover:decoration-project"
+                      className="underline hover:text-foreground-soft hover:decoration-project"
                     >
                       Identity
                     </a>{" "}
@@ -161,7 +161,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
               modifying privileges across your organization and projects.
             </p>
 
-            <div className="mb-4 rounded-lg border border-border bg-container p-4">
+            <div className="mb-4 rounded-lg border border-border-control bg-surface-raised p-4">
               <p className="mb-4 text-sm text-label">
                 Once upgraded, your organization <span className="font-bold">cannot</span> revert to
                 the legacy privilege system. Please ensure you&apos;ve completed all preparations
@@ -261,7 +261,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                 <button
                   type="button"
                   onClick={() => setStep("info")}
-                  className="w-[120px] text-sm text-label hover:text-foreground"
+                  className="w-[120px] text-sm text-label hover:text-foreground-secondary"
                 >
                   Cancel
                 </button>

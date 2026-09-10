@@ -28,8 +28,8 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
   return (
     <div>
       {tokens?.length ? (
-        <div className="flex items-center justify-between border-b border-border pb-1">
-          <p className="text-sm font-medium text-label">{`Access Tokens (${tokens.length})`}</p>
+        <div className="flex items-center justify-between border-b border-border-secondary-strong pb-1">
+          <p className="text-sm font-medium text-label-secondary">{`Access Tokens (${tokens.length})`}</p>
           <Button
             size="xs"
             className="underline"
@@ -54,7 +54,7 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
         );
         return (
           <div
-            className="group flex items-center justify-between border-b border-border px-2 py-2 last:pb-0"
+            className="group flex items-center justify-between border-b border-border-strong px-2 py-2 last:pb-0"
             key={`identity-token-${token.id}`}
           >
             <div className="flex items-center">

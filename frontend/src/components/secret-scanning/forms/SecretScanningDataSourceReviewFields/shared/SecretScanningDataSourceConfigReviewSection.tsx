@@ -7,7 +7,7 @@ type Props = {
 export const SecretScanningDataSourceConfigReviewSection = ({ children }: Props) => {
   return (
     <div className="flex flex-col gap-3">
-      <div className="w-full border-b border-border">
+      <div className="w-full border-b border-border-control">
         <span className="text-sm text-label">Configuration</span>
       </div>
       <div className="flex flex-wrap gap-x-8 gap-y-2">{children}</div>

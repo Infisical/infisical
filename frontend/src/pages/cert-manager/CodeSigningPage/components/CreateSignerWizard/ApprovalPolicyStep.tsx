@@ -124,9 +124,12 @@ export const ApprovalPolicyStep = ({
           const valueForStep = approverOptions.filter(isTaken);
 
           return (
-            <div key={s.key} className="rounded-md border border-border bg-card/40 p-4">
+            <div
+              key={s.key}
+              className="rounded-md border border-border-subtle bg-surface-base/40 p-4"
+            >
               <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-container text-[11px] font-medium text-muted">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface-raised text-[11px] font-medium text-muted">
                   {idx + 1}
                 </div>
                 <Input
@@ -200,8 +203,8 @@ export const ApprovalPolicyStep = ({
         Once approval is granted, define how it can be used. At least one limit is required.
       </p>
 
-      <div className="overflow-hidden rounded-md border border-border bg-card/40">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-4 py-3">
+      <div className="overflow-hidden rounded-md border border-border-subtle bg-surface-base/40">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border-faint px-4 py-3">
           <div className="flex min-w-0 items-start gap-3">
             <ShieldIcon className="mt-0.5 h-4 w-4 shrink-0 text-label" />
             <div className="min-w-0">

@@ -76,13 +76,13 @@ export const AwsSecretsManagerSyncFields = () => {
                     <ul className="flex list-disc flex-col gap-3 pl-4">
                       <li>
                         <p className="text-label">
-                          <span className="font-medium text-foreground">One-To-One</span>: Each
+                          <span className="font-medium text-foreground-soft">One-To-One</span>: Each
                           Infisical secret will be mapped to a separate AWS Secrets Manager secret.
                         </p>
                       </li>
                       <li>
                         <p className="text-label">
-                          <span className="font-medium text-foreground">Many-To-One</span>: All
+                          <span className="font-medium text-foreground-soft">Many-To-One</span>: All
                           Infisical secrets will be mapped to a single AWS Secrets Manager secret.
                         </p>
                       </li>

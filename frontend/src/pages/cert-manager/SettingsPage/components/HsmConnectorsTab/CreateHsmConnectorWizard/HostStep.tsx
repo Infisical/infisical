@@ -98,7 +98,7 @@ export const HostStep = ({ form, options, isLoading }: Props) => {
       />
 
       {!isLoading && options.length === 0 && (
-        <div className="rounded-md border border-border bg-container p-4">
+        <div className="rounded-md border border-border bg-surface-raised p-4">
           <div className="flex items-start gap-3">
             <ServerIcon className="mt-0.5 size-4 shrink-0 text-muted" />
             <div className="min-w-0 flex-1 space-y-2 text-sm">

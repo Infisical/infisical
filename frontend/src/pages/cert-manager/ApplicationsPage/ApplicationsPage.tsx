@@ -178,8 +178,8 @@ export const ApplicationsPage = () => {
       <Helmet>
         <title>Applications</title>
       </Helmet>
-      <div className="h-full bg-background">
-        <div className="mx-auto flex flex-col text-foreground">
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
               scope={ProjectType.CertificateManager}

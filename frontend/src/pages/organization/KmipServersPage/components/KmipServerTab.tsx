@@ -78,7 +78,7 @@ export const KmipServerTab = withPermission(
     );
 
     return (
-      <div className="mb-6 rounded-lg border border-border bg-card p-4">
+      <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex grow items-center gap-x-2">
             <h3 className="text-lg font-medium text-foreground">KMIP Servers</h3>
@@ -130,7 +130,7 @@ export const KmipServerTab = withPermission(
                 {filteredKmipServers?.map((el) => (
                   <Tr
                     key={el.id}
-                    className="cursor-pointer hover:bg-container-hover"
+                    className="cursor-pointer hover:bg-surface-hover"
                     onClick={() => {
                       navigate({
                         to: "/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",

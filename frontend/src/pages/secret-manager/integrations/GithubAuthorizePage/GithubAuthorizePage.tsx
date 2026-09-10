@@ -38,7 +38,7 @@ export const GithubAuthorizePage = () => {
       <Helmet>
         <title>Select GitHub Integration Auth</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border">
+      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Select how you'd like to integrate with GitHub. We recommend using the GitHub App method for fine-grained access."
@@ -71,7 +71,7 @@ export const GithubAuthorizePage = () => {
               onValueChange={(val) => {
                 setSelectedAuthMethod(val as AuthMethod);
               }}
-              className="w-full border border-border"
+              className="w-full border border-border-strong"
             >
               <SelectItem value={AuthMethod.APP}>GitHub App (Recommended)</SelectItem>
               <SelectItem value={AuthMethod.OAUTH}>OAuth</SelectItem>

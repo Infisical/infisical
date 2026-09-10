@@ -90,7 +90,7 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                     <div className="flex items-center gap-x-2">
                       <span className="text-sm font-medium text-foreground">{policy.name}</span>
                       {policy.scopeType !== ApprovalPolicyScope.PkiApplication && (
-                        <span className="rounded bg-foreground/10 px-2 py-0.5 text-[10px] tracking-wide text-foreground uppercase">
+                        <span className="rounded bg-surface-active px-2 py-0.5 text-[10px] tracking-wide text-foreground-secondary uppercase">
                           Legacy
                         </span>
                       )}
@@ -101,7 +101,7 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                       {profileNames.slice(0, 3).map((name) => (
                         <span
                           key={name}
-                          className="rounded bg-foreground/10 px-2 py-0.5 text-xs text-foreground"
+                          className="rounded bg-surface-active px-2 py-0.5 text-xs text-foreground-secondary"
                         >
                           {name}
                         </span>
@@ -112,7 +112,7 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                     </div>
                   </Td>
                   <Td>
-                    <span className="text-sm text-foreground">
+                    <span className="text-sm text-foreground-secondary">
                       {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
                     </span>
                   </Td>

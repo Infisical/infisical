@@ -23,7 +23,7 @@ export const KmipServerClientsSection = () => {
         <ol className="flex flex-col gap-y-3">
           {STEPS.map((step, idx) => (
             <li key={step} className="flex items-start gap-x-3 text-sm text-label">
-              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-medium text-foreground">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-active text-xs font-medium text-foreground-secondary">
                 {idx + 1}
               </span>
               <span>{step}</span>

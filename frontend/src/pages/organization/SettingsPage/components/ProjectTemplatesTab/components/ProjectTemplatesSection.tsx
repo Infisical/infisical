@@ -29,7 +29,7 @@ export const ProjectTemplatesSection = () => {
         <EditProjectTemplateSection template={editTemplate} onBack={() => setEditTemplate(null)} />
       ) : (
         <div>
-          <div className="mb-6 rounded-lg border border-border bg-card p-4">
+          <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-x-2">
                 <p className="text-xl font-medium text-foreground">Project Templates</p>

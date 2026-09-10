@@ -37,7 +37,7 @@ export const PkiCollectionSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-4">
+    <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-medium text-foreground">Certificate Collections</p>
         <ProjectPermissionCan

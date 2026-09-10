@@ -103,7 +103,7 @@ export const AzureDevopsConfigurePage = () => {
       <Helmet>
         <title>Set Up Azure DevOps Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border">
+      <Card className="max-w-lg rounded-md border border-border-control">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to secrets in Azure DevOps."
@@ -138,7 +138,7 @@ export const AzureDevopsConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
           >
             {workspace?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -161,7 +161,7 @@ export const AzureDevopsConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-border"
+            className="w-full border border-border-strong"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (

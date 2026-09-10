@@ -23,7 +23,7 @@ export type TabListProps = TabsPrimitive.TabsListProps;
 export const TabList = ({ className, children, ...props }: TabListProps) => (
   <TabsPrimitive.List
     className={twMerge(
-      "no-scrollbar flex shrink-0 overflow-auto border-b-2 border-border",
+      "no-scrollbar flex shrink-0 overflow-auto border-b-2 border-border-faint",
       "data-[orientation=vertical]:xl:flex-col data-[orientation=vertical]:xl:items-start data-[orientation=vertical]:xl:gap-y-6 data-[orientation=vertical]:xl:border-b-0",
       className
     )}
@@ -50,13 +50,13 @@ export const Tab = ({
       "flex h-11 cursor-pointer items-center justify-center border-transparent",
       "px-3 text-sm font-medium whitespace-nowrap text-label/75 transition-all select-none",
       "data-[orientation=vertical]:xl:h-5 data-[orientation=vertical]:xl:border-b-0 data-[orientation=vertical]:xl:border-l",
-      "border-b hover:text-foreground",
-      "data-[state=active]:border-border data-[state=active]:text-foreground",
-      "hover:border-foreground/20",
+      "border-b hover:text-foreground-secondary",
+      "data-[state=active]:border-border-emphasis data-[state=active]:text-foreground-inverse",
+      "hover:border-border-emphasis",
       variant === "project" && "data-[state=active]:border-project",
       variant === "namespace" && "data-[state=active]:border-sub-org",
       variant === "org" && "data-[state=active]:border-org",
-      variant === "instance" && "data-[state=active]:border-border",
+      variant === "instance" && "data-[state=active]:border-border-bright",
       className
     )}
     {...props}
