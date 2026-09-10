@@ -15,6 +15,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 
+import { BlindIndexAlert } from "./BlindIndexAlert";
 import {
   CONSTRAINT_OPTIONS,
   CONSTRAINT_TYPE_LABELS,
@@ -169,6 +170,8 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
           </div>
         )}
       </div>
+
+      {isValueless && <BlindIndexAlert />}
     </div>
   );
 };
