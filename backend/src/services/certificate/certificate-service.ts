@@ -8,12 +8,14 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -26,11 +28,21 @@ import { CaCapability, CaType } from "@app/services/certificate-authority/certif
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-fns";
 import {
   assertCertificateQuotaForProject,
   recordNewCertificateQuotaKey
 } from "@app/services/certificate-common/certificate-quota-fns";
+import {
+  CA_TYPE_LABEL,
+  CertificateImportLinkageMap,
+  TImportExternalMetadata
+} from "@app/services/certificate-common/external-metadata-schemas";
+import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
@@ -39,6 +51,7 @@ import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usag
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
+import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
@@ -48,8 +61,20 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
-import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
+import {
+  expandInternalCa,
+  getCaCertChain,
+  getCaCertChains,
+  rebuildCaCrl
+} from "../certificate-authority/certificate-authority-fns";
+import {
+  calculateFinalRenewBeforeDays,
+  detectSanType,
+  resolveEffectiveApiConfig
+} from "../certificate-common/certificate-issuance-utils";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
+import { certificateSpanToTtl } from "../certificate-v3/certificate-renewal-fns";
+import { parseExtendedKeyUsages, parseKeyUsages } from "../certificate-v3/certificate-v3-fns";
 import {
   CertificateThumbprintAlgorithm,
   extractCertificateAlgorithms,
@@ -97,10 +122,15 @@ type TCertificateServiceFactoryDep = {
     | "updateById"
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
+  digicertFns: Pick<ReturnType<typeof DigiCertCertificateAuthorityFns>, "assertOrderMatchesCertificate">;
+  certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
-  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById" | "find">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
@@ -146,6 +176,11 @@ export const certificateServiceFactory = ({
   resourceMetadataDAL,
   pkiAlertV2Queue,
   pkiApplicationDAL,
+  certificateProfileDAL,
+  pkiApplicationProfileDAL,
+  apiEnrollmentConfigDAL,
+  digicertFns,
+  certificatePolicyService,
   licenseService,
   usageCounterDAL,
   keyStore,
@@ -483,6 +518,32 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const $assertInternalCaIssuedCertificate = async (caId: string, certificatePem: string) => {
+    const caCerts = await getCaCertChains({
+      caId,
+      certificateAuthorityDAL,
+      certificateAuthorityCertDAL,
+      projectDAL,
+      kmsService
+    });
+
+    const leaf = new x509.X509Certificate(certificatePem);
+    const verifications = await Promise.all(
+      caCerts.map((caCert) =>
+        leaf
+          .verify({ publicKey: new x509.X509Certificate(caCert.certificate).publicKey, signatureOnly: true })
+          .catch(() => false)
+      )
+    );
+
+    if (!verifications.some(Boolean)) {
+      throw new BadRequestError({
+        message:
+          "This certificate was not issued by the certificate authority behind its profile, so revoking it here would have no effect. Revocation only takes effect through the authority that issued the certificate. Revoke it with its original issuer instead."
+      });
+    }
+  };
+
   /**
    * Revoke certificate with serial number [serialNumber].
    * Note: Revoking a certificate adds it to the certificate revocation list (CRL)
@@ -587,6 +648,19 @@ export const certificateServiceFactory = ({
     }
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
+
+    if (ca.internalCa && cert.profileId && cert.source === CertificateSource.Imported) {
+      const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+      if (!certBody) {
+        throw new NotFoundError({ message: "Certificate body not found" });
+      }
+
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({
+        kmsId: await getProjectKmsCertificateKeyId({ projectId: ca.projectId, projectDAL, kmsService })
+      });
+      const decryptedCert = await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate });
+      await $assertInternalCaIssuedCertificate(ca.id, new x509.X509Certificate(decryptedCert).toString("pem"));
+    }
 
     if (ca.internalCa) {
       await validatePqcLicense({
@@ -771,6 +845,211 @@ export const certificateServiceFactory = ({
     };
   };
 
+  type TImportedCertificateFacts = {
+    serialNumber: string;
+    commonName: string;
+    altNames?: string;
+    keyUsages: CertKeyUsage[];
+    extendedKeyUsages: CertExtendedKeyUsage[];
+    notBefore: Date;
+    notAfter: Date;
+    fields: ReturnType<typeof extractCertificateFields>;
+    algorithms: ReturnType<typeof extractCertificateAlgorithms>;
+  };
+
+  const $buildImportCertificateVerifier =
+    ({
+      policyId,
+      profileName,
+      verifyWithProvider
+    }: {
+      policyId: string;
+      profileName: string;
+      verifyWithProvider?: (serialNumber: string) => Promise<void>;
+    }) =>
+    async (cert: TImportedCertificateFacts) => {
+      if (verifyWithProvider) {
+        await verifyWithProvider(cert.serialNumber);
+      }
+
+      const validation = await certificatePolicyService.validateCertificateRequest(policyId, {
+        commonName: cert.commonName || undefined,
+        organization: cert.fields.subjectOrganization ?? undefined,
+        organizationalUnit: cert.fields.subjectOrganizationalUnit ?? undefined,
+        country: cert.fields.subjectCountry ?? undefined,
+        state: cert.fields.subjectState ?? undefined,
+        locality: cert.fields.subjectLocality ?? undefined,
+        domainComponents: cert.fields.subjectDomainComponents?.split(",") ?? undefined,
+        keyUsages: parseKeyUsages(cert.keyUsages),
+        extendedKeyUsages: parseExtendedKeyUsages(cert.extendedKeyUsages),
+        subjectAlternativeNames: cert.altNames ? cert.altNames.split(",").map((san) => detectSanType(san.trim())) : [],
+        validity: { ttl: certificateSpanToTtl(cert.notBefore, cert.notAfter) },
+        keyAlgorithm: cert.algorithms.keyAlgorithm,
+        signatureAlgorithm: cert.algorithms.signatureAlgorithm,
+        ...(cert.fields.isCA && {
+          basicConstraints: { isCA: true, pathLength: cert.fields.pathLength ?? undefined }
+        })
+      });
+
+      if (!validation.isValid) {
+        const violations = validation.errors.map((error) => `- ${error}`).join("\n");
+        throw new BadRequestError({
+          message: `This certificate does not satisfy the policy of certificate profile '${profileName}':\n${violations}\nAttach a profile whose policy allows this certificate, or import it without one to track it for visibility and expiry alerts only.`
+        });
+      }
+    };
+
+  const $resolveImportLinkage = async ({
+    profileId,
+    projectId,
+    applicationId,
+    externalMetadata,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    profileId: string;
+    projectId: string;
+    applicationId?: string;
+    externalMetadata?: TImportExternalMetadata;
+    actor: TImportCertDTO["actor"];
+    actorId: string;
+    actorAuthMethod: TImportCertDTO["actorAuthMethod"];
+    actorOrgId: string;
+  }) => {
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile || profile.projectId !== projectId) {
+      throw new NotFoundError({ message: `Certificate profile with ID '${profileId}' not found` });
+    }
+
+    if (applicationId) {
+      const attachment = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
+      if (!attachment) {
+        throw new BadRequestError({
+          message: `Certificate profile '${profile.slug}' is not attached to this Application.`
+        });
+      }
+
+      const { permission } = await permissionService.getResourcePermission({
+        actor,
+        actorId,
+        projectId,
+        resourceType: ResourceType.CertificateApplication,
+        resourceId: applicationId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        ProjectPermissionSub.CertificateProfiles
+      );
+    } else {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
+      );
+    }
+
+    if (!profile.caId) {
+      if (profile.issuerType !== IssuerType.SELF_SIGNED) {
+        throw new BadRequestError({
+          message: `Certificate profile '${profile.slug}' is not backed by a certificate authority, so it cannot manage an imported certificate.`
+        });
+      }
+
+      if (externalMetadata) {
+        throw new BadRequestError({
+          message: `Certificate profile '${profile.slug}' is self-signed, so it needs no identifier from an external provider. Remove 'externalMetadata' from the request.`
+        });
+      }
+
+      return {
+        caId: null,
+        caType: null,
+        externalMetadata: undefined,
+        profileName: profile.slug,
+        caName: null,
+        profileApiConfig: profile.apiConfig,
+        verifyCertificate: $buildImportCertificateVerifier({
+          policyId: profile.certificatePolicyId,
+          profileName: profile.slug
+        })
+      };
+    }
+
+    const caType = (profile.certificateAuthority?.externalType as CaType) ?? CaType.INTERNAL;
+    const caName = profile.certificateAuthority?.name ?? null;
+    const linkage = CertificateImportLinkageMap[caType];
+    if (!linkage) {
+      throw new BadRequestError({
+        message: `Linking an imported certificate to a ${CA_TYPE_LABEL[caType] ?? caType} certificate authority is not supported yet.`
+      });
+    }
+
+    if (!linkage.externalMetadataSchema) {
+      if (externalMetadata) {
+        throw new BadRequestError({
+          message: `Certificate profile '${profile.slug}' issues from ${CA_TYPE_LABEL[caType] ?? caType}, which needs no identifier from an external provider. Remove 'externalMetadata' from the request.`
+        });
+      }
+      return {
+        caId: profile.caId,
+        caType,
+        externalMetadata: undefined,
+        profileName: profile.slug,
+        caName,
+        profileApiConfig: profile.apiConfig,
+        verifyCertificate: $buildImportCertificateVerifier({
+          policyId: profile.certificatePolicyId,
+          profileName: profile.slug
+        })
+      };
+    }
+
+    if (!externalMetadata) {
+      throw new BadRequestError({
+        message: `Certificate profile '${profile.slug}' issues from ${CA_TYPE_LABEL[caType] ?? caType}. Supply this certificate's ${linkage.referenceLabel ?? "provider identifier"} in 'externalMetadata' so Infisical can renew and revoke it.`
+      });
+    }
+
+    const parsed = linkage.externalMetadataSchema.safeParse(externalMetadata);
+    if (!parsed.success) {
+      throw new BadRequestError({
+        message: `'externalMetadata' is not a valid ${linkage.referenceLabel ?? "provider identifier"}.`
+      });
+    }
+
+    const { caId } = profile;
+    const parsedMetadata = parsed.data as TImportExternalMetadata;
+    const { verifyCertificate } = linkage;
+
+    return {
+      caId,
+      caType,
+      externalMetadata: parsedMetadata,
+      profileName: profile.slug,
+      caName,
+      profileApiConfig: profile.apiConfig,
+      verifyCertificate: $buildImportCertificateVerifier({
+        policyId: profile.certificatePolicyId,
+        profileName: profile.slug,
+        verifyWithProvider: verifyCertificate
+          ? (serialNumber: string) =>
+              verifyCertificate({ caId, externalMetadata: parsedMetadata, serialNumber }, { digicertFns })
+          : undefined
+      })
+    };
+  };
+
   /**
    * Import certificate
    */
@@ -786,7 +1065,9 @@ export const certificateServiceFactory = ({
     friendlyName,
     certificatePem,
     chainPem,
-    privateKeyPem
+    privateKeyPem,
+    profileId,
+    externalMetadata
   }: TImportCertDTO) => {
     const collectionId = pkiCollectionId;
 
@@ -842,6 +1123,25 @@ export const certificateServiceFactory = ({
       const pkiCollection = await pkiCollectionDAL.findById(collectionId);
       if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
       if (pkiCollection.projectId !== projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
+    }
+
+    const linkage = profileId
+      ? await $resolveImportLinkage({
+          profileId,
+          projectId,
+          applicationId,
+          externalMetadata,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        })
+      : null;
+
+    if (!profileId && externalMetadata) {
+      throw new BadRequestError({
+        message: "'externalMetadata' can only be set when the certificate is imported into a certificate profile."
+      });
     }
 
     const leafCert = new x509.X509Certificate(certificatePem);
@@ -920,6 +1220,38 @@ export const certificateServiceFactory = ({
 
     const { serialNumber, notBefore, notAfter } = leafCert;
 
+    const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
+
+    let keyUsages: CertKeyUsage[] = [];
+    if (keyUsagesExt) {
+      keyUsages = Object.values(CertKeyUsage).filter(
+        // eslint-disable-next-line no-bitwise
+        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0
+      );
+    }
+
+    const extKeyUsageExt = leafCert.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
+    let extendedKeyUsages: CertExtendedKeyUsage[] = [];
+    if (extKeyUsageExt) {
+      extendedKeyUsages = extKeyUsageExt.usages.map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]);
+    }
+
+    const certificateBuffer = Buffer.from(certificatePem);
+    const certificateFields = extractCertificateFields(certificateBuffer);
+    const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
+
+    await linkage?.verifyCertificate({
+      serialNumber,
+      commonName,
+      altNames,
+      keyUsages,
+      extendedKeyUsages,
+      notBefore,
+      notAfter,
+      fields: certificateFields,
+      algorithms: certificateAlgorithms
+    });
+
     // Encrypt certificate for storage
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
       projectId,
@@ -938,24 +1270,6 @@ export const certificateServiceFactory = ({
       ? (await kmsEncryptor({ plainText: Buffer.from(privateKeyPem) })).cipherTextBlob
       : null;
 
-    // Extract Key Usage
-    const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
-
-    let keyUsages: CertKeyUsage[] = [];
-    if (keyUsagesExt) {
-      keyUsages = Object.values(CertKeyUsage).filter(
-        // eslint-disable-next-line no-bitwise
-        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0
-      );
-    }
-
-    // Extract Extended Key Usage
-    const extKeyUsageExt = leafCert.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
-    let extendedKeyUsages: CertExtendedKeyUsage[] = [];
-    if (extKeyUsageExt) {
-      extendedKeyUsages = extKeyUsageExt.usages.map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]);
-    }
-
     const encryptedCertificateChain = chainPem
       ? (await kmsEncryptor({ plainText: Buffer.from(chainPem) })).cipherTextBlob
       : null;
@@ -969,12 +1283,21 @@ export const certificateServiceFactory = ({
       deps: { projectDAL, licenseService, usageCounterDAL, keyStore }
     });
 
+    let renewBeforeDays: number | undefined;
+    if (profileId && linkage) {
+      const effectiveApiConfig = await resolveEffectiveApiConfig({
+        applicationId,
+        profileId,
+        profileApiConfig: applicationId ? undefined : linkage.profileApiConfig,
+        pkiApplicationProfileDAL,
+        apiEnrollmentConfigDAL
+      });
+      const validityDays = Math.max(1, Math.ceil((notAfter.getTime() - notBefore.getTime()) / (24 * 60 * 60 * 1000)));
+      renewBeforeDays = calculateFinalRenewBeforeDays({ apiConfig: effectiveApiConfig }, `${validityDays}d`, notAfter);
+    }
+
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
-        // Extract certificate fields for storage
-        const certificateBuffer = Buffer.from(certificatePem);
-        const parsedFields = extractCertificateFields(certificateBuffer);
-
         const txCert = await certificateDAL.create(
           {
             status: CertStatus.ACTIVE,
@@ -986,12 +1309,17 @@ export const certificateServiceFactory = ({
             notAfter,
             projectId,
             applicationId: applicationId ?? null,
+            profileId: profileId ?? null,
+            caId: linkage?.caId ?? null,
+            externalMetadata: linkage?.externalMetadata ?? null,
+            source: CertificateSource.Imported,
+            renewBeforeDays,
             keyUsages,
             extendedKeyUsages,
-            ...parsedFields,
+            ...certificateFields,
             // Issuance records these from what it was asked to produce. An imported certificate has
             // no such request, so they come from the certificate itself.
-            ...extractCertificateAlgorithms(certificateBuffer)
+            ...certificateAlgorithms
           },
           tx
         );
@@ -1046,7 +1374,9 @@ export const certificateServiceFactory = ({
       certificateChain: chainPem,
       privateKey: privateKeyPem,
       serialNumber,
-      cert
+      cert,
+      profileName: linkage?.profileName ?? null,
+      caName: linkage?.caName ?? null
     };
   };
 
