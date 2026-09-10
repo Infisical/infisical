@@ -2,6 +2,7 @@ import net from "node:net";
 
 import RE2 from "re2";
 
+import { TableName } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { GatewayTransport, HEARTBEAT_BUFFER_SECONDS } from "./gateway-v2-constants";
@@ -21,18 +22,20 @@ export const isTransportHealthy = ({
 };
 
 // Any configured transport with a fresh probe, so a dual gateway stays up when one path breaks.
-export const buildGatewayReachableSql = (table: string) => {
-  const isFresh = (probe: string) =>
-    `("${table}"."${probe}" IS NOT NULL AND "${table}"."${probe}" + make_interval(secs => COALESCE("${table}"."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW())`;
+const TABLE = TableName.GatewayV2;
 
-  return `(COALESCE("${table}"."heartbeatTTL", 0) > 0 AND (("${table}"."directAddress" IS NOT NULL AND ${isFresh(
+export const buildGatewayReachableSql = () => {
+  const isFresh = (probe: string) =>
+    `("${TABLE}"."${probe}" IS NOT NULL AND "${TABLE}"."${probe}" + make_interval(secs => COALESCE("${TABLE}"."heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW())`;
+
+  return `(COALESCE("${TABLE}"."heartbeatTTL", 0) > 0 AND (("${TABLE}"."directAddress" IS NOT NULL AND ${isFresh(
     "directHeartbeat"
-  )}) OR ("${table}"."relayId" IS NOT NULL AND ${isFresh("heartbeat")})))`;
+  )}) OR ("${TABLE}"."relayId" IS NOT NULL AND ${isFresh("heartbeat")})))`;
 };
 
 // Ignores which transports are configured now: a gateway whose relay was deleted still needs alerting.
-export const buildGatewayProbedSql = (table: string) =>
-  `("${table}"."directHeartbeat" IS NOT NULL OR "${table}"."heartbeat" IS NOT NULL)`;
+export const buildGatewayProbedSql = () =>
+  `("${TABLE}"."directHeartbeat" IS NOT NULL OR "${TABLE}"."heartbeat" IS NOT NULL)`;
 
 export const resolveTransports = ({
   gateway,

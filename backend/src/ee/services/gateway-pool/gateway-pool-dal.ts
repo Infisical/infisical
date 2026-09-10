@@ -27,7 +27,7 @@ export const gatewayPoolDalFactory = (db: TDbClient) => {
         .select(
           db.raw(`COUNT(DISTINCT ${TableName.GatewayPoolMembership}."gatewayId") AS "memberCount"`),
           db.raw(
-            `COUNT(DISTINCT CASE WHEN ${buildGatewayReachableSql(TableName.GatewayV2)} THEN ${
+            `COUNT(DISTINCT CASE WHEN ${buildGatewayReachableSql()} THEN ${
               TableName.GatewayPoolMembership
             }."gatewayId" END) AS "healthyMemberCount"`
           ),

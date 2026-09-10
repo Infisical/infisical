@@ -168,9 +168,8 @@ export const telemetryDALFactory = (db: TDbClient) => {
           .first()
       )?.count as string;
 
-      const v2ActiveResult = (
-        await db(TableName.GatewayV2).whereRaw(buildGatewayReachableSql(TableName.GatewayV2)).count().first()
-      )?.count as string;
+      const v2ActiveResult = (await db(TableName.GatewayV2).whereRaw(buildGatewayReachableSql()).count().first())
+        ?.count as string;
 
       const activeGateways = parseInt(legacyActiveResult || "0", 10) + parseInt(v2ActiveResult || "0", 10);
 

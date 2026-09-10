@@ -16,7 +16,7 @@ export const gatewayPoolMembershipDalFactory = (db: TDbClient) => {
         .replicaNode()(TableName.GatewayPoolMembership)
         .where(`${TableName.GatewayPoolMembership}.gatewayPoolId`, poolId)
         .join(TableName.GatewayV2, `${TableName.GatewayPoolMembership}.gatewayId`, `${TableName.GatewayV2}.id`)
-        .whereRaw(buildGatewayReachableSql(TableName.GatewayV2))
+        .whereRaw(buildGatewayReachableSql())
         .select(`${TableName.GatewayV2}.*`);
 
       return gateways as TGatewaysV2[];

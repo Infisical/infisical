@@ -27,8 +27,8 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 
       if (isHeartbeatStale) {
-        void query.whereRaw(buildGatewayProbedSql(TableName.GatewayV2));
-        void query.whereRaw(`NOT ${buildGatewayReachableSql(TableName.GatewayV2)}`);
+        void query.whereRaw(buildGatewayProbedSql());
+        void query.whereRaw(`NOT ${buildGatewayReachableSql()}`);
         // Notification cooldown: only alert if never alerted or last alert was over 1 hour ago
         void query.where((v) => {
           void v
