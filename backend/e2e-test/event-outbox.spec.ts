@@ -61,12 +61,14 @@ describe("event outbox (postgres)", () => {
 
     const [a, b] = await Promise.all([dal.claimBatch(KEY, 3), dal.claimBatch(KEY, 3)]);
 
-    const idsA = a.map((row) => String(row.id));
-    const idsB = b.map((row) => String(row.id));
+    // Ids are bigints and arrive as strings, so order has to be checked numerically: "9" sorts after
+    // "10" as text.
+    const idsA = a.map((row) => Number(row.id));
+    const idsB = b.map((row) => Number(row.id));
     expect(new Set([...idsA, ...idsB]).size).toBe(idsA.length + idsB.length);
     expect(idsA.length + idsB.length).toBe(6);
-    expect([...idsA].sort()).toEqual(idsA);
-    expect([...idsB].sort()).toEqual(idsB);
+    expect([...idsA].sort((x, y) => x - y)).toEqual(idsA);
+    expect([...idsB].sort((x, y) => x - y)).toEqual(idsB);
 
     const stored = await rowsFor();
     expect(stored.every((row) => row.status === EventOutboxStatus.Processing && row.lockedAt)).toBe(true);
