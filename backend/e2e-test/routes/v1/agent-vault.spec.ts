@@ -1131,6 +1131,99 @@ describe("Agent Vault V1 Router", async () => {
       const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
       expect(role.role).toBe(ProjectMembershipRole.Member);
     });
+
+    test("an org admin who never opened Agent Vault is joined as admin by inviting with access", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      // getProjectPermission caches the membership rows for ten seconds, so the cache is cleared around
+      // each direct edit or the server keeps seeing the row that was just removed.
+      const cacheKeys = [
+        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
+        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
+      ];
+      const inviterMembership = () =>
+        testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
+          .first();
+
+      // Remove the inviter's own membership so they look like an org admin arriving fresh.
+      const before = await inviterMembership();
+      await testDb("memberships").where({ id: before.id }).del();
+      await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+
+      try {
+        const inviteeEmail = `agent-vault-invite-fresh-${crypto.randomUUID()}@localhost.local`;
+        const res = await inject("POST", "/api/v1/invite-org/signup", {
+          inviteeEmails: [inviteeEmail],
+          organizationId: seedData1.organization.id,
+          grantAgentVaultAccess: true
+        });
+        expect(res.statusCode).toBe(200);
+        expect(JSON.parse(res.payload).grantFailures).toBeUndefined();
+
+        const inviter = await inviterMembership();
+        expect(inviter).toBeTruthy();
+        const inviterRole = await testDb("membership_roles").where({ membershipId: inviter.id }).first();
+        expect(inviterRole.role).toBe(ProjectMembershipRole.Admin);
+
+        const user = await testDb("users").where({ username: inviteeEmail }).first();
+        const invitee = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: user.id })
+          .first();
+        expect(invitee).toBeTruthy();
+      } finally {
+        // Later tests act as this admin, so put the membership back if the self-join did not.
+        if (!(await inviterMembership())) {
+          const [restored] = (await testDb("memberships")
+            .insert({
+              scope: AccessScope.Project,
+              scopeProjectId: projectId,
+              scopeOrgId: seedData1.organization.id,
+              actorUserId: seedData1.id
+            })
+            .returning("*")) as { id: string }[];
+          await testDb("membership_roles").insert({ membershipId: restored.id, role: ProjectMembershipRole.Admin });
+        }
+        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+      }
+    });
+
+    test("an org admin who is an Agent Vault member is not promoted by inviting with access", async () => {
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const cacheKeys = [
+        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
+        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
+      ];
+      const membership = await testDb("memberships")
+        .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
+        .first();
+      await testDb("membership_roles")
+        .where({ membershipId: membership.id })
+        .update({ role: ProjectMembershipRole.Member });
+      await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+
+      try {
+        const inviteeEmail = `agent-vault-invite-member-${crypto.randomUUID()}@localhost.local`;
+        const res = await inject("POST", "/api/v1/invite-org/signup", {
+          inviteeEmails: [inviteeEmail],
+          organizationId: seedData1.organization.id,
+          grantAgentVaultAccess: true
+        });
+        expect(res.statusCode).toBe(200);
+        expect(JSON.parse(res.payload).grantFailures?.agentVaultAccess).toBe(true);
+
+        const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
+        expect(role.role).toBe(ProjectMembershipRole.Member);
+      } finally {
+        await testDb("membership_roles")
+          .where({ membershipId: membership.id })
+          .update({ role: ProjectMembershipRole.Admin });
+        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+      }
+    });
   });
 
   describe("membership", async () => {

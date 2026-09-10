@@ -1,13 +1,15 @@
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamProductRole } from "@app/ee/services/pam/pam-enums";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { sanitizeEmail } from "@app/lib/validator";
 import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -163,6 +165,47 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       if (req.body.grantAgentVaultAccess) {
         try {
           const agentVaultProjectId = await server.services.agentVaultProjectResolver.resolve(req.permission.orgId);
+
+          // Agent Vault seeds no members, so an org admin who has never opened it is not a member and the
+          // grant below would refuse them. Opening the product joins them (layout.tsx); inviting with access
+          // is the same intent, so join them the same way. Only a missing membership qualifies: an existing
+          // member keeps whatever role they were given, and grantProjectAdminAccess refuses anyone without
+          // AccessAllProjects, which lands in the catch as a grant failure like before.
+          try {
+            await server.services.permission.getProjectPermission({
+              actor: req.permission.type,
+              actorId: req.permission.id,
+              projectId: agentVaultProjectId,
+              actorAuthMethod: req.permission.authMethod,
+              actorOrgId: req.permission.orgId,
+              actionProjectType: ActionProjectType.AgentVault
+            });
+          } catch (err) {
+            if (!(err instanceof ForbiddenRequestError) || err.name !== "ProjectMembershipNotFound") throw err;
+            await server.services.orgAdmin.grantProjectAdminAccess({
+              actorOrgId: req.permission.orgId,
+              actorAuthMethod: req.permission.authMethod,
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              projectId: agentVaultProjectId
+            });
+            if (isUserSessionAuth(req.auth)) {
+              await server.services.auditLog.createAuditLog({
+                ...req.auditLogInfo,
+                projectId: agentVaultProjectId,
+                event: {
+                  type: EventType.ORG_ADMIN_ACCESS_PROJECT,
+                  metadata: {
+                    projectId: agentVaultProjectId,
+                    username: req.auth.user.username,
+                    email: req.auth.user.email || "",
+                    userId: req.auth.userId
+                  }
+                }
+              });
+            }
+          }
+
           const { memberships } = await server.services.agentVaultMembership.addProductUserMembers({
             projectId: agentVaultProjectId,
             ctx: {
