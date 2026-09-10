@@ -73,15 +73,15 @@ export const decryptSessionKey = async ({
   return decrypted.subarray(32, 32 + SESSION_KEY_LENGTH);
 };
 
-// The message must stay identical across these: the chunk router substring-matches it to write
-// the upload-token audit event.
-export const PamUploadTokenRejection = {
+const PamUploadTokenRejection = {
   Missing: "PamUploadTokenMissing",
   MalformedLength: "PamUploadTokenMalformedLength",
   StoredHashMalformed: "PamUploadTokenStoredHashMalformed",
   HashMismatch: "PamUploadTokenHashMismatch"
 } as const;
 
+// The chunk router substring-matches this to write the upload-token audit event, and the gateway
+// treats HashMismatch as the one failure worth giving up on, so both are a contract.
 const UPLOAD_TOKEN_INVALID_MESSAGE = "Invalid upload token";
 
 export const verifyGatewayUploadToken = (
