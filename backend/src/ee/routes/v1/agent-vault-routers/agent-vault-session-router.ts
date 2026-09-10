@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
+  AGENT_VAULT_NO_CONTROL_CHARS_RE
+} from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   AGENT_VAULT_MAX_SESSION_BUNDLES,
@@ -49,7 +53,13 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .default(AgentVaultSessionScope.Mine)
           .describe(AGENT_VAULT.SESSION.scope),
         status: z.nativeEnum(AgentVaultSessionStatus).optional().describe(AGENT_VAULT.SESSION.status),
-        search: z.string().trim().max(255).optional().describe(AGENT_VAULT.SESSION.search),
+        search: z
+          .string()
+          .trim()
+          .max(255)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .optional()
+          .describe(AGENT_VAULT.SESSION.search),
         limit: z.coerce.number().int().min(1).max(100).default(20).describe(AGENT_VAULT.SESSION.limit),
         offset: z.coerce.number().int().min(0).max(10000).default(0).describe(AGENT_VAULT.SESSION.offset)
       }),
