@@ -214,9 +214,6 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
                 components={{ Option: AppConnectionOption }}
                 isError={Boolean(error)}
               />
-              <FieldDescription>
-                Infisical uses this connection to open and track change requests.
-              </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>
           </Field>

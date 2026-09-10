@@ -338,7 +338,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             policyId,
             externalApprovalRequestId,
             externalApprovalPolicyId,
-            // externalNumber: req.body.external_number,
+            externalNumber: req.body.external_number,
             reviewStatus: req.body.status
           }
         }
