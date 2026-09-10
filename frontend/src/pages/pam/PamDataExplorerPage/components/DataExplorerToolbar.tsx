@@ -106,7 +106,7 @@ export const DataExplorerToolbar = ({
             <div className="h-4 w-px bg-border" />
             <Button variant="outline" size="xs" onClick={onAddRecord} className="gap-1">
               <PlusIcon className="size-3" />
-              Add record
+              Add Record
             </Button>
           </>
         )}
@@ -114,7 +114,7 @@ export const DataExplorerToolbar = ({
         {selectedRowCount > 0 && hasPrimaryKey && (
           <Button variant="danger" size="xs" onClick={onDeleteSelected} className="gap-1">
             <Trash2Icon className="size-3" />
-            Delete {selectedRowCount} record{selectedRowCount !== 1 ? "s" : ""}
+            Delete {selectedRowCount} Record{selectedRowCount !== 1 ? "s" : ""}
           </Button>
         )}
 
@@ -129,11 +129,11 @@ export const DataExplorerToolbar = ({
               className="gap-1"
             >
               <SaveIcon className="size-3" />
-              Save {changeCount} change{changeCount !== 1 ? "s" : ""}
+              Save {changeCount} Change{changeCount !== 1 ? "s" : ""}
             </Button>
             <Button variant="ghost" size="xs" onClick={onDiscard} className="gap-1 underline">
               <UndoIcon className="size-3" />
-              Discard changes
+              Discard Changes
             </Button>
           </>
         )}
