@@ -81,7 +81,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         bypassHosts: ProxySettingsSchema.bypassHosts.optional(),
         pollInterval: ProxySettingsSchema.pollInterval.optional()
       }),
-      response: { 200: z.object({ proxy: ProxyAdminViewSchema, enrollment: EnrollmentSchema }) }
+      response: { 200: z.object({ proxy: ProxyAdminViewSchema, ...EnrollmentSchema.shape }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -101,7 +101,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      return { proxy, enrollment };
+      return { proxy, ...enrollment };
     }
   });
 
@@ -186,14 +186,14 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
 
   server.route({
     method: "POST",
-    url: "/:proxyId/enrollment-token",
+    url: "/:proxyId/token-auth/generate-enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "reissueAgentVaultProxyEnrollmentToken",
       description: "Issue a replacement enrollment token for an Agent Vault proxy",
       tags: [ApiDocsTags.AgentVaultProxies],
       params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
-      response: { 200: z.object({ enrollment: EnrollmentSchema }) }
+      response: { 200: EnrollmentSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -213,7 +213,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         }
       });
 
-      return { enrollment };
+      return enrollment;
     }
   });
 

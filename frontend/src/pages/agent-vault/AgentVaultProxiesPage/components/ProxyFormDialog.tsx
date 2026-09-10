@@ -132,7 +132,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
       } else {
         const result = await createProxy.mutateAsync(payload);
         createNotification({ text: `Proxy "${data.name}" created`, type: "success" });
-        onCreated?.(result.enrollment);
+        onCreated?.({ token: result.token, expiresAt: result.expiresAt });
       }
 
       onOpenChange(false);

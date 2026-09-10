@@ -236,7 +236,8 @@ export const useCreateAgentVaultProxy = () => {
     mutationFn: async (params: TAgentVaultProxySettingsDTO) => {
       const { data } = await apiRequest.post<{
         proxy: TAgentVaultProxy;
-        enrollment: TAgentVaultEnrollment;
+        token: string;
+        expiresAt: string;
       }>("/api/v1/agent-vault/proxies", params);
       return data;
     },
@@ -285,10 +286,10 @@ export const useDeleteAgentVaultProxy = () => {
 export const useReissueAgentVaultProxyEnrollmentToken = () =>
   useMutation({
     mutationFn: async (proxyId: string) => {
-      const { data } = await apiRequest.post<{ enrollment: TAgentVaultEnrollment }>(
-        `/api/v1/agent-vault/proxies/${proxyId}/enrollment-token`
+      const { data } = await apiRequest.post<TAgentVaultEnrollment>(
+        `/api/v1/agent-vault/proxies/${proxyId}/token-auth/generate-enrollment-token`
       );
-      return data.enrollment;
+      return data;
     }
   });
 

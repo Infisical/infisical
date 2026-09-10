@@ -986,6 +986,24 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("proxies", async () => {
+    test("create and reissue both hand back the enrollment token at the top level", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "flat-token-shape" });
+      expect(created.statusCode).toBe(200);
+      const body = JSON.parse(created.payload) as { proxy: { id: string }; token: string; expiresAt: string };
+      expect(body.token).toBeTruthy();
+      expect(body.expiresAt).toBeTruthy();
+
+      const reissued = await inject(
+        "POST",
+        `/api/v1/agent-vault/proxies/${body.proxy.id}/token-auth/generate-enrollment-token`
+      );
+      expect(reissued.statusCode).toBe(200);
+      const again = JSON.parse(reissued.payload) as { token: string; expiresAt: string };
+      expect(again.token).toBeTruthy();
+      expect(again.token).not.toBe(body.token);
+      expect(again.expiresAt).toBeTruthy();
+    });
+
     test("revoking access also burns an enrollment token minted before the revoke", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "revoke-burns-token" });
       expect(created.statusCode).toBe(200);
