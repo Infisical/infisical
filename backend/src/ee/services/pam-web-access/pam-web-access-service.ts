@@ -13,7 +13,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { setupRelayServer, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { setupGatewayProxy, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -326,7 +326,7 @@ export const pamWebAccessServiceFactory = ({
     let session: { id: string; accountId?: string | null } | null = null;
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;
-    let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
+    let proxyServer: { port: number; cleanup: () => Promise<void> } | null = null;
     let relayCerts: TGatewayV2ConnectionDetails | null = null;
     let expiryTimer: ReturnType<typeof setTimeout> | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
@@ -356,13 +356,13 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      if (relayServer) {
+      if (proxyServer) {
         try {
-          await relayServer.cleanup();
+          await proxyServer.cleanup();
         } catch (err) {
           logger.debug(err, "Error closing relay server");
         } finally {
-          relayServer = null;
+          proxyServer = null;
         }
       }
 
@@ -554,7 +554,7 @@ export const pamWebAccessServiceFactory = ({
 
           return {
             certs: attemptCerts,
-            server: await setupRelayServer({
+            server: await setupGatewayProxy({
               protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
               ...attemptCerts,
               longLived: true,
@@ -565,7 +565,7 @@ export const pamWebAccessServiceFactory = ({
       );
 
       const { certs } = attempt.result;
-      relayServer = attempt.result.server;
+      proxyServer = attempt.result.server;
 
       // The tunnel is open from here rather than from whenever the session handler first dials, so
       // a socket that closed during setup has to be caught: its "close" fired before the listener
@@ -594,7 +594,7 @@ export const pamWebAccessServiceFactory = ({
 
       const ctx: TSessionContext = {
         socket,
-        relayPort: relayServer.port,
+        relayPort: proxyServer.port,
         resourceName: account.name,
         sessionId: session.id,
         sendMessage: boundSendMessage,
