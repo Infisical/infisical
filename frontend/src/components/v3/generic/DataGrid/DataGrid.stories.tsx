@@ -94,6 +94,19 @@ function getColumnIndicator(
   return { type: "fk", tooltip: `\u2192 ${fk.targetSchema}.${fk.targetTable}(${targetCol})` };
 }
 
+function stripRowMeta(row: RowData): RowData {
+  const next = { ...row };
+  delete next.tempRowId;
+  delete next.originalPkKey;
+  return next;
+}
+
+// Postgres fills the `id` default on INSERT. The stand-in source has to do the same,
+// or every row saved from the add-record form collides on the `{"id":null}` row key.
+function insertedRowId(tempRowId: string): string {
+  return `00000000-0000-4000-9000-${tempRowId.slice(ROW_KEY_PREFIX.length).padStart(12, "0")}`;
+}
+
 function getRowKey(row: RowData, primaryKeys: string[]): string {
   const keyObj: Record<string, unknown> = {};
   primaryKeys.forEach((pk) => {
@@ -384,16 +397,17 @@ function LimitOffsetPopover({
   rangeEnd,
   pageSize,
   offset,
-  onPageSizeChange,
-  onOffsetChange
+  onApply
 }: {
   totalCount: number;
   rangeStart: number;
   rangeEnd: number;
   pageSize: number;
   offset: number;
-  onPageSizeChange: (size: number) => void;
-  onOffsetChange: (offset: number) => void;
+  // Production hands limit and offset to two page-level setters and refetches from the
+  // resulting state. This story pages imperatively, so both values travel together —
+  // applying them one at a time would page with the previous limit.
+  onApply: (size: number, offset: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [limitInput, setLimitInput] = useState(String(pageSize));
@@ -425,8 +439,7 @@ function LimitOffsetPopover({
 
   const applyChanges = () => {
     if (limitError || offsetError) return;
-    onPageSizeChange(Math.max(1, Math.min(1000, limitNum || 50)));
-    onOffsetChange(Math.max(0, offsetNum || 0));
+    onApply(Math.max(1, Math.min(1000, limitNum || 50)), Math.max(0, offsetNum || 0));
     setOpen(false);
   };
 
@@ -518,6 +531,30 @@ function TableBrowser({ hasPrimaryKey }: { hasPrimaryKey: boolean }) {
     selectedRowsRef.current = [];
   }, []);
 
+  const sourceRowsRef = useRef(sourceRows);
+  sourceRowsRef.current = sourceRows;
+  const offsetRef = useRef(offset);
+  offsetRef.current = offset;
+  const pageSizeRef = useRef(pageSize);
+  pageSizeRef.current = pageSize;
+
+  // Production commits every mutation to Postgres and then refetches the page, so the
+  // page always comes back from the table. `sourceRows` stands in for that table: a
+  // commit rewrites it and re-derives the page, otherwise saved rows would disappear
+  // and deleted rows would come back the next time the story pages or discards.
+  const commitSource = useCallback(
+    (rows: RowData[]) => {
+      const nextOffset =
+        offsetRef.current > 0 && offsetRef.current >= rows.length
+          ? Math.max(0, offsetRef.current - pageSizeRef.current)
+          : offsetRef.current;
+      setSourceRows(rows);
+      setOffset(nextOffset);
+      applyPage(rows, nextOffset, pageSizeRef.current);
+    },
+    [applyPage]
+  );
+
   const columnDefs = useMemo(
     () =>
       hasPrimaryKey
@@ -590,54 +627,83 @@ function TableBrowser({ hasPrimaryKey }: { hasPrimaryKey: boolean }) {
     setNewRowTempIds((prev) => new Set(prev).add(tempId));
   }, []);
 
-  const handleRowsDelete = useCallback((_rows: RowData[], rowIndices: number[]) => {
-    const remove = new Set(rowIndices);
-    setCurrentData((prev) => prev.filter((_, index) => !remove.has(index)));
-  }, []);
+  const deleteRows = useCallback(
+    (rows: RowData[]) => {
+      const tempIds = new Set(
+        rows.filter((row) => row.tempRowId).map((row) => String(row.tempRowId))
+      );
+      const persistedKeys = new Set(
+        rows.filter((row) => !row.tempRowId).map((row) => String(row.originalPkKey))
+      );
+
+      if (tempIds.size > 0) {
+        setCurrentData((prev) =>
+          prev.filter((row) => !row.tempRowId || !tempIds.has(String(row.tempRowId)))
+        );
+        setNewRowTempIds((prev) => {
+          const next = new Set(prev);
+          tempIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+
+      // Deleting a persisted row runs immediately in production (DELETE, then refetch),
+      // which is why unsaved edits elsewhere on the page do not survive it.
+      if (persistedKeys.size > 0) {
+        commitSource(
+          sourceRowsRef.current.filter(
+            (row) => !persistedKeys.has(getRowKey(row, USERS_PRIMARY_KEYS))
+          )
+        );
+      }
+    },
+    [commitSource]
+  );
+
+  const handleRowsDelete = useCallback(
+    (rows: RowData[]) => {
+      deleteRows(rows);
+    },
+    [deleteRows]
+  );
 
   const handleDeleteSelected = useCallback(() => {
     const rows = selectedRowsRef.current;
     if (rows.length === 0) return;
-    const tempIds = new Set(
-      rows.filter((row) => row.tempRowId).map((row) => String(row.tempRowId))
-    );
-    const persistedKeys = new Set(
-      rows.filter((row) => !row.tempRowId).map((row) => String(row.originalPkKey))
-    );
-    setCurrentData((prev) =>
-      prev.filter((row) => {
-        if (row.tempRowId) return !tempIds.has(String(row.tempRowId));
-        return !persistedKeys.has(String(row.originalPkKey));
-      })
-    );
-    setSourceRows((prev) =>
-      prev.filter((row) => !persistedKeys.has(getRowKey(row, USERS_PRIMARY_KEYS)))
-    );
-    setNewRowTempIds((prev) => {
-      const next = new Set(prev);
-      tempIds.forEach((id) => next.delete(id));
-      return next;
-    });
+    deleteRows(rows);
     gridRef.current?.resetRowSelection();
     selectedRowsRef.current = [];
     setSelectedRowCount(0);
-  }, []);
+  }, [deleteRows]);
 
   const handleSave = useCallback(() => {
-    const kept = currentData.filter((row) => {
-      if (row.tempRowId) return newRowTempIds.has(String(row.tempRowId));
-      return true;
+    const inserts: RowData[] = [];
+    const updatesByPk = new Map<string, RowData>();
+
+    currentData.forEach((row) => {
+      const tempId = row.tempRowId ? String(row.tempRowId) : null;
+      if (tempId) {
+        if (!newRowTempIds.has(tempId)) return;
+        const inserted = stripRowMeta(row);
+        if (!inserted.id) inserted.id = insertedRowId(tempId);
+        inserts.push(inserted);
+        return;
+      }
+      const original = originalDataByPk.get(String(row.originalPkKey));
+      if (!original) return;
+      const hasChanges = USERS_COLUMNS.some(
+        (col) => !cellValuesEqual(row[col.name], original[col.name])
+      );
+      if (hasChanges) updatesByPk.set(String(row.originalPkKey), stripRowMeta(row));
     });
-    const committed = kept.map((row) => {
-      const next = { ...row };
-      delete next.tempRowId;
-      next.originalPkKey = getRowKey(next, USERS_PRIMARY_KEYS);
-      return next;
-    });
-    setCurrentData(committed);
-    setOriginalData(committed);
-    setNewRowTempIds(new Set());
-  }, [currentData, newRowTempIds]);
+
+    if (inserts.length === 0 && updatesByPk.size === 0) return;
+
+    commitSource([
+      ...inserts,
+      ...sourceRows.map((row) => updatesByPk.get(getRowKey(row, USERS_PRIMARY_KEYS)) ?? row)
+    ]);
+  }, [currentData, newRowTempIds, originalDataByPk, sourceRows, commitSource]);
 
   const handleDiscard = useCallback(() => {
     setCurrentData(originalData);
@@ -682,13 +748,13 @@ function TableBrowser({ hasPrimaryKey }: { hasPrimaryKey: boolean }) {
           {hasPrimaryKey && (
             <Button variant="outline" size="xs" onClick={handleAddRecord} className="gap-1">
               <PlusIcon className="size-3" />
-              Add record
+              Add Record
             </Button>
           )}
           {selectedRowCount > 0 && hasPrimaryKey && (
             <Button variant="danger" size="xs" onClick={handleDeleteSelected} className="gap-1">
               <Trash2Icon className="size-3" />
-              Delete {selectedRowCount} record{selectedRowCount !== 1 ? "s" : ""}
+              Delete {selectedRowCount} Record{selectedRowCount !== 1 ? "s" : ""}
             </Button>
           )}
           {changeCount > 0 && (
@@ -696,11 +762,11 @@ function TableBrowser({ hasPrimaryKey }: { hasPrimaryKey: boolean }) {
               <div className="h-4 w-px bg-border" />
               <Button variant="success" size="xs" onClick={handleSave} className="gap-1">
                 <SaveIcon className="size-3" />
-                Save {changeCount} change{changeCount !== 1 ? "s" : ""}
+                Save {changeCount} Change{changeCount !== 1 ? "s" : ""}
               </Button>
               <Button variant="ghost" size="xs" onClick={handleDiscard} className="gap-1 underline">
                 <UndoIcon className="size-3" />
-                Discard changes
+                Discard Changes
               </Button>
             </>
           )}
@@ -725,14 +791,10 @@ function TableBrowser({ hasPrimaryKey }: { hasPrimaryKey: boolean }) {
             rangeEnd={rangeEnd}
             pageSize={pageSize}
             offset={offset}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setOffset(0);
-              applyPage(sourceRows, 0, size);
-            }}
-            onOffsetChange={(next) => {
-              setOffset(next);
-              applyPage(sourceRows, next, pageSize);
+            onApply={(nextPageSize, nextOffset) => {
+              setPageSize(nextPageSize);
+              setOffset(nextOffset);
+              applyPage(sourceRows, nextOffset, nextPageSize);
             }}
           />
           <Button
@@ -773,7 +835,7 @@ export const TableBrowserEditable: Story = {
     docs: {
       description: {
         story:
-          "PAM `DataExplorerGrid` when the table has a primary key. Checkbox select column, PK/FK badges and type labels, `enablePaste`, dirty-cell tracking, toolbar Add record (the grid footer is CSS-hidden), bulk delete, save / discard, and limit/offset paging. Production also mounts filter / sort / export / refresh on `DataExplorerToolbar`; those are page-local, not DataGrid."
+          "PAM `DataExplorerGrid` when the table has a primary key. Checkbox select column, PK/FK badges and type labels, `enablePaste`, dirty-cell tracking, toolbar Add Record (the grid footer is CSS-hidden), bulk delete, save / discard, and limit/offset paging. Saves and deletes commit into the story's stand-in table, so they survive paging and discard the way a refetch does in production. Production also mounts filter / sort / export / refresh on `DataExplorerToolbar`; those are page-local, not DataGrid."
       }
     }
   },
@@ -786,7 +848,7 @@ export const TableBrowserReadOnly: Story = {
     docs: {
       description: {
         story:
-          "A table (or view) without a primary key is `readOnly`. PAM shows the info `Alert` above the same explorer chrome and omits Add record, paste, and row delete."
+          "A table (or view) without a primary key is `readOnly`. PAM shows the info `Alert` above the same explorer chrome and omits Add Record, paste, and row delete."
       }
     }
   },
