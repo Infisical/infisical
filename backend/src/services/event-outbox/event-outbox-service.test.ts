@@ -6,6 +6,7 @@ import {
   EventOutboxStatus,
   IEventOutboxConsumer,
   MAX_OUTBOX_ATTEMPTS,
+  MAX_OUTBOX_PAYLOAD_BYTES,
   TEventOutboxRow,
   TOutboxEvent
 } from "./event-outbox-types";
@@ -94,7 +95,7 @@ describe("event outbox emit", () => {
     const { service, inserted } = buildService([makeConsumer()]);
 
     await expect(service.emit(makeEvent({ payload: { targetIds: [] } }), TX)).rejects.toThrow(
-      /the 'alert' consumer cannot accept/
+      "the 'alert' consumer cannot accept"
     );
     expect(inserted).toHaveLength(0);
   });
@@ -105,7 +106,7 @@ describe("event outbox emit", () => {
     ]);
 
     await expect(service.emit(makeEvent({ payload: { blob: "x".repeat(20_000) } }), TX)).rejects.toThrow(
-      /over the .* byte limit/
+      `over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit`
     );
     expect(inserted).toHaveLength(0);
   });
@@ -113,7 +114,7 @@ describe("event outbox emit", () => {
   test("throws on a malformed event envelope", async () => {
     const { service } = buildService([makeConsumer()]);
 
-    await expect(service.emit(makeEvent({ orgId: "not-a-uuid" }), TX)).rejects.toThrow(/Invalid outbox event/);
+    await expect(service.emit(makeEvent({ orgId: "not-a-uuid" }), TX)).rejects.toThrow("Invalid outbox event");
   });
 
   // Swallowing it would hand the caller a poisoned transaction instead of the real error.

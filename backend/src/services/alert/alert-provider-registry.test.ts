@@ -21,7 +21,7 @@ describe("alert provider registry", () => {
     const registry = alertProviderRegistryFactory();
     registry.register(baseProvider({}));
 
-    expect(() => registry.register(baseProvider({}))).toThrow(/already registered/);
+    expect(() => registry.register(baseProvider({}))).toThrow("already registered");
   });
 
   // Both guards fail the boot in routes/index.ts, rather than letting a dispatch silently no-op in
@@ -33,7 +33,7 @@ describe("alert provider registry", () => {
       registry.register(
         baseProvider({ events: [{ key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled }] })
       )
-    ).toThrow(/does not implement findDueTargets/);
+    ).toThrow("does not implement findDueTargets");
   });
 
   test("rejects an event-triggered event with no findTargetsByIds", () => {
@@ -43,7 +43,7 @@ describe("alert provider registry", () => {
       registry.register(
         baseProvider({ events: [{ key: "test.resource.opened", triggerType: AlertTriggerType.Event }] })
       )
-    ).toThrow(/does not implement findTargetsByIds/);
+    ).toThrow("does not implement findTargetsByIds");
   });
 
   test("accepts a provider that implements the method each of its events needs", () => {

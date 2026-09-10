@@ -125,7 +125,7 @@ describe("alert outbox consumer", () => {
     const [result] = await consumer.handle([makeRow({ payload: { targetIds: [] } })]);
 
     expect(result.status).toBe(EventOutboxStatus.Failed);
-    expect(result.error).toMatch(/Unreadable alert event payload/);
+    expect(result.error).toContain("Unreadable alert event payload");
   });
 
   test("runs every matching alert in a scope", async () => {
@@ -151,7 +151,8 @@ describe("alert outbox consumer", () => {
     const [result] = await consumer.handle([makeRow({ resourceType: "pki.certificate" })]);
 
     expect(result.status).toBe(EventOutboxStatus.Failed);
-    expect(result.error).toMatch(/pki\.certificate.*approval\.workflow\.request_opened/);
+    expect(result.error).toContain("pki.certificate");
+    expect(result.error).toContain("approval.workflow.request_opened");
     expect(runs).toHaveLength(0);
     expect(getLookups()).toBe(0);
   });

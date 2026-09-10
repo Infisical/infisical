@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { TEventOutbox } from "@app/db/schemas";
@@ -43,7 +44,10 @@ const keySchema = z
   .trim()
   .min(1)
   .max(MAX_OUTBOX_KEY_LENGTH)
-  .regex(/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/, "Must be lowercase and dot-namespaced, e.g. 'pki.certificate.issued'");
+  .regex(
+    new RE2(/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/),
+    "Must be lowercase and dot-namespaced, e.g. 'pki.certificate.issued'"
+  );
 
 export const OutboxEventSchema = z.object({
   eventType: keySchema,
