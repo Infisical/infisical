@@ -1,5 +1,5 @@
-import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 import { TEventOutbox } from "@app/db/schemas";
+import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 import { EventOutboxStatus } from "@app/services/event-outbox/event-outbox-types";
 
 import { alertEventConsumerFactory } from "./alert-event-consumer";

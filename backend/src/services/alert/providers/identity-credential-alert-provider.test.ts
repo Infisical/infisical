@@ -169,7 +169,12 @@ describe("identity credential alert provider", () => {
     );
     await emitIdentityAuthMethodChanged(
       emitter,
-      { membership, authMethod: IdentityAuthMethod.TOKEN_AUTH, change: IdentityAuthMethodChange.Removed, actor: ActorType.PLATFORM },
+      {
+        membership,
+        authMethod: IdentityAuthMethod.TOKEN_AUTH,
+        change: IdentityAuthMethodChange.Removed,
+        actor: ActorType.PLATFORM
+      },
       {} as never
     );
 

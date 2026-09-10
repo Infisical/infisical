@@ -39,11 +39,11 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
 } from "@app/services/identity/identity-auth-method-events";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";

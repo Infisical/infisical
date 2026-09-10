@@ -62,7 +62,6 @@ export const OutboxEventSchema = z.object({
 
 export type TOutboxEvent = z.input<typeof OutboxEventSchema>;
 
-
 export type TOutboxRowResult = {
   id: string;
   status: EventOutboxStatus.Delivered | EventOutboxStatus.Retry | EventOutboxStatus.Failed;
