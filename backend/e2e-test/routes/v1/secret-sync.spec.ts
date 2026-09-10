@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
 import { createSecretImport } from "e2e-test/testUtils/secret-imports";
@@ -5,10 +6,13 @@ import {
   createAwsAppConnection,
   createSecretSync,
   deleteAppConnection,
-  expectNoSyncRun,
+  deleteSecretSync,
+  expectDestinationUnchanged,
   importSecretsForSync,
   removeSecretsForSync,
-  triggerSecretSync
+  setAutoSync,
+  triggerSecretSync,
+  waitForDestinationSecrets
 } from "e2e-test/testUtils/secret-syncs";
 import { createSecretV2, deleteSecretV2, getSecretsV2 } from "e2e-test/testUtils/secrets";
 
@@ -31,54 +35,23 @@ const ENV = "dev";
 const pathFor = (name: string) => `/${name}/`;
 
 describe("Secret syncs", async () => {
+  // A sync run is a queue round trip, so it takes longer than the 5s default. The helpers give
+  // up after 20s of their own, and this has to outlast that or the test dies first and reports
+  // a timeout instead of whatever the sync actually did.
+  vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
+
   let projectId: string;
   let connectionId: string;
+  let createdSyncIds: string[] = [];
 
-  beforeAll(async () => {
-    const projectRes = await testServer.inject({
-      method: "POST",
-      url: "/api/v1/projects",
-      headers: { authorization: `Bearer ${jwtAuthToken}` },
-      body: { projectName: `secret-sync-e2e-${Date.now()}` }
-    });
-    expect(projectRes.statusCode).toBe(200);
-    projectId = projectRes.json().project.id as string;
-
-    // Connections are org-scoped while syncs are project-scoped, so the name has to be unique
-    // across the whole shared seeded org.
-    connectionId = await createAwsAppConnection({
-      name: `secret-sync-e2e-${Date.now()}`,
-      authToken: jwtAuthToken
-    });
-
-    await createFolder({
+  const newFolder = (parentPath: string, name: string) =>
+    createFolder({
       authToken: jwtAuthToken,
       workspaceId: projectId,
       environmentSlug: ENV,
-      secretPath: "/",
-      name: "services"
+      secretPath: parentPath,
+      name
     });
-    await createFolder({
-      authToken: jwtAuthToken,
-      workspaceId: projectId,
-      environmentSlug: ENV,
-      secretPath: "/services",
-      name: "api"
-    });
-  });
-
-  afterAll(async () => {
-    await deleteAppConnection({ connectionId, authToken: jwtAuthToken });
-    await testServer.inject({
-      method: "DELETE",
-      url: `/api/v1/projects/${projectId}`,
-      headers: { authorization: `Bearer ${jwtAuthToken}` }
-    });
-  });
-
-  beforeEach(() => {
-    fakeParameterStore.reset();
-  });
 
   const addSecret = (secretPath: string, key: string, value: string) =>
     createSecretV2({ authToken: jwtAuthToken, workspaceId: projectId, environmentSlug: ENV, secretPath, key, value });
@@ -111,8 +84,58 @@ describe("Secret syncs", async () => {
       ...overrides
     });
 
+    // Tracked so afterEach can clear them before the connection. Absent when a test asserts
+    // that creation is refused.
+    if (result.secretSync) createdSyncIds.push(result.secretSync.id);
+
     return result;
   };
+
+  // Everything a test touches is built here and torn down after it, so no test can be reached by
+  // another's writes or teardown. That matters more than usual for secret syncs: auto sync reacts
+  // to any write at a sync's source path, secret imports outlive the test that made them, and an
+  // app connection is org-scoped rather than project-scoped, so sharing one would leave a single
+  // row that every test's syncs hang off.
+  beforeEach(async () => {
+    fakeParameterStore.reset();
+    createdSyncIds = [];
+
+    const suffix = randomUUID().slice(0, 8);
+
+    const projectRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/projects",
+      headers: { authorization: `Bearer ${jwtAuthToken}` },
+      body: { projectName: `secret-sync-e2e-${suffix}` }
+    });
+    expect(projectRes.statusCode).toBe(200);
+    projectId = projectRes.json().project.id as string;
+
+    connectionId = await createAwsAppConnection({
+      name: `secret-sync-e2e-${suffix}`,
+      authToken: jwtAuthToken
+    });
+
+    await newFolder("/", "services");
+    await newFolder("/services", "api");
+  });
+
+  afterEach(async () => {
+    // Order matters. A sync holds a foreign key to the connection, and deleting a project only
+    // soft deletes it, leaving the sync rows in place, so the connection delete would fail on the
+    // constraint if the syncs went second.
+    for (const syncId of createdSyncIds) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteSecretSync({ syncId, authToken: jwtAuthToken });
+    }
+
+    await deleteAppConnection({ connectionId, authToken: jwtAuthToken });
+    await testServer.inject({
+      method: "DELETE",
+      url: `/api/v1/projects/${projectId}`,
+      headers: { authorization: `Bearer ${jwtAuthToken}` }
+    });
+  });
 
   describe("A sync sends the secrets of its own source environment and secret path", () => {
     test("A sync sends the secrets of its source secret path", async () => {
@@ -361,7 +384,9 @@ describe("Secret syncs", async () => {
     });
 
     test("An import fails when a destination secret key is not a valid Infisical secret key", async () => {
-      fakeParameterStore.at(REGION, pathFor("import-invalid-name")).seed({ "not a valid key": "destination-value" });
+      // SecretNameSchema rejects only a colon or a forward slash, so a name with spaces would
+      // import cleanly. This has to be one Infisical genuinely refuses.
+      fakeParameterStore.at(REGION, pathFor("import-invalid-name")).seed({ "BAD:KEY": "destination-value" });
 
       const { secretSync } = await newSync("import-invalid-name", { secretPath: "/services" });
       const { secretSync: imported } = await importSecretsForSync({
@@ -402,44 +427,54 @@ describe("Secret syncs", async () => {
   describe("Automatic syncing is triggered by changes at the source secret path only", () => {
     test("Creating a secret at the source secret path triggers a sync run", async () => {
       const destinationPath = pathFor("auto-sync-source");
+      // Auto sync is enabled after creation, and only once the destination has gone quiet, so
+      // exactly one run can be in flight when the write below happens.
       const { secretSync } = await newSync("auto-sync-source", {
         secretPath: "/services",
-        isAutoSyncEnabled: true
+        isAutoSyncEnabled: false
       });
+      await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken: jwtAuthToken });
 
-      // Creating the sync with auto sync on already queues one run; wait it out so the run this
-      // test cares about is the one the secret write causes.
-      await triggerSecretSync({ syncId: secretSync!.id, region: REGION, destinationPath, authToken: jwtAuthToken });
-      const runCountBefore = fakeParameterStore.at(REGION, destinationPath).runCount();
-
+      // No explicit trigger: the write alone has to cause the run, which is the behaviour
+      // under test.
       await addSecret("/services", "NEW_KEY", "new-value");
 
-      await triggerSecretSync({ syncId: secretSync!.id, region: REGION, destinationPath, authToken: jwtAuthToken });
-      expect(fakeParameterStore.at(REGION, destinationPath).runCount()).toBeGreaterThan(runCountBefore);
-      expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({ NEW_KEY: "new-value" });
-
-      await removeSecret("/services", "NEW_KEY");
+      await waitForDestinationSecrets({
+        region: REGION,
+        destinationPath,
+        expected: { NEW_KEY: "new-value" }
+      });
     });
 
     // The second pin for recursive syncing: today a child folder write reaches nothing.
     test("Creating a secret in a child secret path does not trigger a sync run", async () => {
       const destinationPath = pathFor("auto-sync-child");
-      await addSecret("/services", "PARENT_KEY", "parent-value");
-
+      // Written before auto sync is on, so it cannot queue a run that lands later and looks
+      // like the child write's doing.
       const { secretSync } = await newSync("auto-sync-child", {
         secretPath: "/services",
-        isAutoSyncEnabled: true
+        isAutoSyncEnabled: false
       });
-      await triggerSecretSync({ syncId: secretSync!.id, region: REGION, destinationPath, authToken: jwtAuthToken });
-      const runCountBefore = fakeParameterStore.at(REGION, destinationPath).runCount();
+      await addSecret("/services", "PARENT_KEY", "parent-value");
+
+      // Enabling auto sync queues a run; wait for the parent's secret to arrive.
+      await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken: jwtAuthToken });
+      await waitForDestinationSecrets({
+        region: REGION,
+        destinationPath,
+        expected: { PARENT_KEY: "parent-value" }
+      });
 
       await addSecret("/services/api", "CHILD_KEY", "child-value");
 
-      await expectNoSyncRun({ region: REGION, destinationPath, runCountBefore });
-      expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({ PARENT_KEY: "parent-value" });
-
-      await removeSecret("/services", "PARENT_KEY");
-      await removeSecret("/services/api", "CHILD_KEY");
+      // The child's secret must not reach the destination. Whether the parent's sync happens to
+      // run again is not asserted: the queue requeues on lock contention, so run counts are not
+      // stable, while what arrives is.
+      await expectDestinationUnchanged({
+        region: REGION,
+        destinationPath,
+        expected: { PARENT_KEY: "parent-value" }
+      });
     });
 
     test("A change at the source secret path does not trigger a sync run when the auto sync parameter is false", async () => {
@@ -448,10 +483,7 @@ describe("Secret syncs", async () => {
 
       await addSecret("/services", "NEW_KEY", "new-value");
 
-      await expectNoSyncRun({ region: REGION, destinationPath, runCountBefore: 0 });
-      expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({});
-
-      await removeSecret("/services", "NEW_KEY");
+      await expectDestinationUnchanged({ region: REGION, destinationPath, expected: {} });
     });
   });
 

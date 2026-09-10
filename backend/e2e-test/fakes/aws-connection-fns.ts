@@ -23,10 +23,19 @@ type TFakeAwsConnectionState = {
   validationError: string | null;
 };
 
-const state: TFakeAwsConnectionState = {
+// Shared through globalThis for the same reason as the Parameter Store fake: the alias makes
+// this module reachable by more than one specifier, so it can be instantiated twice, and a
+// spec would then configure a copy the server never reads.
+const globalScope = globalThis as typeof globalThis & {
+  infisicalFakeAwsConnection?: TFakeAwsConnectionState;
+};
+
+globalScope.infisicalFakeAwsConnection ??= {
   accountId: DEFAULT_ACCOUNT_ID,
   validationError: null
 };
+
+const state = globalScope.infisicalFakeAwsConnection;
 
 // Behavior a spec can change. Every field resets between test files, so a spec never inherits
 // another's configuration. See e2e-test/setup/reset-fakes.ts.

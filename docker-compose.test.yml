@@ -69,7 +69,11 @@ services:
       AUTH_SECRET: something-random
       ENCRYPTION_KEY: p5e5k2j3+HIErjm02dzSrlhXc1xhdgoWvC6pox410rE=
       NODE_ENV: test
-      NODE_OPTIONS: --force-fips
+      # The heap is set explicitly because Node derives its default from available memory, so
+      # without this the suite's budget depends on the host: a 16GB CI runner gets about 4GB
+      # and boots fine, while an 8GB Docker Desktop VM gets ~2GB and dies during environment
+      # setup, before a single spec runs. Booting the whole server needs more than 2GB.
+      NODE_OPTIONS: --force-fips --max-old-space-size=4096
       TELEMETRY_ENABLED: "false"
       # The secret rotation specs need these plus `docker compose -f docker-compose.e2e-dbs.yml
       # up -d`. Left empty otherwise, which is how a run without them behaves anyway.

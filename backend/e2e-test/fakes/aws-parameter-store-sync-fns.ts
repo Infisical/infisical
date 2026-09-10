@@ -20,7 +20,19 @@ type TFakeStore = {
   runCount: number;
 };
 
-const stores = new Map<string, TFakeStore>();
+// The state hangs off globalThis rather than module scope on purpose. The alias makes this
+// module reachable by more than one specifier (the server reaches it through the barrel's
+// relative import, a spec through its own path), and the bundler then instantiates it twice:
+// the sync writes to one copy of the store while the spec reads an empty other one, and the
+// only symptom is an assertion that never comes true. Sharing through globalThis makes that
+// impossible, and matches how the harness already shares testServer and testDb.
+const globalScope = globalThis as typeof globalThis & {
+  infisicalFakeParameterStore?: Map<string, TFakeStore>;
+};
+
+globalScope.infisicalFakeParameterStore ??= new Map<string, TFakeStore>();
+
+const stores = globalScope.infisicalFakeParameterStore;
 
 const storeKeyFor = (region: string, path: string) => `${region}|${path}`;
 
