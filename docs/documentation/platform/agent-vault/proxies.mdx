@@ -58,6 +58,13 @@ An agent you start without the CLI, such as a container that sets `HTTPS_PROXY` 
 curl -s http://<proxy-address>/_agent-vault/ca | jq -r .certificate > ca.pem
 ```
 
+That agent also needs `HTTPS_PROXY` and `HTTP_PROXY` set, with the session token as the password:
+
+```bash
+export HTTPS_PROXY="http://x-agent-vault:<session-token>@<proxy-address>"
+export HTTP_PROXY="$HTTPS_PROXY"
+```
+
 The session token travels to the proxy with every request, so run the proxy where only your agents can reach it: the same host, a private network, or a container network.
 
 ### Pinning
