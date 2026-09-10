@@ -18,10 +18,9 @@ These subcommands are the CLI half of [Agent Vault](/documentation/platform/agen
 
 The two usually run on different machines. Traffic policy is set on the Proxies page, not with flags, and reaches a running proxy on its next poll.
 
-## Subcommands & flags
+## infisical av proxy
 
-<Accordion title="infisical av proxy" defaultOpen="true">
-  Run an Agent Vault proxy. Enroll once with the token shown when the proxy was created. Later runs need no token. The proxy keeps its certificate authority, its token, and its last settings in a data directory, and passing the same enrollment token again on a restart is harmless. See [Proxies](/documentation/platform/agent-vault/proxies).
+Run an Agent Vault proxy. Enroll once with the token shown when the proxy was created. Later runs need no token. The proxy keeps its certificate authority, its token, and its last settings in a data directory, and passing the same enrollment token again on a restart is harmless. See [Proxies](/documentation/platform/agent-vault/proxies).
 
 ```bash
 infisical av proxy --enrollment-token <enrollment-token>
@@ -35,96 +34,95 @@ infisical av proxy --port 18000 --log-format json --log-file /var/log/infisical/
 
 ### Flags
 
-  <Accordion title="--enrollment-token">
-    The one-time token shown when the proxy was created, valid for an hour. Needed on the first run and on a re-enrollment; a proxy that has already enrolled serves without it.
+#### `--enrollment-token`
 
-    ```bash
-    # Example
-    infisical av proxy --enrollment-token <enrollment-token>
-    ```
-  </Accordion>
+The one-time token shown when the proxy was created, valid for an hour. Needed on the first run and on a re-enrollment; a proxy that has already enrolled serves without it.
 
-  <Accordion title="--data-dir">
-    Where to keep the certificate authority and proxy token. Must persist across restarts.
+```bash
+# Example
+infisical av proxy --enrollment-token <enrollment-token>
+```
 
-    ```bash
-    # Example
-    infisical av proxy --data-dir /var/lib/infisical/agent-vault
-    ```
+#### `--data-dir`
 
-    Default value: `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root
-  </Accordion>
+Where to keep the certificate authority and proxy token. Must persist across restarts.
 
-  <Accordion title="--port">
-    Port to listen on.
+```bash
+# Example
+infisical av proxy --data-dir /var/lib/infisical/agent-vault
+```
 
-    ```bash
-    # Example
-    infisical av proxy --port 18000
-    ```
+Default value: `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root
 
-    Default value: `17323`
-  </Accordion>
+#### `--port`
 
-  <Accordion title="--log-format">
-    `console` for a human-readable stream, `json` for machines. Logs go to stderr.
+Port to listen on.
 
-    ```bash
-    # Example
-    infisical av proxy --log-format json
-    ```
+```bash
+# Example
+infisical av proxy --port 18000
+```
 
-    Default value: `console`
-  </Accordion>
+Default value: `17323`
 
-  <Accordion title="--log-file">
-    Also write logs to this file.
+#### `--log-format`
 
-    ```bash
-    # Example
-    infisical av proxy --log-file /var/log/infisical/agent-vault.log
-    ```
-  </Accordion>
+`console` for a human-readable stream, `json` for machines. Logs go to stderr.
+
+```bash
+# Example
+infisical av proxy --log-format json
+```
+
+Default value: `console`
+
+#### `--log-file`
+
+Also write logs to this file.
+
+```bash
+# Example
+infisical av proxy --log-file /var/log/infisical/agent-vault.log
+```
 
 ### Environment variables
 
-  <Accordion title="INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN">
-    The one-time enrollment token from the Proxies page. Alternative to `--enrollment-token`, and the way to keep the token off the command line.
+#### `INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN`
 
-    ```bash
-      # Example
-      export INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN=<enrollment-token>
-    ```
-  </Accordion>
+The one-time enrollment token from the Proxies page. Alternative to `--enrollment-token`, and the way to keep the token off the command line.
 
-  <Accordion title="INFISICAL_AGENT_VAULT_DATA_DIR">
-    Where the proxy keeps its certificate authority and token. Alternative to `--data-dir`.
+```bash
+# Example
+export INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN=<enrollment-token>
+```
 
-    ```bash
-      # Example
-      export INFISICAL_AGENT_VAULT_DATA_DIR=/var/lib/infisical/agent-vault
-    ```
-  </Accordion>
+#### `INFISICAL_AGENT_VAULT_DATA_DIR`
 
-  <Accordion title="INFISICAL_DOMAIN">
-    Point the CLI to your Infisical instance. Alternative to the [`--domain`](#shared) flag, which every subcommand accepts.
+Where the proxy keeps its certificate authority and token. Alternative to `--data-dir`.
 
-    ```bash
-      # Example
-      export INFISICAL_DOMAIN=https://eu.infisical.com
-    ```
-  </Accordion>
+```bash
+# Example
+export INFISICAL_AGENT_VAULT_DATA_DIR=/var/lib/infisical/agent-vault
+```
 
-</Accordion>
+#### `INFISICAL_DOMAIN`
 
-<Accordion title="infisical av run">
-  Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. On each run, the CLI:
+Point the CLI to your Infisical instance. Alternative to the [`--domain`](#flags-accepted-by-every-subcommand) flag, which every subcommand accepts.
 
-  - Fetches the proxy's certificate authority from the proxy, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`.
-  - Gets a session: the one you pass with `--session-token`, or one minted now over the bundle named with `--access-bundle`. Exactly one of the two is required.
-  - Starts the agent with `HTTPS_PROXY` and `HTTP_PROXY` pointing at the proxy, `NO_PROXY` set to `localhost,127.0.0.1` merged with your own `NO_PROXY` and `--no-proxy`, and the certificate trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
+```bash
+# Example
+export INFISICAL_DOMAIN=https://eu.infisical.com
+```
 
-  The CLI prints the proxy's name and fingerprint and, for a session it minted, when it expires, then hands the terminal to the agent. When the agent exits, a session minted with `--access-bundle` is revoked unless `--keep-session` was set. A session passed with `--session-token` is left alone.
+## infisical av run
+
+Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. On each run, the CLI:
+
+- Fetches the proxy's certificate authority from the proxy, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`.
+- Gets a session: the one you pass with `--session-token`, or one minted now over the bundle named with `--access-bundle`. Exactly one of the two is required.
+- Starts the agent with `HTTPS_PROXY` and `HTTP_PROXY` pointing at the proxy, `NO_PROXY` set to `localhost,127.0.0.1` merged with your own `NO_PROXY` and `--no-proxy`, and the certificate trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
+
+The CLI prints the proxy's name and fingerprint and, for a session it minted, when it expires, then hands the terminal to the agent. When the agent exits, a session minted with `--access-bundle` is revoked unless `--keep-session` was set. A session passed with `--session-token` is left alone.
 
 ```bash
 infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- [agent start command]
@@ -138,148 +136,143 @@ infisical av run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -
 
 ### Flags
 
-  <Accordion title="--session-token">
-    Run with a session token minted in the dashboard. No login is needed, and the CLI never revokes the session. Can't be combined with `--access-bundle`.
+#### `--session-token`
 
-    ```bash
-    # Example
-    infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- claude
-    ```
-  </Accordion>
+Run with a session token minted in the dashboard. No login is needed, and the CLI never revokes the session. Can't be combined with `--access-bundle`.
 
-  <Accordion title="--access-bundle">
-    Mint a session over this access bundle, by name. Pass it once. Mints as the machine identity from `--client-id` and `--client-secret`, or as your login. The identity has to be an Agent Vault member with a grant on the bundle. Can't be combined with `--session-token`.
+```bash
+# Example
+infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- claude
+```
 
-    ```bash
-    # Example
-    infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
-    ```
-  </Accordion>
+#### `--access-bundle`
 
-  <Accordion title="--proxy">
-    Address of the Agent Vault proxy as `host:port`. Required, unless set through `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`.
+Mint a session over this access bundle, by name. Pass it once. Mints as the machine identity from `--client-id` and `--client-secret`, or as your login. The identity has to be an Agent Vault member with a grant on the bundle. Can't be combined with `--session-token`.
 
-    ```bash
-    # Example
-    infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
-    ```
-  </Accordion>
+```bash
+# Example
+infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
+```
 
-  <Accordion title="--ttl">
-    How long a minted session lives: a duration such as `30m`, `8h`, or `7d`, or `never`. One minute is the shortest. Only applies with `--access-bundle`.
+#### `--proxy`
 
-    ```bash
-    # Example
-    infisical av run --access-bundle coding-agent --ttl 8h --proxy 10.0.1.5:17323 -- claude
-    ```
+Address of the Agent Vault proxy as `host:port`. Required, unless set through `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`.
 
-    Default value: `7d`
-  </Accordion>
+```bash
+# Example
+infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
+```
 
-  <Accordion title="--keep-session">
-    Leave a minted session active when the agent exits instead of revoking it. Only applies with `--access-bundle`.
+#### `--ttl`
 
-    ```bash
-    # Example
-    infisical av run --access-bundle coding-agent --keep-session --proxy 10.0.1.5:17323 -- claude
-    ```
+How long a minted session lives: a duration such as `30m`, `8h`, or `7d`, or `never`. One minute is the shortest. Only applies with `--access-bundle`.
 
-    Default value: `false`
-  </Accordion>
+```bash
+# Example
+infisical av run --access-bundle coding-agent --ttl 8h --proxy 10.0.1.5:17323 -- claude
+```
 
-  <Accordion title="--ca-fingerprint">
-    Abort unless the certificate authority the proxy serves matches this SHA256 fingerprint, copied from the Proxies page. Accepted with or without the `SHA256:` prefix and colons.
+Default value: `7d`
 
-    ```bash
-    # Example
-    infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
-    ```
-  </Accordion>
+#### `--keep-session`
 
-  <Accordion title="--ca-file">
-    Where to write the certificate authority fetched from the proxy.
+Leave a minted session active when the agent exits instead of revoking it. Only applies with `--access-bundle`.
 
-    ```bash
-    # Example
-    infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 --ca-file /tmp/agent-vault-ca.pem -- claude
-    ```
+```bash
+# Example
+infisical av run --access-bundle coding-agent --keep-session --proxy 10.0.1.5:17323 -- claude
+```
 
-    Default value: `~/.infisical/agent-vault/ca-<proxy-id>.pem`, one file per proxy
-  </Accordion>
+Default value: `false`
 
-  <Accordion title="--no-ca-trust">
-    Skip writing the certificate authority and setting the trust variables, for a machine that already trusts this proxy's certificate. A `--ca-fingerprint` mismatch is still caught.
+#### `--ca-fingerprint`
 
-    ```bash
-    # Example
-    infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --no-ca-trust -- claude
-    ```
+Abort unless the certificate authority the proxy serves matches this SHA256 fingerprint, copied from the Proxies page. Accepted with or without the `SHA256:` prefix and colons.
 
-    Default value: `false`
-  </Accordion>
+```bash
+# Example
+infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
+```
 
-  <Accordion title="--no-proxy">
-    Additional comma-separated hosts the agent reaches directly, without the proxy. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` already in your environment.
+#### `--ca-file`
 
-    ```bash
-    # Example
-    infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 --no-proxy internal.corp.com -- claude
-    ```
-  </Accordion>
+Where to write the certificate authority fetched from the proxy.
 
-  <Accordion title="--client-id / --client-secret">
-    Universal Auth credentials of the machine identity that mints the session. Alternative to the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables.
+```bash
+# Example
+infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 --ca-file /tmp/agent-vault-ca.pem -- claude
+```
 
-    ```bash
-    # Example
-    infisical av run --access-bundle coding-agent --client-id <client-id> --client-secret <client-secret> --proxy 10.0.1.5:17323 -- claude
-    ```
-  </Accordion>
+Default value: `~/.infisical/agent-vault/ca-<proxy-id>.pem`, one file per proxy
+
+#### `--no-ca-trust`
+
+Skip writing the certificate authority and setting the trust variables, for a machine that already trusts this proxy's certificate. A `--ca-fingerprint` mismatch is still caught.
+
+```bash
+# Example
+infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --no-ca-trust -- claude
+```
+
+Default value: `false`
+
+#### `--no-proxy`
+
+Additional comma-separated hosts the agent reaches directly, without the proxy. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` already in your environment.
+
+```bash
+# Example
+infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 --no-proxy internal.corp.com -- claude
+```
+
+#### `--client-id / --client-secret`
+
+Universal Auth credentials of the machine identity that mints the session. Alternative to the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables.
+
+```bash
+# Example
+infisical av run --access-bundle coding-agent --client-id <client-id> --client-secret <client-secret> --proxy 10.0.1.5:17323 -- claude
+```
 
 ### Environment variables
 
-  <Accordion title="INFISICAL_AGENT_VAULT_PROXY_ADDRESS">
-    Address of the proxy as `host:port`. Alternative to `--proxy`.
+#### `INFISICAL_AGENT_VAULT_PROXY_ADDRESS`
 
-    ```bash
-      # Example
-      export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=10.0.1.5:17323
-    ```
-  </Accordion>
+Address of the proxy as `host:port`. Alternative to `--proxy`.
 
-  <Accordion title="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET">
-    Universal Auth credentials of the machine identity that mints the session when you use `--access-bundle`. Alternative to `--client-id` and `--client-secret`. Without them the CLI mints as your logged-in user.
+```bash
+# Example
+export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=10.0.1.5:17323
+```
 
-    ```bash
-      # Example
-      export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
-      export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
-    ```
-  </Accordion>
+#### `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`
 
-  <Accordion title="INFISICAL_DOMAIN">
-    Point the CLI to your Infisical instance. Alternative to the [`--domain`](#shared) flag, which every subcommand accepts.
+Universal Auth credentials of the machine identity that mints the session when you use `--access-bundle`. Alternative to `--client-id` and `--client-secret`. Without them the CLI mints as your logged-in user.
 
-    ```bash
-      # Example
-      export INFISICAL_DOMAIN=https://eu.infisical.com
-    ```
-  </Accordion>
+```bash
+# Example
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+```
 
-</Accordion>
+#### `INFISICAL_DOMAIN`
 
-### Shared
+Point the CLI to your Infisical instance. Alternative to the [`--domain`](#flags-accepted-by-every-subcommand) flag, which every subcommand accepts.
 
-<Accordion title="Flags accepted by every subcommand">
+```bash
+# Example
+export INFISICAL_DOMAIN=https://eu.infisical.com
+```
 
-  <Accordion title="--domain">
-    Point the CLI to your Infisical instance, such as `https://eu.infisical.com` for EU Cloud or your self-hosted URL. Can also be set through the `INFISICAL_DOMAIN` environment variable.
+## Flags accepted by every subcommand
 
-    ```bash
-    # Example
-    infisical av proxy --domain https://your-instance.com --enrollment-token <enrollment-token>
-    ```
+#### `--domain`
 
-    Default value: `https://app.infisical.com`
-  </Accordion>
-</Accordion>
+Point the CLI to your Infisical instance, such as `https://eu.infisical.com` for EU Cloud or your self-hosted URL. Can also be set through the `INFISICAL_DOMAIN` environment variable.
+
+```bash
+# Example
+infisical av proxy --domain https://your-instance.com --enrollment-token <enrollment-token>
+```
+
+Default value: `https://app.infisical.com`

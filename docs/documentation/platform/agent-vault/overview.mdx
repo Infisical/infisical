@@ -8,20 +8,19 @@ description: "Run AI agents with the access, context, and capabilities they need
 
 Agents like Claude Code or OpenClaw work as they always do. Their requests leave your network with the real credential attached, and the agent never holds it.
 
-```text
-            Your private network                                  Public internet
-
-+----------+                 +-------------------+                +------------------+
-| AI agent | --------------> | Agent Vault proxy | -------------> |  api.slack.com   |
-+----------+  request with a +-------------------+ request with   |  api.github.com  |
-              session token           |            the credential |  ...             |
-                                      |                           +------------------+
-                                      |  fetches the credentials
-                                      |  this session may use
-                                      v
-                               +-------------+
-                               |  Infisical  |
-                               +-------------+
+```mermaid
+flowchart LR
+  subgraph private["Your private network"]
+    agent["AI agent"]
+    proxy["Agent Vault proxy"]
+  end
+  subgraph internet["Public internet"]
+    apis["api.slack.com<br/>api.github.com<br/>..."]
+  end
+  infisical["Infisical"]
+  agent -->|"request with a session token"| proxy
+  proxy -->|"request with the credential"| apis
+  proxy -->|"fetches the credentials this session may use"| infisical
 ```
 
 ## Why Agent Vault
