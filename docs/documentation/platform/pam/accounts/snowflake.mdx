@@ -29,10 +29,10 @@ Every statement runs from the [gateway](/documentation/platform/gateways/overvie
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `analytics-prod`) |
     | **Account Identifier** | The account identifier from your Snowflake URL, without the `snowflakecomputing.com` suffix (e.g., `myorg-myaccount`) |
-    | **Warehouse** | The warehouse sessions run their queries on. Leave blank to use the user's default warehouse |
+    | **Default Warehouse** | The warehouse a session runs its queries on. Leave blank to use the user's own default |
     | **Database** | The database sessions open. Web Access lists the schemas and tables inside it |
-    | **Schema** | The schema sessions open by default. Optional |
-    | **Role** | The role sessions activate. Leave blank to use the user's default role |
+    | **Default Schema** | The schema a session starts in. A session can switch to another schema the role can reach. Optional |
+    | **Default Role** | The role a session starts with. A session can switch to another role the user holds |
   </Step>
   <Step title="Enter credentials">
     | Field | Description |
