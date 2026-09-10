@@ -47,35 +47,23 @@
           "documentation/platform/external-migrations/overview",
           "documentation/getting-started/concepts/deployment-models",
           {
-            "group": "Use cases",
+            "group": "Quickstarts",
             "pages": [
-              {
-                "group": "Manage secrets",
-                "root": "documentation/getting-started/choose-a-product/secrets-management/overview",
-                "pages": [
-                  "documentation/getting-started/choose-a-product/secrets-management/deliver-secrets",
-                  "documentation/getting-started/choose-a-product/secrets-management/local-development",
-                  "documentation/getting-started/choose-a-product/secrets-management/rotate-credentials",
-                  "documentation/getting-started/choose-a-product/secrets-management/dynamic-credentials",
-                  "documentation/getting-started/choose-a-product/secrets-management/sync-secrets",
-                  "documentation/getting-started/choose-a-product/secrets-management/broker-agent-credentials"
-                ]
-              },
-              "documentation/getting-started/choose-a-product/secret-scanning",
-              "documentation/getting-started/choose-a-product/pki",
-              "documentation/getting-started/choose-a-product/kms",
-              "documentation/getting-started/choose-a-product/pam"
-            ]
-          },
-          {
-            "group": "Understand the platform",
-            "pages": [
-              "documentation/getting-started/concepts/platform-hierarchy",
-              "documentation/getting-started/concepts/platform-iam",
-              "documentation/getting-started/concepts/app-connections",
-              "documentation/getting-started/concepts/networking",
-              "documentation/getting-started/concepts/internals",
-              "documentation/getting-started/concepts/contributing"
+              "documentation/getting-started/quickstarts/deliver-secret",
+              "documentation/getting-started/quickstarts/local-development",
+              "documentation/getting-started/quickstarts/docker-container",
+              "documentation/getting-started/quickstarts/github-actions",
+              "documentation/getting-started/quickstarts/kubernetes-operator",
+              "documentation/getting-started/quickstarts/rotate-postgres",
+              "documentation/getting-started/quickstarts/dynamic-postgres",
+              "documentation/getting-started/quickstarts/universal-auth",
+              "documentation/getting-started/quickstarts/sso",
+              "documentation/getting-started/quickstarts/gateway",
+              "documentation/getting-started/quickstarts/scan-github",
+              "documentation/getting-started/quickstarts/issue-certificate",
+              "documentation/getting-started/quickstarts/hsm",
+              "documentation/getting-started/quickstarts/broker-session",
+              "documentation/getting-started/quickstarts/self-host-docker-compose"
             ]
           }
         ]
