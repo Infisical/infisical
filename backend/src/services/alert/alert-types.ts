@@ -91,8 +91,7 @@ export type TFindDueTargetsInput = {
   asOf: Date;
 };
 
-// Lets a provider's factory declare which discovery method it guarantees, instead of leaving callers
-// to assert it.
+// So a provider factory can declare which discovery method it guarantees.
 export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
   Required<Pick<IResourceAlertProvider<TTarget>, "findDueTargets">>;
 
@@ -115,12 +114,9 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // Required for any Scheduled event; the registry enforces that at boot.
   findDueTargets?(input: TFindDueTargetsInput): Promise<TTarget[]>;
 
-  // Rehydrate the targets an event named, by id. Nothing is scanned for: this exists so the row is
-  // read at delivery time rather than copied into the event. A target whose row is gone was deleted
-  // between emit and dispatch, so it's dropped rather than an error.
-  // Must read from the primary, never a replica: the target usually commits in the same transaction
-  // as the event that names it, and the engine cannot tell "not replicated yet" from "deleted". An
-  // empty result is terminal for the event, so a stale replica here loses the notification outright.
+  // Rehydrates the targets an event named. A missing row was deleted between emit and dispatch, so it's
+  // dropped, not an error. Must read the primary: the target usually commits in the same transaction as
+  // the event, and an empty result is terminal for it.
   // Required for any Event event; the registry enforces that at boot.
   findTargetsByIds?(input: TFindTargetsByIdsInput): Promise<TTarget[]>;
 

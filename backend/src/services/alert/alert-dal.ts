@@ -42,8 +42,8 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
-  // The event path's counterpart to findEnabledByResourceType, narrowed to one resource and one
-  // event key. Runs in the outbox worker only; the emit path never touches the alerts table.
+  // Event path only. Reads the primary: an empty result is terminal for the event, and a replica may
+  // not have the alert yet.
   const findEnabledForEvent = async (
     filter: {
       orgId: string;
@@ -78,8 +78,7 @@ export const alertDALFactory = (db: TDbClient) => {
               .where(`${TableName.AlertChannel}.enabled`, true)
         );
 
-      // A resource in a project can be watched by a project-scoped alert and by an org-wide one, so
-      // both are in scope; without a projectId only the org-scoped row can match.
+      // A project resource can be watched by a project-scoped alert and by an org-wide one.
       if (filter.projectId) {
         void query.where(
           (builder) =>

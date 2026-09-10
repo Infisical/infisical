@@ -68,7 +68,7 @@ export type TOutboxRowResult = {
   id: string;
   status: EventOutboxStatus.Delivered | EventOutboxStatus.Retry | EventOutboxStatus.Failed;
   error?: string;
-  // Handed back on the next attempt so a retry can resume instead of repeating. Opaque to the outbox.
+  // Opaque to the outbox; handed back on the next attempt so a retry can skip what already landed.
   progress?: Record<string, unknown> | null;
 };
 
@@ -82,14 +82,12 @@ export interface IEventOutboxConsumer<TPayload = unknown> {
   // Stored on every row and part of the flush job id, so renaming it orphans in-flight rows.
   name: string;
 
-  // Parsed at emit, so a malformed event fails at its source instead of in a worker later. Must not
-  // be `.strict()`: one event can feed several consumers, so a schema has to tolerate fields it
-  // doesn't care about.
+  // Checked at emit. Don't make it `.strict()`: one event can feed several consumers, so each schema
+  // has to tolerate fields it doesn't care about.
   payloadSchema: z.ZodType<TPayload>;
 
   // Runs on the request path for every emit, so keep it pure and in-memory. Whether anyone actually
-  // wants the event is decided later in handle(), off the caller's transaction, where guessing wrong
-  // costs a throwaway row rather than the business write.
+  // wants the event is decided later, in handle().
   subscribesTo(eventType: string): boolean;
 
   // Rows for a single (resourceType, resourceId), in id order. Must return one result per row.

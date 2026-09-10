@@ -59,8 +59,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  // One statement, no explicit transaction: the row locks live only as long as the UPDATE, and a
-  // claim costs one round trip instead of four.
+  // One statement on purpose: the row locks live only as long as the UPDATE.
   const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TEventOutboxRow[]> => {
     try {
       const claimed = await db(TableName.EventOutbox)
@@ -79,14 +78,15 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
         .update({ status: EventOutboxStatus.Processing, lockedAt: db.fn.now() })
         .returning("*");
 
+      // RETURNING order is arbitrary, and handle() is promised id order.
       return (claimed as unknown as TEventOutboxRow[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: claimBatch" });
     }
   };
 
-  // The sweeper reads a claim older than its threshold as a dead worker and hands the rows back out,
-  // so a batch that legitimately runs that long has to keep lockedAt fresh or it delivers twice.
+  // A batch that outlives the stale threshold has to keep lockedAt fresh or the sweeper hands its rows
+  // to another worker mid-delivery.
   const extendClaims = async (ids: string[]): Promise<void> => {
     if (ids.length === 0) return;
     try {

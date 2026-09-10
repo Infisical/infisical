@@ -195,8 +195,7 @@ export const alertEngineFactory = ({
       logger.error(`Alert delivery failed on one or more channels [alertId=${alert.id}]: ${errorText}`);
     }
 
-    // Deliberately not allowed to fail the run: the event path may retry, and a throw after channels
-    // have already sent would re-notify.
+    // Never fails the run: the channels have already sent, and a throw on the event path would re-notify.
     for (let attempt = 1; attempt <= HISTORY_WRITE_ATTEMPTS; attempt += 1) {
       try {
         // eslint-disable-next-line no-await-in-loop -- retrying the same insert is the point
@@ -298,6 +297,7 @@ export const alertEngineFactory = ({
     }
 
     const skip = new Set(input.skipChannelIds ?? []);
+    // Primary: an empty read here is terminal for the event, and a replica may not have the channel yet.
     const channels = (await alertChannelDAL.findByAlertId(alert.id, { enabled: true, readFromPrimary: true })).filter(
       (channel) => !skip.has(channel.id)
     );
@@ -311,7 +311,7 @@ export const alertEngineFactory = ({
       condition: alert.condition,
       targetIds: input.targetIds
     });
-    // The rows were deleted between the event being recorded and delivered, so there is nothing to say.
+    // Deleted between emit and dispatch, so nothing to say.
     if (resolved.length === 0) return { outcome: AlertDispatchOutcome.NoDueTargets, deliveredChannelIds: [] };
 
     const targets = resolved.map((target) => ({ target, id: provider.targetId(target) }));
@@ -320,9 +320,8 @@ export const alertEngineFactory = ({
       const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
       const cap = definition?.maxTargetsPerRun;
       if (cap && targets.length > cap) {
-        // The scheduled path defers the tail to tomorrow's run, but an event has no next run, so this
-        // is a real drop. MAX_TARGET_IDS_PER_EVENT sits at or below every channel cap to keep it
-        // unreachable, and the log names what was lost if that ever stops holding.
+        // Unlike the scheduled path there is no next run, so this is a real drop. MAX_TARGET_IDS_PER_EVENT
+        // sits at or below every channel cap to keep it unreachable; the log names what was lost if not.
         logger.warn(
           `Alert ${channel.channelType} channel caps at ${cap} targets; dropping ${targets.length - cap} from this event [alertId=${alert.id}] [channelId=${channel.id}] [dropped=${targets
             .slice(cap)

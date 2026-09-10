@@ -29,9 +29,8 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    // Backs both the relay's discovery query and the per-resource claim. `id` comes before
-    // `nextRetryAt` so the claim's ORDER BY needs no sort node, and discovery's MIN() still gets
-    // answered from the index.
+    // Backs discovery and the per-resource claim. `id` before `nextRetryAt` so the claim's ORDER BY
+    // needs no sort node.
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.EventOutbox}_drain_idx"
       ON "${TableName.EventOutbox}" ("consumer", "resourceType", "resourceId", "id", "nextRetryAt")
@@ -44,9 +43,7 @@ export async function up(knex: Knex): Promise<void> {
       WHERE status = 'processing'
     `);
 
-    // Backs the oldest-pending health gauge, which runs on every relay tick forever. Without it the
-    // gauge seq-scans the whole table for a handful of rows, at a cost that tracks the delivered
-    // backlog rather than the work outstanding.
+    // Backs the oldest-pending gauge, which runs on every relay tick; without it that's a seq scan.
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.EventOutbox}_undelivered_idx"
       ON "${TableName.EventOutbox}" ("consumer", "occurredAt")

@@ -15,9 +15,8 @@ import { AlertTriggerType, MAX_TARGET_IDS_PER_EVENT } from "./alert-types";
 
 export const ALERT_OUTBOX_CONSUMER = "alert";
 
-// The contract every event-triggered alert shares: the emitter names targets by id and the provider
-// rehydrates them at delivery time. Keeping the payload to identifiers is what lets one consumer
-// serve every provider without knowing their shapes.
+// Emitters name targets by id and the provider rehydrates them at delivery. Keeping the payload to
+// ids is what lets one consumer serve every provider.
 export const AlertEventPayloadSchema = z.object({
   targetIds: z.array(z.string().trim().min(1).max(255)).min(1).max(MAX_TARGET_IDS_PER_EVENT)
 });
@@ -41,9 +40,8 @@ export const alertEventConsumerFactory = ({
 }: TAlertEventConsumerDep): IEventOutboxConsumer<z.infer<typeof AlertEventPayloadSchema>> => {
   const subscribesTo = (eventType: string): boolean => alertProviderRegistry.eventTriggeredKeys().has(eventType);
 
-  // subscribesTo only sees the event type, so an emitter pairing a valid event key with the wrong
-  // resourceType gets past the gate. Failing it here, terminally and naming both halves, is what
-  // stops that row from being marked delivered as "no matching alert".
+  // subscribesTo only sees the event type, so a valid event key on the wrong resourceType gets past it.
+  // Fail here, terminally and naming both, instead of marking the row delivered as "no matching alert".
   const $isDeclaredEvent = (row: TEventOutboxRow): boolean =>
     Boolean(
       alertProviderRegistry
@@ -118,8 +116,7 @@ export const alertEventConsumerFactory = ({
   };
 
   const handle = async (rows: TEventOutboxRow[]): Promise<TOutboxRowResult[]> => {
-    // A batch shares one resource, so rows differ at most by event type and scope. Resolving once
-    // per combination keeps a burst of events from repeating the same lookup for every row.
+    // A batch shares one resource, so a burst of rows would repeat the same lookup.
     const alertsByScope = new Map<string, ReturnType<TAlertLookup>>();
     const findAlerts: TAlertLookup = (filter) => {
       const key = `${filter.orgId}|${filter.projectId ?? ""}|${filter.eventType}`;
@@ -138,8 +135,7 @@ export const alertEventConsumerFactory = ({
         // eslint-disable-next-line no-await-in-loop -- ordering is the point
         results.push(await $handleRow(row, findAlerts));
       } catch (error) {
-        // Contained to this row: throwing out of handle() sends the whole batch back for retry, which
-        // re-notifies on every row that already delivered ahead of this one.
+        // Throwing out of handle() retries the whole batch, which re-notifies the rows that already sent.
         results.push({
           id: String(row.id),
           status: EventOutboxStatus.Retry,

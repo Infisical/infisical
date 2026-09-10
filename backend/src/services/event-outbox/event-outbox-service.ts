@@ -30,8 +30,7 @@ const PRUNE_MAX_BATCHES = 20;
 const STALE_SWEEP_BATCH_SIZE = 1_000;
 const STALE_SWEEP_MAX_BATCHES = 10;
 
-// Frequent enough that one missed beat (a slow query, a paused event loop) doesn't let the sweeper
-// call a live claim stale.
+// A quarter of the threshold, so one missed beat doesn't let the sweeper call a live claim stale.
 const CLAIM_HEARTBEAT_INTERVAL_MS = STALE_CLAIM_THRESHOLD_MS / 4;
 
 const COMMIT_ATTEMPTS = 3;
@@ -72,17 +71,9 @@ export type TEventOutboxServiceFactoryDep = {
 export type TEventOutboxServiceFactory = ReturnType<typeof eventOutboxServiceFactory>;
 
 export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry }: TEventOutboxServiceFactoryDep) => {
-  // `tx` is required, not optional: the row has to commit with the business write, so there is
-  // deliberately no weaker path to reach for.
-  //
-  // Nothing here reads the database. Validation and consumer matching are in-memory, so this adds a
-  // single insert to the caller's transaction and never calls back into a consumer. Whether anyone
-  // actually wants the event is settled later in the worker, where guessing wrong only costs a row
-  // that gets marked delivered and pruned.
-  //
-  // Nothing is caught either. A bad event is a bug at the emit site rather than something the API
-  // caller can act on (hence 500, not 400), and swallowing a failed insert would hand the caller a
-  // poisoned transaction instead of the real error.
+  // `tx` is required on purpose: the row has to commit with the business write. Nothing here reads the
+  // DB or calls into a consumer, and nothing is caught: a bad event is a bug at the emit site (so 500,
+  // not 400), and swallowing a failed insert would leave the caller with a poisoned transaction.
   const emit = async (event: TOutboxEvent, tx: Knex): Promise<void> => {
     const parsed = OutboxEventSchema.safeParse(event);
     if (!parsed.success) {
@@ -168,8 +159,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
 
     for (const row of rows) {
       const id = String(row.id);
-      // A consumer that returned nothing for a row left it unaccounted for; retry rather than
-      // silently marking it delivered.
+      // No result means unaccounted for, not delivered.
       const result = byId.get(id) ?? {
         id,
         status: EventOutboxStatus.Retry as const,
@@ -219,8 +209,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  // The heartbeat is what lets a batch legitimately outlive STALE_CLAIM_THRESHOLD_MS (a slow webhook
-  // endpoint, many rows) without the sweeper handing its rows to a second worker mid-delivery.
+  // The heartbeat lets a slow batch outlive STALE_CLAIM_THRESHOLD_MS without being delivered twice.
   const $handleClaimed = async (
     consumer: IEventOutboxConsumer,
     key: TOutboxFlushKey,
@@ -250,8 +239,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  // Bounded so one wedged resource can't hold a worker indefinitely; whatever is left over gets
-  // picked up by the relay's next tick.
+  // Bounded so one busy resource can't hold a worker forever; the relay's next tick picks up the rest.
   const drain = async (key: TOutboxFlushKey): Promise<{ handled: number; unknownConsumer: boolean }> => {
     const consumer = eventOutboxRegistry.get(key.consumer);
     if (!consumer) {
