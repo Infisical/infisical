@@ -1837,7 +1837,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim(),
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        keys: z.string().trim().transform(safeDecodeURIComponent),
+        keys: z.string().trim(),
         viewSecretValue: booleanSchema.default(false)
       }),
       response: {

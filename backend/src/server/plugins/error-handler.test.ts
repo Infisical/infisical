@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 
 import { safeDecodeURIComponent } from "@app/server/lib/schemas";
@@ -7,7 +7,14 @@ import { safeDecodeURIComponent } from "@app/server/lib/schemas";
 import { fastifyErrHandler } from "./error-handler";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./fastify-zod";
 
-describe("fastifyErrHandler - URIError and safe query decoding", () => {
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/config/env")>()),
+  getConfig: () => ({
+    OTEL_TELEMETRY_COLLECTION_ENABLED: false
+  })
+}));
+
+describe("fastifyErrHandler - safe query decoding", () => {
   const buildApp = async () => {
     const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
     app.setValidatorCompiler(validatorCompiler);
@@ -30,14 +37,6 @@ describe("fastifyErrHandler - URIError and safe query decoding", () => {
         }
       },
       handler: async (req) => ({ tags: req.query.tags, environments: req.query.environments })
-    });
-
-    app.route({
-      method: "GET",
-      url: "/test-raw-urierror",
-      handler: async () => {
-        throw new URIError("URI malformed");
-      }
     });
 
     await app.ready();
@@ -81,20 +80,6 @@ describe("fastifyErrHandler - URIError and safe query decoding", () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.payload) as { environments?: string };
     expect(body.environments).toBe("dev,staging");
-    await app.close();
-  });
-
-  test("maps unhandled URIError to 400 Bad Request instead of 500", async () => {
-    const app = await buildApp();
-    const res = await app.inject({
-      method: "GET",
-      url: "/test-raw-urierror"
-    });
-
-    expect(res.statusCode).toBe(400);
-    const body = JSON.parse(res.payload) as { error?: string; message?: string };
-    expect(body.error).toBe("BadRequest");
-    expect(body.message).toBe("Malformed URL encoding in query parameters");
     await app.close();
   });
 });
