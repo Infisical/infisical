@@ -137,7 +137,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretsTemporaryAccess: null,
   enterprisePamAccount: null,
   crossProjectSecretSharing: false,
-  secretsFolderRbac: true
+  secretsFolderRbac: false
 });
 
 export const getEnforcedIdentityLimit = (plan: TFeatureSet): number | null => {
