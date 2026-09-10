@@ -7,7 +7,7 @@ An access bundle is what you hand an agent: everything it needs for a job, grant
 
 ## Connections
 
-Each connection has a name, the hosts it covers, and a credential.
+Each connection has a name, the hosts it covers, and a credential. Open a bundle from **Access Bundles** and select **Add Connection** to add one.
 
 ### Credential types
 
@@ -17,9 +17,7 @@ Each connection has a name, the hosts it covers, and a credential.
 | **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be blank.                      | APIs behind HTTP basic auth, including ones that put the whole key in the username.         |
 | **Pass-through** | Nothing. The request is forwarded unchanged.                                                         | To make a host reachable on a proxy that denies unmatched hosts. See [Unmatched hosts](/documentation/platform/agent-vault/proxies#unmatched-hosts). |
 
-The templates in the connection picker fill in the hosts and header for common services. Choose **Custom** to set them yourself.
-
-You enter a secret once and it's never shown again. When you edit a connection, the secret fields show that a value is stored without revealing it, so you can rename a header or change the hosts without the original token to hand. Type over a field to replace the value.
+The first step offers a **Template** for common services, which fills in the hosts and the header. Choose **Custom** to set them yourself.
 
 If the agent's request already carries a header with the same name, the proxy replaces it with the connection's credential.
 

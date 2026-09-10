@@ -7,11 +7,13 @@ A proxy is the forward proxy that brokers credentials: it applies the real crede
 
 ## Enrolling
 
-Go to **Proxies**, select **Create Proxy**, name it, and select **Create Proxy**. The dialog shows a one-time enrollment token, valid for an hour, and the command to run where the proxy will live:
+Go to **Proxies**, select **Create Proxy**, name it, and select **Create**. The dialog shows a one-time enrollment token, valid for an hour, and the command to run where the proxy will live:
 
 ```bash
-infisical av proxy --enrollment-token <enrollment-token>
+infisical av proxy --enrollment-token <enrollment-token> --domain <your-instance-url>
 ```
+
+`--domain` points the proxy at your Infisical instance, and the dialog fills in yours. It defaults to `https://app.infisical.com`, so EU Cloud and self-hosted instances have to pass it.
 
 The proxy enrolls, generates its own certificate authority, and serves on port `17323`. It keeps its state in `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root, so run it somewhere that directory persists. Running the same command again on a restart is fine. A proxy that starts with an empty state directory needs a new token: select **New Enrollment Token** on the proxy's menu.
 

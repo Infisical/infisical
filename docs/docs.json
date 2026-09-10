@@ -752,17 +752,17 @@
             "pages": [
               "documentation/platform/agent-vault/overview",
               {
-                "group": "Agent Vault",
+                "group": "Agent vault",
                 "pages": [
-                  "documentation/platform/agent-vault/quickstart",
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/agent-vault/access-bundles",
-                      "documentation/platform/agent-vault/sessions",
-                      "documentation/platform/agent-vault/proxies"
-                    ]
-                  }
+                  "documentation/platform/agent-vault/quickstart"
+                ]
+              },
+              {
+                "group": "Product reference",
+                "pages": [
+                  "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/sessions",
+                  "documentation/platform/agent-vault/proxies"
                 ]
               }
             ]

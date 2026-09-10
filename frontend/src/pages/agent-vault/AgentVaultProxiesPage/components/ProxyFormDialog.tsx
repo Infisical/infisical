@@ -267,7 +267,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
               Cancel
             </Button>
             <Button type="submit" variant="av" isPending={isSubmitting}>
-              {isUpdate ? "Save" : "Create Proxy"}
+              {isUpdate ? "Save" : "Create"}
             </Button>
           </DialogFooter>
         </form>

@@ -36,7 +36,9 @@ Anyone with a grant on at least one bundle can mint a session. Admins can mint o
 
 ### How long a session lives
 
-Enter a duration such as `30m`, `8h`, or `7d`, or `never`. Seven days is the default and one minute is the shortest. A session that never expires keeps working until someone revokes it, so revoke it once the agent that used it has finished.
+Pick how long the session should last. **Never** keeps it working until someone revokes it, so revoke it once the agent that used it has finished.
+
+On the CLI this is [`--ttl`](/cli/commands/av#ttl), which takes a duration such as `30m`, `8h` or `7d`, or `never`.
 
 ## What a running agent can reach
 
