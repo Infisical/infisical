@@ -111,6 +111,9 @@ type ProductStat = {
   value: number;
 };
 
+// Derived so the placeholder count cannot drift from the products again.
+const PRODUCT_TILE_COUNT = Object.keys(ProjectType).length;
+
 export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -418,7 +421,7 @@ export const ProjectCategoryOverview = () => {
   if (isProjectsLoading) {
     return (
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: PRODUCT_TILE_COUNT }).map((_, i) => (
           <Card key={`tile-loading-${i + 1}`}>
             <CardHeader>
               <div className="flex items-start gap-3">
