@@ -69,9 +69,9 @@
 
 @theme {
   --z-index-sticky: 10;
-  --z-index-dropdown: 20;
-  --z-index-backdrop: 30;
-  --z-index-modal: 40;
+  --z-index-backdrop: 20;
+  --z-index-modal: 30;
+  --z-index-dropdown: 40;
   --z-index-popover: 50;
   --z-index-tooltip: 60;
   --z-index-toast: 70;
