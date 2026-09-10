@@ -3101,7 +3101,8 @@ export const SecretSyncs = {
     return {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
       keySchema: `Specify the format to use for structuring secret keys in the ${destinationName} destination.`,
-      disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`
+      disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`,
+      recursive: `Whether to sync secrets from folders beneath the source path as well.`
     };
   },
   ADDITIONAL_SYNC_OPTIONS: {

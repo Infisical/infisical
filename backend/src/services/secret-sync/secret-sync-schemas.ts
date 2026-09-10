@@ -63,16 +63,29 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
           .describe(`Not supported for ${syncName} syncs.`),
     disableSecretDeletion: supportsDisableSecretDeletion
       ? z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
-      : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`)
+      : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`),
+    recursive: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).recursive)
   });
 
   const schema = merge ? baseSchema.merge(merge) : baseSchema;
 
+  const refinedSchema = (schema as AnyZodObject).refine(
+    (options) =>
+      !options.recursive || options.initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination,
+    {
+      path: ["recursive"],
+      message:
+        "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
+    }
+  );
+
   return (
     isUpdateSchema
-      ? schema.describe(SecretSyncs.UPDATE(destination).syncOptions).optional()
-      : schema.describe(SecretSyncs.CREATE(destination).syncOptions)
-  ) as T extends AnyZodObject ? z.ZodObject<z.objectUtil.MergeShapes<typeof schema.shape, T["shape"]>> : typeof schema;
+      ? refinedSchema.describe(SecretSyncs.UPDATE(destination).syncOptions).optional()
+      : refinedSchema.describe(SecretSyncs.CREATE(destination).syncOptions)
+  ) as unknown as T extends AnyZodObject
+    ? z.ZodObject<z.objectUtil.MergeShapes<typeof schema.shape, T["shape"]>>
+    : typeof schema;
 };
 
 export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefined>(
