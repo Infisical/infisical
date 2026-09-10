@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
@@ -30,6 +30,7 @@ import {
 import { TKmipServerAuthMethodView } from "@app/hooks/api/kmipServers/types";
 
 import { AwsStartCommandContent } from "./AwsStartCommandContent";
+import { createKmipEnrollmentMintCommit } from "./enrollmentMintGuard";
 import { EnrollmentTokenContent } from "./EnrollmentTokenContent";
 
 const DEPLOYMENT_TABS = ["cli", "systemd"];
@@ -47,11 +48,20 @@ export const KmipServerDeploySection = ({ kmipServerId, kmipServerName, authMeth
     staleTime: Infinity
   });
   const { mutateAsync: mint, isPending: isMinting } = useGenerateKmipServerEnrollmentToken();
+  const lifecycleRevisionRef = useRef(0);
   const { permission } = useOrgPermission();
   const canEditKmipServer = permission.can(
     OrgKmipServerPermissionActions.EditKmipServers,
     OrgPermissionSubjects.KmipServer
   );
+
+  useLayoutEffect(() => {
+    lifecycleRevisionRef.current += 1;
+
+    return () => {
+      lifecycleRevisionRef.current += 1;
+    };
+  }, [kmipServerId, authMethod.method]);
 
   if (authMethod.method === "identity") return null;
 
@@ -61,9 +71,15 @@ export const KmipServerDeploySection = ({ kmipServerId, kmipServerName, authMeth
     : DEPLOYMENT_TABS[0];
 
   const handleGenerate = async () => {
+    const commitMint = createKmipEnrollmentMintCommit(
+      queryClient,
+      enrollmentQueryKey,
+      lifecycleRevisionRef.current
+    );
+
     try {
       const result = await mint({ kmipServerId });
-      queryClient.setQueryData<MintedEnrollment>(enrollmentQueryKey, result);
+      commitMint(result, lifecycleRevisionRef.current);
     } catch {
       // MutationCache.onError already surfaces the API error.
     }
