@@ -84,6 +84,8 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   the next poll instead of riding its grace window.
 - Removing an actor from Agent Vault does not revoke their sessions. The sessions resolve to nothing while
   the actor is out and work again if the actor is added back. Settled with the product owner.
+- Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
+  id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
 - Status is derived from `revokedAt` and `expiresAt`, never stored, and expiry is enforced against the clock
   on every resolve. `sweepRetiredSessions` exists only for the 30 day hard delete; there is no expiry audit
   event, matching every other product.

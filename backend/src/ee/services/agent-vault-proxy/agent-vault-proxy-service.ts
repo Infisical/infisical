@@ -311,6 +311,12 @@ export const agentVaultProxyServiceFactory = ({
     if (session.expiresAt && session.expiresAt <= new Date()) {
       throw new UnauthorizedError({ message: "Session expired" });
     }
+    // The actor columns are SET NULL so the row outlives its owner for history. A null id must not reach the
+    // lookups below: knex compiles `where col = null` to `IS NULL`, which matches every user row and made an
+    // ownerless session resolve as an admin.
+    if (!session.userId && !session.identityId) {
+      throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
+    }
 
     const actor = session.userId
       ? { type: ActorType.USER as const, id: session.userId }
