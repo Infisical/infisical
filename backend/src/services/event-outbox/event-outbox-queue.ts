@@ -46,7 +46,7 @@ export const eventOutboxQueueFactory = ({
       unit: "s"
     });
     oldestPendingGauge.addCallback((result) => {
-      if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
+      if (!appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) return;
       oldestPendingByConsumer.forEach(({ consumer, ageSeconds }) => {
         result.observe(ageSeconds, { "event_outbox.consumer": consumer });
       });
@@ -58,7 +58,7 @@ export const eventOutboxQueueFactory = ({
       unit: "{key}"
     });
     discoveryGauge.addCallback((result) => {
-      if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
+      if (!appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) return;
       result.observe(lastDiscoveryCount);
     });
   };

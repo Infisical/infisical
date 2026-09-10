@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { TEventOutbox } from "@app/db/schemas";
+
 import { eventOutboxRegistryFactory } from "./event-outbox-registry";
 import { eventOutboxServiceFactory } from "./event-outbox-service";
 import {
@@ -7,7 +9,6 @@ import {
   IEventOutboxConsumer,
   MAX_OUTBOX_ATTEMPTS,
   MAX_OUTBOX_PAYLOAD_BYTES,
-  TEventOutboxRow,
   TOutboxEvent
 } from "./event-outbox-types";
 
@@ -143,7 +144,7 @@ describe("event outbox emit", () => {
 });
 
 describe("event outbox drain", () => {
-  const makeRow = (overrides?: Partial<TEventOutboxRow>): TEventOutboxRow =>
+  const makeRow = (overrides?: Partial<TEventOutbox>): TEventOutbox =>
     ({
       id: 1,
       consumer: "alert",
@@ -164,10 +165,10 @@ describe("event outbox drain", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       ...overrides
-    }) as TEventOutboxRow;
+    }) as TEventOutbox;
 
   const buildDrain = (opts: {
-    batches: TEventOutboxRow[][];
+    batches: TEventOutbox[][];
     handle: IEventOutboxConsumer["handle"];
     consumerName?: string;
   }) => {

@@ -1,10 +1,10 @@
 import { z } from "zod";
 
+import { TEventOutbox } from "@app/db/schemas";
 import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
 import {
   EventOutboxStatus,
   IEventOutboxConsumer,
-  TEventOutboxRow,
   TOutboxRowResult
 } from "@app/services/event-outbox/event-outbox-types";
 
@@ -31,7 +31,7 @@ export type TAlertEventConsumerDep = {
   alertProviderRegistry: Pick<TAlertProviderRegistry, "get" | "eventTriggeredKeys">;
 };
 
-type TAlertLookup = Pick<TAlertDALFactory, "findEnabledForEvent">["findEnabledForEvent"];
+type TAlertLookup = TAlertDALFactory["findEnabledForEvent"];
 
 export const alertEventConsumerFactory = ({
   alertDAL,
@@ -42,14 +42,14 @@ export const alertEventConsumerFactory = ({
 
   // subscribesTo only sees the event type, so a valid event key on the wrong resourceType gets past it.
   // Fail here, terminally and naming both, instead of marking the row delivered as "no matching alert".
-  const $isDeclaredEvent = (row: TEventOutboxRow): boolean =>
+  const $isDeclaredEvent = (row: TEventOutbox): boolean =>
     Boolean(
       alertProviderRegistry
         .get(row.resourceType)
         ?.events.some((event) => event.key === row.eventType && event.triggerType === AlertTriggerType.Event)
     );
 
-  const $handleRow = async (row: TEventOutboxRow, findAlerts: TAlertLookup): Promise<TOutboxRowResult> => {
+  const $handleRow = async (row: TEventOutbox, findAlerts: TAlertLookup): Promise<TOutboxRowResult> => {
     const id = String(row.id);
 
     if (!$isDeclaredEvent(row)) {
@@ -116,8 +116,7 @@ export const alertEventConsumerFactory = ({
     return { ...outcome, status: EventOutboxStatus.Delivered };
   };
 
-  const handle = async (rows: TEventOutboxRow[]): Promise<TOutboxRowResult[]> => {
-    // A batch shares one resource, so a burst of rows would repeat the same lookup.
+  const handle = async (rows: TEventOutbox[]): Promise<TOutboxRowResult[]> => {
     const alertsByScope = new Map<string, ReturnType<TAlertLookup>>();
     const findAlerts: TAlertLookup = (filter) => {
       const key = `${filter.orgId}|${filter.projectId ?? ""}|${filter.eventType}`;
@@ -136,7 +135,6 @@ export const alertEventConsumerFactory = ({
         // eslint-disable-next-line no-await-in-loop -- ordering is the point
         results.push(await $handleRow(row, findAlerts));
       } catch (error) {
-        // Throwing out of handle() retries the whole batch, which re-notifies the rows that already sent.
         results.push({
           id: String(row.id),
           status: EventOutboxStatus.Retry,

@@ -27,11 +27,9 @@ import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
-  IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-  IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-  IdentityAuthMethodChange,
-  TIdentityAuthMethodChangeEventPayload
-} from "@app/services/alert/providers/identity-credential-alert-provider";
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
 
 import { ActorType } from "../auth/auth-type";
@@ -186,21 +184,14 @@ export const identityTokenAuthServiceFactory = ({
         },
         tx
       );
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityMembershipOrg.identity.id,
-          orgId: identityMembershipOrg.scopeOrgId,
-          projectId: identityMembershipOrg.identity.projectId,
-          payload: {
-            targetIds: [identityMembershipOrg.identity.id],
-            authMethod: IdentityAuthMethod.TOKEN_AUTH,
-            change: IdentityAuthMethodChange.Added,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString()
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
         },
         tx
       );
@@ -312,21 +303,14 @@ export const identityTokenAuthServiceFactory = ({
         },
         tx
       );
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityMembershipOrg.identity.id,
-          orgId: identityMembershipOrg.scopeOrgId,
-          projectId: identityMembershipOrg.identity.projectId,
-          payload: {
-            targetIds: [identityMembershipOrg.identity.id],
-            authMethod: IdentityAuthMethod.TOKEN_AUTH,
-            change: IdentityAuthMethodChange.Updated,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString()
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
         },
         tx
       );
@@ -479,21 +463,14 @@ export const identityTokenAuthServiceFactory = ({
       const deletedTokenAuth = await identityTokenAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.TOKEN_AUTH }, tx);
 
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityMembershipOrg.identity.id,
-          orgId: identityMembershipOrg.scopeOrgId,
-          projectId: identityMembershipOrg.identity.projectId,
-          payload: {
-            targetIds: [identityMembershipOrg.identity.id],
-            authMethod: IdentityAuthMethod.TOKEN_AUTH,
-            change: IdentityAuthMethodChange.Removed,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString()
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
         },
         tx
       );
@@ -670,23 +647,15 @@ export const identityTokenAuthServiceFactory = ({
         accessTokenTrustedIps: identityTokenAuth.accessTokenTrustedIps as TIp[],
         persistToPg: { tx, name }
       });
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityMembershipOrg.identity.id,
-          orgId: identityMembershipOrg.scopeOrgId,
-          projectId: identityMembershipOrg.identity.projectId,
-          payload: {
-            targetIds: [identityMembershipOrg.identity.id],
-            authMethod: IdentityAuthMethod.TOKEN_AUTH,
-            change: IdentityAuthMethodChange.CredentialAdded,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString(),
-            credentialId: issued.identityAccessToken.id,
-            credentialName: name
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.CredentialAdded,
+          actor,
+          actorId,
+          credential: { id: issued.identityAccessToken.id, name }
         },
         tx
       );
@@ -927,23 +896,15 @@ export const identityTokenAuthServiceFactory = ({
         { name },
         tx
       );
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityMembershipOrg.identity.id,
-          orgId: identityMembershipOrg.scopeOrgId,
-          projectId: identityMembershipOrg.identity.projectId,
-          payload: {
-            targetIds: [identityMembershipOrg.identity.id],
-            authMethod: IdentityAuthMethod.TOKEN_AUTH,
-            change: IdentityAuthMethodChange.CredentialUpdated,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString(),
-            credentialId: doc.id,
-            credentialName: doc.name ?? undefined
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.CredentialUpdated,
+          actor,
+          actorId,
+          credential: { id: doc.id, name: doc.name }
         },
         tx
       );
@@ -1022,23 +983,15 @@ export const identityTokenAuthServiceFactory = ({
         { isAccessTokenRevoked: true },
         tx
       );
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityOrgMembership.identity.id,
-          orgId: identityOrgMembership.scopeOrgId,
-          projectId: identityOrgMembership.identity.projectId,
-          payload: {
-            targetIds: [identityOrgMembership.identity.id],
-            authMethod: IdentityAuthMethod.TOKEN_AUTH,
-            change: IdentityAuthMethodChange.CredentialRevoked,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString(),
-            credentialId: doc.id,
-            credentialName: doc.name ?? undefined
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityOrgMembership,
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.CredentialRevoked,
+          actor,
+          actorId,
+          credential: { id: doc.id, name: doc.name }
         },
         tx
       );

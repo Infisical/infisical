@@ -224,18 +224,52 @@ export const alertEngineFactory = ({
     };
   };
 
-  const runAlert = async (alert: TAlerts, opts?: { asOf?: Date }): Promise<AlertDispatchOutcome> => {
+  const $buildChannelWork = (
+    alert: TAlerts,
+    channels: TAlertChannels[],
+    targets: { target: unknown; id: string }[],
+    alreadyAlerted?: Set<string>
+  ): TChannelWork[] =>
+    channels
+      .map((channel) => {
+        const due = alreadyAlerted
+          ? targets.filter((target) => !alreadyAlerted.has(`${channel.id}:${target.id}`))
+          : targets;
+        const cap = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType]?.maxTargetsPerRun;
+        if (!cap || due.length <= cap) return { channel, due };
+
+        const dropped = due.slice(cap);
+        if (alreadyAlerted) {
+          logger.info(
+            `Alert ${channel.channelType} channel capped at ${cap} targets this run; ${dropped.length} deferred to the next run [alertId=${alert.id}] [channelId=${channel.id}]`
+          );
+        } else {
+          logger.warn(
+            `Alert ${channel.channelType} channel caps at ${cap} targets; dropping ${dropped.length} from this event [alertId=${alert.id}] [channelId=${channel.id}] [dropped=${dropped.map((target) => target.id).join(",")}]`
+          );
+        }
+        return { channel, due: due.slice(0, cap) };
+      })
+      .filter((work) => work.due.length > 0);
+
+  const $getProvider = (alert: TAlerts, discovery: "findDueTargets" | "findTargetsByIds") => {
     const provider = alertProviderRegistry.get(alert.resourceType);
     if (!provider) {
       logger.warn(`No alert provider registered for resource type '${alert.resourceType}' [alertId=${alert.id}]`);
-      return AlertDispatchOutcome.NoProvider;
+      return undefined;
     }
-    if (!provider.findDueTargets) {
+    if (!provider[discovery]) {
       logger.warn(
-        `Alert provider '${alert.resourceType}' has no findDueTargets, so a scheduled alert cannot run [alertId=${alert.id}]`
+        `Alert provider '${alert.resourceType}' has no ${discovery}, so this alert cannot run [alertId=${alert.id}]`
       );
-      return AlertDispatchOutcome.NoProvider;
+      return undefined;
     }
+    return provider;
+  };
+
+  const runAlert = async (alert: TAlerts, opts?: { asOf?: Date }): Promise<AlertDispatchOutcome> => {
+    const provider = $getProvider(alert, "findDueTargets");
+    if (!provider?.findDueTargets) return AlertDispatchOutcome.NoProvider;
 
     const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
     if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
@@ -260,20 +294,7 @@ export const alertEngineFactory = ({
     );
     const alertedSet = new Set(recentlyAlerted.map((row) => `${row.channelId}:${row.targetId}`));
 
-    const channelWork = channels
-      .map((channel) => {
-        const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
-        const due = targets.filter((target) => !alertedSet.has(`${channel.id}:${target.id}`));
-        const cap = definition?.maxTargetsPerRun;
-        if (cap && due.length > cap) {
-          logger.info(
-            `Alert ${channel.channelType} channel capped at ${cap} targets this run; ${due.length - cap} deferred to the next run [alertId=${alert.id}] [channelId=${channel.id}]`
-          );
-          return { channel, due: due.slice(0, cap) };
-        }
-        return { channel, due };
-      })
-      .filter((work) => work.due.length > 0);
+    const channelWork = $buildChannelWork(alert, channels, targets, alertedSet);
     if (channelWork.length === 0) return AlertDispatchOutcome.AllDeduped;
 
     const { outcome } = await $dispatchChannelWork(alert, provider, channelWork);
@@ -284,17 +305,8 @@ export const alertEngineFactory = ({
     alert: TAlerts,
     input: { eventType: string; targetIds: string[]; payload: Record<string, unknown>; skipChannelIds?: string[] }
   ): Promise<TDispatchResult> => {
-    const provider = alertProviderRegistry.get(alert.resourceType);
-    if (!provider) {
-      logger.warn(`No alert provider registered for resource type '${alert.resourceType}' [alertId=${alert.id}]`);
-      return { outcome: AlertDispatchOutcome.NoProvider, deliveredChannelIds: [] };
-    }
-    if (!provider.findTargetsByIds) {
-      logger.warn(
-        `Alert provider '${alert.resourceType}' has no findTargetsByIds, so an event alert cannot run [alertId=${alert.id}]`
-      );
-      return { outcome: AlertDispatchOutcome.NoProvider, deliveredChannelIds: [] };
-    }
+    const provider = $getProvider(alert, "findTargetsByIds");
+    if (!provider?.findTargetsByIds) return { outcome: AlertDispatchOutcome.NoProvider, deliveredChannelIds: [] };
 
     const skip = new Set(input.skipChannelIds ?? []);
     const channels = (await alertChannelDAL.findByAlertId(alert.id, { enabled: true, readFromPrimary: true })).filter(
@@ -315,22 +327,7 @@ export const alertEngineFactory = ({
 
     const targets = resolved.map((target) => ({ target, id: provider.targetId(target) }));
 
-    const channelWork = channels.map((channel) => {
-      const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
-      const cap = definition?.maxTargetsPerRun;
-      if (cap && targets.length > cap) {
-        logger.warn(
-          `Alert ${channel.channelType} channel caps at ${cap} targets; dropping ${targets.length - cap} from this event [alertId=${alert.id}] [channelId=${channel.id}] [dropped=${targets
-            .slice(cap)
-            .map((target) => target.id)
-            .join(",")}]`
-        );
-        return { channel, due: targets.slice(0, cap) };
-      }
-      return { channel, due: targets };
-    });
-
-    return $dispatchChannelWork(alert, provider, channelWork);
+    return $dispatchChannelWork(alert, provider, $buildChannelWork(alert, channels, targets));
   };
 
   return { runAlert, runAlertForEvent };

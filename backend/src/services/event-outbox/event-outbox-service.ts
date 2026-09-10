@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { TEventOutbox } from "@app/db/schemas";
 import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { recordEventOutboxExhaustedMetric, recordEventOutboxLagMetric } from "@app/lib/telemetry/metrics";
@@ -18,7 +19,6 @@ import {
   OUTBOX_CLAIM_BATCH_SIZE,
   OutboxEventSchema,
   STALE_CLAIM_THRESHOLD_MS,
-  TEventOutboxRow,
   TOutboxEvent,
   TOutboxFlushKey,
   TOutboxRowResult
@@ -143,7 +143,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  const $applyResults = async (rows: TEventOutboxRow[], results: TOutboxRowResult[]): Promise<void> => {
+  const $applyResults = async (rows: TEventOutbox[], results: TOutboxRowResult[]): Promise<void> => {
     const byId = new Map(results.map((result) => [result.id, result]));
     const now = Date.now();
 
@@ -213,7 +213,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   const $handleClaimed = async (
     consumer: IEventOutboxConsumer,
     key: TOutboxFlushKey,
-    claimed: TEventOutboxRow[]
+    claimed: TEventOutbox[]
   ): Promise<TOutboxRowResult[]> => {
     const ids = claimed.map((row) => String(row.id));
     const heartbeat = setInterval(() => {

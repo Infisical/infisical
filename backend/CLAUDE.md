@@ -712,12 +712,13 @@ new consumer gets them for free.
 `resourceType` and `payload: { targetIds, ...facts }`. A `resourceType` that doesn't declare the `eventType` fails
 the row terminally with both named, so a bad emit site shows up in the logs on its first event.
 
-**When several services fire the same event, they call `eventOutboxService.emit` directly and `satisfies`
-one exported payload type.** The identity auth method services (`attach*` / `update*` / `revoke*` in all 13, plus the Universal Auth
-client secret and Token Auth token create/update/revoke paths) each write the
-`identity.authentication.auth-method-changed` event inline, inside the write transaction, with the payload literal checked against `TIdentityAuthMethodChangeEventPayload` from the
-provider file. The provider's test parses a value of that type with its delivery schema, so the compiler
-holds the emit sites to the type and the test holds the type to the schema. A bare `updateById` had to
+**The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
+event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)
+lives in `src/services/identity/identity-auth-method-events.ts`. The 13 auth method services import the
+helper from there and the alert provider imports the schema from there, so neither depends on the other
+and a second consumer of the same event has one place to import from. When several services fire the same
+event, give it one such helper rather than repeating the `emit` literal: the helper owns the payload shape,
+and the provider's test parses what the helper emits with the delivery schema. A bare `updateById` had to
 become a short transaction for this; the cache invalidation that follows it stays outside, after commit.
 
 The DAL is covered by `e2e-test/event-outbox.spec.ts` against real Postgres; the unit tests only check

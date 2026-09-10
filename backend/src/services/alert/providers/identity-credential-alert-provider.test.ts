@@ -3,6 +3,11 @@ import { vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { ActorType } from "@app/services/auth/auth-type";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange,
+  IdentityAuthMethodChangePayloadSchema
+} from "@app/services/identity/identity-auth-method-events";
 
 import {
   ALERT_HISTORY_RETENTION_DAYS,
@@ -15,10 +20,7 @@ import {
   IDENTITY_AUTH_METHOD_CHANGED_EVENT,
   IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
   IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-  IdentityAuthMethodChange,
-  IdentityAuthMethodChangePayloadSchema,
   identityCredentialAlertProviderFactory,
-  TIdentityAuthMethodChangeEventPayload,
   TIdentityCredentialAlertProviderDep
 } from "./identity-credential-alert-provider";
 
@@ -146,27 +148,36 @@ describe("identity credential alert provider", () => {
     expect(schema.safeParse({}).success).toBe(true);
   });
 
-  // The auth method services write this type at their emit sites and the provider parses the schema at
-  // delivery. This is the one place the two are checked against each other.
-  test("the emit-site payload type is accepted by the delivery schema", () => {
-    const payload = {
-      targetIds: ["ident-1"],
-      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
-      change: IdentityAuthMethodChange.Added,
-      actorType: ActorType.USER,
-      actorId: "u1",
-      changedAt: new Date().toISOString()
-    } satisfies TIdentityAuthMethodChangeEventPayload;
-    expect(IdentityAuthMethodChangePayloadSchema.safeParse(payload).success).toBe(true);
+  // The auth method services emit through this helper and the provider parses the schema at delivery.
+  // This is the one place the two are checked against each other.
+  test("the emitted payload is accepted by the delivery schema", async () => {
+    const emitted: unknown[] = [];
+    const emitter = { emit: async (event: { payload: unknown }) => void emitted.push(event.payload) };
+    const membership = { identity: { id: "ident-1", projectId: null }, scopeOrgId: "org-1" };
 
-    const withoutActorId = {
-      targetIds: ["ident-1"],
-      authMethod: IdentityAuthMethod.TOKEN_AUTH,
-      change: IdentityAuthMethodChange.Removed,
-      actorType: ActorType.PLATFORM,
-      changedAt: new Date().toISOString()
-    } satisfies TIdentityAuthMethodChangeEventPayload;
-    expect(IdentityAuthMethodChangePayloadSchema.safeParse(withoutActorId).success).toBe(true);
+    await emitIdentityAuthMethodChanged(
+      emitter,
+      {
+        membership,
+        authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+        change: IdentityAuthMethodChange.CredentialAdded,
+        actor: ActorType.USER,
+        actorId: "u1",
+        credential: { id: "cs-1", name: null }
+      },
+      {} as never
+    );
+    await emitIdentityAuthMethodChanged(
+      emitter,
+      { membership, authMethod: IdentityAuthMethod.TOKEN_AUTH, change: IdentityAuthMethodChange.Removed, actor: ActorType.PLATFORM },
+      {} as never
+    );
+
+    expect(emitted).toHaveLength(2);
+    for (const payload of emitted) {
+      expect(IdentityAuthMethodChangePayloadSchema.safeParse(payload).success).toBe(true);
+      expect((payload as { targetIds: string[] }).targetIds).toEqual(["ident-1"]);
+    }
   });
 
   test("findTargetsByIds rehydrates the identity and the change from the event payload", async () => {

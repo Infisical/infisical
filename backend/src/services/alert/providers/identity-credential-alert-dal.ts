@@ -141,10 +141,10 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findIdentitiesByIds = async (identityIds: string[]): Promise<{ id: string; name: string }[]> => {
+  const findIdentitiesByIds = async (identityIds: string[], orgId: string): Promise<{ id: string; name: string }[]> => {
     if (identityIds.length === 0) return [];
     try {
-      const rows = (await db(TableName.Identity).whereIn("id", identityIds).select("id", "name")) as {
+      const rows = (await db(TableName.Identity).whereIn("id", identityIds).where({ orgId }).select("id", "name")) as {
         id: string;
         name: string;
       }[];

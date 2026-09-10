@@ -1,10 +1,10 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TEventOutbox } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { computeBackoffMs, EventOutboxStatus, TEventOutboxRow, TOutboxFlushKey } from "./event-outbox-types";
+import { computeBackoffMs, EventOutboxStatus, TOutboxFlushKey } from "./event-outbox-types";
 
 export type TEventOutboxDALFactory = ReturnType<typeof eventOutboxDALFactory>;
 
@@ -60,7 +60,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
   };
 
   // One statement on purpose: the row locks live only as long as the UPDATE.
-  const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TEventOutboxRow[]> => {
+  const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TEventOutbox[]> => {
     try {
       const claimed = await db(TableName.EventOutbox)
         .whereIn("id", (qb) => {
@@ -79,7 +79,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
         .returning("*");
 
       // RETURNING order is arbitrary, and handle() is promised id order.
-      return (claimed as unknown as TEventOutboxRow[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+      return (claimed as unknown as TEventOutbox[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: claimBatch" });
     }
@@ -112,51 +112,38 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
 
     try {
       await db.transaction(async (tx) => {
+        const settle = (ids: string[], values: Record<string, unknown>) =>
+          tx(TableName.EventOutbox)
+            .whereIn("id", ids)
+            .where("status", EventOutboxStatus.Processing)
+            .update({ lockedAt: null, ...values });
+
+        const progressOf = (group: { progress?: Record<string, unknown> | null }) =>
+          group.progress !== undefined ? { progress: JSON.stringify(group.progress) } : {};
+
         for (const group of input.delivered) {
-          if (group.ids.length > 0) {
-            // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
-            await tx(TableName.EventOutbox)
-              .whereIn("id", group.ids)
-              .where("status", EventOutboxStatus.Processing)
-              .update({
-                status: EventOutboxStatus.Delivered,
-                lockedAt: null,
-                lastError: null,
-                ...(group.progress !== undefined ? { progress: JSON.stringify(group.progress) } : {})
-              });
-          }
+          // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
+          await settle(group.ids, { status: EventOutboxStatus.Delivered, lastError: null, ...progressOf(group) });
         }
 
         for (const group of input.retriable) {
-          if (group.ids.length > 0) {
-            // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
-            await tx(TableName.EventOutbox)
-              .whereIn("id", group.ids)
-              .where("status", EventOutboxStatus.Processing)
-              .update({
-                status: EventOutboxStatus.Retry,
-                attempts: db.raw('"attempts" + 1'),
-                nextRetryAt: db.raw(`NOW() + (? || ' milliseconds')::INTERVAL`, [group.nextRetryDelayMs]),
-                lockedAt: null,
-                lastError: group.error ?? null,
-                ...(group.progress !== undefined ? { progress: JSON.stringify(group.progress) } : {})
-              });
-          }
+          // eslint-disable-next-line no-await-in-loop -- see above
+          await settle(group.ids, {
+            status: EventOutboxStatus.Retry,
+            attempts: db.raw('"attempts" + 1'),
+            nextRetryAt: db.raw(`NOW() + (? || ' milliseconds')::INTERVAL`, [group.nextRetryDelayMs]),
+            lastError: group.error ?? null,
+            ...progressOf(group)
+          });
         }
 
         for (const group of input.failed) {
-          if (group.ids.length > 0) {
-            // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
-            await tx(TableName.EventOutbox)
-              .whereIn("id", group.ids)
-              .where("status", EventOutboxStatus.Processing)
-              .update({
-                status: EventOutboxStatus.Failed,
-                attempts: db.raw('"attempts" + 1'),
-                lockedAt: null,
-                lastError: group.error ?? null
-              });
-          }
+          // eslint-disable-next-line no-await-in-loop -- see above
+          await settle(group.ids, {
+            status: EventOutboxStatus.Failed,
+            attempts: db.raw('"attempts" + 1'),
+            lastError: group.error ?? null
+          });
         }
       });
     } catch (error) {

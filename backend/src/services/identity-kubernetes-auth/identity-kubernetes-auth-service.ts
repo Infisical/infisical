@@ -63,11 +63,9 @@ import {
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
 import {
-  IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-  IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-  IdentityAuthMethodChange,
-  TIdentityAuthMethodChangeEventPayload
-} from "@app/services/alert/providers/identity-credential-alert-provider";
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
 
 import { ActorType } from "../auth/auth-type";
@@ -1145,21 +1143,14 @@ export const identityKubernetesAuthServiceFactory = ({
         },
         tx
       );
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityMembershipOrg.identity.id,
-          orgId: identityMembershipOrg.scopeOrgId,
-          projectId: identityMembershipOrg.identity.projectId,
-          payload: {
-            targetIds: [identityMembershipOrg.identity.id],
-            authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
-            change: IdentityAuthMethodChange.Added,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString()
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
         },
         tx
       );
@@ -1625,21 +1616,14 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const doc = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery, tx);
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityMembershipOrg.identity.id,
-          orgId: identityMembershipOrg.scopeOrgId,
-          projectId: identityMembershipOrg.identity.projectId,
-          payload: {
-            targetIds: [identityMembershipOrg.identity.id],
-            authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
-            change: IdentityAuthMethodChange.Updated,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString()
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
         },
         tx
       );
@@ -1844,21 +1828,14 @@ export const identityKubernetesAuthServiceFactory = ({
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);
-      await eventOutboxService.emit(
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
         {
-          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: identityMembershipOrg.identity.id,
-          orgId: identityMembershipOrg.scopeOrgId,
-          projectId: identityMembershipOrg.identity.projectId,
-          payload: {
-            targetIds: [identityMembershipOrg.identity.id],
-            authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
-            change: IdentityAuthMethodChange.Removed,
-            actorType: actor,
-            actorId,
-            changedAt: new Date().toISOString()
-          } satisfies TIdentityAuthMethodChangeEventPayload
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
         },
         tx
       );

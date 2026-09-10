@@ -1,5 +1,6 @@
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
-import { EventOutboxStatus, TEventOutboxRow } from "@app/services/event-outbox/event-outbox-types";
+import { TEventOutbox } from "@app/db/schemas";
+import { EventOutboxStatus } from "@app/services/event-outbox/event-outbox-types";
 
 import { alertEventConsumerFactory } from "./alert-event-consumer";
 import { AlertTriggerType } from "./alert-types";
@@ -14,7 +15,7 @@ const EVENT_TYPE = "approval.workflow.request_opened";
 
 const makeAlert = (id: string) => ({ id, resourceType: "approval.workflow", orgId: ORG_ID }) as never;
 
-const makeRow = (overrides?: Partial<TEventOutboxRow>): TEventOutboxRow =>
+const makeRow = (overrides?: Partial<TEventOutbox>): TEventOutbox =>
   ({
     id: 1,
     consumer: "alert",
@@ -29,7 +30,7 @@ const makeRow = (overrides?: Partial<TEventOutboxRow>): TEventOutboxRow =>
     attempts: 0,
     progress: null,
     ...overrides
-  }) as TEventOutboxRow;
+  }) as TEventOutbox;
 
 const buildConsumer = (opts?: {
   alerts?: unknown[];

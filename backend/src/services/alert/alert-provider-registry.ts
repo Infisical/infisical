@@ -4,6 +4,7 @@ export type TAlertProviderRegistry = ReturnType<typeof alertProviderRegistryFact
 
 export const alertProviderRegistryFactory = () => {
   const providers = new Map<string, IResourceAlertProvider>();
+  let eventTriggeredKeyCache: Set<string> | undefined;
 
   const register = (provider: IResourceAlertProvider) => {
     if (providers.has(provider.resourceType)) {
@@ -24,18 +25,21 @@ export const alertProviderRegistryFactory = () => {
     }
 
     providers.set(provider.resourceType, provider);
+    eventTriggeredKeyCache = undefined;
   };
 
   const get = (resourceType: string): IResourceAlertProvider | undefined => providers.get(resourceType);
 
   const resourceTypes = (): string[] => [...providers.keys()];
 
-  const eventTriggeredKeys = (): Set<string> =>
-    new Set(
+  const eventTriggeredKeys = (): Set<string> => {
+    eventTriggeredKeyCache ??= new Set(
       [...providers.values()].flatMap((provider) =>
         provider.events.filter((event) => event.triggerType === AlertTriggerType.Event).map((event) => event.key)
       )
     );
+    return eventTriggeredKeyCache;
+  };
 
   return { register, get, resourceTypes, eventTriggeredKeys };
 };

@@ -13,7 +13,7 @@ export enum EventOutboxStatus {
 
 export const MAX_OUTBOX_PAYLOAD_BYTES = 16 * 1024;
 
-export const MAX_OUTBOX_KEY_LENGTH = 255;
+const MAX_OUTBOX_KEY_LENGTH = 255;
 
 export const RELAY_DISCOVERY_LIMIT = 200;
 
@@ -62,7 +62,6 @@ export const OutboxEventSchema = z.object({
 
 export type TOutboxEvent = z.input<typeof OutboxEventSchema>;
 
-export type TEventOutboxRow = TEventOutbox;
 
 export type TOutboxRowResult = {
   id: string;
@@ -91,5 +90,5 @@ export interface IEventOutboxConsumer<TPayload = unknown> {
   subscribesTo(eventType: string): boolean;
 
   // Rows for a single (resourceType, resourceId), in id order. Must return one result per row.
-  handle(rows: TEventOutboxRow[]): Promise<TOutboxRowResult[]>;
+  handle(rows: TEventOutbox[]): Promise<TOutboxRowResult[]>;
 }

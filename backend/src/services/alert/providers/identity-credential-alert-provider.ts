@@ -9,6 +9,12 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
+import {
+  IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+  IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+  IdentityAuthMethodChange,
+  IdentityAuthMethodChangePayloadSchema
+} from "@app/services/identity/identity-auth-method-events";
 
 import { TAlertPayload, TAlertSeverity } from "../alert-channel-types";
 import {
@@ -27,45 +33,13 @@ import {
 } from "../alert-types";
 import { TExpiringUaClientSecret, TIdentityCredentialAlertDALFactory } from "./identity-credential-alert-dal";
 
-export const IDENTITY_AUTHENTICATION_RESOURCE_TYPE = "identity.authentication";
+export { IDENTITY_AUTH_METHOD_CHANGED_EVENT, IDENTITY_AUTHENTICATION_RESOURCE_TYPE };
+
 export const IDENTITY_AUTHENTICATION_EXPIRY_EVENT = "identity.authentication.expiry";
-export const IDENTITY_AUTH_METHOD_CHANGED_EVENT = "identity.authentication.auth-method-changed";
-
-export enum IdentityAuthMethodChange {
-  Added = "added",
-  Updated = "updated",
-  Removed = "removed",
-  CredentialAdded = "credential-added",
-  CredentialUpdated = "credential-updated",
-  CredentialRevoked = "credential-revoked"
-}
-
-export const IdentityAuthMethodChangePayloadSchema = z.object({
-  authMethod: z.nativeEnum(IdentityAuthMethod),
-  change: z.nativeEnum(IdentityAuthMethodChange),
-  actorType: z.nativeEnum(ActorType),
-  actorId: z.string().optional(),
-  changedAt: z.coerce.date(),
-  credentialId: z.string().optional(),
-  credentialName: z.string().optional()
-});
-
-export type TIdentityAuthMethodChangePayload = z.infer<typeof IdentityAuthMethodChangePayloadSchema>;
-
-export type TIdentityAuthMethodChangeEventPayload = {
-  targetIds: string[];
-  authMethod: IdentityAuthMethod;
-  change: IdentityAuthMethodChange;
-  actorType: ActorType;
-  actorId?: string;
-  changedAt: string;
-  credentialId?: string;
-  credentialName?: string;
-};
 
 const IdentityAuthMethodChangeConditionSchema = z.object({}).nullish();
 
-export const IDENTITY_AUTH_METHOD_LABELS: Record<IdentityAuthMethod, string> = {
+const IDENTITY_AUTH_METHOD_LABELS: Record<IdentityAuthMethod, string> = {
   [IdentityAuthMethod.TOKEN_AUTH]: "Token Auth",
   [IdentityAuthMethod.UNIVERSAL_AUTH]: "Universal Auth",
   [IdentityAuthMethod.KUBERNETES_AUTH]: "Kubernetes Auth",
@@ -272,7 +246,7 @@ export const identityCredentialAlertProviderFactory = ({
     }));
   };
 
-  const resolveActorLabel = async (actorType: ActorType, actorId?: string): Promise<string> => {
+  const resolveActorLabel = async (orgId: string, actorType: ActorType, actorId?: string): Promise<string> => {
     const typeLabel = ACTOR_TYPE_LABEL[actorType] ?? actorType;
     if (!actorId) return typeLabel;
 
@@ -281,7 +255,7 @@ export const identityCredentialAlertProviderFactory = ({
       return label ? `${label} (user)` : typeLabel;
     }
     if (actorType === ActorType.IDENTITY) {
-      const [identity] = await identityCredentialAlertDAL.findIdentitiesByIds([actorId]);
+      const [identity] = await identityCredentialAlertDAL.findIdentitiesByIds([actorId], orgId);
       return identity ? `${identity.name} (machine identity)` : typeLabel;
     }
     return typeLabel;
@@ -300,10 +274,10 @@ export const identityCredentialAlertProviderFactory = ({
     }
     const change = parsed.data;
 
-    const identities = await identityCredentialAlertDAL.findIdentitiesByIds(input.targetIds);
+    const identities = await identityCredentialAlertDAL.findIdentitiesByIds(input.targetIds, input.orgId);
     if (identities.length === 0) return [];
 
-    const actorLabel = await resolveActorLabel(change.actorType, change.actorId);
+    const actorLabel = await resolveActorLabel(input.orgId, change.actorType, change.actorId);
 
     return identities.map((identity) => ({
       kind: "auth-method-change" as const,
