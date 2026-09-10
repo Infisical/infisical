@@ -90,9 +90,7 @@ import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
-  CertKeyAlgorithm,
   CertKeyUsage,
-  CertSignatureAlgorithm,
   CertStatus,
   TAssignCertToApplicationDTO,
   TCertificateBasicConstraints,
@@ -874,7 +872,6 @@ export const certificateServiceFactory = ({
         await verifyWithProvider(cert.serialNumber);
       }
 
-      const { keyAlgorithm, signatureAlgorithm } = cert.algorithms;
       const validation = await certificatePolicyService.validateCertificateRequest(policyId, {
         commonName: cert.commonName || undefined,
         organization: cert.fields.subjectOrganization ?? undefined,
@@ -887,12 +884,8 @@ export const certificateServiceFactory = ({
         extendedKeyUsages: parseExtendedKeyUsages(cert.extendedKeyUsages),
         subjectAlternativeNames: cert.altNames ? cert.altNames.split(",").map((san) => detectSanType(san.trim())) : [],
         validity: { ttl: certificateSpanToTtl(cert.notBefore, cert.notAfter) },
-        keyAlgorithm: Object.values(CertKeyAlgorithm).includes(keyAlgorithm as CertKeyAlgorithm)
-          ? keyAlgorithm
-          : undefined,
-        signatureAlgorithm: Object.values(CertSignatureAlgorithm).includes(signatureAlgorithm as CertSignatureAlgorithm)
-          ? signatureAlgorithm
-          : undefined,
+        keyAlgorithm: cert.algorithms.keyAlgorithm,
+        signatureAlgorithm: cert.algorithms.signatureAlgorithm,
         ...(cert.fields.isCA && {
           basicConstraints: { isCA: true, pathLength: cert.fields.pathLength ?? undefined }
         })
