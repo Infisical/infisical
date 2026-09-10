@@ -50,7 +50,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   on project removal, org removal, SCIM and every FK cascade. Do not add an Agent Vault reaper.
 - `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the bundle row first and then the grants in one
   transaction, and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Keep that order.
-- Granting is batch: one POST carries `members: [{ userId | identityId | groupId }]`. That lock is what makes
+- Granting is batch: one POST carries `{ userIds, identityIds, groupIds }`. That lock is what makes
   the dedupe read inside it authoritative, so an actor who already holds the bundle is counted in
   `skippedCount` rather than erroring; the unique index is only the backstop.
 - Reachability has one implementation, `findReachableAccessBundleIds` over the platform's
@@ -95,6 +95,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   is deliberately no download endpoint.
 - The enroll route is unauthenticated (the enrollment token is the credential), so its audit event names the
   proxy as actor explicitly, as gateway, relay and KMIP enrollment do. Otherwise it logs as `unknownUser`.
+- Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
+  the row's current `pollInterval`. A proxy learns a new interval on its next poll, so comparing against the
+  saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
 - The proxy's access token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks
   on every proxy request. Revoke Access goes through the shared resource-auth revoke so a pending enrollment
   token is burned too.

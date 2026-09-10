@@ -21,7 +21,7 @@ The two usually run on different machines. Traffic policy is set on the Proxies 
 ## Subcommands & flags
 
 <Accordion title="infisical av proxy" defaultOpen="true">
-  Run an Agent Vault proxy. Enroll once with the token shown when the proxy was created, then run it with no token to serve. The proxy keeps its certificate authority, its token, and its last settings in a data directory, and passing the same enrollment token again on a restart is fine. See [Proxies](/documentation/platform/agent-vault/proxies).
+  Run an Agent Vault proxy. Enroll once with the token shown when the proxy was created. Later runs need no token. The proxy keeps its certificate authority, its token, and its last settings in a data directory, and passing the same enrollment token again on a restart is harmless. See [Proxies](/documentation/platform/agent-vault/proxies).
 
 ```bash
 infisical av proxy --enrollment-token <enrollment-token>
@@ -32,35 +32,6 @@ infisical av proxy
 # Example
 infisical av proxy --port 18000 --log-format json --log-file /var/log/infisical/agent-vault.log
 ```
-
-### Environment variables
-
-  <Accordion title="INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN">
-    The one-time enrollment token from the Proxies page. Alternative to `--enrollment-token`, and the way to keep the token off the command line.
-
-    ```bash
-      # Example
-      export INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN=<enrollment-token>
-    ```
-  </Accordion>
-
-  <Accordion title="INFISICAL_AGENT_VAULT_DATA_DIR">
-    Where the proxy keeps its certificate authority and token. Alternative to `--data-dir`.
-
-    ```bash
-      # Example
-      export INFISICAL_AGENT_VAULT_DATA_DIR=/var/lib/infisical/agent-vault
-    ```
-  </Accordion>
-
-  <Accordion title="INFISICAL_DOMAIN">
-    Point the CLI to your Infisical instance. Alternative to the `--domain` flag.
-
-    ```bash
-      # Example
-      export INFISICAL_DOMAIN=https://eu.infisical.com
-    ```
-  </Accordion>
 
 ### Flags
 
@@ -114,6 +85,36 @@ infisical av proxy --port 18000 --log-format json --log-file /var/log/infisical/
     infisical av proxy --log-file /var/log/infisical/agent-vault.log
     ```
   </Accordion>
+
+### Environment variables
+
+  <Accordion title="INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN">
+    The one-time enrollment token from the Proxies page. Alternative to `--enrollment-token`, and the way to keep the token off the command line.
+
+    ```bash
+      # Example
+      export INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN=<enrollment-token>
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_AGENT_VAULT_DATA_DIR">
+    Where the proxy keeps its certificate authority and token. Alternative to `--data-dir`.
+
+    ```bash
+      # Example
+      export INFISICAL_AGENT_VAULT_DATA_DIR=/var/lib/infisical/agent-vault
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_DOMAIN">
+    Point the CLI to your Infisical instance. Alternative to the [`--domain`](#shared) flag, which every subcommand accepts.
+
+    ```bash
+      # Example
+      export INFISICAL_DOMAIN=https://eu.infisical.com
+    ```
+  </Accordion>
+
 </Accordion>
 
 <Accordion title="infisical av run">
@@ -134,36 +135,6 @@ infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fin
 # Mint the session here instead, as your login or a machine identity
 infisical av run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -- claude
 ```
-
-### Environment variables
-
-  <Accordion title="INFISICAL_AGENT_VAULT_PROXY_ADDRESS">
-    Address of the proxy as `host:port`. Alternative to `--proxy`.
-
-    ```bash
-      # Example
-      export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=10.0.1.5:17323
-    ```
-  </Accordion>
-
-  <Accordion title="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET">
-    Universal Auth credentials of the machine identity that mints the session when you use `--access-bundle`. Alternative to `--client-id` and `--client-secret`. Without them the CLI mints as your logged-in user.
-
-    ```bash
-      # Example
-      export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
-      export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
-    ```
-  </Accordion>
-
-  <Accordion title="INFISICAL_DOMAIN">
-    Point the CLI to your Infisical instance. Alternative to the `--domain` flag.
-
-    ```bash
-      # Example
-      export INFISICAL_DOMAIN=https://eu.infisical.com
-    ```
-  </Accordion>
 
 ### Flags
 
@@ -264,6 +235,37 @@ infisical av run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -
     infisical av run --access-bundle coding-agent --client-id <client-id> --client-secret <client-secret> --proxy 10.0.1.5:17323 -- claude
     ```
   </Accordion>
+
+### Environment variables
+
+  <Accordion title="INFISICAL_AGENT_VAULT_PROXY_ADDRESS">
+    Address of the proxy as `host:port`. Alternative to `--proxy`.
+
+    ```bash
+      # Example
+      export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=10.0.1.5:17323
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET">
+    Universal Auth credentials of the machine identity that mints the session when you use `--access-bundle`. Alternative to `--client-id` and `--client-secret`. Without them the CLI mints as your logged-in user.
+
+    ```bash
+      # Example
+      export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+      export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_DOMAIN">
+    Point the CLI to your Infisical instance. Alternative to the [`--domain`](#shared) flag, which every subcommand accepts.
+
+    ```bash
+      # Example
+      export INFISICAL_DOMAIN=https://eu.infisical.com
+    ```
+  </Accordion>
+
 </Accordion>
 
 ### Shared
