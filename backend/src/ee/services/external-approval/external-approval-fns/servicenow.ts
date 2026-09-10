@@ -175,7 +175,7 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
       envSlug,
       secretPath,
       requestedPermissions,
-      siteUrl: "https://columbus-stretchable-omega.ngrok-free.dev" // TODO: CHANGE TO APP_CFG.SITE_URL
+      siteUrl: appCfg.SITE_URL
     });
 
     const logDetails = `[externalApprovalRequestId=${externalApprovalRequest.id}] [accessApprovalRequestId=${accessApprovalRequest.id}] [connectionId=${connection.id}] [instanceUrl=${sanitizeUrlForLog(instanceUrl)}]`;
