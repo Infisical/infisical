@@ -1093,8 +1093,6 @@ export const accessApprovalRequestServiceFactory = ({
 
     const isBypasser = policy.bypassers.some((bypasser) => bypasser.userId === actorId);
 
-    // Self-approval is blocked when the policy disallows it, unless this is a soft-enforcement break-glass approval and the user is on the bypasser list.
-    // this does not work for policies where all bypassers are allowed to self-approve.
     if (isSelfApproval && status === ApprovalStatus.APPROVED && !policy.allowedSelfApprovals && !isBypasser) {
       throw new BadRequestError({
         message: "Failed to review access approval request. Users are not authorized to review their own request."
@@ -1231,8 +1229,6 @@ export const accessApprovalRequestServiceFactory = ({
             additionalPrivilegeDAL,
             accessApprovalRequest,
             approvedByUserId: actorId,
-            // A break-glass approval grants access without the required reviews; persist the
-            // reason so the bypass can be surfaced in the UI and audit log after the fact.
             bypassReason: isBreakGlassApprovalAttempt ? bypassReason || null : null
           },
           tx

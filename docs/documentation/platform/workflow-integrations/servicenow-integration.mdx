@@ -15,13 +15,15 @@ Infisical stays the enforcement point. It creates the request, waits for Service
 ## How it works
 
 1. A user requests access in Infisical to an environment and secret path.
-2. The request matches an access policy configured with the **ServiceNow** approver type.
+2. The request matches an access policy routed to **ServiceNow**.
 3. Infisical creates an Infisical Access Request record on your ServiceNow instance over the ServiceNow app connection.
 4. A ServiceNow flow you own routes that record to the right approvers.
 5. When the flow reaches a decision, its final step calls the **Infisical - Notify Decision** action, which sends the decision back to Infisical using a machine identity.
 6. Infisical grants the access on approval, or closes the request on rejection.
 
 If ServiceNow never returns a decision, the request expires in Infisical according to the policy's request expiration setting. Access is never granted by default.
+
+If Infisical can't reach your instance at step 3, it tries up to five times in total, waiting longer between each attempt. It doesn't retry a failure another attempt can't fix, such as credentials ServiceNow rejected or a missing role on the integration user. A request that still doesn't get through shows as **Not Submitted** in Infisical with a **Retry** button, and no record exists in ServiceNow.
 
 ## What you need
 
@@ -127,15 +129,19 @@ If ServiceNow never returns a decision, the request expires in Infisical accordi
   </Step>
 
   <Step title="Enable ServiceNow approvals on an access policy">
-    In your Secrets Management project, go to **Approvals > Policies** and create or edit an **Access Policy**. Set:
+    In your Secrets Management project, go to **Approvals > Policies** and create or edit an **Access Policy**. Under **Approval Routing**, select **External System**, then set:
 
-    - **Approver Type**: **ServiceNow**.
-    - **ServiceNow Connection**: the connection created in step 2.
-    - **Review Identity**: the machine identity created in step 3. Infisical includes this identity's ID on every request so ServiceNow can resolve the matching identity mapping.
+    - **External Provider**: **ServiceNow**.
+    - **App Connection**: the connection created in step 2.
+    - **Approving Identity**: the machine identity created in step 3. Infisical includes this identity's ID on every request so ServiceNow can resolve the matching identity mapping.
     - **Environments** and **Secret Path**: what this policy governs, as with any access policy.
     - **Request Expiration**: how long a request may sit in ServiceNow before Infisical closes it.
 
-    Requests matching this policy are now routed to ServiceNow. Policies without the ServiceNow approver type keep using in-app approvers, so you can move one environment at a time.
+    Requests matching this policy are now routed to ServiceNow. Policies left on **Infisical** routing keep using in-app approvers, so you can move one environment at a time.
+
+    <Note>
+      **Bypass Approvals** and **Self Approvals** have no effect on a policy routed to ServiceNow. Every request under it has to be decided in ServiceNow, break-glass included.
+    </Note>
 
   </Step>
 </Steps>
@@ -178,11 +184,12 @@ Both sides keep their own record. In ServiceNow, the access request record carri
 
 | Symptom                                     | Cause and fix                                                                                                                                                                             |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Requests never appear in ServiceNow         | The policy isn't set to the ServiceNow approver type, or the environment and secret path on the policy don't match the request. Check the Infisical audit log for the delivery attempt. |
+| Requests never appear in ServiceNow         | The policy isn't routed to ServiceNow, or the environment and secret path on the policy don't match the request. Check the Infisical audit log for the delivery attempt. |
 | Record created but nothing happens          | No active flow matches the record. Verify your flow is activated and its trigger condition matches the record's field values.                                                             |
 | Approvers see duplicate approvals           | Two flows match the same record. Make the trigger conditions mutually exclusive and deactivate the one you no longer want.                                                                |
 | State stuck at Notifying Infisical          | The callback is in flight or the flow errored mid-step. Check the flow's execution details.                                                                                               |
-| Callback Failed: no active identity mapping | The request's identity ID has no active row under Infisical > Identity Mappings**. Confirm the **Review Identity\*\* on the policy matches the identity ID in the mapping.                |
-| Callback Failed with HTTP 401 or 403        | The machine identity is missing the **Review** permission on **External Approvals** for the organization, or it isn't the approver identity configured on the policy.        |
+| Callback Failed: no active identity mapping | The request's identity ID has no active row under **Infisical > Identity Mappings**. Confirm the **Approving Identity** on the policy matches the identity ID in the mapping. |
+| Callback Failed with HTTP 401 or 403        | The machine identity is missing the **Review** permission on **External Approvals** for the organization, or it isn't the **Approving Identity** configured on the policy. |
 | Callback Failed with a connection error     | The ServiceNow instance can't reach your Infisical URL. Check the URL on the alias and any outbound firewall rules on the instance.                                                      |
-| Request expired before approval             | The policy's request expiration elapsed while the request sat in ServiceNow. Extend it, or shorten your approval SLA.                                                                     |
+| Request shows Not Submitted in Infisical    | Delivery failed and nothing reached ServiceNow. The status message names the cause. Fix it, then select **Retry** on the request. |
+| Request expired before approval             | The policy's request expiration elapsed while the request sat in ServiceNow. Extend it, or shorten your approval SLA. |

@@ -8,8 +8,9 @@ In certain situations, developers need to expand their access to a certain new p
 <Info>
   Access Requests is a paid feature.
 
-  If you're using Infisical Cloud, then it's available under the **Enterprise Tier**.
-  If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
+If you're using Infisical Cloud, then it's available under the **Enterprise Tier**.
+If you're self-hosting Infisical, then you should contact sales@infisical.com to purchase an enterprise license to use it.
+
 </Info>
 
 ## Overview
@@ -30,13 +31,15 @@ Before users can submit access requests, a project administrator must create an 
 
 ### Policy configuration options
 
-| Option | Description |
-|--------|-------------|
-| **Policy Name** | A descriptive name for the policy (e.g., "Production Access Policy"). |
-| **Max Time Period** | The maximum duration a user can request access for (e.g., `1h`, `3d`, `1w`). Leave empty or set to "permanent" to allow permanent access requests. |
+| Option                 | Description                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Policy Name**        | A descriptive name for the policy (e.g., "Production Access Policy").                                                                                                                                              |
+| **Max Time Period**    | The maximum duration a user can request access for (e.g., `1h`, `3d`, `1w`). Leave empty or set to "permanent" to allow permanent access requests.                                                                 |
 | **Request Expiration** | Time before unapproved requests automatically expire (e.g., `24h`, `3d`, `72h`). Expired requests are moved to the Closed tab and can't be approved. Leave empty or set to "never" for requests that never expire. |
-| **Secret Path** | The folder path this policy governs. Supports glob patterns (e.g., `/**` for all paths, `/api/*` for specific folders). |
-| **Environments** | One or more environments this policy applies to (e.g., Production, Staging). |
+| **Secret Path**        | The folder path this policy governs. Supports glob patterns (e.g., `/**` for all paths, `/api/*` for specific folders).                                                                                            |
+| **Environments**       | One or more environments this policy applies to (e.g., Production, Staging).                                                                                                                                       |
+
+These options assume approvers review requests in Infisical. A policy can route its requests to an external system instead, which replaces the approver fields below. See [External approvals](#external-approvals).
 
 ### Multi-step approval workflows
 
@@ -45,6 +48,7 @@ Access policies support sequential multi-step approval workflows where approvals
 ![Multi-Step Approval Workflow](/images/platform/access-controls/access-request/multi-step-approval-workflow.png)
 
 Each step can have:
+
 - **Approvers**: Individual users and/or user groups who can approve at this step
 - **Min. Approvals Required**: The minimum number of approvals needed before moving to the next step
 
@@ -70,7 +74,8 @@ The **Bypass Approvals** option enables emergency access in break-glass situatio
   When Bypass Approvals is enabled with no users or groups selected, any project member can bypass the policy on their own requests. This ensures the permission remains available without being applied automatically; it's only used when explicitly requested and bypassed. 
   Admins are notified whenever access is bypassed.
 
-  When **Self Approvals** is disabled, approvers can't approve their own requests through the normal workflow. They can only grant themselves access via break-glass bypass if **Bypass Approvals** is enabled and they're explicitly listed as a bypass user or group member. If no bypass users or groups are configured, self-approval is blocked entirely.
+When **Self Approvals** is disabled, approvers can't approve their own requests through the normal workflow. They can only grant themselves access via break-glass bypass if **Bypass Approvals** is enabled and they're explicitly listed as a bypass user or group member. If no bypass users or groups are configured, self-approval is blocked entirely.
+
 </Warning>
 
 ## Submitting access requests
@@ -92,9 +97,9 @@ Once access policies are configured, users can request access to resources cover
 ![Access Request Modal](/images/platform/access-controls/access-request/access-requests-modal.png)
 
 <Note>
-  If a policy has a **Max Time Period** configured, the requested duration can't exceed this limit.
+  If a policy has a **Max Time Period** configured, the requested duration can't
+  exceed this limit.
 </Note>
-
 
 ## Reviewing access requests
 
@@ -122,6 +127,88 @@ Approvers can modify the access duration before approving a request by selecting
 
 ![Edit Access Duration Modal](/images/platform/access-controls/access-request/edit-access-duration-modal.png)
 
+## External approvals
+
+If an external approval is defined it is possible to handle all the approval workflow outside of Infisical. With this option, all the access requests are routed to an external platform but Infisical stays the enforcement point. It creates the request, delivers it to the external system, and grants the access or closes the request once a decision arrives.
+
+### Routing a policy to an external system
+
+1. Create or edit an **Access Policy** from the **Policies** menu in the sidebar.
+2. Under **Approval Routing**, select **External System**.
+3. Fill in the provider details.
+
+![External Approval Policy Modal](/images/platform/access-controls/access-request/external-approval-policy-modal.png)
+
+| Option                 | Description                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **External Provider**  | The system that decides requests under this policy.                                                                                              |
+| **App Connection**     | The connection Infisical delivers requests over. Select **Create Connection** to add one without leaving the form.                               |
+| **Approving Identity** | The machine identity the external system authenticates as when it reports a decision. Only this identity can approve requests under this policy. |
+
+**Environments**, **Secret Path**, **Max Time Period**, and **Request Expiration** work the same as on any access policy. The approver and multi-step routing fields disappear because Infisical no longer decides these requests.
+
+<Note>
+  The approving identity has to be an organization-level machine identity
+  holding the **Review** permission on **External Approvals** through an
+  organization role. An identity managed by a project can't report decisions. If
+  no identity is selectable, grant one that permission first.
+</Note>
+
+<Warning>
+  **Bypass Approvals** and **Self Approvals** have no effect on a policy routed
+  to an external system. Every request under it has to be decided there,
+  break-glass included. The bypass fields still appear in the policy form, but
+  Infisical rejects an approval attempted through them.
+</Warning>
+
+### Following a request
+
+Users submit requests exactly as they do under any other policy. What changes is the review: nobody approves the request in Infisical.
+
+![External Approval Review Modal](/images/platform/access-controls/access-request/external-approval-review-modal.png)
+
+The review modal shows where the request stands:
+
+| Status            | Meaning                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| **Pending**       | Infisical is still delivering the request, or the external system has it and hasn't answered. |
+| **Not Submitted** | Delivery failed, so the external system never received the request.                           |
+| **Approved**      | The external system approved the request and Infisical granted the access.                    |
+| **Rejected**      | The external system rejected the request.                                                     |
+
+Approvers don't get the usual email for these requests, since there's nothing for them to approve in Infisical. Slack and Microsoft Teams notifications still go out if you've configured them.
+
+Seeing the provider name, the status, and the **Retry** button requires the **Read** permission on **Approval Requests** in the project. A requester without it sees only that the request is awaiting approval.
+
+### When delivery fails
+
+Infisical tries delivery up to five times, waiting longer between each attempt. It doesn't retry a failure that another attempt can't fix, such as credentials the external system rejected or a missing permission there.
+
+A request that never got through shows as **Not Submitted**. Fix the cause, then select **Retry** on the request to send it again. Nothing notifies you when delivery fails, so check the request itself.
+
+<Warning>
+  A request the external system never answers stays pending until it reaches the
+  policy's **Request Expiration**, then closes with no access granted. Infisical
+  never grants access by default.
+</Warning>
+
+### Audit logs
+
+Two events cover the external round trip:
+
+- **Review Access Approval Request Externally**: the decision the external system returned, with its own reference number for the request.
+- **Retry Access Approval Request External Dispatch**: a user resent a request after a failed delivery.
+
+**Create Access Approval Request** names the provider a request was routed to.
+
+### Providers
+
+#### ServiceNow
+
+Infisical creates an Infisical Access Request record on your ServiceNow instance, and a flow you build in Flow Designer routes it to your approvers. Two pieces have to exist before the policy: the Infisical application on your instance, and a ServiceNow connection for Infisical to deliver requests over.
+
+See the [ServiceNow integration](/documentation/platform/workflow-integrations/servicenow-integration) guide for the instance setup and the approval flow, and the [ServiceNow connection](/integrations/app-connections/servicenow) guide for the connection.
+
 ## Revoking an approved request
 
 Approvers can revoke a previously approved access request at any time. Revoking an access request immediately deletes the associated privilege, removing the user's access.
@@ -134,7 +221,9 @@ Approvers can revoke a previously approved access request at any time. Revoking 
 4. Confirm the revocation.
 
 <Note>
-  Only users who are designated approvers for the access policy can revoke approved requests. Once revoked, the request moves to the **Revoked** status and can't be re-approved.
+  Only users who are designated approvers for the access policy can revoke
+  approved requests. Once revoked, the request moves to the **Revoked** status
+  and can't be re-approved.
 </Note>
 
 ![Revoke Access Modal](/images/platform/access-controls/access-request/revoke-access-modal.png)
