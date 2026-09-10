@@ -21,7 +21,7 @@ export type WizardStep = {
   title?: string;
   subtitle: string;
   rightLabel?: string;
-  rightDescription: string;
+  rightDescription?: string;
 };
 
 type Props = {
@@ -169,18 +169,28 @@ export const CertificateWizardSheet = ({
                 {children}
               </div>
 
-              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
-                <div className="mb-auto">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium text-muted">
-                      Step {activeStep + 1} · {step.rightLabel ?? step.name}
-                    </p>
-                    {docsHref && <DocumentationLinkBadge href={docsHref} />}
+              {(step.rightDescription || docsHref) && (
+                <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                  <div className="mb-auto">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-muted">
+                        Step {activeStep + 1} · {step.rightLabel ?? step.name}
+                      </p>
+                      {docsHref && <DocumentationLinkBadge href={docsHref} />}
+                    </div>
+                    {step.rightDescription && (
+                      <>
+                        <p className="mt-4 text-sm font-semibold text-foreground">
+                          What this step does
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-muted">
+                          {step.rightDescription}
+                        </p>
+                      </>
+                    )}
                   </div>
-                  <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-                  <p className="mt-2 text-sm leading-relaxed text-muted">{step.rightDescription}</p>
-                </div>
-              </aside>
+                </aside>
+              )}
             </div>
 
             <SheetFooter className="shrink-0 items-center justify-end border-t px-6">

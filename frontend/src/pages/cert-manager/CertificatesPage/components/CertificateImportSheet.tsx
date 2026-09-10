@@ -85,40 +85,26 @@ const buildSteps = (hasApplication: boolean): Record<ImportStepKey, WizardStep> 
     name: "Source",
     shortDescription: "PEM or keystore",
     title: "Certificate Source",
-    subtitle: "Paste the PEM files you hold, or upload a PKCS#12 keystore.",
-    rightLabel: "Source",
-    rightDescription: hasApplication
-      ? "Nothing is issued here. Infisical stores the certificate you already hold so it can be tracked, and renewed later if you attach a profile."
-      : "Nothing is issued here. Infisical stores the certificate you already hold so it can be tracked for visibility and expiry alerts."
+    subtitle: "Paste the PEM files you hold, or upload a PKCS#12 keystore."
   },
   profile: hasApplication
     ? {
         name: "Profile",
         shortDescription: "Lifecycle owner",
         title: "Certificate Profile",
-        subtitle: "Choose the profile that will manage renewal and revocation.",
-        rightLabel: "Profile",
-        rightDescription:
-          "The profile decides which authority signs the replacement at renewal, and the certificate has to satisfy its policy. Leave it empty to track the certificate for visibility and expiry alerts only."
+        subtitle: "Choose the profile that will manage renewal and revocation."
       }
     : {
         name: "Certificates",
         shortDescription: "What to import",
         title: "Keystore Contents",
-        subtitle: "Choose which certificates to import from this keystore.",
-        rightLabel: "Certificates",
-        rightDescription:
-          "A keystore can hold more than one certificate. Only the ones you select are imported."
+        subtitle: "Choose which certificates to import from this keystore."
       },
   review: {
     name: "Review",
     shortDescription: "Confirm and import",
     title: "Review & Import",
-    subtitle: "Check what will be imported before it is stored.",
-    rightLabel: "Review",
-    rightDescription: hasApplication
-      ? "Anything rejected stays here so you can change the profile or the details and try again. Certificates already imported are locked and cannot be imported twice."
-      : "Anything rejected stays here so you can change the details and try again. Certificates already imported are locked and cannot be imported twice."
+    subtitle: "Check what will be imported before it is stored."
   }
 });
 
