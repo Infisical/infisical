@@ -327,7 +327,7 @@ export const pamWebAccessServiceFactory = ({
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;
     let proxyServer: { port: number; cleanup: () => Promise<void> } | null = null;
-    let relayCerts: TGatewayV2ConnectionDetails | null = null;
+    let sessionGatewayDetails: TGatewayV2ConnectionDetails | null = null;
     let expiryTimer: ReturnType<typeof setTimeout> | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -396,9 +396,9 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      if (relayCerts) {
-        const certs = relayCerts;
-        relayCerts = null;
+      if (sessionGatewayDetails) {
+        const details = sessionGatewayDetails;
+        sessionGatewayDetails = null;
         void (async () => {
           try {
             await withGatewayV2Proxy(
@@ -415,7 +415,7 @@ export const pamWebAccessServiceFactory = ({
                   cancelSocket.on("close", () => resolve());
                   cancelSocket.on("error", reject);
                 }),
-              { ...certs, protocol: GatewayProxyProtocol.PamSessionCancellation }
+              { ...details, protocol: GatewayProxyProtocol.PamSessionCancellation }
             );
           } catch (err) {
             logger.debug(err, "Session cancellation signal failed (best-effort)");
@@ -532,7 +532,7 @@ export const pamWebAccessServiceFactory = ({
           poolId: account.gatewayPoolId ?? account.templateGatewayPoolId
         },
         async (gatewayId) => {
-          const attemptCerts = await gatewayV2Service.getPAMConnectionDetails({
+          const attemptGatewayDetails = await gatewayV2Service.getPAMConnectionDetails({
             gatewayId,
             sessionId: createdSession.id,
             accountType: handlerEntry.gatewayAccountType,
@@ -548,15 +548,15 @@ export const pamWebAccessServiceFactory = ({
             clientSupportsDirect: true
           });
 
-          if (!attemptCerts) {
+          if (!attemptGatewayDetails) {
             throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
           }
 
           return {
-            certs: attemptCerts,
+            gatewayDetails: attemptGatewayDetails,
             server: await setupGatewayProxy({
               protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
-              ...attemptCerts,
+              ...attemptGatewayDetails,
               longLived: true,
               eager: true
             })
@@ -564,7 +564,7 @@ export const pamWebAccessServiceFactory = ({
         }
       );
 
-      const { certs } = attempt.result;
+      const { gatewayDetails } = attempt.result;
       proxyServer = attempt.result.server;
 
       // The tunnel is open from here rather than from whenever the session handler first dials, so
@@ -581,7 +581,7 @@ export const pamWebAccessServiceFactory = ({
         await pamSessionDAL.updateById(createdSession.id, { gatewayId: attempt.gatewayId });
       }
 
-      relayCerts = certs;
+      sessionGatewayDetails = gatewayDetails;
 
       const isNearSessionExpiry = () => Date.now() >= expiresAt.getTime() - 30_000;
 
