@@ -186,10 +186,10 @@ export const resourceAuthMethodServiceFactory = ({
         : null;
     }
     if (resource.type === RESOURCE_TYPE_AGENT_VAULT_PROXY) {
-      // Without this arm an Agent Vault proxy id would fall through and be loaded as a KMIP server.
       const proxy = await agentVaultProxyDAL.findByIdWithOrg(resource.id, tx);
       return proxy ? { id: proxy.id, name: proxy.name, orgId: proxy.orgId, identityId: null } : null;
     }
+    // Unmatched types load as a KMIP server rather than failing, so a new resource type needs its own arm above.
     const kmipServer = await kmipServerDAL.findById(resource.id, tx);
     return kmipServer ? { id: kmipServer.id, name: kmipServer.name, orgId: kmipServer.orgId, identityId: null } : null;
   };

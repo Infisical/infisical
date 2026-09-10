@@ -117,7 +117,7 @@ infisical av proxy --port 18000 --log-format json --log-file /var/log/infisical/
 </Accordion>
 
 <Accordion title="infisical av run">
-  Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. Before starting it, the CLI:
+  Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. On each run, the CLI:
 
   - Fetches the proxy's certificate authority from the proxy, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`.
   - Gets a session: the one you pass with `--session-token`, or one minted now over the bundle named with `--access-bundle`. Exactly one of the two is required.

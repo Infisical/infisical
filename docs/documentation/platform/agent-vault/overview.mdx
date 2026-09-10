@@ -30,7 +30,7 @@ Traditional secrets management involves returning credentials back to applicatio
 
 This isn't suitable for AI agents because they're vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
 
-Enter Infisical Agent Vault, which prevents credential exfiltration by brokering access at the network boundary. The agent gets an access session that works only for the services you allowed, and only until you revoke it.
+Enter Infisical Agent Vault, which prevents credential exfiltration by brokering access at the network boundary. The agent gets an access session that works only for the services you allowed, and only until it expires or you revoke it.
 
 ## How it works
 
