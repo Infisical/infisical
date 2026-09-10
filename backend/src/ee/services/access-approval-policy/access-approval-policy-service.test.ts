@@ -17,11 +17,23 @@ const ORG_ID = "55555555-5555-4555-8555-555555555555";
 const BYPASSERS_REJECTED = /Bypassers cannot be set on a policy reviewed by an external approval system/;
 const SOFT_ENFORCEMENT_REJECTED = /Soft enforcement cannot be set on a policy reviewed by an external approval system/;
 const PENDING_EXTERNAL_REQUESTS_REJECTED = /still awaiting a decision from its external approval system/;
+const PENDING_EXTERNAL_REROUTE_REJECTED =
+  /before changing the approval service, app connection, or approver identity/;
 
 const EXTERNAL_APPROVAL = {
   type: ExternalApprovalType.ServiceNow,
   connectionId: CONNECTION_ID,
   approverIdentityId: IDENTITY_ID
+};
+
+const CURRENT_EXTERNAL_APPROVAL = {
+  id: POLICY_ID,
+  ...EXTERNAL_APPROVAL
+};
+
+const EXTERNAL_POLICY = {
+  externalApprovalPolicyId: POLICY_ID,
+  externalApproval: CURRENT_EXTERNAL_APPROVAL
 };
 
 const BYPASSERS = [{ type: BypasserType.User, id: USER_ID }];
@@ -172,6 +184,68 @@ describe("access approval policy external approval guards", () => {
     const { service, accessApprovalRequestDAL } = makeService({}, 2);
 
     await expect(updatePolicy(service, { externalApproval: null })).rejects.not.toThrow(
+      PENDING_EXTERNAL_REQUESTS_REJECTED
+    );
+    expect(accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId).not.toHaveBeenCalled();
+  });
+
+  test("rejects changing the app connection while requests still await an external decision", async () => {
+    const { service, accessApprovalPolicyDAL } = makeService(EXTERNAL_POLICY, 2);
+
+    await expect(
+      updatePolicy(service, {
+        externalApproval: { ...EXTERNAL_APPROVAL, connectionId: "66666666-6666-4666-8666-666666666666" }
+      })
+    ).rejects.toThrow(PENDING_EXTERNAL_REROUTE_REJECTED);
+    expect(accessApprovalPolicyDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("rejects changing the approver identity while requests still await an external decision", async () => {
+    const { service, accessApprovalPolicyDAL } = makeService(EXTERNAL_POLICY, 2);
+
+    await expect(
+      updatePolicy(service, {
+        externalApproval: { ...EXTERNAL_APPROVAL, approverIdentityId: "77777777-7777-4777-8777-777777777777" }
+      })
+    ).rejects.toThrow(PENDING_EXTERNAL_REROUTE_REJECTED);
+    expect(accessApprovalPolicyDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("rejects changing the approval service while requests still await an external decision", async () => {
+    const { service, accessApprovalPolicyDAL } = makeService(EXTERNAL_POLICY, 2);
+
+    await expect(
+      updatePolicy(service, {
+        externalApproval: { ...EXTERNAL_APPROVAL, type: "other-service" }
+      })
+    ).rejects.toThrow(PENDING_EXTERNAL_REROUTE_REJECTED);
+    expect(accessApprovalPolicyDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("leaves the same external approval fields alone while requests still await a decision", async () => {
+    const { service, accessApprovalRequestDAL } = makeService(EXTERNAL_POLICY, 2);
+
+    await expect(updatePolicy(service, { externalApproval: EXTERNAL_APPROVAL })).rejects.not.toThrow(
+      PENDING_EXTERNAL_REQUESTS_REJECTED
+    );
+    expect(accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId).not.toHaveBeenCalled();
+  });
+
+  test("allows changing external approval fields when no request awaits an external decision", async () => {
+    const { service, accessApprovalRequestDAL } = makeService(EXTERNAL_POLICY, 0);
+
+    await expect(
+      updatePolicy(service, {
+        externalApproval: { ...EXTERNAL_APPROVAL, connectionId: "66666666-6666-4666-8666-666666666666" }
+      })
+    ).rejects.not.toThrow(PENDING_EXTERNAL_REQUESTS_REJECTED);
+    expect(accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId).toHaveBeenCalledWith(POLICY_ID);
+  });
+
+  test("skips the pending request check when attaching external approval for the first time", async () => {
+    const { service, accessApprovalRequestDAL } = makeService({}, 2);
+
+    await expect(updatePolicy(service, { externalApproval: EXTERNAL_APPROVAL })).rejects.not.toThrow(
       PENDING_EXTERNAL_REQUESTS_REJECTED
     );
     expect(accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId).not.toHaveBeenCalled();

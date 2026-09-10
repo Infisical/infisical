@@ -24,7 +24,8 @@ import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 import { TAccessApprovalPolicyEnvironmentDALFactory } from "./access-approval-policy-environment-dal";
 import {
   approvalPolicyMembershipVerifierFactory,
-  validateExternalPolicyBypassConfig
+  validateExternalPolicyBypassConfig,
+  validateExternalPolicyPendingRequests
 } from "./access-approval-policy-fns";
 import {
   ApproverType,
@@ -469,17 +470,11 @@ export const accessApprovalPolicyServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
-    if (externalApproval === null && accessApprovalPolicy.externalApprovalPolicyId) {
-      const pendingExternalRequests = await accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId(
-        accessApprovalPolicy.id
-      );
-
-      if (pendingExternalRequests > 0) {
-        throw new BadRequestError({
-          message: `Policy '${accessApprovalPolicy.name}' has ${pendingExternalRequests} access request(s) still awaiting a decision from its external approval system. Approve or reject them there before switching this policy back to Infisical approvals.`
-        });
-      }
-    }
+    await validateExternalPolicyPendingRequests({
+      policy: accessApprovalPolicy,
+      externalApproval,
+      countPendingExternalRequestsByPolicyId: accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId
+    });
 
     if (externalApproval) {
       await externalApprovalService.validateExternalApprovalPolicyInput({

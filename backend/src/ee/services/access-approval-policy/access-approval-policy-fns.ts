@@ -2,7 +2,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TUpdateAccessApprovalPolicy } from "./access-approval-policy-types";
+import { TExternalApprovalPolicyInput } from "../external-approval/external-approval-types";
+import {
+  TAccessApprovalPolicyExternalApproval,
+  TUpdateAccessApprovalPolicy
+} from "./access-approval-policy-types";
 
 export const validateExternalPolicyBypassConfig = ({
   bypassers,
@@ -19,6 +23,46 @@ export const validateExternalPolicyBypassConfig = ({
     throw new BadRequestError({
       message:
         "Soft enforcement cannot be set on a policy reviewed by an external approval system, because its requests cannot be reviewed in Infisical. Use hard enforcement, or remove the external approval configuration."
+    });
+  }
+};
+
+export const validateExternalPolicyPendingRequests = async ({
+  policy,
+  externalApproval,
+  countPendingExternalRequestsByPolicyId
+}: {
+  policy: {
+    id: string;
+    name: string;
+    externalApprovalPolicyId?: string | null;
+    externalApproval: TAccessApprovalPolicyExternalApproval | null;
+  };
+  externalApproval?: TExternalApprovalPolicyInput | null;
+  countPendingExternalRequestsByPolicyId: (policyId: string) => Promise<number>;
+}) => {
+  const currentExternalApproval = policy.externalApproval;
+  const isDetachingExternalApproval =
+    externalApproval === null && Boolean(policy.externalApprovalPolicyId);
+  const isReroutingExternalApproval = Boolean(
+    externalApproval &&
+      currentExternalApproval &&
+      (currentExternalApproval.type !== externalApproval.type ||
+        currentExternalApproval.connectionId !== externalApproval.connectionId ||
+        (currentExternalApproval.approverIdentityId ?? null) !== (externalApproval.approverIdentityId ?? null))
+  );
+
+  if (!isDetachingExternalApproval && !isReroutingExternalApproval) {
+    return;
+  }
+
+  const pendingExternalRequests = await countPendingExternalRequestsByPolicyId(policy.id);
+
+  if (pendingExternalRequests > 0) {
+    throw new BadRequestError({
+      message: isDetachingExternalApproval
+        ? `Policy '${policy.name}' has ${pendingExternalRequests} access request(s) still awaiting a decision from its external approval system. Approve or reject them there before switching this policy back to Infisical approvals.`
+        : `Policy '${policy.name}' has ${pendingExternalRequests} access request(s) still awaiting a decision from its external approval system. Approve or reject them there before changing the approval service, app connection, or approver identity.`
     });
   }
 };
