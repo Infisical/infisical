@@ -40,7 +40,7 @@ sequenceDiagram
 
     ## Concept
 
-At a high-level, Infisical authenticates a GCP resource by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed GCE instance) at the `/api/v1/auth/gcp-auth/login` endpoint. If successful,
+At a high-level, Infisical authenticates a GCP resource by verifying its identity and checking that it meets specific requirements (e.g. it's an allowed GCE instance) at the `/api/v1/auth/gcp-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
 To be more specific:
@@ -209,7 +209,7 @@ sequenceDiagram
 
 ## Concept
 
-At a high-level, Infisical authenticates an IAM service account by verifying its identity and checking that it meets specific requirements (e.g. it is an allowed service account) at the `/api/v1/auth/gcp-auth/login` endpoint. If successful,
+At a high-level, Infisical authenticates an IAM service account by verifying its identity and checking that it meets specific requirements (e.g. it's an allowed service account) at the `/api/v1/auth/gcp-auth/login` endpoint. If successful,
 then Infisical returns a short-lived access token that can be used to make authenticated requests to the Infisical API.
 
 To be more specific:

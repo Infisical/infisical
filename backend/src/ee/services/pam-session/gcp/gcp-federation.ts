@@ -13,7 +13,9 @@ const tokenError = (serviceAccountEmail: string, err: unknown) =>
   new BadRequestError({
     message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${
       err instanceof Error ? err.message : String(err)
-    }`
+    }`,
+    // The cause carries the response status, which callers use to tell a refused credential from an outage.
+    error: err
   });
 
 // mints a short-lived access token for the target service account

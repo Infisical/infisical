@@ -8,7 +8,7 @@ description: "Understand how approval workflows protect sensitive environments a
 
 Updating secrets in high-stakes environments like production carries real risk:
 
-- **Broad access creates exposure.** Most developers should not have direct access to production secrets, yet they are often the ones who need to add or change them. Organizations rely on informal processes — Slack messages, manual handoffs — to gate these changes, which slows development and is error-prone.
+- **Broad access creates exposure.** Most developers shouldn't have direct access to production secrets, yet they're often the ones who need to add or change them. Organizations rely on informal processes — Slack messages, manual handoffs — to gate these changes, which slows development and is error-prone.
 - **Unreviewed changes cause incidents.** A mistyped value or accidental deletion in production can take down a service. Requiring a second set of eyes before a change takes effect reduces the likelihood of human error reaching production.
 - **Propagation is often manual.** After secrets change, the corresponding applications need to be redeployed with the correct values. Without automation, this step is frequently missed or done incorrectly.
 
@@ -34,7 +34,7 @@ Policies support several configuration options:
 | **Hard** | Every matching change requires full approval before it can be merged. No exceptions. |
 | **Soft** | Designated users can bypass the approval requirement in break-glass situations. All approvers are notified by email when a bypass occurs. |
 
-When bypass is enabled, you can restrict it to specific users or groups. If no restriction is set, anyone can bypass. A bypass can only be performed by the person who created the change request — bypassers cannot bypass requests submitted by others.
+When bypass is enabled, you can restrict it to specific users or groups. If no restriction is set, anyone can bypass. A bypass can only be performed by the person who created the change request — bypassers can't bypass requests submitted by others.
 
 ### Change requests
 

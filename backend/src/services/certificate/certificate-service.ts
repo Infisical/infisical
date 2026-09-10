@@ -16,6 +16,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -29,6 +30,10 @@ import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-fns";
 import {
+  assertCertificateQuotaForProject,
+  recordNewCertificateQuotaKey
+} from "@app/services/certificate-common/certificate-quota-fns";
+import {
   CA_TYPE_LABEL,
   CertificateImportLinkageMap,
   TImportExternalMetadata
@@ -40,8 +45,9 @@ import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certi
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { ActiveCerts } from "@app/services/license-client";
+import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -141,6 +147,11 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  >;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
 };
@@ -173,6 +184,8 @@ export const certificateServiceFactory = ({
   digicertFns,
   certificatePolicyService,
   licenseService,
+  usageCounterDAL,
+  keyStore,
   usageMeteringService,
   hsmConnectorService
 }: TCertificateServiceFactoryDep) => {
@@ -500,6 +513,7 @@ export const certificateServiceFactory = ({
     });
 
     usageMeteringService.emitForProject(cert.projectId, ActiveCerts.key);
+    usageMeteringService.emitForProject(cert.projectId, WildcardCerts.key);
 
     return {
       deletedCert
@@ -688,6 +702,7 @@ export const certificateServiceFactory = ({
     );
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -1266,6 +1281,15 @@ export const certificateServiceFactory = ({
       ? (await kmsEncryptor({ plainText: Buffer.from(chainPem) })).cipherTextBlob
       : null;
 
+    // Imported certificates count toward the quota, so import is gated like issuance. Before the
+    // transaction, since this reads the plan and may run a count.
+    const { quotaOrgId, isNewQuotaKey, isWildcard } = await assertCertificateQuotaForProject({
+      projectId,
+      commonName,
+      altNames,
+      deps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+    });
+
     let renewBeforeDays: number | undefined;
     if (profileId && linkage) {
       const effectiveApiConfig = await resolveEffectiveApiConfig({
@@ -1347,7 +1371,10 @@ export const certificateServiceFactory = ({
       }
     });
 
+    if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
+
     usageMeteringService.emitForProject(projectId, ActiveCerts.key);
+    usageMeteringService.emitForProject(projectId, WildcardCerts.key);
 
     return {
       certificate: certificatePem,

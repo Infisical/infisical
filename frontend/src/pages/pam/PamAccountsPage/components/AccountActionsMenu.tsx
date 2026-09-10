@@ -1,4 +1,4 @@
-import { Clock, KeyRound, MoreHorizontal, Rocket, Settings, Trash2 } from "lucide-react";
+import { Clock, Eye, KeyRound, MoreHorizontal, Rocket, Settings, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -26,9 +26,14 @@ type Props = {
   accountType: PamAccountType;
   isAccessible: boolean;
   requiresApproval: boolean;
+  hasApprovalConfig: boolean;
   accessStatus: PamAccessStatus;
+  supportsCredentialReveal: boolean;
+  credentialAccessStatus: PamAccessStatus;
   onLaunch: () => void;
   onRequestAccess: () => void;
+  onViewCredentials: () => void;
+  onRequestCredentialAccess: () => void;
   onOpenTab: (tab: PamSheetTab) => void;
   onDelete: () => void;
 };
@@ -38,14 +43,21 @@ export const AccountActionsMenu = ({
   accountType,
   isAccessible,
   requiresApproval,
+  hasApprovalConfig,
   accessStatus,
+  supportsCredentialReveal,
+  credentialAccessStatus,
   onLaunch,
   onRequestAccess,
+  onViewCredentials,
+  onRequestCredentialAccess,
   onOpenTab,
   onDelete
 }: Props) => {
   const canLaunch = can(PamResourcePermissionActions.LaunchSessions);
   const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
+  const canViewCredentials =
+    supportsCredentialReveal && can(PamResourcePermissionActions.ViewCredentials);
   const isRotatable = isRotatablePamAccountType(accountType);
 
   const isGranted = accessStatus === PamAccessStatus.Granted;
@@ -57,6 +69,10 @@ export const AccountActionsMenu = ({
 
   // Launch requires: account is provisioned AND user has permission AND (no approval needed OR already granted)
   const canLaunchNow = isAccessible && canLaunch && (!requiresApproval || isGranted);
+
+  const isCredentialPending = credentialAccessStatus === PamAccessStatus.Pending;
+  const needsCredentialApproval =
+    requiresApproval && credentialAccessStatus !== PamAccessStatus.Granted;
 
   const availableTabs = PAM_ACCOUNT_TABS.filter(
     (tab) => (tab.value !== PamSheetTab.Rotation || isRotatable) && (!tab.action || can(tab.action))
@@ -91,15 +107,13 @@ export const AccountActionsMenu = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <div>
-                <DropdownMenuItem isDisabled={isPending} onClick={onRequestAccess}>
+                <DropdownMenuItem onClick={onRequestAccess}>
                   {isPending ? <Clock className="size-4" /> : <KeyRound className="size-4" />}
-                  {isPending ? "Request Pending" : "Request Access"}
+                  {isPending ? "Access Request Pending" : "Request Access"}
                 </DropdownMenuItem>
               </div>
             </TooltipTrigger>
-            {isPending && (
-              <TooltipContent side="left">Your request is awaiting approval</TooltipContent>
-            )}
+            {isPending && <TooltipContent side="left">View your pending request</TooltipContent>}
           </Tooltip>
         ) : (
           <Tooltip>
@@ -114,6 +128,38 @@ export const AccountActionsMenu = ({
             {!canLaunchNow && <TooltipContent side="left">{launchDisabledReason}</TooltipContent>}
           </Tooltip>
         )}
+        {canViewCredentials &&
+          (needsCredentialApproval ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <DropdownMenuItem
+                    isDisabled={!hasApprovalConfig}
+                    onClick={onRequestCredentialAccess}
+                  >
+                    {isCredentialPending ? (
+                      <Clock className="size-4" />
+                    ) : (
+                      <KeyRound className="size-4" />
+                    )}
+                    {isCredentialPending ? "Credential Request Pending" : "Request Credentials"}
+                  </DropdownMenuItem>
+                </div>
+              </TooltipTrigger>
+              {(isCredentialPending || !hasApprovalConfig) && (
+                <TooltipContent side="left">
+                  {!hasApprovalConfig
+                    ? "This folder has no approvers configured"
+                    : "View your pending request"}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          ) : (
+            <DropdownMenuItem onClick={onViewCredentials}>
+              <Eye className="size-4" />
+              View Credentials
+            </DropdownMenuItem>
+          ))}
         <DropdownMenuSeparator />
         <Tooltip>
           <TooltipTrigger asChild>

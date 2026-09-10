@@ -14,7 +14,7 @@ Infisical can issue Domain Validated (DV) TLS certificates directly from [GoDadd
 ## Prerequisites
 
 - A [GoDaddy App Connection](/integrations/app-connections/godaddy) with validated production API credentials.
-- An available **DV SSL** product in your GoDaddy account. The API consumes a product you already own; it does not purchase one (see the [FAQ](#faq)).
+- An available **DV SSL** product in your GoDaddy account. The API consumes a product you already own; it doesn't purchase one (see the [FAQ](#faq)).
 - A certificate policy that allows an **RSA** key with **DNS-name** SANs (see [Set up the certificate policy](#set-up-the-certificate-policy)). The built-in **TLS Server** preset works as long as you select RSA, since GoDaddy rejects ECDSA.
 
 ## Set up the certificate policy
@@ -38,7 +38,7 @@ Then create a [certificate profile](/documentation/platform/pki/settings/profile
         Follow the [GoDaddy App Connection guide](/integrations/app-connections/godaddy) to store your GoDaddy API key and secret in Infisical.
       </Step>
       <Step title="Create the External CA">
-        In **Certificate Manager**, go to **Certificate Authorities**, click **Create CA** in the External Certificate Authorities section, choose **GoDaddy** as the type, and fill out the form:
+        In **Certificate Manager**, go to **Certificate Authorities**, select **Create CA** in the External Certificate Authorities section, choose **GoDaddy** as the type, and fill out the form:
 
         - **App Connection**: the GoDaddy connection you created
         - **Product**: `DV SSL`
@@ -72,7 +72,7 @@ When you request a certificate through a GoDaddy CA, the request moves through t
 |-------|-------------|
 | **Pending Validation** | GoDaddy has accepted the order and returned a certificate id. Complete domain control validation (DCV) on the GoDaddy side. |
 | **Issued** | Infisical polls GoDaddy and downloads the certificate once validation completes. Use **Trigger Validation** to force an immediate check. |
-| **Failed** | If GoDaddy does not issue within 24 hours. Complete validation and submit a new request. |
+| **Failed** | If GoDaddy doesn't issue within 24 hours. Complete validation and submit a new request. |
 
 <Note>
   Domain control validation is completed on GoDaddy's side, typically with a DNS TXT record (GoDaddy
@@ -85,7 +85,7 @@ When you request a certificate through a GoDaddy CA, the request moves through t
 
 <AccordionGroup>
   <Accordion title='Why does issuance fail with "You do not have an available product"?'>
-    GoDaddy's Certificates API consumes a certificate product you already own; it does not purchase
+    GoDaddy's Certificates API consumes a certificate product you already own; it doesn't purchase
     one. Buy a DV SSL certificate from GoDaddy's SSL storefront and leave it un-set-up; the next
     request will claim it. A pending order holds the product, so cancel an unwanted pending order on
     GoDaddy's side to return the credit to available.
@@ -104,7 +104,7 @@ When you request a certificate through a GoDaddy CA, the request moves through t
   <Accordion title="What happens when I revoke a GoDaddy-issued certificate in Infisical?">
     Revoking in Infisical marks the certificate `Revoked` in the local inventory **and** submits a
     revocation request to GoDaddy, so the certificate is revoked on GoDaddy's side too. Syncing is
-    one-directional, though: a certificate revoked **directly on GoDaddy** is not reflected back into
+    one-directional, though: a certificate revoked **directly on GoDaddy** isn't reflected back into
     Infisical automatically.
 
     <Warning>

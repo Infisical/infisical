@@ -30,7 +30,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 export const registerLdapRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const passport = new Authenticator({ key: "ldap", userProperty: "passportUser" });
-  await server.register(fastifySession, { secret: appCfg.COOKIE_SECRET_SIGN_KEY });
+  await server.register(fastifySession, { secret: server.cookieSigningKey });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
 

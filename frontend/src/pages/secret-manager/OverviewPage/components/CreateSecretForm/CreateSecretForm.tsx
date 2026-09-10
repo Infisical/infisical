@@ -30,8 +30,8 @@ import {
   Input,
   PasswordGenerator,
   SheetFooter,
-  Switch,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -621,7 +621,7 @@ export const CreateSecretForm = ({
                   render={({ field }) => (
                     <Field orientation="horizontal">
                       <FieldLabel className="cursor-pointer">Enable Multiline Encoding</FieldLabel>
-                      <Switch
+                      <Toggle
                         variant="project"
                         checked={field.value}
                         onCheckedChange={field.onChange}
@@ -709,7 +709,7 @@ export const CreateSecretForm = ({
                             name={`metadata.${index}.isEncrypted`}
                             render={({ field: switchField }) => (
                               <>
-                                <Switch
+                                <Toggle
                                   id={`create-secret-metadata-${index}-encrypted`}
                                   className="mt-2"
                                   variant="project"
@@ -826,7 +826,7 @@ export const CreateSecretForm = ({
         </Button>
         <Field orientation="horizontal" className="my-auto ml-auto w-fit">
           <FieldLabel htmlFor="create-more">Create More</FieldLabel>
-          <Switch
+          <Toggle
             id="create-more"
             variant="project"
             checked={createMore}

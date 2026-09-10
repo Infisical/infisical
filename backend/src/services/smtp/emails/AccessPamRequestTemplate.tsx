@@ -11,6 +11,7 @@ interface AccessPamRequestTemplateProps extends Omit<BaseEmailWrapperProps, "tit
   accountName?: string;
   folderName?: string;
   accessDuration: string;
+  accessTypeLabel?: string;
   reason?: string;
   approvalUrl: string;
 }
@@ -22,6 +23,7 @@ export const AccessPamRequestTemplate = ({
   accountName,
   folderName,
   accessDuration,
+  accessTypeLabel = "access",
   reason,
   approvalUrl
 }: AccessPamRequestTemplateProps) => {
@@ -39,7 +41,7 @@ export const AccessPamRequestTemplate = ({
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
           <strong>{requesterFullName}</strong> (<BaseLink href={`mailto:${requesterEmail}`}>{requesterEmail}</BaseLink>)
-          has requested access to <strong>{target}</strong> for <strong>{accessDuration}</strong>.
+          has requested {accessTypeLabel} to <strong>{target}</strong> for <strong>{accessDuration}</strong>.
         </Text>
         {reason && (
           <Text className="text-[14px] text-slate-700 leading-[24px]">

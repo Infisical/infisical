@@ -59,7 +59,8 @@ const SlackLogo = ({ className }: { className?: string }) => (
 const EVENT_OPTIONS: { value: PamNotificationEvent; label: string }[] = [
   { value: PamNotificationEvent.AccessRequested, label: "Access requested" },
   { value: PamNotificationEvent.AccessRequestApproved, label: "Request approved" },
-  { value: PamNotificationEvent.AccessRequestDenied, label: "Request denied" }
+  { value: PamNotificationEvent.AccessRequestDenied, label: "Request denied" },
+  { value: PamNotificationEvent.AccessRequestBypassed, label: "Break-glass used" }
 ];
 
 type IntegrationOption = { value: string; label: string };

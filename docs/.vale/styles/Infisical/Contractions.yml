@@ -1,13 +1,13 @@
 extends: substitution
 message: "Use '%s' instead of '%s'."
-level: suggestion
+level: error
 link: https://github.com/Infisical/infisical/blob/main/docs/STYLE_GUIDE.md#use-contractions
 ignorecase: true
 vocab: false
 nonword: true
 swap:
 
-  '(?<!\b(?:in|on|at|around|inside|behind|within|under|underneath|above|below|beyond|from|with|for|by|near|through|alongside|beside)\s)\bit is\b(?! not)(?!\.)(?![,;)])(?!\s*$)': "it's"
+  '(?<=^|[.!?]\s|\b(?:if|when|then|because|since|while|until|unless|though|although|whether|that|and|but|so|before|after|once|where|why|how|otherwise|generally|however|which)\s)\bit is\b(?! not)(?!\.)(?![,;)])(?!\s*$)': "it's"
   '\byou will\b(?! not)(?![,;)])(?!\s*$)': "you'll"
   '\byou are\b(?! not)(?![,;)])(?!\s*$)': "you're"
   '\bwe are\b(?! not)(?![,;)])(?!\s*$)': "we're"

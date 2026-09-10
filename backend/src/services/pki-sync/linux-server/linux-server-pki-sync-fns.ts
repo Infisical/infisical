@@ -7,10 +7,19 @@ import { Client, SFTPWrapper } from "ssh2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import {
+  LdapTargetConfigurationError,
+  resolveLdapBackedHostCredentials
+} from "@app/services/app-connection/ldap/ldap-directory-fns";
 import { SshConnectionMethod } from "@app/services/app-connection/ssh/ssh-connection-enums";
-import { executeSshCommandViaGateway, withSshConnection } from "@app/services/app-connection/ssh/ssh-connection-fns";
+import {
+  executeSshCommand,
+  TSshConnectionOptions,
+  withSshConnection
+} from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
@@ -32,6 +41,7 @@ import {
   THostCommandContext,
   toPosixShellLiteral
 } from "../pki-sync-host-command-fns";
+import { describeHostFailure, resolveGatewayLabel, withReachabilityDeadline } from "../pki-sync-host-error-fns";
 import { buildPostSyncCommandPlan, runPostSyncCommand, TPostSyncCommandPlan } from "../pki-sync-post-sync-command-fns";
 import { TCertificateMap, THealthCheckTarget, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
@@ -41,8 +51,9 @@ type TLinuxServerPkiSyncFactoryDeps = {
     TCertificateSyncDALFactory,
     "findByPkiSyncId" | "findByPkiSyncAndCertificate" | "updateById" | "addCertificates" | "removeCertificates"
   >;
-  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
 type TLinuxServerSyncOptions = {
@@ -60,8 +71,67 @@ type TLinuxServerSyncOptions = {
   postSyncCommand?: string;
 };
 
-const buildSshConfig = (pkiSync: THealthCheckTarget): TSshConnectionConfig => {
+type TGatewayServices = Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService" | "keyStore">;
+
+const DEFAULT_SSH_PORT = 22;
+
+const buildLdapBackedSshConfig = async (
+  pkiSync: THealthCheckTarget,
+  gatewayServices: TGatewayServices
+): Promise<TSshConnectionConfig> => {
   const { connection } = pkiSync;
+  const { host, port } = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
+
+  if (!gatewayServices.gatewayV2Service) {
+    throw new PkiSyncError({
+      shouldRetry: false,
+      message: "Reading the directory for an LDAP-backed sync requires the Gateway service."
+    });
+  }
+
+  const credentials = await resolveLdapBackedHostCredentials(
+    { connection, host },
+    {
+      gatewayV2Service: gatewayServices.gatewayV2Service,
+      gatewayPoolService: gatewayServices.gatewayPoolService,
+      keyStore: gatewayServices.keyStore
+    }
+  ).catch((err: unknown) => {
+    if (err instanceof LdapTargetConfigurationError) {
+      throw new PkiSyncError({ shouldRetry: false, message: err.message });
+    }
+    throw err;
+  });
+
+  return {
+    app: AppConnection.SSH,
+    method: SshConnectionMethod.Password,
+    credentials: { ...credentials, port: port ?? DEFAULT_SSH_PORT },
+    gatewayId: connection.gatewayId,
+    gatewayPoolId: connection.gatewayPoolId,
+    orgId: connection.orgId
+  } as TSshConnectionConfig;
+};
+
+const sshPinOptions = (pkiSync: { destinationConfig: unknown }) => ({
+  expectedHostKeys: (pkiSync.destinationConfig as TLinuxServerPkiSyncConfig).sshHostKeys || undefined
+});
+
+const buildSshConfig = async (
+  pkiSync: THealthCheckTarget,
+  gatewayServices: TGatewayServices
+): Promise<TSshConnectionConfig> => {
+  const { connection } = pkiSync;
+
+  if (connection.app === AppConnection.LDAP) return buildLdapBackedSshConfig(pkiSync, gatewayServices);
+
+  if (connection.app !== AppConnection.SSH) {
+    throw new PkiSyncError({
+      shouldRetry: false,
+      message: `A ${connection.app} connection cannot deliver to a Linux Server sync.`
+    });
+  }
+
   const credentials = connection.credentials as { privateKey?: string };
 
   let method: SshConnectionMethod;
@@ -245,22 +315,30 @@ const executeLinuxServerHostCommand = (
   kind: HostCommandKind,
   plan: { command: string; context: THostCommandContext },
   sshConfig: TSshConnectionConfig,
-  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">,
+  pinOptions?: TSshConnectionOptions
 ) =>
-  executeSshCommandViaGateway(sshConfig, gatewayServices, {
-    command: renderHostCommandContext(plan.command, plan.context, toPosixShellLiteral),
-    timeoutMs: HOST_COMMAND_TIMEOUT_MS[kind]
-  });
+  executeSshCommand(
+    sshConfig,
+    gatewayServices,
+    {
+      command: renderHostCommandContext(plan.command, plan.context, toPosixShellLiteral),
+      timeoutMs: HOST_COMMAND_TIMEOUT_MS[kind]
+    },
+    pinOptions
+  );
 
-const runLinuxServerHealthCheckCommand = ({
+const runLinuxServerHealthCheckCommand = async ({
   pkiSync,
   certificateMap,
+  resolveSshConfig,
   gatewayServices
 }: {
   pkiSync: THealthCheckTarget;
   certificateMap: TCertificateMap;
-  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
-}): Promise<THealthCheckCommandResult> | undefined => {
+  resolveSshConfig: () => Promise<TSshConnectionConfig>;
+  gatewayServices: TGatewayServices;
+}): Promise<THealthCheckCommandResult | undefined> => {
   const options = (pkiSync.syncOptions ?? {}) as TLinuxServerSyncOptions;
   const config = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
   const exportOptions = resolveLinuxExportOptions(options);
@@ -276,11 +354,21 @@ const runLinuxServerHealthCheckCommand = ({
   });
   if (!plan) return undefined;
 
+  const sshConfig = await resolveSshConfig().catch((err: unknown) => err as Error);
+
   return runHealthCheckCommand({
     syncId: pkiSync.id,
     secretsToRedact: [plan.context.pkcs12Password],
-    execute: () =>
-      executeLinuxServerHostCommand(HostCommandKind.HealthCheck, plan, buildSshConfig(pkiSync), gatewayServices)
+    execute: async () => {
+      if (sshConfig instanceof Error) throw sshConfig;
+      return executeLinuxServerHostCommand(
+        HostCommandKind.HealthCheck,
+        plan,
+        sshConfig,
+        gatewayServices,
+        sshPinOptions(pkiSync)
+      );
+    }
   });
 };
 
@@ -288,23 +376,26 @@ const runLinuxServerPostSyncCommand = ({
   syncId,
   plan,
   sshConfig,
-  gatewayServices
+  gatewayServices,
+  pinOptions
 }: {
   syncId: string;
   plan: TPostSyncCommandPlan;
   sshConfig: TSshConnectionConfig;
   gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
+  pinOptions?: TSshConnectionOptions;
 }) =>
   runPostSyncCommand({
     syncId,
     secretsToRedact: [plan.context.pkcs12Password],
-    execute: () => executeLinuxServerHostCommand(HostCommandKind.PostSync, plan, sshConfig, gatewayServices)
+    execute: () => executeLinuxServerHostCommand(HostCommandKind.PostSync, plan, sshConfig, gatewayServices, pinOptions)
   });
 
 export const linuxServerPkiSyncFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  keyStore
 }: TLinuxServerPkiSyncFactoryDeps) => {
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
@@ -329,12 +420,21 @@ export const linuxServerPkiSyncFactory = ({
     let uploaded = 0;
     let removed = 0;
 
-    const sshConfig = buildSshConfig(pkiSync);
+    const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
+    const gatewayLabel = await resolveGatewayLabel(gatewayV2Service, sshConfig.gatewayId);
+    const describeFailure = (error: unknown) =>
+      describeHostFailure({
+        error,
+        host: (pkiSync.destinationConfig as TLinuxServerPkiSyncConfig).host,
+        gatewayLabel,
+        transport: "SSH"
+      });
 
     const healthCheck = await runLinuxServerHealthCheckCommand({
       pkiSync,
       certificateMap,
-      gatewayServices: { gatewayV2Service, gatewayPoolService }
+      resolveSshConfig: async () => sshConfig,
+      gatewayServices: { gatewayV2Service, gatewayPoolService, keyStore }
     });
     if (healthCheck && didHealthCheckFail(healthCheck)) {
       logger.info(
@@ -343,104 +443,114 @@ export const linuxServerPkiSyncFactory = ({
       return buildHealthCheckFailureSyncResult(certificateMap, healthCheck);
     }
 
-    await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
-      const sftp = await openSftp(client);
-      await removeStaleTempFiles(sftp, config.destinationPath);
+    await withSshConnection(
+      sshConfig,
+      { gatewayV2Service, gatewayPoolService },
+      async (client) => {
+        const sftp = await openSftp(client);
+        await removeStaleTempFiles(sftp, config.destinationPath);
 
-      for (const [baseName, certData] of Object.entries(certificateMap)) {
-        const { cert, privateKey, certificateChain, certificateId } = certData;
+        for (const [baseName, certData] of Object.entries(certificateMap)) {
+          const { cert, privateKey, certificateChain, certificateId } = certData;
 
-        if (!cert) {
-          skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
-          // eslint-disable-next-line no-continue
-          continue;
-        }
+          if (!cert) {
+            skippedCertificates.push({ name: baseName, reason: "Missing certificate data" });
+            // eslint-disable-next-line no-continue
+            continue;
+          }
 
-        // Private key is required for PKCS#12, and for PEM when the operator asked to include it.
-        // If the key is not available (external CSR or HSM key), fail rather than deliver a keyless file.
-        const keyRequired = format === PkiSyncExportFormat.Pkcs12 || includePrivateKey;
-        if (keyRequired && !privateKey) {
-          failedUploads.push({
-            name: baseName,
-            error:
-              "Private key is required but is not available for this certificate (for example, it was issued from an external CSR)"
-          });
-          // eslint-disable-next-line no-continue
-          continue;
-        }
+          // Private key is required for PKCS#12, and for PEM when the operator asked to include it.
+          // If the key is not available (external CSR or HSM key), fail rather than deliver a keyless file.
+          const keyRequired = format === PkiSyncExportFormat.Pkcs12 || includePrivateKey;
+          if (keyRequired && !privateKey) {
+            failedUploads.push({
+              name: baseName,
+              error:
+                "Private key is required but is not available for this certificate (for example, it was issued from an external CSR)"
+            });
+            // eslint-disable-next-line no-continue
+            continue;
+          }
 
-        try {
-          const files = await exportCertificateForSync({
-            ...exportOptions,
-            certificate: cert,
-            certificateChain,
-            privateKey,
-            password: exportPassword,
-            alias: baseName
-          });
+          try {
+            const files = await exportCertificateForSync({
+              ...exportOptions,
+              certificate: cert,
+              certificateChain,
+              privateKey,
+              password: exportPassword,
+              alias: baseName
+            });
 
-          const writtenPaths: string[] = [];
-          for (const file of files) {
-            const filePath = path.posix.join(config.destinationPath, `${baseName}${file.suffix}`);
-            try {
-              await writeFileAtomic(sftp, filePath, file.content, file.isPrivateKey ? privateKeyMode : certificateMode);
-            } catch (writeErr) {
-              const msg = (writeErr as Error)?.message ?? "";
-              if (NO_SUCH_FILE_ERROR.test(msg)) {
-                throw new PkiSyncError({
-                  message: `Destination directory "${config.destinationPath}" does not exist or is not writable`
+            const writtenPaths: string[] = [];
+            for (const file of files) {
+              const filePath = path.posix.join(config.destinationPath, `${baseName}${file.suffix}`);
+              try {
+                await writeFileAtomic(
+                  sftp,
+                  filePath,
+                  file.content,
+                  file.isPrivateKey ? privateKeyMode : certificateMode
+                );
+              } catch (writeErr) {
+                const msg = (writeErr as Error)?.message ?? "";
+                if (NO_SUCH_FILE_ERROR.test(msg)) {
+                  throw new PkiSyncError({
+                    message: `Destination directory "${config.destinationPath}" does not exist or is not writable`
+                  });
+                }
+                throw writeErr;
+              }
+              await applyOwnership(client, options.owner, options.group, filePath);
+              writtenPaths.push(filePath);
+              deliveredPaths.add(filePath);
+            }
+
+            const primaryPath = writtenPaths[0];
+            deliveredCertificates.push({ paths: writtenPaths, commonName: certData.commonName ?? undefined });
+            if (typeof certificateId === "string") {
+              let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+              if (!record) {
+                [record] = await certificateSyncDAL.addCertificates(pkiSync.id, [
+                  { certificateId, externalIdentifier: primaryPath }
+                ]);
+              }
+              if (record) {
+                await certificateSyncDAL.updateById(record.id, {
+                  externalIdentifier: primaryPath,
+                  syncMetadata: { files: writtenPaths }
                 });
               }
-              throw writeErr;
             }
-            await applyOwnership(client, options.owner, options.group, filePath);
-            writtenPaths.push(filePath);
-            deliveredPaths.add(filePath);
-          }
 
-          const primaryPath = writtenPaths[0];
-          deliveredCertificates.push({ paths: writtenPaths, commonName: certData.commonName ?? undefined });
-          if (typeof certificateId === "string") {
-            let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
-            if (!record) {
-              [record] = await certificateSyncDAL.addCertificates(pkiSync.id, [
-                { certificateId, externalIdentifier: primaryPath }
-              ]);
-            }
-            if (record) {
-              await certificateSyncDAL.updateById(record.id, {
-                externalIdentifier: primaryPath,
-                syncMetadata: { files: writtenPaths }
-              });
-            }
+            uploaded += 1;
+            logger.info(
+              `Linux Server PKI sync [syncId=${pkiSync.id}]: wrote ${writtenPaths.length} file(s) for "${baseName}"`
+            );
+          } catch (err) {
+            failedUploads.push({ name: baseName, error: describeFailure(err) });
           }
-
-          uploaded += 1;
-          logger.info(
-            `Linux Server PKI sync [syncId=${pkiSync.id}]: wrote ${writtenPaths.length} file(s) for "${baseName}"`
-          );
-        } catch (err) {
-          failedUploads.push({ name: baseName, error: (err as Error)?.message ?? "Unknown error" });
         }
-      }
 
-      // Delete files for certificates no longer active and drop their tracking rows.
-      if (canRemoveCertificates && failedUploads.length === 0) {
-        const reconciliation = await reconcileLinuxServerRemovals({
-          sftp,
-          pkiSync,
-          certificateMap,
-          deliveredPaths,
-          certificateSyncDAL
-        });
-        removed += reconciliation.removed;
-        failedRemovals.push(...reconciliation.failedRemovals);
-      } else if (canRemoveCertificates) {
-        logger.info(
-          `Linux Server PKI sync [syncId=${pkiSync.id}]: skipped certificate removal because ${failedUploads.length} certificate(s) failed to deliver`
-        );
-      }
-    });
+        // Delete files for certificates no longer active and drop their tracking rows.
+        if (canRemoveCertificates && failedUploads.length === 0) {
+          const reconciliation = await reconcileLinuxServerRemovals({
+            sftp,
+            pkiSync,
+            certificateMap,
+            deliveredPaths,
+            certificateSyncDAL
+          });
+          removed += reconciliation.removed;
+          failedRemovals.push(...reconciliation.failedRemovals);
+        } else if (canRemoveCertificates) {
+          logger.info(
+            `Linux Server PKI sync [syncId=${pkiSync.id}]: skipped certificate removal because ${failedUploads.length} certificate(s) failed to deliver`
+          );
+        }
+      },
+      sshPinOptions(pkiSync)
+    );
 
     const postSyncCommandPlan = buildPostSyncCommandPlan({
       command: options.postSyncCommand,
@@ -454,7 +564,8 @@ export const linuxServerPkiSyncFactory = ({
           syncId: pkiSync.id,
           plan: postSyncCommandPlan,
           sshConfig,
-          gatewayServices: { gatewayV2Service, gatewayPoolService }
+          gatewayServices: { gatewayV2Service, gatewayPoolService },
+          pinOptions: sshPinOptions(pkiSync)
         })
       : undefined;
 
@@ -504,14 +615,19 @@ export const linuxServerPkiSyncFactory = ({
     }
 
     if (pathsToRemove.size > 0) {
-      const sshConfig = buildSshConfig(pkiSync);
-      await withSshConnection(sshConfig, { gatewayV2Service, gatewayPoolService }, async (client) => {
-        const sftp = await openSftp(client);
-        for (const filePath of pathsToRemove) {
-          await unlinkIfExists(sftp, filePath);
-          logger.info(`Linux Server PKI sync [syncId=${pkiSync.id}]: removed "${filePath}"`);
-        }
-      });
+      const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
+      await withSshConnection(
+        sshConfig,
+        { gatewayV2Service, gatewayPoolService },
+        async (client) => {
+          const sftp = await openSftp(client);
+          for (const filePath of pathsToRemove) {
+            await unlinkIfExists(sftp, filePath);
+            logger.info(`Linux Server PKI sync [syncId=${pkiSync.id}]: removed "${filePath}"`);
+          }
+        },
+        sshPinOptions(pkiSync)
+      );
     }
 
     // Untrack the removed certificates so they are no longer reported as synced and not re-delivered.
@@ -524,8 +640,31 @@ export const linuxServerPkiSyncFactory = ({
     runLinuxServerHealthCheckCommand({
       pkiSync,
       certificateMap,
-      gatewayServices: { gatewayV2Service, gatewayPoolService }
+      resolveSshConfig: () => buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore }),
+      gatewayServices: { gatewayV2Service, gatewayPoolService, keyStore }
     });
 
-  return { syncCertificates, removeCertificates, runHealthCheck };
+  const testReachability = async (pkiSync: TPkiSyncWithCredentials): Promise<void> => {
+    const sshConfig = await buildSshConfig(pkiSync, { gatewayV2Service, gatewayPoolService, keyStore });
+    const { host } = pkiSync.destinationConfig as TLinuxServerPkiSyncConfig;
+
+    try {
+      await withReachabilityDeadline(() =>
+        withSshConnection(
+          sshConfig,
+          { gatewayV2Service, gatewayPoolService },
+          async () => undefined,
+          sshPinOptions(pkiSync)
+        )
+      );
+    } catch (err) {
+      const gatewayLabel = await resolveGatewayLabel(gatewayV2Service, sshConfig.gatewayId);
+      throw new PkiSyncError({
+        shouldRetry: false,
+        message: describeHostFailure({ error: err, host, gatewayLabel, transport: "SSH" })
+      });
+    }
+  };
+
+  return { syncCertificates, removeCertificates, runHealthCheck, testReachability };
 };

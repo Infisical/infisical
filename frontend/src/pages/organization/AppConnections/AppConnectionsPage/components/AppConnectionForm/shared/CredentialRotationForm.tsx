@@ -12,7 +12,7 @@ import {
   FieldLabel,
   Input,
   Label,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -46,7 +46,7 @@ export const CredentialRotationForm = ({ children }: Props) => {
                       : "App connection credentials will not be rotated automatically."}
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="auto-rotation-enabled"
                   variant={scopeVariant}
                   checked={value}
