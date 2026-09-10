@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AgentVaultUnmatchedHost } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { logger } from "@app/lib/logger";
@@ -21,16 +22,20 @@ const SESSION_HEADER = "x-infisical-agent-session";
 export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/enroll",
+    url: "/login",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "enrollAgentVaultProxy",
-      description: "Exchange a one-time enrollment token for a proxy access token",
+      operationId: "loginAgentVaultProxy",
+      description:
+        "Proxy login. Body discriminates on `method`; token exchanges a one-time enrollment token for the proxy's access token.",
       tags: [ApiDocsTags.AgentVaultProxies],
-      body: z.object({
-        enrollmentToken: z.string().trim().min(1).max(256).describe(AGENT_VAULT.PROXY.enrollmentToken),
-        rootCaCertificate: z.string().trim().min(1).max(16384).describe(AGENT_VAULT.PROXY.rootCaCertificate)
-      }),
+      body: z.discriminatedUnion("method", [
+        z.object({
+          method: z.literal(ResourceAuthMethodType.Token),
+          token: z.string().trim().min(1).max(256).describe(AGENT_VAULT.PROXY.enrollmentToken),
+          rootCaCertificate: z.string().trim().min(1).max(16384).describe(AGENT_VAULT.PROXY.rootCaCertificate)
+        })
+      ]),
       response: {
         200: z.object({
           proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
@@ -41,7 +46,10 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       }
     },
     handler: async (req) => {
-      const result = await server.services.agentVaultProxy.enroll(req.body);
+      const result = await server.services.agentVaultProxy.enroll({
+        enrollmentToken: req.body.token,
+        rootCaCertificate: req.body.rootCaCertificate
+      });
 
       // The enrollment token is already consumed and this response is the only copy of the access token,
       // so an audit failure must not fail the request.

@@ -21,7 +21,7 @@ agent-vault-access-bundle/   bundles, connections, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, retention sweep
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
-agent-vault-proxy/           enroll, heartbeat, resolve
+agent-vault-proxy/           login (enrollment), heartbeat, resolve
 ```
 
 Routes: `ee/routes/v1/agent-vault-routers/`, prefix `/api/v1/agent-vault`. CLI: `packages/cmd/agent_vault*.go`
@@ -93,7 +93,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Infisical stores no copy of a proxy's CA, only the fingerprint and expiry. Agents fetch the CA from the
   proxy's own unauthenticated `/_agent-vault/ca`, so the trust path has no dependency on Infisical and there
   is deliberately no download endpoint.
-- The enroll route is unauthenticated (the enrollment token is the credential), so its audit event names the
+- The login route is unauthenticated (the enrollment token is the credential), so its audit event names the
   proxy as actor explicitly, as gateway, relay and KMIP enrollment do. Otherwise it logs as `unknownUser`.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
   the row's current `pollInterval`. A proxy learns a new interval on its next poll, so comparing against the
