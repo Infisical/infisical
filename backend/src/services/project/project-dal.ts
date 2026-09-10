@@ -514,13 +514,13 @@ export const projectDALFactory = (db: TDbClient) => {
 
       const rows = await (tx || db.replicaNode())(TableName.Membership)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .leftJoin(TableName.UserGroupMembership, function joinUserGroupMembership() {
-          this.on(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`).andOn(
-            `${TableName.UserGroupMembership}.isPending`,
-            "=",
-            (tx || db).raw("?", [false])
-          );
-        })
+        // isPending is deliberately not filtered: permission-dal.getPermission grants project access on
+        // group membership alone and the flag is no longer cleared once a user accepts their invite.
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.Membership}.actorGroupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
