@@ -46,6 +46,9 @@ import {
   SheetHeader,
   SheetTitle,
   Switch,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -682,6 +685,29 @@ const Form = ({
     />
   );
 
+  const renderSelfApprovals = () => (
+    <Controller
+      control={control}
+      name="allowedSelfApprovals"
+      defaultValue
+      render={({ field: { value, onChange } }) => (
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldTitle>Self Approvals</FieldTitle>
+            <FieldDescription>Allow approvers to review their own requests</FieldDescription>
+          </FieldContent>
+          <Switch
+            id="self-approvals"
+            aria-label="Allow self approvals"
+            variant="project"
+            checked={value}
+            onCheckedChange={onChange}
+          />
+        </Field>
+      )}
+    />
+  );
+
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
@@ -829,46 +855,6 @@ const Form = ({
         />
         {isAccessPolicyType && (
           <>
-            <Separator />
-            <Controller
-              control={control}
-              name="externalMode"
-              defaultValue={false}
-              render={({ field: { value, onChange } }) => (
-                <Field orientation="horizontal">
-                  <FieldContent>
-                    <FieldTitle>External Mode</FieldTitle>
-                    <FieldDescription>
-                      Approve requests in an external system. Requests under this policy cannot be
-                      approved in Infisical.
-                    </FieldDescription>
-                  </FieldContent>
-                  <Switch
-                    id="external-mode"
-                    aria-label="Approve requests in an external system"
-                    variant="project"
-                    checked={value}
-                    onCheckedChange={(isEnabled) => {
-                      onChange(isEnabled);
-
-                      if (isEnabled) return;
-
-                      setValue(
-                        "externalApproval",
-                        { type: ExternalApprovalType.ServiceNow },
-                        { shouldDirty: true }
-                      );
-                      if (!sequenceApproversFieldArray.fields.length) {
-                        sequenceApproversFieldArray.append(getEmptyApprovalStep());
-                      }
-                    }}
-                  />
-                </Field>
-              )}
-            />
-            {isExternalMode && (
-              <ExternalApprovalFields control={control} watch={watch} setValue={setValue} />
-            )}
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] items-start gap-3">
               <Controller
                 control={control}
@@ -927,211 +913,233 @@ const Form = ({
                 )}
               />
             </div>
+            <Separator />
+            <div className="flex flex-col gap-3">
+              <p className="text-sm font-medium text-foreground">Approval Routing</p>
+              <Controller
+                control={control}
+                name="externalMode"
+                defaultValue={false}
+                render={({ field: { value, onChange } }) => (
+                  <Tabs
+                    value={value ? "external" : "infisical"}
+                    onValueChange={(next) => {
+                      const isExternal = next === "external";
+                      onChange(isExternal);
+
+                      if (isExternal) return;
+
+                      setValue(
+                        "externalApproval",
+                        { type: ExternalApprovalType.ServiceNow },
+                        { shouldDirty: true }
+                      );
+                      if (!sequenceApproversFieldArray.fields.length) {
+                        sequenceApproversFieldArray.append(getEmptyApprovalStep());
+                      }
+                    }}
+                  >
+                    <TabsList variant="filled" className="w-full" aria-label="Approval routing">
+                      <TabsTrigger value="infisical">Infisical</TabsTrigger>
+                      <TabsTrigger value="external">External System</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                )}
+              />
+              {isExternalMode ? (
+                <>
+                  <p className="text-xs text-muted">
+                    Requests under this policy cannot be approved in Infisical.
+                  </p>
+                  <ExternalApprovalFields control={control} watch={watch} setValue={setValue} />
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted">
+                    Select readable members or groups, or enter an exact project member email.
+                  </p>
+                  {sequenceApproversFieldArray.fields.length === 1 ? (
+                    <div className="flex items-start gap-3">
+                      <Field className="min-w-0 flex-1">
+                        <FieldLabel>Approvers</FieldLabel>
+                        <FieldContent>
+                          {renderApproverSelect(0)}
+                          <FieldError
+                            errors={[
+                              errors.sequenceApprovers?.[0]?.user,
+                              errors.sequenceApprovers?.[0]?.group
+                            ]}
+                          />
+                        </FieldContent>
+                      </Field>
+                      <Field className="w-28">
+                        <FieldLabel>Min. Approvals</FieldLabel>
+                        <FieldContent>{renderMinApprovals(0, "h-9 w-full")}</FieldContent>
+                      </Field>
+                    </div>
+                  ) : (
+                    <ItemGroup className="max-h-[12rem] thin-scrollbar shrink-0 gap-0 overflow-y-auto rounded-lg border border-border bg-container">
+                      {sequenceApproversFieldArray.fields.map((el, index) => (
+                        <Fragment key={el.id}>
+                          {index > 0 && <ItemSeparator className="m-0" />}
+                          <Item
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDrop={handleDrop}
+                            className={twMerge(
+                              "rounded-none border-0",
+                              dragOverItem === index && "bg-container-hover",
+                              draggedItem === index && "opacity-50"
+                            )}
+                          >
+                            <ItemMedia>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <IconButton
+                                    type="button"
+                                    draggable
+                                    aria-label={`Reorder step ${index + 1}`}
+                                    variant="ghost-muted"
+                                    size="xs"
+                                    onDragStart={(e) => handleDragStart(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    onKeyDown={(event) => handleReorderKeyDown(event, index)}
+                                    className="cursor-move"
+                                  >
+                                    <GripVerticalIcon />
+                                  </IconButton>
+                                </TooltipTrigger>
+                                <TooltipContent>Drag or use arrow keys to reorder</TooltipContent>
+                              </Tooltip>
+                              <Badge variant="neutral">Step {index + 1}</Badge>
+                            </ItemMedia>
+                            <ItemContent className="min-w-0">
+                              {renderApproverSelect(index)}
+                              <FieldError
+                                errors={[
+                                  errors.sequenceApprovers?.[index]?.user,
+                                  errors.sequenceApprovers?.[index]?.group
+                                ]}
+                              />
+                            </ItemContent>
+                            <ItemActions>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-muted">Min</span>
+                                {renderMinApprovals(index, "h-8 w-14")}
+                              </div>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <IconButton
+                                    aria-label="Remove step"
+                                    variant="ghost"
+                                    size="xs"
+                                    onClick={() => sequenceApproversFieldArray.remove(index)}
+                                    className="text-danger hover:text-danger"
+                                  >
+                                    <Trash2Icon />
+                                  </IconButton>
+                                </TooltipTrigger>
+                                <TooltipContent>Remove Step</TooltipContent>
+                              </Tooltip>
+                            </ItemActions>
+                          </Item>
+                        </Fragment>
+                      ))}
+                    </ItemGroup>
+                  )}
+                  <div>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      type="button"
+                      onClick={() =>
+                        sequenceApproversFieldArray.append({
+                          approvals: 1,
+                          user: [],
+                          group: []
+                        })
+                      }
+                    >
+                      <PlusIcon />
+                      Add Step
+                    </Button>
+                    <FieldError errors={[errors.sequenceApprovers]} />
+                  </div>
+                  {renderSelfApprovals()}
+                </>
+              )}
+            </div>
           </>
         )}
         {!isAccessPolicyType && (
-          <Controller
-            control={control}
-            name="approvals"
-            defaultValue={1}
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Min. Approvals Required</FieldLabel>
-                <FieldContent>
-                  <Input
-                    {...field}
-                    type="number"
-                    min={1}
-                    isError={Boolean(error)}
-                    onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
-                  />
-                  <FieldError errors={[error]} />
-                </FieldContent>
-              </Field>
-            )}
-          />
-        )}
-        {!isExternalMode && (
           <>
+            <Controller
+              control={control}
+              name="approvals"
+              defaultValue={1}
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>Min. Approvals Required</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      type="number"
+                      min={1}
+                      isError={Boolean(error)}
+                      onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
             <div>
               <p className="text-sm font-medium text-foreground">Approvers</p>
               <p className="text-xs text-muted">
                 Select readable members or groups, or enter an exact project member email.
               </p>
             </div>
-            {isAccessPolicyType ? (
-              <>
-                {sequenceApproversFieldArray.fields.length === 1 ? (
-                  <div className="flex items-start gap-3">
-                    <Field className="min-w-0 flex-1">
-                      <FieldLabel>Approvers</FieldLabel>
-                      <FieldContent>
-                        {renderApproverSelect(0)}
-                        <FieldError
-                          errors={[
-                            errors.sequenceApprovers?.[0]?.user,
-                            errors.sequenceApprovers?.[0]?.group
-                          ]}
-                        />
-                      </FieldContent>
-                    </Field>
-                    <Field className="w-28">
-                      <FieldLabel>Min. Approvals</FieldLabel>
-                      <FieldContent>{renderMinApprovals(0, "h-9 w-full")}</FieldContent>
-                    </Field>
-                  </div>
-                ) : (
-                  <ItemGroup className="max-h-[12rem] thin-scrollbar shrink-0 gap-0 overflow-y-auto rounded-lg border border-border bg-container">
-                    {sequenceApproversFieldArray.fields.map((el, index) => (
-                      <Fragment key={el.id}>
-                        {index > 0 && <ItemSeparator className="m-0" />}
-                        <Item
-                          onDragOver={(e) => handleDragOver(e, index)}
-                          onDrop={handleDrop}
-                          className={twMerge(
-                            "rounded-none border-0",
-                            dragOverItem === index && "bg-container-hover",
-                            draggedItem === index && "opacity-50"
-                          )}
-                        >
-                          <ItemMedia>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <IconButton
-                                  type="button"
-                                  draggable
-                                  aria-label={`Reorder step ${index + 1}`}
-                                  variant="ghost-muted"
-                                  size="xs"
-                                  onDragStart={(e) => handleDragStart(e, index)}
-                                  onDragEnd={handleDragEnd}
-                                  onKeyDown={(event) => handleReorderKeyDown(event, index)}
-                                  className="cursor-move"
-                                >
-                                  <GripVerticalIcon />
-                                </IconButton>
-                              </TooltipTrigger>
-                              <TooltipContent>Drag or use arrow keys to reorder</TooltipContent>
-                            </Tooltip>
-                            <Badge variant="neutral">Step {index + 1}</Badge>
-                          </ItemMedia>
-                          <ItemContent className="min-w-0">
-                            {renderApproverSelect(index)}
-                            <FieldError
-                              errors={[
-                                errors.sequenceApprovers?.[index]?.user,
-                                errors.sequenceApprovers?.[index]?.group
-                              ]}
-                            />
-                          </ItemContent>
-                          <ItemActions>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-muted">Min</span>
-                              {renderMinApprovals(index, "h-8 w-14")}
-                            </div>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <IconButton
-                                  aria-label="Remove step"
-                                  variant="ghost"
-                                  size="xs"
-                                  onClick={() => sequenceApproversFieldArray.remove(index)}
-                                  className="text-danger hover:text-danger"
-                                >
-                                  <Trash2Icon />
-                                </IconButton>
-                              </TooltipTrigger>
-                              <TooltipContent>Remove Step</TooltipContent>
-                            </Tooltip>
-                          </ItemActions>
-                        </Item>
-                      </Fragment>
-                    ))}
-                  </ItemGroup>
-                )}
-                <div>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    type="button"
-                    onClick={() =>
-                      sequenceApproversFieldArray.append({
-                        approvals: 1,
-                        user: [],
-                        group: []
-                      })
-                    }
-                  >
-                    <PlusIcon />
-                    Add Step
-                  </Button>
-                  <FieldError errors={[errors.sequenceApprovers]} />
-                </div>
-              </>
-            ) : (
-              <Field>
-                <FieldLabel>Approvers</FieldLabel>
-                <FieldContent>
-                  <CreatableSelect<ApproverOptionData>
-                    isMulti
-                    aria-label="Approvers"
-                    placeholder="Select approvers or enter a member email..."
-                    options={approverOptions}
-                    getOptionValue={getApproverOptionValue}
-                    getOptionLabel={getApproverOptionLabel}
-                    filterOption={filterApproverOption}
-                    formatOptionLabel={formatApproverOptionLabel}
-                    formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
-                    isValidNewOption={(input, value) =>
-                      canAddMemberEmail(input, [
-                        ...(value as MultiValue<ApproverOptionData>),
-                        ...approverOptions
-                      ])
-                    }
-                    isOptionDisabled={(option) =>
-                      option.type === ApproverType.User && option.isOrgMembershipActive === false
-                    }
-                    value={selectedPolicyApprovers}
-                    onChange={(newValue) =>
-                      updatePolicyApprovers([...(newValue as MultiValue<ApproverOptionData>)])
-                    }
-                    onCreateOption={(input) =>
-                      updatePolicyApprovers([
-                        ...selectedPolicyApprovers,
-                        getManualMemberOption(input, ApproverType.User)
-                      ])
-                    }
-                    noOptionsMessage={() => "Enter an exact project member email address."}
-                    isError={Boolean(errors.userApprovers || errors.groupApprovers)}
-                  />
-                  <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
-                </FieldContent>
-              </Field>
-            )}
-            <Controller
-              control={control}
-              name="allowedSelfApprovals"
-              defaultValue
-              render={({ field: { value, onChange } }) => (
-                <Field orientation="horizontal">
-                  <FieldContent>
-                    <FieldTitle>Self Approvals</FieldTitle>
-                    <FieldDescription>
-                      Allow approvers to review their own requests
-                    </FieldDescription>
-                  </FieldContent>
-                  <Switch
-                    id="self-approvals"
-                    aria-label="Allow self approvals"
-                    variant="project"
-                    checked={value}
-                    onCheckedChange={onChange}
-                  />
-                </Field>
-              )}
-            />
+            <Field>
+              <FieldLabel>Approvers</FieldLabel>
+              <FieldContent>
+                <CreatableSelect<ApproverOptionData>
+                  isMulti
+                  aria-label="Approvers"
+                  placeholder="Select approvers or enter a member email..."
+                  options={approverOptions}
+                  getOptionValue={getApproverOptionValue}
+                  getOptionLabel={getApproverOptionLabel}
+                  filterOption={filterApproverOption}
+                  formatOptionLabel={formatApproverOptionLabel}
+                  formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                  isValidNewOption={(input, value) =>
+                    canAddMemberEmail(input, [
+                      ...(value as MultiValue<ApproverOptionData>),
+                      ...approverOptions
+                    ])
+                  }
+                  isOptionDisabled={(option) =>
+                    option.type === ApproverType.User && option.isOrgMembershipActive === false
+                  }
+                  value={selectedPolicyApprovers}
+                  onChange={(newValue) =>
+                    updatePolicyApprovers([...(newValue as MultiValue<ApproverOptionData>)])
+                  }
+                  onCreateOption={(input) =>
+                    updatePolicyApprovers([
+                      ...selectedPolicyApprovers,
+                      getManualMemberOption(input, ApproverType.User)
+                    ])
+                  }
+                  noOptionsMessage={() => "Enter an exact project member email address."}
+                  isError={Boolean(errors.userApprovers || errors.groupApprovers)}
+                />
+                <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
+              </FieldContent>
+            </Field>
+            {renderSelfApprovals()}
           </>
         )}
+        <Separator />
         {!isAccessPolicyType && (
           <Controller
             control={control}

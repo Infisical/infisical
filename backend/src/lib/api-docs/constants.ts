@@ -4169,6 +4169,14 @@ export const ExternalApprovals = {
     type: "The external approval type used to configure an access approval policy.",
     app: "The app connection type that must be selected when configuring this external approval type.",
     name: "The human readable name of the external approval system."
+  },
+  LIST_APPROVER_IDENTITIES: {
+    projectId: "The ID of the project whose approval policies are being managed. Used to authorize the request.",
+    id: "The ID of the machine identity that can report external approval decisions.",
+    name: "The name of the machine identity that can report external approval decisions.",
+    orgId: "The ID of the organization that owns the machine identity.",
+    identityProjectId:
+      "The ID of the project that owns the machine identity, or null when the identity belongs to the organization."
   }
 } as const;
 
@@ -4177,6 +4185,9 @@ export const AccessApprovalRequests = {
     requestId: "The ID of the access approval request the external approver decided on.",
     status: "The decision made by the external approver.",
     externalId:
-      "The ID of the request in the external approval system. Must match the ID recorded when the request was dispatched."
+      "The ID of the request in the external approval system. Must match the ID recorded when the request was dispatched.",
+    externalNumber:
+      "The human readable reference of the request in the external approval system, recorded on the audit log entry for this review.",
+    productType: "The Infisical product the access request belongs to. Must be 'secrets_management' for this endpoint."
   }
 } as const;

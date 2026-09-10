@@ -2999,6 +2999,7 @@ export const registerRoutes = async (
   const externalApprovalService = externalApprovalServiceFactory({
     appConnectionService,
     identityDAL,
+    permissionService,
     externalApprovalPolicyDAL,
     externalApprovalRequestDAL
   });

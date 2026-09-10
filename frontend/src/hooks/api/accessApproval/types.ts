@@ -21,6 +21,13 @@ export type TExternalApprovalOption = {
   name: string;
 };
 
+export type TExternalApprovalApproverIdentity = {
+  id: string;
+  name: string;
+  orgId: string;
+  projectId?: string | null;
+};
+
 export enum ExternalApprovalRequestStatus {
   PendingDispatch = "pending_dispatch",
   FailedDispatch = "failed_dispatch",
@@ -33,8 +40,6 @@ export type TExternalApprovalRequest = {
   id: string;
   status?: ExternalApprovalRequestStatus | null;
   externalId?: string | null;
-  approvedAt?: Date | null;
-  approvedByIdentityId?: string | null;
 };
 
 export type TExternalApprovalPolicyInput = {

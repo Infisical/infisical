@@ -1,16 +1,21 @@
+import { useEffect } from "react";
 import { Control, Controller, UseFormSetValue, UseFormWatch } from "react-hook-form";
 import { FormatOptionLabelMeta, SingleValue } from "react-select";
-import { InfoIcon } from "lucide-react";
+import { BotIcon, InfoIcon } from "lucide-react";
 
 import { AppConnectionOption } from "@app/components/app-connections";
 import {
+  Badge,
   DocumentationLinkBadge,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect
+  FilterableSelect,
+  OrgIcon,
+  ProjectIcon,
+  SubOrgIcon
 } from "@app/components/v3";
 import {
   ProjectPermissionSub,
@@ -22,8 +27,15 @@ import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermi
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { EXTERNAL_APPROVAL_DESCRIPTIONS } from "@app/helpers/externalApprovals";
 import { usePopUp } from "@app/hooks";
-import { useGetExternalApprovalOptions, useGetIdentityMembershipOrgs } from "@app/hooks/api";
-import { ExternalApprovalType, TExternalApprovalOption } from "@app/hooks/api/accessApproval/types";
+import {
+  useGetExternalApprovalApproverIdentities,
+  useGetExternalApprovalOptions
+} from "@app/hooks/api";
+import {
+  ExternalApprovalType,
+  TExternalApprovalApproverIdentity,
+  TExternalApprovalOption
+} from "@app/hooks/api/accessApproval/types";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
@@ -54,6 +66,48 @@ const formatProviderOptionLabel = (
   );
 };
 
+const IdentityScopeBadge = ({ identity }: { identity: TExternalApprovalApproverIdentity }) => {
+  const { currentOrg, isSubOrganization } = useOrganization();
+
+  if (identity.projectId)
+    return (
+      <Badge variant="project">
+        <ProjectIcon />
+        Project
+      </Badge>
+    );
+
+  if (isSubOrganization && currentOrg.id === identity.orgId)
+    return (
+      <Badge variant="sub-org">
+        <SubOrgIcon />
+        Sub-Organization
+      </Badge>
+    );
+
+  return (
+    <Badge variant="org">
+      <OrgIcon />
+      Organization
+    </Badge>
+  );
+};
+
+const formatIdentityOptionLabel = (
+  option: TExternalApprovalApproverIdentity,
+  { context }: FormatOptionLabelMeta<TExternalApprovalApproverIdentity>
+) => (
+  <div className="flex min-w-0 items-center gap-2">
+    <BotIcon className="size-3.5 shrink-0 text-muted" />
+    <span className="truncate">{option.name}</span>
+    {context === "menu" && (
+      <div className="ml-auto shrink-0">
+        <IdentityScopeBadge identity={option} />
+      </div>
+    )}
+  </div>
+);
+
 type Props = {
   control: Control<TApprovalPolicyFormSchema>;
   watch: UseFormWatch<TApprovalPolicyFormSchema>;
@@ -61,13 +115,11 @@ type Props = {
 };
 
 export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
-  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const externalType = watch("externalApproval.type");
-  const connectionId = watch("externalApproval.connectionId");
 
   const { data: externalApprovalOptions = [], isPending: isOptionsPending } =
     useGetExternalApprovalOptions();
@@ -82,23 +134,28 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
       enabled: Boolean(app)
     });
 
-  const { data: identityData, isPending: isIdentitiesPending } = useGetIdentityMembershipOrgs(
-    { organizationId: currentOrg.id, limit: 100 },
-    { enabled: Boolean(connectionId) }
-  );
-
-  const identities = identityData?.identityMemberships.map(({ identity }) => identity) ?? [];
+  const { data: identities = [], isPending: isIdentitiesPending } =
+    useGetExternalApprovalApproverIdentities({
+      projectId: currentProject.id,
+      options: { enabled: Boolean(externalType) }
+    });
 
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
     ProjectPermissionSub.AppConnections
   );
 
-  const clearApproverIdentity = () =>
-    setValue("externalApproval.approverIdentityId", undefined, { shouldDirty: true });
+  const approverIdentityId = watch("externalApproval.approverIdentityId");
+
+  useEffect(() => {
+    if (isIdentitiesPending || !approverIdentityId) return;
+    if (identities.some((identity) => identity.id === approverIdentityId)) return;
+
+    setValue("externalApproval.approverIdentityId", undefined);
+  }, [isIdentitiesPending, approverIdentityId, identities]);
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-border bg-popover p-4">
+    <div className="flex flex-col gap-4">
       <Controller
         control={control}
         name="externalApproval.type"
@@ -114,7 +171,6 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
                 onChange={(newValue) => {
                   onChange((newValue as SingleValue<TExternalApprovalOption>)?.type);
                   setValue("externalApproval.connectionId", undefined, { shouldDirty: true });
-                  clearApproverIdentity();
                 }}
                 options={externalApprovalOptions}
                 isLoading={isOptionsPending}
@@ -152,7 +208,6 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
                   }
 
                   onChange(selected?.id);
-                  clearApproverIdentity();
                 }}
                 options={[
                   ...(canCreateConnection
@@ -195,15 +250,16 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
                 value={identities.find((identity) => identity.id === value) ?? null}
                 onChange={(newValue) => onChange((newValue as SingleValue<{ id: string }>)?.id)}
                 options={identities}
-                isDisabled={!connectionId}
-                isLoading={Boolean(connectionId) && isIdentitiesPending}
+                isDisabled={!externalType}
+                isLoading={Boolean(externalType) && isIdentitiesPending}
                 placeholder={
-                  connectionId
+                  externalType
                     ? "Select an approving machine identity..."
-                    : "Select an app connection first"
+                    : "Select a provider first"
                 }
                 getOptionValue={(option) => option.id}
                 getOptionLabel={(option) => option.name}
+                formatOptionLabel={formatIdentityOptionLabel}
                 isError={Boolean(error)}
               />
               <FieldDescription>
@@ -214,6 +270,13 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
           </Field>
         )}
       />
+      {Boolean(externalType) && !isIdentitiesPending && !identities.length && (
+        <p className="flex items-center gap-1.5 text-xs text-warning">
+          <InfoIcon className="size-3.5 shrink-0" />
+          No machine identity in this project can report approval decisions. Add one to the project
+          with a role that grants the Review permission on External Approvals.
+        </p>
+      )}
       <AddAppConnectionModal
         isOpen={popUp.addConnection.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addConnection", isOpen)}
@@ -227,7 +290,6 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
             shouldDirty: true,
             shouldValidate: true
           });
-          clearApproverIdentity();
         }}
       />
     </div>

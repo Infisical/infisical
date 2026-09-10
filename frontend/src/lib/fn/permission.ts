@@ -141,6 +141,7 @@ const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
   [ProjectPermissionSub.SecretEventSubscriptions]: "Secret Event Subscriptions",
   [ProjectPermissionSub.SecretApproval]: "Secret Approval Policies",
   [ProjectPermissionSub.SecretApprovalRequest]: "Secret Approval Requests",
+  [ProjectPermissionSub.ExternalApproval]: "External Approvals",
   [ProjectPermissionSub.Identity]: "Machine Identity Management",
   [ProjectPermissionSub.PkiSubscribers]: "PKI Subscribers",
   [ProjectPermissionSub.CertificateTemplates]: "Certificate Templates",

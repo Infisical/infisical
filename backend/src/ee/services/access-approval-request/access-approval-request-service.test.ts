@@ -1,11 +1,9 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
-import { ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub } from "../permission/project-permission";
 import { accessApprovalRequestServiceFactory } from "./access-approval-request-service";
 import { ApprovalStatus } from "./access-approval-request-types";
 
@@ -58,9 +56,7 @@ const buildRequest = (patch: Record<string, unknown> = {}) => ({
   externalApproval: {
     id: EXTERNAL_REQUEST_ID,
     status: ExternalApprovalRequestStatus.WaitingApproval,
-    externalId: EXTERNAL_ID,
-    approvedAt: null,
-    approvedByIdentityId: null
+    externalId: EXTERNAL_ID
   },
   requestedByUser: { userId: "user-1", email: "a@b.c", firstName: "A", lastName: "B", username: "a@b.c" },
   ...patch
@@ -69,12 +65,12 @@ const buildRequest = (patch: Record<string, unknown> = {}) => ({
 const makeService = ({
   request = buildRequest(),
   lockedRow = { id: REQUEST_ID, status: ApprovalStatus.PENDING, privilegeId: null },
-  canExternalReview = true,
+  canReview = true,
   project = { id: PROJECT_ID, orgId: ORG_ID, name: "Project" }
 }: {
   request?: ReturnType<typeof buildRequest> | undefined;
   lockedRow?: Record<string, unknown> | undefined;
-  canExternalReview?: boolean;
+  canReview?: boolean;
   project?: Record<string, unknown> | undefined;
 } = {}) => {
   const accessApprovalRequestDAL = {
@@ -88,22 +84,10 @@ const makeService = ({
   const additionalPrivilegeDAL = { create: vi.fn().mockResolvedValue({ id: "priv-1" }) };
   const externalApprovalService = {
     authorizeExternalReview: vi.fn().mockResolvedValue({ id: EXTERNAL_POLICY_ID, approverIdentityId: IDENTITY_ID }),
+    canReviewExternalApprovals: vi.fn().mockResolvedValue(canReview),
     resolveExternalApprovalDecision: vi.fn().mockResolvedValue({ alreadyFinalized: false })
   };
-  const permissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({
-      permission: createMongoAbility(
-        canExternalReview
-          ? [
-              {
-                action: ProjectPermissionApprovalRequestGrantActions.ExternalReview,
-                subject: ProjectPermissionSub.ApprovalRequestGrants
-              }
-            ]
-          : []
-      )
-    })
-  };
+  const permissionService = { getProjectPermission: vi.fn() };
   const projectDAL = { findById: vi.fn().mockResolvedValue(project) };
   const queueService = { queue: vi.fn().mockResolvedValue(undefined) };
   const projectEnvDAL = { findOne: vi.fn().mockResolvedValue({ name: "Development" }) };
@@ -150,8 +134,7 @@ describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
       {
         externalApprovalRequestId: EXTERNAL_REQUEST_ID,
         externalId: EXTERNAL_ID,
-        status: ApprovalStatus.APPROVED,
-        approvedByIdentityId: IDENTITY_ID
+        status: ApprovalStatus.APPROVED
       },
       TX
     );
@@ -203,10 +186,14 @@ describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
     await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(BadRequestError);
   });
 
-  test("an identity without the ExternalReview permission is forbidden", async () => {
-    const { service, accessApprovalRequestDAL } = makeService({ canExternalReview: false });
+  test("an identity without the Review permission on External Approvals is forbidden", async () => {
+    const { service, accessApprovalRequestDAL, externalApprovalService } = makeService({ canReview: false });
 
-    await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(ForbiddenRequestError);
+    expect(externalApprovalService.canReviewExternalApprovals).toHaveBeenCalledWith({
+      actor: identityActor,
+      projectId: PROJECT_ID
+    });
     expect(accessApprovalRequestDAL.transaction).not.toHaveBeenCalled();
   });
 
@@ -217,9 +204,7 @@ describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
         externalApproval: {
           id: EXTERNAL_REQUEST_ID,
           status: ExternalApprovalRequestStatus.Approved,
-          externalId: EXTERNAL_ID,
-          approvedAt: new Date(),
-          approvedByIdentityId: IDENTITY_ID
+          externalId: EXTERNAL_ID
         }
       })
     });

@@ -67,14 +67,14 @@ If ServiceNow never returns a decision, the request expires in Infisical accordi
 
     Configure it with **Universal Auth** and generate a Client ID and Client Secret. Save both, the secret is shown only once.
 
-    Next, give the identity permission to submit decisions:
+    Next, give the identity permission to submit decisions. The permission is project scoped, so grant it in each project that uses external approvals:
 
-    1. In your Secrets Management project, go to **Access Control > Project Roles** and create a role such as `servicenow-external-reviewer`.
-    2. Grant it the **External Review** permission on **Approval Requests**.
+    1. Inside the project, go to **Access Control** > **Project Roles** and create a role such as `servicenow-external-reviewer`.
+    2. Grant it the **Review** permission on **External Approvals**.
     3. Add the machine identity to the project with that role.
 
     <Note>
-      **External Review** only allows submitting an approve or reject decision on
+      **Review** on **External Approvals** only allows submitting an approve or reject decision on
       requests Infisical has already sent to ServiceNow. It does not allow reading
       secrets, and it does not allow creating or modifying policies.
     </Note>
@@ -183,6 +183,6 @@ Both sides keep their own record. In ServiceNow, the access request record carri
 | Approvers see duplicate approvals           | Two flows match the same record. Make the trigger conditions mutually exclusive and deactivate the one you no longer want.                                                                |
 | State stuck at Notifying Infisical          | The callback is in flight or the flow errored mid-step. Check the flow's execution details.                                                                                               |
 | Callback Failed: no active identity mapping | The request's identity ID has no active row under Infisical > Identity Mappings**. Confirm the **Review Identity\*\* on the policy matches the identity ID in the mapping.                |
-| Callback Failed with HTTP 401 or 403    | The machine identity isn't a member of the project, or is missing the External Review permission on Approval Requests.                                                                   |
+| Callback Failed with HTTP 401 or 403        | The machine identity isn't a member of the project, is missing the **Review** permission on **External Approvals** there, or isn't the approver identity configured on the policy.        |
 | Callback Failed with a connection error     | The ServiceNow instance can't reach your Infisical URL. Check the URL on the alias and any outbound firewall rules on the instance.                                                      |
 | Request expired before approval             | The policy's request expiration elapsed while the request sat in ServiceNow. Extend it, or shorten your approval SLA.                                                                     |

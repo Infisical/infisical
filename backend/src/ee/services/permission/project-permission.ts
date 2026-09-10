@@ -297,8 +297,7 @@ export enum ProjectPermissionApprovalRequestActions {
 
 export enum ProjectPermissionApprovalRequestGrantActions {
   Read = "read",
-  Revoke = "revoke",
-  ExternalReview = "external-review"
+  Revoke = "revoke"
 }
 
 export enum ProjectPermissionProjectFolderGrantActions {
@@ -309,6 +308,10 @@ export enum ProjectPermissionProjectFolderGrantActions {
 
 export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
+}
+
+export enum ProjectPermissionExternalApprovalActions {
+  Review = "review"
 }
 
 export const isCustomProjectRole = (slug: string) =>
@@ -334,6 +337,7 @@ export enum ProjectPermissionSub {
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretApprovalRequest = "secret-approval-request",
+  ExternalApproval = "external-approval",
   SecretRotation = "secret-rotation",
   Commits = "commits",
   Identity = "identity",
@@ -704,6 +708,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
+  | [ProjectPermissionExternalApprovalActions, ProjectPermissionSub.ExternalApproval]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
   | [
       ProjectPermissionProjectFolderGrantActions,
@@ -1623,6 +1628,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretApprovalRequest).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretApprovalRequestActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.ExternalApproval).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionExternalApprovalActions).describe(
       "Describe what action an entity can take."
     )
   }),

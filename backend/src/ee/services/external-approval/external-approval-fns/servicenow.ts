@@ -8,7 +8,7 @@ import { safeRequest } from "@app/lib/validator/safe-request";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { verifyRequestedPermissions } from "../../access-approval-request/access-approval-request-fns";
-import { ExternalApprovalType } from "../external-approval-enums";
+import { ExternalApprovalProductType, ExternalApprovalType } from "../external-approval-enums";
 import { TExternalApprovalDispatchContext, TExternalApprovalProviderFns } from "../external-approval-types";
 
 const SERVICENOW_REQUEST_TIMEOUT_MS = 30_000;
@@ -50,6 +50,7 @@ type TServiceNowAccessRequestPayload = {
   request_id: string;
   callback_url: string;
   request_type: "secret_access";
+  product_type: ExternalApprovalProductType;
   project_id: string;
   project_name: string;
   environment: string;
@@ -95,6 +96,7 @@ const buildAccessRequestPayload = ({
     request_id: accessApprovalRequest.id,
     callback_url: `${siteUrl}/api/v1/access-approvals/requests/${accessApprovalRequest.id}/external-review`,
     request_type: "secret_access",
+    product_type: ExternalApprovalProductType.SecretsManagement,
     project_id: project.id,
     project_name: project.name,
     environment: envSlug,

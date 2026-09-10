@@ -11,8 +11,6 @@ export const ExternalApprovalRequestsSchema = z.object({
   id: z.string().uuid(),
   externalId: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
-  approvedAt: z.date().nullable().optional(),
-  approvedByIdentityId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

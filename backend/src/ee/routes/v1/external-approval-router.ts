@@ -34,4 +34,43 @@ export const registerExternalApprovalRouter = async (server: FastifyZodProvider)
       return { externalApprovalOptions };
     }
   });
+
+  server.route({
+    url: "/approver-identities",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listExternalApprovalApproverIdentities",
+      description: "List the machine identities in the organization that can report external approval decisions.",
+      querystring: z.object({
+        projectId: z.string().uuid().describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.projectId)
+      }),
+      response: {
+        200: z.object({
+          approverIdentities: z
+            .object({
+              id: z.string().uuid().describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.id),
+              name: z.string().describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.name),
+              orgId: z.string().uuid().describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.orgId),
+              projectId: z
+                .string()
+                .nullable()
+                .describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.identityProjectId)
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const approverIdentities = await server.services.externalApproval.listApproverIdentities({
+        projectId: req.query.projectId,
+        actor: req.permission
+      });
+
+      return { approverIdentities };
+    }
+  });
 };

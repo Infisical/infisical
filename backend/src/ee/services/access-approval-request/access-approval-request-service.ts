@@ -1,4 +1,4 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { subject } from "@casl/ability";
 import msFn from "ms";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
@@ -44,7 +44,6 @@ import { flattenActiveRolesFromMemberships } from "../permission/permission-serv
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionApprovalRequestActions,
-  ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "../permission/project-permission";
@@ -95,7 +94,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "create" | "updateById">;
   externalApprovalService: Pick<
     TExternalApprovalServiceFactory,
-    "authorizeExternalReview" | "resolveExternalApprovalDecision"
+    "authorizeExternalReview" | "resolveExternalApprovalDecision" | "canReviewExternalApprovals"
   >;
 };
 
@@ -256,18 +255,16 @@ export const accessApprovalRequestServiceFactory = ({
       actor
     });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: accessApprovalRequest.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const canReview = await externalApprovalService.canReviewExternalApprovals({
+      actor,
+      projectId: accessApprovalRequest.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApprovalRequestGrantActions.ExternalReview,
-      ProjectPermissionSub.ApprovalRequestGrants
-    );
+    if (!canReview) {
+      throw new ForbiddenRequestError({
+        message:
+          "This identity is not a member of this project, or is missing the Review permission on External Approvals in it"
+      });
+    }
 
     if (policy.deletedAt) {
       throw new BadRequestError({
@@ -287,6 +284,9 @@ export const accessApprovalRequestServiceFactory = ({
     };
 
     if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
+      if (accessApprovalRequest.status === status) {
+        return { ...result, request: accessApprovalRequest };
+      }
       throw new BadRequestError({ message: "The request has been closed" });
     }
 
@@ -295,8 +295,7 @@ export const accessApprovalRequestServiceFactory = ({
         {
           externalApprovalRequestId: externalApproval.id,
           externalId,
-          status,
-          approvedByIdentityId: actor.id
+          status
         },
         tx
       );
@@ -899,6 +898,12 @@ export const accessApprovalRequestServiceFactory = ({
     if (policy.deletedAt) {
       throw new BadRequestError({
         message: "The policy associated with this access request has been deleted."
+      });
+    }
+
+    if (policy.externalApprovalPolicyId) {
+      throw new BadRequestError({
+        message: `Access request for policy '${policy.name}' is reviewed by an external approval system. Approve or reject it there; access is granted automatically once it is approved.`
       });
     }
 

@@ -1,25 +1,36 @@
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
+import { ActionProjectType } from "@app/db/schemas";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionExternalApprovalActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ExternalApprovalRequestStatus } from "./external-approval-enums";
 import { EXTERNAL_APPROVAL_APP_CONNECTION_MAP, listExternalApprovalOptions } from "./external-approval-map";
 import { TExternalApprovalPolicyDALFactory } from "./external-approval-policy-dal";
 import { TExternalApprovalRequestDALFactory } from "./external-approval-request-dal";
 import {
   TAuthorizeExternalReviewDTO,
+  TCanReviewExternalApprovalsDTO,
   TExternalApprovalDecision,
+  TListApproverIdentitiesDTO,
   TResolveExternalApprovalDecisionDTO,
   TValidateExternalApprovalPolicyInputDTO
 } from "./external-approval-types";
 
 type TExternalApprovalServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  identityDAL: Pick<TIdentityDALFactory, "findOne">;
+  identityDAL: Pick<TIdentityDALFactory, "findOne" | "find">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
   externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "findById">;
   externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "findById" | "updateById">;
 };
@@ -36,12 +47,41 @@ const FINAL_EXTERNAL_STATUSES: string[] = [
   ExternalApprovalRequestStatus.Rejected
 ];
 
+const REVIEW_PERMISSION_HINT =
+  "Add it to this project with a role that grants the Review permission on External Approvals, then try again.";
+
+const ignoreForbidden = (err: unknown) => {
+  if (err instanceof ForbiddenRequestError) return null;
+  throw err;
+};
+
 export const externalApprovalServiceFactory = ({
   appConnectionService,
   identityDAL,
+  permissionService,
   externalApprovalPolicyDAL,
   externalApprovalRequestDAL
 }: TExternalApprovalServiceFactoryDep) => {
+  const canReviewExternalApprovals = async ({ actor, projectId }: TCanReviewExternalApprovalsDTO) => {
+    const projectPermission = await permissionService
+      .getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.SecretManager
+      })
+      .catch(ignoreForbidden);
+
+    return Boolean(
+      projectPermission?.permission.can(
+        ProjectPermissionExternalApprovalActions.Review,
+        ProjectPermissionSub.ExternalApproval
+      )
+    );
+  };
+
   const validateExternalApprovalPolicyInput = async ({
     input,
     projectId,
@@ -66,6 +106,47 @@ export const externalApprovalServiceFactory = ({
         message: `Identity with ID '${input.approverIdentityId}' not found in your organization`
       });
     }
+
+    const canReview = await canReviewExternalApprovals({
+      actor: { type: ActorType.IDENTITY, id: identity.id, authMethod: null, orgId: actor.orgId },
+      projectId
+    });
+    if (!canReview) {
+      throw new BadRequestError({
+        message: `Identity '${identity.name}' cannot report approval decisions. ${REVIEW_PERMISSION_HINT}`
+      });
+    }
+  };
+
+  const listApproverIdentities = async ({ projectId, actor }: TListApproverIdentitiesDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+
+    const { identityPermissions } = await permissionService.getProjectPermissions(projectId, actor.orgId);
+    const reviewerIds = identityPermissions
+      .filter(({ permission: identityPermission }) =>
+        identityPermission.can(ProjectPermissionExternalApprovalActions.Review, ProjectPermissionSub.ExternalApproval)
+      )
+      .map(({ id }) => id);
+    if (!reviewerIds.length) return [];
+
+    const reviewers = await identityDAL.find({ $in: { id: reviewerIds } });
+
+    return reviewers
+      .map(({ id, name, orgId, projectId: identityProjectId }) => ({
+        id,
+        name,
+        orgId,
+        projectId: identityProjectId ?? null
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   };
 
   const authorizeExternalReview = async ({ externalApprovalPolicyId, actor }: TAuthorizeExternalReviewDTO) => {
@@ -90,7 +171,7 @@ export const externalApprovalServiceFactory = ({
   };
 
   const resolveExternalApprovalDecision = async (
-    { externalApprovalRequestId, externalId, status, approvedByIdentityId }: TResolveExternalApprovalDecisionDTO,
+    { externalApprovalRequestId, externalId, status }: TResolveExternalApprovalDecisionDTO,
     tx: Knex
   ) => {
     const externalApprovalRequest = await externalApprovalRequestDAL.findById(externalApprovalRequestId, tx);
@@ -134,11 +215,7 @@ export const externalApprovalServiceFactory = ({
 
     const updated = await externalApprovalRequestDAL.updateById(
       externalApprovalRequestId,
-      {
-        status: targetStatus,
-        approvedAt: new Date(),
-        approvedByIdentityId
-      },
+      { status: targetStatus },
       tx
     );
 
@@ -147,6 +224,8 @@ export const externalApprovalServiceFactory = ({
 
   return {
     listExternalApprovalOptions,
+    canReviewExternalApprovals,
+    listApproverIdentities,
     validateExternalApprovalPolicyInput,
     authorizeExternalReview,
     resolveExternalApprovalDecision

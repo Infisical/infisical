@@ -15,6 +15,7 @@ import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
+  ProjectPermissionExternalApprovalActions,
   ProjectPermissionGroupActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionHsmConnectorActions,
@@ -430,15 +431,12 @@ const buildAdminPermissionRules = () => {
   );
 
   can(
-    [
-      ProjectPermissionApprovalRequestGrantActions.Read,
-      ProjectPermissionApprovalRequestGrantActions.Revoke,
-      ProjectPermissionApprovalRequestGrantActions.ExternalReview
-    ],
+    [ProjectPermissionApprovalRequestGrantActions.Read, ProjectPermissionApprovalRequestGrantActions.Revoke],
     ProjectPermissionSub.ApprovalRequestGrants
   );
 
   can([ProjectPermissionSecretApprovalRequestActions.Read], ProjectPermissionSub.SecretApprovalRequest);
+  can([ProjectPermissionExternalApprovalActions.Review], ProjectPermissionSub.ExternalApproval);
 
   can(
     [

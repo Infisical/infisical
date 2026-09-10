@@ -19,6 +19,16 @@ export type TValidateExternalApprovalPolicyInputDTO = {
   actor: OrgServiceActor;
 };
 
+export type TListApproverIdentitiesDTO = {
+  projectId: string;
+  actor: OrgServiceActor;
+};
+
+export type TCanReviewExternalApprovalsDTO = {
+  projectId: string;
+  actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">;
+};
+
 export type TExternalApprovalDecision = ApprovalStatus.APPROVED | ApprovalStatus.REJECTED;
 
 export type TAuthorizeExternalReviewDTO = {
@@ -30,7 +40,6 @@ export type TResolveExternalApprovalDecisionDTO = {
   externalApprovalRequestId: string;
   externalId: string;
   status: TExternalApprovalDecision;
-  approvedByIdentityId: string;
 };
 
 export type TExternalApprovalDispatchJobPayload = {

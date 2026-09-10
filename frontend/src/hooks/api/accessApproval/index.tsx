@@ -11,5 +11,6 @@ export {
   useGetAccessApprovalRequests,
   useGetAccessPolicyApprovalCount,
   useGetAccessRequestsCount,
+  useGetExternalApprovalApproverIdentities,
   useGetExternalApprovalOptions
 } from "./queries";

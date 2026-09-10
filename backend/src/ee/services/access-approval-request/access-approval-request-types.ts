@@ -53,8 +53,6 @@ export type TAccessApprovalRequestExternalApproval = {
   id: string;
   status: string | null | undefined;
   externalId: string | null | undefined;
-  approvedAt: Date | null | undefined;
-  approvedByIdentityId: string | null | undefined;
 } | null;
 
 export type TListApprovalRequestsDTO = {

@@ -394,12 +394,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               .withSchema(TableName.AccessApprovalPolicy)
               .as("policyExternalApprovalPolicyId"),
             db.ref("status").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalStatus"),
-            db.ref("externalId").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalExternalId"),
-            db.ref("approvedAt").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalApprovedAt"),
-            db
-              .ref("approvedByIdentityId")
-              .withSchema(TableName.ExternalApprovalRequest)
-              .as("externalApprovalApprovedByIdentityId")
+            db.ref("externalId").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalExternalId")
           )
           .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
           .select(db.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
@@ -485,9 +480,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               ? {
                   id: doc.externalApprovalRequestId,
                   status: doc.externalApprovalStatus,
-                  externalId: doc.externalApprovalExternalId,
-                  approvedAt: doc.externalApprovalApprovedAt,
-                  approvedByIdentityId: doc.externalApprovalApprovedByIdentityId
+                  externalId: doc.externalApprovalExternalId
                 }
               : null,
             requestedByUser: {
@@ -760,12 +753,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           .withSchema(TableName.AccessApprovalPolicy)
           .as("policyExternalApprovalPolicyId"),
         tx.ref("status").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalStatus"),
-        tx.ref("externalId").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalExternalId"),
-        tx.ref("approvedAt").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalApprovedAt"),
-        tx
-          .ref("approvedByIdentityId")
-          .withSchema(TableName.ExternalApprovalRequest)
-          .as("externalApprovalApprovedByIdentityId")
+        tx.ref("externalId").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalExternalId")
       );
 
   const findById: TAccessApprovalRequestDALFactory["findById"] = async (id, tx) => {
@@ -795,9 +783,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             ? {
                 id: el.externalApprovalRequestId,
                 status: el.externalApprovalStatus,
-                externalId: el.externalApprovalExternalId,
-                approvedAt: el.externalApprovalApprovedAt,
-                approvedByIdentityId: el.externalApprovalApprovedByIdentityId
+                externalId: el.externalApprovalExternalId
               }
             : null,
           requestedByUser: {

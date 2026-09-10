@@ -4,7 +4,6 @@ import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-mana
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
-import { registerExternalApprovalRouter } from "./external-approval-router";
 import { registerAgentProxyCaRouter } from "./agent-proxy-ca-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
@@ -16,6 +15,7 @@ import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router"
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerEmailDomainRouter } from "./email-domain-router";
+import { registerExternalApprovalRouter } from "./external-approval-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
 import { registerGatewayPoolRouter } from "./gateway-pool-router";

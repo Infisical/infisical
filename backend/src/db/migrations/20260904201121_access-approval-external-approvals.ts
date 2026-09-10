@@ -33,13 +33,6 @@ export async function up(knex: Knex): Promise<void> {
 
       t.string("externalId", 255).nullable();
       t.string("status", 50).nullable();
-      t.timestamp("approvedAt").nullable();
-
-      t.uuid("approvedByIdentityId").nullable();
-      t.foreign("approvedByIdentityId").references("id").inTable(TableName.Identity).onDelete("SET NULL");
-      t.index("approvedByIdentityId", "external_approval_requests_approved_by_identity_id_index", {
-        predicate: knex.whereNotNull("approvedByIdentityId")
-      });
 
       t.timestamps(true, true, true);
     });

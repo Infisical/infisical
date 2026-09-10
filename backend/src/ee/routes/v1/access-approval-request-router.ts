@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ExternalApprovalProductType } from "@app/ee/services/external-approval/external-approval-enums";
 import { AccessApprovalRequests } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
@@ -193,9 +194,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               .object({
                 id: z.string().uuid(),
                 status: z.string().nullish(),
-                externalId: z.string().nullish(), // TODO: check if it is better to define this as externalApprovalID
-                approvedAt: z.date().nullish(),
-                approvedByIdentityId: z.string().uuid().nullish()
+                externalId: z.string().nullish() // TODO: check if it is better to define this as externalApprovalID
               })
               .nullish(),
             reviewers: z
@@ -306,7 +305,11 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         status: z
           .enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED])
           .describe(AccessApprovalRequests.EXTERNAL_REVIEW.status),
-        external_id: z.string().trim().min(1).max(255).describe(AccessApprovalRequests.EXTERNAL_REVIEW.externalId)
+        external_id: z.string().trim().min(1).max(255).describe(AccessApprovalRequests.EXTERNAL_REVIEW.externalId),
+        external_number: z.string().trim().min(1).max(255).optional(),
+        product_type: z
+          .literal(ExternalApprovalProductType.SecretsManagement)
+          .describe(AccessApprovalRequests.EXTERNAL_REVIEW.productType)
       }),
       response: {
         200: z.object({
@@ -335,6 +338,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             policyId,
             externalApprovalRequestId,
             externalApprovalPolicyId,
+            // externalNumber: req.body.external_number,
             reviewStatus: req.body.status
           }
         }

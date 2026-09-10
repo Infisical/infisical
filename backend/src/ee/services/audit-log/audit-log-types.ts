@@ -6485,6 +6485,7 @@ interface AccessApprovalRequestExternalReviewEvent {
     policyId: string;
     externalApprovalRequestId: string;
     externalApprovalPolicyId: string;
+    externalNumber?: string;
     reviewStatus: string;
   };
 }

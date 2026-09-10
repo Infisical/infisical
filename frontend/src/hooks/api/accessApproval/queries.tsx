@@ -9,8 +9,9 @@ import {
   TAccessApprovalPolicy,
   TAccessApprovalRequest,
   TAccessRequestCount,
-  TGetAccessApprovalRequestsDTO,
+  TExternalApprovalApproverIdentity,
   TExternalApprovalOption,
+  TGetAccessApprovalRequestsDTO,
   TGetAccessPolicyApprovalCountDTO
 } from "./types";
 
@@ -30,7 +31,9 @@ export const accessApprovalKeys = {
     ["access-approvals-requests", projectSlug] as const,
   getAccessApprovalRequestCount: (projectSlug: string, policyId?: string) =>
     [{ projectSlug }, "access-approval-request-count", ...(policyId ? [policyId] : [])] as const,
-  getExternalApprovalOptions: () => ["external-approval-options"] as const
+  getExternalApprovalOptions: () => ["external-approval-options"] as const,
+  getExternalApprovalApproverIdentities: (projectId: string) =>
+    [{ projectId }, "external-approval-approver-identities"] as const
 };
 
 export const useGetExternalApprovalOptions = (options?: TReactQueryOptions) =>
@@ -44,6 +47,24 @@ export const useGetExternalApprovalOptions = (options?: TReactQueryOptions) =>
     },
     staleTime: Infinity,
     ...options
+  });
+
+export const useGetExternalApprovalApproverIdentities = ({
+  projectId,
+  options = {}
+}: { projectId: string } & TReactQueryOptions) =>
+  useQuery({
+    queryKey: accessApprovalKeys.getExternalApprovalApproverIdentities(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        approverIdentities: TExternalApprovalApproverIdentity[];
+      }>("/api/v1/access-approvals/external-approvals/approver-identities", {
+        params: { projectId }
+      });
+      return data.approverIdentities;
+    },
+    ...options,
+    enabled: Boolean(projectId) && (options?.enabled ?? true)
   });
 
 export const fetchPolicyApprovalCount = async ({
