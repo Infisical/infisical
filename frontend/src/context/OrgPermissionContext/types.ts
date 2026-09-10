@@ -96,7 +96,8 @@ export enum OrgPermissionSubjects {
   CertManager = "certificate-manager",
   HoneyTokens = "honey-tokens",
   OauthClients = "oauth-clients",
-  SecretsManagementInsights = "secrets-management-insights"
+  SecretsManagementInsights = "secrets-management-insights",
+  ExternalApproval = "external-approval"
 }
 
 export enum OrgPermissionCertManagerActions {
@@ -114,6 +115,10 @@ export enum OrgPermissionEmailDomainActions {
 
 export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
+}
+
+export enum OrgPermissionExternalApprovalActions {
+  Review = "review"
 }
 
 export enum OrgPermissionSecretsManagementInsightsActions {
@@ -232,9 +237,7 @@ export type OrgPermissionSet =
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
   | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
   | [OrgPermissionActions, OrgPermissionSubjects.OauthClients]
-  | [
-      OrgPermissionSecretsManagementInsightsActions,
-      OrgPermissionSubjects.SecretsManagementInsights
-    ];
+  | [OrgPermissionSecretsManagementInsightsActions, OrgPermissionSubjects.SecretsManagementInsights]
+  | [OrgPermissionExternalApprovalActions, OrgPermissionSubjects.ExternalApproval];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

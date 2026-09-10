@@ -4174,9 +4174,7 @@ export const ExternalApprovals = {
     projectId: "The ID of the project whose approval policies are being managed. Used to authorize the request.",
     id: "The ID of the machine identity that can report external approval decisions.",
     name: "The name of the machine identity that can report external approval decisions.",
-    orgId: "The ID of the organization that owns the machine identity.",
-    identityProjectId:
-      "The ID of the project that owns the machine identity, or null when the identity belongs to the organization."
+    orgId: "The ID of the organization that owns the machine identity."
   }
 } as const;
 

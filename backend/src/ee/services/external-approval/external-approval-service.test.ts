@@ -1,11 +1,16 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
 import {
-  ProjectPermissionActions,
-  ProjectPermissionExternalApprovalActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  orgAdminPermissions,
+  orgMemberPermissions,
+  OrgPermissionExternalApprovalActions,
+  OrgPermissionSet,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -49,6 +54,7 @@ const makeService = (policyPatch: Record<string, unknown> = {}, requestPatch: Re
   const service = externalApprovalServiceFactory({
     appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
     identityDAL: { findOne: vi.fn() } as never,
+    membershipIdentityDAL: { findIdentities: vi.fn() } as never,
     permissionService: { getProjectPermission: vi.fn() } as never,
     externalApprovalPolicyDAL: externalApprovalPolicyDAL as never,
     externalApprovalRequestDAL: externalApprovalRequestDAL as never
@@ -65,27 +71,31 @@ const POLICY_INPUT = {
 const reviewAbility = (canReview: boolean) =>
   createMongoAbility(
     canReview
-      ? [{ action: ProjectPermissionExternalApprovalActions.Review, subject: ProjectPermissionSub.ExternalApproval }]
+      ? [{ action: OrgPermissionExternalApprovalActions.Review, subject: OrgPermissionSubjects.ExternalApproval }]
       : []
   );
 
 const makeValidationService = ({
   canReview = false,
-  permissionError
+  permissionError,
+  ownedByProjectId = null
 }: {
   canReview?: boolean;
   permissionError?: Error;
+  ownedByProjectId?: string | null;
 } = {}) => {
   const permissionService = {
-    getProjectPermission: permissionError
+    getOrgPermission: permissionError
       ? vi.fn().mockRejectedValue(permissionError)
-      : vi.fn().mockResolvedValue({ permission: reviewAbility(canReview) })
+      : vi.fn().mockResolvedValue({ permission: reviewAbility(canReview) }),
+    getProjectPermission: vi.fn()
   };
   const service = externalApprovalServiceFactory({
     appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
     identityDAL: {
-      findOne: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "servicenow-bot" })
+      findOne: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "servicenow-bot", projectId: ownedByProjectId })
     } as never,
+    membershipIdentityDAL: { findIdentities: vi.fn() } as never,
     permissionService: permissionService as never,
     externalApprovalPolicyDAL: {} as never,
     externalApprovalRequestDAL: {} as never
@@ -97,36 +107,43 @@ const validate = (service: ReturnType<typeof makeValidationService>["service"]) 
   service.validateExternalApprovalPolicyInput({ input: POLICY_INPUT, projectId: PROJECT_ID, actor: identityActor });
 
 describe("externalApprovalService.validateExternalApprovalPolicyInput", () => {
-  test("accepts an approver identity granted Review on a role in the project", async () => {
+  test("accepts an approver identity granted Review on an organization role, without consulting the project", async () => {
     const { service, permissionService } = makeValidationService({ canReview: true });
     await expect(validate(service)).resolves.toBeUndefined();
-    expect(permissionService.getProjectPermission).toHaveBeenCalledWith({
+    expect(permissionService.getOrgPermission).toHaveBeenCalledWith({
       actor: ActorType.IDENTITY,
       actorId: IDENTITY_ID,
-      projectId: PROJECT_ID,
+      orgId: identityActor.orgId,
       actorAuthMethod: null,
       actorOrgId: identityActor.orgId,
-      actionProjectType: "secret-manager"
+      scope: "any"
     });
+    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
   });
 
-  test("rejects an approver identity in the project that does not hold Review", async () => {
+  test("rejects a project managed identity before it reaches the permission check", async () => {
+    const { service, permissionService } = makeValidationService({
+      canReview: true,
+      ownedByProjectId: PROJECT_ID
+    });
+    await expect(validate(service)).rejects.toBeInstanceOf(BadRequestError);
+    expect(permissionService.getOrgPermission).not.toHaveBeenCalled();
+  });
+
+  test("rejects an approver identity in the org that does not hold Review", async () => {
     const { service } = makeValidationService();
     await expect(validate(service)).rejects.toBeInstanceOf(BadRequestError);
   });
 
-  test("rejects an approver identity that is not a member of the project", async () => {
+  test("rejects an approver identity that is not a member of the organization", async () => {
     const { service } = makeValidationService({
-      permissionError: new ForbiddenRequestError({
-        name: "ProjectMembershipNotFound",
-        message: "You are not a member of this project"
-      })
+      permissionError: new ForbiddenRequestError({ message: "You are not a member of this organization" })
     });
     await expect(validate(service)).rejects.toBeInstanceOf(BadRequestError);
   });
 
   test("surfaces an unrelated permission lookup failure unchanged", async () => {
-    const { service } = makeValidationService({ permissionError: new NotFoundError({ message: "no project" }) });
+    const { service } = makeValidationService({ permissionError: new NotFoundError({ message: "no org" }) });
     await expect(validate(service)).rejects.toBeInstanceOf(NotFoundError);
   });
 });
@@ -278,38 +295,50 @@ describe("externalApprovalService.resolveExternalApprovalDecision", () => {
   });
 });
 
-const identityRow = (id: string, name: string, projectId: string | null = null) => ({
-  id,
-  name,
-  orgId: identityActor.orgId,
-  projectId
+const orgAbility = (rules: RawRuleOf<MongoAbility<OrgPermissionSet>>[]) =>
+  createMongoAbility<OrgPermissionSet>(rules, { conditionsMatcher });
+
+const REVIEWER_ROLE_SLUG = "external-reviewer";
+
+const ABILITY_BY_ROLE_SLUG: Record<string, MongoAbility<OrgPermissionSet>> = {
+  [OrgMembershipRole.Admin]: orgAbility(orgAdminPermissions as RawRuleOf<MongoAbility<OrgPermissionSet>>[]),
+  [OrgMembershipRole.Member]: orgAbility(orgMemberPermissions as RawRuleOf<MongoAbility<OrgPermissionSet>>[]),
+  [REVIEWER_ROLE_SLUG]: orgAbility([
+    { action: OrgPermissionExternalApprovalActions.Review, subject: OrgPermissionSubjects.ExternalApproval }
+  ] as RawRuleOf<MongoAbility<OrgPermissionSet>>[])
+};
+
+type TMembershipRoleFixture = {
+  role: string;
+  customRoleSlug?: string | null;
+  isTemporary?: boolean;
+  temporaryAccessEndTime?: Date | null;
+};
+
+const membership = (
+  id: string,
+  name: string,
+  roles: TMembershipRoleFixture[],
+  ownedByProjectId: string | null = null
+) => ({
+  identity: { id, name, orgId: identityActor.orgId, projectId: ownedByProjectId },
+  roles: roles.map((role) => ({ isTemporary: false, ...role }))
 });
 
-const projectReviewer = (id: string, name: string, canReview = true) => ({
-  id,
-  name,
-  permission: reviewAbility(canReview)
-});
+const approver = (id: string, name: string) => ({ id, name, orgId: identityActor.orgId });
 
 const makeApproverListService = ({
   callerCanReadPolicies = true,
-  identityPermissions = [] as ReturnType<typeof projectReviewer>[],
-  identityRows = [] as ReturnType<typeof identityRow>[]
+  memberships = [] as ReturnType<typeof membership>[]
 } = {}) => {
-  const rowsById = new Map(
-    [...identityPermissions.map(({ id, name }) => identityRow(id, name)), ...identityRows].map((row) => [row.id, row])
-  );
-  const find = vi
+  const findIdentities = vi.fn().mockResolvedValue({ data: memberships, totalCount: memberships.length });
+  const getOrgPermissionByRoles = vi
     .fn()
-    .mockImplementation(async ({ $in }: { $in: { id: string[] } }) =>
-      $in.id.map((id) => rowsById.get(id)).filter(Boolean)
-    );
-  const getProjectPermissions = vi
-    .fn()
-    .mockResolvedValue({ userPermissions: [], identityPermissions, groupPermissions: [] });
+    .mockImplementation(async (slugs: string[]) => slugs.map((slug) => ({ permission: ABILITY_BY_ROLE_SLUG[slug] })));
   const service = externalApprovalServiceFactory({
     appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
-    identityDAL: { findOne: vi.fn(), find } as never,
+    identityDAL: { findOne: vi.fn() } as never,
+    membershipIdentityDAL: { findIdentities } as never,
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
         permission: createMongoAbility(
@@ -318,60 +347,90 @@ const makeApproverListService = ({
             : []
         )
       }),
-      getProjectPermissions
+      getOrgPermissionByRoles
     } as never,
     externalApprovalPolicyDAL: {} as never,
     externalApprovalRequestDAL: {} as never
   });
-  return { service, find, getProjectPermissions };
+  return { service, findIdentities, getOrgPermissionByRoles };
 };
 
 describe("externalApprovalService.listApproverIdentities", () => {
-  test("returns only the project identities whose role grants Review, sorted by name", async () => {
-    const { service, getProjectPermissions } = makeApproverListService({
-      identityPermissions: [
-        projectReviewer("id-plain", "plain-bot", false),
-        projectReviewer("id-reviewer-b", "zeta-bot"),
-        projectReviewer("id-reviewer-a", "alpha-bot")
+  test("returns only the identities whose org role grants Review, sorted by name", async () => {
+    const { service, findIdentities, getOrgPermissionByRoles } = makeApproverListService({
+      memberships: [
+        membership("id-member", "member-bot", [{ role: OrgMembershipRole.Member }]),
+        membership("id-admin-b", "zeta-admin-bot", [{ role: OrgMembershipRole.Admin }]),
+        membership("id-admin-a", "alpha-admin-bot", [{ role: OrgMembershipRole.Admin }])
       ]
     });
 
     await expect(service.listApproverIdentities({ projectId: PROJECT_ID, actor: identityActor })).resolves.toEqual([
-      identityRow("id-reviewer-a", "alpha-bot"),
-      identityRow("id-reviewer-b", "zeta-bot")
+      approver("id-admin-a", "alpha-admin-bot"),
+      approver("id-admin-b", "zeta-admin-bot")
     ]);
-    expect(getProjectPermissions).toHaveBeenCalledWith(PROJECT_ID, identityActor.orgId);
+    expect(findIdentities).toHaveBeenCalledWith({
+      scopeData: { scope: AccessScope.Organization, orgId: identityActor.orgId },
+      filter: {}
+    });
+    expect(getOrgPermissionByRoles).toHaveBeenCalledTimes(1);
+    expect(getOrgPermissionByRoles).toHaveBeenCalledWith(
+      [OrgMembershipRole.Member, OrgMembershipRole.Admin],
+      identityActor.orgId
+    );
   });
 
-  test("reports the owning scope of each identity so the picker can tell same-named identities apart", async () => {
-    const { service, find } = makeApproverListService({
-      identityPermissions: [
-        projectReviewer("id-org", "servicenow-identity"),
-        projectReviewer("id-project", "servicenow-identity")
-      ],
-      identityRows: [identityRow("id-project", "servicenow-identity", PROJECT_ID)]
+  test("includes an identity granted Review through a custom org role", async () => {
+    const { service } = makeApproverListService({
+      memberships: [
+        membership("id-custom", "custom-bot", [{ role: OrgMembershipRole.Custom, customRoleSlug: REVIEWER_ROLE_SLUG }])
+      ]
     });
 
     await expect(service.listApproverIdentities({ projectId: PROJECT_ID, actor: identityActor })).resolves.toEqual([
-      { id: "id-org", name: "servicenow-identity", orgId: identityActor.orgId, projectId: null },
-      { id: "id-project", name: "servicenow-identity", orgId: identityActor.orgId, projectId: PROJECT_ID }
+      approver("id-custom", "custom-bot")
     ]);
-    expect(find).toHaveBeenCalledWith({ $in: { id: ["id-org", "id-project"] } });
   });
 
-  test("returns an empty list without a lookup when no project identity can review", async () => {
-    const { service, find } = makeApproverListService({
-      identityPermissions: [projectReviewer("id-plain", "plain-bot", false)]
+  test("excludes an identity whose only granting role has expired", async () => {
+    const { service, getOrgPermissionByRoles } = makeApproverListService({
+      memberships: [
+        membership("id-expired", "expired-bot", [
+          { role: OrgMembershipRole.Admin, isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) }
+        ]),
+        membership("id-member", "member-bot", [{ role: OrgMembershipRole.Member }])
+      ]
     });
 
     await expect(service.listApproverIdentities({ projectId: PROJECT_ID, actor: identityActor })).resolves.toEqual([]);
-    expect(find).not.toHaveBeenCalled();
+    expect(getOrgPermissionByRoles).toHaveBeenCalledWith([OrgMembershipRole.Member], identityActor.orgId);
+  });
+
+  test("excludes a project managed identity even when its org role grants Review", async () => {
+    const { service, getOrgPermissionByRoles } = makeApproverListService({
+      memberships: [
+        membership("id-owned-by-project", "project-bot", [{ role: OrgMembershipRole.Admin }], PROJECT_ID),
+        membership("id-org", "org-bot", [{ role: OrgMembershipRole.Admin }])
+      ]
+    });
+
+    await expect(service.listApproverIdentities({ projectId: PROJECT_ID, actor: identityActor })).resolves.toEqual([
+      approver("id-org", "org-bot")
+    ]);
+    expect(getOrgPermissionByRoles).toHaveBeenCalledWith([OrgMembershipRole.Admin], identityActor.orgId);
+  });
+
+  test("returns an empty list without resolving roles when the org has no identities", async () => {
+    const { service, getOrgPermissionByRoles } = makeApproverListService();
+
+    await expect(service.listApproverIdentities({ projectId: PROJECT_ID, actor: identityActor })).resolves.toEqual([]);
+    expect(getOrgPermissionByRoles).not.toHaveBeenCalled();
   });
 
   test("refuses a caller that cannot read the project's approval policies", async () => {
-    const { service, getProjectPermissions } = makeApproverListService({ callerCanReadPolicies: false });
+    const { service, findIdentities } = makeApproverListService({ callerCanReadPolicies: false });
 
     await expect(service.listApproverIdentities({ projectId: PROJECT_ID, actor: identityActor })).rejects.toThrow();
-    expect(getProjectPermissions).not.toHaveBeenCalled();
+    expect(findIdentities).not.toHaveBeenCalled();
   });
 });

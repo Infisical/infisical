@@ -15,7 +15,6 @@ import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
-  ProjectPermissionExternalApprovalActions,
   ProjectPermissionGroupActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionHsmConnectorActions,
@@ -436,7 +435,6 @@ const buildAdminPermissionRules = () => {
   );
 
   can([ProjectPermissionSecretApprovalRequestActions.Read], ProjectPermissionSub.SecretApprovalRequest);
-  can([ProjectPermissionExternalApprovalActions.Review], ProjectPermissionSub.ExternalApproval);
 
   can(
     [

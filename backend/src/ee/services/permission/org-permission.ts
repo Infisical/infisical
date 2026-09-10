@@ -148,6 +148,10 @@ export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
 }
 
+export enum OrgPermissionExternalApprovalActions {
+  Review = "review"
+}
+
 export enum OrgPermissionSecretsManagementInsightsActions {
   Read = "read",
   GenerateReport = "generate-report",
@@ -192,7 +196,8 @@ export enum OrgPermissionSubjects {
   CertManager = "certificate-manager",
   HoneyTokens = "honey-tokens",
   OauthClients = "oauth-clients",
-  SecretsManagementInsights = "secrets-management-insights"
+  SecretsManagementInsights = "secrets-management-insights",
+  ExternalApproval = "external-approval"
 }
 
 export type AppConnectionSubjectFields = {
@@ -238,7 +243,8 @@ export type OrgPermissionSet =
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
   | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
   | [OrgPermissionActions, OrgPermissionSubjects.OauthClients]
-  | [OrgPermissionSecretsManagementInsightsActions, OrgPermissionSubjects.SecretsManagementInsights];
+  | [OrgPermissionSecretsManagementInsightsActions, OrgPermissionSubjects.SecretsManagementInsights]
+  | [OrgPermissionExternalApprovalActions, OrgPermissionSubjects.ExternalApproval];
 
 const AppConnectionConditionSchema = z
   .object({
@@ -419,6 +425,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.HoneyTokens).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionHoneyTokenActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.ExternalApproval).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionExternalApprovalActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -613,6 +625,8 @@ const buildAdminPermission = () => {
   can(OrgPermissionSecretsManagementInsightsActions.Read, OrgPermissionSubjects.SecretsManagementInsights);
   can(OrgPermissionSecretsManagementInsightsActions.GenerateReport, OrgPermissionSubjects.SecretsManagementInsights);
   can(OrgPermissionSecretsManagementInsightsActions.DeleteReport, OrgPermissionSubjects.SecretsManagementInsights);
+
+  can(OrgPermissionExternalApprovalActions.Review, OrgPermissionSubjects.ExternalApproval);
 
   return rules;
 };

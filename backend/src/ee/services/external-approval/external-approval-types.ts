@@ -25,7 +25,6 @@ export type TListApproverIdentitiesDTO = {
 };
 
 export type TCanReviewExternalApprovalsDTO = {
-  projectId: string;
   actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">;
 };
 

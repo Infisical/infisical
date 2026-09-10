@@ -255,14 +255,11 @@ export const accessApprovalRequestServiceFactory = ({
       actor
     });
 
-    const canReview = await externalApprovalService.canReviewExternalApprovals({
-      actor,
-      projectId: accessApprovalRequest.projectId
-    });
+    const canReview = await externalApprovalService.canReviewExternalApprovals({ actor });
     if (!canReview) {
       throw new ForbiddenRequestError({
         message:
-          "This identity is not a member of this project, or is missing the Review permission on External Approvals in it"
+          "This identity is missing the Review permission on External Approvals. Grant it on an organization role."
       });
     }
 

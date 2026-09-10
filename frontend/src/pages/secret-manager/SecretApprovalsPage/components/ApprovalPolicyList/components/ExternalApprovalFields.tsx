@@ -14,7 +14,6 @@ import {
   FieldLabel,
   FilterableSelect,
   OrgIcon,
-  ProjectIcon,
   SubOrgIcon
 } from "@app/components/v3";
 import {
@@ -68,14 +67,6 @@ const formatProviderOptionLabel = (
 
 const IdentityScopeBadge = ({ identity }: { identity: TExternalApprovalApproverIdentity }) => {
   const { currentOrg, isSubOrganization } = useOrganization();
-
-  if (identity.projectId)
-    return (
-      <Badge variant="project">
-        <ProjectIcon />
-        Project
-      </Badge>
-    );
 
   if (isSubOrganization && currentOrg.id === identity.orgId)
     return (
@@ -273,8 +264,8 @@ export const ExternalApprovalFields = ({ control, watch, setValue }: Props) => {
       {Boolean(externalType) && !isIdentitiesPending && !identities.length && (
         <p className="flex items-center gap-1.5 text-xs text-warning">
           <InfoIcon className="size-3.5 shrink-0" />
-          No machine identity in this project can report approval decisions. Add one to the project
-          with a role that grants the Review permission on External Approvals.
+          No machine identity can report approval decisions. Grant one the Review permission on
+          External Approvals through an organization role.
         </p>
       )}
       <AddAppConnectionModal

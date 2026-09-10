@@ -53,11 +53,7 @@ export const registerExternalApprovalRouter = async (server: FastifyZodProvider)
             .object({
               id: z.string().uuid().describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.id),
               name: z.string().describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.name),
-              orgId: z.string().uuid().describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.orgId),
-              projectId: z
-                .string()
-                .nullable()
-                .describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.identityProjectId)
+              orgId: z.string().uuid().describe(ExternalApprovals.LIST_APPROVER_IDENTITIES.orgId)
             })
             .array()
         })

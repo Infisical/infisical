@@ -303,10 +303,6 @@ export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
 }
 
-export enum ProjectPermissionExternalApprovalActions {
-  Review = "review"
-}
-
 export enum ProjectPermissionSecretFolderActions {
   ManageAccess = "manage-access"
 }
@@ -410,7 +406,6 @@ export enum ProjectPermissionSub {
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretApprovalRequest = "secret-approval-request",
-  ExternalApproval = "external-approval",
   SecretRotation = "secret-rotation",
   Identity = "identity",
   CertificateAuthorities = "certificate-authorities",
@@ -703,7 +698,6 @@ export type ProjectPermissionSet =
   | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
   | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants]
   | [ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub.SecretApprovalRequest]
-  | [ProjectPermissionExternalApprovalActions, ProjectPermissionSub.ExternalApproval]
   | [ProjectPermissionInsightsActions, ProjectPermissionSub.Insights]
   | [
       ProjectPermissionHoneyTokenActions,

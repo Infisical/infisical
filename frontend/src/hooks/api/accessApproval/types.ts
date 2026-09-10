@@ -25,7 +25,6 @@ export type TExternalApprovalApproverIdentity = {
   id: string;
   name: string;
   orgId: string;
-  projectId?: string | null;
 };
 
 export enum ExternalApprovalRequestStatus {

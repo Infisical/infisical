@@ -191,8 +191,7 @@ describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
 
     await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(ForbiddenRequestError);
     expect(externalApprovalService.canReviewExternalApprovals).toHaveBeenCalledWith({
-      actor: identityActor,
-      projectId: PROJECT_ID
+      actor: identityActor
     });
     expect(accessApprovalRequestDAL.transaction).not.toHaveBeenCalled();
   });

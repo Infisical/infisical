@@ -1,18 +1,20 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import {
-  ProjectPermissionActions,
-  ProjectPermissionExternalApprovalActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  OrgPermissionExternalApprovalActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
 
 import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
+import { isActiveRole } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ExternalApprovalRequestStatus } from "./external-approval-enums";
 import { EXTERNAL_APPROVAL_APP_CONNECTION_MAP, listExternalApprovalOptions } from "./external-approval-map";
@@ -29,8 +31,12 @@ import {
 
 type TExternalApprovalServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  identityDAL: Pick<TIdentityDALFactory, "findOne" | "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
+  identityDAL: Pick<TIdentityDALFactory, "findOne">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findIdentities">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getOrgPermission" | "getOrgPermissionByRoles"
+  >;
   externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "findById">;
   externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "findById" | "updateById">;
 };
@@ -48,37 +54,40 @@ const FINAL_EXTERNAL_STATUSES: string[] = [
 ];
 
 const REVIEW_PERMISSION_HINT =
-  "Add it to this project with a role that grants the Review permission on External Approvals, then try again.";
+  "Grant it the Review permission on External Approvals through an organization role, then try again.";
 
 const ignoreForbidden = (err: unknown) => {
   if (err instanceof ForbiddenRequestError) return null;
   throw err;
 };
 
+type TOrgMembershipRole = { role: string; customRoleSlug?: string | null } & Parameters<typeof isActiveRole>[0];
+
+const toOrgRoleSlug = (role: TOrgMembershipRole) =>
+  role.role === OrgMembershipRole.Custom ? role.customRoleSlug : role.role;
+
 export const externalApprovalServiceFactory = ({
   appConnectionService,
   identityDAL,
+  membershipIdentityDAL,
   permissionService,
   externalApprovalPolicyDAL,
   externalApprovalRequestDAL
 }: TExternalApprovalServiceFactoryDep) => {
-  const canReviewExternalApprovals = async ({ actor, projectId }: TCanReviewExternalApprovalsDTO) => {
-    const projectPermission = await permissionService
-      .getProjectPermission({
+  const canReviewExternalApprovals = async ({ actor }: TCanReviewExternalApprovalsDTO) => {
+    const orgPermission = await permissionService
+      .getOrgPermission({
         actor: actor.type,
         actorId: actor.id,
-        projectId,
+        orgId: actor.orgId,
         actorAuthMethod: actor.authMethod,
         actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.SecretManager
+        scope: OrganizationActionScope.Any
       })
       .catch(ignoreForbidden);
 
     return Boolean(
-      projectPermission?.permission.can(
-        ProjectPermissionExternalApprovalActions.Review,
-        ProjectPermissionSub.ExternalApproval
-      )
+      orgPermission?.permission.can(OrgPermissionExternalApprovalActions.Review, OrgPermissionSubjects.ExternalApproval)
     );
   };
 
@@ -107,9 +116,14 @@ export const externalApprovalServiceFactory = ({
       });
     }
 
+    if (identity.projectId) {
+      throw new BadRequestError({
+        message: `Identity '${identity.name}' is managed by a project and cannot report approval decisions. Use an organization level machine identity instead.`
+      });
+    }
+
     const canReview = await canReviewExternalApprovals({
-      actor: { type: ActorType.IDENTITY, id: identity.id, authMethod: null, orgId: actor.orgId },
-      projectId
+      actor: { type: ActorType.IDENTITY, id: identity.id, authMethod: null, orgId: actor.orgId }
     });
     if (!canReview) {
       throw new BadRequestError({
@@ -129,23 +143,43 @@ export const externalApprovalServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
 
-    const { identityPermissions } = await permissionService.getProjectPermissions(projectId, actor.orgId);
-    const reviewerIds = identityPermissions
-      .filter(({ permission: identityPermission }) =>
-        identityPermission.can(ProjectPermissionExternalApprovalActions.Review, ProjectPermissionSub.ExternalApproval)
+    const { data: memberships } = await membershipIdentityDAL.findIdentities({
+      scopeData: { scope: AccessScope.Organization, orgId: actor.orgId },
+      filter: {}
+    });
+
+    // project-managed identities hold an org membership too, so the org scope alone does not exclude them
+    const orgIdentityMemberships = memberships.filter(({ identity }) => !identity.projectId);
+
+    const activeRoleSlugs = [
+      ...new Set(
+        orgIdentityMemberships.flatMap((membership) =>
+          membership.roles
+            .filter(isActiveRole)
+            .map(toOrgRoleSlug)
+            .filter((slug): slug is string => Boolean(slug))
+        )
       )
-      .map(({ id }) => id);
-    if (!reviewerIds.length) return [];
+    ];
 
-    const reviewers = await identityDAL.find({ $in: { id: reviewerIds } });
+    const roleAbilities = activeRoleSlugs.length
+      ? await permissionService.getOrgPermissionByRoles(activeRoleSlugs, actor.orgId)
+      : [];
 
-    return reviewers
-      .map(({ id, name, orgId, projectId: identityProjectId }) => ({
-        id,
-        name,
-        orgId,
-        projectId: identityProjectId ?? null
-      }))
+    const grantingRoleSlugs = new Set(
+      activeRoleSlugs.filter((_, index) =>
+        roleAbilities[index].permission.can(
+          OrgPermissionExternalApprovalActions.Review,
+          OrgPermissionSubjects.ExternalApproval
+        )
+      )
+    );
+
+    return orgIdentityMemberships
+      .filter((membership) =>
+        membership.roles.some((role) => isActiveRole(role) && grantingRoleSlugs.has(toOrgRoleSlug(role) ?? ""))
+      )
+      .map(({ identity }) => ({ id: identity.id, name: identity.name, orgId: identity.orgId }))
       .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   };
 

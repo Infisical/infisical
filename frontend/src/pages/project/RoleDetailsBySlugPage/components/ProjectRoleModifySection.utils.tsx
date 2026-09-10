@@ -29,7 +29,6 @@ import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
-  ProjectPermissionExternalApprovalActions,
   ProjectPermissionGroupActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionHsmConnectorActions,
@@ -296,10 +295,6 @@ const SecretFolderPolicyActionSchema = GeneralPolicyActionSchema.extend({
 
 const SecretApprovalRequestPolicyActionSchema = z.object({
   [ProjectPermissionSecretApprovalRequestActions.Read]: z.boolean().optional()
-});
-
-const ExternalApprovalPolicyActionSchema = z.object({
-  [ProjectPermissionExternalApprovalActions.Review]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -824,10 +819,7 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.SecretApprovalRequest]:
-        SecretApprovalRequestPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.ExternalApproval]: ExternalApprovalPolicyActionSchema.array().default(
-        []
-      )
+        SecretApprovalRequestPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -1906,14 +1898,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (!formVal[subject]) formVal[subject] = [{}];
 
       if (canRead) formVal[subject]![0][ProjectPermissionSecretApprovalRequestActions.Read] = true;
-    }
-
-    if (subject === ProjectPermissionSub.ExternalApproval) {
-      const canReview = action.includes(ProjectPermissionExternalApprovalActions.Review);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canReview) formVal[subject]![0][ProjectPermissionExternalApprovalActions.Review] = true;
     }
   });
 
@@ -3260,18 +3244,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "View pending secret change requests"
       }
     ]
-  },
-  [ProjectPermissionSub.ExternalApproval]: {
-    title: "External Approvals",
-    description: "Report access request decisions made in an external system such as ServiceNow",
-    actions: [
-      {
-        label: "Review",
-        value: ProjectPermissionExternalApprovalActions.Review,
-        description:
-          "Submit an approve or reject decision for requests sent to an external approver"
-      }
-    ]
   }
 };
 
@@ -3309,7 +3281,6 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
   [ProjectPermissionSub.SecretApprovalRequest]: enabled,
-  [ProjectPermissionSub.ExternalApproval]: enabled,
   [ProjectPermissionSub.ProjectFolderGrant]: enabled
 });
 
