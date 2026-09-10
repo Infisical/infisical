@@ -5,7 +5,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
 import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
-import { ExternalApprovalType } from "./external-approval-enums";
+import { ExternalApprovalProductType, ExternalApprovalType } from "./external-approval-enums";
 
 export type TExternalApprovalPolicyInput = {
   type: ExternalApprovalType;
@@ -45,6 +45,7 @@ export type TExternalApprovalDispatchJobPayload = {
   externalApprovalRequestId: string;
   accessApprovalRequestId: string;
   projectId: string;
+  productType: ExternalApprovalProductType;
 };
 
 export type TDecryptedExternalApprovalConnection = Awaited<ReturnType<typeof decryptAppConnection>>;
@@ -55,6 +56,7 @@ export type TExternalApprovalDispatchContext = {
   accessApprovalRequest: NonNullable<Awaited<ReturnType<TAccessApprovalRequestDALFactory["findById"]>>>;
   connection: TDecryptedExternalApprovalConnection;
   project: Pick<TProjects, "id" | "name" | "orgId" | "slug">;
+  productType: ExternalApprovalProductType;
 };
 
 export type TExternalApprovalDispatchResult = {

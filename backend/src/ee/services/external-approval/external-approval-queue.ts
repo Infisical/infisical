@@ -46,7 +46,7 @@ export const externalApprovalQueueFactory = ({
   };
 
   queueService.start(QueueName.ExternalApprovalDispatch, async (job) => {
-    const { externalApprovalRequestId, accessApprovalRequestId, projectId } = job.data;
+    const { externalApprovalRequestId, accessApprovalRequestId, projectId, productType } = job.data;
     const attempt = job.attemptsMade + 1;
     const maxAttempts = job.opts.attempts ?? 1;
     const isFinalAttempt = attempt >= maxAttempts;
@@ -99,7 +99,8 @@ export const externalApprovalQueueFactory = ({
         externalApprovalPolicy,
         accessApprovalRequest,
         connection,
-        project
+        project,
+        productType
       });
 
       await externalApprovalRequestDAL.updateById(externalApprovalRequestId, {

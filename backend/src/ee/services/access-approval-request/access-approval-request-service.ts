@@ -35,7 +35,7 @@ import { TNotificationServiceFactory } from "../../../services/notification/noti
 import { NotificationType } from "../../../services/notification/notification-types";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
-import { ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
+import { ExternalApprovalProductType, ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
 import { TExternalApprovalQueueFactory } from "../external-approval/external-approval-queue";
 import { TExternalApprovalRequestDALFactory } from "../external-approval/external-approval-request-dal";
 import { TExternalApprovalServiceFactory } from "../external-approval/external-approval-service";
@@ -592,7 +592,8 @@ export const accessApprovalRequestServiceFactory = ({
         await externalApprovalQueue.queueExternalApprovalDispatch({
           externalApprovalRequestId,
           accessApprovalRequestId: approval.id,
-          projectId: project.id
+          projectId: project.id,
+          productType: ExternalApprovalProductType.SecretsManagement
         });
       } catch (error) {
         logger.error(

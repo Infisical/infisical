@@ -79,11 +79,15 @@ const buildAccessRequestPayload = ({
   accessApprovalRequest,
   externalApprovalPolicy,
   project,
+  productType,
   envSlug,
   secretPath,
   requestedPermissions,
   siteUrl
-}: Pick<TExternalApprovalDispatchContext, "accessApprovalRequest" | "externalApprovalPolicy" | "project"> & {
+}: Pick<
+  TExternalApprovalDispatchContext,
+  "accessApprovalRequest" | "externalApprovalPolicy" | "project" | "productType"
+> & {
   envSlug: string;
   secretPath: string;
   requestedPermissions: { subject: string; actions: string[] }[];
@@ -96,7 +100,7 @@ const buildAccessRequestPayload = ({
     request_id: accessApprovalRequest.id,
     callback_url: `${siteUrl}/api/v1/access-approvals/requests/${accessApprovalRequest.id}/external-review`,
     request_type: "secret_access",
-    product_type: ExternalApprovalProductType.SecretsManagement,
+    product_type: productType,
     project_id: project.id,
     project_name: project.name,
     environment: envSlug,
@@ -149,7 +153,8 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
     accessApprovalRequest,
     externalApprovalRequest,
     externalApprovalPolicy,
-    project
+    project,
+    productType
   }) => {
     if (connection.app !== AppConnection.ServiceNow) {
       throw new UnrecoverableError(`App connection '${connection.id}' is not a ServiceNow connection`);
@@ -166,6 +171,7 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
       accessApprovalRequest,
       externalApprovalPolicy,
       project,
+      productType,
       envSlug,
       secretPath,
       requestedPermissions,
