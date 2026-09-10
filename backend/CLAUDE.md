@@ -622,6 +622,10 @@ That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS 
 
 `alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findTargetsByIds` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
 
+**Every read on the event path goes to the primary, and `findTargetsByIds` must too.** An empty read there is terminal: "no matching alert", "no channels" and "targets gone" all mark the event delivered and nothing ever asks again, so a replica that has not caught up with a commit loses the notification outright. `findEnabledForEvent` and the engine's channel lookup (`readFromPrimary: true`) already do this; a provider's `findTargetsByIds` has to as well, because the target usually commits in the same transaction as the event that names it and the engine cannot tell "not replicated yet" from "deleted". The scheduled path keeps the replica because tomorrow's scan asks again. These reads run once per batch in the worker and are indexed point lookups, so the primary costs nothing measurable.
+
+**The history write is retried, then logged, never thrown.** By the time `createWithTargets` runs, the channels have delivered, so a throw cannot undo anything: on the event path it would re-notify on retry, and on the scheduled path it only fails the job while leaving the same dedup gap behind. A few in-process attempts are the only lever that actually narrows the gap; after that it is a `logger.error` and the run reports its delivery outcome.
+
 Invariants worth knowing before extending it:
 
 - **The alert module owns no CASL subject.** Each provider reuses its own resource's existing permissions inside `assertPermission`, so authorization stays with the domain that owns the resource.

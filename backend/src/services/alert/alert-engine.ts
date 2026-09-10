@@ -18,6 +18,14 @@ import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 const ALERT_DELIVERY_CONCURRENCY = 10;
 
+const HISTORY_WRITE_ATTEMPTS = 3;
+const HISTORY_WRITE_RETRY_DELAY_MS = 250;
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 type TChannelWork = {
   channel: TAlertChannels;
   due: { target: unknown; id: string }[];
@@ -189,10 +197,20 @@ export const alertEngineFactory = ({
 
     // Deliberately not allowed to fail the run: the event path may retry, and a throw after channels
     // have already sent would re-notify.
-    try {
-      await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
-    } catch (err) {
-      logger.error(err, `Failed to record alert history after delivery [alertId=${alert.id}]`);
+    for (let attempt = 1; attempt <= HISTORY_WRITE_ATTEMPTS; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- retrying the same insert is the point
+        await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
+        break;
+      } catch (err) {
+        if (attempt === HISTORY_WRITE_ATTEMPTS) {
+          logger.error(err, `Failed to record alert history after delivery [alertId=${alert.id}]`);
+          break;
+        }
+        logger.warn(err, `Failed to record alert history, retrying [attempt=${attempt}] [alertId=${alert.id}]`);
+        // eslint-disable-next-line no-await-in-loop -- see above
+        await sleep(HISTORY_WRITE_RETRY_DELAY_MS * attempt);
+      }
     }
 
     const deliveredChannelIds = dispatched.filter((result) => result.success).map((result) => result.channelId);
@@ -280,7 +298,7 @@ export const alertEngineFactory = ({
     }
 
     const skip = new Set(input.skipChannelIds ?? []);
-    const channels = (await alertChannelDAL.findByAlertId(alert.id, { enabled: true })).filter(
+    const channels = (await alertChannelDAL.findByAlertId(alert.id, { enabled: true, readFromPrimary: true })).filter(
       (channel) => !skip.has(channel.id)
     );
     if (channels.length === 0) return { outcome: AlertDispatchOutcome.NoChannels, deliveredChannelIds: [] };

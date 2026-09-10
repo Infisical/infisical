@@ -67,9 +67,16 @@ const buildDAL = () => {
     orderBy: async () => [] as TAlerts[]
   };
   const queryBuilder = () => chain;
-  const db = Object.assign(queryBuilder, { replicaNode: () => queryBuilder, raw: (sql: string) => sql }) as never;
+  let replicaReads = 0;
+  const db = Object.assign(queryBuilder, {
+    replicaNode: () => {
+      replicaReads += 1;
+      return queryBuilder;
+    },
+    raw: (sql: string) => sql
+  }) as never;
 
-  return { dal: alertDALFactory(db), calls };
+  return { dal: alertDALFactory(db), calls, getReplicaReads: () => replicaReads };
 };
 
 describe("alert dal", () => {
@@ -116,6 +123,23 @@ describe("alert dal", () => {
     // Mirrors the cron's filter: the outbox must never pick up a scheduled alert.
     expect(calls.where).toContainEqual([`${TableName.Alert}.triggerType`, "event"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
+  });
+
+  // An empty result here is terminal for the event, so it must not come from a replica that has yet
+  // to see the alert commit.
+  test("findEnabledForEvent reads the primary while the scheduled lookup keeps the replica", async () => {
+    const { dal, getReplicaReads } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+    expect(getReplicaReads()).toBe(0);
+
+    await dal.findEnabledByResourceType("approval.workflow");
+    expect(getReplicaReads()).toBe(1);
   });
 
   test("findEnabledForEvent applies the same soft-deleted-project and enabled-channel filters", async () => {

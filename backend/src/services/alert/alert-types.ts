@@ -118,6 +118,9 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // Rehydrate the targets an event named, by id. Nothing is scanned for: this exists so the row is
   // read at delivery time rather than copied into the event. A target whose row is gone was deleted
   // between emit and dispatch, so it's dropped rather than an error.
+  // Must read from the primary, never a replica: the target usually commits in the same transaction
+  // as the event that names it, and the engine cannot tell "not replicated yet" from "deleted". An
+  // empty result is terminal for the event, so a stale replica here loses the notification outright.
   // Required for any Event event; the registry enforces that at boot.
   findTargetsByIds?(input: TFindTargetsByIdsInput): Promise<TTarget[]>;
 

@@ -55,7 +55,7 @@ export const alertDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TAlerts[]> => {
     try {
-      const query = (tx || db.replicaNode())(TableName.Alert)
+      const query = (tx || db)(TableName.Alert)
         .leftJoin(TableName.Project, `${TableName.Alert}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Alert}.orgId`, filter.orgId)
         .where(`${TableName.Alert}.resourceType`, filter.resourceType)
@@ -127,7 +127,7 @@ export const alertDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TAlerts[]> => {
     try {
-      const query = (tx || db.replicaNode())(TableName.Alert)
+      const query = (tx || db)(TableName.Alert)
         .leftJoin(TableName.Project, `${TableName.Alert}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Alert}.orgId`, filter.orgId)
         .where(`${TableName.Alert}.resourceType`, filter.resourceType)

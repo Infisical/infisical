@@ -116,6 +116,7 @@ const buildEngine = (opts: {
   failEmail?: boolean;
   failEmailFor?: string;
   failHistoryWrite?: boolean;
+  failHistoryWriteTimes?: number;
 }) => {
   const registry = alertProviderRegistryFactory();
   let findDueTargetsCalls = 0;
@@ -127,6 +128,8 @@ const buildEngine = (opts: {
 
   const sentMail: Array<{ recipients: string[] }> = [];
   const historyWrites: Array<{ deliveries: TDelivery[]; status: string }> = [];
+  const channelLookups: Array<{ enabled?: boolean; readFromPrimary?: boolean } | undefined> = [];
+  let historyAttempts = 0;
   // Tracks the peak number of overlapping sendMail calls so a test can assert the
   // run-wide delivery concurrency stays bounded. sendMail yields a macrotask before
   // resolving so concurrent sends genuinely overlap.
@@ -135,8 +138,12 @@ const buildEngine = (opts: {
 
   const engine = alertEngineFactory({
     alertChannelDAL: {
-      findByAlertId: async (_alertId: string, filter?: { enabled?: boolean }) =>
-        filter?.enabled === undefined ? opts.channels : opts.channels.filter((c) => c.enabled === filter.enabled)
+      findByAlertId: async (_alertId: string, filter?: { enabled?: boolean; readFromPrimary?: boolean }) => {
+        channelLookups.push(filter);
+        return filter?.enabled === undefined
+          ? opts.channels
+          : opts.channels.filter((c) => c.enabled === filter.enabled);
+      }
     },
     alertChannelRecipientDAL: {
       // One recipient row per directed channel in the run, so each resolves its own list.
@@ -153,7 +160,10 @@ const buildEngine = (opts: {
     alertHistoryDAL: {
       findRecentlyAlertedTargets: async () => opts.recentlyAlerted ?? [],
       createWithTargets: async (_alertId: string, options: { status: string }, deliveries: TDelivery[]) => {
-        if (opts.failHistoryWrite) throw new Error("history table unavailable");
+        historyAttempts += 1;
+        if (opts.failHistoryWrite || historyAttempts <= (opts.failHistoryWriteTimes ?? 0)) {
+          throw new Error("history table unavailable");
+        }
         historyWrites.push({ deliveries, status: options.status });
         return {} as never;
       }
@@ -188,6 +198,8 @@ const buildEngine = (opts: {
     engine,
     sentMail,
     historyWrites,
+    channelLookups,
+    getHistoryAttempts: () => historyAttempts,
     getPeakConcurrentSends: () => peakConcurrentSends,
     getFindDueTargetsCalls: () => findDueTargetsCalls
   };
@@ -590,6 +602,37 @@ describe("alert engine, event path", () => {
 
     expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(sentMail).toHaveLength(1);
+  });
+
+  // The history row is the dedup record and the event path's skip list. Once the channels have sent,
+  // a retry of the insert is the only lever left that narrows the gap a transient failure opens.
+  test("retries a failed history write and records it on a later attempt", async () => {
+    const { engine, historyWrites, getHistoryAttempts } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
+      failHistoryWriteTimes: 1
+    });
+
+    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+
+    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(getHistoryAttempts()).toBe(2);
+    expect(historyWrites).toHaveLength(1);
+  });
+
+  // An empty channel read on the event path marks the event delivered for good, so it must not be
+  // answered by a replica that has yet to see the channel commit.
+  test("reads channels from the primary on the event path and from the replica on the scheduled one", async () => {
+    const { engine, channelLookups } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
+    });
+
+    await engine.runAlertForEvent(eventAlert(), EVENT);
+    await engine.runAlert(makeAlert());
+
+    expect(channelLookups[0]).toEqual({ enabled: true, readFromPrimary: true });
+    expect(channelLookups[1]).toEqual({ enabled: true });
   });
 
   test("reports failure and no delivered channels when every channel fails", async () => {
