@@ -3,8 +3,17 @@ import { QueueName } from "@app/queue";
 import { eventOutboxQueueFactory } from "./event-outbox-queue";
 import { TOutboxFlushKey } from "./event-outbox-types";
 
+const loggedErrors: unknown[][] = [];
+
 vi.mock("@app/lib/logger", () => ({
-  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+  logger: {
+    info: () => {},
+    warn: () => {},
+    error: (...args: unknown[]) => {
+      loggedErrors.push(args);
+    },
+    debug: () => {}
+  },
   initLogger: () => {}
 }));
 
@@ -21,14 +30,22 @@ vi.mock("@app/lib/config/env", () => ({
 beforeEach(() => {
   config.isGeneralWorkerRunModeEnabled = true;
   config.isSecondaryInstance = false;
+  loggedErrors.length = 0;
 });
 
 const KEY: TOutboxFlushKey = { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" };
 
-const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promise<void> }) => {
+type TFlushHandler = (job: { data: TOutboxFlushKey }) => Promise<void>;
+
+const buildQueue = (opts?: {
+  keys?: TOutboxFlushKey[];
+  onDiscover?: () => Promise<void>;
+  drain?: (key: TOutboxFlushKey) => Promise<unknown>;
+}) => {
   const queued: { name: string; data: unknown; jobId?: string; attempts?: number }[] = [];
   const discoveredFor: string[][] = [];
   const registeredCrons: { name: string; enabled?: boolean }[] = [];
+  let flushHandler: TFlushHandler | undefined;
   let discoverCalls = 0;
 
   const factory = eventOutboxQueueFactory({
@@ -36,7 +53,9 @@ const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promis
       queue: async (name: string, _job: string, data: unknown, options: { jobId?: string; attempts?: number }) => {
         queued.push({ name, data, jobId: options.jobId, attempts: options.attempts });
       },
-      start: () => {}
+      start: (_name: string, handler: TFlushHandler) => {
+        flushHandler = handler;
+      }
     } as never,
     cronJob: {
       register: (entry: { name: string; enabled?: boolean }) => {
@@ -54,13 +73,20 @@ const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promis
       findOldestPendingAgeSeconds: async () => []
     } as never,
     eventOutboxService: {
-      drain: async () => ({ handled: 0, exhaustedConsumer: false }),
+      drain: opts?.drain ?? (async () => ({ handled: 0, unknownConsumer: false })),
       sweepStaleClaims: async () => {},
       pruneTerminalRows: async () => {}
     } as never
   });
 
-  return { factory, queued, discoveredFor, registeredCrons, getDiscoverCalls: () => discoverCalls };
+  return {
+    factory,
+    queued,
+    discoveredFor,
+    registeredCrons,
+    getDiscoverCalls: () => discoverCalls,
+    getFlushHandler: () => flushHandler as TFlushHandler
+  };
 };
 
 describe("event outbox relay", () => {
@@ -148,6 +174,24 @@ describe("event outbox relay", () => {
 
     expect(registeredCrons.map((cron) => cron.enabled)).toEqual([true, true]);
     expect(getDiscoverCalls()).toBeGreaterThan(0);
+  });
+
+  // The flush job is removeOnFail with one attempt, so without this line a crashed drain leaves nothing
+  // but a counter behind.
+  test("logs and rethrows when a flush crashes so the failure is visible", async () => {
+    const boom = new Error("claimBatch: relation does not exist");
+    const { factory, getFlushHandler } = buildQueue({
+      drain: async () => {
+        throw boom;
+      }
+    });
+    factory.init();
+
+    await expect(getFlushHandler()({ data: KEY })).rejects.toBe(boom);
+
+    expect(loggedErrors).toHaveLength(1);
+    expect(loggedErrors[0][0]).toBe(boom);
+    expect(loggedErrors[0][1]).toContain("policy-1");
   });
 
   test("stops cleanly when nothing was ever started", async () => {

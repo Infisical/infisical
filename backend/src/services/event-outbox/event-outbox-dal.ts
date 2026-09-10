@@ -117,6 +117,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
             await tx(TableName.EventOutbox)
               .whereIn("id", group.ids)
+              .where("status", EventOutboxStatus.Processing)
               .update({
                 status: EventOutboxStatus.Delivered,
                 lockedAt: null,
@@ -131,6 +132,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
             await tx(TableName.EventOutbox)
               .whereIn("id", group.ids)
+              .where("status", EventOutboxStatus.Processing)
               .update({
                 status: EventOutboxStatus.Retry,
                 attempts: db.raw('"attempts" + 1'),
@@ -147,6 +149,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
             await tx(TableName.EventOutbox)
               .whereIn("id", group.ids)
+              .where("status", EventOutboxStatus.Processing)
               .update({
                 status: EventOutboxStatus.Failed,
                 attempts: db.raw('"attempts" + 1'),

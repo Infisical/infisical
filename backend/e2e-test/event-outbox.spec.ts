@@ -157,6 +157,21 @@ describe("event outbox (postgres)", () => {
     expect(failed.attempts).toBe(MAX_OUTBOX_ATTEMPTS);
   });
 
+  test("commitResults ignores a late result for a claim the sweeper already handed back", async () => {
+    await insert([makeRow()]);
+    const [row] = await dal.claimBatch(KEY, 10);
+    await testDb(TableName.EventOutbox)
+      .where("id", row.id)
+      .update({ lockedAt: new Date(Date.now() - 60 * 60_000) });
+    await dal.recoverStaleClaims({ thresholdMs: 10 * 60_000, maxAttempts: MAX_OUTBOX_ATTEMPTS, limit: 100 });
+
+    await dal.commitResults({ delivered: [{ ids: [String(row.id)] }], retriable: [], failed: [] });
+
+    const [stored] = await rowsFor();
+    expect(stored.status).toBe(EventOutboxStatus.Retry);
+    expect(stored.attempts).toBe(1);
+  });
+
   test("extendClaims refreshes only rows still processing", async () => {
     await insert([makeRow(), makeRow()]);
     const [claimed, released] = await dal.claimBatch(KEY, 10);

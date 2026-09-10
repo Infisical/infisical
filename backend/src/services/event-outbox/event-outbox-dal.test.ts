@@ -274,6 +274,23 @@ describe("event outbox dal", () => {
     expect(calls.update.map((patch) => patch.status)).toEqual([EventOutboxStatus.Delivered, EventOutboxStatus.Failed]);
   });
 
+  // A claim the sweeper has already handed back may belong to another worker by the time the original
+  // one reports; its late result must not clobber the new owner's.
+  test("commitResults only touches rows still held by a processing claim", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.commitResults({
+      delivered: [{ ids: ["1"] }],
+      retriable: [{ ids: ["2"], nextRetryDelayMs: 1_000 }],
+      failed: [{ ids: ["3"] }]
+    });
+
+    expect(calls.update).toHaveLength(3);
+    expect(calls.where.filter((args) => args[0] === "status" && args[1] === EventOutboxStatus.Processing)).toHaveLength(
+      3
+    );
+  });
+
   test("recoverStaleClaims looks only at claims older than the threshold", async () => {
     const { dal, calls } = buildDAL();
 

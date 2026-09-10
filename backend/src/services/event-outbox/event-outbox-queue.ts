@@ -108,7 +108,16 @@ export const eventOutboxQueueFactory = ({
       QueueName.EventOutboxFlush,
       async (job) => {
         const { consumer, resourceType, resourceId } = job.data;
-        await eventOutboxService.drain({ consumer, resourceType, resourceId });
+        try {
+          await eventOutboxService.drain({ consumer, resourceType, resourceId });
+        } catch (error) {
+          // The job is removeOnFail with a single attempt, so this line is the only trace it leaves.
+          logger.error(
+            error,
+            `event-outbox: flush worker crashed [consumer=${consumer}] [resourceType=${resourceType}] [resourceId=${resourceId}]`
+          );
+          throw error;
+        }
       },
       { concurrency: FLUSH_WORKER_CONCURRENCY }
     );
