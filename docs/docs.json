@@ -410,7 +410,8 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  }
+                  },
+                  "documentation/platform/agent-proxy/agent-vault"
                 ]
               }
             ]
@@ -745,11 +746,6 @@
                 ]
               }
             ]
-          },
-          {
-            "item": "Agent Vault",
-            "icon": "arrow-up-right-from-square",
-            "href": "https://docs.agent-vault.dev/"
           }
         ]
       },
