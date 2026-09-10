@@ -1,4 +1,4 @@
-import { assertWithinSecretLimit, resolveSyncFolders, SECRET_SYNC_MAX_SECRETS } from "./secret-sync-recursive-fns";
+import { assertWithinSecretLimit, mergeImportedSecrets, resolveSyncFolders, SECRET_SYNC_MAX_SECRETS } from "./secret-sync-recursive-fns";
 
 const deps = {
   folderDAL: {
@@ -47,5 +47,44 @@ describe("assertWithinSecretLimit", () => {
     expect(() => assertWithinSecretLimit(SECRET_SYNC_MAX_SECRETS + 1)).toThrow(
       new RegExp(`${SECRET_SYNC_MAX_SECRETS + 1}.*${SECRET_SYNC_MAX_SECRETS}`)
     );
+  });
+});
+
+describe("mergeImportedSecrets", () => {
+  const imported = (key: string, secretValue: string) => ({ key, secretValue }) as never;
+
+  test("a folder's own secret beats one it imported", () => {
+    const merged = mergeImportedSecrets(
+      [{ key: "DB_URL", path: "/backend", value: "local" }],
+      [{ path: "/backend", secrets: [imported("DB_URL", "remote")] }]
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].value).toBe("local");
+  });
+
+  test("the same name imported into two folders yields two entries", () => {
+    const merged = mergeImportedSecrets(
+      [],
+      [
+        { path: "/backend", secrets: [imported("DB_URL", "one")] },
+        { path: "/backend/api", secrets: [imported("DB_URL", "two")] }
+      ]
+    );
+
+    expect(merged.map((entry) => entry.path).sort()).toEqual(["/backend", "/backend/api"]);
+  });
+
+  test("a later import wins over an earlier one in the same folder, as today", () => {
+    const merged = mergeImportedSecrets(
+      [],
+      [
+        { path: "/backend", secrets: [imported("DB_URL", "first")] },
+        { path: "/backend", secrets: [imported("DB_URL", "second")] }
+      ]
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].value).toBe("second");
   });
 });
