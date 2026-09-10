@@ -762,8 +762,8 @@ export enum EventType {
   AGENT_VAULT_PRODUCT_MEMBER_ADD = "agent-vault-product-member-add",
   AGENT_VAULT_PRODUCT_MEMBER_UPDATE = "agent-vault-product-member-update",
   AGENT_VAULT_PRODUCT_MEMBER_REMOVE = "agent-vault-product-member-remove",
-  AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
-  AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
+  AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD = "agent-vault-access-bundle-member-add",
+  AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE = "agent-vault-access-bundle-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
@@ -6255,8 +6255,8 @@ interface AgentVaultProductMemberRemoveEvent {
   };
 }
 
-interface AgentVaultMemberAddEvent {
-  type: EventType.AGENT_VAULT_MEMBER_ADD;
+interface AgentVaultAccessBundleMemberAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD;
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
@@ -6267,8 +6267,8 @@ interface AgentVaultMemberAddEvent {
   };
 }
 
-interface AgentVaultMemberRemoveEvent {
-  type: EventType.AGENT_VAULT_MEMBER_REMOVE;
+interface AgentVaultAccessBundleMemberRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE;
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
@@ -8068,8 +8068,8 @@ export type Event =
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent
-  | AgentVaultMemberAddEvent
-  | AgentVaultMemberRemoveEvent
+  | AgentVaultAccessBundleMemberAddEvent
+  | AgentVaultAccessBundleMemberRemoveEvent
   | AgentVaultSessionMintEvent
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
