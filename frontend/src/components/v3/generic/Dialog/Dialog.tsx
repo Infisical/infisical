@@ -49,12 +49,14 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  height = "auto",
   onPointerDownOutside,
   onInteractOutside,
   overlayClassName,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  height?: "auto" | "fixed";
   overlayClassName?: string;
 }) {
   return (
@@ -65,6 +67,7 @@ function DialogContent({
         className={cn(
           "fixed top-[50%] left-[50%] z-50 flex max-h-[calc(100dvh-2rem)] thin-scrollbar translate-x-[-50%] translate-y-[-50%] flex-col gap-6 overflow-y-auto overscroll-none rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg duration-200 outline-none has-data-[slot=dialog-footer]:pb-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           DIALOG_CONTENT_WIDTH_CLASSNAME,
+          height === "fixed" && "h-[40rem] overflow-hidden",
           className
         )}
         onPointerDownOutside={(e) => {

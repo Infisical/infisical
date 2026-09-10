@@ -113,84 +113,78 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="h-[40rem] max-w-xl gap-0 overflow-hidden p-0"
-        onKeyDown={handleKeyDown}
-      >
-        <DialogClose asChild>
-          <IconButton
-            aria-label="Close"
-            variant="outline"
-            size="xs"
-            className="absolute top-3 right-3 z-20 bg-popover hover:bg-container-hover"
-          >
-            <XIcon />
-          </IconButton>
-        </DialogClose>
+      <DialogContent showCloseButton={false} height="fixed" onKeyDown={handleKeyDown}>
+        <div className="absolute top-4 right-4 z-20">
+          <DialogClose asChild>
+            <IconButton aria-label="Close" variant="default" size="xs">
+              <XIcon />
+            </IconButton>
+          </DialogClose>
+        </div>
         <DialogBody key={announcement.id} className="overscroll-contain">
-          {announcement.imageUrl && (
-            <AnnouncementImage key={announcement.imageUrl} src={announcement.imageUrl} />
-          )}
-          <div className={announcement.imageUrl ? "p-4" : "p-4 pr-14"}>
-            <DialogHeader>
-              {publishedLabel && (
-                <time
-                  dateTime={announcement.published}
-                  className="text-xs font-medium tracking-wide text-muted uppercase"
-                >
-                  {publishedLabel}
-                </time>
-              )}
-              <DialogTitle>{announcement.title}</DialogTitle>
-              <DialogDescription className="my-4 whitespace-pre-line text-foreground/75">
-                {announcement.body}
-              </DialogDescription>
-              {safeHref && ctaLabel && (
-                <a
-                  href={safeHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center gap-1.5 text-sm text-white underline"
-                >
-                  {ctaLabel}
-                  <ExternalLink className="size-3.5" />
-                </a>
-              )}
-            </DialogHeader>
+          <div className="flex flex-col gap-4">
+            {announcement.imageUrl && (
+              <AnnouncementImage key={announcement.imageUrl} src={announcement.imageUrl} />
+            )}
+            <div className="pr-8">
+              <DialogHeader>
+                {publishedLabel && (
+                  <time dateTime={announcement.published} className="text-xs text-accent">
+                    {publishedLabel}
+                  </time>
+                )}
+                <DialogTitle>{announcement.title}</DialogTitle>
+                <DialogDescription className="whitespace-pre-line">
+                  {announcement.body}
+                </DialogDescription>
+                {safeHref && ctaLabel && (
+                  <a
+                    href={safeHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center gap-1.5 text-sm text-foreground underline"
+                  >
+                    {ctaLabel}
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                )}
+              </DialogHeader>
+            </div>
           </div>
         </DialogBody>
-        <DialogFooter className="mx-0 justify-between">
-          {showPager ? (
-            <div className="flex items-center gap-1.5 text-sm text-muted">
-              <IconButton
-                variant="ghost"
-                size="xs"
-                aria-label="Previous announcement"
-                onClick={showPrev}
-                isDisabled={!hasPrev}
-              >
-                <ChevronLeft />
-              </IconButton>
-              <span className="tabular-nums">
-                {safeIndex + 1} / {total}
-              </span>
-              <IconButton
-                variant="ghost"
-                size="xs"
-                aria-label="Next announcement"
-                onClick={showNext}
-                isDisabled={!hasNext}
-              >
-                <ChevronRight />
-              </IconButton>
-            </div>
-          ) : (
-            <span aria-hidden="true" />
-          )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Got it
-          </Button>
+        <DialogFooter>
+          <div className="flex w-full items-center justify-between gap-2">
+            {showPager ? (
+              <div className="flex items-center gap-1.5 text-sm text-muted">
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  aria-label="Previous announcement"
+                  onClick={showPrev}
+                  isDisabled={!hasPrev}
+                >
+                  <ChevronLeft />
+                </IconButton>
+                <span className="tabular-nums">
+                  {safeIndex + 1} / {total}
+                </span>
+                <IconButton
+                  variant="ghost"
+                  size="xs"
+                  aria-label="Next announcement"
+                  onClick={showNext}
+                  isDisabled={!hasNext}
+                >
+                  <ChevronRight />
+                </IconButton>
+              </div>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Got it
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
