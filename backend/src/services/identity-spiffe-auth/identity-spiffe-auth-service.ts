@@ -39,6 +39,13 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import {
+  IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+  IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+  IdentityAuthMethodChange,
+  TIdentityAuthMethodChangeEventPayload
+} from "@app/services/alert/providers/identity-credential-alert-provider";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -83,6 +90,7 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentitySpiffeAuthServiceFactory = ReturnType<typeof identitySpiffeAuthServiceFactory>;
@@ -141,7 +149,8 @@ export const identitySpiffeAuthServiceFactory = ({
   identityAccessTokenDAL,
   kmsService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentitySpiffeAuthServiceFactoryDep) => {
   type TFlattenedTrustBundle = {
     configurationType: string;
@@ -612,6 +621,24 @@ export const identitySpiffeAuthServiceFactory = ({
         tx
       );
 
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.SPIFFE_AUTH,
+            change: IdentityAuthMethodChange.Added,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
       return doc;
     });
 
@@ -757,7 +784,28 @@ export const identitySpiffeAuthServiceFactory = ({
         : null;
     }
 
-    const updatedSpiffeAuth = await identitySpiffeAuthDAL.updateById(identitySpiffeAuth.id, updateQuery);
+    const updatedSpiffeAuth = await identitySpiffeAuthDAL.transaction(async (tx) => {
+      const doc = await identitySpiffeAuthDAL.updateById(identitySpiffeAuth.id, updateQuery, tx);
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.SPIFFE_AUTH,
+            change: IdentityAuthMethodChange.Updated,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return doc;
+    });
 
     const decryptedCaBundleJwks = updatedSpiffeAuth.encryptedCaBundleJwks
       ? orgDataKeyDecryptor({ cipherTextBlob: updatedSpiffeAuth.encryptedCaBundleJwks }).toString()
@@ -937,6 +985,24 @@ export const identitySpiffeAuthServiceFactory = ({
       const deletedSpiffeAuth = await identitySpiffeAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.SPIFFE_AUTH }, tx);
 
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.SPIFFE_AUTH,
+            change: IdentityAuthMethodChange.Removed,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
       return deletedSpiffeAuth?.[0];
     });
 

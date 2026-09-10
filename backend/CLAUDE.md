@@ -610,15 +610,17 @@ See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `sr
 
 Adding a new alertable resource type:
 
-1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), an `events` list, a `conditionSchema` for the "when", `buildViewUrl` / `buildPayload` / `targetId`, one discovery method per trigger type you declare (below), and the two authorization hooks `assertPermission` + `assertResourceInScope`. Test sends need nothing from you: they go through the generic `buildTestAlertPayload` (`alert-test-payload-fns.ts`).
+1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), an `events` list (each event carries its own `conditionSchema` for the "when", so a scheduled expiry and an event-triggered change on the same resource type don't share one shape), `buildViewUrl` / `buildPayload` / `targetId`, one discovery method per trigger type you declare (below), and the two authorization hooks `assertPermission` + `assertResourceInScope`. Test sends need nothing from you: they go through the generic `buildTestAlertPayload` (`alert-test-payload-fns.ts`).
 2. Register it on the singleton registry in `src/server/routes/index.ts` (`alertProviderRegistry.register(...)`).
 
-That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example.
+That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example that declares both trigger types (`identity.authentication.expiry` scheduled, `identity.authentication.auth-method-changed` event-triggered).
 
 **Each event declares how it fires**, and the trigger decides which discovery method the provider owes:
 
 - `AlertTriggerType.Scheduled` → **`findDueTargets`**. The daily cron asks what is currently due, and the engine dedups per `(channel, target)` so a target rediscovered tomorrow is not alerted on twice.
-- `AlertTriggerType.Event` → **`findTargetsByIds`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron.
+- `AlertTriggerType.Event` → **`findTargetsByIds`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron. The input carries the outbox row's whole `payload` next to `targetIds`: the module only reads `targetIds`, so an emitter can add the facts the notification needs (which auth method, who changed it) and the provider validates them with its own schema at delivery. Encoding facts into the target id is the wrong tool for that.
+
+**`findEnabledForEvent` with no `projectId` matches every alert bound to the resource, any scope.** A resource that has no project of its own (an org-level identity) can still be watched from a project it is a member of, and `assertResourceInScope` already checked that binding at create. Given a `projectId`, it matches that project's alerts plus org-scoped ones.
 
 `alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findTargetsByIds` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
 
@@ -707,8 +709,16 @@ new consumer gets them for free.
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
 `triggerType: AlertTriggerType.Event`, implement `findTargetsByIds`, and emit with the provider's
-`resourceType` and `payload: { targetIds }`. A `resourceType` that doesn't declare the `eventType` fails
+`resourceType` and `payload: { targetIds, ...facts }`. A `resourceType` that doesn't declare the `eventType` fails
 the row terminally with both named, so a bad emit site shows up in the logs on its first event.
+
+**When several services fire the same event, they call `eventOutboxService.emit` directly and `satisfies`
+one exported payload type.** The identity auth method services (`attach*` / `update*` / `revoke*` in all 13, plus the Universal Auth
+client secret and Token Auth token create/update/revoke paths) each write the
+`identity.authentication.auth-method-changed` event inline, inside the write transaction, with the payload literal checked against `TIdentityAuthMethodChangeEventPayload` from the
+provider file. The provider's test parses a value of that type with its delivery schema, so the compiler
+holds the emit sites to the type and the test holds the type to the schema. A bare `updateById` had to
+become a short transaction for this; the cache invalidation that follows it stays outside, after commit.
 
 The DAL is covered by `e2e-test/event-outbox.spec.ts` against real Postgres; the unit tests only check
 query shape.

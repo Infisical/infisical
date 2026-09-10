@@ -59,20 +59,26 @@ const makeAlert = () => ({
   updatedAt: new Date()
 });
 
-const makeProvider = (targets: TTarget[], onFindDueTargets?: () => void): IResourceAlertProvider<TTarget> => ({
+const makeProvider = (
+  targets: TTarget[],
+  onFindDueTargets?: () => void,
+  onFindTargetsByIds?: (payload: Record<string, unknown>) => void
+): IResourceAlertProvider<TTarget> => ({
   resourceType: RESOURCE_TYPE,
   events: [
-    { key: "test.resource.expiration", triggerType: AlertTriggerType.Scheduled },
-    { key: "test.resource.opened", triggerType: AlertTriggerType.Event }
+    { key: "test.resource.expiration", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() },
+    { key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }
   ],
-  conditionSchema: z.any(),
   findDueTargets: async () => {
     onFindDueTargets?.();
     return targets;
   },
   // Mirrors a real provider: a target deleted between the event and its delivery drops out rather
   // than coming back.
-  findTargetsByIds: async ({ targetIds }) => targets.filter((target) => targetIds.includes(target.id)),
+  findTargetsByIds: async ({ targetIds, payload }) => {
+    onFindTargetsByIds?.(payload);
+    return targets.filter((target) => targetIds.includes(target.id));
+  },
   assertPermission: async () => undefined,
   assertResourceInScope: async () => undefined,
   targetId: (target) => target.id,
@@ -120,10 +126,15 @@ const buildEngine = (opts: {
 }) => {
   const registry = alertProviderRegistryFactory();
   let findDueTargetsCalls = 0;
+  const eventPayloads: Record<string, unknown>[] = [];
   registry.register(
-    makeProvider(opts.targets, () => {
-      findDueTargetsCalls += 1;
-    }) as IResourceAlertProvider
+    makeProvider(
+      opts.targets,
+      () => {
+        findDueTargetsCalls += 1;
+      },
+      (payload) => eventPayloads.push(payload)
+    ) as IResourceAlertProvider
   );
 
   const sentMail: Array<{ recipients: string[] }> = [];
@@ -199,6 +210,7 @@ const buildEngine = (opts: {
     sentMail,
     historyWrites,
     channelLookups,
+    eventPayloads,
     getHistoryAttempts: () => historyAttempts,
     getPeakConcurrentSends: () => peakConcurrentSends,
     getFindDueTargetsCalls: () => findDueTargetsCalls
@@ -507,10 +519,10 @@ describe("alert engine", () => {
 
 describe("alert engine, event path", () => {
   const eventAlert = () => ({ ...makeAlert(), triggerType: "event", eventType: "test.resource.opened" });
-  const EVENT = { eventType: "test.resource.opened", targetIds: ["t1"] };
+  const EVENT = { eventType: "test.resource.opened", targetIds: ["t1"], payload: { targetIds: ["t1"], note: "x" } };
 
   test("delivers the targets the event named", async () => {
-    const { engine, sentMail, historyWrites } = buildEngine({
+    const { engine, sentMail, historyWrites, eventPayloads } = buildEngine({
       targets: [{ id: "t1" }, { id: "t2" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
     });
@@ -520,6 +532,8 @@ describe("alert engine, event path", () => {
     expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(result.deliveredChannelIds).toEqual(["c-email"]);
     expect(sentMail).toHaveLength(1);
+    // The provider gets the emitter's whole payload, so an event can carry more than ids.
+    expect(eventPayloads).toEqual([EVENT.payload]);
     // t2 exists but the event didn't name it.
     expect(historyWrites[0].deliveries).toEqual([
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.SUCCESS }

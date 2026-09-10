@@ -32,10 +32,17 @@ const buildService = (opts?: {
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
     events: [
-      { key: "test.resource.expiration", triggerType: AlertTriggerType.Scheduled },
-      { key: "test.resource.opened", triggerType: AlertTriggerType.Event }
+      {
+        key: "test.resource.expiration",
+        triggerType: AlertTriggerType.Scheduled,
+        conditionSchema: z.object({ alertBefore: z.string() })
+      },
+      {
+        key: "test.resource.opened",
+        triggerType: AlertTriggerType.Event,
+        conditionSchema: z.object({}).strict().nullish()
+      }
     ],
-    conditionSchema: z.object({ alertBefore: z.string() }),
     findDueTargets: async () => [],
     findTargetsByIds: async () => [],
     buildViewUrl: async () => "https://app.infisical.com/x",
@@ -276,7 +283,7 @@ describe("alert service", () => {
     expect([...alerts.values()][0].triggerType).toBe("scheduled");
 
     const { service: eventService, alerts: eventAlerts } = buildService();
-    await eventService.createAlert({ ...validCreate, eventType: "test.resource.opened" });
+    await eventService.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: null });
     expect([...eventAlerts.values()][0].triggerType).toBe("event");
   });
 
@@ -303,6 +310,33 @@ describe("alert service", () => {
     await expect(service.createAlert({ ...validCreate, condition: undefined })).rejects.toThrow(
       /Invalid alert condition/
     );
+  });
+
+  test("validates the condition against the event's own schema, not a provider-wide one", async () => {
+    const { service } = buildService();
+    // The event-triggered event takes no condition, so the expiry shape is rejected for it and
+    // an empty one is accepted.
+    await expect(
+      service.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: { alertBefore: "30d" } })
+    ).rejects.toThrow(/Invalid alert condition/);
+    const created = await service.createAlert({
+      ...validCreate,
+      resourceId: "resource-2",
+      eventType: "test.resource.opened",
+      condition: null
+    });
+    expect(created.condition).toBeNull();
+  });
+
+  test("update validates the condition against the stored event's schema", async () => {
+    const { service } = buildService();
+    await service.createAlert(validCreate);
+    await expect(service.updateAlert({ alertId: "alert-1", condition: { alertBefore: 5 }, ...actor })).rejects.toThrow(
+      /Invalid alert condition/
+    );
+    await expect(
+      service.updateAlert({ alertId: "alert-1", condition: { alertBefore: "5d" }, ...actor })
+    ).resolves.toBeDefined();
   });
 
   test("rejects an event type the provider does not support", async () => {

@@ -67,31 +67,23 @@ export const alertServiceFactory = ({
       actor: toAlertActor(dto)
     });
 
-  const $validate = (
-    provider: IResourceAlertProvider,
-    input: { eventType?: string; condition?: unknown },
-    opts: { alwaysValidateCondition?: boolean } = {}
-  ): TAlertEventDefinition | undefined => {
-    let event: TAlertEventDefinition | undefined;
-    if (input.eventType) {
-      event = provider.events.find((candidate) => candidate.key === input.eventType);
-      if (!event) {
-        throw new BadRequestError({
-          message: `Event type '${input.eventType}' is not supported by resource type '${provider.resourceType}'`
-        });
-      }
+  const $getEvent = (provider: IResourceAlertProvider, eventType: string): TAlertEventDefinition => {
+    const event = provider.events.find((candidate) => candidate.key === eventType);
+    if (!event) {
+      throw new BadRequestError({
+        message: `Event type '${eventType}' is not supported by resource type '${provider.resourceType}'`
+      });
     }
-
-    if (opts.alwaysValidateCondition || input.condition !== undefined) {
-      try {
-        provider.conditionSchema.parse(input.condition);
-      } catch (err) {
-        const message = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid condition";
-        throw new BadRequestError({ message: `Invalid alert condition: ${message}` });
-      }
-    }
-
     return event;
+  };
+
+  const $validateCondition = (event: TAlertEventDefinition, condition: unknown) => {
+    try {
+      event.conditionSchema.parse(condition);
+    } catch (err) {
+      const message = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid condition";
+      throw new BadRequestError({ message: `Invalid alert condition: ${message}` });
+    }
   };
 
   const $assembleResponse = (alert: TAlerts, channels: TAlertChannelEmbedded[]): TAlertResponse => ({
@@ -120,7 +112,8 @@ export const alertServiceFactory = ({
     }
 
     const provider = $getProvider(dto.resourceType);
-    const event = $validate(provider, dto, { alwaysValidateCondition: true }) as TAlertEventDefinition;
+    const event = $getEvent(provider, dto.eventType);
+    $validateCondition(event, dto.condition);
 
     await $assertAlertPermission(
       provider,
@@ -337,7 +330,7 @@ export const alertServiceFactory = ({
       dto
     );
 
-    if (dto.condition !== undefined) $validate(provider, { condition: dto.condition });
+    if (dto.condition !== undefined) $validateCondition($getEvent(provider, alert.eventType), dto.condition);
     if (dto.channels !== undefined && dto.channels.length === 0) {
       throw new BadRequestError({ message: "At least one channel is required" });
     }

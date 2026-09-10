@@ -40,10 +40,8 @@ import { AddAlertModal } from "./AddAlertModal";
 
 type Props = {
   identityId: string;
-  identityName: string;
   // Org-scoped when omitted.
   projectId?: string;
-  scopeName?: string;
   // Renders the alert without any way to create, edit or remove it.
   readOnly?: boolean;
   // Wraps the mutating actions in the caller's permission gate (org- or project-scoped), which is the
@@ -54,6 +52,9 @@ type Props = {
 // "7 days before client secret expiry"; falls back to the event label when the
 // stored condition is missing or malformed.
 const formatConditionSummary = (alert: TAlert): string => {
+  if (alert.eventType === AlertEventType.IdentityAuthMethodChanged) {
+    return "When an auth method or one of its credentials changes";
+  }
   const days = parseAlertBeforeDays(alert.condition?.alertBefore);
   if (days === null) {
     return ALERT_EVENT_TYPE_LABELS[alert.eventType as AlertEventType] ?? alert.eventType;
@@ -71,9 +72,7 @@ const formatChannelSummary = (alert: TAlert): string =>
 
 export const AlertAction = ({
   identityId,
-  identityName,
   projectId,
-  scopeName,
   readOnly = false,
   renderPermissionGate
 }: Props) => {
@@ -134,9 +133,7 @@ export const AlertAction = ({
           isOpen={popUp.alert.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("alert", isOpen)}
           projectId={projectId}
-          scopeName={scopeName}
           resourceId={identityId}
-          resourceName={identityName}
         />
       </>
     );
@@ -222,9 +219,7 @@ export const AlertAction = ({
             isOpen={popUp.alert.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("alert", isOpen)}
             projectId={projectId}
-            scopeName={scopeName}
             resourceId={identityId}
-            resourceName={identityName}
             alert={existingAlert}
           />
           <AlertDialog

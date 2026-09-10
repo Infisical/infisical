@@ -34,6 +34,13 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import {
+  IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+  IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+  IdentityAuthMethodChange,
+  TIdentityAuthMethodChangeEventPayload
+} from "@app/services/alert/providers/identity-credential-alert-provider";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -66,6 +73,7 @@ type TIdentityOciAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
@@ -79,7 +87,8 @@ export const identityOciAuthServiceFactory = ({
   licenseService,
   permissionService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid, organizationSlug }: TLoginOciAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -358,6 +367,24 @@ export const identityOciAuthServiceFactory = ({
         },
         tx
       );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.OCI_AUTH,
+            change: IdentityAuthMethodChange.Added,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
@@ -454,15 +481,40 @@ export const identityOciAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedOciAuth = await identityOciAuthDAL.updateById(identityOciAuth.id, {
-      tenancyOcid,
-      allowedUsernames,
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+    const updatedOciAuth = await identityOciAuthDAL.transaction(async (tx) => {
+      const doc = await identityOciAuthDAL.updateById(
+        identityOciAuth.id,
+        {
+          tenancyOcid,
+          allowedUsernames,
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined
+        },
+        tx
+      );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.OCI_AUTH,
+            change: IdentityAuthMethodChange.Updated,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
@@ -607,6 +659,24 @@ export const identityOciAuthServiceFactory = ({
       const deletedOciAuth = await identityOciAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OCI_AUTH }, tx);
 
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.OCI_AUTH,
+            change: IdentityAuthMethodChange.Removed,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
       return { ...deletedOciAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 

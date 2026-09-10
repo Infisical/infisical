@@ -2632,6 +2632,7 @@ export const registerRoutes = async (
   });
 
   const identityTokenAuthService = identityTokenAuthServiceFactory({
+    eventOutboxService,
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     permissionService,
@@ -2643,6 +2644,7 @@ export const registerRoutes = async (
   });
 
   const identityUaService = identityUaServiceFactory({
+    eventOutboxService,
     identityDAL,
     permissionService,
     identityUaClientSecretDAL,
@@ -2655,6 +2657,7 @@ export const registerRoutes = async (
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityKubernetesAuthDAL,
     identityAuthTemplateDAL,
@@ -2674,6 +2677,7 @@ export const registerRoutes = async (
     identityAccessTokenService
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityGcpAuthDAL,
     orgDAL,
@@ -2686,6 +2690,7 @@ export const registerRoutes = async (
   });
 
   const identityAliCloudAuthService = identityAliCloudAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityAccessTokenDAL,
     orgDAL,
@@ -2698,6 +2703,7 @@ export const registerRoutes = async (
   });
 
   const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityAccessTokenDAL,
     identityTlsCertAuthDAL,
@@ -2711,6 +2717,7 @@ export const registerRoutes = async (
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityAccessTokenDAL,
     orgDAL,
@@ -2723,6 +2730,7 @@ export const registerRoutes = async (
   });
 
   const identityAzureAuthService = identityAzureAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityAzureAuthDAL,
     orgDAL,
@@ -2735,6 +2743,7 @@ export const registerRoutes = async (
   });
 
   const identityOciAuthService = identityOciAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityAccessTokenDAL,
     orgDAL,
@@ -2762,6 +2771,7 @@ export const registerRoutes = async (
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityOidcAuthDAL,
     identityAuthTemplateDAL,
@@ -2776,6 +2786,7 @@ export const registerRoutes = async (
   });
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identityJwtAuthDAL,
     orgDAL,
@@ -2789,6 +2800,7 @@ export const registerRoutes = async (
   });
 
   const identitySpiffeAuthService = identitySpiffeAuthServiceFactory({
+    eventOutboxService,
     identityDAL,
     identitySpiffeAuthDAL,
     orgDAL,
@@ -2802,6 +2814,7 @@ export const registerRoutes = async (
   });
 
   const identityLdapAuthService = identityLdapAuthServiceFactory({
+    eventOutboxService,
     identityLdapAuthDAL,
     orgDAL,
     permissionService,

@@ -95,6 +95,7 @@ export const alertEventConsumerFactory = ({
       const result = await alertEngine.runAlertForEvent(alert, {
         eventType: row.eventType,
         targetIds: payload.data.targetIds,
+        payload: (row.payload ?? {}) as Record<string, unknown>,
         skipChannelIds: [...delivered]
       });
       result.deliveredChannelIds.forEach((channelId) => delivered.add(channelId));

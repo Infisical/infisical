@@ -7,7 +7,6 @@ const baseProvider = (overrides: Partial<IResourceAlertProvider>): IResourceAler
   ({
     resourceType: "test.resource",
     events: [],
-    conditionSchema: z.any(),
     targetId: (target: { id: string }) => target.id,
     buildViewUrl: async () => "https://app.infisical.com/x",
     buildPayload: () => ({}) as never,
@@ -31,7 +30,9 @@ describe("alert provider registry", () => {
 
     expect(() =>
       registry.register(
-        baseProvider({ events: [{ key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled }] })
+        baseProvider({
+          events: [{ key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() }]
+        })
       )
     ).toThrow("does not implement findDueTargets");
   });
@@ -41,7 +42,9 @@ describe("alert provider registry", () => {
 
     expect(() =>
       registry.register(
-        baseProvider({ events: [{ key: "test.resource.opened", triggerType: AlertTriggerType.Event }] })
+        baseProvider({
+          events: [{ key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }]
+        })
       )
     ).toThrow("does not implement findTargetsByIds");
   });
@@ -53,8 +56,8 @@ describe("alert provider registry", () => {
       registry.register(
         baseProvider({
           events: [
-            { key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled },
-            { key: "test.resource.opened", triggerType: AlertTriggerType.Event }
+            { key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() },
+            { key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }
           ],
           findDueTargets: async () => [],
           findTargetsByIds: async () => []
@@ -68,8 +71,8 @@ describe("alert provider registry", () => {
     registry.register(
       baseProvider({
         events: [
-          { key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled },
-          { key: "test.resource.opened", triggerType: AlertTriggerType.Event }
+          { key: "test.resource.expiry", triggerType: AlertTriggerType.Scheduled, conditionSchema: z.any() },
+          { key: "test.resource.opened", triggerType: AlertTriggerType.Event, conditionSchema: z.any() }
         ],
         findDueTargets: async () => [],
         findTargetsByIds: async () => []

@@ -32,8 +32,13 @@ const actor = {
 const buildProvider = (opts?: { assertPermission?: (input: TAlertPermissionInput) => Promise<void> }) => {
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
-    events: [{ key: "test.resource.expiration", triggerType: AlertTriggerType.Scheduled }],
-    conditionSchema: z.object({}).optional(),
+    events: [
+      {
+        key: "test.resource.expiration",
+        triggerType: AlertTriggerType.Scheduled,
+        conditionSchema: z.object({}).optional()
+      }
+    ],
     findDueTargets: async () => [],
     buildViewUrl: async () => "https://app.infisical.com/x",
     buildPayload: (alert, targets, viewUrl) =>

@@ -282,7 +282,7 @@ export const alertEngineFactory = ({
 
   const runAlertForEvent = async (
     alert: TAlerts,
-    input: { eventType: string; targetIds: string[]; skipChannelIds?: string[] }
+    input: { eventType: string; targetIds: string[]; payload: Record<string, unknown>; skipChannelIds?: string[] }
   ): Promise<TDispatchResult> => {
     const provider = alertProviderRegistry.get(alert.resourceType);
     if (!provider) {
@@ -297,7 +297,6 @@ export const alertEngineFactory = ({
     }
 
     const skip = new Set(input.skipChannelIds ?? []);
-    // Primary: an empty read here is terminal for the event, and a replica may not have the channel yet.
     const channels = (await alertChannelDAL.findByAlertId(alert.id, { enabled: true, readFromPrimary: true })).filter(
       (channel) => !skip.has(channel.id)
     );
@@ -309,9 +308,9 @@ export const alertEngineFactory = ({
       resourceId: alert.resourceId,
       eventType: input.eventType,
       condition: alert.condition,
-      targetIds: input.targetIds
+      targetIds: input.targetIds,
+      payload: input.payload
     });
-    // Deleted between emit and dispatch, so nothing to say.
     if (resolved.length === 0) return { outcome: AlertDispatchOutcome.NoDueTargets, deliveredChannelIds: [] };
 
     const targets = resolved.map((target) => ({ target, id: provider.targetId(target) }));
@@ -320,8 +319,6 @@ export const alertEngineFactory = ({
       const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
       const cap = definition?.maxTargetsPerRun;
       if (cap && targets.length > cap) {
-        // Unlike the scheduled path there is no next run, so this is a real drop. MAX_TARGET_IDS_PER_EVENT
-        // sits at or below every channel cap to keep it unreachable; the log names what was lost if not.
         logger.warn(
           `Alert ${channel.channelType} channel caps at ${cap} targets; dropping ${targets.length - cap} from this event [alertId=${alert.id}] [channelId=${channel.id}] [dropped=${targets
             .slice(cap)

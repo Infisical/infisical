@@ -32,6 +32,13 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import {
+  IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+  IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+  IdentityAuthMethodChange,
+  TIdentityAuthMethodChangeEventPayload
+} from "@app/services/alert/providers/identity-credential-alert-provider";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -86,6 +93,7 @@ type TIdentityUaServiceFactoryDep = {
     | "sortedSetMembersPrimary"
     | "acquireLock"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentityUaServiceFactory = ReturnType<typeof identityUaServiceFactory>;
@@ -102,7 +110,8 @@ export const identityUaServiceFactory = ({
   orgDAL,
   keyStore,
   identityDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentityUaServiceFactoryDep) => {
   const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
     const authMetricStartTime = performance.now();
@@ -545,6 +554,24 @@ export const identityUaServiceFactory = ({
         },
         tx
       );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+            change: IdentityAuthMethodChange.Added,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(
@@ -668,21 +695,46 @@ export const identityUaServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedUaAuth = await identityUaDAL.updateById(uaIdentityAuth.id, {
-      clientSecretTrustedIps: reformattedClientSecretTrustedIps
-        ? JSON.stringify(reformattedClientSecretTrustedIps)
-        : undefined,
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenPeriod,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined,
-      lockoutEnabled,
-      lockoutThreshold,
-      lockoutDurationSeconds,
-      lockoutCounterResetSeconds
+    const updatedUaAuth = await identityUaDAL.transaction(async (tx) => {
+      const doc = await identityUaDAL.updateById(
+        uaIdentityAuth.id,
+        {
+          clientSecretTrustedIps: reformattedClientSecretTrustedIps
+            ? JSON.stringify(reformattedClientSecretTrustedIps)
+            : undefined,
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenPeriod,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
+        },
+        tx
+      );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+            change: IdentityAuthMethodChange.Updated,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.UNIVERSAL_AUTH);
     return { ...updatedUaAuth, orgId: identityMembershipOrg.scopeOrgId };
@@ -825,6 +877,24 @@ export const identityUaServiceFactory = ({
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
       const deletedUniversalAuth = await identityUaDAL.delete({ identityId }, tx);
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+            change: IdentityAuthMethodChange.Removed,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
       return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 
@@ -937,15 +1007,41 @@ export const identityUaServiceFactory = ({
     const identityUaAuth = await identityUaDAL.findOne({ identityId: identityMembershipOrg.identity.id });
     if (!identityUaAuth) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    const identityUaClientSecret = await identityUaClientSecretDAL.create({
-      identityUAId: identityUaAuth.id,
-      description,
-      clientSecretPrefix: clientSecret.slice(0, 4),
-      clientSecretHash,
-      clientSecretNumUses: 0,
-      clientSecretNumUsesLimit: numUsesLimit,
-      clientSecretTTL: ttl,
-      isClientSecretRevoked: false
+    const identityUaClientSecret = await identityUaDAL.transaction(async (tx) => {
+      const doc = await identityUaClientSecretDAL.create(
+        {
+          identityUAId: identityUaAuth.id,
+          description,
+          clientSecretPrefix: clientSecret.slice(0, 4),
+          clientSecretHash,
+          clientSecretNumUses: 0,
+          clientSecretNumUsesLimit: numUsesLimit,
+          clientSecretTTL: ttl,
+          isClientSecretRevoked: false
+        },
+        tx
+      );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+            change: IdentityAuthMethodChange.CredentialAdded,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString(),
+            credentialId: doc.id,
+            credentialName: doc.description || doc.clientSecretPrefix
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return doc;
     });
     return {
       clientSecret,
@@ -1239,8 +1335,29 @@ export const identityUaServiceFactory = ({
       clientSecretId
     });
 
-    const updatedClientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {
-      isClientSecretRevoked: true
+    const updatedClientSecret = await identityUaDAL.transaction(async (tx) => {
+      const doc = await identityUaClientSecretDAL.updateById(clientSecretId, { isClientSecretRevoked: true }, tx);
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+            change: IdentityAuthMethodChange.CredentialRevoked,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString(),
+            credentialId: doc.id,
+            credentialName: doc.description || doc.clientSecretPrefix
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return doc;
     });
 
     return { ...updatedClientSecret, identityId, orgId: identityMembershipOrg.scopeOrgId };

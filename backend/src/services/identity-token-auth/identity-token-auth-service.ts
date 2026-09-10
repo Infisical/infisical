@@ -26,6 +26,13 @@ import {
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+  IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+  IdentityAuthMethodChange,
+  TIdentityAuthMethodChangeEventPayload
+} from "@app/services/alert/providers/identity-credential-alert-provider";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
@@ -69,6 +76,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
@@ -81,7 +89,8 @@ export const identityTokenAuthServiceFactory = ({
   identityAccessTokenService,
   permissionService,
   licenseService,
-  orgDAL
+  orgDAL,
+  eventOutboxService
 }: TIdentityTokenAuthServiceFactoryDep) => {
   const attachTokenAuth = async ({
     identityId,
@@ -174,6 +183,24 @@ export const identityTokenAuthServiceFactory = ({
           accessTokenTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
+        },
+        tx
+      );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.TOKEN_AUTH,
+            change: IdentityAuthMethodChange.Added,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
         },
         tx
       );
@@ -272,13 +299,38 @@ export const identityTokenAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedTokenAuth = await identityTokenAuthDAL.updateById(identityTokenAuth.id, {
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+    const updatedTokenAuth = await identityTokenAuthDAL.transaction(async (tx) => {
+      const doc = await identityTokenAuthDAL.updateById(
+        identityTokenAuth.id,
+        {
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined
+        },
+        tx
+      );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.TOKEN_AUTH,
+            change: IdentityAuthMethodChange.Updated,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TOKEN_AUTH);
@@ -425,11 +477,26 @@ export const identityTokenAuthServiceFactory = ({
 
     const revokedIdentityTokenAuth = await identityTokenAuthDAL.transaction(async (tx) => {
       const deletedTokenAuth = await identityTokenAuthDAL.delete({ identityId }, tx);
-      await identityAccessTokenDAL.delete({
-        identityId,
-        authMethod: IdentityAuthMethod.TOKEN_AUTH
-      });
+      await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.TOKEN_AUTH }, tx);
 
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.TOKEN_AUTH,
+            change: IdentityAuthMethodChange.Removed,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString()
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
       return { ...deletedTokenAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 
@@ -587,7 +654,7 @@ export const identityTokenAuthServiceFactory = ({
         await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.TOKEN_AUTH, tx);
       }
 
-      return identityAccessTokenService.issueIdentityAccessToken({
+      const issued = await identityAccessTokenService.issueIdentityAccessToken({
         identityId: identity.id,
         identityName: identity.name,
         authMethod: IdentityAuthMethod.TOKEN_AUTH,
@@ -603,6 +670,27 @@ export const identityTokenAuthServiceFactory = ({
         accessTokenTrustedIps: identityTokenAuth.accessTokenTrustedIps as TIp[],
         persistToPg: { tx, name }
       });
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.TOKEN_AUTH,
+            change: IdentityAuthMethodChange.CredentialAdded,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString(),
+            credentialId: issued.identityAccessToken.id,
+            credentialName: name
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return issued;
     });
 
     return { accessToken, identityTokenAuth, identityAccessToken, identity };
@@ -833,16 +921,34 @@ export const identityTokenAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(foundToken.identityId, isActorSuperAdmin);
 
-    const [token] = await identityAccessTokenDAL.update(
-      {
-        authMethod: IdentityAuthMethod.TOKEN_AUTH,
-        identityId: foundToken.identityId,
-        id: tokenId
-      },
-      {
-        name
-      }
-    );
+    const token = await identityTokenAuthDAL.transaction(async (tx) => {
+      const [doc] = await identityAccessTokenDAL.update(
+        { authMethod: IdentityAuthMethod.TOKEN_AUTH, identityId: foundToken.identityId, id: tokenId },
+        { name },
+        tx
+      );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityMembershipOrg.identity.id,
+          orgId: identityMembershipOrg.scopeOrgId,
+          projectId: identityMembershipOrg.identity.projectId,
+          payload: {
+            targetIds: [identityMembershipOrg.identity.id],
+            authMethod: IdentityAuthMethod.TOKEN_AUTH,
+            change: IdentityAuthMethodChange.CredentialUpdated,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString(),
+            credentialId: doc.id,
+            credentialName: doc.name ?? undefined
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return doc;
+    });
 
     return { token, identityMembershipOrg };
   };
@@ -910,15 +1016,34 @@ export const identityTokenAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityAccessToken.identityId, isActorSuperAdmin);
 
-    const [revokedToken] = await identityAccessTokenDAL.update(
-      {
-        id: identityAccessToken.id,
-        authMethod: IdentityAuthMethod.TOKEN_AUTH
-      },
-      {
-        isAccessTokenRevoked: true
-      }
-    );
+    const revokedToken = await identityTokenAuthDAL.transaction(async (tx) => {
+      const [doc] = await identityAccessTokenDAL.update(
+        { id: identityAccessToken.id, authMethod: IdentityAuthMethod.TOKEN_AUTH },
+        { isAccessTokenRevoked: true },
+        tx
+      );
+      await eventOutboxService.emit(
+        {
+          eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: identityOrgMembership.identity.id,
+          orgId: identityOrgMembership.scopeOrgId,
+          projectId: identityOrgMembership.identity.projectId,
+          payload: {
+            targetIds: [identityOrgMembership.identity.id],
+            authMethod: IdentityAuthMethod.TOKEN_AUTH,
+            change: IdentityAuthMethodChange.CredentialRevoked,
+            actorType: actor,
+            actorId,
+            changedAt: new Date().toISOString(),
+            credentialId: doc.id,
+            credentialName: doc.name ?? undefined
+          } satisfies TIdentityAuthMethodChangeEventPayload
+        },
+        tx
+      );
+      return doc;
+    });
 
     // No JWT here, so the helper anchors on now plus the row's issuance cap.
     const expiresAt = computeTokenAuthRevokeMarkerExpiry({

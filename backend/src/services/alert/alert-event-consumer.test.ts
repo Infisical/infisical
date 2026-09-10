@@ -37,7 +37,12 @@ const buildConsumer = (opts?: {
   eventKeys?: string[];
   findAlerts?: () => Promise<unknown[]>;
 }) => {
-  const runs: { alertId: string; targetIds: string[]; skipChannelIds?: string[] }[] = [];
+  const runs: {
+    alertId: string;
+    targetIds: string[];
+    payload?: Record<string, unknown>;
+    skipChannelIds?: string[];
+  }[] = [];
   const results = opts?.results ?? [{ outcome: AlertDispatchOutcome.DeliverySuccess, deliveredChannelIds: ["c-1"] }];
   let runIdx = 0;
   let lookups = 0;
@@ -51,8 +56,16 @@ const buildConsumer = (opts?: {
       }
     },
     alertEngine: {
-      runAlertForEvent: async (alert: { id: string }, input: { targetIds: string[]; skipChannelIds?: string[] }) => {
-        runs.push({ alertId: alert.id, targetIds: input.targetIds, skipChannelIds: input.skipChannelIds });
+      runAlertForEvent: async (
+        alert: { id: string },
+        input: { targetIds: string[]; payload: Record<string, unknown>; skipChannelIds?: string[] }
+      ) => {
+        runs.push({
+          alertId: alert.id,
+          targetIds: input.targetIds,
+          payload: input.payload,
+          skipChannelIds: input.skipChannelIds
+        });
         const result = results[Math.min(runIdx, results.length - 1)];
         runIdx += 1;
         return result;
@@ -85,6 +98,8 @@ describe("alert outbox consumer", () => {
 
     expect(result.status).toBe(EventOutboxStatus.Delivered);
     expect(runs[0].targetIds).toEqual(["req-1"]);
+    // The provider sees everything the emitter wrote, not only the ids the consumer validated.
+    expect(runs[0].payload).toEqual({ targetIds: ["req-1"] });
     expect(result.progress).toEqual({ deliveredChannelIds: ["c-1"] });
   });
 

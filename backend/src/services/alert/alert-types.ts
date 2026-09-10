@@ -17,6 +17,7 @@ export enum AlertTriggerType {
 export type TAlertEventDefinition = {
   key: string;
   triggerType: AlertTriggerType;
+  conditionSchema: z.ZodTypeAny;
 };
 
 export enum AlertRunStatus {
@@ -80,6 +81,7 @@ export type TFindTargetsByIdsInput = {
   eventType: string;
   condition: unknown;
   targetIds: string[];
+  payload: Record<string, unknown>;
 };
 
 export type TFindDueTargetsInput = {
@@ -101,10 +103,8 @@ export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTar
 export interface IResourceAlertProvider<TTarget = unknown> {
   // Dot-namespaced, e.g. "pki.certificate", "identity.ua-secret".
   resourceType: string;
-  // Event keys this provider understands, each declaring how it fires.
+  // Event keys this provider understands, each declaring how it fires and what its condition looks like.
   events: TAlertEventDefinition[];
-  // Validates an alert's `condition` (the "when"), e.g. { alertBefore: "30d" }.
-  conditionSchema: z.ZodTypeAny;
 
   // Resources currently due to alert for this alert's scope + condition. The engine handles dedup
   // afterwards, so this returns all current matches in the window (not minus already-alerted).

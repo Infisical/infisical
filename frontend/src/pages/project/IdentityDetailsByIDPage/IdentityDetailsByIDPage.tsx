@@ -217,14 +217,11 @@ const Page = () => {
               {isProjectIdentity ? (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   projectId={currentProject.id}
-                  projectName={currentProject.name}
                 />
               ) : (
                 <ProjectIdentityAlertAction
                   identityId={identityMembershipDetails.identity.id}
-                  identityName={identityMembershipDetails.identity.name}
                   readOnly
                 />
               )}

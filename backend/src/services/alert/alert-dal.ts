@@ -78,7 +78,6 @@ export const alertDALFactory = (db: TDbClient) => {
               .where(`${TableName.AlertChannel}.enabled`, true)
         );
 
-      // A project resource can be watched by a project-scoped alert and by an org-wide one.
       if (filter.projectId) {
         void query.where(
           (builder) =>
@@ -86,8 +85,6 @@ export const alertDALFactory = (db: TDbClient) => {
               .where(`${TableName.Alert}.projectId`, filter.projectId as string)
               .orWhereNull(`${TableName.Alert}.projectId`)
         );
-      } else {
-        void query.whereNull(`${TableName.Alert}.projectId`);
       }
 
       const alerts = await query

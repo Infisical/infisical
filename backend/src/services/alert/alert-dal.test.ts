@@ -175,7 +175,9 @@ describe("alert dal", () => {
     expect(calls.orWhereNull).toContainEqual(`${TableName.Alert}.projectId`);
   });
 
-  test("findEnabledForEvent matches only org-scoped alerts when given no project", async () => {
+  // An org-level identity can be watched from any project it belongs to, so an event with no project
+  // of its own has to reach those project-scoped alerts as well as the org-scoped one.
+  test("findEnabledForEvent matches every alert bound to the resource when given no project", async () => {
     const { dal, calls } = buildDAL();
 
     await dal.findEnabledForEvent({
@@ -185,7 +187,8 @@ describe("alert dal", () => {
       eventType: "approval.workflow.request_opened"
     });
 
-    expect(calls.whereNull).toContainEqual(`${TableName.Alert}.projectId`);
+    expect(calls.whereNull).not.toContainEqual(`${TableName.Alert}.projectId`);
+    expect(calls.where).not.toContainEqual(expect.arrayContaining([`${TableName.Alert}.projectId`]));
     expect(calls.orWhereNull).toHaveLength(0);
   });
 });
