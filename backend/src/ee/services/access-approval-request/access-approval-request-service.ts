@@ -15,6 +15,7 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
@@ -55,6 +56,7 @@ import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal"
 import {
   getExternalApprovalProvider,
   grantApprovedRequestPrivilege,
+  toExternalApprovalAuditLabels,
   toExternalApprovalProvider,
   verifyRequestedPermissions
 } from "./access-approval-request-fns";
@@ -106,6 +108,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     TExternalApprovalServiceFactory,
     "authorizeExternalReview" | "resolveExternalApprovalDecision" | "canReviewExternalApprovals"
   >;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -129,7 +132,8 @@ export const accessApprovalRequestServiceFactory = ({
   externalApprovalQueue,
   externalApprovalRequestDAL,
   externalApprovalPolicyDAL,
-  externalApprovalService
+  externalApprovalService,
+  appConnectionDAL
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
   const $queueAccessRequestWebhook = async ({
     action,
@@ -318,12 +322,20 @@ export const accessApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
     }
 
+    const connection = await appConnectionDAL.findById(externalApprovalPolicy.connectionId);
+
     const result = {
       projectId: accessApprovalRequest.projectId,
       policyId: accessApprovalRequest.policyId,
       externalApprovalRequestId: externalApproval.id,
       externalApprovalPolicyId: policy.externalApprovalPolicyId,
-      ...toExternalApprovalProvider(externalApprovalPolicy.type)
+      ...toExternalApprovalProvider(externalApprovalPolicy.type),
+      ...toExternalApprovalAuditLabels({
+        requestedByUser: accessApprovalRequest.requestedByUser,
+        policyName: accessApprovalRequest.policy.name,
+        externalId: externalApproval.externalId,
+        connectionName: connection?.name
+      })
     };
 
     if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
@@ -430,12 +442,27 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
+    const externalApprovalPolicy = await externalApprovalPolicyDAL.findById(policy.externalApprovalPolicyId);
+    if (!externalApprovalPolicy) {
+      throw new NotFoundError({
+        message: `External approval policy with ID '${policy.externalApprovalPolicyId}' not found`
+      });
+    }
+
+    const connection = await appConnectionDAL.findById(externalApprovalPolicy.connectionId);
+
     const result = {
       projectId: existing.projectId,
       policyId: existing.policyId,
       externalApprovalRequestId: externalApproval.id,
       externalApprovalPolicyId: policy.externalApprovalPolicyId,
-      ...(await getExternalApprovalProvider(externalApprovalPolicyDAL, policy.externalApprovalPolicyId))
+      ...toExternalApprovalProvider(externalApprovalPolicy.type),
+      ...toExternalApprovalAuditLabels({
+        requestedByUser: existing.requestedByUser,
+        policyName: existing.policy.name,
+        externalId: externalApproval.externalId,
+        connectionName: connection?.name
+      })
     };
 
     const reset = await accessApprovalRequestDAL.transaction(async (tx) => {

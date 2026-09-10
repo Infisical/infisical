@@ -46,7 +46,10 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   accessApprovalPolicyBypasserDAL: TAccessApprovalPolicyBypasserDALFactory;
   groupDAL: TGroupDALFactory;
   userDAL: Pick<TUserDALFactory, "find">;
-  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find" | "resetReviewByPolicyId">;
+  accessApprovalRequestDAL: Pick<
+    TAccessApprovalRequestDALFactory,
+    "update" | "find" | "resetReviewByPolicyId" | "countPendingExternalRequestsByPolicyId"
+  >;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
   accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
@@ -465,6 +468,18 @@ export const accessApprovalPolicyServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+
+    if (externalApproval === null && accessApprovalPolicy.externalApprovalPolicyId) {
+      const pendingExternalRequests = await accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId(
+        accessApprovalPolicy.id
+      );
+
+      if (pendingExternalRequests > 0) {
+        throw new BadRequestError({
+          message: `Policy '${accessApprovalPolicy.name}' has ${pendingExternalRequests} access request(s) still awaiting a decision from its external approval system. Approve or reject them there before switching this policy back to Infisical approvals.`
+        });
+      }
+    }
 
     if (externalApproval) {
       await externalApprovalService.validateExternalApprovalPolicyInput({

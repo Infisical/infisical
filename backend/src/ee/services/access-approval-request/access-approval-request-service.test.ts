@@ -22,6 +22,10 @@ const IDENTITY_ID = "33333333-3333-4333-8333-333333333333";
 const PROJECT_ID = "66666666-6666-4666-8666-666666666666";
 const ORG_ID = "77777777-7777-4777-8777-777777777777";
 const EXTERNAL_ID = "sn-sys-id-1";
+const CONNECTION_ID = "88888888-8888-4888-8888-888888888888";
+const CONNECTION_NAME = "Prod ServiceNow";
+const REQUESTER_EMAIL = "a@b.c";
+const POLICY_NAME = "Policy";
 
 const identityActor = {
   type: ActorType.IDENTITY,
@@ -71,13 +75,15 @@ const makeService = ({
   lockedRow = { id: REQUEST_ID, status: ApprovalStatus.PENDING, privilegeId: null },
   canReview = true,
   canReadRequests = true,
-  project = { id: PROJECT_ID, orgId: ORG_ID, name: "Project" }
+  project = { id: PROJECT_ID, orgId: ORG_ID, name: "Project" },
+  connection = { id: CONNECTION_ID, name: CONNECTION_NAME }
 }: {
   request?: ReturnType<typeof buildRequest> | undefined;
   lockedRow?: Record<string, unknown> | undefined;
   canReview?: boolean;
   canReadRequests?: boolean;
   project?: Record<string, unknown> | undefined;
+  connection?: { id: string; name: string } | null | undefined;
 } = {}) => {
   const accessApprovalRequestDAL = {
     findById: vi.fn().mockResolvedValue(request),
@@ -92,13 +98,21 @@ const makeService = ({
     authorizeExternalReview: vi.fn().mockResolvedValue({
       id: EXTERNAL_POLICY_ID,
       type: ExternalApprovalType.ServiceNow,
-      approverIdentityId: IDENTITY_ID
+      approverIdentityId: IDENTITY_ID,
+      connectionId: CONNECTION_ID
     }),
     canReviewExternalApprovals: vi.fn().mockResolvedValue(canReview),
     resolveExternalApprovalDecision: vi.fn().mockResolvedValue({ alreadyFinalized: false })
   };
   const externalApprovalPolicyDAL = {
-    findById: vi.fn().mockResolvedValue({ id: EXTERNAL_POLICY_ID, type: ExternalApprovalType.ServiceNow })
+    findById: vi.fn().mockResolvedValue({
+      id: EXTERNAL_POLICY_ID,
+      type: ExternalApprovalType.ServiceNow,
+      connectionId: CONNECTION_ID
+    })
+  };
+  const appConnectionDAL = {
+    findById: vi.fn().mockResolvedValue(connection)
   };
   const permissionService = {
     getProjectPermission: vi.fn().mockResolvedValue({ permission: { can: vi.fn(() => canReadRequests) } })
@@ -136,7 +150,8 @@ const makeService = ({
     notificationService: {} as never,
     externalApprovalQueue: externalApprovalQueue as never,
     externalApprovalRequestDAL: externalApprovalRequestDAL as never,
-    externalApprovalPolicyDAL: externalApprovalPolicyDAL as never
+    externalApprovalPolicyDAL: externalApprovalPolicyDAL as never,
+    appConnectionDAL: appConnectionDAL as never
   });
 
   return {
@@ -146,7 +161,8 @@ const makeService = ({
     externalApprovalService,
     permissionService,
     externalApprovalQueue,
-    externalApprovalRequestDAL
+    externalApprovalRequestDAL,
+    appConnectionDAL
   };
 };
 
@@ -186,6 +202,21 @@ describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
     expect(result.externalApprovalRequestId).toBe(EXTERNAL_REQUEST_ID);
     expect(result.externalApprovalPolicyId).toBe(EXTERNAL_POLICY_ID);
     expect(result.externalApprovalProvider).toBe("ServiceNow");
+    expect(result.requesterEmail).toBe(REQUESTER_EMAIL);
+    expect(result.policyName).toBe(POLICY_NAME);
+    expect(result.connectionName).toBe(CONNECTION_NAME);
+    expect(result.externalId).toBe(EXTERNAL_ID);
+  });
+
+  test("omits connectionName when the app connection is gone", async () => {
+    const { service } = makeService({ connection: null });
+
+    const result = await review(service, ApprovalStatus.APPROVED);
+
+    expect(result.connectionName).toBeUndefined();
+    expect(result.requesterEmail).toBe(REQUESTER_EMAIL);
+    expect(result.policyName).toBe(POLICY_NAME);
+    expect(result.externalId).toBe(EXTERNAL_ID);
   });
 
   test("rejection closes the request without creating a privilege", async () => {
@@ -308,6 +339,21 @@ describe("accessApprovalRequestService.retryExternalApprovalDispatch", () => {
     expect(result.externalApprovalRequestId).toBe(EXTERNAL_REQUEST_ID);
     expect(result.externalApprovalPolicyId).toBe(EXTERNAL_POLICY_ID);
     expect(result.externalApprovalProvider).toBe("ServiceNow");
+    expect(result.requesterEmail).toBe(REQUESTER_EMAIL);
+    expect(result.policyName).toBe(POLICY_NAME);
+    expect(result.connectionName).toBe(CONNECTION_NAME);
+    expect(result.externalId).toBeUndefined();
+  });
+
+  test("omits connectionName when the app connection is gone", async () => {
+    const { service } = makeService({ request: failedRequest(), connection: null });
+
+    const result = await retry(service);
+
+    expect(result.connectionName).toBeUndefined();
+    expect(result.requesterEmail).toBe(REQUESTER_EMAIL);
+    expect(result.policyName).toBe(POLICY_NAME);
+    expect(result.externalId).toBeUndefined();
   });
 
   test("an actor without Read on Approval Requests is forbidden before anything is written", async () => {

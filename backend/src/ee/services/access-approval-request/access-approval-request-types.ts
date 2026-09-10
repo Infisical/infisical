@@ -232,16 +232,24 @@ export interface TAccessApprovalRequestServiceFactory {
     request: TAccessApprovalRequests;
     projectId: string;
     policyId: string;
+    policyName: string;
+    requesterEmail: string;
     externalApprovalRequestId: string;
     externalApprovalPolicyId: string;
     externalApprovalProvider: string;
+    externalId?: string;
+    connectionName?: string;
   }>;
   retryExternalApprovalDispatch: (arg: TRetryExternalApprovalDispatchDTO) => Promise<{
     projectId: string;
     policyId: string;
+    policyName: string;
+    requesterEmail: string;
     externalApprovalRequestId: string;
     externalApprovalPolicyId: string;
     externalApprovalProvider: string;
+    externalId?: string;
+    connectionName?: string;
   }>;
   getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
     count: {

@@ -325,9 +325,13 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         request,
         projectId,
         policyId,
+        policyName,
+        requesterEmail,
         externalApprovalRequestId,
         externalApprovalPolicyId,
-        externalApprovalProvider
+        externalApprovalProvider,
+        externalId,
+        connectionName
       } = await server.services.accessApprovalRequest.reviewExternalAccessRequest({
         requestId: req.params.requestId,
         externalId: req.body.external_id,
@@ -343,9 +347,13 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
           type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW,
           metadata: {
             requestId: request.id,
+            requesterEmail,
             policyId,
+            policyName,
             externalApprovalRequestId,
+            ...(externalId ? { externalId } : {}),
             externalApprovalPolicyId,
+            ...(connectionName ? { connectionName } : {}),
             externalNumber: req.body.external_number,
             reviewStatus: req.body.status,
             externalApprovalProvider
@@ -392,9 +400,13 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       const {
         projectId,
         policyId,
+        policyName,
+        requesterEmail,
         externalApprovalRequestId,
         externalApprovalPolicyId,
-        externalApprovalProvider
+        externalApprovalProvider,
+        externalId,
+        connectionName
       } = await server.services.accessApprovalRequest.retryExternalApprovalDispatch({
         requestId: req.params.requestId,
         actor: req.permission.type,
@@ -411,9 +423,13 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
           type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY,
           metadata: {
             requestId: req.params.requestId,
+            requesterEmail,
             policyId,
+            policyName,
             externalApprovalRequestId,
+            ...(externalId ? { externalId } : {}),
             externalApprovalPolicyId,
+            ...(connectionName ? { connectionName } : {}),
             externalApprovalProvider
           }
         }

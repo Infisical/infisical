@@ -190,20 +190,26 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
             "Content-Type": "application/json",
             Accept: "application/json"
           },
-          allowPrivateIps: appCfg.ALLOW_INTERNAL_IP_CONNECTIONS,
           timeout: SERVICENOW_REQUEST_TIMEOUT_MS,
           maxContentLength: SERVICENOW_MAX_RESPONSE_BYTES,
           maxBodyLength: SERVICENOW_MAX_RESPONSE_BYTES
         }
       );
 
+      const externalId = data.result?.sys_id;
+      if (!externalId) {
+        throw new UnrecoverableError(
+          "Unable to create the approval request in ServiceNow: the instance accepted the request but did not return a record identifier. Verify the Infisical approvals application is installed and up to date."
+        );
+      }
+
       logger.info(
         `externalApproval(servicenow): Created access request ${logDetails} [requestNumber=${data.result?.request_number ?? "none"}]`
       );
 
-      return { externalId: data.result?.sys_id ?? null };
+      return { externalId };
     } catch (error) {
-      if (error instanceof BadRequestError) throw error;
+      if (error instanceof BadRequestError || error instanceof UnrecoverableError) throw error;
 
       const status = error instanceof AxiosError ? error.response?.status : undefined;
       const responseError =
@@ -211,14 +217,19 @@ export const servicenowFactory = (): TExternalApprovalProviderFns => {
           ? (error.response?.data as TServiceNowAccessRequestResponse | undefined)
           : undefined;
 
-      // Dedupe is on request_id, so a retry after a lost response answers 409 carrying the record
-      // the first attempt already created. Adopting it is what keeps the retry from duplicating it.
       if (status === 409) {
+        const externalId = responseError?.result?.sys_id;
+        if (!externalId) {
+          throw new UnrecoverableError(
+            "Unable to create the approval request in ServiceNow: the instance reported the request already exists but did not return a record identifier. Verify the Infisical approvals application is installed and up to date."
+          );
+        }
+
         logger.info(
           `externalApproval(servicenow): Access request already exists, adopting the existing record ${logDetails} [requestNumber=${responseError?.result?.request_number ?? "none"}]`
         );
 
-        return { externalId: responseError?.result?.sys_id ?? null };
+        return { externalId };
       }
 
       const formattedResponseError = formatServiceNowError(responseError?.result?.error);

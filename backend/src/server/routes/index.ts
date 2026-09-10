@@ -3086,7 +3086,8 @@ export const registerRoutes = async (
     externalApprovalQueue,
     externalApprovalRequestDAL,
     externalApprovalPolicyDAL,
-    externalApprovalService
+    externalApprovalService,
+    appConnectionDAL
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({

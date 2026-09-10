@@ -272,6 +272,7 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
   }>;
   resetReviewByPolicyId: (policyId: string, tx?: Knex) => Promise<void>;
   findByIdForUpdate: (id: string, tx: Knex) => Promise<TAccessApprovalRequests | undefined>;
+  countPendingExternalRequestsByPolicyId: (policyId: string, tx?: Knex) => Promise<number>;
 }
 
 export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalRequestDALFactory => {
@@ -1025,6 +1026,27 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
     }
   };
 
+  const countPendingExternalRequestsByPolicyId: TAccessApprovalRequestDALFactory["countPendingExternalRequestsByPolicyId"] =
+    async (policyId, tx) => {
+      try {
+        const doc = await (tx || db)(TableName.AccessApprovalRequest)
+          .where(`${TableName.AccessApprovalRequest}.policyId` as "policyId", policyId)
+          .where(`${TableName.AccessApprovalRequest}.status` as "status", ApprovalStatus.PENDING)
+          .whereNotNull(`${TableName.AccessApprovalRequest}.externalApprovalRequestId`)
+          .where((qb) => {
+            void qb
+              .whereNull(`${TableName.AccessApprovalRequest}.expiresAt`)
+              .orWhere(`${TableName.AccessApprovalRequest}.expiresAt` as "expiresAt", ">", new Date());
+          })
+          .count("*")
+          .first();
+
+        return parseInt((doc?.count as string) ?? "0", 10) || 0;
+      } catch (error) {
+        throw new DatabaseError({ error, name: "CountPendingExternalRequestsByPolicyId" });
+      }
+    };
+
   const findByIdForUpdate: TAccessApprovalRequestDALFactory["findByIdForUpdate"] = async (id, tx) => {
     try {
       const doc = await tx(TableName.AccessApprovalRequest).where({ id }).forUpdate().first();
@@ -1040,6 +1062,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
     findRequestsWithPrivilegeByPolicyIds,
     getCount,
     resetReviewByPolicyId,
-    findByIdForUpdate
+    findByIdForUpdate,
+    countPendingExternalRequestsByPolicyId
   };
 };

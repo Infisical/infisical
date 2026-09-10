@@ -6516,9 +6516,13 @@ interface AccessApprovalRequestExternalReviewEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW;
   metadata: {
     requestId: string;
+    requesterEmail: string;
     policyId: string;
+    policyName: string;
     externalApprovalRequestId: string;
+    externalId?: string;
     externalApprovalPolicyId: string;
+    connectionName?: string;
     externalNumber?: string;
     reviewStatus: string;
     externalApprovalProvider: string;
@@ -6529,9 +6533,13 @@ interface AccessApprovalRequestExternalDispatchRetryEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY;
   metadata: {
     requestId: string;
+    requesterEmail: string;
     policyId: string;
+    policyName: string;
     externalApprovalRequestId: string;
+    externalId?: string;
     externalApprovalPolicyId: string;
+    connectionName?: string;
     externalApprovalProvider: string;
   };
 }

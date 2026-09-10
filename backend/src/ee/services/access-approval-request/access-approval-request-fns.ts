@@ -8,10 +8,9 @@ import { PermissionConditionOperators } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { BadRequestError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { slugSchema } from "@app/server/lib/schemas";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
 import { getExternalApprovalProviderName } from "../external-approval/external-approval-map";
 import { TExternalApprovalPolicyDALFactory } from "../external-approval/external-approval-policy-dal";
@@ -30,6 +29,23 @@ import { ApprovalStatus, TVerifyPermission } from "./access-approval-request-typ
 
 export const toExternalApprovalProvider = (type: string) => ({
   externalApprovalProvider: getExternalApprovalProviderName(type)
+});
+
+export const toExternalApprovalAuditLabels = ({
+  requestedByUser,
+  policyName,
+  externalId,
+  connectionName
+}: {
+  requestedByUser: { email?: string | null; username: string };
+  policyName: string;
+  externalId?: string | null;
+  connectionName?: string | null;
+}) => ({
+  requesterEmail: requestedByUser.email || requestedByUser.username,
+  policyName,
+  ...(externalId ? { externalId } : {}),
+  ...(connectionName ? { connectionName } : {})
 });
 
 export const getExternalApprovalProvider = async (

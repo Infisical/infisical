@@ -17,6 +17,7 @@ export const ServiceNowConnectionBasicAuthCredentialsSchema = z.object({
     .string()
     .trim()
     .url("Invalid Instance URL")
+    .refine((value) => value.startsWith("https://"), "Instance URL must use HTTPS")
     .max(512, "Instance URL cannot exceed 512 characters")
     .refine((value) => {
       const { pathname, search, hash } = new URL(value);
