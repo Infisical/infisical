@@ -411,11 +411,7 @@
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
                   },
-                  {
-                    "group": "Agent Vault",
-                    "icon": "arrow-up-right-from-square",
-                    "root": "https://docs.agent-vault.dev/"
-                  }
+                  "documentation/platform/agent-proxy/agent-vault"
                 ]
               }
             ]
@@ -3719,6 +3715,42 @@
                           "api-reference/endpoints/secret-syncs/zabbix/sync-secrets",
                           "api-reference/endpoints/secret-syncs/zabbix/import-secrets",
                           "api-reference/endpoints/secret-syncs/zabbix/remove-secrets"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Secret validation rules",
+                    "pages": [
+                      "api-reference/endpoints/secret-validation-rules/list",
+                      {
+                        "group": "Static secrets",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/list",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/create",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/update",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/delete"
+                        ]
+                      },
+                      {
+                        "group": "Dynamic secrets",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/list",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/create",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/update",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/delete"
+                        ]
+                      },
+                      {
+                        "group": "Secret rotations",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/list",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/create",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/update",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/delete"
                         ]
                       }
                     ]

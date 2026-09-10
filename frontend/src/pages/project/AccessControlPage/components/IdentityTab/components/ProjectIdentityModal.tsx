@@ -15,7 +15,7 @@ import {
   IconButton,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { TProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api";
@@ -107,7 +107,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
         name="hasDeleteProtection"
         render={({ field: { onChange, value } }) => (
           <Field orientation="horizontal">
-            <Switch
+            <Toggle
               id="delete-protection-enabled"
               variant="project"
               checked={value}

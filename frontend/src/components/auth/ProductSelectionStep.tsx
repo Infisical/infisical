@@ -1,8 +1,14 @@
-import { useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import {
+  Button,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Checkbox
+} from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -21,6 +27,8 @@ import {
 } from "./signupProducts";
 
 interface ProductSelectionStepProps {
+  initialProducts: SignupProductType[];
+  projectCache: { current: Partial<Record<SignupProductType, Project>> };
   onComplete: (
     products: SignupProductType[],
     projects: Partial<Record<SignupProductType, Project>>
@@ -65,12 +73,14 @@ const setUpProduct = async (product: SignupProductType): Promise<Project | undef
 };
 
 export default function ProductSelectionStep({
-  onComplete
+  onComplete,
+  initialProducts,
+  projectCache
 }: ProductSelectionStepProps): JSX.Element {
-  const [selectedTypes, setSelectedTypes] = useState<SignupProductType[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<SignupProductType[]>(initialProducts);
   const [isSettingUp, setIsSettingUp] = useState(false);
   // Survives failed attempts so a retry only sets up the products still missing.
-  const createdProjectsRef = useRef<Partial<Record<SignupProductType, Project>>>({});
+  const createdProjectsRef = projectCache;
 
   const toggleProduct = (product: SignupProductType) => {
     setSelectedTypes((current) =>
@@ -135,61 +145,68 @@ export default function ProductSelectionStep({
     }
   };
 
-  const continueLabel = isExploring
-    ? "I'm Just Exploring, Show Me Everything"
-    : `Continue with ${orderedSelection.length} product${orderedSelection.length > 1 ? "s" : ""}`;
+  const continueLabel = (() => {
+    if (isExploring) return "Explore all products";
+    if (orderedSelection.length === 1) {
+      return `Continue with ${getSignupProduct(orderedSelection[0])?.name}`;
+    }
+    return `Continue with ${orderedSelection.length} products`;
+  })();
 
   return (
-    <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <AuthPagePanel>
-        <CardHeader className="mb-4 gap-2">
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
+      <AuthPagePanel className="gap-6">
+        <CardHeader className="gap-2">
           <CardTitle className="bg-linear-to-b from-white to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             What brings you to Infisical?
           </CardTitle>
           <CardDescription className="text-sm text-label">
-            Pick everything you&apos;re interested in and we&apos;ll set your organization up around
-            it. You can set up the rest anytime.
+            Choose the products you&apos;d like to start with. You can add more later.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div role="group" aria-label="Product selection" className="flex flex-col gap-3">
+          <div
+            role="group"
+            aria-label="Product selection"
+            className="flex flex-col space-y-2 divide-y divide-border"
+          >
             {SIGNUP_PRODUCTS.map((product) => {
               const isSelected = selectedTypes.includes(product.type);
               const Icon = product.icon;
 
               return (
-                <button
+                <label
                   key={product.type}
-                  type="button"
-                  role="checkbox"
-                  aria-checked={isSelected}
-                  onClick={() => toggleProduct(product.type)}
+                  htmlFor={`signup-product-${product.type}`}
                   className={cn(
-                    "flex w-full cursor-pointer items-center gap-3.5 rounded-md border bg-container/50 p-4 text-left transition-colors duration-200",
-                    isSelected
-                      ? product.selectedCardClassName
-                      : "border-border hover:bg-container-hover/50"
+                    "grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 px-2 pt-2 pb-3 text-left transition-[background-color,opacity] duration-200 select-none hover:bg-container-hover/30",
+                    isSelected && "bg-container-hover/30",
+                    !isExploring &&
+                      !isSelected &&
+                      "opacity-50 focus-within:opacity-80 hover:opacity-80",
+                    isSettingUp && "cursor-wait"
                   )}
                 >
-                  <div className={cn("shrink-0 rounded-sm border p-2", product.tileClassName)}>
-                    <Icon className={cn("h-4.5 w-4.5", product.iconClassName)} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground">{product.name}</p>
-                    <p className="mt-0.5 text-xs leading-snug text-muted">{product.description}</p>
-                  </div>
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-sm border transition-colors duration-200",
-                      isSelected
-                        ? cn(product.radioClassName, product.dotClassName)
-                        : "border-muted/60"
-                    )}
-                  >
-                    {isSelected && <Check className="size-3.5 text-page" strokeWidth={3} />}
+                  <Icon className={cn("size-4 shrink-0", product.iconClassName)} />
+                  <span className="font-alliance text-sm font-normal text-foreground">
+                    {product.name}
                   </span>
-                </button>
+                  <Checkbox
+                    variant="project"
+                    id={`signup-product-${product.type}`}
+                    isChecked={isSelected}
+                    isDisabled={isSettingUp}
+                    onCheckedChange={() => toggleProduct(product.type)}
+                    aria-label={product.name}
+                    aria-describedby={`signup-product-${product.type}-description`}
+                  />
+                  <span
+                    id={`signup-product-${product.type}-description`}
+                    className="col-start-2 text-sm leading-snug text-muted"
+                  >
+                    {product.description}
+                  </span>
+                </label>
               );
             })}
           </div>

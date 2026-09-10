@@ -38,6 +38,7 @@ import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
+  ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -294,6 +295,16 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionSecretValidationRuleActions.Create,
+      ProjectPermissionSecretValidationRuleActions.Edit,
+      ProjectPermissionSecretValidationRuleActions.Delete,
+      ProjectPermissionSecretValidationRuleActions.Read
+    ],
+    ProjectPermissionSub.SecretValidationRules
+  );
+
+  can(
+    [
       ProjectPermissionPkiSyncActions.Create,
       ProjectPermissionPkiSyncActions.Edit,
       ProjectPermissionPkiSyncActions.Delete,
@@ -302,7 +313,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiSyncActions.ImportCertificates,
       ProjectPermissionPkiSyncActions.RemoveCertificates,
       ProjectPermissionPkiSyncActions.SetPostSyncCommand,
-      ProjectPermissionPkiSyncActions.SetHealthCheckCommand
+      ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
+      ProjectPermissionPkiSyncActions.SetTargetHost
     ],
     ProjectPermissionSub.PkiSyncs
   );
@@ -642,6 +654,8 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretSyncs
   );
 
+  can([ProjectPermissionSecretValidationRuleActions.Read], ProjectPermissionSub.SecretValidationRules);
+
   can(
     [
       ProjectPermissionSecretScanningDataSourceActions.Read,
@@ -718,6 +732,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionCertificatePolicyActions.Read, ProjectPermissionSub.CertificatePolicies);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
+  can(ProjectPermissionSecretValidationRuleActions.Read, ProjectPermissionSub.SecretValidationRules);
   can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
   can(
     [ProjectPermissionApplicationActions.Read, ProjectPermissionApplicationActions.List],
@@ -871,7 +886,8 @@ const buildApplicationAdminPermissionRules = () => {
       ResourcePermissionPkiSyncActions.ImportCertificates,
       ResourcePermissionPkiSyncActions.RemoveCertificates,
       ResourcePermissionPkiSyncActions.SetPostSyncCommand,
-      ResourcePermissionPkiSyncActions.SetHealthCheckCommand
+      ResourcePermissionPkiSyncActions.SetHealthCheckCommand,
+      ResourcePermissionPkiSyncActions.SetTargetHost
     ],
     ResourcePermissionSub.PkiSyncs
   );

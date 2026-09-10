@@ -33,8 +33,7 @@ export const SIGNUP_PRODUCTS: SignupProductMeta[] = [
   {
     type: ProjectType.SecretManager,
     name: "Secrets Management",
-    description:
-      "Centralize secrets across environments with syncs, rotation, and dynamic credentials.",
+    description: "Store, sync, and rotate secrets across environments.",
     completedDescription: "Your first project is created. Jump in and add your first resources.",
     icon: getProjectLucideIcon(ProjectType.SecretManager),
     iconClassName: "text-product-sm",
@@ -46,7 +45,7 @@ export const SIGNUP_PRODUCTS: SignupProductMeta[] = [
   {
     type: ProjectType.CertificateManager,
     name: "Certificate Management (PKI)",
-    description: "Issue, rotate, and govern X.509 certificates for TLS, mTLS, and code signing.",
+    description: "Issue and renew certificates for TLS, mTLS, and code signing.",
     completedDescription: "Everything is ready. Jump in and issue your first certificates.",
     icon: getProjectLucideIcon(ProjectType.CertificateManager),
     iconClassName: "text-product-pki",
@@ -58,7 +57,7 @@ export const SIGNUP_PRODUCTS: SignupProductMeta[] = [
   {
     type: ProjectType.KMS,
     name: "KMS",
-    description: "Generate, store, and use cryptographic keys to encrypt, sign, and verify.",
+    description: "Manage encryption and signing keys.",
     completedDescription: "Your first project is created. Jump in and add your first resources.",
     icon: getProjectLucideIcon(ProjectType.KMS),
     iconClassName: "text-product-kms",
@@ -70,7 +69,7 @@ export const SIGNUP_PRODUCTS: SignupProductMeta[] = [
   {
     type: ProjectType.PAM,
     name: "Privileged Access Management",
-    description: "Secure access to databases and servers with session brokering and recording.",
+    description: "Secure and record access to servers and databases.",
     completedDescription: "Everything is ready. Jump in and connect your first resources.",
     icon: getProjectLucideIcon(ProjectType.PAM),
     iconClassName: "text-product-pam",
@@ -82,7 +81,7 @@ export const SIGNUP_PRODUCTS: SignupProductMeta[] = [
   {
     type: ProjectType.SecretScanning,
     name: "Secret Scanning",
-    description: "Continuously scan repos, builds, and artifacts for leaked secrets.",
+    description: "Find exposed secrets in repositories, builds, and artifacts.",
     completedDescription: "Your first project is created. Jump in and add your first resources.",
     icon: getProjectLucideIcon(ProjectType.SecretScanning),
     iconClassName: "text-product-ss",

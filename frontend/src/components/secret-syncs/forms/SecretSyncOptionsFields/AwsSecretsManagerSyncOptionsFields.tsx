@@ -18,7 +18,7 @@ import {
   IconButton,
   Input,
   Label,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -245,7 +245,7 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                         Infisical. Manually configured tags take precedence when keys conflict.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="sync-secret-metadata-tags"
                       variant="project"
                       checked={value}
@@ -267,7 +267,7 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                   secrets with the values defined below.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="configure-resource-tags"
                 variant="project"
                 checked={Array.isArray(watchedTags)}

@@ -23,7 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -243,7 +243,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
                     are not in Infisical.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="disable-secret-deletion"
                   variant="project"
                   checked={value}

@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -115,7 +115,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
                     written.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="combine-certificate-chain"
                   variant="project"
                   checked={value ?? false}
@@ -173,7 +173,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
                     available (for example, one issued from an external CSR).
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="include-private-key"
                   variant="project"
                   checked={value ?? true}

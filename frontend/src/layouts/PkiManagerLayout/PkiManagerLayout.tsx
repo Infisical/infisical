@@ -24,7 +24,7 @@ export const PkiManagerLayout = () => {
     <div className="flex h-full w-full flex-col overflow-x-hidden">
       {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
       {isDashboard && <CertManagerInstanceBanner />}
-      <div className="flex-1 overflow-x-hidden overflow-y-auto px-12 pt-10 pb-4">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto px-6 pt-6 pb-4 md:px-12 md:pt-10">
         <Outlet />
       </div>
       <UpgradePlanModal

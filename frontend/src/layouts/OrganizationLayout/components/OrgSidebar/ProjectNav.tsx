@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";

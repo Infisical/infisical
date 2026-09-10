@@ -16,10 +16,8 @@ agents producing new UI or user-visible copy.
 Infisical is a security tool for operators. The interface reads like
 infrastructure: dense, calm, and legible. Decorative treatments are reserved
 for brand-forward surfaces such as authentication and onboarding; the core
-product remains utilitarian. Dark is the default medium, with a light theme
-available through the same semantic token system. The page canvas is
-`--color-page` in both themes; `--color-background` remains a separate
-surface role.
+product remains utilitarian. Dark is the native medium; the page canvas is
+`--color-page`, and light themes are not part of the system yet.
 
 Color carries **meaning before brand**. A danger badge is red because the
 action is destructive, not because red is the accent. A project-colored button
@@ -32,7 +30,7 @@ values are masked by default; revealing one is an intentional act.
 
 **Key characteristics:**
 
-- Dark-default with a light alternative; `--color-page` page canvas
+- Dark-native; `--color-page` page canvas
 - Semantic-first color (danger / success / warning / info / neutral)
 - Scope-aware (org / sub-org / project / admin)
 - Border-defined depth; overlapping labels retain the shared Badge styling
@@ -85,44 +83,9 @@ Used to signal the scope a surface, badge, or action belongs to.
 | Muted text        | `--color-muted`           |
 | Label text        | `--color-label`           |
 
-### Neutral surface depth
-
-Keep the page canvas, existing v3 surfaces, and migrated neutral surfaces distinct.
-A shared light value does not mean two roles have the same dark value. Use the
-role that matches the component's surface or state; do not replace these tokens
-with `container`, `border`, or a translucent foreground merely to reduce the
-palette.
-
-| Role | Token | Dark value | Original shade |
-| --- | --- | --- | --- |
-| Page canvas | `page` | `#0e1014` | `page`, `bunker-800` |
-| Deep page / gradient endpoint | `page-deep` | `#0b0d10` | `bunker-900` |
-| Base control or panel | `surface-base` | `#19191c` | `mineshaft-900` |
-| Raised panel, legacy dialog, or table | `surface-raised` | `#1e1f22` | `mineshaft-800` |
-| Hover surface | `surface-hover` | `#26272b` | `mineshaft-700` |
-| Active surface | `surface-active` | `#2d2f33` | `mineshaft-600` |
-| Selected surface | `surface-selected` | `#323439` | `mineshaft-500` |
-| Recessed surface | `surface-recessed` | `#171b21` | `bunker-500` |
-| Inset surface | `surface-inset` | `#15181e` | `bunker-600` |
-| Sunken overlay surface | `surface-sunken` | `#111419` | `bunker-700` |
-| Faint border | `border-faint` | `#1e1f22` | `mineshaft-800` |
-| Subtle border | `border-subtle` | `#26272b` | `mineshaft-700` |
-| Control border | `border-control` | `#2d2f33` | `mineshaft-600` |
-| Strong border | `border-strong` | `#323439` | `mineshaft-500` |
-| Emphasized border | `border-emphasis` | `#707174` | `mineshaft-400` |
-| Bright border | `border-bright` | `#adaeb0` | `mineshaft-300` |
-
-Existing v3 `background`, `card`, `popover`, `container`, and `container-hover`
-retain their own values. In particular, v3 sheets use `popover`; legacy dialogs
-and drawers that inherited the old Card surface use `surface-raised`.
-
-Content variants (`foreground-*`, `label-*`, `muted-*`) and cool/secondary border
-variants retain the distinct neutral text and control tones of existing surfaces.
-Their light values are defined alongside the surface overrides in `index.css`.
-Keep opacity modifiers and state selectors on the consumer when migrating.
-
-The semantic roles in `index.css` are the complete application palette. Use
-them directly rather than coupling a component to a raw color scale.
+The `mineshaft-*` scale (50–900) is the underlying neutral ramp; see
+`index.css` for the full list. Prefer semantic tokens (`card`, `border`,
+`accent`) over raw mineshaft values.
 
 ### Product-area accents (secret-manager)
 
@@ -232,7 +195,7 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
 | [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select with chips, rich rows, and viewport-aware positioning.                   |
 | [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Sunsetting compatibility path for creatable, grouped, or advanced custom-rendering behavior.                |
-| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
+| [`Toggle`](frontend/src/components/v3/generic/Toggle/Toggle.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
 | [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
 | [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                               | Date-range filter with presets — for filter bars.                                                           |
 | [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                           | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
@@ -304,7 +267,7 @@ host component; don't override unless necessary.
 
 ## 5. Layout Principles
 
-- **Page container** — `max-w-8xl` (88rem) centered, `bg-background`.
+- **Page container** — `max-w-8xl` (88rem) centered, `bg-page`.
 - **Page header** — v3 `PageHeader` with scope icon + underlined `h1` + description. Import it from `@app/components/v3` and always set `scope` to the correct hierarchy level. See [`PageHeader.tsx`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx).
 - **Section** — one `Card` per logical section. Title + optional `DocumentationLinkBadge` in `CardHeader`; primary action in `CardAction` (top-right).
 - **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`. **Empty state** — when the table has no rows (and isn't loading), hide the `Table` entirely and render `Empty` in its place; never leave a column header floating above a blank body. Add `className="border"` to `Empty` whenever it's nested in a `Card`, `Sheet`, or `Dialog` so the dashed frame is visible against the parent surface (the component ships dashed-but-borderless on purpose for page-level use).
@@ -315,16 +278,17 @@ host component; don't override unless necessary.
 ## 6. Depth & Elevation
 
 Depth is conveyed by layered surface tones and borders. Shadows are reserved
-for elements that float (Popover, DropdownMenu, Sheet).
+for elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
 
-| Layer           | Surface                                  | Border                        |
-| --------------- | ---------------------------------------- | ----------------------------- |
-| Page            | `bg-background`                          | —                             |
-| Card            | `bg-card`                                | `border-border`               |
-| Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg` |
-| Row hover       | `bg-container-hover`                     | —                             |
-| Focus           | —                                        | 3px ring, `--color-ring`      |
-| Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                             |
+| Layer           | Surface                                  | Border                              |
+| --------------- | ---------------------------------------- | ----------------------------------- |
+| Page            | `bg-background`                          | —                                   |
+| Card            | `bg-card`                                | `border-border`                     |
+| Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg`       |
+| Floating bar    | `bg-popover`                             | `border-border` + `shadow-floating` |
+| Row hover       | `bg-container-hover`                     | —                                   |
+| Focus           | —                                        | 3px ring, `--color-ring`            |
+| Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                                   |
 
 Never add a box-shadow to a Card, Table row, standalone Badge, or `ButtonBadge`;
 it breaks the border-defined system. An overlapping `ButtonBadge` uses its
@@ -346,7 +310,7 @@ legible across the control edge.
 - **DON'T** use v2 components when a v3 equivalent exists unless the existing scope is v2.
 - **DON'T** add box-shadows as a depth cue — borders and surface tones do
   that work. The exception is elements that genuinely float (Popover,
-  DropdownMenu, Sheet), which already include it.
+  DropdownMenu, Sheet, SelectedActionBar), which already include it.
 - **DON'T** invent new colors. If it isn't in `index.css` `@theme`, it
   doesn't belong.
 - **DON'T** use `project` yellow, `org` blue, or `sub-org` green as generic

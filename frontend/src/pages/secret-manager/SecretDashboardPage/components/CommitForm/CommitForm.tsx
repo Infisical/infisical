@@ -1,7 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useCallback, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   CircleAlertIcon,
   ClipboardCheckIcon,
@@ -11,6 +10,7 @@ import {
   SaveIcon,
   TriangleAlertIcon
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { createNotification } from "@app/components/notifications";
 import { SecretVersionDiffView } from "@app/components/secrets/diff";

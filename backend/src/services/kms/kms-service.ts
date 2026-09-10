@@ -18,6 +18,7 @@ import { withCache } from "@app/lib/cache/with-cache";
 import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { deriveCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
 import { setLegacyKeyMaterial, TLegacyKeyMaterial, TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
@@ -1796,6 +1797,13 @@ export const kmsServiceFactory = ({
     await $ensureKekHistory();
   };
 
+  const getCookieSigningKey = () => {
+    if (!ROOT_ENCRYPTION_KEY.length) {
+      throw new InternalServerError({ message: "KMS root key is not loaded" });
+    }
+    return deriveCookieSigningKey(ROOT_ENCRYPTION_KEY);
+  };
+
   /** How a rotation stages a key the instance is not running with yet. */
   const encryptRootKeyForKek = (kekBuffer: Buffer) => {
     if (!ROOT_ENCRYPTION_KEY.length) {
@@ -1892,6 +1900,7 @@ export const kmsServiceFactory = ({
 
   return {
     startService,
+    getCookieSigningKey,
     encryptRootKeyForKek,
     getCurrentKekLabel,
     generateKmsKey,

@@ -44,7 +44,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -1024,7 +1024,7 @@ const Form = ({
                 <FieldTitle>Self Approvals</FieldTitle>
                 <FieldDescription>Allow approvers to review their own requests</FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="self-approvals"
                 aria-label="Allow self approvals"
                 variant="project"
@@ -1046,7 +1046,7 @@ const Form = ({
                     When enabled, machine identities can modify secrets without requiring approval
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="bypass-machine-identities"
                   aria-label="Bypass approval for machine identities"
                   variant="project"
@@ -1069,7 +1069,7 @@ const Form = ({
                   Allow certain users to bypass policy in break-glass situations
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="bypass-approvals"
                 aria-label="Allow approval bypass"
                 variant="project"

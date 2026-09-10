@@ -28,7 +28,7 @@ import { useServerConfig } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
-import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
+import { submitSignupOnboarding, useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
@@ -42,6 +42,7 @@ const createUserInfoFormSchema = (isInvite: boolean, passwordPolicy: TPasswordPo
       firstName: z.string().trim().min(1, "First name is required"),
       lastName: z.string().trim().optional(),
       organizationName: isInvite ? z.string().optional() : GenericResourceNameSchema,
+      attributionSource: z.string().trim().max(512).optional(),
       password: createPasswordSchema(passwordPolicy),
       confirmPassword: z.string().min(1, "Please confirm your password")
     })
@@ -84,6 +85,7 @@ export default function UserInfoStep({
       firstName: "",
       lastName: "",
       organizationName: "",
+      attributionSource: "",
       password: "",
       confirmPassword: ""
     }
@@ -120,6 +122,7 @@ export default function UserInfoStep({
       return;
     }
 
+    const attributionSource = isInvite ? undefined : formData.attributionSource || undefined;
     const response = await completeSignup({
       type: "email",
       email,
@@ -127,11 +130,16 @@ export default function UserInfoStep({
       firstName: formData.firstName,
       lastName: formData.lastName ?? "",
       organizationName: formData.organizationName || undefined,
+      attributionSource,
       hubspotUtk: getHubSpotUtk()
     });
 
     SecurityClient.setSignupToken("");
     SecurityClient.setToken(response.token);
+
+    if (attributionSource) {
+      submitSignupOnboarding({ attributionSource }).catch(() => {});
+    }
 
     // The distinct id has to match the one the backend captures signup events with, which is
     // user.username: the lowercased email.
@@ -187,6 +195,14 @@ export default function UserInfoStep({
           ) : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <input
+            className="hidden"
+            type="text"
+            name="username"
+            autoComplete="username"
+            value={email}
+            readOnly
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
               <FieldLabel className="sr-only" htmlFor="signup-first-name">
@@ -246,6 +262,22 @@ export default function UserInfoStep({
               {showOrganizationNameError && errors.organizationName ? (
                 <FieldError>{errors.organizationName.message}</FieldError>
               ) : null}
+            </Field>
+          )}
+          {!isInvite && (
+            <Field>
+              <FieldLabel htmlFor="signup-attribution-source">
+                Where did you hear about us?{" "}
+                <span className="font-normal text-muted">(optional)</span>
+              </FieldLabel>
+              <Input
+                variant="outlined"
+                {...register("attributionSource")}
+                id="signup-attribution-source"
+                autoComplete="off"
+                placeholder="e.g. Hacker News, a friend, GitHub..."
+                maxLength={512}
+              />
             </Field>
           )}
           <PasswordField
