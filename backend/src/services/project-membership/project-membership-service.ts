@@ -25,7 +25,7 @@ import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipie
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
+import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -458,6 +458,12 @@ export const projectMembershipServiceFactory = ({
     );
 
     const performDelete = async (tx: Knex) => {
+      await assertProductWillRetainAdmin({
+        project: await projectDAL.findById(projectId, tx),
+        excludeMembershipIds: projectMembers.map(({ id }) => id),
+        tx
+      });
+
       await additionalPrivilegeDAL.delete(
         {
           projectId,
@@ -572,6 +578,8 @@ export const projectMembershipServiceFactory = ({
     );
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
+      await assertProductWillRetainAdmin({ project, excludeMembershipIds: [actorMembership.id], tx });
+
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,

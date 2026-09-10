@@ -3,7 +3,6 @@ import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, RESOURCE_SCOPE } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -12,6 +11,7 @@ import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
@@ -298,22 +298,6 @@ export const agentVaultMembershipServiceFactory = ({
     }
   };
 
-  const assertNotLastAdmin = async (projectId: string, membershipId: string, tx: Knex) => {
-    // Counting without serializing would let two concurrent demotions each see the other's admin and both
-    // pass, leaving the product with none. Same lock the project bootstrap takes for its own race.
-    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [`agent-vault-members:${projectId}`]);
-
-    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId }, { tx });
-    const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } }, { tx });
-    // A lapsed temporary role leaves its row behind, and every admin-gated route already ignores those, so
-    // counting them here would let the last acting admin be demoted.
-    const admins = roles.filter((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r));
-
-    if (admins.length <= 1 && admins.some((r) => r.membershipId === membershipId)) {
-      throw new BadRequestError({ message: "Agent Vault must keep at least one admin" });
-    }
-  };
-
   // resolveSession refuses an actor without an active org membership, so a member added without one could never mint.
   const assertActorIsInOrg = async (
     dto: { userId?: string; groupId?: string; identityId?: string },
@@ -424,7 +408,14 @@ export const agentVaultMembershipServiceFactory = ({
       );
       if (!membership) throw new NotFoundError({ message: `${label} does not have access to Agent Vault` });
 
-      if (role !== ProjectMembershipRole.Admin) await assertNotLastAdmin(projectId, membership.id, tx);
+      if (role !== ProjectMembershipRole.Admin) {
+        await assertWillRetainProjectAdmin({
+          scopeProjectId: projectId,
+          excludeMembershipIds: [membership.id],
+          productLabel: "Agent Vault",
+          tx
+        });
+      }
 
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
@@ -462,7 +453,12 @@ export const agentVaultMembershipServiceFactory = ({
       );
       if (!membership) throw new NotFoundError({ message: `${label} does not have access to Agent Vault` });
 
-      await assertNotLastAdmin(projectId, membership.id, tx);
+      await assertWillRetainProjectAdmin({
+        scopeProjectId: projectId,
+        excludeMembershipIds: [membership.id],
+        productLabel: "Agent Vault",
+        tx
+      });
 
       await membershipDAL.delete({ scope: RESOURCE_SCOPE, scopeProjectId: projectId, [column]: id }, tx);
 

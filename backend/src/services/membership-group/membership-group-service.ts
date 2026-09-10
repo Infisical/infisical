@@ -26,7 +26,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
+import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
@@ -302,6 +302,17 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
+      const newRolesHavePermanentAdmin = data.roles.some(
+        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
+      );
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+      }
+
       const doc =
         typeof data?.isActive === "undefined"
           ? existingMembership
@@ -423,6 +434,12 @@ export const membershipGroupServiceFactory = ({
 
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(existingMembership.scopeProjectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+
         await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
           {
             projectId: existingMembership.scopeProjectId,

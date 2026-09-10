@@ -30,7 +30,7 @@ import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-da
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
+import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
@@ -500,6 +500,13 @@ export const membershipUserServiceFactory = ({
           tx
         });
       }
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+      }
 
       const doc =
         typeof data?.isActive === "undefined"
@@ -599,6 +606,12 @@ export const membershipUserServiceFactory = ({
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(dto.scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+
         await additionalPrivilegeDAL.delete(
           {
             actorUserId: dto.selector.userId,

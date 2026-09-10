@@ -1108,6 +1108,69 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("generic project routes", async () => {
+    // The org-level pages reach the Agent Vault project through the platform's own membership routes, so the
+    // last-admin rule has to hold there too, not only on the product routes.
+    const projectFor = async () =>
+      (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
+    const seedMembership = async (projectId: string) =>
+      testDb("memberships")
+        .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
+        .first();
+    const clearSeedPermissionCache = (projectId: string) =>
+      testKeyStore.deleteItemsByKeyIn([
+        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
+        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
+      ]);
+
+    test("the generic role change refuses to demote the last Agent Vault admin", async () => {
+      const projectId = await projectFor();
+      const membership = await seedMembership(projectId);
+
+      const res = await inject("PATCH", `/api/v1/projects/${projectId}/memberships/${membership.id}`, {
+        roles: [{ role: ProjectMembershipRole.Member }]
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toContain("must keep at least one admin");
+
+      const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
+      expect(role.role).toBe(ProjectMembershipRole.Admin);
+    });
+
+    test("leaving through the generic route refuses when you are the last Agent Vault admin", async () => {
+      const projectId = await projectFor();
+
+      const res = await inject("DELETE", `/api/v1/projects/${projectId}/leave`);
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toContain("must keep at least one admin");
+      expect(await seedMembership(projectId)).toBeTruthy();
+    });
+
+    test("the generic role change goes through once another admin exists", async () => {
+      const projectId = await projectFor();
+      const membership = await seedMembership(projectId);
+      const other = await createOrgIdentity(`av-second-admin-${Date.now()}`);
+      expect(
+        (await inject("POST", `/api/v1/agent-vault/memberships/identities/${other.id}`, { role: "admin" })).statusCode
+      ).toBe(200);
+
+      try {
+        const demoted = await inject("PATCH", `/api/v1/projects/${projectId}/memberships/${membership.id}`, {
+          roles: [{ role: ProjectMembershipRole.Member }]
+        });
+        expect(demoted.statusCode).toBe(200);
+        const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
+        expect(role.role).toBe(ProjectMembershipRole.Member);
+      } finally {
+        await testDb("membership_roles")
+          .where({ membershipId: membership.id })
+          .update({ role: ProjectMembershipRole.Admin });
+        await clearSeedPermissionCache(projectId);
+        await deleteOrgIdentity(other.id);
+      }
+    });
+  });
+
   describe("org invite", async () => {
     test("grantAgentVaultAccess makes the invitee a member of the implicit project", async () => {
       const inviteeEmail = `agent-vault-invite-${crypto.randomUUID()}@localhost.local`;
