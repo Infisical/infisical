@@ -189,23 +189,6 @@ type TSyncSecretDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
-export const getKeyWithSchema = ({
-  key,
-  environment,
-  schema
-}: {
-  key: string;
-  environment: string;
-  schema?: string;
-}) => {
-  if (!schema) return key;
-
-  return handlebars.compile(schema)({
-    secretKey: key,
-    environment
-  });
-};
-
 // Add schema to secret keys
 const addSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   if (!schema) return unprocessedSecretMap;
