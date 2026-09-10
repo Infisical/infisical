@@ -22,7 +22,10 @@ import {
 } from "./access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
 import { TAccessApprovalPolicyEnvironmentDALFactory } from "./access-approval-policy-environment-dal";
-import { approvalPolicyMembershipVerifierFactory } from "./access-approval-policy-fns";
+import {
+  approvalPolicyMembershipVerifierFactory,
+  validateExternalPolicyBypassConfig
+} from "./access-approval-policy-fns";
 import {
   ApproverType,
   BypasserType,
@@ -112,6 +115,10 @@ export const accessApprovalPolicyServiceFactory = ({
     actorRootOrgId,
     actorParentOrgId
   }) => {
+    if (externalApproval) {
+      validateExternalPolicyBypassConfig({ bypassers, enforcementLevel });
+    }
+
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -406,6 +413,10 @@ export const accessApprovalPolicyServiceFactory = ({
 
     const isExternalPolicy =
       externalApproval === null ? false : Boolean(externalApproval || accessApprovalPolicy.externalApprovalPolicyId);
+
+    if (isExternalPolicy) {
+      validateExternalPolicyBypassConfig({ bypassers, enforcementLevel });
+    }
 
     if (!isExternalPolicy && approvers.length === 0) {
       throw new BadRequestError({ message: "At least one approver should be provided" });

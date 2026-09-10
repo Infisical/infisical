@@ -121,24 +121,29 @@ export const approvalPolicyFormSchema = z
       .optional()
   })
   .superRefine((data, ctx) => {
-    const bypasserCount = data.userBypassers.length + data.groupBypassers.length;
-    if (bypasserCount > MAX_POLICY_SUBJECTS) {
-      ctx.addIssue({
-        path: ["userBypassers"],
-        code: z.ZodIssueCode.custom,
-        message: `Cannot have more than ${MAX_POLICY_SUBJECTS} bypassers`
-      });
-    }
+    // the form hides bypassers for external policies, so an issue here would be unreachable
+    const isExternalPolicy = data.policyType === PolicyType.AccessPolicy && data.externalMode;
 
-    data.userBypassers.forEach((bypasser, index) => {
-      if (bypasser.isOrgMembershipActive === false) {
+    if (!isExternalPolicy) {
+      const bypasserCount = data.userBypassers.length + data.groupBypassers.length;
+      if (bypasserCount > MAX_POLICY_SUBJECTS) {
         ctx.addIssue({
-          path: ["userBypassers", index],
+          path: ["userBypassers"],
           code: z.ZodIssueCode.custom,
-          message: "Inactive users cannot bypass approval policies"
+          message: `Cannot have more than ${MAX_POLICY_SUBJECTS} bypassers`
         });
       }
-    });
+
+      data.userBypassers.forEach((bypasser, index) => {
+        if (bypasser.isOrgMembershipActive === false) {
+          ctx.addIssue({
+            path: ["userBypassers", index],
+            code: z.ZodIssueCode.custom,
+            message: "Inactive users cannot bypass approval policies"
+          });
+        }
+      });
+    }
 
     if (data.policyType === PolicyType.ChangePolicy) {
       const approverCount = data.userApprovers.length + data.groupApprovers.length;

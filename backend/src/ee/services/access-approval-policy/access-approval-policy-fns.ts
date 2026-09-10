@@ -1,5 +1,27 @@
 import { BadRequestError } from "@app/lib/errors";
+import { EnforcementLevel } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+
+import { TUpdateAccessApprovalPolicy } from "./access-approval-policy-types";
+
+export const validateExternalPolicyBypassConfig = ({
+  bypassers,
+  enforcementLevel
+}: Pick<TUpdateAccessApprovalPolicy, "bypassers" | "enforcementLevel">) => {
+  if (bypassers?.length) {
+    throw new BadRequestError({
+      message:
+        "Bypassers cannot be set on a policy reviewed by an external approval system. Remove the bypassers, or remove the external approval configuration."
+    });
+  }
+
+  if (enforcementLevel === EnforcementLevel.Soft) {
+    throw new BadRequestError({
+      message:
+        "Soft enforcement cannot be set on a policy reviewed by an external approval system, because its requests cannot be reviewed in Infisical. Use hard enforcement, or remove the external approval configuration."
+    });
+  }
+};
 
 type TApprovalPolicyMembershipVerifierFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;

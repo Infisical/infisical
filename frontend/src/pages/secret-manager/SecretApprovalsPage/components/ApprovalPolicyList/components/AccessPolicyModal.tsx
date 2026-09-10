@@ -45,7 +45,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -323,7 +322,8 @@ const Form = ({
             })),
         // POST only accepts the object or an omitted key -- an explicit null fails validation
         externalApproval: externalMode ? toExternalApprovalInput(externalApproval) : undefined,
-        bypassers: bypassers.length > 0 ? bypassers : undefined,
+        enforcementLevel: externalMode ? EnforcementLevel.Hard : data.enforcementLevel,
+        bypassers: !externalMode && bypassers.length > 0 ? bypassers : undefined,
         environments: environments.map((env) => env.slug),
         projectSlug
       });
@@ -379,7 +379,8 @@ const Form = ({
             })),
         // PATCH reads null as "detach and delete the external policy row"
         externalApproval: externalMode ? toExternalApprovalInput(externalApproval) : null,
-        bypassers: bypassers.length > 0 ? bypassers : undefined,
+        enforcementLevel: externalMode ? EnforcementLevel.Hard : data.enforcementLevel,
+        bypassers: !externalMode && bypassers.length > 0 ? bypassers : undefined,
         environments: environments.map((env) => env.slug),
         projectSlug
       });
@@ -697,7 +698,7 @@ const Form = ({
             <FieldTitle>Self Approvals</FieldTitle>
             <FieldDescription>Allow approvers to review their own requests</FieldDescription>
           </FieldContent>
-          <Switch
+          <Toggle
             id="self-approvals"
             aria-label="Allow self approvals"
             variant="project"
@@ -1136,111 +1137,112 @@ const Form = ({
                 />
                 <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
               </FieldContent>
-              <Toggle
-                id="self-approvals"
-                aria-label="Allow self approvals"
-                variant="project"
-                checked={value}
-                onCheckedChange={onChange}
-              />
             </Field>
             {renderSelfApprovals()}
           </>
         )}
-        <Separator />
-        {!isAccessPolicyType && (
-          <Controller
-            control={control}
-            name="bypassForMachineIdentities"
-            render={({ field: { value, onChange } }) => (
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldTitle>Bypass Approval for Machine Identities</FieldTitle>
-                  <FieldDescription>
-                    When enabled, machine identities can modify secrets without requiring approval
-                  </FieldDescription>
-                </FieldContent>
-                <Toggle
-                  id="bypass-machine-identities"
-                  aria-label="Bypass approval for machine identities"
-                  variant="project"
-                  checked={value}
-                  onCheckedChange={onChange}
-                />
-              </Field>
-            )}
-          />
-        )}
-        <Controller
-          control={control}
-          name="enforcementLevel"
-          defaultValue={EnforcementLevel.Hard}
-          render={({ field: { value, onChange } }) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>Bypass Approvals</FieldTitle>
-                <FieldDescription>
-                  Allow certain users to bypass policy in break-glass situations
-                </FieldDescription>
-              </FieldContent>
-              <Toggle
-                id="bypass-approvals"
-                aria-label="Allow approval bypass"
-                variant="project"
-                checked={value === EnforcementLevel.Soft}
-                onCheckedChange={(v) => onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)}
-              />
-            </Field>
-          )}
-        />
-        {enforcementLevel === EnforcementLevel.Soft && (
+        {!isExternalMode && (
           <>
-            <Field>
-              <FieldLabel>Bypassers</FieldLabel>
-              <FieldContent>
-                <CreatableSelect<ApproverOptionData>
-                  isMulti
-                  aria-label="Bypassers"
-                  placeholder="Select bypassers or enter a member email..."
-                  options={bypasserOptions}
-                  getOptionValue={getApproverOptionValue}
-                  getOptionLabel={getApproverOptionLabel}
-                  filterOption={filterApproverOption}
-                  formatOptionLabel={formatApproverOptionLabel}
-                  formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
-                  isValidNewOption={(input, value) =>
-                    canAddMemberEmail(input, [
-                      ...(value as MultiValue<ApproverOptionData>),
-                      ...bypasserOptions
-                    ])
-                  }
-                  isOptionDisabled={(option) =>
-                    option.type === BypasserType.User && option.isOrgMembershipActive === false
-                  }
-                  value={selectedPolicyBypassers}
-                  onChange={(newValue) =>
-                    updatePolicyBypassers([...(newValue as MultiValue<ApproverOptionData>)])
-                  }
-                  onCreateOption={(input) =>
-                    updatePolicyBypassers([
-                      ...selectedPolicyBypassers,
-                      getManualMemberOption(input, BypasserType.User)
-                    ])
-                  }
-                  noOptionsMessage={() => "Enter an exact project member email address."}
-                  isError={Boolean(errors.userBypassers || errors.groupBypassers)}
-                />
-                <FieldError errors={[errors.userBypassers, errors.groupBypassers]} />
-              </FieldContent>
-            </Field>
+            <Separator />
+            {!isAccessPolicyType && (
+              <Controller
+                control={control}
+                name="bypassForMachineIdentities"
+                render={({ field: { value, onChange } }) => (
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <FieldTitle>Bypass Approval for Machine Identities</FieldTitle>
+                      <FieldDescription>
+                        When enabled, machine identities can modify secrets without requiring
+                        approval
+                      </FieldDescription>
+                    </FieldContent>
+                    <Toggle
+                      id="bypass-machine-identities"
+                      aria-label="Bypass approval for machine identities"
+                      variant="project"
+                      checked={value}
+                      onCheckedChange={onChange}
+                    />
+                  </Field>
+                )}
+              />
+            )}
+            <Controller
+              control={control}
+              name="enforcementLevel"
+              defaultValue={EnforcementLevel.Hard}
+              render={({ field: { value, onChange } }) => (
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Bypass Approvals</FieldTitle>
+                    <FieldDescription>
+                      Allow certain users to bypass policy in break-glass situations
+                    </FieldDescription>
+                  </FieldContent>
+                  <Toggle
+                    id="bypass-approvals"
+                    aria-label="Allow approval bypass"
+                    variant="project"
+                    checked={value === EnforcementLevel.Soft}
+                    onCheckedChange={(v) =>
+                      onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)
+                    }
+                  />
+                </Field>
+              )}
+            />
+            {enforcementLevel === EnforcementLevel.Soft && (
+              <>
+                <Field>
+                  <FieldLabel>Bypassers</FieldLabel>
+                  <FieldContent>
+                    <CreatableSelect<ApproverOptionData>
+                      isMulti
+                      aria-label="Bypassers"
+                      placeholder="Select bypassers or enter a member email..."
+                      options={bypasserOptions}
+                      getOptionValue={getApproverOptionValue}
+                      getOptionLabel={getApproverOptionLabel}
+                      filterOption={filterApproverOption}
+                      formatOptionLabel={formatApproverOptionLabel}
+                      formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                      isValidNewOption={(input, value) =>
+                        canAddMemberEmail(input, [
+                          ...(value as MultiValue<ApproverOptionData>),
+                          ...bypasserOptions
+                        ])
+                      }
+                      isOptionDisabled={(option) =>
+                        option.type === BypasserType.User && option.isOrgMembershipActive === false
+                      }
+                      value={selectedPolicyBypassers}
+                      onChange={(newValue) =>
+                        updatePolicyBypassers([...(newValue as MultiValue<ApproverOptionData>)])
+                      }
+                      onCreateOption={(input) =>
+                        updatePolicyBypassers([
+                          ...selectedPolicyBypassers,
+                          getManualMemberOption(input, BypasserType.User)
+                        ])
+                      }
+                      noOptionsMessage={() => "Enter an exact project member email address."}
+                      isError={Boolean(errors.userBypassers || errors.groupBypassers)}
+                    />
+                    <FieldError errors={[errors.userBypassers, errors.groupBypassers]} />
+                  </FieldContent>
+                </Field>
 
-            {bypasserCount <= 0 && (
-              <Alert variant="warning">
-                <TriangleAlertIcon />
-                <AlertDescription>
-                  Not selecting specific users or groups will allow anyone to bypass this policy.
-                </AlertDescription>
-              </Alert>
+                {bypasserCount <= 0 && (
+                  <Alert variant="warning">
+                    <TriangleAlertIcon />
+                    <AlertDescription>
+                      Not selecting specific users or groups will allow anyone to bypass this
+                      policy.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </>
             )}
           </>
         )}

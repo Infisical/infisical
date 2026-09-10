@@ -182,6 +182,21 @@ describe("approval policy form schema", () => {
     assert.equal(result.success, true);
   });
 
+  it("accepts an external-mode policy that still carries an inactive bypasser", () => {
+    const result = approvalPolicyFormSchema.safeParse({
+      ...externalPolicy,
+      userBypassers: [
+        {
+          type: BypasserType.User,
+          id: "inactive-bypasser",
+          isOrgMembershipActive: false
+        }
+      ]
+    });
+
+    assert.equal(result.success, true);
+  });
+
   it("still requires an approval step when external mode is off", () => {
     const issuePaths = getIssuePaths({ ...externalPolicy, externalMode: false });
 
