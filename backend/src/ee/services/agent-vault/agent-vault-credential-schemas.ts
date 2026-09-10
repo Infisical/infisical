@@ -21,16 +21,38 @@ export const AGENT_VAULT_NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
 export const AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE =
   "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
-export const AgentVaultBearerConfigSchema = z.object({
-  headerName: z
-    .string()
-    .trim()
-    .min(1)
-    .max(128)
-    .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
-    .default("Authorization"),
-  headerPrefix: z.string().trim().max(64).default("Bearer")
-});
+const AGENT_VAULT_DEFAULT_HEADER_NAME = "Authorization";
+const AGENT_VAULT_DEFAULT_HEADER_PREFIX = "Bearer";
+
+const bearerHeaderName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE);
+
+// The shape a stored bearer config has, where both halves are already settled.
+export const AgentVaultBearerConfigFields = {
+  headerName: bearerHeaderName.default(AGENT_VAULT_DEFAULT_HEADER_NAME),
+  headerPrefix: z.string().trim().max(64).default("")
+};
+
+// Bearer is the scheme RFC 6750 defines for Authorization, so the two settle together on the way in.
+// Naming another header leaves that scheme behind, and filling one in there would send a word the
+// caller never asked for.
+export const AgentVaultBearerConfigSchema = z
+  .object({
+    headerName: bearerHeaderName.default(AGENT_VAULT_DEFAULT_HEADER_NAME),
+    headerPrefix: z.string().trim().max(64).optional()
+  })
+  .transform(({ headerName, headerPrefix }) => ({
+    headerName,
+    headerPrefix:
+      headerPrefix ??
+      (headerName.toLowerCase() === AGENT_VAULT_DEFAULT_HEADER_NAME.toLowerCase()
+        ? AGENT_VAULT_DEFAULT_HEADER_PREFIX
+        : "")
+  }));
 
 // Nothing plaintext: the username is sealed with the password, since for some services (Stripe, Postmark)
 // the username is the key.
@@ -39,7 +61,7 @@ export const AgentVaultBasicConfigSchema = z.object({});
 export const AgentVaultPassthroughConfigSchema = z.object({});
 
 export const AgentVaultCredentialConfigSchema = z.discriminatedUnion("type", [
-  AgentVaultBearerConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.Bearer) }),
+  z.object({ ...AgentVaultBearerConfigFields, type: z.literal(AgentVaultCredentialType.Bearer) }),
   AgentVaultBasicConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.Basic) }),
   AgentVaultPassthroughConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.Passthrough) })
 ]);
