@@ -79,13 +79,13 @@ export const EnrollmentTokenContent = ({
   const isExpired = expiryLabel === "Expired";
 
   const cliCommand = useMemo(() => {
-    const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
     const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, enrollmentToken, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
-    const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
     const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, enrollmentToken, isDirect, listenAddress, resolvedRelayName, siteURL]);

@@ -90,7 +90,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
     The examples below are grouped by authentication method. The connection mode is set by two flags, which you can add to any of them:
 
     - `--listen-address=<host:port>` for direct listen, where `host:port` is the address Infisical dials
-    - `--relay=<relay-name>` to pin a relay, or omit it to let the gateway pick the healthiest one
+    - `--target-relay-name=<relay-name>` to pin a relay, or omit it to let the gateway pick the healthiest one
 
     Passing both runs the gateway in both modes.
 
@@ -105,7 +105,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
     # Both modes
     infisical gateway start my-gateway \
       --listen-address=gateway.internal:8443 \
-      --relay=my-relay \
+      --target-relay-name=my-relay \
       --enroll-method=token \
       --token=<enrollment-token> \
       --domain=<your-infisical-domain>
@@ -336,17 +336,17 @@ To migrate a gateway to a different host with zero downtime: select **Generate d
 
 ## Switching modes without an outage
 
-A Gateway can run both modes at once. Pass `--relay` and `--listen-address` together, and Infisical uses the listen address first, falling back to the relay when that address stops answering. Health checks probe each mode separately. The Gateway stays healthy while either one works.
+A Gateway can run both modes at once. Pass `--target-relay-name` and `--listen-address` together, and Infisical uses the listen address first, falling back to the relay when that address stops answering. Health checks probe each mode separately. The Gateway stays healthy while either one works.
 
 Running both is mainly how you switch an existing Gateway between modes without an outage. A Gateway declares its transports every time it registers, so the move is a flag change and a restart:
 
 | Flags | Mode |
 |---|---|
-| `--relay=my-relay` | Relay only |
-| `--relay=my-relay --listen-address=gateway.internal:8443` | Both |
+| `--target-relay-name=my-relay` | Relay only |
+| `--target-relay-name=my-relay --listen-address=gateway.internal:8443` | Both |
 | `--listen-address=gateway.internal:8443` | Direct only |
 
-Stop at the middle step and check the Gateway's health. A wrong address costs you nothing there: operations keep completing over the relay, and the Gateway page reports the direct path as unreachable. Drop `--relay` once direct is healthy, or drop `--listen-address` to go back.
+Stop at the middle step and check the Gateway's health. A wrong address costs you nothing there: operations keep completing over the relay, and the Gateway page reports the direct path as unreachable. Drop `--target-relay-name` once direct is healthy, or drop `--listen-address` to go back.
 
 Running both permanently only helps clients that can reach the listen address. PAM CLI sessions dial the Gateway from the user's own machine. A user outside the network waits for that attempt to time out before the session falls back to the relay. If most of your CLI users are outside the network, relay mode alone serves them better.
 
@@ -369,7 +369,7 @@ In direct listen mode, one inbound port has to be open: the port in your listen 
 <Accordion title="Can I switch a gateway between relay and direct listen?">
 Yes. Open the gateway's detail page, choose the mode you want under **Connection Mode**, and re-run the generated command on the host. The gateway re-registers with the new mode and is issued the certificate it needs for it.
 
-Switching away from a mode drops it. To keep both, pass `--relay` and `--listen-address` together.
+Switching away from a mode drops it. To keep both, pass `--target-relay-name` and `--listen-address` together.
 
 </Accordion>
 

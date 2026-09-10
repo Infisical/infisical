@@ -79,7 +79,7 @@ Verify registration at **Organization Settings** > **Networking** > **Gateways**
 For all available flags, see the [Gateway CLI Reference](/cli/commands/gateway).
 
 <Accordion title="Using a relay instead">
-Direct listen needs nothing else running, so prefer it unless you're testing relay behaviour itself. For that, start a relay first and point the gateway at it with `--relay` instead of `--listen-address`:
+Direct listen needs nothing else running, so prefer it unless you're testing relay behaviour itself. For that, start a relay first and point the gateway at it with `--target-relay-name` instead of `--listen-address`:
 
 ```bash
 go run main.go relay start \
@@ -93,7 +93,7 @@ go run main.go relay start \
 go run main.go gateway start \
   --token=<your-token> \
   --domain=http://localhost:8080 \
-  --relay=local-relay \
+  --target-relay-name=local-relay \
   --name=local-gateway \
   --pam-session-recording-path=$(pwd)/session
 ```

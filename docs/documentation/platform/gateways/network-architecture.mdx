@@ -104,7 +104,7 @@ If you run a self-hosted relay, that host needs:
   </Accordion>
 
   <Accordion title="Which relay address do I need to allowlist?">
-    With the default **Auto Select Relay**, the Gateway may connect to, and fail over between, any managed relay Infisical operates for your region, so a strict outbound TCP 2222 allowlist must include every managed relay endpoint. You can find these under **Organization Settings → Networking**, or ask Infisical support. To allowlist a single address instead, pin the Gateway to one relay at enrollment with the `--relay` option; this removes automatic failover to other relays.
+    With the default **Auto Select Relay**, the Gateway may connect to, and fail over between, any managed relay Infisical operates for your region, so a strict outbound TCP 2222 allowlist must include every managed relay endpoint. You can find these under **Organization Settings → Networking**, or ask Infisical support. To allowlist a single address instead, pin the Gateway to one relay at enrollment with the `--target-relay-name` option; this removes automatic failover to other relays.
   </Accordion>
 
   <Accordion title="Can Gateway traffic egress through an HTTP forward proxy?">

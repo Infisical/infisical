@@ -122,7 +122,7 @@ spec:
             {{- end }}
             {{- end }}
             {{- if .Values.gateway.relayName }}
-            - --relay={{ .Values.gateway.relayName }}
+            - --target-relay-name={{ .Values.gateway.relayName }}
             {{- end }}
             {{- if .Values.gateway.listenAddress }}
             - --listen-address={{ .Values.gateway.listenAddress }}

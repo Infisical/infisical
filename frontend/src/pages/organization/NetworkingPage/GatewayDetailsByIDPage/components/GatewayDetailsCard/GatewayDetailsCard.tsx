@@ -76,17 +76,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
   const { authMethod } = gateway;
   const isIdentityGateway = authMethod.method === "identity";
   const effectiveHeartbeat = getLastSeenHeartbeat(gateway);
-  const describeConnection = () => {
-    if (gateway.directAddress) {
-      const mode = gateway.relayId ? "Direct + Relay" : "Direct";
-      return `${mode} (${gateway.directAddress})`;
-    }
-    return gateway.relayId ? "Relay" : "Not configured";
-  };
-  const connection = describeConnection();
-  // With one transport the badge and Last Seen above already say it.
   const transportHealth = getGatewayTransportHealth(gateway);
-  const perTransportHealth = transportHealth.length > 1 ? transportHealth : [];
 
   return (
     <Card className="w-full">
@@ -127,24 +117,38 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
           <Detail>
             <DetailLabel>Connection</DetailLabel>
             <DetailValue className="flex flex-col items-start gap-1">
-              <span>{connection}</span>
-              {perTransportHealth.map((transport) => (
-                <span key={transport.transport} className="flex items-center gap-2 text-xs">
-                  <Badge variant={transport.isHealthy ? "success" : "danger"} iconPosition="left">
-                    {transport.isHealthy ? (
-                      <CircleCheckIcon className="size-3" />
-                    ) : (
-                      <CircleXIcon className="size-3" />
-                    )}
-                    {transport.label}
-                  </Badge>
-                  <span className="text-muted">
-                    {transport.probedAt
-                      ? `last seen ${format(new Date(transport.probedAt), "PPp")}`
-                      : "never reached"}
+              {transportHealth.length ? (
+                transportHealth.map((transport) => (
+                  <span key={transport.transport} className="flex items-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          variant={transport.isHealthy ? "success" : "danger"}
+                          iconPosition="left"
+                          className="cursor-default"
+                        >
+                          {transport.isHealthy ? (
+                            <CircleCheckIcon className="size-3" />
+                          ) : (
+                            <CircleXIcon className="size-3" />
+                          )}
+                          {transport.label}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {transport.probedAt
+                          ? `Last seen ${format(new Date(transport.probedAt), "PPpp")}`
+                          : "Never reached"}
+                      </TooltipContent>
+                    </Tooltip>
+                    {transport.transport === "direct" && gateway.directAddress ? (
+                      <span className="text-muted text-xs">{gateway.directAddress}</span>
+                    ) : null}
                   </span>
-                </span>
-              ))}
+                ))
+              ) : (
+                <span className="text-muted">Not configured</span>
+              )}
             </DetailValue>
           </Detail>
           <Detail>

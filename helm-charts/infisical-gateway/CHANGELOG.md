@@ -4,7 +4,6 @@
 * **Breaking:** the Service is created only in direct listen mode. A relay-mode gateway accepts no inbound connections, so the chart no longer creates a Service for one. Relay-mode installs upgrading from 1.4.0 will have their Service removed.
 * **Breaking:** `service.port` now defaults to `""`, meaning the port from `gateway.listenAddress`, rather than `80`. A Service answering on any other port is unreachable at the address registered with Infisical. Set it explicitly to put a different port in front of the gateway.
 * `gateway.relayName` and `gateway.listenAddress` can be set together to run both transports. Infisical then prefers the direct address and falls back to the relay.
-* `gateway.relayName` now renders as `--relay`, replacing the deprecated `--target-relay-name`.
 * `gateway.listenAddress` requires an `image.tag` whose CLI supports `--listen-address`. The default tag predates the flag, and a gateway started with it crash-loops on `unknown flag: --listen-address`.
 
 ## 1.4.0 (August 6, 2026)

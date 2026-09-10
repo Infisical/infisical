@@ -181,8 +181,7 @@ export const GatewayDeploySection = ({
                           </FieldTitle>
                           <FieldDescription>
                             Infisical opens the connection to the gateway. Choose this when your
-                            self-hosted Infisical runs on the same private network as the gateway,
-                            so it can reach the gateway&apos;s address without a relay.
+                            self-hosted Infisical can reach the gateway&apos;s address.
                           </FieldDescription>
                         </FieldContent>
                         <RadioGroupItem value="direct" id="gateway-connection-mode-direct" />

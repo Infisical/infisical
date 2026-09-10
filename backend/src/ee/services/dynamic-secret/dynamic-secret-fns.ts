@@ -3,7 +3,7 @@ import net from "node:net";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { isPrivateIp } from "@app/lib/ip/ipRange";
+import { getIpRange, isPrivateIp } from "@app/lib/ip/ipRange";
 import { getDbConnectionHost } from "@app/lib/knex";
 
 const getReservedIps = async () => {
@@ -30,6 +30,19 @@ const getReservedIps = async () => {
 };
 
 // Unlike verifyHostInputValidity, allows private hosts: a gateway's listen address is private by design.
+// A direct gateway lives on a private network, so private and unique-local space stays allowed.
+// Everything else here would point the platform at itself or at its own link-local neighbours,
+// including the cloud metadata endpoint on 169.254.0.0/16.
+const UNDIALABLE_IP_RANGES = new Set([
+  "unspecified",
+  "broadcast",
+  "multicast",
+  "linkLocal",
+  "loopback",
+  "reserved",
+  "ipv4Mapped"
+]);
+
 export const assertHostNotInfisicalInfrastructure = async ({ host }: { host: string }) => {
   const appCfg = getConfig();
   if (appCfg.isDevelopmentMode || appCfg.isTestMode) return;
@@ -44,6 +57,13 @@ export const assertHostNotInfisicalInfrastructure = async ({ host }: { host: str
       // A gateway is often registered before its DNS record exists.
       return;
     }
+  }
+
+  const undialable = hostIps.find((el) => UNDIALABLE_IP_RANGES.has(getIpRange(el)));
+  if (undialable) {
+    throw new BadRequestError({
+      message: `The address ${undialable} cannot be dialed by Infisical. Use an address the Infisical instance can reach over your network.`
+    });
   }
 
   const exclusiveIps = await getReservedIps();

@@ -61,7 +61,7 @@ helm install infisical-gateway infisical/infisical-gateway \\
   }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const cliCommand = useMemo(() => {
-    const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
     const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `infisical gateway start ${gatewayName} --enroll-method=kubernetes --gateway-id=${gatewayId}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);

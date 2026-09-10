@@ -40,13 +40,13 @@ export const AwsStartCommandContent = ({
   const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
 
   const cliCommand = useMemo(() => {
-    const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
     const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `infisical gateway start ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
-    const relayPart = resolvedRelayName ? ` --relay=${resolvedRelayName}` : "";
+    const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
     const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
     return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=aws --gateway-id=${gatewayId}${relayPart}${directPart} --domain=${siteURL}`;
   }, [gatewayName, gatewayId, isDirect, listenAddress, resolvedRelayName, siteURL]);

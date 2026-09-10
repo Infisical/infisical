@@ -4,4 +4,4 @@
 gateway:
   name: ci-test-gateway
 extraArgs:
-  - --relay=ci-test-relay
+  - --target-relay-name=ci-test-relay
