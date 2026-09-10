@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
@@ -7,6 +9,11 @@ import { DatabaseError } from "@app/lib/errors";
 import { computeBackoffMs, EventOutboxStatus, TOutboxFlushKey } from "./event-outbox-types";
 
 export type TEventOutboxDALFactory = ReturnType<typeof eventOutboxDALFactory>;
+
+export type TOutboxClaim = {
+  lockToken: string;
+  rows: TEventOutbox[];
+};
 
 export type TOutboxInsertRow = {
   consumer: string;
@@ -59,8 +66,11 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  // One statement on purpose: the row locks live only as long as the UPDATE.
-  const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TEventOutbox[]> => {
+  // One statement on purpose: the row locks live only as long as the UPDATE. The claim also stamps a
+  // fresh lockToken, which is what lets extendClaims and commitResults tell this claim apart from a
+  // later one over the same rows.
+  const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TOutboxClaim> => {
+    const lockToken = crypto.randomUUID();
     try {
       const claimed = await db(TableName.EventOutbox)
         .whereIn("id", (qb) => {
@@ -75,48 +85,57 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             .forUpdate()
             .skipLocked();
         })
-        .update({ status: EventOutboxStatus.Processing, lockedAt: db.fn.now() })
+        .update({ status: EventOutboxStatus.Processing, lockedAt: db.fn.now(), lockToken })
         .returning("*");
 
       // RETURNING order is arbitrary, and handle() is promised id order.
-      return (claimed as unknown as TEventOutbox[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+      const rows = (claimed as unknown as TEventOutbox[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+      return { lockToken, rows };
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: claimBatch" });
     }
   };
 
   // A batch that outlives the stale threshold has to keep lockedAt fresh or the sweeper hands its rows
-  // to another worker mid-delivery.
-  const extendClaims = async (ids: string[]): Promise<void> => {
+  // to another worker mid-delivery. Scoped to the caller's own claim, so a heartbeat that comes back
+  // after the sweeper recycled these rows can't refresh the new owner's lock.
+  const extendClaims = async (ids: string[], lockToken: string): Promise<void> => {
     if (ids.length === 0) return;
     try {
       await db(TableName.EventOutbox)
         .whereIn("id", ids)
         .where("status", EventOutboxStatus.Processing)
+        .where("lockToken", lockToken)
         .update({ lockedAt: db.fn.now() });
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: extendClaims" });
     }
   };
 
+  // Returns how many rows were settled, which is short of what the caller claimed when the claim was
+  // recycled mid-delivery and the rows now belong to another worker.
   const commitResults = async (input: {
+    lockToken: string;
     delivered: { ids: string[]; progress?: Record<string, unknown> | null }[];
     retriable: { ids: string[]; nextRetryDelayMs: number; progress?: Record<string, unknown> | null; error?: string }[];
     failed: { ids: string[]; error?: string }[];
-  }): Promise<void> => {
+  }): Promise<number> => {
     const total =
       input.delivered.reduce((n, g) => n + g.ids.length, 0) +
       input.retriable.reduce((n, g) => n + g.ids.length, 0) +
       input.failed.reduce((n, g) => n + g.ids.length, 0);
-    if (total === 0) return;
+    if (total === 0) return 0;
 
     try {
-      await db.transaction(async (tx) => {
-        const settle = (ids: string[], values: Record<string, unknown>) =>
-          tx(TableName.EventOutbox)
+      return await db.transaction(async (tx) => {
+        let settled = 0;
+        const settle = async (ids: string[], values: Record<string, unknown>) => {
+          settled += await tx(TableName.EventOutbox)
             .whereIn("id", ids)
             .where("status", EventOutboxStatus.Processing)
-            .update({ lockedAt: null, ...values });
+            .where("lockToken", input.lockToken)
+            .update({ lockedAt: null, lockToken: null, ...values });
+        };
 
         const progressOf = (group: { progress?: Record<string, unknown> | null }) =>
           group.progress !== undefined ? { progress: JSON.stringify(group.progress) } : {};
@@ -145,6 +164,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             lastError: group.error ?? null
           });
         }
+
+        return settled;
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: commitResults" });
@@ -188,6 +209,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
               attempts: db.raw('"attempts" + 1'),
               nextRetryAt: db.raw(`NOW() + (? || ' milliseconds')::INTERVAL`, [computeBackoffMs(attempts + 1)]),
               lockedAt: null,
+              lockToken: null,
               lastError: "Worker did not report a result before the claim went stale"
             });
         }
@@ -199,6 +221,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
               status: EventOutboxStatus.Failed,
               attempts: db.raw('"attempts" + 1'),
               lockedAt: null,
+              lockToken: null,
               lastError: "Worker did not report a result before the claim went stale"
             });
         }

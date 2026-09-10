@@ -6,7 +6,7 @@ import { EventOutboxStatus } from "./event-outbox-types";
 // These assert query *shape*, in the style of alert-dal.test.ts. Only a real database can show that
 // two claimers never take the same row, so what a unit test protects is that the clauses buying that
 // guarantee are still there.
-const buildDAL = (opts?: { returning?: unknown[] }) => {
+const buildDAL = (opts?: { returning?: unknown[]; updated?: number; selected?: unknown[] }) => {
   const calls = {
     where: [] as unknown[][],
     whereIn: [] as unknown[][],
@@ -23,6 +23,10 @@ const buildDAL = (opts?: { returning?: unknown[] }) => {
     groupBy: [] as unknown[][],
     orderByRaw: [] as unknown[]
   };
+
+  // knex resolves an UPDATE to the affected row count and a SELECT to rows, and commitResults reads
+  // that count, so the mock has to answer each with the right shape.
+  let lastOp: "select" | "update" = "select";
 
   const chain: Record<string, unknown> = {};
   Object.assign(chain, {
@@ -85,13 +89,18 @@ const buildDAL = (opts?: { returning?: unknown[] }) => {
     },
     update: (patch: Record<string, unknown>) => {
       calls.update.push(patch);
+      lastOp = "update";
       return chain;
     },
     returning: async () => opts?.returning ?? [],
     del: async () => 0,
     // Returns the chain so a subquery keeps building; awaiting it resolves through `then` below.
-    select: () => chain,
-    then: (resolve: (v: unknown) => unknown) => resolve([])
+    select: () => {
+      lastOp = "select";
+      return chain;
+    },
+    then: (resolve: (v: unknown) => unknown) =>
+      resolve(lastOp === "update" ? (opts?.updated ?? 0) : (opts?.selected ?? []))
   });
 
   const queryBuilder = () => chain;
@@ -163,12 +172,12 @@ describe("event outbox dal", () => {
   test("claimBatch returns the claimed rows in id order regardless of how RETURNING ordered them", async () => {
     const { dal } = buildDAL({ returning: [{ id: "8" }, { id: "6" }, { id: "10" }, { id: "7" }] });
 
-    const claimed = await dal.claimBatch(
+    const { rows } = await dal.claimBatch(
       { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" },
       10
     );
 
-    expect(claimed.map((row) => String(row.id))).toEqual(["6", "7", "8", "10"]);
+    expect(rows.map((row) => String(row.id))).toEqual(["6", "7", "8", "10"]);
   });
 
   test("claimBatch flips the locked rows to processing in the same statement", async () => {
@@ -181,22 +190,37 @@ describe("event outbox dal", () => {
     expect(calls.update[0].lockedAt).toBe("NOW()");
   });
 
+  // Every later statement about these rows carries the token, so it has to be the one stamped on the
+  // rows and it has to differ per claim.
+  test("claimBatch stamps a fresh lockToken and hands it back", async () => {
+    const { dal, calls } = buildDAL();
+    const key = { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" };
+
+    const first = await dal.claimBatch(key, 100);
+    const second = await dal.claimBatch(key, 100);
+
+    expect(calls.update[0].lockToken).toBe(first.lockToken);
+    expect(calls.update[1].lockToken).toBe(second.lockToken);
+    expect(second.lockToken).not.toBe(first.lockToken);
+  });
+
   // A row the sweeper already handed back must not be pulled into 'processing' again by a late
-  // heartbeat.
-  test("extendClaims refreshes lockedAt only on rows still processing", async () => {
+  // heartbeat, and a heartbeat must never refresh a claim another worker now holds.
+  test("extendClaims refreshes lockedAt only on rows this claim still holds", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.extendClaims(["1", "2"]);
+    await dal.extendClaims(["1", "2"], "token-1");
 
     expect(calls.whereIn[0]).toEqual(["id", ["1", "2"]]);
     expect(calls.where).toContainEqual(["status", EventOutboxStatus.Processing]);
+    expect(calls.where).toContainEqual(["lockToken", "token-1"]);
     expect(calls.update[0]).toEqual({ lockedAt: "NOW()" });
   });
 
   test("extendClaims issues no statement for an empty claim", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.extendClaims([]);
+    await dal.extendClaims([], "token-1");
 
     expect(calls.update).toHaveLength(0);
   });
@@ -244,6 +268,7 @@ describe("event outbox dal", () => {
     const { dal, calls } = buildDAL();
 
     await dal.commitResults({
+      lockToken: "token-1",
       delivered: [],
       retriable: [{ ids: ["1"], nextRetryDelayMs: 30_000 }],
       failed: []
@@ -256,7 +281,7 @@ describe("event outbox dal", () => {
   test("commitResults issues no statement when there is nothing to commit", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.commitResults({ delivered: [], retriable: [], failed: [] });
+    await dal.commitResults({ lockToken: "token-1", delivered: [], retriable: [], failed: [] });
 
     expect(calls.update).toHaveLength(0);
   });
@@ -265,21 +290,24 @@ describe("event outbox dal", () => {
     const { dal, calls } = buildDAL();
 
     await dal.commitResults({
+      lockToken: "token-1",
       delivered: [{ ids: ["1"] }],
       retriable: [],
       failed: [{ ids: ["2"], error: "gave up" }]
     });
 
-    expect(calls.update.every((patch) => patch.lockedAt === null)).toBe(true);
+    expect(calls.update.every((patch) => patch.lockedAt === null && patch.lockToken === null)).toBe(true);
     expect(calls.update.map((patch) => patch.status)).toEqual([EventOutboxStatus.Delivered, EventOutboxStatus.Failed]);
   });
 
   // A claim the sweeper has already handed back may belong to another worker by the time the original
-  // one reports; its late result must not clobber the new owner's.
-  test("commitResults only touches rows still held by a processing claim", async () => {
+  // one reports, and 'processing' alone doesn't tell the two claims apart: the new owner's rows are
+  // 'processing' too. The token is what keeps the late result off them.
+  test("commitResults only touches rows still held by this exact claim", async () => {
     const { dal, calls } = buildDAL();
 
     await dal.commitResults({
+      lockToken: "token-1",
       delivered: [{ ids: ["1"] }],
       retriable: [{ ids: ["2"], nextRetryDelayMs: 1_000 }],
       failed: [{ ids: ["3"] }]
@@ -289,6 +317,38 @@ describe("event outbox dal", () => {
     expect(calls.where.filter((args) => args[0] === "status" && args[1] === EventOutboxStatus.Processing)).toHaveLength(
       3
     );
+    expect(calls.where.filter((args) => args[0] === "lockToken" && args[1] === "token-1")).toHaveLength(3);
+  });
+
+  // What the service reads to tell a settled claim from one that was taken away mid-delivery.
+  test("commitResults reports how many rows it settled", async () => {
+    const { dal } = buildDAL({ updated: 2 });
+
+    await expect(
+      dal.commitResults({
+        lockToken: "token-1",
+        delivered: [{ ids: ["1", "2"] }],
+        retriable: [],
+        failed: []
+      })
+    ).resolves.toBe(2);
+  });
+
+  // The rows go back to whoever claims them next, so leaving the old owner's token on them would let a
+  // heartbeat that arrives even later keep refreshing a claim nobody holds.
+  test("recoverStaleClaims clears the token along with the claim", async () => {
+    const { dal, calls } = buildDAL({
+      selected: [
+        { id: "1", consumer: "alert", attempts: 0 },
+        { id: "2", consumer: "alert", attempts: 4 }
+      ]
+    });
+
+    await dal.recoverStaleClaims({ thresholdMs: 600_000, maxAttempts: 5, limit: 1_000 });
+
+    expect(calls.update).toHaveLength(2);
+
+    expect(calls.update.every((patch) => patch.lockedAt === null && patch.lockToken === null)).toBe(true);
   });
 
   test("recoverStaleClaims looks only at claims older than the threshold", async () => {

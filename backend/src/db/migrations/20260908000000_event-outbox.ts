@@ -6,7 +6,6 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.EventOutbox))) {
     await knex.schema.createTable(TableName.EventOutbox, (t) => {
-      // Ordering within a resource is read off this column, so it has to be monotonic.
       t.bigIncrements("id").primary();
       t.string("consumer").notNullable();
       t.string("eventType").notNullable();
@@ -14,7 +13,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("resourceId").notNullable();
       t.uuid("orgId").notNullable();
       t.string("projectId");
-      // Opaque here: each consumer validates it against its own payloadSchema at emit.
       t.jsonb("payload").notNullable();
       t.string("idempotencyKey");
       t.timestamp("occurredAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
@@ -23,7 +21,7 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("attempts").notNullable().defaultTo(0);
       t.timestamp("nextRetryAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
       t.timestamp("lockedAt", { useTz: true });
-      // Consumer-defined progress carried across attempts so a retry can skip what already landed.
+      t.uuid("lockToken");
       t.jsonb("progress");
       t.text("lastError");
       t.timestamps(true, true, true);

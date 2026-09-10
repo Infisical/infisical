@@ -125,12 +125,11 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   const $commitWithRetry = async (
     { consumer, resourceType, resourceId }: TOutboxFlushKey,
     input: Parameters<TEventOutboxDALFactory["commitResults"]>[0]
-  ): Promise<void> => {
+  ): Promise<number> => {
     for (let attempt = 1; ; attempt += 1) {
       try {
         // eslint-disable-next-line no-await-in-loop -- retrying the same statement is the point
-        await eventOutboxDAL.commitResults(input);
-        return;
+        return await eventOutboxDAL.commitResults(input);
       } catch (error) {
         if (attempt >= COMMIT_ATTEMPTS) throw error;
         logger.warn(
@@ -143,7 +142,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  const $applyResults = async (rows: TEventOutbox[], results: TOutboxRowResult[]): Promise<void> => {
+  const $applyResults = async (rows: TEventOutbox[], lockToken: string, results: TOutboxRowResult[]): Promise<void> => {
     const byId = new Map(results.map((result) => [result.id, result]));
     const now = Date.now();
 
@@ -191,13 +190,21 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       });
     }
 
-    await $commitWithRetry(rows[0], {
+    const settled = await $commitWithRetry(rows[0], {
+      lockToken,
       delivered: groupByOutcome(delivered, (item) => JSON.stringify(item.progress ?? null)),
       retriable: groupByOutcome(retriable, (item) =>
         JSON.stringify([item.nextRetryDelayMs, item.error ?? null, item.progress ?? null])
       ),
       failed: groupByOutcome(failed, (item) => item.error ?? "")
     });
+
+    if (settled < rows.length) {
+      const { consumer, resourceType, resourceId } = rows[0];
+      logger.warn(
+        `event-outbox: settled ${settled} of ${rows.length} row(s); the rest were no longer held by this claim [consumer=${consumer}] [resourceType=${resourceType}] [resourceId=${resourceId}]`
+      );
+    }
 
     if (failed.length > 0) {
       const { consumer, resourceType, resourceId } = rows[0];
@@ -213,11 +220,12 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   const $handleClaimed = async (
     consumer: IEventOutboxConsumer,
     key: TOutboxFlushKey,
-    claimed: TEventOutbox[]
+    claimed: TEventOutbox[],
+    lockToken: string
   ): Promise<TOutboxRowResult[]> => {
     const ids = claimed.map((row) => String(row.id));
     const heartbeat = setInterval(() => {
-      eventOutboxDAL.extendClaims(ids).catch((error) => {
+      eventOutboxDAL.extendClaims(ids, lockToken).catch((error) => {
         logger.warn(
           error,
           `event-outbox: failed to extend a claim [consumer=${key.consumer}] [resourceType=${key.resourceType}] [resourceId=${key.resourceId}]`
@@ -253,13 +261,13 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
 
     for (let batch = 0; batch < MAX_BATCHES_PER_FLUSH; batch += 1) {
       // eslint-disable-next-line no-await-in-loop -- batches are serial on purpose, to stay paced
-      const claimed = await eventOutboxDAL.claimBatch(key, OUTBOX_CLAIM_BATCH_SIZE);
+      const { lockToken, rows: claimed } = await eventOutboxDAL.claimBatch(key, OUTBOX_CLAIM_BATCH_SIZE);
       if (claimed.length === 0) break;
 
       // eslint-disable-next-line no-await-in-loop -- see above
-      const results = await $handleClaimed(consumer, key, claimed);
+      const results = await $handleClaimed(consumer, key, claimed, lockToken);
       // eslint-disable-next-line no-await-in-loop -- see above
-      await $applyResults(claimed, results);
+      await $applyResults(claimed, lockToken, results);
       handled += claimed.length;
     }
 

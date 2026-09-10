@@ -12,8 +12,9 @@ import {
   TOutboxEvent
 } from "./event-outbox-types";
 
+const { loggerWarn } = vi.hoisted(() => ({ loggerWarn: vi.fn<(...args: unknown[]) => void>() }));
 vi.mock("@app/lib/logger", () => ({
-  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+  logger: { info: () => {}, warn: loggerWarn, error: () => {}, debug: () => {} },
   initLogger: () => {}
 }));
 
@@ -171,6 +172,7 @@ describe("event outbox drain", () => {
     batches: TEventOutbox[][];
     handle: IEventOutboxConsumer["handle"];
     consumerName?: string;
+    settled?: (input: { delivered: { ids: string[] }[] }) => number;
   }) => {
     const registry = eventOutboxRegistryFactory();
     registry.register(makeConsumer({ name: opts.consumerName ?? "alert", handle: opts.handle }));
@@ -180,27 +182,40 @@ describe("event outbox drain", () => {
       retriable: { ids: string[]; nextRetryDelayMs: number; error?: string }[];
       failed: { ids: string[]; error?: string }[];
     }[] = [];
-    const extended: string[][] = [];
+    const extended: { ids: string[]; lockToken: string }[] = [];
+    const claimTokens: string[] = [];
     let batchIdx = 0;
 
     const service = eventOutboxServiceFactory({
       eventOutboxDAL: {
         claimBatch: async () => {
-          const batch = opts.batches[batchIdx] ?? [];
+          const rows = opts.batches[batchIdx] ?? [];
           batchIdx += 1;
-          return batch;
+          const lockToken = `token-${batchIdx}`;
+          claimTokens.push(lockToken);
+          return { lockToken, rows };
         },
-        extendClaims: async (ids: string[]) => {
-          extended.push(ids);
+        extendClaims: async (ids: string[], lockToken: string) => {
+          extended.push({ ids, lockToken });
         },
         commitResults: async (input: never) => {
           commits.push(input);
+          const counted = input as unknown as {
+            delivered: { ids: string[] }[];
+            retriable: { ids: string[] }[];
+            failed: { ids: string[] }[];
+          };
+          if (opts.settled) return opts.settled(counted);
+          return [...counted.delivered, ...counted.retriable, ...counted.failed].reduce(
+            (n, group) => n + group.ids.length,
+            0
+          );
         }
       } as never,
       eventOutboxRegistry: registry
     });
 
-    return { service, commits, extended };
+    return { service, commits, extended, claimTokens };
   };
 
   const KEY = { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" };
@@ -296,13 +311,54 @@ describe("event outbox drain", () => {
     expect(commits[0].delivered.map((group) => group.ids)).toEqual([["1"], ["2"]]);
   });
 
+  // The token the rows were claimed under is what commitResults fences on, so a claim that reports
+  // under a different one would write to whatever worker holds the rows now.
+  test("commits under the token the batch was claimed with", async () => {
+    const { service, commits, claimTokens } = buildDrain({
+      batches: [[makeRow()]],
+      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+    });
+
+    await service.drain(KEY);
+
+    expect((commits[0] as unknown as { lockToken: string }).lockToken).toBe(claimTokens[0]);
+  });
+
+  // A short settle means the sweeper handed these rows to another worker while this one was still
+  // delivering, so the batch went out twice. Nothing else in the system can see that happened.
+  test("reports a claim that was taken away mid-delivery", async () => {
+    loggerWarn.mockClear();
+    const { service } = buildDrain({
+      batches: [[makeRow({ id: 1 }), makeRow({ id: 2 })]],
+      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered })),
+      settled: () => 1
+    });
+
+    await service.drain(KEY);
+
+    expect(loggerWarn).toHaveBeenCalledTimes(1);
+    expect(loggerWarn.mock.calls[0][0]).toContain("settled 1 of 2 row(s)");
+  });
+
+  test("says nothing when every claimed row settles", async () => {
+    loggerWarn.mockClear();
+    const { service } = buildDrain({
+      batches: [[makeRow()]],
+      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+    });
+
+    await service.drain(KEY);
+
+    expect(loggerWarn).not.toHaveBeenCalled();
+  });
+
   // A batch that legitimately outlives the sweeper's threshold (a slow webhook, many rows) has to
   // keep its claim fresh, or the sweeper hands its rows to a second worker mid-delivery.
   test("extends the claim while the consumer is still handling a batch", async () => {
     vi.useFakeTimers();
     try {
       let release: () => void = () => {};
-      const { service, extended } = buildDrain({
+      const { service, extended, claimTokens } = buildDrain({
         batches: [[makeRow({ id: 1 }), makeRow({ id: 2 })]],
         handle: (rows) =>
           new Promise((resolve) => {
@@ -314,7 +370,7 @@ describe("event outbox drain", () => {
       const draining = service.drain(KEY);
       await vi.advanceTimersByTimeAsync(10 * 60_000);
       expect(extended.length).toBeGreaterThanOrEqual(3);
-      expect(extended[0]).toEqual(["1", "2"]);
+      expect(extended[0]).toEqual({ ids: ["1", "2"], lockToken: claimTokens[0] });
 
       release();
       await draining;
@@ -357,14 +413,15 @@ describe("event outbox drain", () => {
       const service = eventOutboxServiceFactory({
         eventOutboxDAL: {
           claimBatch: async () => {
-            if (batchServed) return [];
+            if (batchServed) return { lockToken: "token-1", rows: [] };
             batchServed = true;
-            return [makeRow()];
+            return { lockToken: "token-1", rows: [makeRow()] };
           },
           extendClaims: async () => {},
           commitResults: async () => {
             commitCalls += 1;
             if (commitCalls === 1) throw new Error("connection reset");
+            return 1;
           }
         } as never,
         eventOutboxRegistry: registry
@@ -392,7 +449,7 @@ describe("event outbox drain", () => {
       let commitCalls = 0;
       const service = eventOutboxServiceFactory({
         eventOutboxDAL: {
-          claimBatch: async () => [makeRow()],
+          claimBatch: async () => ({ lockToken: "token-1", rows: [makeRow()] }),
           extendClaims: async () => {},
           commitResults: async () => {
             commitCalls += 1;

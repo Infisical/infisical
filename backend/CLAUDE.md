@@ -682,9 +682,16 @@ await someDAL.transaction(async (tx) => {
   Backoff is exponential with jitter from 30s, and `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an
   hour after the first, because a `failed` row is a notification nobody will receive. To replay failed
   rows by hand: `status = 'retry', attempts = 0, nextRetryAt = now()`.
-- **A claim is a lease.** The sweeper hands back any `processing` row whose `lockedAt` is older than
-  `STALE_CLAIM_THRESHOLD_MS`, with the same backoff as a normal failure, and counts exhausted rows on the
-  same metric. `drain` refreshes `lockedAt` while `handle` runs so a slow batch isn't delivered twice.
+- **A claim is a lease, and the lease is fenced.** The sweeper hands back any `processing` row whose
+  `lockedAt` is older than `STALE_CLAIM_THRESHOLD_MS`, with the same backoff as a normal failure, and counts
+  exhausted rows on the same metric. `drain` refreshes `lockedAt` while `handle` runs so a slow batch isn't
+  delivered twice. Because `handle` has no time bound (unlike the audit log stream outbox, where every
+  provider call has an HTTP timeout and a claim therefore can't outlive the threshold), that heartbeat can
+  fail while the work carries on, so a claim can be recycled under a worker that is still alive. `claimBatch`
+  stamps a `lockToken` and `extendClaims` / `commitResults` both require it, so the recycled worker's late
+  result can't clear the new owner's lock or drop its outcome. `commitResults` returns how many rows it
+  settled and `drain` logs a short settle: that count is the only signal that a batch went out twice, since
+  the fence protects the bookkeeping but delivery stays at-least-once.
 - **Discovery only looks at consumers registered in this process.** Rows for any other name would sort
   first forever and, past the limit, hide every real key. They wait and show up on the oldest-pending
   gauge instead.
