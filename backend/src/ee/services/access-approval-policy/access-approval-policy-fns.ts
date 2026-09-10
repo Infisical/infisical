@@ -3,10 +3,7 @@ import { EnforcementLevel } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TExternalApprovalPolicyInput } from "../external-approval/external-approval-types";
-import {
-  TAccessApprovalPolicyExternalApproval,
-  TUpdateAccessApprovalPolicy
-} from "./access-approval-policy-types";
+import { TAccessApprovalPolicyExternalApproval, TUpdateAccessApprovalPolicy } from "./access-approval-policy-types";
 
 export const validateExternalPolicyBypassConfig = ({
   bypassers,
@@ -42,8 +39,7 @@ export const validateExternalPolicyPendingRequests = async ({
   countPendingExternalRequestsByPolicyId: (policyId: string) => Promise<number>;
 }) => {
   const currentExternalApproval = policy.externalApproval;
-  const isDetachingExternalApproval =
-    externalApproval === null && Boolean(policy.externalApprovalPolicyId);
+  const isDetachingExternalApproval = externalApproval === null && Boolean(policy.externalApprovalPolicyId);
   const isReroutingExternalApproval = Boolean(
     externalApproval &&
       currentExternalApproval &&
