@@ -3,6 +3,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -245,13 +246,13 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onClickSegment={handleClickSegment}
           />
         </PopoverPrimitive.Trigger>
-        <PopoverPrimitive.Portal>
+        <LayerPortal portal={PopoverPrimitive.Portal}>
           <PopoverPrimitive.Content
             align="start"
             collisionPadding={8}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onMouseDown={(e) => e.preventDefault()}
-            className="relative top-2 z-[100] max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md"
+            className="relative top-2 z-layer-floating max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md"
             style={{ width: "var(--radix-popover-trigger-width)", minWidth: "320px" }}
           >
             <SecretReferenceWizard
@@ -265,7 +266,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               }
             />
           </PopoverPrimitive.Content>
-        </PopoverPrimitive.Portal>
+        </LayerPortal>
       </PopoverPrimitive.Root>
     );
   }

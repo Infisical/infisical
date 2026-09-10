@@ -1,5 +1,7 @@
 import Select, { GroupBase, Props } from "react-select";
 
+import { usePortalContainer } from "@app/components/overlays/OverlayLayer";
+
 import {
   ClearIndicator,
   DropdownIndicator,
@@ -23,7 +25,8 @@ export const FilterableSelect = <T,>({
   options = [],
   isError,
   components,
-  menuPortalTarget = typeof document === "undefined" ? undefined : document.body,
+  menuPortalTarget,
+  menuIsOpen,
   menuPosition = "fixed",
   ...props
 }: Props<T, boolean, GroupBase<T>> & {
@@ -31,6 +34,7 @@ export const FilterableSelect = <T,>({
   getGroupHeaderLabel?: ((groupValue: any) => string) | null;
   isError?: boolean;
 }) => {
+  const layerContainer = usePortalContainer();
   let processedOptions: Props<T, boolean, GroupBase<T>>["options"] = options;
 
   if (groupBy && Array.isArray(options)) {
@@ -63,7 +67,12 @@ export const FilterableSelect = <T,>({
       unstyled
       options={processedOptions}
       tabSelectsValue={tabSelectsValue}
-      menuPortalTarget={menuPortalTarget}
+      menuPortalTarget={
+        menuPortalTarget === undefined
+          ? (layerContainer ?? (typeof document === "undefined" ? undefined : document.body))
+          : menuPortalTarget
+      }
+      menuIsOpen={layerContainer === null && menuPortalTarget === undefined ? false : menuIsOpen}
       menuPosition={menuPosition}
       styles={selectStyles as any}
       components={{

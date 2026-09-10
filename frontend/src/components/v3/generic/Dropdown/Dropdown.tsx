@@ -2,6 +2,7 @@ import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
 import { cn } from "@app/components/v3/utils";
 
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
@@ -11,7 +12,13 @@ function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrim
 function DropdownMenuPortal({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
-  return <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
+  return (
+    <LayerPortal
+      portal={DropdownMenuPrimitive.Portal}
+      data-slot="dropdown-menu-portal"
+      {...props}
+    />
+  );
 }
 
 const DropdownMenuTrigger = React.forwardRef<
@@ -30,7 +37,7 @@ function DropdownMenuContent({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
-    <DropdownMenuPrimitive.Portal>
+    <LayerPortal portal={DropdownMenuPrimitive.Portal}>
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
@@ -38,12 +45,12 @@ function DropdownMenuContent({
         className={cn(
           "max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin)",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          "z-50 thin-scrollbar overflow-x-hidden overflow-y-auto rounded-[6px] border border-border bg-popover p-1.5 text-sm text-foreground shadow-md",
+          "z-layer-floating thin-scrollbar overflow-x-hidden overflow-y-auto rounded-[6px] border border-border bg-popover p-1.5 text-sm text-foreground shadow-md",
           className
         )}
         {...props}
       />
-    </DropdownMenuPrimitive.Portal>
+    </LayerPortal>
   );
 }
 
@@ -223,16 +230,18 @@ function DropdownMenuSubContent({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
   return (
-    <DropdownMenuPrimitive.SubContent
-      data-slot="dropdown-menu-sub-content"
-      className={cn(
-        "z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
-        className
-      )}
-      sideOffset={sideOffset}
-      collisionPadding={collisionPadding}
-      {...props}
-    />
+    <LayerPortal portal={DropdownMenuPrimitive.Portal}>
+      <DropdownMenuPrimitive.SubContent
+        data-slot="dropdown-menu-sub-content"
+        className={cn(
+          "z-layer-floating min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
+          className
+        )}
+        sideOffset={sideOffset}
+        collisionPadding={collisionPadding}
+        {...props}
+      />
+    </LayerPortal>
   );
 }
 

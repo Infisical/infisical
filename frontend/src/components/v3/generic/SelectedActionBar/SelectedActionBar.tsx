@@ -1,6 +1,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 
+import { usePortalContainer } from "@app/components/overlays/OverlayLayer";
 import { cn } from "@app/components/v3/utils";
 
 import { Button } from "../Button";
@@ -33,6 +34,7 @@ function SelectedActionBar({
   "aria-label": ariaLabel = "Selection actions",
   ...props
 }: SelectedActionBarProps) {
+  const portalContainer = usePortalContainer();
   const isVisible = selectedCount > 0;
   const clearSelectionRef = React.useRef(onClearSelection);
   const lastVisibleContent = React.useRef({ children, selectedCount, selectionLabel });
@@ -67,13 +69,13 @@ function SelectedActionBar({
     ? { children, selectedCount, selectionLabel }
     : lastVisibleContent.current;
 
-  if (typeof document === "undefined") return null;
+  if (typeof document === "undefined" || portalContainer === null) return null;
 
   return createPortal(
     <div
       data-slot="selected-action-bar-positioner"
       className={cn(
-        "pointer-events-none fixed inset-x-4 bottom-8 z-40 flex justify-center",
+        "pointer-events-none fixed inset-x-4 bottom-8 z-layer-action flex justify-center",
         "transition-[opacity,translate,filter,scale] ease-out motion-reduce:transition-none",
         isVisible
           ? "translate-y-0 scale-100 opacity-100 blur-none duration-200"
@@ -119,7 +121,7 @@ function SelectedActionBar({
         </div>
       </div>
     </div>,
-    document.body
+    portalContainer ?? document.body
   );
 }
 

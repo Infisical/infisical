@@ -68,6 +68,14 @@
 }
 
 @theme {
+  --z-index-layer-chrome: 10;
+  --z-index-layer-action: 20;
+  --z-index-layer-backdrop: 10;
+  --z-index-layer-content: 20;
+  --z-index-layer-floating: 30;
+  --z-index-layer-tooltip: 40;
+  --z-index-layer-modal: 50;
+  --z-index-layer-toast: 60;
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
@@ -534,4 +542,40 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* Page-local sticky controls cannot compete with document-level portals. */
+#root,
+#storybook-root {
+  isolation: isolate;
+}
+
+.overlay-layer-root {
+  position: fixed;
+  inset: 0;
+  isolation: isolate;
+  pointer-events: none;
+}
+
+[data-overlay-layer="modal"] {
+  z-index: var(--z-index-layer-modal);
+}
+
+[data-overlay-layer="toast"] {
+  z-index: var(--z-index-layer-toast);
+}
+
+/* Portal hosts must not intercept the viewport; their actual surfaces remain interactive. */
+.overlay-layer-root > :not(.overlay-layer-root) {
+  pointer-events: auto;
+}
+
+/* The scope participates in Radix presence without becoming a containing block. */
+.overlay-content-scope[data-state="closed"] {
+  animation-name: overlay-content-exit;
+}
+
+@keyframes overlay-content-exit {
+  from { visibility: visible; }
+  to { visibility: visible; }
 }

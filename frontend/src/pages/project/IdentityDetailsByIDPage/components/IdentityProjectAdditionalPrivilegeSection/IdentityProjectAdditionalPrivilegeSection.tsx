@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { subject } from "@casl/ability";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon } from "lucide-react";
@@ -66,7 +66,6 @@ type Props = {
 };
 
 export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDetails }: Props) => {
-  const sheetContainerRef = useRef<HTMLDivElement>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege",
     "modifyPrivilege"
@@ -342,7 +341,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
         open={popUp.modifyPrivilege.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyPrivilege", isOpen)}
       >
-        <SheetContent ref={sheetContainerRef} className="flex h-full flex-col gap-y-0 sm:max-w-6xl">
+        <SheetContent className="flex h-full flex-col gap-y-0 sm:max-w-6xl">
           <SheetHeader className="border-b">
             <SheetTitle>Additional Privileges</SheetTitle>
             <SheetDescription>
@@ -361,7 +360,6 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                 })
               ) || !canModifyIdentityPrivileges
             }
-            menuPortalContainerRef={sheetContainerRef}
           />
         </SheetContent>
       </Sheet>

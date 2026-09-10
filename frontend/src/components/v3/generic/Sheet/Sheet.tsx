@@ -4,6 +4,8 @@ import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
+import { LayerContent, LayerPortal, ModalLayer } from "@app/components/overlays/OverlayLayer";
+
 import { cn } from "../../utils";
 
 const isAllowedOutsideInteraction = (target: EventTarget | null) =>
@@ -14,7 +16,11 @@ const isAllowedOutsideInteraction = (target: EventTarget | null) =>
   );
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />;
+  return (
+    <ModalLayer {...props}>
+      {(layerProps) => <SheetPrimitive.Root data-slot="sheet" {...props} {...layerProps} />}
+    </ModalLayer>
+  );
 }
 
 function SheetTrigger({ ...props }: React.ComponentProps<typeof SheetPrimitive.Trigger>) {
@@ -26,24 +32,26 @@ function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Clo
 }
 
 function SheetPortal({ ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
-  return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />;
+  return <LayerPortal portal={SheetPrimitive.Portal} modal data-slot="sheet-portal" {...props} />;
 }
 
-function SheetOverlay({
-  className,
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Overlay>) {
+const SheetOverlay = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Overlay>,
+  React.ComponentProps<typeof SheetPrimitive.Overlay>
+>(({ className, ...props }, ref) => {
   return (
     <SheetPrimitive.Overlay
+      ref={ref}
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 ease-out data-[state=closed]:animate-out data-[state=closed]:duration-250 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0",
+        "fixed inset-0 z-layer-backdrop bg-black/50 ease-out data-[state=closed]:animate-out data-[state=closed]:duration-250 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0",
         className
       )}
       {...props}
     />
   );
-}
+});
+SheetOverlay.displayName = "SheetOverlay";
 
 function SheetContent({
   className,
@@ -75,7 +83,7 @@ function SheetContent({
           onInteractOutside?.(e);
         }}
         className={cn(
-          "fixed z-50 flex thin-scrollbar flex-col border-border bg-popover text-foreground shadow-lg outline-0 transition ease-out data-[state=closed]:animate-out data-[state=closed]:duration-250 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0",
+          "fixed z-layer-content flex thin-scrollbar flex-col border-border bg-popover text-foreground shadow-lg outline-0 transition ease-out data-[state=closed]:animate-out data-[state=closed]:duration-250 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right-8 data-[state=open]:slide-in-from-right-2 sm:max-w-md",
           side === "left" &&
@@ -87,12 +95,15 @@ function SheetContent({
           className
         )}
         {...props}
+        asChild
       >
-        {children}
-        <SheetPrimitive.Close className="data-[state=open]:bg-secondary absolute top-4 right-4 z-20 cursor-pointer rounded-xs text-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
-          <XIcon className="size-4" />
-          <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
+        <LayerContent exitDuration={250}>
+          {children}
+          <SheetPrimitive.Close className="data-[state=open]:bg-secondary absolute top-4 right-4 z-20 cursor-pointer rounded-xs text-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+            <XIcon className="size-4" />
+            <span className="sr-only">Close</span>
+          </SheetPrimitive.Close>
+        </LayerContent>
       </SheetPrimitive.Content>
     </SheetPortal>
   );

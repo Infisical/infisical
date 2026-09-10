@@ -26,7 +26,7 @@ export const RecordingConnectionPicker = ({ value, onChange, isError, includeNon
       <SelectTrigger className="w-full" isError={isError}>
         <SelectValue placeholder="Select an S3 connection..." />
       </SelectTrigger>
-      <SelectContent position="popper" className="z-[70]">
+      <SelectContent position="popper">
         {includeNone && <SelectItem value={NONE_VALUE}>None</SelectItem>}
         {awsConnections.length === 0 && (
           <div className="px-2 py-3 text-center text-xs text-muted">

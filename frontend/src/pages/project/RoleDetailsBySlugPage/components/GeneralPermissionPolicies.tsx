@@ -1,4 +1,4 @@
-import { cloneElement, Fragment, RefObject, useEffect, useMemo, useRef } from "react";
+import { cloneElement, Fragment, useEffect, useMemo, useRef } from "react";
 import {
   Control,
   Controller,
@@ -62,7 +62,6 @@ type Props<T extends AnyPermissionSubject> = {
   isOpen?: boolean;
   onPolicyAdded?: () => void;
   onShowAccessTree?: (subject: string) => void;
-  menuPortalContainerRef?: RefObject<HTMLElement | null>;
   subjectScope: PermissionScope;
 };
 
@@ -73,7 +72,6 @@ type ActionsMultiSelectProps = {
   isDisabled?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
-  menuPortalContainerRef?: RefObject<HTMLElement | null>;
   subjectScope: PermissionScope;
 };
 
@@ -83,7 +81,6 @@ const ActionsMultiSelect = ({
   actions,
   isDisabled,
   control,
-  menuPortalContainerRef,
   subjectScope
 }: ActionsMultiSelectProps) => {
   const { setValue, trigger } = useFormContext();
@@ -199,7 +196,6 @@ const ActionsMultiSelect = ({
         placeholder="Select actions..."
         isDisabled={isDisabled}
         className="w-full"
-        portalContainer={menuPortalContainerRef}
         isError={Boolean(actionsError)}
       />
       {actionsError && (
@@ -231,7 +227,6 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   isOpen = false,
   onPolicyAdded,
   onShowAccessTree,
-  menuPortalContainerRef,
   subjectScope
 }: Props<T>) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -376,7 +371,6 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
                         actions={actions}
                         isDisabled={isDisabled}
                         control={control}
-                        menuPortalContainerRef={menuPortalContainerRef}
                         subjectScope={subjectScope}
                       />
                     </div>

@@ -4,6 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { twMerge } from "tailwind-merge";
 
+import { LayerContent, LayerPortal, ModalLayer } from "@app/components/overlays/OverlayLayer";
+
 import { Card, CardBody, CardFooter, CardTitle } from "../Card";
 import { IconButton } from "../IconButton";
 
@@ -35,9 +37,12 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
     },
     forwardedRef
   ) => (
-    <DialogPrimitive.Portal>
+    <LayerPortal portal={DialogPrimitive.Portal} modal>
       <DialogPrimitive.Overlay
-        className={twMerge("animate-fade-in fixed inset-0 z-[60] h-full w-full", overlayClassName)}
+        className={twMerge(
+          "animate-fade-in fixed inset-0 z-layer-backdrop h-full w-full",
+          overlayClassName
+        )}
         style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       />
       <DialogPrimitive.Content
@@ -56,43 +61,46 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
           }
           props.onPointerDownOutside?.(e);
         }}
+        asChild
       >
-        <Card
-          isRounded
-          className={twMerge(
-            "animate-pop-in fixed top-1/2 left-1/2 z-[60] thin-scrollbar max-w-xl -translate-x-2/4 -translate-y-2/4 border border-mineshaft-600 drop-shadow-2xl dark:scheme-dark",
-            className
-          )}
-          style={{ maxHeight: "90%" }}
-        >
-          {title && (
-            <DialogPrimitive.Title>
-              <CardTitle subTitle={subTitle}>
-                <div className={showCloseButton ? "pr-8" : undefined}>{title}</div>
-              </CardTitle>
-            </DialogPrimitive.Title>
-          )}
-          <CardBody
-            className={twMerge("overflow-x-hidden overflow-y-auto", bodyClassName)}
+        <LayerContent exitDuration={0}>
+          <Card
+            isRounded
+            className={twMerge(
+              "animate-pop-in fixed top-1/2 left-1/2 z-layer-content thin-scrollbar max-w-xl -translate-x-2/4 -translate-y-2/4 border border-mineshaft-600 drop-shadow-2xl dark:scheme-dark",
+              className
+            )}
             style={{ maxHeight: "90%" }}
           >
-            {children}
-          </CardBody>
-          {footerContent && <CardFooter>{footerContent}</CardFooter>}
-          {showCloseButton && (
-            <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
-              <IconButton
-                variant="plain"
-                ariaLabel="close"
-                className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
-              >
-                <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
-              </IconButton>
-            </DialogPrimitive.Close>
-          )}
-        </Card>
+            {title && (
+              <DialogPrimitive.Title>
+                <CardTitle subTitle={subTitle}>
+                  <div className={showCloseButton ? "pr-8" : undefined}>{title}</div>
+                </CardTitle>
+              </DialogPrimitive.Title>
+            )}
+            <CardBody
+              className={twMerge("overflow-x-hidden overflow-y-auto", bodyClassName)}
+              style={{ maxHeight: "90%" }}
+            >
+              {children}
+            </CardBody>
+            {footerContent && <CardFooter>{footerContent}</CardFooter>}
+            {showCloseButton && (
+              <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
+                <IconButton
+                  variant="plain"
+                  ariaLabel="close"
+                  className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
+                >
+                  <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
+                </IconButton>
+              </DialogPrimitive.Close>
+            )}
+          </Card>
+        </LayerContent>
       </DialogPrimitive.Content>
-    </DialogPrimitive.Portal>
+    </LayerPortal>
   )
 );
 
@@ -102,7 +110,9 @@ export type ModalProps = Omit<DialogPrimitive.DialogProps, "open"> & {
   isOpen?: boolean;
 };
 export const Modal = ({ isOpen, ...props }: ModalProps) => (
-  <DialogPrimitive.Root open={isOpen} {...props} />
+  <ModalLayer {...props} open={isOpen}>
+    {(layerProps) => <DialogPrimitive.Root {...props} {...layerProps} />}
+  </ModalLayer>
 );
 
 export const ModalTrigger = DialogPrimitive.Trigger;

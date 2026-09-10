@@ -2,6 +2,8 @@ import { ComponentPropsWithRef, ElementType, forwardRef, ReactNode, Ref } from "
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { twMerge } from "tailwind-merge";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
+
 // Main menu or parent container
 export type DropdownMenuProps = DropdownMenuPrimitive.DropdownMenuProps;
 export const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -18,19 +20,19 @@ export type DropdownMenuContentProps = DropdownMenuPrimitive.DropdownMenuContent
 export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuContentProps>(
   ({ children, className, ...props }, forwardedRef) => {
     return (
-      <DropdownMenuPrimitive.Portal>
+      <LayerPortal portal={DropdownMenuPrimitive.Portal}>
         <DropdownMenuPrimitive.Content
           sideOffset={-8}
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-[60] min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
+            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-layer-floating min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
             className
           )}
         >
           {children}
         </DropdownMenuPrimitive.Content>
-      </DropdownMenuPrimitive.Portal>
+      </LayerPortal>
     );
   }
 );
@@ -42,19 +44,19 @@ export type DropdownSubMenuContentProps = DropdownMenuPrimitive.DropdownMenuSubC
 export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenuContentProps>(
   ({ children, className, ...props }, forwardedRef) => {
     return (
-      <DropdownMenuPrimitive.Portal>
+      <LayerPortal portal={DropdownMenuPrimitive.Portal}>
         <DropdownMenuPrimitive.SubContent
           sideOffset={2}
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-[60] min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
+            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-layer-floating min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
             className
           )}
         >
           {children}
         </DropdownMenuPrimitive.SubContent>
-      </DropdownMenuPrimitive.Portal>
+      </LayerPortal>
     );
   }
 );

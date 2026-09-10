@@ -1,6 +1,8 @@
 import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
+import { LayerContent, LayerPortal, ModalLayer } from "@app/components/overlays/OverlayLayer";
+
 import { cn } from "../../utils";
 import { Button } from "../Button";
 import { DIALOG_CONTENT_WIDTH_CLASSNAME } from "../Dialog";
@@ -49,11 +51,11 @@ function AlertDialog(alertDialogProps: AlertDialogProps) {
 
   return (
     <AlertDialogConfirmationContext.Provider value={confirmationContextValue}>
-      <AlertDialogPrimitive.Root
-        data-slot="alert-dialog"
-        onOpenChange={handleOpenChange}
-        {...props}
-      />
+      <ModalLayer {...props} onOpenChange={handleOpenChange}>
+        {(layerProps) => (
+          <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} {...layerProps} />
+        )}
+      </ModalLayer>
     </AlertDialogConfirmationContext.Provider>
   );
 }
@@ -65,28 +67,38 @@ function AlertDialogTrigger({
 }
 
 function AlertDialogPortal({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
-  return <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />;
-}
-
-function AlertDialogOverlay({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
   return (
-    <AlertDialogPrimitive.Overlay
-      data-slot="alert-dialog-overlay"
-      className={cn(
-        "fixed inset-0 z-50 bg-black/10 data-closed:animate-out data-closed:duration-100 data-closed:ease-in data-closed:fade-out-0 data-open:animate-in data-open:duration-150 data-open:ease-in data-open:fade-in-0 supports-backdrop-filter:backdrop-blur-xs",
-        className
-      )}
+    <LayerPortal
+      portal={AlertDialogPrimitive.Portal}
+      modal
+      data-slot="alert-dialog-portal"
       {...props}
     />
   );
 }
 
+const AlertDialogOverlay = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
+  React.ComponentProps<typeof AlertDialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => {
+  return (
+    <AlertDialogPrimitive.Overlay
+      ref={ref}
+      data-slot="alert-dialog-overlay"
+      className={cn(
+        "fixed inset-0 z-layer-backdrop bg-black/10 data-closed:animate-out data-closed:duration-100 data-closed:ease-in data-closed:fade-out-0 data-open:animate-in data-open:duration-150 data-open:ease-in data-open:fade-in-0 supports-backdrop-filter:backdrop-blur-xs",
+        className
+      )}
+      {...props}
+    />
+  );
+});
+AlertDialogOverlay.displayName = "AlertDialogOverlay";
+
 function AlertDialogContent({
   className,
   size = "default",
+  children,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
@@ -98,12 +110,15 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-4 text-foreground ring-1 ring-foreground/10 outline-none data-closed:animate-out data-closed:duration-100 data-closed:ease-in data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:duration-150 data-open:ease-in data-open:fade-in-0 data-open:zoom-in-95 data-[size=sm]:max-w-sm",
+          "group/alert-dialog-content fixed top-1/2 left-1/2 z-layer-content grid -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-4 text-foreground ring-1 ring-foreground/10 outline-none data-closed:animate-out data-closed:duration-100 data-closed:ease-in data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:duration-150 data-open:ease-in data-open:fade-in-0 data-open:zoom-in-95 data-[size=sm]:max-w-sm",
           DIALOG_CONTENT_WIDTH_CLASSNAME,
           className
         )}
         {...props}
-      />
+        asChild
+      >
+        <LayerContent>{children}</LayerContent>
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }

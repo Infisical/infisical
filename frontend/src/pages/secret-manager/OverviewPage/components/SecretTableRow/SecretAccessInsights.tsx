@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import { Link } from "@tanstack/react-router";
 import {
@@ -411,7 +411,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { user: currentUser } = useUser();
-  const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [editingPrivilege, setEditingPrivilege] = useState<EditingPrivilege | null>(null);
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilters, setTypeFilters] = useState<Set<AccessRowType>>(() => new Set());
@@ -834,7 +833,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           if (!isOpen) setEditingPrivilege(null);
         }}
       >
-        <SheetContent ref={sheetContainerRef} className="flex h-full flex-col gap-y-0 sm:max-w-6xl">
+        <SheetContent className="flex h-full flex-col gap-y-0 sm:max-w-6xl">
           <SheetHeader className="border-b">
             <SheetTitle>Add Additional Privilege for {editingPrivilege?.name}</SheetTitle>
             <SheetDescription>
@@ -846,7 +845,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               key={editingPrivilege.membershipId}
               projectMembershipId={editingPrivilege.membershipId}
               onGoBack={() => setEditingPrivilege(null)}
-              menuPortalContainerRef={sheetContainerRef}
               initialPermissions={initialPermissions}
             />
           )}
@@ -855,7 +853,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
               key={editingPrivilege.identityId}
               identityId={editingPrivilege.identityId}
               onGoBack={() => setEditingPrivilege(null)}
-              menuPortalContainerRef={sheetContainerRef}
               initialPermissions={initialPermissions}
             />
           )}

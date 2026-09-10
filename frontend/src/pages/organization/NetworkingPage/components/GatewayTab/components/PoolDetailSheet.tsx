@@ -264,7 +264,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                               <FontAwesomeIcon icon={faEllipsisV} />
                             </IconButton>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="z-[60] min-w-[180px]">
+                          <DropdownMenuContent align="end" className="min-w-[180px]">
                             {!gw.isV1 && (
                               <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
                                 <FontAwesomeIcon icon={faHeartPulse} />

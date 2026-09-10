@@ -601,7 +601,7 @@ export const ReviewAccessRequestModal = ({
         </PopoverTrigger>
         <PopoverContent
           align="end"
-          className="z-[70] max-h-64 thin-scrollbar w-72 overflow-y-auto px-3 py-2.5"
+          className="max-h-64 thin-scrollbar w-72 overflow-y-auto px-3 py-2.5"
           aria-label={`Reviewer progress for approval step ${approver.sequence ?? 1}`}
         >
           <div className="mb-2 text-sm font-medium text-foreground">Reviewer Progress</div>
@@ -905,7 +905,7 @@ export const ReviewAccessRequestModal = ({
                                   {group.conditions.length === 1 ? "condition" : "conditions"}
                                 </button>
                               </HoverCardTrigger>
-                              <HoverCardContent align="end" className="z-[70] w-auto max-w-xs">
+                              <HoverCardContent align="end" className="w-auto max-w-xs">
                                 <div className="mb-1.5 text-xs font-medium text-foreground">
                                   Conditions
                                 </div>

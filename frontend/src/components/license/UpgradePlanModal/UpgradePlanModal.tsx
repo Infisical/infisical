@@ -30,7 +30,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {/* Keep upgrade prompts above the dialog or sheet that triggered them. */}
-      <DialogContent className="z-[70] sm:max-w-xl" overlayClassName="z-[70]">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5">
             <SparklesIcon className="size-5 text-muted" />

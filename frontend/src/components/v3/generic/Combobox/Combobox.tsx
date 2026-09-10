@@ -2,6 +2,8 @@ import * as React from "react";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, Loader2Icon, XIcon } from "lucide-react";
 
+import { usePortalContainer } from "@app/components/overlays/OverlayLayer";
+
 import { cn } from "../../utils";
 import { useScrollEdges } from "../../utils/useScrollEdges";
 
@@ -212,37 +214,41 @@ const ComboboxPopup = ({
   className,
   initialFocus,
   portalContainer
-}: ComboboxPopupProps) => (
-  <ComboboxPrimitive.Portal
-    // Base UI treats an explicit null container as "not yet resolved" and never renders
-    // the popup, so a null (e.g. a ref read before attachment) must degrade to the
-    // document.body default. Prefer passing the RefObject itself: it is resolved lazily
-    // at open time.
-    container={portalContainer ?? undefined}
-    data-slot="combobox-portal"
-    className="pointer-events-auto"
-  >
-    <ComboboxPrimitive.Positioner
-      anchor={anchor}
-      align="start"
-      sideOffset={4}
-      collisionPadding={8}
-      className="isolate z-[60] max-w-[calc(100vw-1rem)] outline-none"
+}: ComboboxPopupProps) => {
+  const layerContainer = usePortalContainer();
+  if (layerContainer === null && !portalContainer) return null;
+  return (
+    <ComboboxPrimitive.Portal
+      // Base UI treats an explicit null container as "not yet resolved" and never renders
+      // the popup, so a null (e.g. a ref read before attachment) must degrade to the
+      // owner-aware default. Prefer passing the RefObject itself: it is resolved lazily
+      // at open time.
+      container={portalContainer ?? layerContainer ?? undefined}
+      data-slot="combobox-portal"
+      className="pointer-events-auto"
     >
-      <ComboboxPrimitive.Popup
-        aria-label={ariaLabel}
-        initialFocus={initialFocus}
-        className={cn(
-          "text-popover-foreground w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) overflow-hidden rounded-md border border-border bg-popover shadow-md outline-none",
-          "transition-[transform,scale,opacity] duration-100 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
-          className
-        )}
+      <ComboboxPrimitive.Positioner
+        anchor={anchor}
+        align="start"
+        sideOffset={4}
+        collisionPadding={8}
+        className="isolate z-layer-floating max-w-[calc(100vw-1rem)] outline-none"
       >
-        {children}
-      </ComboboxPrimitive.Popup>
-    </ComboboxPrimitive.Positioner>
-  </ComboboxPrimitive.Portal>
-);
+        <ComboboxPrimitive.Popup
+          aria-label={ariaLabel}
+          initialFocus={initialFocus}
+          className={cn(
+            "text-popover-foreground w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) overflow-hidden rounded-md border border-border bg-popover shadow-md outline-none",
+            "transition-[transform,scale,opacity] duration-100 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
+            className
+          )}
+        >
+          {children}
+        </ComboboxPrimitive.Popup>
+      </ComboboxPrimitive.Positioner>
+    </ComboboxPrimitive.Portal>
+  );
+};
 
 const useComboboxFilter = <TOption,>({
   getOptionKeywords,

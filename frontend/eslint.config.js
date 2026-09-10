@@ -12,6 +12,7 @@ import { FlatCompat } from "@eslint/eslintrc";
 import stylisticPlugin from "@stylistic/eslint-plugin";
 import importPlugin from "eslint-plugin-import";
 import pluginRouter from "@tanstack/eslint-plugin-router";
+import semanticLayers from "./eslint-rules/semantic-layers.mjs";
 
 const compat = new FlatCompat({
   baseDirectory: import.meta.dirname
@@ -38,6 +39,7 @@ export default tseslint.config(
       }
     },
     plugins: {
+      layers: { rules: { semantic: semanticLayers } },
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
       "simple-import-sort": simpleImportSort,
@@ -51,6 +53,7 @@ export default tseslint.config(
       }
     },
     rules: {
+      "layers/semantic": "error",
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": "off",
       "@typescript-eslint/only-throw-error": "off",

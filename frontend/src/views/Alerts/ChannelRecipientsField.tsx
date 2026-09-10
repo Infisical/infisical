@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { UserIcon, UsersIcon } from "lucide-react";
 
 import { FilterableSelect } from "@app/components/v3";
@@ -63,13 +62,6 @@ const RecipientSelect = ({
   onChange,
   isError
 }: SelectProps & { options: RecipientOption[]; labelledOptions?: RecipientOption[] }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [menuPortalTarget, setMenuPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setMenuPortalTarget(containerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
-  }, []);
-
   const byKey = new Map(
     (labelledOptions ?? options).map((o) => [`${o.principalType}-${o.principalId}`, o])
   );
@@ -84,7 +76,7 @@ const RecipientSelect = ({
   );
 
   return (
-    <div ref={containerRef}>
+    <div>
       <FilterableSelect<RecipientOption>
         isMulti
         placeholder="Add users or groups..."
@@ -96,7 +88,6 @@ const RecipientSelect = ({
         getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
         getOptionLabel={(option) => option.label}
         formatOptionLabel={formatOptionLabel}
-        menuPortalTarget={menuPortalTarget ?? undefined}
         menuPosition="fixed"
         menuPlacement="auto"
         onChange={(newValue) =>

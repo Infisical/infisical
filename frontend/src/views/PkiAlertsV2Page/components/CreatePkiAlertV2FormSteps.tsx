@@ -715,7 +715,7 @@ export const CreatePkiAlertV2FormSteps = ({
                   Add Channel
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={4} className="z-[70]">
+              <DropdownMenuContent align="end" sideOffset={4}>
                 <DropdownMenuItem onClick={() => addChannel(PkiAlertChannelTypeV2.EMAIL)}>
                   <FontAwesomeIcon icon={faEnvelope} className="mr-2" />
                   Email

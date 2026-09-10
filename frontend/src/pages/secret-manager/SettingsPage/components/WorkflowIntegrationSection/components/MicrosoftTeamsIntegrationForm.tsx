@@ -1,4 +1,4 @@
-import { RefObject, useEffect } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -100,10 +100,9 @@ type TChannelOption = {
 type Props = {
   onClose: () => void;
   onBack?: () => void;
-  menuContainer: RefObject<HTMLDivElement | null>;
 };
 
-export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }: Props) => {
+export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack }: Props) => {
   const { currentProject } = useProject();
   const { data: microsoftTeamsConfig } = useGetWorkspaceWorkflowIntegrationConfig({
     projectId: currentProject?.id ?? "",
@@ -250,7 +249,6 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }
                 }
                 isLoading={isLoadingMicrosoftTeamsIntegrationTeams}
                 isError={Boolean(error)}
-                menuPortalTarget={menuContainer.current}
                 menuPosition="fixed"
                 menuPlacement="bottom"
               />
@@ -280,7 +278,6 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }
                 isDisabled={!selectedTeamId}
                 isLoading={isLoadingMicrosoftTeamsIntegrationTeams}
                 isError={Boolean(error)}
-                menuPortalTarget={menuContainer.current}
                 menuPosition="fixed"
                 menuPlacement="bottom"
                 closeMenuOnSelect={false}

@@ -5,6 +5,8 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
+import { LayerContent, LayerPortal, ModalLayer } from "@app/components/overlays/OverlayLayer";
+
 import { Card, CardBody, CardFooter, CardTitle } from "../Card";
 import { IconButton } from "../IconButton";
 
@@ -17,7 +19,7 @@ export type DrawerContentProps = DialogPrimitive.DialogContentProps & {
 } & VariantProps<typeof drawerContentVariation>;
 
 const drawerContentVariation = cva(
-  "fixed ease-in-out duration-300 z-90 border border-mineshaft-600 drop-shadow-2xl",
+  "fixed ease-in-out duration-300 z-layer-content border border-mineshaft-600 drop-shadow-2xl",
   {
     variants: {
       direction: {
@@ -46,9 +48,9 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
     },
     forwardedRef
   ) => (
-    <DialogPrimitive.Portal>
+    <LayerPortal portal={DialogPrimitive.Portal} modal>
       <DialogPrimitive.Overlay
-        className="fixed inset-0 z-20 h-full w-full"
+        className="fixed inset-0 z-layer-backdrop h-full w-full"
         style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       />
       <DialogPrimitive.Content
@@ -68,34 +70,37 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
           }
           props.onPointerDownOutside?.(e);
         }}
+        asChild
       >
-        <Card isRounded={false} className="dark h-full w-full">
-          {title && (
-            <CardTitle subTitle={subTitle} className="mb-0 px-4">
-              {title}
-            </CardTitle>
-          )}
-          <CardBody
-            className={twMerge(
-              "grow overflow-x-hidden overflow-y-auto px-4 pt-4 dark:scheme-dark",
-              cardBodyClassName
+        <LayerContent exitDuration={0}>
+          <Card isRounded={false} className="dark h-full w-full">
+            {title && (
+              <CardTitle subTitle={subTitle} className="mb-0 px-4">
+                {title}
+              </CardTitle>
             )}
-          >
-            {children}
-          </CardBody>
-          {footerContent && <CardFooter>{footerContent}</CardFooter>}{" "}
-          <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
-            <IconButton
-              variant="plain"
-              ariaLabel="close"
-              className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
+            <CardBody
+              className={twMerge(
+                "grow overflow-x-hidden overflow-y-auto px-4 pt-4 dark:scheme-dark",
+                cardBodyClassName
+              )}
             >
-              <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
-            </IconButton>
-          </DialogPrimitive.Close>
-        </Card>
+              {children}
+            </CardBody>
+            {footerContent && <CardFooter>{footerContent}</CardFooter>}{" "}
+            <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
+              <IconButton
+                variant="plain"
+                ariaLabel="close"
+                className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
+              >
+                <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
+              </IconButton>
+            </DialogPrimitive.Close>
+          </Card>
+        </LayerContent>
       </DialogPrimitive.Content>
-    </DialogPrimitive.Portal>
+    </LayerPortal>
   )
 );
 
@@ -103,7 +108,9 @@ DrawerContent.displayName = "ModalContent";
 
 export type DrawerProps = Omit<DialogPrimitive.DialogProps, "open"> & { isOpen?: boolean };
 export const Drawer = ({ isOpen, ...props }: DrawerProps) => (
-  <DialogPrimitive.Root open={isOpen} {...props} />
+  <ModalLayer {...props} open={isOpen}>
+    {(layerProps) => <DialogPrimitive.Root {...props} {...layerProps} />}
+  </ModalLayer>
 );
 
 export const DrawerTrigger = DialogPrimitive.Trigger;

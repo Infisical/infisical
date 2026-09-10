@@ -1,6 +1,8 @@
 import { GroupBase } from "react-select";
 import ReactSelectCreatable, { CreatableProps } from "react-select/creatable";
 
+import { usePortalContainer } from "@app/components/overlays/OverlayLayer";
+
 import {
   ClearIndicator,
   DropdownIndicator,
@@ -15,10 +17,12 @@ export const CreatableSelect = <T,>({
   closeMenuOnSelect,
   isError,
   components,
-  menuPortalTarget = typeof document === "undefined" ? undefined : document.body,
+  menuPortalTarget,
+  menuIsOpen,
   menuPosition = "fixed",
   ...props
 }: CreatableProps<T, boolean, GroupBase<T>> & { isError?: boolean }) => {
+  const layerContainer = usePortalContainer();
   return (
     <ReactSelectCreatable
       isMulti={isMulti}
@@ -26,7 +30,12 @@ export const CreatableSelect = <T,>({
       hideSelectedOptions={false}
       unstyled
       data-slot="creatable-select"
-      menuPortalTarget={menuPortalTarget}
+      menuPortalTarget={
+        menuPortalTarget === undefined
+          ? (layerContainer ?? (typeof document === "undefined" ? undefined : document.body))
+          : menuPortalTarget
+      }
+      menuIsOpen={layerContainer === null && menuPortalTarget === undefined ? false : menuIsOpen}
       menuPosition={menuPosition}
       styles={selectStyles as any}
       components={{

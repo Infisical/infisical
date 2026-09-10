@@ -62,7 +62,6 @@ type Props = {
   identityId: string;
   onGoBack: () => void;
   isDisabled?: boolean;
-  menuPortalContainerRef?: React.RefObject<HTMLElement | null>;
   initialPermissions?: z.infer<typeof formSchema>["permissions"];
 };
 
@@ -91,7 +90,6 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   onGoBack,
   identityId,
   isDisabled,
-  menuPortalContainerRef,
   initialPermissions
 }: Props) => {
   const isCreate = !privilegeId;
@@ -424,7 +422,6 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                       projectType={currentProject.type}
                       projectId={projectId}
                       allowedSubjects={filteredPermissionSubjects}
-                      portalContainer={menuPortalContainerRef}
                     />
                   )}
                 </div>
@@ -457,7 +454,6 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                               prev.includes(permissionSubject) ? prev : [...prev, permissionSubject]
                             )
                           }
-                          menuPortalContainerRef={menuPortalContainerRef}
                           isConditional={isConditionalSubjects(permissionSubject)}
                         >
                           {renderConditionalComponents(permissionSubject, isDisabled)}

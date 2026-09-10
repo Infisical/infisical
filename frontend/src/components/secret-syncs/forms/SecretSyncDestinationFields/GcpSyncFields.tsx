@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { FormatOptionLabelMeta, MultiValue, SingleValue } from "react-select";
 import { Info, TriangleAlert } from "lucide-react";
@@ -99,17 +99,6 @@ export const GcpSyncFields = () => {
     hasConfiguredReplicaRegions || hasAccordionError ? ADVANCED_ITEM_VALUE : ""
   );
 
-  // The accordion content clips its children (overflow-hidden for the height animation), so the
-  // select menu is portaled to the enclosing sheet. The ref must sit on a plain, always-mounted
-  // element: v3 components don't forward refs on React 18, and the accordion content only exists
-  // in the DOM while open.
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [menuPortalTarget, setMenuPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setMenuPortalTarget(containerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
-  }, []);
-
   useEffect(() => {
     if (hasAccordionError) setOpenItem(ADVANCED_ITEM_VALUE);
   }, [hasAccordionError, formState.submitCount]);
@@ -152,7 +141,7 @@ export const GcpSyncFields = () => {
   ]);
 
   return (
-    <div ref={containerRef} className="contents">
+    <div className="contents">
       <FieldGroup className="min-h-0 flex-1">
         <SecretSyncConnectionField
           onChange={() => {
@@ -332,7 +321,6 @@ export const GcpSyncFields = () => {
                           placeholder="Automatic replication"
                           getOptionValue={(option) => option.locationId}
                           formatOptionLabel={formatOptionLabel}
-                          menuPortalTarget={menuPortalTarget ?? undefined}
                           menuPosition="fixed"
                           menuPlacement="auto"
                         />

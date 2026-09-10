@@ -53,8 +53,7 @@ const ToastCopyButton = ({ value, name }: { value: string; name: string }) => {
           {isCopying ? <CheckIcon className="size-3!" /> : <CopyIcon className="size-3!" />}
         </IconButton>
       </TooltipTrigger>
-      {/* Render above the sonner toaster (z-index 999999999) so the tooltip isn't occluded. */}
-      <TooltipContent className="z-[2147483647]">{copyText}</TooltipContent>
+      <TooltipContent>{copyText}</TooltipContent>
     </Tooltip>
   );
 };

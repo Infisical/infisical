@@ -280,11 +280,7 @@ const VaultRoleImportModal = <TRole extends VaultRole>({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {isOpen && (
         // Match the legacy parent modal's layer; portal order keeps this dialog and its comboboxes above it.
-        <DialogContent
-          className="z-[60] max-w-2xl"
-          overlayClassName="z-[60]"
-          onOpenAutoFocus={(event) => event.preventDefault()}
-        >
+        <DialogContent className="max-w-2xl" onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{config.title}</DialogTitle>
             <DialogDescription>{config.description}</DialogDescription>

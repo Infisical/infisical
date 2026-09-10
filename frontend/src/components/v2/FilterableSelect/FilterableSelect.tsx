@@ -1,6 +1,8 @@
 import Select, { Props } from "react-select";
 import { twMerge } from "tailwind-merge";
 
+import { usePortalContainer } from "@app/components/overlays/OverlayLayer";
+
 import {
   ClearIndicator,
   DropdownIndicator,
@@ -21,12 +23,16 @@ export const FilterableSelect = <T,>({
   getGroupHeaderLabel = null,
   options = [],
   menuListClassName,
+  menuPortalTarget,
+  menuIsOpen,
+  menuPosition = "fixed",
   ...props
 }: Props<T> & {
   groupBy?: string | null;
   getGroupHeaderLabel?: ((groupValue: any) => string) | null;
   menuListClassName?: string;
 }) => {
+  const layerContainer = usePortalContainer();
   let processedOptions = options;
 
   if (groupBy && Array.isArray(options)) {
@@ -73,9 +79,17 @@ export const FilterableSelect = <T,>({
         }),
         menuPortal: (provided) => ({
           ...provided,
-          zIndex: 99999
+          zIndex: "var(--z-index-layer-floating)",
+          pointerEvents: "auto"
         })
       }}
+      menuPortalTarget={
+        menuPortalTarget === undefined
+          ? (layerContainer ?? (typeof document === "undefined" ? undefined : document.body))
+          : menuPortalTarget
+      }
+      menuIsOpen={layerContainer === null && menuPortalTarget === undefined ? false : menuIsOpen}
+      menuPosition={menuPosition}
       tabSelectsValue={tabSelectsValue}
       components={{
         DropdownIndicator,
@@ -86,6 +100,7 @@ export const FilterableSelect = <T,>({
         ...props.components
       }}
       classNames={{
+        menuPortal: () => "react-select-menu-portal",
         container: ({ isDisabled }) =>
           twMerge("w-full font-inter text-sm", isDisabled && "pointer-events-auto! opacity-50"),
         control: ({ isFocused, isDisabled }) =>

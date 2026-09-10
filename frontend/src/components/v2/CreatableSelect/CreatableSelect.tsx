@@ -2,20 +2,38 @@ import { GroupBase } from "react-select";
 import ReactSelectCreatable, { CreatableProps } from "react-select/creatable";
 import { twMerge } from "tailwind-merge";
 
+import { usePortalContainer } from "@app/components/overlays/OverlayLayer";
+
 import { ClearIndicator, DropdownIndicator, MultiValueRemove, Option } from "../Select/components";
 
 export const CreatableSelect = <T,>({
   isMulti,
   closeMenuOnSelect,
+  menuPortalTarget,
+  menuIsOpen,
+  menuPosition = "fixed",
   ...props
 }: CreatableProps<T, boolean, GroupBase<T>>) => {
+  const layerContainer = usePortalContainer();
   return (
     <ReactSelectCreatable
       isMulti={isMulti}
       closeMenuOnSelect={closeMenuOnSelect ?? !isMulti}
       hideSelectedOptions={false}
+      menuIsOpen={layerContainer === null && menuPortalTarget === undefined ? false : menuIsOpen}
+      menuPosition={menuPosition}
+      menuPortalTarget={
+        menuPortalTarget === undefined
+          ? (layerContainer ?? (typeof document === "undefined" ? undefined : document.body))
+          : menuPortalTarget
+      }
       unstyled
       styles={{
+        menuPortal: (base) => ({
+          ...base,
+          zIndex: "var(--z-index-layer-floating)",
+          pointerEvents: "auto"
+        }),
         input: (base) => ({
           ...base,
           "input:focus": {
@@ -34,6 +52,7 @@ export const CreatableSelect = <T,>({
       }}
       components={{ DropdownIndicator, ClearIndicator, MultiValueRemove, Option }}
       classNames={{
+        menuPortal: () => "react-select-menu-portal",
         container: () => "w-full font-inter",
         control: ({ isFocused }) =>
           twMerge(

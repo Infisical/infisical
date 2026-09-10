@@ -5,6 +5,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
 import { SecretReferenceWizard } from "@app/components/v3/platform/SecretInput/SecretReferenceWizard";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject, useProjectPermission } from "@app/context";
@@ -492,14 +493,14 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onClickSegment={handleClickSegment}
           />
         </Popover.Trigger>
-        <Popover.Portal>
+        <LayerPortal portal={Popover.Portal}>
           <Popover.Content
             align="start"
             onOpenAutoFocus={(e) => e.preventDefault()}
             onMouseDown={(e) => {
               if (showWizard) e.preventDefault();
             }}
-            className={`relative top-2 z-100 max-h-80 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md ${showWizard ? "w-64" : "min-w-80"}`}
+            className={`relative top-2 z-layer-floating max-h-80 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md ${showWizard ? "w-64" : "min-w-80"}`}
             style={showWizard ? undefined : { width: "var(--radix-popover-trigger-width)" }}
           >
             {showWizard ? (
@@ -590,7 +591,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               </div>
             )}
           </Popover.Content>
-        </Popover.Portal>
+        </LayerPortal>
       </Popover.Root>
     );
   }

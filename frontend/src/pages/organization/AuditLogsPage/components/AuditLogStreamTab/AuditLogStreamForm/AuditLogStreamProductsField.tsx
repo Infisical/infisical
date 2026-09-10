@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 import { components, MultiValue, OptionProps } from "react-select";
 import { Building2Icon, CheckIcon, GlobeIcon, Info, type LucideIcon } from "lucide-react";
@@ -111,15 +110,6 @@ const ProductOptionItem = ({ isSelected, children, ...props }: OptionProps<Produ
 export const ProductsField = () => {
   const { control } = useFormContext<FilterFormShape>();
   const { field } = useController({ control, name: "filters.products" });
-  const containerRef = useRef<HTMLDivElement>(null);
-  // Portal the menu into the enclosing modal so it can overflow the modal's scrollable body
-  // instead of being clipped. Targeting the dialog (not document.body) keeps it inside Radix's
-  // focus trap so options stay clickable. Falls back to inline rendering outside a modal.
-  const [menuPortalTarget, setMenuPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setMenuPortalTarget(containerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
-  }, []);
 
   const selected = field.value ?? [];
   const value = PRODUCT_OPTIONS.filter((option) =>
@@ -141,7 +131,7 @@ export const ProductsField = () => {
           </TooltipContent>
         </Tooltip>
       </FieldLabel>
-      <div ref={containerRef}>
+      <div>
         <FilterableSelect
           inputId="products"
           isMulti
@@ -167,7 +157,6 @@ export const ProductsField = () => {
           getOptionValue={(option) => option.value}
           getOptionLabel={(option) => option.label}
           components={{ Option: ProductOptionItem }}
-          menuPortalTarget={menuPortalTarget ?? undefined}
           menuPosition="fixed"
           menuPlacement="auto"
         />

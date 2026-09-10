@@ -2,6 +2,8 @@ import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as HoverCard from "@radix-ui/react-hover-card";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
+
 type Props = {
   text: string;
   icon: IconProp;
@@ -17,8 +19,8 @@ export const HoverObject = ({ text, icon, color }: Props): JSX.Element => (
         <FontAwesomeIcon icon={icon} className={`text-${color}`} />
       </a>
     </HoverCard.Trigger>
-    <HoverCard.Portal>
-      <HoverCard.Content className="HoverCardContent z-300" sideOffset={5}>
+    <LayerPortal portal={HoverCard.Portal}>
+      <HoverCard.Content className="HoverCardContent z-layer-floating" sideOffset={5}>
         <div className="rounded-md border border-mineshaft-600 bg-bunker-700 p-2 text-bunker-300 drop-shadow-xl">
           <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
             <div>
@@ -29,7 +31,7 @@ export const HoverObject = ({ text, icon, color }: Props): JSX.Element => (
 
         <HoverCard.Arrow className="border-mineshaft-600" />
       </HoverCard.Content>
-    </HoverCard.Portal>
+    </LayerPortal>
   </HoverCard.Root>
 );
 

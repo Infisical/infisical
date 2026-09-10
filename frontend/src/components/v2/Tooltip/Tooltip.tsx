@@ -3,6 +3,8 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { TooltipProps as RootProps } from "@radix-ui/react-tooltip";
 import { twMerge } from "tailwind-merge";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
+
 export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "content"> & {
   children: ReactNode;
   content?: ReactNode;
@@ -45,14 +47,14 @@ export const Tooltip = ({
       onOpenChange={onOpenChange}
     >
       <TooltipPrimitive.Trigger asChild={asChild}>{children}</TooltipPrimitive.Trigger>
-      <TooltipPrimitive.Portal>
+      <LayerPortal portal={TooltipPrimitive.Portal}>
         <TooltipPrimitive.Content
           side={position}
           align="center"
           sideOffset={5}
           {...props}
           className={twMerge(
-            "data-[state=delayed-open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=delayed-open]:data-[side=left]:animate-slide-right-and-fade data-[state=delayed-open]:data-[side=right]:animate-slide-left-and-fade data-[state=delayed-open]:data-[side=top]:animate-slide-down-and-fade z-[70] max-w-60 border border-mineshaft-600 bg-mineshaft-800 font-light text-bunker-200 shadow-md select-none",
+            "data-[state=delayed-open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=delayed-open]:data-[side=left]:animate-slide-right-and-fade data-[state=delayed-open]:data-[side=right]:animate-slide-left-and-fade data-[state=delayed-open]:data-[side=top]:animate-slide-down-and-fade z-layer-tooltip max-w-60 border border-mineshaft-600 bg-mineshaft-800 font-light text-bunker-200 shadow-md select-none",
             isDisabled && "hidden!",
             center && "text-center",
             size === "sm" && "rounded-xs px-2 py-1 text-xs",
@@ -63,7 +65,7 @@ export const Tooltip = ({
           {content}
           <TooltipPrimitive.Arrow width={11} height={5} className="fill-mineshaft-600" />
         </TooltipPrimitive.Content>
-      </TooltipPrimitive.Portal>
+      </LayerPortal>
     </TooltipPrimitive.Root>
   ) : (
     // eslint-disable-next-line react/jsx-no-useless-fragment

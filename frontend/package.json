@@ -14,7 +14,8 @@
     "lint:fix": "eslint --fix ./src --max-warnings 0",
     "type:check": "tsc --noEmit --project ./tsconfig.app.json",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test:layers": "node scripts/semantic-layers.test.mjs && TSX_TSCONFIG_PATH=./tsconfig.app.json node --import tsx --test scripts/overlay-layer.test.mjs"
   },
   "overrides": {
     "sha.js": "2.4.12",
@@ -173,12 +174,14 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-storybook": "^9.1.9",
     "globals": "^15.12.0",
+    "jsdom": "26.1.0",
     "postcss": "^8.4.49",
     "prettier": "3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.14",
     "storybook": "^9.1.19",
     "storybook-addon-tag-badges": "^2.0.4",
     "tailwindcss": "^4.1.14",
+    "tsx": "4.19.3",
     "tw-animate-css": "^1.4.0",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.15.0",

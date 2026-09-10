@@ -2,6 +2,8 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
+import { LayerContent, LayerPortal, ModalLayer } from "@app/components/overlays/OverlayLayer";
+
 import { cn } from "../../utils";
 
 const DIALOG_CONTENT_WIDTH_CLASSNAME = "w-[calc(100%-2rem)] max-w-lg";
@@ -14,7 +16,11 @@ const isAllowedOutsideInteraction = (target: EventTarget | null) =>
   );
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+  return (
+    <ModalLayer {...props}>
+      {(layerProps) => <DialogPrimitive.Root data-slot="dialog" {...props} {...layerProps} />}
+    </ModalLayer>
+  );
 }
 
 function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
@@ -22,28 +28,30 @@ function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive
 }
 
 function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />;
+  return <LayerPortal portal={DialogPrimitive.Portal} modal data-slot="dialog-portal" {...props} />;
 }
 
 function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.Close>) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
-function DialogOverlay({
-  className,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentProps<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => {
   return (
     <DialogPrimitive.Overlay
+      ref={ref}
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-layer-backdrop bg-black/50 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-in data-[state=open]:fade-in-0",
         className
       )}
       {...props}
     />
   );
-}
+});
+DialogOverlay.displayName = "DialogOverlay";
 
 function DialogContent({
   className,
@@ -63,7 +71,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 flex max-h-[calc(100dvh-2rem)] thin-scrollbar translate-x-[-50%] translate-y-[-50%] flex-col gap-6 overflow-y-auto overscroll-none rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg outline-none has-data-[slot=dialog-footer]:pb-0 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "fixed top-[50%] left-[50%] z-layer-content flex max-h-[calc(100dvh-2rem)] thin-scrollbar translate-x-[-50%] translate-y-[-50%] flex-col gap-6 overflow-y-auto overscroll-none rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg outline-none has-data-[slot=dialog-footer]:pb-0 data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:ease-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           DIALOG_CONTENT_WIDTH_CLASSNAME,
           className
         )}
@@ -82,17 +90,20 @@ function DialogContent({
           onInteractOutside?.(e);
         }}
         {...props}
+        asChild
       >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="data-[state=open]:text-muted-foreground absolute top-4 right-4 cursor-pointer rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
+        <LayerContent>
+          {children}
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              className="data-[state=open]:text-muted-foreground absolute top-4 right-4 cursor-pointer rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            >
+              <XIcon />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
+        </LayerContent>
       </DialogPrimitive.Content>
     </DialogPortal>
   );

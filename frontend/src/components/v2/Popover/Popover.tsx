@@ -2,6 +2,8 @@ import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
+
 type Props = {
   children: any;
   text: string;
@@ -19,9 +21,9 @@ export const PopoverObject = ({ children, text, onChangeHandler, id }: Props) =>
     >
       {children}
     </Popover.Trigger>
-    <Popover.Portal>
+    <LayerPortal portal={Popover.Portal}>
       <Popover.Content
-        className="data-[state=open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=open]:data-[side=left]:animate-slide-right-and-fade data-[state=open]:data-[side=right]:animate-slide-left-and-fade data-[state=open]:data-[side=top]:animate-slide-down-and-fade focus:shadow-[0_10px_38px_-10px_hsla(206,22%,7%,.35),0_10px_20px_-15px_hsla(206,22%,7%,.2),0_0_0_2px_theme(colors.violet7)] z-100 min-h-fit w-[460px] rounded-sm border border-chicago-700 bg-mineshaft-600 p-3 shadow-[0_10px_38px_-10px_hsla(206,22%,7%,.35),0_10px_20px_-15px_hsla(206,22%,7%,.2)] will-change-[transform,opacity]"
+        className="data-[state=open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=open]:data-[side=left]:animate-slide-right-and-fade data-[state=open]:data-[side=right]:animate-slide-left-and-fade data-[state=open]:data-[side=top]:animate-slide-down-and-fade focus:shadow-[0_10px_38px_-10px_hsla(206,22%,7%,.35),0_10px_20px_-15px_hsla(206,22%,7%,.2),0_0_0_2px_theme(colors.violet7)] z-layer-floating min-h-fit w-[460px] rounded-sm border border-chicago-700 bg-mineshaft-600 p-3 shadow-[0_10px_38px_-10px_hsla(206,22%,7%,.35),0_10px_20px_-15px_hsla(206,22%,7%,.2)] will-change-[transform,opacity]"
         sideOffset={5}
         hideWhenDetached
         side="left"
@@ -45,7 +47,7 @@ export const PopoverObject = ({ children, text, onChangeHandler, id }: Props) =>
         </Popover.Close>
         <Popover.Arrow className="fill-chicago-700" />
       </Popover.Content>
-    </Popover.Portal>
+    </LayerPortal>
   </Popover.Root>
 );
 

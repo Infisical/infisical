@@ -431,7 +431,7 @@ export const SecretApprovalRequestChanges = ({
                     <ChevronDownIcon />
                   </IconButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="z-[80]">
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => handleReview(ApprovalStatus.APPROVED)}>
                     <CheckIcon />
                     Approve
@@ -477,7 +477,7 @@ export const SecretApprovalRequestChanges = ({
           {myReview ? "Update Review" : "Review Changes"}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align={myReview ? "end" : "start"} className="z-[70] w-96">
+      <PopoverContent align={myReview ? "end" : "start"} className="w-96">
         {reviewForm}
       </PopoverContent>
     </Popover>

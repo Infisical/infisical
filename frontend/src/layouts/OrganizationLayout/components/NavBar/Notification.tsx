@@ -37,11 +37,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
               />
             </div>
           )}
-          <Tooltip
-            content={<Markdown>{notification.title}</Markdown>}
-            delayDuration={300}
-            className="z-1000"
-          >
+          <Tooltip content={<Markdown>{notification.title}</Markdown>} delayDuration={300}>
             <span className="overflow-hidden text-sm leading-5 font-medium text-ellipsis whitespace-nowrap text-mineshaft-100">
               <Markdown components={{ p: "span" }}>{notification.title}</Markdown>
             </span>

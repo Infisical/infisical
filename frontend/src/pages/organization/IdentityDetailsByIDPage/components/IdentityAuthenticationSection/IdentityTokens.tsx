@@ -83,7 +83,7 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
                   </IconButton>
                 </Tooltip>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="z-101 p-1">
+              <DropdownMenuContent align="start" className="p-1">
                 <DropdownMenuItem
                   onClick={async () => {
                     handlePopUpOpen("token", {

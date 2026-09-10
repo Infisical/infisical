@@ -160,7 +160,7 @@ export const IdentityRoleAssignmentRow = ({
               <SelectTrigger id={selectId} className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" className="z-[70]">
+              <SelectContent position="popper">
                 {getRolesForSelect(field.value).map(({ name, slug, id }) => {
                   const isAssignable = assignableRoleSlugs.has(slug);
                   return (
@@ -204,7 +204,6 @@ export const IdentityRoleAssignmentRow = ({
           </Tooltip>
           <PopoverContent
             side="right"
-            className="z-[70]"
             onWheel={(event) => event.stopPropagation()}
             onOpenAutoFocus={(event) => event.preventDefault()}
           >

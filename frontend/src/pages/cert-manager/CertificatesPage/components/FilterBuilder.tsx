@@ -172,7 +172,6 @@ const FilterRow = ({
             placeholder="Select..."
             className="w-full text-sm"
             maxMenuHeight={160}
-            menuPortalTarget={document.body}
             menuPosition="fixed"
             {...(serverSearch
               ? {

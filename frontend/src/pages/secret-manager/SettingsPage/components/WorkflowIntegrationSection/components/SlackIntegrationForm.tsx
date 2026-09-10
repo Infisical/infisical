@@ -1,4 +1,4 @@
-import { RefObject, useEffect } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -54,7 +54,6 @@ type TSlackConfigForm = z.infer<typeof formSchema>;
 type Props = {
   onClose: () => void;
   onBack?: () => void;
-  menuContainer: RefObject<HTMLDivElement | null>;
 };
 
 type TChannelsFieldProps = {
@@ -64,7 +63,6 @@ type TChannelsFieldProps = {
   error?: { message?: string };
   channels?: SlackIntegrationChannel[];
   isLoading: boolean;
-  menuContainer: RefObject<HTMLDivElement | null>;
 };
 
 const ChannelsField = ({
@@ -73,8 +71,7 @@ const ChannelsField = ({
   onChange,
   error,
   channels,
-  isLoading,
-  menuContainer
+  isLoading
 }: TChannelsFieldProps) => (
   <Field>
     <FieldLabel htmlFor={inputId}>Slack channels</FieldLabel>
@@ -91,7 +88,6 @@ const ChannelsField = ({
       placeholder="Select channels..."
       isLoading={isLoading}
       isError={Boolean(error)}
-      menuPortalTarget={menuContainer.current}
       menuPosition="fixed"
       menuPlacement="bottom"
       closeMenuOnSelect={false}
@@ -101,7 +97,7 @@ const ChannelsField = ({
   </Field>
 );
 
-export const SlackIntegrationForm = ({ onClose, onBack, menuContainer }: Props) => {
+export const SlackIntegrationForm = ({ onClose, onBack }: Props) => {
   const { currentProject } = useProject();
   const { data: slackConfig } = useGetWorkspaceWorkflowIntegrationConfig({
     projectId: currentProject?.id ?? "",
@@ -305,7 +301,6 @@ export const SlackIntegrationForm = ({ onClose, onBack, menuContainer }: Props) 
                     error={error}
                     channels={sortedSlackChannels}
                     isLoading={isSlackChannelsLoading}
-                    menuContainer={menuContainer}
                   />
                 )}
               />
@@ -342,7 +337,6 @@ export const SlackIntegrationForm = ({ onClose, onBack, menuContainer }: Props) 
                     error={error}
                     channels={sortedSlackChannels}
                     isLoading={isSlackChannelsLoading}
-                    menuContainer={menuContainer}
                   />
                 )}
               />
@@ -379,7 +373,6 @@ export const SlackIntegrationForm = ({ onClose, onBack, menuContainer }: Props) 
                     error={error}
                     channels={sortedSlackChannels}
                     isLoading={isSlackChannelsLoading}
-                    menuContainer={menuContainer}
                   />
                 )}
               />

@@ -430,7 +430,7 @@ export const GithubConfigurePage = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="start"
-                            className="z-100 max-h-80 thin-scrollbar overflow-y-scroll"
+                            className="max-h-80 thin-scrollbar overflow-y-scroll"
                           >
                             {integrationAuthApps.length > 0 ? (
                               integrationAuthApps.map((integrationAuthApp) => {
@@ -567,7 +567,7 @@ export const GithubConfigurePage = () => {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
                                 align="start"
-                                className="z-100 max-h-80 thin-scrollbar overflow-y-scroll"
+                                className="max-h-80 thin-scrollbar overflow-y-scroll"
                               >
                                 {selectedOrganization ? (
                                   selectedOrganization.map((integrationAuthApp) => {

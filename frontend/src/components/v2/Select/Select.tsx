@@ -6,6 +6,8 @@ import { LucideIcon } from "lucide-react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { twMerge } from "tailwind-merge";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
+
 import { Spinner } from "../Spinner";
 
 type Props = {
@@ -82,11 +84,11 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               />
             </SelectPrimitive.Icon>
           </SelectPrimitive.Trigger>
-          <SelectPrimitive.Portal>
+          <LayerPortal portal={SelectPrimitive.Portal}>
             <SelectPrimitive.Content
               side={side}
               className={twMerge(
-                "relative top-1 z-100 max-w-sm overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
+                "relative top-1 z-layer-floating max-w-sm overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md",
                 position === "popper" && "max-h-72",
                 dropdownContainerClassName
               )}
@@ -114,7 +116,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                 </div>
               </SelectPrimitive.ScrollDownButton>
             </SelectPrimitive.Content>
-          </SelectPrimitive.Portal>
+          </LayerPortal>
         </SelectPrimitive.Root>
       </div>
     );

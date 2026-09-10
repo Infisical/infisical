@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 import { twMerge } from "tailwind-merge";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
 import { useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { useGetFoldersByEnv } from "@app/hooks/api";
@@ -130,12 +131,12 @@ const SecretPathInputBase = ({
           className={containerClassName}
         />
       </Popover.Trigger>
-      <Popover.Portal>
+      <LayerPortal portal={Popover.Portal}>
         <Popover.Content
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
           className={twMerge(
-            "relative top-2 z-100 overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+            "relative top-2 z-layer-floating overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
           )}
           style={{
             width: "var(--radix-popover-trigger-width)",
@@ -172,7 +173,7 @@ const SecretPathInputBase = ({
             ))}
           </div>
         </Popover.Content>
-      </Popover.Portal>
+      </LayerPortal>
     </Popover.Root>
   );
 };

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { components, OptionProps } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -117,7 +117,6 @@ export const AddWebhookForm = ({
 
   const selectedWebhookType = watch("type");
   const selectedEnvironment = watch("environment");
-  const modalContainer = useRef<HTMLDivElement>(null);
 
   const generalFormFields = (
     <>
@@ -191,7 +190,7 @@ export const AddWebhookForm = ({
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-lg">
-        <div ref={modalContainer} className="flex h-full min-h-0 flex-col">
+        <div className="flex h-full min-h-0 flex-col">
           <form onSubmit={handleSubmit(onCreateWebhook)} className="flex h-full min-h-0 flex-col">
             <SheetHeader>
               <SheetTitle>Create a new webhook</SheetTitle>
@@ -311,7 +310,6 @@ export const AddWebhookForm = ({
                               getOptionValue={(option) => option.value}
                               getOptionLabel={(option) => option.label}
                               placeholder="Select events..."
-                              menuPortalTarget={modalContainer.current}
                               menuPosition="fixed"
                               menuPlacement="bottom"
                               closeMenuOnSelect={false}

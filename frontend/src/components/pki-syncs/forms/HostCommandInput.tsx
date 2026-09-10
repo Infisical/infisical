@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
 import { TextArea } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 
@@ -130,13 +131,13 @@ export const HostCommandInput = ({
           }}
         />
       </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
+      <LayerPortal portal={PopoverPrimitive.Portal}>
         <PopoverPrimitive.Content
           ref={contentRef}
           align="start"
           onOpenAutoFocus={(event) => event.preventDefault()}
           onMouseDown={(event) => event.preventDefault()}
-          className="relative top-2 z-[100] max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md"
+          className="relative top-2 z-layer-floating max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md"
           style={{ width: "var(--radix-popover-trigger-width)", minWidth: "320px" }}
         >
           <div className="px-2 py-1.5 text-[10px] font-semibold tracking-wider text-muted uppercase">
@@ -165,7 +166,7 @@ export const HostCommandInput = ({
             </button>
           ))}
         </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
+      </LayerPortal>
     </PopoverPrimitive.Root>
   );
 };

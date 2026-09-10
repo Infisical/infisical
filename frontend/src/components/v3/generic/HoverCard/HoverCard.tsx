@@ -1,6 +1,8 @@
 import * as React from "react";
 import * as HoverCardPrimitive from "@radix-ui/react-hover-card";
 
+import { LayerPortal } from "@app/components/overlays/OverlayLayer";
+
 import { cn } from "../../utils";
 
 function HoverCard({ ...props }: React.ComponentProps<typeof HoverCardPrimitive.Root>) {
@@ -19,14 +21,14 @@ function HoverCardContent({
   ...props
 }: React.ComponentProps<typeof HoverCardPrimitive.Content>) {
   return (
-    <HoverCardPrimitive.Portal data-slot="hover-card-portal">
+    <LayerPortal portal={HoverCardPrimitive.Portal} data-slot="hover-card-portal">
       <HoverCardPrimitive.Content
         data-slot="hover-card-content"
         align={align}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          "z-50 w-64 origin-(--radix-hover-card-content-transform-origin) rounded-lg bg-popover p-2.5",
+          "z-layer-floating w-64 origin-(--radix-hover-card-content-transform-origin) rounded-lg bg-popover p-2.5",
           "border border-border text-sm text-foreground/90 shadow-md outline-hidden",
           "duration-100 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2",
@@ -36,7 +38,7 @@ function HoverCardContent({
         )}
         {...props}
       />
-    </HoverCardPrimitive.Portal>
+    </LayerPortal>
   );
 }
 
