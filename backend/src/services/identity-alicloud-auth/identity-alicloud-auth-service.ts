@@ -25,7 +25,7 @@ import {
 } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
-import { assertIdentityAuthMutationAllowed } from "../identity/identity-auth-permission-fns";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -306,7 +306,7 @@ export const identityAliCloudAuthServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -429,7 +429,7 @@ export const identityAliCloudAuthServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -577,7 +577,7 @@ export const identityAliCloudAuthServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,

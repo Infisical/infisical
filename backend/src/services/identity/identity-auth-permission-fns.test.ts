@@ -17,7 +17,7 @@ import {
 import { PermissionBoundaryError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { assertIdentityAuthMutationAllowed } from "./identity-auth-permission-fns";
+import { assertIdentityAuthAccessAllowed } from "./identity-auth-permission-fns";
 
 // Regression guard for the privilege boundary on identity auth-method mutations. Attach and update
 // carried none, and revoke carried one only on its org branch, so on the legacy privilege system a
@@ -80,9 +80,9 @@ const runBoundary = async ({
       }
     },
     orgDAL: { findById: () => Promise.resolve({ shouldUseNewPrivilegeSystem }) }
-  } as unknown as Parameters<typeof assertIdentityAuthMutationAllowed>[0];
+  } as unknown as Parameters<typeof assertIdentityAuthAccessAllowed>[0];
 
-  await assertIdentityAuthMutationAllowed(deps, {
+  await assertIdentityAuthAccessAllowed(deps, {
     identityId: "identity-1",
     orgId: "org-1",
     projectId,
@@ -95,7 +95,7 @@ const runBoundary = async ({
   });
 };
 
-describe("assertIdentityAuthMutationAllowed", () => {
+describe("assertIdentityAuthAccessAllowed", () => {
   describe("organization-level identity", () => {
     test("an admin actor may configure a member identity's auth", async () => {
       await expect(runBoundary({ actorPermission: orgAdmin, targetPermissions: [orgMember] })).resolves.toBeUndefined();

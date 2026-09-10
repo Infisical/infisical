@@ -54,7 +54,7 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
 
 import { ActorType } from "../auth/auth-type";
-import { assertIdentityAuthMutationAllowed } from "../identity/identity-auth-permission-fns";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -881,7 +881,7 @@ export const identityKubernetesAuthServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -1239,7 +1239,7 @@ export const identityKubernetesAuthServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -1786,7 +1786,7 @@ export const identityKubernetesAuthServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,

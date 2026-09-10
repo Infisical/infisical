@@ -11,7 +11,9 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 const PROJECT_ACTION_BY_ORG_ACTION = {
   [OrgPermissionIdentityActions.EditAuth]: ProjectPermissionIdentityActions.EditAuth,
   [OrgPermissionIdentityActions.RevokeAuth]: ProjectPermissionIdentityActions.RevokeAuth,
-  [OrgPermissionIdentityActions.CreateToken]: ProjectPermissionIdentityActions.CreateToken
+  [OrgPermissionIdentityActions.CreateToken]: ProjectPermissionIdentityActions.CreateToken,
+  [OrgPermissionIdentityActions.GetToken]: ProjectPermissionIdentityActions.GetToken,
+  [OrgPermissionIdentityActions.DeleteToken]: ProjectPermissionIdentityActions.DeleteToken
 } as const;
 
 type TIdentityAuthPermissionDeps = {
@@ -22,7 +24,7 @@ type TIdentityAuthPermissionDeps = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
-type TAssertIdentityAuthMutationAllowedDTO = {
+type TAssertIdentityAuthAccessAllowedDTO = {
   identityId: string;
   orgId: string;
   projectId?: string | null;
@@ -34,10 +36,11 @@ type TAssertIdentityAuthMutationAllowedDTO = {
   actorOrgId: string;
 };
 
-// Repointing an identity's auth trust, or minting a credential for it, lets you authenticate as that
-// identity, so the actor has to out-rank every role the target holds. Only bites on the legacy privilege system: on the new one
+// Repointing an identity's auth trust or minting a credential for it lets you authenticate as that
+// identity, and enumerating its credential records tells you what to attack, so the actor has to
+// out-rank every role the target holds. Only bites on the legacy privilege system: on the new one
 // `assertRoleSetBoundary` reduces to the action check the caller already ran.
-export const assertIdentityAuthMutationAllowed = async (
+export const assertIdentityAuthAccessAllowed = async (
   { permissionService, orgDAL }: TIdentityAuthPermissionDeps,
   {
     identityId,
@@ -49,7 +52,7 @@ export const assertIdentityAuthMutationAllowed = async (
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TAssertIdentityAuthMutationAllowedDTO
+  }: TAssertIdentityAuthAccessAllowedDTO
 ) => {
   const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
     orgDAL.findById(orgId)

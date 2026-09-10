@@ -31,7 +31,7 @@ import {
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
-import { assertIdentityAuthMutationAllowed } from "../identity/identity-auth-permission-fns";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -545,7 +545,7 @@ export const identitySpiffeAuthServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -708,7 +708,7 @@ export const identitySpiffeAuthServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -924,7 +924,7 @@ export const identitySpiffeAuthServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,

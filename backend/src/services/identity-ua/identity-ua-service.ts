@@ -4,10 +4,6 @@ import { requestContext } from "@fastify/request-context";
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -17,7 +13,6 @@ import {
   BadRequestError,
   ForbiddenRequestError,
   NotFoundError,
-  PermissionBoundaryError,
   RateLimitError,
   UnauthorizedError
 } from "@app/lib/errors";
@@ -34,7 +29,7 @@ import {
 } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
-import { assertIdentityAuthMutationAllowed } from "../identity/identity-auth-permission-fns";
+import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import {
   clearIdentityLockoutsForAuthMethod,
@@ -495,7 +490,7 @@ export const identityUaServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -651,7 +646,7 @@ export const identityUaServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -826,7 +821,7 @@ export const identityUaServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -917,7 +912,7 @@ export const identityUaServiceFactory = ({
       );
     }
 
-    await assertIdentityAuthMutationAllowed(
+    await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
         identityId,
@@ -1007,37 +1002,22 @@ export const identityUaServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GetToken,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to get identity client secret with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GetToken,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.GetToken,
+        baseMessage: "Failed to get identity client secret with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
 
     const identityUniversalAuth = await identityUaDAL.findOne({
       identityId
@@ -1106,36 +1086,23 @@ export const identityUaServiceFactory = ({
         actorOrgId
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GetToken,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to read identity client secret of identity with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GetToken,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.GetToken,
+        baseMessage: "Failed to read identity client secret of identity with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
+
     return { ...clientSecret, identityId, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -1199,39 +1166,22 @@ export const identityUaServiceFactory = ({
         OrgPermissionIdentityActions.Delete,
         OrgPermissionSubjects.Identity
       );
-
-      const { permission: rolePermission } = await permissionService.getOrgPermission({
-        actor: ActorType.IDENTITY,
-        actorId: identityMembershipOrg.identity.id,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(identityMembershipOrg.scopeOrgId),
-        () => orgDAL.findById(identityMembershipOrg.scopeOrgId)
-      );
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.DeleteToken,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid) {
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to revoke identity client secret with more privileged role",
-            shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.DeleteToken,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
-      }
     }
+
+    await assertIdentityAuthAccessAllowed(
+      { permissionService, orgDAL },
+      {
+        identityId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        projectId: identityMembershipOrg.identity.projectId,
+        action: OrgPermissionIdentityActions.DeleteToken,
+        baseMessage: "Failed to revoke identity client secret with more privileged role",
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      }
+    );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
