@@ -7,7 +7,7 @@ description: "Rotate Oracle account passwords with Infisical PAM."
 This page covers what is specific to rotating an [Oracle account](/documentation/platform/pam/accounts/oracledb). For how rotation is configured and scheduled, see the [overview](/documentation/platform/pam/product-reference/credential-rotation/overview).
 
 <Note>
-  Rotating an Oracle account needs a [Gateway](/documentation/platform/gateways/overview) running v0.43.130 or later. Rotation fails on an older Gateway.
+  Rotating an Oracle account needs a [Gateway](/documentation/platform/gateways/overview) running v0.43.131 or later. Rotation fails on an older Gateway.
 </Note>
 
 ## How the password is changed
@@ -26,7 +26,12 @@ ALTER USER "<target_username>" IDENTIFIED BY "<generated_password>" REPLACE "<cu
 
 The connection uses the account's existing connection details, including the SSL settings.
 
-The statement matches the stored username exactly, so an account whose username doesn't match the case Oracle stored fails to rotate even though its sessions launch fine. Oracle reports this as a privilege error, not a missing user.
+The statement matches the stored username exactly, so an account whose username doesn't match the case Oracle stored fails to rotate even though its sessions launch fine. Oracle names two different reasons for the same mistake, depending on who is rotating:
+
+- **Self-rotation** returns `ORA-01031: insufficient privileges`, because changing a user other than the one signed in needs the `ALTER USER` privilege, and the name that doesn't exist counts as another user.
+- **Delegated rotation** returns `ORA-01918: user does not exist`, because the rotation account holds `ALTER USER` and gets past the privilege check.
+
+Either way the fix is the same: correct the account's username to the case Oracle stored, which is uppercase unless the user was created with a quoted name.
 
 ## Rotation account requirements
 
@@ -53,5 +58,7 @@ GRANT CREATE SESSION TO app_user;
 ## Password length
 
 An Oracle template won't accept a password length above 30 characters, and rotation never generates a longer one.
+
+The limit is the Gateway's Oracle client, not Oracle. Oracle accepts a longer password and other clients sign in with it, but the Gateway can't, so a rotation that generated one would leave an account Infisical could no longer reach, check, or rotate back. Treat 30 as a hard ceiling rather than a conservative default.
 
 The same limit applies to the rotation account itself. If its own password is longer than 30 characters it can't sign in to perform the rotation, so shorten it first.

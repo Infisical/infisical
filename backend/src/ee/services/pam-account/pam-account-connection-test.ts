@@ -12,10 +12,11 @@ import {
   extractGatewayTarget,
   isCredentialConfigured,
   ORACLE_MAX_PASSWORD_LENGTH,
+  ORACLE_MIN_GATEWAY_VERSION,
   qualifyUsernameWithDomain
 } from "./pam-account-schemas";
 
-export { ORACLE_MAX_PASSWORD_LENGTH };
+export { ORACLE_MAX_PASSWORD_LENGTH, ORACLE_MIN_GATEWAY_VERSION };
 
 export enum TestConnectionMode {
   SQL = "sql",

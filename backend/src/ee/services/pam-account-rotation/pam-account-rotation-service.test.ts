@@ -383,7 +383,7 @@ describe("rotateScheduledAccount recovery probe", () => {
     expect(newPassword.length).toBe(48);
   });
 
-  const buildOracleDelegatedPair = (rotatorService: string) => {
+  const buildOracleDelegatedPair = (rotatorService: string, rotatorHost = "oracle.internal") => {
     const account = {
       ...buildAccount(),
       accountType: PamAccountType.OracleDB,
@@ -402,7 +402,7 @@ describe("rotateScheduledAccount recovery probe", () => {
       accountType: PamAccountType.OracleDB,
       encryptedCredentials: blobOf({ username: "rotuser", password: "rot-pw" }),
       encryptedConnectionDetails: blobOf({
-        host: "oracle.internal",
+        host: rotatorHost,
         port: 1521,
         database: rotatorService,
         sslEnabled: false,
@@ -434,6 +434,15 @@ describe("rotateScheduledAccount recovery probe", () => {
     const result = await service.rotateScheduledAccount("acc-1");
 
     expect(result?.message ?? "").not.toContain("service name");
+  });
+
+  test("treats a host that differs only in case as the same resource", async () => {
+    const { account, rotator } = buildOracleDelegatedPair("PDB1", "ORACLE.INTERNAL");
+    const { service } = buildService((pw) => pw === CURRENT_PASSWORD, { account, rotator });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.message ?? "").not.toContain("same resource");
   });
 
   test("allows an Oracle delegated rotation within the same service name", async () => {

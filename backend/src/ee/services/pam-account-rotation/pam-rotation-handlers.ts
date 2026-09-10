@@ -8,7 +8,7 @@ import {
 } from "@app/services/app-connection/shared/sql";
 
 import { PamAccountType, PamPostgresAuthMethod } from "../pam/pam-enums";
-import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
+import { ORACLE_MAX_PASSWORD_LENGTH, ORACLE_MIN_GATEWAY_VERSION } from "../pam-account/pam-account-connection-test";
 import { TWindowsAdConnectionDetails, TWindowsConnectionDetails } from "../pam-account/pam-account-schemas";
 import { DEFAULT_WINRM_PORT, ldapBindCheckViaGateway, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import {
@@ -83,8 +83,7 @@ const assertOracleCredentialIsUsable = (password: string) => {
   }
 };
 
-const ORACLE_GATEWAY_TOO_OLD =
-  "This account's gateway does not support Oracle credential rotation. Update the gateway to v0.43.130 or later.";
+const ORACLE_GATEWAY_TOO_OLD = `This account's gateway does not support Oracle credential rotation. Update the gateway to ${ORACLE_MIN_GATEWAY_VERSION} or later.`;
 
 const oracleGatewayRequest = (
   connectionDetails: TPamSqlConnectionDetails,
@@ -225,7 +224,10 @@ const sqlRotationHandler: TPamRotationHandler = {
     const connectionDetails = input.connectionDetails as TPamSqlConnectionDetails;
 
     if (accountType === PamAccountType.OracleDB) {
-      return verifyOracleViaGateway({ connectionDetails, auth, gatewayId, gatewayPoolId }, deps);
+      return withGatewayRetry(
+        () => verifyOracleViaGateway({ connectionDetails, auth, gatewayId, gatewayPoolId }, deps),
+        "verify"
+      );
     }
 
     try {

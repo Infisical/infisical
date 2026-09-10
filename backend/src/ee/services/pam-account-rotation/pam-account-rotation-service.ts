@@ -329,16 +329,15 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     a: Record<string, unknown>,
     b: Record<string, unknown>
   ): boolean => {
-    if (accountType === PamAccountType.WindowsAd) return a.dcAddress === b.dcAddress && a.domain === b.domain;
-    if (isWindowsRotatableType(accountType)) return a.host === b.host;
+    const sameField = (field: string) =>
+      (a[field] as string | undefined)?.toLowerCase() === (b[field] as string | undefined)?.toLowerCase();
+
+    if (accountType === PamAccountType.WindowsAd) return sameField("dcAddress") && sameField("domain");
+    if (isWindowsRotatableType(accountType)) return sameField("host");
     if (accountType === PamAccountType.OracleDB) {
-      return (
-        a.host === b.host &&
-        a.port === b.port &&
-        (a.database as string | undefined)?.toLowerCase() === (b.database as string | undefined)?.toLowerCase()
-      );
+      return sameField("host") && a.port === b.port && sameField("database");
     }
-    return a.host === b.host && a.port === b.port;
+    return sameField("host") && a.port === b.port;
   };
 
   const assertRotatorSameResource = (
@@ -574,12 +573,12 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     const targetUsername = targetCredentials.username;
     const handler = rotationHandlers[accountType];
 
+    handler.validateTarget({ accountType, authMethod: targetCredentials.authMethod });
+
     const connectionDetails = resolveConnectionDetails(
       accountType,
       await decrypt(projectId, account.encryptedConnectionDetails)
     );
-
-    handler.validateTarget({ accountType, authMethod: targetCredentials.authMethod });
     const gatewayId = account.gatewayId ?? account.templateGatewayId;
     const gatewayPoolId = account.gatewayPoolId ?? account.templateGatewayPoolId;
     const now = new Date();

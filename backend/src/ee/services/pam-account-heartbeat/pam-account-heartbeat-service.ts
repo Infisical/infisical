@@ -35,6 +35,8 @@ import {
   classifyCloudProbeError,
   computeNextHeartbeatAt,
   describeFailure,
+  GATEWAY_MISSING_CHECK_NOTE,
+  gatewayIsMissingCheckSupport,
   HEARTBEAT_SSH_CERT_TTL_SECONDS,
   HEARTBEAT_TIMEOUT_MS,
   isHeartbeatScheduled,
@@ -263,6 +265,9 @@ export const pamAccountHeartbeatServiceFactory = ({
       return { status: PamHeartbeatStatus.CannotCheck, message: "The gateway could not be reached" };
     }
     if (!result.ok) {
+      if (gatewayIsMissingCheckSupport(result.errorMessage)) {
+        return { status: PamHeartbeatStatus.CannotCheck, message: GATEWAY_MISSING_CHECK_NOTE };
+      }
       return {
         status: statusForFailureKind(result.kind),
         message: describeFailure(result.kind, result.errorMessage)

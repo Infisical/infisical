@@ -38,6 +38,8 @@ export const ROTATABLE_PAM_ACCOUNT_TYPES = [
 export const isRotatablePamAccountType = (type: PamAccountType | string) =>
   (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
 
+// Mirrors ORACLE_MAX_PASSWORD_LENGTH in backend/src/ee/services/pam-account/pam-account-schemas.ts, which is
+// what actually rejects a longer one. Change both together.
 export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 
 export const maxGeneratedPasswordLength = (type: PamAccountType | string | undefined) =>

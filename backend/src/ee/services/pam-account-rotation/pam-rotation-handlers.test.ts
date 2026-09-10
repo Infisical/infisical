@@ -14,6 +14,8 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 // eslint-disable-next-line import/first
+import { GATEWAY_RETRY_ATTEMPTS } from "./pam-rotation-fns";
+// eslint-disable-next-line import/first
 import { PAM_ROTATION_FACTORY_MAP } from "./pam-rotation-handlers";
 
 describe("Oracle testCredential distinguishes a rejected credential from an unreachable target", () => {
@@ -38,6 +40,7 @@ describe("Oracle testCredential distinguishes a rejected credential from an unre
   test("a null result (gateway unreachable) throws instead of returning false", async () => {
     testConnectionWithGateway.mockResolvedValue(null);
     await expect(invoke()).rejects.toThrow(/could not reach the target/i);
+    expect(testConnectionWithGateway).toHaveBeenCalledTimes(GATEWAY_RETRY_ATTEMPTS);
   });
 
   test("a transport-kind failure throws instead of returning false", async () => {
@@ -53,6 +56,7 @@ describe("Oracle testCredential distinguishes a rejected credential from an unre
   test("an auth-kind failure returns false", async () => {
     testConnectionWithGateway.mockResolvedValue({ ok: false, status: 502, errorMessage: "ORA-01017", kind: "auth" });
     await expect(invoke()).resolves.toBe(false);
+    expect(testConnectionWithGateway).toHaveBeenCalledTimes(1);
   });
 
   test("a successful probe returns true", async () => {

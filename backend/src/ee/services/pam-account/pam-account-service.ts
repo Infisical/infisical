@@ -78,6 +78,7 @@ import {
   isCredentialConfigured,
   noRevealableCredentialMessage,
   normalizeCredentialAuthMethod,
+  ORACLE_MAX_PASSWORD_LENGTH,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
   sanitizeCredentials,
@@ -130,6 +131,15 @@ type TPamAccountServiceFactoryDep = {
     "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources" | "checkGrant"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+};
+
+const assertOraclePasswordIsUsable = (accountType: PamAccountType, credentials: unknown) => {
+  if (accountType !== PamAccountType.OracleDB) return;
+  const { password } = credentials as { password?: string };
+  if (!password || password.length <= ORACLE_MAX_PASSWORD_LENGTH) return;
+  throw new BadRequestError({
+    message: `The gateway cannot sign in to Oracle with a password longer than ${ORACLE_MAX_PASSWORD_LENGTH} characters, so this account could not be checked or rotated. Use a password of ${ORACLE_MAX_PASSWORD_LENGTH} characters or fewer.`
+  });
 };
 
 const assertPasswordMeetsRequirements = (credentials: unknown, templateSettings: unknown) => {
@@ -633,6 +643,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     });
     const validatedConnectionDetails = validateConnectionDetails(accountType, forced.connectionDetails);
     const validatedCredentials = validateCredentials(accountType, forced.credentials);
+    assertOraclePasswordIsUsable(accountType, validatedCredentials);
     assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
     // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
@@ -851,6 +862,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         const templateSettings = templateId
           ? (await pamAccountTemplateDAL.findById(templateId))?.settings
           : existing.templateSettings;
+        if ((credentials as { password?: string }).password) {
+          assertOraclePasswordIsUsable(accountType, effectiveCredentials);
+        }
         assertPasswordMeetsRequirements(effectiveCredentials, templateSettings);
       }
 

@@ -83,6 +83,8 @@ type TFieldForcedRuleHint = { when: TFieldConditionHint; value: string | number 
 // Source of truth for account types: per-type schemas + sparse UI hints
 export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 
+export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.131";
+
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
