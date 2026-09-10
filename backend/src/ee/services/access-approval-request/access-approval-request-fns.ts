@@ -10,6 +10,8 @@ import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
+import { getExternalApprovalProviderName } from "../external-approval/external-approval-map";
+import { TExternalApprovalPolicyDALFactory } from "../external-approval/external-approval-policy-dal";
 import { CASL_ACTION_SCHEMA_NATIVE_ENUM } from "../permission/permission-schemas";
 import { PermissionConditionSchema } from "../permission/permission-types";
 import {
@@ -22,6 +24,24 @@ import {
 } from "../permission/project-permission";
 import type { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { ApprovalStatus, TVerifyPermission } from "./access-approval-request-types";
+
+export const toExternalApprovalProvider = (type: string) => ({
+  externalApprovalProvider: getExternalApprovalProviderName(type)
+});
+
+export const getExternalApprovalProvider = async (
+  externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "findById">,
+  externalApprovalPolicyId: string
+) => {
+  const externalApprovalPolicy = await externalApprovalPolicyDAL.findById(externalApprovalPolicyId);
+  if (!externalApprovalPolicy) {
+    throw new NotFoundError({
+      message: `External approval policy with ID '${externalApprovalPolicyId}' not found`
+    });
+  }
+
+  return toExternalApprovalProvider(externalApprovalPolicy.type);
+};
 
 // Turn a permission slug into a human-readable label, e.g. "dynamic-secrets" -> "Dynamic Secrets"
 // and "read-root-credential" -> "Read Root Credential". Used for review notifications.
@@ -42,11 +62,6 @@ type TUnpackedAccessApprovalRequestRule = {
   reason?: string;
 };
 
-// Exactly the conditions shape RequestAccessForm.tsx ever produces:
-// { environment: data.environmentSlug, secretPath: { $glob: data.secretPath } }.
-// .strict() at both levels so no other operator ($in/$eq/...) or key
-// (secretName, secretTags, connectionId, metadata, ...) can be smuggled in.
-// The $glob value reuses the same validator as every other permission surface.
 const AccessApprovalRequestConditionsSchema = z
   .object({
     environment: z.string().min(1),
@@ -54,16 +69,6 @@ const AccessApprovalRequestConditionsSchema = z
   })
   .strict();
 
-// Every allowed rule has the same shape: one whitelisted subject, that subject's allowed
-// actions, and the exact conditions the form produces. The whole unpacked rule is parsed
-// (not a projection of it), with .strict() so no other CASL rule attribute (field-level
-// scoping, reasons) can ride along into the privilege that gets granted on approval.
-// `inverted` needs an explicit key: unpackRules() stamps `inverted: false` on every rule,
-// which strict() would otherwise reject, while a crafted request can smuggle
-// `inverted: true` (a "cannot" rule) that must fail; literal(false).optional() allows
-// exactly the former and rejects the latter.
-// TAction admits `V | V[]` because the CASL_ACTION_SCHEMA_* transforms, while always
-// returning an array at runtime, declare their output as the union (generic narrowing).
 const accessApprovalRequestRuleSchema = <
   TSub extends ProjectPermissionSub,
   TAction extends z.ZodType<string | string[], z.ZodTypeDef, unknown>
@@ -80,12 +85,6 @@ const accessApprovalRequestRuleSchema = <
     })
     .strict();
 
-// The exact resources/actions the Request Access sheet's RESOURCE_CONFIGS can submit.
-// Access requests ask an approver to grant elevated access, so unlike custom project
-// roles this must not accept arbitrary CASL subjects/actions (Member/GrantPrivileges,
-// Kms, Role, etc). Every ProjectPermissionSub not listed below is rejected automatically:
-// z.discriminatedUnion has no catch-all branch, so any other subject literal fails with
-// Zod's own "Invalid discriminator value" issue.
 const AccessApprovalRequestPermissionSchema = z.discriminatedUnion("subject", [
   accessApprovalRequestRuleSchema(
     ProjectPermissionSub.Secrets,
@@ -113,11 +112,6 @@ const AccessApprovalRequestPermissionSchema = z.discriminatedUnion("subject", [
   )
 ]);
 
-// unpackRules always splits subject/action on "," (even a single value becomes a
-// 1-element array), so a crafted packed tuple like ["read", "secrets,member", {...}]
-// unpacks to subject: ["secrets", "member"]. Require exactly one subject per rule so
-// that can't slip a second, forbidden subject past validation while still being
-// persisted verbatim.
 const parseAccessApprovalRequestPermissions = (permissions: TUnpackedAccessApprovalRequestRule[]) =>
   permissions.map((rule) => {
     const subjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];

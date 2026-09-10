@@ -202,6 +202,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SSO_USER_PROFILE_SYNCED]: "Synced user profile from identity provider",
   [EventType.SSO_USER_EMAIL_SYNC_SKIPPED]: "Skipped user email sync from identity provider",
   [EventType.SECRET_APPROVAL_REQUEST_REVIEW]: "Review Secret Approval Request",
+  [EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW]: "Review Access Approval Request Externally",
+  [EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY]:
+    "Retry Access Approval Request External Dispatch",
   [EventType.CREATE_KMIP_CLIENT]: "Create KMIP client",
   [EventType.UPDATE_KMIP_CLIENT]: "Update KMIP client",
   [EventType.DELETE_KMIP_CLIENT]: "Delete KMIP client",

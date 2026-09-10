@@ -6465,6 +6465,7 @@ interface AccessApprovalRequestCreateEvent {
     temporaryRange?: string;
     permissions: unknown;
     note?: string;
+    externalApprovalProvider?: string;
   };
 }
 
@@ -6488,6 +6489,7 @@ interface AccessApprovalRequestExternalReviewEvent {
     externalApprovalPolicyId: string;
     externalNumber?: string;
     reviewStatus: string;
+    externalApprovalProvider: string;
   };
 }
 
@@ -6498,6 +6500,7 @@ interface AccessApprovalRequestExternalDispatchRetryEvent {
     policyId: string;
     externalApprovalRequestId: string;
     externalApprovalPolicyId: string;
+    externalApprovalProvider: string;
   };
 }
 

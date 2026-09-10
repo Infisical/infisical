@@ -39,6 +39,7 @@ import {
   ExternalApprovalProductType,
   ExternalApprovalRequestStatus
 } from "../external-approval/external-approval-enums";
+import { TExternalApprovalPolicyDALFactory } from "../external-approval/external-approval-policy-dal";
 import { TExternalApprovalQueueFactory } from "../external-approval/external-approval-queue";
 import { TExternalApprovalRequestDALFactory } from "../external-approval/external-approval-request-dal";
 import { TExternalApprovalServiceFactory } from "../external-approval/external-approval-service";
@@ -51,7 +52,12 @@ import {
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
-import { grantApprovedRequestPrivilege, verifyRequestedPermissions } from "./access-approval-request-fns";
+import {
+  getExternalApprovalProvider,
+  grantApprovedRequestPrivilege,
+  toExternalApprovalProvider,
+  verifyRequestedPermissions
+} from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
 import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
 
@@ -95,6 +101,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   externalApprovalQueue: Pick<TExternalApprovalQueueFactory, "queueExternalApprovalDispatch">;
   externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "create" | "updateById" | "update">;
+  externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "findById">;
   externalApprovalService: Pick<
     TExternalApprovalServiceFactory,
     "authorizeExternalReview" | "resolveExternalApprovalDecision" | "canReviewExternalApprovals"
@@ -121,6 +128,7 @@ export const accessApprovalRequestServiceFactory = ({
   queueService,
   externalApprovalQueue,
   externalApprovalRequestDAL,
+  externalApprovalPolicyDAL,
   externalApprovalService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
   const $queueAccessRequestWebhook = async ({
@@ -287,7 +295,7 @@ export const accessApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "This access request is not under an external approval policy" });
     }
 
-    await externalApprovalService.authorizeExternalReview({
+    const externalApprovalPolicy = await externalApprovalService.authorizeExternalReview({
       externalApprovalPolicyId: policy.externalApprovalPolicyId,
       actor
     });
@@ -314,7 +322,8 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: accessApprovalRequest.projectId,
       policyId: accessApprovalRequest.policyId,
       externalApprovalRequestId: externalApproval.id,
-      externalApprovalPolicyId: policy.externalApprovalPolicyId
+      externalApprovalPolicyId: policy.externalApprovalPolicyId,
+      ...toExternalApprovalProvider(externalApprovalPolicy.type)
     };
 
     if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
@@ -425,7 +434,8 @@ export const accessApprovalRequestServiceFactory = ({
       projectId: existing.projectId,
       policyId: existing.policyId,
       externalApprovalRequestId: externalApproval.id,
-      externalApprovalPolicyId: policy.externalApprovalPolicyId
+      externalApprovalPolicyId: policy.externalApprovalPolicyId,
+      ...(await getExternalApprovalProvider(externalApprovalPolicyDAL, policy.externalApprovalPolicyId))
     };
 
     const reset = await accessApprovalRequestDAL.transaction(async (tx) => {
@@ -522,6 +532,10 @@ export const accessApprovalRequestServiceFactory = ({
     if (policy.deletedAt) {
       throw new BadRequestError({ message: "The policy linked to this request has been deleted" });
     }
+
+    const externalApprovalProvider = policy.externalApprovalPolicyId
+      ? await getExternalApprovalProvider(externalApprovalPolicyDAL, policy.externalApprovalPolicyId)
+      : undefined;
 
     // Check if the requested time falls under policy.maxTimePeriod
     if (policy.maxTimePeriod) {
@@ -724,7 +738,7 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    return { request: approval, projectId: project.id };
+    return { request: approval, projectId: project.id, ...externalApprovalProvider };
   };
 
   const updateAccessApprovalRequest: TAccessApprovalRequestServiceFactory["updateAccessApprovalRequest"] = async ({

@@ -63,17 +63,18 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { request, projectId } = await server.services.accessApprovalRequest.createAccessApprovalRequest({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        permissions: req.body.permissions,
-        actorOrgId: req.permission.orgId,
-        projectSlug: req.query.projectSlug,
-        temporaryRange: req.body.temporaryRange,
-        isTemporary: req.body.isTemporary,
-        note: req.body.note
-      });
+      const { request, projectId, externalApprovalProvider } =
+        await server.services.accessApprovalRequest.createAccessApprovalRequest({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          permissions: req.body.permissions,
+          actorOrgId: req.permission.orgId,
+          projectSlug: req.query.projectSlug,
+          temporaryRange: req.body.temporaryRange,
+          isTemporary: req.body.isTemporary,
+          note: req.body.note
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -87,7 +88,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             isTemporary: req.body.isTemporary,
             ...(req.body.temporaryRange ? { temporaryRange: req.body.temporaryRange } : {}),
             permissions: req.body.permissions,
-            ...(req.body.note ? { note: req.body.note } : {})
+            ...(req.body.note ? { note: req.body.note } : {}),
+            ...(externalApprovalProvider ? { externalApprovalProvider } : {})
           }
         }
       });
@@ -319,13 +321,19 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { request, projectId, policyId, externalApprovalRequestId, externalApprovalPolicyId } =
-        await server.services.accessApprovalRequest.reviewExternalAccessRequest({
-          requestId: req.params.requestId,
-          externalId: req.body.external_id,
-          status: req.body.status,
-          actor: req.permission
-        });
+      const {
+        request,
+        projectId,
+        policyId,
+        externalApprovalRequestId,
+        externalApprovalPolicyId,
+        externalApprovalProvider
+      } = await server.services.accessApprovalRequest.reviewExternalAccessRequest({
+        requestId: req.params.requestId,
+        externalId: req.body.external_id,
+        status: req.body.status,
+        actor: req.permission
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -339,7 +347,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             externalApprovalRequestId,
             externalApprovalPolicyId,
             externalNumber: req.body.external_number,
-            reviewStatus: req.body.status
+            reviewStatus: req.body.status,
+            externalApprovalProvider
           }
         }
       });
@@ -380,14 +389,19 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, policyId, externalApprovalRequestId, externalApprovalPolicyId } =
-        await server.services.accessApprovalRequest.retryExternalApprovalDispatch({
-          requestId: req.params.requestId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        });
+      const {
+        projectId,
+        policyId,
+        externalApprovalRequestId,
+        externalApprovalPolicyId,
+        externalApprovalProvider
+      } = await server.services.accessApprovalRequest.retryExternalApprovalDispatch({
+        requestId: req.params.requestId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -399,7 +413,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             requestId: req.params.requestId,
             policyId,
             externalApprovalRequestId,
-            externalApprovalPolicyId
+            externalApprovalPolicyId,
+            externalApprovalProvider
           }
         }
       });

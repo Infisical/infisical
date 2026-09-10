@@ -17,3 +17,10 @@ export const listExternalApprovalOptions = () =>
 
     return { type, app, name: APP_CONNECTION_NAME_MAP[app] };
   });
+
+export const getExternalApprovalProviderName = (type: string) => {
+  const app = EXTERNAL_APPROVAL_APP_CONNECTION_MAP[type as ExternalApprovalType];
+  if (!app) return type;
+
+  return APP_CONNECTION_NAME_MAP[app];
+};

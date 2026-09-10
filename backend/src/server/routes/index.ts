@@ -3052,6 +3052,7 @@ export const registerRoutes = async (
     queueService,
     externalApprovalQueue,
     externalApprovalRequestDAL,
+    externalApprovalPolicyDAL,
     externalApprovalService
   });
 

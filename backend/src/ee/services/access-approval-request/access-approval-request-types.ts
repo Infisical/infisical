@@ -85,6 +85,7 @@ export interface TAccessApprovalRequestServiceFactory {
       expiresAt?: Date | null | undefined;
     };
     projectId: string;
+    externalApprovalProvider?: string;
   }>;
   updateAccessApprovalRequest: (arg: TUpdateAccessApprovalRequestDTO) => Promise<{
     request: {
@@ -233,12 +234,14 @@ export interface TAccessApprovalRequestServiceFactory {
     policyId: string;
     externalApprovalRequestId: string;
     externalApprovalPolicyId: string;
+    externalApprovalProvider: string;
   }>;
   retryExternalApprovalDispatch: (arg: TRetryExternalApprovalDispatchDTO) => Promise<{
     projectId: string;
     policyId: string;
     externalApprovalRequestId: string;
     externalApprovalPolicyId: string;
+    externalApprovalProvider: string;
   }>;
   getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
     count: {

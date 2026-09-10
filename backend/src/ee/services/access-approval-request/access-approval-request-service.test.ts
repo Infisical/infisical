@@ -5,7 +5,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   ExternalApprovalProductType,
-  ExternalApprovalRequestStatus
+  ExternalApprovalRequestStatus,
+  ExternalApprovalType
 } from "../external-approval/external-approval-enums";
 import { accessApprovalRequestServiceFactory } from "./access-approval-request-service";
 import { ApprovalStatus } from "./access-approval-request-types";
@@ -88,9 +89,16 @@ const makeService = ({
   };
   const additionalPrivilegeDAL = { create: vi.fn().mockResolvedValue({ id: "priv-1" }) };
   const externalApprovalService = {
-    authorizeExternalReview: vi.fn().mockResolvedValue({ id: EXTERNAL_POLICY_ID, approverIdentityId: IDENTITY_ID }),
+    authorizeExternalReview: vi.fn().mockResolvedValue({
+      id: EXTERNAL_POLICY_ID,
+      type: ExternalApprovalType.ServiceNow,
+      approverIdentityId: IDENTITY_ID
+    }),
     canReviewExternalApprovals: vi.fn().mockResolvedValue(canReview),
     resolveExternalApprovalDecision: vi.fn().mockResolvedValue({ alreadyFinalized: false })
+  };
+  const externalApprovalPolicyDAL = {
+    findById: vi.fn().mockResolvedValue({ id: EXTERNAL_POLICY_ID, type: ExternalApprovalType.ServiceNow })
   };
   const permissionService = {
     getProjectPermission: vi.fn().mockResolvedValue({ permission: { can: vi.fn(() => canReadRequests) } })
@@ -127,7 +135,8 @@ const makeService = ({
     projectSlackConfigDAL: {} as never,
     notificationService: {} as never,
     externalApprovalQueue: externalApprovalQueue as never,
-    externalApprovalRequestDAL: externalApprovalRequestDAL as never
+    externalApprovalRequestDAL: externalApprovalRequestDAL as never,
+    externalApprovalPolicyDAL: externalApprovalPolicyDAL as never
   });
 
   return {
@@ -176,6 +185,7 @@ describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
     expect(result.projectId).toBe(PROJECT_ID);
     expect(result.externalApprovalRequestId).toBe(EXTERNAL_REQUEST_ID);
     expect(result.externalApprovalPolicyId).toBe(EXTERNAL_POLICY_ID);
+    expect(result.externalApprovalProvider).toBe("ServiceNow");
   });
 
   test("rejection closes the request without creating a privilege", async () => {
@@ -297,6 +307,7 @@ describe("accessApprovalRequestService.retryExternalApprovalDispatch", () => {
     expect(result.projectId).toBe(PROJECT_ID);
     expect(result.externalApprovalRequestId).toBe(EXTERNAL_REQUEST_ID);
     expect(result.externalApprovalPolicyId).toBe(EXTERNAL_POLICY_ID);
+    expect(result.externalApprovalProvider).toBe("ServiceNow");
   });
 
   test("an actor without Read on Approval Requests is forbidden before anything is written", async () => {
