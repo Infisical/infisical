@@ -150,7 +150,9 @@ const buildFormSchema = (variant: CaFormVariant) => {
     keyAlgorithm: z.string().min(1, "Key algorithm is required"),
     keyUsages: keyUsagesField,
     extendedKeyUsages: extendedKeyUsagesField,
-    customExtensions: z.array(z.object({ oid: z.string(), value: z.string() })).optional()
+    customExtensions: z
+      .array(z.object({ oid: z.string(), value: z.string(), critical: z.boolean().optional() }))
+      .optional()
   });
 
   return z

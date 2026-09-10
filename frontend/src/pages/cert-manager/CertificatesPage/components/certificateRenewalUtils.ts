@@ -152,15 +152,17 @@ export const buildRenewalRequestAttributes = ({
   constraints: TemplateConstraints;
   isExternalTemplateProfile?: boolean;
 }): TRenewCertificateAttributes => {
-  // The CSR carries its own basic constraints and the CSR step offers no control over them, so
-  // sending the previous certificate's would silently override what the caller actually signed.
-  if (formData.keySource === CertificateRenewalKeySource.Csr) {
-    return { ttl: formData.ttl };
-  }
-
   const customExtensions = (formData.customExtensions ?? [])
     .filter((extension) => extension.oid.trim())
-    .map((extension) => ({ oid: extension.oid.trim(), value: extension.value }));
+    .map((extension) => ({
+      oid: extension.oid.trim(),
+      value: extension.value,
+      ...(extension.critical !== undefined && { critical: extension.critical })
+    }));
+
+  if (formData.keySource === CertificateRenewalKeySource.Csr) {
+    return { ttl: formData.ttl, customExtensions };
+  }
 
   const basicConstraints = buildBasicConstraints(formData, constraints);
 

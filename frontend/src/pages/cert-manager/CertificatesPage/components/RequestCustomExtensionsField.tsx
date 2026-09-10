@@ -3,6 +3,7 @@ import { Plus, Trash2 } from "lucide-react";
 
 import {
   Button,
+  Checkbox,
   Field,
   FieldLabel,
   IconButton,
@@ -11,15 +12,18 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { TCustomExtensionRule } from "@app/hooks/api/certificatePolicies";
 import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
 import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
 import {
-  CertExtensionRuleKind,
   customExtensionLabelFor,
-  getCustomExtensionValuePlaceholder
+  getCustomExtensionValuePlaceholder,
+  isPresetExtensionOid
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { PolicyRowMessage } from "./PolicyRowMessage";
@@ -27,6 +31,7 @@ import { PolicyRowMessage } from "./PolicyRowMessage";
 export type TRequestCustomExtension = {
   oid: string;
   value: string;
+  critical?: boolean;
 };
 
 type Props = {
@@ -49,16 +54,14 @@ export const RequestCustomExtensionsField = ({
 
   const isPinned = (declaration: TProfileCustomExtension) =>
     Boolean(declaration.value?.trim()) ||
-    policyRules?.find((rule) => rule.oid === declaration.oid)?.rule ===
-      CertExtensionRuleKind.REQUIRE;
+    Boolean(policyRules?.find((rule) => rule.oid === declaration.oid)?.required?.length);
 
   const effectiveDeclarations: TProfileCustomExtension[] = [
     ...declarations,
     ...(policyRules ?? [])
       .filter(
         (rule) =>
-          rule.rule === CertExtensionRuleKind.REQUIRE &&
-          !declarations.some((declaration) => declaration.oid === rule.oid)
+          rule.required?.length && !declarations.some((declaration) => declaration.oid === rule.oid)
       )
       .map((rule) => ({ oid: rule.oid, label: rule.label ?? undefined }))
   ];
@@ -89,18 +92,67 @@ export const RequestCustomExtensionsField = ({
             declarationByOid.get(oid)?.label ?? policyRules?.find((rule) => rule.oid === oid)?.label
           );
 
-        const upsert = (oid: string, next: string) => {
+        const upsert = (oid: string, patch: Partial<TRequestCustomExtension>) => {
           const index = rows.findIndex((row) => row.oid === oid);
           if (index === -1) {
-            onChange([...rows, { oid, value: next }]);
+            onChange([...rows, { oid, value: "", ...patch }]);
             return;
           }
           const updated = [...rows];
-          updated[index] = { oid, value: next };
+          updated[index] = { ...updated[index], oid, ...patch };
           onChange(updated);
         };
 
         const rowError = (oid: string) => (revealPolicyErrors ? errorsByOid?.[oid] : undefined);
+
+        const criticalityLock = (oid: string): string | null => {
+          if (!oid) return null;
+          if (isPresetExtensionOid(oid)) {
+            return "Criticality is fixed for this extension because Active Directory rejects certificates that mark it differently.";
+          }
+          const pinned = policyRules?.find((rule) => rule.oid === oid)?.critical;
+          return pinned
+            ? "The certificate policy pins the criticality for this object identifier."
+            : null;
+        };
+
+        const renderCriticality = (
+          oid: string,
+          isCritical: boolean,
+          onToggle: (next: boolean) => void
+        ) => {
+          const lock = criticalityLock(oid);
+          const box = (
+            <Checkbox
+              variant="project"
+              isChecked={isCritical}
+              isDisabled={Boolean(lock)}
+              aria-label="Critical"
+              onCheckedChange={(checked) => onToggle(checked === true)}
+            />
+          );
+
+          return (
+            <div className="flex h-9 shrink-0 items-center gap-2">
+              {lock ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                    <span tabIndex={0} className="flex items-center">
+                      {box}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-64">
+                    {lock}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                box
+              )}
+              <span className="text-sm whitespace-nowrap text-muted">Critical</span>
+            </div>
+          );
+        };
 
         return (
           <Field>
@@ -122,12 +174,15 @@ export const RequestCustomExtensionsField = ({
                       <Input
                         className="w-full"
                         value={current?.value ?? declaration.value ?? ""}
-                        onChange={(e) => upsert(declaration.oid, e.target.value)}
+                        onChange={(e) => upsert(declaration.oid, { value: e.target.value })}
                         placeholder={placeholder}
                         isError={Boolean(error)}
                       />
                       {error && <PolicyRowMessage isError lines={[error]} />}
                     </div>
+                    {renderCriticality(declaration.oid, Boolean(current?.critical), (next) =>
+                      upsert(declaration.oid, { critical: next })
+                    )}
                     <span className="w-9 shrink-0" />
                   </div>
                 );
@@ -186,6 +241,9 @@ export const RequestCustomExtensionsField = ({
                       />
                       {error && <PolicyRowMessage isError lines={[error]} />}
                     </div>
+                    {renderCriticality(row.oid, Boolean(row.critical), (next) =>
+                      replaceRow({ ...row, critical: next })
+                    )}
                     <IconButton
                       type="button"
                       variant="ghost"

@@ -5,7 +5,6 @@ import { CERTIFICATE_POLICIES } from "@app/lib/api-docs";
 import {
   CertExtendedKeyUsageType,
   CertExtensionCriticality,
-  CertExtensionRuleKind,
   certificateExtensionOidSchema,
   CertKeyUsageType,
   CertPolicyState,
@@ -121,13 +120,24 @@ const policyExtendedKeyUsagesSchema = z
     }
   );
 
-export const policyCustomExtensionSchema = z.object({
-  oid: certificateExtensionOidSchema,
-  label: customExtensionLabelSchema.optional(),
-  critical: z.nativeEnum(CertExtensionCriticality).optional(),
-  rule: z.nativeEnum(CertExtensionRuleKind).describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.rule),
-  value: customExtensionValueSchema.describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.value)
-});
+export const policyCustomExtensionSchema = z
+  .object({
+    oid: certificateExtensionOidSchema,
+    label: customExtensionLabelSchema.optional(),
+    critical: z.nativeEnum(CertExtensionCriticality).optional(),
+    allowed: z
+      .array(customExtensionValueSchema)
+      .optional()
+      .describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.allowed),
+    required: z
+      .array(customExtensionValueSchema)
+      .optional()
+      .describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.required),
+    denied: z.array(customExtensionValueSchema).optional().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.denied)
+  })
+  .refine((data) => Boolean(data.allowed?.length || data.required?.length || data.denied?.length), {
+    message: "Custom extension rule must have at least one allowed, required, or denied value"
+  });
 
 const policySanSchema = z
   .object({

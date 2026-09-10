@@ -4,7 +4,7 @@ import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertExtensionCriticality,
-  CertExtensionRuleKind,
+  CertExtensionInclude,
   CertKeyUsageType,
   CertPolicyState,
   CertSanInclude,
@@ -78,7 +78,7 @@ export const uiCustomExtensionSchema = z.object({
   oid: z.string().trim(),
   label: z.string().trim().max(64).optional(),
   critical: z.union([z.literal(""), z.nativeEnum(CertExtensionCriticality)]).optional(),
-  rule: z.nativeEnum(CertExtensionRuleKind),
+  include: z.nativeEnum(CertExtensionInclude),
   value: z.string().trim()
 });
 

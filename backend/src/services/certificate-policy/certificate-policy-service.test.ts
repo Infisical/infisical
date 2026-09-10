@@ -208,17 +208,17 @@ describe("CertificatePolicyService", () => {
     });
 
     it("accepts a rule for an unmanaged OID", async () => {
-      await expect(createWith([{ oid: CUSTOM_OID, rule: "allow", value: "*" }])).resolves.toBeDefined();
+      await expect(createWith([{ oid: CUSTOM_OID, allowed: ["*"] }])).resolves.toBeDefined();
     });
 
     it("rejects a reserved OID", async () => {
-      await expect(createWith([{ oid: "2.5.29.17", rule: "allow", value: "*" }])).rejects.toThrow(
+      await expect(createWith([{ oid: "2.5.29.17", allowed: ["*"] }])).rejects.toThrow(
         "standard X.509 extension that Infisical manages"
       );
     });
 
     it("rejects the UPN otherName OID with a pointer to SANs", async () => {
-      await expect(createWith([{ oid: "1.3.6.1.4.1.311.20.2.3", rule: "allow", value: "*" }])).rejects.toThrow(
+      await expect(createWith([{ oid: "1.3.6.1.4.1.311.20.2.3", allowed: ["*"] }])).rejects.toThrow(
         "Use a UPN subject alternative name"
       );
     });
@@ -226,14 +226,14 @@ describe("CertificatePolicyService", () => {
     it("rejects duplicate OIDs", async () => {
       await expect(
         createWith([
-          { oid: CUSTOM_OID, rule: "allow", value: "*" },
-          { oid: CUSTOM_OID, rule: "deny", value: "x" }
+          { oid: CUSTOM_OID, allowed: ["*"] },
+          { oid: CUSTOM_OID, denied: ["x"] }
         ])
       ).rejects.toThrow("Duplicate custom extension rule");
     });
 
     it("rejects constraining criticality on a preset OID, whose spec fixes it", async () => {
-      await expect(createWith([{ oid: SID_OID, rule: "allow", value: "*", critical: "critical" }])).rejects.toThrow(
+      await expect(createWith([{ oid: SID_OID, allowed: ["*"], critical: "critical" }])).rejects.toThrow(
         "always emitted as non-critical"
       );
     });
@@ -243,7 +243,7 @@ describe("CertificatePolicyService", () => {
         id: "p",
         projectId: "project-123",
         name: "p",
-        customExtensions: [{ oid: SID_OID, rule: "allow", value }]
+        customExtensions: [{ oid: SID_OID, allowed: [value] }]
       }) as never;
 
     it("resolves declarations through validateRequestAgainstPolicy", () => {

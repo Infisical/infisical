@@ -2,11 +2,7 @@ import * as x509 from "@peculiar/x509";
 import * as asn1js from "asn1js";
 import { describe, expect, it } from "vitest";
 
-import {
-  CertExtensionCriticality,
-  CertExtensionRuleKind,
-  certificateExtensionOidSchema
-} from "./certificate-constants";
+import { CertExtensionCriticality, certificateExtensionOidSchema } from "./certificate-constants";
 import {
   appendCustomExtensions,
   CUSTOM_EXTENSION_PRESETS_BY_OID,
@@ -133,7 +129,7 @@ describe("resolveCustomExtensions", () => {
   it("refuses a request extension whose value could not be decoded when the policy restricts OIDs", () => {
     const { errors } = resolveCustomExtensions({
       declarations: [],
-      rules: [{ oid: SID_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }],
+      rules: [{ oid: SID_OID, allowed: ["*"] }],
       requestExtensions: [{ oid: OPAQUE_OID, critical: false }]
     });
 
@@ -181,7 +177,7 @@ describe("resolveCustomExtensions", () => {
   it("denies an OID that no rule mentions", () => {
     const { errors } = resolveCustomExtensions({
       declarations: [declareSid],
-      rules: [{ oid: TEMPLATE_NAME_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }]
+      rules: [{ oid: TEMPLATE_NAME_OID, allowed: ["*"] }]
     });
 
     expect(errors).toEqual([`Custom extension '${SID_OID}' is not allowed by this policy.`]);
@@ -191,7 +187,7 @@ describe("resolveCustomExtensions", () => {
     const override = "S-1-5-21-1004336348-1177238915-682003330-9999";
     const { extensions, errors } = resolveCustomExtensions({
       declarations: [declareSid],
-      rules: [{ oid: SID_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }],
+      rules: [{ oid: SID_OID, allowed: ["*"] }],
       requestExtensions: [{ oid: SID_OID, value: override }]
     });
 
@@ -202,7 +198,7 @@ describe("resolveCustomExtensions", () => {
   it("emits nothing when neither the profile nor the request supplies a value", () => {
     const { extensions, errors } = resolveCustomExtensions({
       declarations: [{ oid: SID_OID }],
-      rules: [{ oid: SID_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }]
+      rules: [{ oid: SID_OID, allowed: ["*"] }]
     });
 
     expect(extensions).toEqual([]);
@@ -212,21 +208,70 @@ describe("resolveCustomExtensions", () => {
   it("rejects a request SID from a different AD domain, which is the case this model exists for", () => {
     const { errors } = resolveCustomExtensions({
       declarations: [{ oid: SID_OID }],
-      rules: [
-        { oid: SID_OID, rule: CertExtensionRuleKind.REQUIRE, value: "S-1-5-21-1004336348-1177238915-682003330-*" }
-      ],
+      rules: [{ oid: SID_OID, required: ["S-1-5-21-1004336348-1177238915-682003330-*"] }],
       requestExtensions: [{ oid: SID_OID, value: "S-1-5-21-999-888-777-1103" }]
     });
 
-    expect(errors[0]).toContain("does not match the value required by this policy");
+    expect(errors[0]).toContain("does not match any value required by this policy");
   });
 
   it("accepts a request SID inside the allowed AD domain", () => {
     const { extensions, errors } = resolveCustomExtensions({
       declarations: [{ oid: SID_OID }],
-      rules: [
-        { oid: SID_OID, rule: CertExtensionRuleKind.REQUIRE, value: "S-1-5-21-1004336348-1177238915-682003330-*" }
-      ],
+      rules: [{ oid: SID_OID, required: ["S-1-5-21-1004336348-1177238915-682003330-*"] }],
+      requestExtensions: [{ oid: SID_OID, value: SID }]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions).toHaveLength(1);
+  });
+
+  it("accepts a SID from either of two AD domains, which one pattern per OID could not express", () => {
+    const rules = [
+      {
+        oid: SID_OID,
+        allowed: ["S-1-5-21-1004336348-1177238915-682003330-*", "S-1-5-21-9-8-7-*"]
+      }
+    ];
+
+    const first = resolveCustomExtensions({
+      declarations: [{ oid: SID_OID }],
+      rules,
+      requestExtensions: [{ oid: SID_OID, value: SID }]
+    });
+    expect(first.errors).toEqual([]);
+    expect(first.extensions).toHaveLength(1);
+
+    const second = resolveCustomExtensions({
+      declarations: [{ oid: SID_OID }],
+      rules,
+      requestExtensions: [{ oid: SID_OID, value: "S-1-5-21-9-8-7-1103" }]
+    });
+    expect(second.errors).toEqual([]);
+    expect(second.extensions).toHaveLength(1);
+
+    const outside = resolveCustomExtensions({
+      declarations: [{ oid: SID_OID }],
+      rules,
+      requestExtensions: [{ oid: SID_OID, value: "S-1-5-21-111-222-333-1103" }]
+    });
+    expect(outside.errors[0]).toContain("is not allowed by this policy");
+  });
+
+  it("rejects a denied value even when an allowed pattern also matches it", () => {
+    const { errors } = resolveCustomExtensions({
+      declarations: [{ oid: SID_OID }],
+      rules: [{ oid: SID_OID, allowed: ["S-1-5-21-*"], denied: ["S-1-5-21-*-500"] }],
+      requestExtensions: [{ oid: SID_OID, value: "S-1-5-21-1-2-3-500" }]
+    });
+
+    expect(errors[0]).toContain("is denied by this policy");
+  });
+
+  it("exempts a value that satisfies a required pattern from the allow list, as SAN rules do", () => {
+    const { errors, extensions } = resolveCustomExtensions({
+      declarations: [{ oid: SID_OID }],
+      rules: [{ oid: SID_OID, allowed: ["S-1-5-21-9-*"], required: ["S-1-5-21-1004336348-*"] }],
       requestExtensions: [{ oid: SID_OID, value: SID }]
     });
 
@@ -237,7 +282,7 @@ describe("resolveCustomExtensions", () => {
   it("honours denied patterns", () => {
     const { errors } = resolveCustomExtensions({
       declarations: [{ oid: SID_OID }],
-      rules: [{ oid: SID_OID, rule: CertExtensionRuleKind.DENY, value: "S-1-5-21-*-500" }],
+      rules: [{ oid: SID_OID, denied: ["S-1-5-21-*-500"] }],
       requestExtensions: [{ oid: SID_OID, value: "S-1-5-21-1004336348-1177238915-682003330-500" }]
     });
 
@@ -245,7 +290,7 @@ describe("resolveCustomExtensions", () => {
   });
 
   it("reports a required rule that nothing satisfies, and respects skipRequired", () => {
-    const rules = [{ oid: SID_OID, rule: CertExtensionRuleKind.REQUIRE, value: "S-1-5-21-*" }];
+    const rules = [{ oid: SID_OID, required: ["S-1-5-21-*"] }];
 
     expect(resolveCustomExtensions({ declarations: [], rules }).errors).toHaveLength(1);
     expect(resolveCustomExtensions({ declarations: [], rules, skipRequired: true }).errors).toEqual([]);
@@ -272,7 +317,7 @@ describe("resolveCustomExtensions", () => {
   it("refuses a request extension the policy does not list, declared or not", () => {
     const { extensions, errors } = resolveCustomExtensions({
       declarations: [],
-      rules: [{ oid: SID_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }],
+      rules: [{ oid: SID_OID, allowed: ["*"] }],
       requestExtensions: [{ oid: CUSTOM_OID, value: "BQA=" }]
     });
 
@@ -295,7 +340,7 @@ describe("resolveCustomExtensions", () => {
     const value = Buffer.from("0500", "hex").toString("base64");
     const { extensions } = resolveCustomExtensions({
       declarations: [{ oid: CUSTOM_OID, value, critical: false }],
-      rules: [{ oid: CUSTOM_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }],
+      rules: [{ oid: CUSTOM_OID, allowed: ["*"] }],
       requestExtensions: [{ oid: CUSTOM_OID, critical: true }]
     });
 
@@ -306,9 +351,7 @@ describe("resolveCustomExtensions", () => {
     const value = Buffer.from("0500", "hex").toString("base64");
     const { errors } = resolveCustomExtensions({
       declarations: [{ oid: CUSTOM_OID, value }],
-      rules: [
-        { oid: CUSTOM_OID, rule: CertExtensionRuleKind.ALLOW, value: "*", critical: CertExtensionCriticality.CRITICAL }
-      ],
+      rules: [{ oid: CUSTOM_OID, allowed: ["*"], critical: CertExtensionCriticality.CRITICAL }],
       requestExtensions: [{ oid: CUSTOM_OID, critical: false }]
     });
 
@@ -320,7 +363,7 @@ describe("resolveCustomExtensions", () => {
   it("keeps a preset's criticality when the request does not contest it", () => {
     const { extensions } = resolveCustomExtensions({
       declarations: [declareSid],
-      rules: [{ oid: SID_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }],
+      rules: [{ oid: SID_OID, allowed: ["*"] }],
       requestExtensions: [{ oid: SID_OID }]
     });
 
@@ -330,7 +373,7 @@ describe("resolveCustomExtensions", () => {
   it("rejects a request that contests a preset's criticality", () => {
     const { extensions, errors } = resolveCustomExtensions({
       declarations: [declareSid],
-      rules: [{ oid: SID_OID, rule: CertExtensionRuleKind.ALLOW, value: "*" }],
+      rules: [{ oid: SID_OID, allowed: ["*"] }],
       requestExtensions: [{ oid: SID_OID, critical: true }]
     });
 
@@ -341,7 +384,7 @@ describe("resolveCustomExtensions", () => {
   it("denies a value the policy denies", () => {
     const { extensions, errors } = resolveCustomExtensions({
       declarations: [{ oid: CUSTOM_OID, value: "ops-prod" }],
-      rules: [{ oid: CUSTOM_OID, rule: CertExtensionRuleKind.DENY, value: "ops-prod" }]
+      rules: [{ oid: CUSTOM_OID, denied: ["ops-prod"] }]
     });
 
     expect(extensions).toHaveLength(0);
@@ -354,7 +397,7 @@ describe("resolveCustomExtensions", () => {
   ])("matching %s against an allowed pattern of Machine", (requested, emitted, failures) => {
     const { extensions, errors } = resolveCustomExtensions({
       declarations: [{ oid: TEMPLATE_NAME_OID }],
-      rules: [{ oid: TEMPLATE_NAME_OID, rule: CertExtensionRuleKind.ALLOW, value: "Machine" }],
+      rules: [{ oid: TEMPLATE_NAME_OID, allowed: ["Machine"] }],
       requestExtensions: [{ oid: TEMPLATE_NAME_OID, value: requested }]
     });
 
@@ -364,7 +407,7 @@ describe("resolveCustomExtensions", () => {
 
   it("rejects a template name that is empty or outside the basic multilingual plane", () => {
     expect(resolveCustomExtensions({ declarations: [{ oid: TEMPLATE_NAME_OID, value: "" }] }).errors[0]).toContain(
-      "Enter a certificate template name"
+      "Value must be a certificate template name"
     );
     expect(
       resolveCustomExtensions({ declarations: [{ oid: TEMPLATE_NAME_OID, value: "Ma\u{1F600}ne" }] }).errors[0]
@@ -419,7 +462,7 @@ describe("resolveCustomExtensions on the profile-save path", () => {
   it("rejects a declared value the policy forbids", () => {
     const errors = save(
       [{ oid: TEMPLATE_NAME_OID, value: "User" }],
-      [{ oid: TEMPLATE_NAME_OID, rule: CertExtensionRuleKind.ALLOW, value: "Machine" }]
+      [{ oid: TEMPLATE_NAME_OID, allowed: ["Machine"] }]
     );
 
     expect(errors[0]).toContain("is not allowed by this policy");
@@ -432,14 +475,14 @@ describe("resolveCustomExtensions on the profile-save path", () => {
   it("rejects a criticality that disagrees with the policy even with no value", () => {
     const errors = save(
       [{ oid: CUSTOM_OID, critical: false }],
-      [{ oid: CUSTOM_OID, rule: CertExtensionRuleKind.ALLOW, value: "*", critical: CertExtensionCriticality.CRITICAL }]
+      [{ oid: CUSTOM_OID, allowed: ["*"], critical: CertExtensionCriticality.CRITICAL }]
     );
 
     expect(errors[0]).toContain("must be emitted as critical");
   });
 
   it("does not ask the profile to satisfy a required rule", () => {
-    expect(save([], [{ oid: CUSTOM_OID, rule: CertExtensionRuleKind.REQUIRE, value: "BQA=" }])).toHaveLength(0);
+    expect(save([], [{ oid: CUSTOM_OID, required: ["BQA="] }])).toHaveLength(0);
   });
 });
 

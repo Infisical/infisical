@@ -366,12 +366,6 @@ export enum CertExtensionCriticality {
   NOT_CRITICAL = "not_critical"
 }
 
-export enum CertExtensionRuleKind {
-  ALLOW = "allow",
-  REQUIRE = "require",
-  DENY = "deny"
-}
-
 export const CUSTOM_EXTENSION_PRESET_OIDS = {
   NTDS_SID: "1.3.6.1.4.1.311.25.2",
   MS_CERTIFICATE_TEMPLATE_NAME: "1.3.6.1.4.1.311.20.2",

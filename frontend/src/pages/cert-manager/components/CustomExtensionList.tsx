@@ -30,11 +30,23 @@ export const CustomExtensionList = ({ extensions }: Props) => {
             <Badge variant="outline" isTruncatable>
               <span>{value}</span>
             </Badge>
+            {extension.critical && (
+              <Badge variant="warning" className="shrink-0">
+                <span>Critical</span>
+              </Badge>
+            )}
           </ButtonGroup>
         ) : (
-          <Badge key={extension.oid} isTruncatable>
-            <span>{label}</span>
-          </Badge>
+          <ButtonGroup className="max-w-full min-w-0" key={extension.oid}>
+            <Badge isTruncatable>
+              <span>{label}</span>
+            </Badge>
+            {extension.critical && (
+              <Badge variant="warning" className="shrink-0">
+                <span>Critical</span>
+              </Badge>
+            )}
+          </ButtonGroup>
         );
       })}
     </div>

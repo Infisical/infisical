@@ -376,14 +376,6 @@ export const ProfileDefaultsStep = ({
         />
       )}
 
-      {caSupportsCustomExtensions && (
-        <CustomExtensionDefaults
-          allowedCustomExtensions={policyConstraints.allowedCustomExtensions}
-          extensions={watchedCustomExtensions}
-          onChange={(next) => setValue("defaults.customExtensions", next)}
-        />
-      )}
-
       {policyConstraints.shouldShowSanSection && (
         <AttributeListEditor<CertSubjectAlternativeNameType>
           title="Subject Alternative Names"
@@ -594,6 +586,13 @@ export const ProfileDefaultsStep = ({
             )}
           </div>
         </div>
+      )}
+      {caSupportsCustomExtensions && (
+        <CustomExtensionDefaults
+          allowedCustomExtensions={policyConstraints.allowedCustomExtensions}
+          extensions={watchedCustomExtensions}
+          onChange={(next) => setValue("defaults.customExtensions", next)}
+        />
       )}
     </div>
   );

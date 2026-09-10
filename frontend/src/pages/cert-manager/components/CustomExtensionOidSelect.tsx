@@ -17,6 +17,7 @@ type Props = {
   className?: string;
   placeholder?: string;
   extraOptions?: TOidOption[];
+  excludeOids?: string[];
 };
 
 export const CustomExtensionOidSelect = ({
@@ -25,7 +26,8 @@ export const CustomExtensionOidSelect = ({
   isError,
   className,
   placeholder = "Select or enter an OID",
-  extraOptions
+  extraOptions,
+  excludeOids
 }: Props) => {
   const [typed, setTyped] = useState("");
 
@@ -39,10 +41,18 @@ export const CustomExtensionOidSelect = ({
   }, [extraOptions]);
 
   const options = useMemo(() => {
+    const excluded = new Set((excludeOids ?? []).filter((oid) => oid !== value));
+    const selectable = knownOptions.filter((option) => !excluded.has(option.oid));
     const candidate = typed.trim();
-    if (!candidate || knownOptions.some((option) => option.oid === candidate)) return knownOptions;
-    return [{ oid: candidate, isCustom: true }, ...knownOptions];
-  }, [knownOptions, typed]);
+    if (
+      !candidate ||
+      excluded.has(candidate) ||
+      selectable.some((option) => option.oid === candidate)
+    ) {
+      return selectable;
+    }
+    return [{ oid: candidate, isCustom: true }, ...selectable];
+  }, [knownOptions, typed, excludeOids, value]);
 
   const selected = useMemo(() => {
     if (!value) return null;
@@ -58,9 +68,22 @@ export const CustomExtensionOidSelect = ({
         emptyMessage="Enter an OID"
         options={options}
         value={selected}
-        onValueChange={(option) => onChange(option.oid)}
-        onClear={() => onChange("")}
+        onValueChange={(option) => {
+          setTyped("");
+          onChange(option.oid);
+        }}
+        onClear={() => {
+          setTyped("");
+          onChange("");
+        }}
         onInput={(event) => setTyped(event.currentTarget.value)}
+        onBlur={() => {
+          const candidate = typed.trim();
+          setTyped("");
+          if (!candidate || candidate === value) return;
+          if ((excludeOids ?? []).includes(candidate)) return;
+          onChange(candidate);
+        }}
         getOptionValue={(option) => option.oid}
         getOptionLabel={(option) => option.oid}
         getOptionKeywords={(option) => (option.name ? [option.name] : [])}

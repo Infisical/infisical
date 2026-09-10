@@ -2,7 +2,7 @@
 import { forwardRef, ReactNode, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Info, PencilIcon, Plus, ShieldCheck, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -60,16 +60,20 @@ import { PkiDocsUrls } from "../../../pki-docs-urls";
 import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
+  CertExtensionCriticality,
+  CertExtensionInclude,
   CertKeyUsageType,
   CertPolicyState,
   CertSanInclude,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeInclude,
   CertSubjectAttributeType,
+  CUSTOM_EXTENSION_INCLUDE_LABELS,
   customExtensionLabelFor,
   EXTENDED_KEY_USAGE_OPTIONS,
   formatExtendedKeyUsage,
   formatKeyUsage,
+  groupCustomExtensionRows,
   KEY_USAGE_OPTIONS,
   POLICY_PRESET_IDS,
   type PolicyPresetId,
@@ -491,6 +495,9 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
     const [configureBasicConstraints, setConfigureBasicConstraints] = useState(false);
     const [restrictCustomExtensions, setRestrictCustomExtensions] = useState(false);
     const [isCustomExtensionDialogOpen, setIsCustomExtensionDialogOpen] = useState(false);
+    const [editingCustomExtensionIndex, setEditingCustomExtensionIndex] = useState<number | null>(
+      null
+    );
 
     const [errors, setErrors] = useState<Record<string, string>>({});
     const clearError = (key: string) =>
@@ -606,15 +613,23 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         maxPathLength: policyData.basicConstraints?.maxPathLength ?? undefined
       };
 
-      const customExtensions: FormData["customExtensions"] = (
-        policyData.customExtensions ?? []
-      ).map((rule) => ({
-        oid: rule.oid,
-        label: rule.label ?? "",
-        critical: rule.critical ?? "",
-        rule: rule.rule,
-        value: rule.value
-      }));
+      const customExtensions: FormData["customExtensions"] = [];
+      (policyData.customExtensions ?? []).forEach((rule) => {
+        const base = {
+          oid: rule.oid,
+          label: rule.label ?? "",
+          critical: (rule.critical ?? "") as CertExtensionCriticality | ""
+        };
+        (
+          [
+            [CertExtensionInclude.REQUIRED, rule.required],
+            [CertExtensionInclude.ALLOWED, rule.allowed],
+            [CertExtensionInclude.DENIED, rule.denied]
+          ] as const
+        ).forEach(([include, values]) => {
+          (values ?? []).forEach((value) => customExtensions.push({ ...base, include, value }));
+        });
+      });
 
       return {
         preset: POLICY_PRESET_IDS.CUSTOM,
@@ -890,17 +905,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         : null;
 
       const customExtensions = restrictCustomExtensions
-        ? (data.customExtensions ?? [])
-            .filter((extension) => extension.oid.trim())
-            .map((extension) => ({
-              oid: extension.oid.trim(),
-              ...(extension.label?.trim() && { label: extension.label.trim() }),
-              ...(extension.critical && {
-                critical: extension.critical
-              }),
-              rule: extension.rule,
-              value: extension.value.trim() || "*"
-            }))
+        ? groupCustomExtensionRows(data.customExtensions)
         : null;
 
       return {
@@ -1083,7 +1088,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
           stepErrors.customExtensions = "Every custom extension needs an OID.";
         } else if (watchedCustomExtensions.some((extension) => !extension.value?.trim())) {
           stepErrors.customExtensions =
-            "Every custom extension needs a value pattern (use * for any).";
+            "Every custom extension rule needs a value pattern (use * for any).";
         }
       }
 
@@ -1566,7 +1571,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
           <div className="space-y-8">
             <SectionToggle
               title="Restrict custom extensions"
-              description="Only allow the custom extension OIDs you configure here."
+              description="Certificates may carry only the OIDs listed here, each subject to its rule."
               enabled={restrictCustomExtensions}
               error={errors.customExtensions}
               onChange={(enabled) => {
@@ -1603,25 +1608,39 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                   </TableHeader>
                   <TableBody>
                     {watchedCustomExtensions.map((extension, index) => (
-                      <TableRow key={extension.oid}>
+                      // eslint-disable-next-line react/no-array-index-key
+                      <TableRow key={`${extension.oid}-${extension.include}-${index}`}>
                         <TableCell>
                           <p>{customExtensionLabelFor(extension.oid, extension.label)}</p>
                           <p className="font-mono text-xs text-muted">{extension.oid}</p>
                         </TableCell>
-                        <TableCell className="capitalize">{extension.rule}</TableCell>
+                        <TableCell>{CUSTOM_EXTENSION_INCLUDE_LABELS[extension.include]}</TableCell>
                         <TableCell>
                           {CUSTOM_EXTENSION_CRITICALITY_LABELS[extension.critical || ""]}
                         </TableCell>
                         <TableCell className="font-mono text-xs">{extension.value}</TableCell>
                         <TableCell>
-                          <IconButton
-                            type="button"
-                            variant="ghost"
-                            aria-label={`Remove ${extension.oid}`}
-                            onClick={() => removeCustomExtension(index)}
-                          >
-                            <Trash2 className="size-4" />
-                          </IconButton>
+                          <div className="flex items-center gap-1">
+                            <IconButton
+                              type="button"
+                              variant="ghost"
+                              aria-label={`Edit ${extension.oid}`}
+                              onClick={() => {
+                                setEditingCustomExtensionIndex(index);
+                                setIsCustomExtensionDialogOpen(true);
+                              }}
+                            >
+                              <PencilIcon className="size-4" />
+                            </IconButton>
+                            <IconButton
+                              type="button"
+                              variant="ghost"
+                              aria-label={`Remove ${extension.oid}`}
+                              onClick={() => removeCustomExtension(index)}
+                            >
+                              <Trash2 className="size-4" />
+                            </IconButton>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1634,18 +1653,44 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                 className="mt-3"
                 variant="outline"
                 size="sm"
-                onClick={() => setIsCustomExtensionDialogOpen(true)}
+                onClick={() => {
+                  setEditingCustomExtensionIndex(null);
+                  setIsCustomExtensionDialogOpen(true);
+                }}
               >
                 <Plus className="mr-1 size-4" />
-                Add extension
+                Add extension rule
               </Button>
 
               <CustomExtensionRuleDialog
                 isOpen={isCustomExtensionDialogOpen}
-                onOpenChange={setIsCustomExtensionDialogOpen}
-                usedOids={watchedCustomExtensions.map((extension) => extension.oid)}
+                onOpenChange={(open) => {
+                  setIsCustomExtensionDialogOpen(open);
+                  if (!open) setEditingCustomExtensionIndex(null);
+                }}
+                initialRule={
+                  editingCustomExtensionIndex === null
+                    ? null
+                    : (() => {
+                        const row = watchedCustomExtensions[editingCustomExtensionIndex];
+                        return {
+                          oid: row.oid,
+                          label: row.label ?? "",
+                          include: row.include,
+                          critical: row.critical ?? "",
+                          value: row.value
+                        };
+                      })()
+                }
                 onConfirm={(rule) => {
-                  setValue("customExtensions", [...watchedCustomExtensions, rule]);
+                  if (editingCustomExtensionIndex === null) {
+                    setValue("customExtensions", [...watchedCustomExtensions, rule]);
+                  } else {
+                    const next = [...watchedCustomExtensions];
+                    next[editingCustomExtensionIndex] = rule;
+                    setValue("customExtensions", next);
+                  }
+                  setEditingCustomExtensionIndex(null);
                   clearError("customExtensions");
                   markCustomPreset();
                 }}

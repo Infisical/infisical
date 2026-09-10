@@ -1,6 +1,5 @@
 import {
   CertExtensionCriticality,
-  CertExtensionRuleKind,
   CertPolicyState
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -26,8 +25,9 @@ export type TCustomExtensionRule = {
   oid: string;
   label?: string;
   critical?: CertExtensionCriticality;
-  rule: CertExtensionRuleKind;
-  value: string;
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
 };
 
 export type TCertificatePolicyRule = {

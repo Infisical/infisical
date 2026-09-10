@@ -96,7 +96,11 @@ const formSchema = z
     keyAlgorithm: z.string().optional(),
     keyUsages: z.record(z.boolean().optional()).default({}),
     extendedKeyUsages: z.record(z.boolean().optional()).default({}),
-    customExtensions: z.array(z.object({ oid: z.string().trim(), value: z.string() })).default([])
+    customExtensions: z
+      .array(
+        z.object({ oid: z.string().trim(), value: z.string(), critical: z.boolean().optional() })
+      )
+      .default([])
   })
   .superRefine((data, ctx) => {
     if (data.keySource === CertificateRenewalKeySource.Csr && !data.csr) {

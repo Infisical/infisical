@@ -49,6 +49,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
+import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import {
   CertificateThumbprintAlgorithm,
@@ -974,6 +975,7 @@ export const certificateServiceFactory = ({
         // Extract certificate fields for storage
         const certificateBuffer = Buffer.from(certificatePem);
         const parsedFields = extractCertificateFields(certificateBuffer);
+        const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
 
         const txCert = await certificateDAL.create(
           {
@@ -991,7 +993,8 @@ export const certificateServiceFactory = ({
             ...parsedFields,
             // Issuance records these from what it was asked to produce. An imported certificate has
             // no such request, so they come from the certificate itself.
-            ...extractCertificateAlgorithms(certificateBuffer)
+            ...extractCertificateAlgorithms(certificateBuffer),
+            customExtensions: importedCustomExtensions.length ? JSON.stringify(importedCustomExtensions) : null
           },
           tx
         );

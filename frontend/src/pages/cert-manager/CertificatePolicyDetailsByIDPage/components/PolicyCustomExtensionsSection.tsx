@@ -10,7 +10,6 @@ import {
 import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 import {
   CertExtensionCriticality,
-  CertExtensionRuleKind,
   customExtensionLabelFor
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -18,12 +17,6 @@ import { RuleList } from "./RuleList";
 
 type Props = {
   policy: TCertificatePolicy;
-};
-
-const RULE_KIND_LABEL: Record<CertExtensionRuleKind, string> = {
-  [CertExtensionRuleKind.ALLOW]: "Allowed",
-  [CertExtensionRuleKind.REQUIRE]: "Required",
-  [CertExtensionRuleKind.DENY]: "Denied"
 };
 
 const CRITICALITY_LABEL: Record<CertExtensionCriticality, string> = {
@@ -66,7 +59,15 @@ export const PolicyCustomExtensionsSection = ({ policy }: Props) => {
                   )}
                 </div>
                 <p className="font-mono text-xs text-mineshaft-400">{rule.oid}</p>
-                <RuleList label={RULE_KIND_LABEL[rule.rule]} values={[rule.value]} />
+                {Boolean(rule.required?.length) && (
+                  <RuleList label="Required" values={rule.required ?? []} />
+                )}
+                {Boolean(rule.allowed?.length) && (
+                  <RuleList label="Allowed" values={rule.allowed ?? []} />
+                )}
+                {Boolean(rule.denied?.length) && (
+                  <RuleList label="Denied" values={rule.denied ?? []} />
+                )}
               </div>
             ))}
           </DetailGroup>

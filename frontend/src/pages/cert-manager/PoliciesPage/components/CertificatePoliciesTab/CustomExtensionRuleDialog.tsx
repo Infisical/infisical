@@ -24,8 +24,9 @@ import {
 import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
 import {
   CertExtensionCriticality,
-  CertExtensionRuleKind,
+  CertExtensionInclude,
   customExtensionLabelFor,
+  getPresetExtensionCriticality,
   isPresetExtensionOid
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
@@ -34,15 +35,15 @@ export const ANY_CRITICALITY = "any";
 export type TCustomExtensionRuleDraft = {
   oid: string;
   label: string;
-  rule: CertExtensionRuleKind;
+  include: CertExtensionInclude;
   critical: CertExtensionCriticality | "";
   value: string;
 };
 
-const RULE_OPTIONS = [
-  { value: CertExtensionRuleKind.ALLOW, label: "Allow" },
-  { value: CertExtensionRuleKind.REQUIRE, label: "Require" },
-  { value: CertExtensionRuleKind.DENY, label: "Deny" }
+const INCLUDE_OPTIONS = [
+  { value: CertExtensionInclude.ALLOWED, label: "Allowed" },
+  { value: CertExtensionInclude.REQUIRED, label: "Required" },
+  { value: CertExtensionInclude.DENIED, label: "Denied" }
 ] as const;
 
 export const CUSTOM_EXTENSION_CRITICALITY_LABELS: Record<string, string> = {
@@ -68,7 +69,7 @@ const OID_PATTERN = /^[0-2](\.(0|[1-9][0-9]{0,14})){1,20}$/;
 const EMPTY_DRAFT: TCustomExtensionRuleDraft = {
   oid: "",
   label: "",
-  rule: CertExtensionRuleKind.ALLOW,
+  include: CertExtensionInclude.ALLOWED,
   critical: "",
   value: "*"
 };
@@ -76,20 +77,26 @@ const EMPTY_DRAFT: TCustomExtensionRuleDraft = {
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  usedOids: string[];
   onConfirm: (rule: TCustomExtensionRuleDraft) => void;
+  initialRule?: TCustomExtensionRuleDraft | null;
 };
 
-export const CustomExtensionRuleDialog = ({ isOpen, onOpenChange, usedOids, onConfirm }: Props) => {
+export const CustomExtensionRuleDialog = ({
+  isOpen,
+  onOpenChange,
+  onConfirm,
+  initialRule
+}: Props) => {
+  const isEdit = Boolean(initialRule);
   const [draft, setDraft] = useState<TCustomExtensionRuleDraft>(EMPTY_DRAFT);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setDraft(EMPTY_DRAFT);
+      setDraft(initialRule ?? EMPTY_DRAFT);
       setError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialRule]);
 
   const isPreset = isPresetExtensionOid(draft.oid);
 
@@ -97,10 +104,6 @@ export const CustomExtensionRuleDialog = ({ isOpen, onOpenChange, usedOids, onCo
     const oid = draft.oid.trim();
     if (!OID_PATTERN.test(oid)) {
       setError("Enter a valid object identifier, for example 1.3.6.1.4.1.311.25.2");
-      return;
-    }
-    if (usedOids.includes(oid)) {
-      setError("This policy already has a rule for that object identifier.");
       return;
     }
     onConfirm({
@@ -117,9 +120,12 @@ export const CustomExtensionRuleDialog = ({ isOpen, onOpenChange, usedOids, onCo
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add custom extension rule</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Edit custom extension rule" : "Add custom extension rule"}
+          </DialogTitle>
           <DialogDescription>
-            Constrain the values certificates may carry for one object identifier.
+            Add one value pattern for an object identifier. Add several rules for the same OID to
+            accept more than one value.
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="space-y-4">
@@ -160,16 +166,16 @@ export const CustomExtensionRuleDialog = ({ isOpen, onOpenChange, usedOids, onCo
             <FieldLabel>Rule</FieldLabel>
             <FieldContent>
               <Select
-                value={draft.rule}
+                value={draft.include}
                 onValueChange={(value) =>
-                  setDraft((current) => ({ ...current, rule: value as CertExtensionRuleKind }))
+                  setDraft((current) => ({ ...current, include: value as CertExtensionInclude }))
                 }
               >
                 <SelectTrigger className="w-full" aria-label="Rule">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {RULE_OPTIONS.map((option) => (
+                  {INCLUDE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -183,7 +189,10 @@ export const CustomExtensionRuleDialog = ({ isOpen, onOpenChange, usedOids, onCo
             <FieldLabel>Criticality</FieldLabel>
             <FieldContent>
               <Select
-                value={draft.critical || ANY_CRITICALITY}
+                value={
+                  (isPreset ? getPresetExtensionCriticality(draft.oid) : draft.critical) ||
+                  ANY_CRITICALITY
+                }
                 disabled={isPreset}
                 onValueChange={(value) =>
                   setDraft((current) => ({
@@ -218,7 +227,7 @@ export const CustomExtensionRuleDialog = ({ isOpen, onOpenChange, usedOids, onCo
                 onChange={(e) => setDraft((current) => ({ ...current, value: e.target.value }))}
               />
               <FieldDescription>
-                Values this rule matches, with * as a wildcard. Use * alone for any value.
+                One value this rule matches, with * as a wildcard. Use * alone for any value.
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -228,7 +237,7 @@ export const CustomExtensionRuleDialog = ({ isOpen, onOpenChange, usedOids, onCo
             Cancel
           </Button>
           <Button type="button" onClick={handleConfirm}>
-            Add extension
+            {isEdit ? "Save rule" : "Add extension"}
           </Button>
         </DialogFooter>
       </DialogContent>

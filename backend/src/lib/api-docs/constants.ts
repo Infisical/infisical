@@ -2294,8 +2294,12 @@ export const CERTIFICATE_POLICIES = {
   CUSTOM_EXTENSION_RULES:
     "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
   CUSTOM_EXTENSION_RULE: {
-    rule: "Whether the value pattern allows, requires, or denies this extension. Require also makes the extension mandatory.",
-    value: "The value pattern this rule matches against, with * as a wildcard. Use * on its own to match any value."
+    allowed:
+      "Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.",
+    required:
+      "Value patterns this extension must match, with * as a wildcard. Setting any required pattern also makes the extension mandatory on every request.",
+    denied:
+      "Value patterns this extension must not take, with * as a wildcard. A denied match is rejected even when an allowed pattern also matches."
   },
   SUBJECT_DOMAIN_COMPONENT_RULE: {
     allowed: domainComponentRule("permitted"),

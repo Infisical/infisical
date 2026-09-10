@@ -4,7 +4,6 @@ import {
   TSubjectRule
 } from "@app/hooks/api/certificatePolicies";
 import {
-  CertExtensionRuleKind,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   formatSANType,
@@ -651,8 +650,9 @@ export type SubjectPolicyGuidance = {
 
 export type TCustomExtensionPolicyRule = {
   oid: string;
-  rule: CertExtensionRuleKind;
-  value: string;
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
 };
 
 export type TCustomExtensionDeclaration = {
@@ -685,7 +685,7 @@ export const evaluateCustomExtensions = ({
   const isUnrestricted = rules === undefined || rules === null;
 
   const requiredOids = (rules ?? [])
-    .filter((rule) => rule.rule === CertExtensionRuleKind.REQUIRE)
+    .filter((rule) => rule.required?.length)
     .map((rule) => rule.oid);
 
   const oids = [...new Set([...declarationByOid.keys(), ...valueByOid.keys(), ...requiredOids])];
@@ -701,7 +701,7 @@ export const evaluateCustomExtensions = ({
     }
 
     if (!value) {
-      if (rule?.rule === CertExtensionRuleKind.REQUIRE) {
+      if (rule?.required?.length) {
         errorsByOid[oid] = "A value is required by this policy";
       }
       return;
@@ -715,15 +715,24 @@ export const evaluateCustomExtensions = ({
 
     if (!rule) return;
 
-    const matches = matchesNormalizedPattern(value, rule.value);
-    if (rule.rule === CertExtensionRuleKind.DENY) {
-      if (matches) {
-        errorsByOid[oid] = "This value is denied by this policy";
-      }
+    const matchesAnyExtensionPattern = (patterns: string[]) =>
+      patterns.some((pattern) => matchesNormalizedPattern(value, pattern));
+
+    if (matchesAnyExtensionPattern(rule.denied ?? [])) {
+      errorsByOid[oid] = "This value is denied by this policy";
       return;
     }
-    if (!matches) {
-      errorsByOid[oid] = `Value must match ${rule.value}`;
+
+    const required = rule.required ?? [];
+    const satisfiesRequired = required.length > 0 && matchesAnyExtensionPattern(required);
+    if (required.length > 0 && !satisfiesRequired) {
+      errorsByOid[oid] = `Value must match one of: ${required.join(", ")}`;
+      return;
+    }
+
+    const allowed = rule.allowed ?? [];
+    if (!satisfiesRequired && allowed.length > 0 && !matchesAnyExtensionPattern(allowed)) {
+      errorsByOid[oid] = `Value must match one of: ${allowed.join(", ")}`;
     }
   });
 

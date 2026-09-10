@@ -195,17 +195,19 @@ Control whether certificates can act as CAs:
 
 ### Custom extensions
 
-Control which custom X.509 extensions certificates may carry, with one rule per object identifier (OID):
+Control which custom X.509 extensions certificates may carry. Each rule is one value pattern for one object identifier (OID), classified the same way subject alternative name rules are:
 
 | Rule | Meaning |
 |------|---------|
-| Allow | The extension is permitted, and its value must match the pattern |
-| Require | The extension must be present, and its value must match the pattern |
-| Deny | The extension is permitted, but not with a value matching the pattern |
+| Allowed | The value may match this pattern |
+| Required | The extension must be present, and its value must match one of the required patterns |
+| Denied | The value must not match this pattern, even when an allowed pattern also matches it |
 
-Each rule takes one value pattern, matched against the value you enter rather than its encoded form. Use `*` for any value, or a wildcard such as `S-1-5-21-1004336348-1177238915-682003330-*` to accept only identifiers from your own Active Directory domain. A rule can also pin criticality, except where an extension's specification already fixes it.
+Add several rules for the same OID to accept more than one value. An Active Directory estate with two domains, for example, takes two Allowed rules on the security identifier extension, one wildcard per domain.
 
-If you configure Custom Extensions, only the OIDs you list are permitted, each subject to its rule. Any other OID in a request is rejected, including one carried in a signing request, so a value pattern is what limits what an enrolling client can assert. An empty configuration forbids all custom extensions, and leaving the section unconfigured allows any OID with any value.
+Patterns are matched against the value you enter rather than its encoded form, and matching is case sensitive. Use `*` for any value, or a wildcard such as `S-1-5-21-1004336348-1177238915-682003330-*` to accept only identifiers from one domain. A rule can also pin criticality, except where an extension's specification already fixes it.
+
+If you configure Custom Extensions, only the OIDs you list are permitted. Any other OID in a request is rejected, including one carried in a signing request, so the patterns are what limit what an enrolling client can assert. An empty configuration forbids all custom extensions, and leaving the section unconfigured allows any OID with any value.
 
 Infisical manages some extensions itself, so you can't set any OID under `2.5.29.` or authority information access here.
 

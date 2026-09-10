@@ -181,13 +181,25 @@ export const certificatePolicyServiceFactory = ({
         throw new BadRequestError({ message: describeReservedExtensionOid(rule.oid) });
       }
 
-      if (!isWildcardPattern(rule.value)) {
-        const invalid = validateCustomExtensionValue(rule.oid, rule.value);
+      const patterns = [...(rule.allowed ?? []), ...(rule.required ?? []), ...(rule.denied ?? [])];
+      for (const pattern of patterns) {
+        if (isWildcardPattern(pattern)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        const invalid = validateCustomExtensionValue(rule.oid, pattern);
         if (invalid) {
           throw new BadRequestError({
-            message: `Custom extension rule for OID '${rule.oid}' has a value this extension can never take, so the rule would never apply. ${invalid}`
+            message: `Custom extension rule for OID '${rule.oid}' lists '${pattern}', which this extension can never take, so the rule would never apply. ${invalid}. Patterns may use * as a wildcard to cover a range of values.`
           });
         }
+      }
+
+      const conflicting = (rule.required ?? []).filter((pattern) => (rule.denied ?? []).includes(pattern));
+      if (conflicting.length > 0) {
+        throw new BadRequestError({
+          message: `Custom extension rule for OID '${rule.oid}' both requires and denies ${conflicting.join(", ")}, so no value could ever satisfy it.`
+        });
       }
 
       const preset = CUSTOM_EXTENSION_PRESETS_BY_OID[rule.oid];

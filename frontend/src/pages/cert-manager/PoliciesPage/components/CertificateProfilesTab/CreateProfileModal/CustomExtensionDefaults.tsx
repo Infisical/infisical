@@ -2,13 +2,17 @@ import { Plus, Trash2 } from "lucide-react";
 
 import {
   Button,
+  Checkbox,
   IconButton,
   Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
 import { CustomExtensionOidSelect } from "@app/pages/cert-manager/components/CustomExtensionOidSelect";
@@ -17,7 +21,8 @@ import {
   CertExtensionCriticality,
   customExtensionLabelFor,
   getCustomExtensionValuePlaceholder,
-  isPresetExtensionOid
+  isPresetExtensionOid,
+  validateCustomExtensionValue
 } from "../../CertificatePoliciesTab/shared/certificate-constants";
 import { SectionHeading } from "./SectionHeading";
 
@@ -54,6 +59,19 @@ export const CustomExtensionDefaults = ({
   const criticalityPinnedFor = (oid: string) =>
     allowedCustomExtensions?.find((rule) => rule.oid === oid)?.critical;
 
+  const allSelectableOidsUsed = Boolean(
+    selectableOids?.length &&
+      selectableOids.every((oid) => extensions.some((extension) => extension.oid === oid))
+  );
+
+  const takenOidsExcept = (index: number) =>
+    new Set(
+      extensions
+        .filter((_, i) => i !== index)
+        .map((extension) => extension.oid)
+        .filter(Boolean)
+    );
+
   const declarationFor = (oid: string): TProfileCustomExtension => {
     const pinned = criticalityPinnedFor(oid);
     return { oid, critical: pinned ? pinned === CertExtensionCriticality.CRITICAL : false };
@@ -63,7 +81,7 @@ export const CustomExtensionDefaults = ({
     <div>
       <SectionHeading
         title="Custom Extensions"
-        description="Declare the custom X.509 extensions certificates from this profile may carry. Leave a value empty to have the request supply it."
+        description="Declare the custom X.509 extensions certificates from this profile may carry."
       />
       <div className="mt-4 space-y-3">
         {isDisabled && (
@@ -82,70 +100,93 @@ export const CustomExtensionDefaults = ({
               const isPreset = isPresetExtensionOid(extension.oid);
               const placeholder = getCustomExtensionValuePlaceholder(extension.oid);
               const criticalityPinned = criticalityPinnedFor(extension.oid);
+              const criticalityLocked = isPreset || Boolean(criticalityPinned);
+              const isCritical = criticalityPinned
+                ? criticalityPinned === CertExtensionCriticality.CRITICAL
+                : Boolean(extension.critical);
+              const valueError =
+                extension.oid && extension.value
+                  ? validateCustomExtensionValue(extension.oid, extension.value)
+                  : null;
+
+              const criticalityCheckbox = (
+                <Checkbox
+                  variant="project"
+                  isChecked={isCritical}
+                  isDisabled={criticalityLocked}
+                  aria-label="Critical"
+                  onCheckedChange={(checked) => update(index, { critical: checked === true })}
+                />
+              );
 
               return (
                 <div
                   // eslint-disable-next-line react/no-array-index-key
                   key={`profile-extension-${index}`}
-                  className="flex items-start gap-2"
+                  className="flex items-start gap-3"
                 >
                   {selectableOids ? (
                     <Select
                       value={extension.oid || undefined}
                       onValueChange={(oid) => replace(index, declarationFor(oid))}
                     >
-                      <SelectTrigger className="min-w-0 flex-[2]">
+                      <SelectTrigger className="min-w-0 flex-[3]" aria-label="Extension">
                         <SelectValue placeholder="Select an extension" />
                       </SelectTrigger>
                       <SelectContent position="popper">
-                        {selectableOids.map((oid) => (
-                          <SelectItem key={oid} value={oid}>
-                            {customExtensionLabelFor(
-                              oid,
-                              allowedCustomExtensions?.find((rule) => rule.oid === oid)?.label
-                            )}
-                          </SelectItem>
-                        ))}
+                        {selectableOids
+                          .filter((oid) => !takenOidsExcept(index).has(oid))
+                          .map((oid) => (
+                            <SelectItem key={oid} value={oid}>
+                              {customExtensionLabelFor(
+                                oid,
+                                allowedCustomExtensions?.find((rule) => rule.oid === oid)?.label
+                              )}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   ) : (
                     <CustomExtensionOidSelect
-                      className="min-w-0 flex-[2]"
+                      className="min-w-0 flex-[3]"
                       placeholder="Select OID"
                       value={extension.oid}
+                      excludeOids={[...takenOidsExcept(index)]}
                       onChange={(oid) => replace(index, declarationFor(oid))}
                     />
                   )}
 
-                  <Select
-                    value={
-                      (criticalityPinned ??
-                        (extension.critical
-                          ? CertExtensionCriticality.CRITICAL
-                          : CertExtensionCriticality.NOT_CRITICAL)) as CertExtensionCriticality
-                    }
-                    disabled={isPreset || Boolean(criticalityPinned)}
-                    onValueChange={(value) =>
-                      update(index, { critical: value === CertExtensionCriticality.CRITICAL })
-                    }
-                  >
-                    <SelectTrigger className="w-28 shrink-0" aria-label="Criticality">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      <SelectItem value={CertExtensionCriticality.NOT_CRITICAL}>
-                        Not critical
-                      </SelectItem>
-                      <SelectItem value={CertExtensionCriticality.CRITICAL}>Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="min-w-0 flex-[4]">
+                    <Input
+                      className="w-full"
+                      placeholder={placeholder}
+                      value={extension.value ?? ""}
+                      isError={Boolean(valueError)}
+                      onChange={(e) => update(index, { value: e.target.value })}
+                    />
+                    {valueError && <p className="mt-1 text-xs text-danger">{valueError}</p>}
+                  </div>
 
-                  <Input
-                    className="min-w-0 flex-1"
-                    placeholder={placeholder}
-                    value={extension.value ?? ""}
-                    onChange={(e) => update(index, { value: e.target.value })}
-                  />
+                  <div className="flex h-9 shrink-0 items-center gap-2">
+                    {criticalityLocked ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                          <span tabIndex={0} className="flex items-center">
+                            {criticalityCheckbox}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-64">
+                          {isPreset
+                            ? "Criticality is fixed for this extension because Active Directory rejects certificates that mark it differently."
+                            : "The certificate policy pins the criticality for this object identifier."}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      criticalityCheckbox
+                    )}
+                    <span className="text-sm whitespace-nowrap text-muted">Critical</span>
+                  </div>
 
                   <IconButton
                     type="button"
@@ -163,14 +204,20 @@ export const CustomExtensionDefaults = ({
               type="button"
               variant="outline"
               size="sm"
+              isDisabled={allSelectableOidsUsed}
               onClick={() => {
                 const taken = new Set(extensions.map((extension) => extension.oid));
                 const nextOid = selectableOids?.find((oid) => !taken.has(oid)) ?? "";
                 onChange([...extensions, declarationFor(nextOid)]);
               }}
             >
-              <Plus className="size-4" /> Declare extension
+              <Plus className="size-4" /> Add extension
             </Button>
+            {allSelectableOidsUsed && (
+              <p className="text-xs text-muted">
+                Every extension this policy allows is already declared.
+              </p>
+            )}
           </>
         )}
       </div>

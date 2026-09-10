@@ -331,11 +331,17 @@ export const ALGORITHM_FAMILIES = {
   }
 } as const;
 
-export enum CertExtensionRuleKind {
-  ALLOW = "allow",
-  REQUIRE = "require",
-  DENY = "deny"
+export enum CertExtensionInclude {
+  ALLOWED = "allowed",
+  REQUIRED = "required",
+  DENIED = "denied"
 }
+
+export const CUSTOM_EXTENSION_INCLUDE_LABELS: Record<CertExtensionInclude, string> = {
+  [CertExtensionInclude.ALLOWED]: "Allowed",
+  [CertExtensionInclude.REQUIRED]: "Required",
+  [CertExtensionInclude.DENIED]: "Denied"
+};
 
 export enum CertExtensionCriticality {
   CRITICAL = "critical",
@@ -351,17 +357,24 @@ const TEMPLATE_INFORMATION_PATTERN = new RegExp(
 
 export const CUSTOM_EXTENSION_PRESETS: Record<
   string,
-  { label: string; placeholder: string; validate: (value: string) => string | null }
+  {
+    label: string;
+    placeholder: string;
+    critical: boolean;
+    validate: (value: string) => string | null;
+  }
 > = {
   "1.3.6.1.4.1.311.25.2": {
+    critical: false,
     label: "AD SID security extension",
     placeholder: "S-1-5-21-...",
     validate: (value) =>
       SID_PATTERN.test(value)
         ? null
-        : "Enter a security identifier, for example S-1-5-21-1004336348-1177238915-682003330-1103"
+        : "Value must be a security identifier, for example S-1-5-21-1004336348-1177238915-682003330-1103"
   },
   "1.3.6.1.4.1.311.20.2": {
+    critical: false,
     label: "Certificate template name",
     placeholder: "Machine",
     validate: (value) => {
@@ -372,12 +385,13 @@ export const CUSTOM_EXTENSION_PRESETS: Record<
     }
   },
   "1.3.6.1.4.1.311.21.7": {
+    critical: false,
     label: "Certificate template information",
     placeholder: "1.3.6.1.4.1.311.21.8.1.2:100.3",
     validate: (value) =>
       TEMPLATE_INFORMATION_PATTERN.test(value)
         ? null
-        : "Enter the template OID, a colon, then the version, for example 1.3.6.1.4.1.311.21.8.1.2:100.3"
+        : "Value must be the template OID, a colon, then the version, for example 1.3.6.1.4.1.311.21.8.1.2:100.3"
   }
 };
 
@@ -385,6 +399,14 @@ const getCustomExtensionPreset = (oid: string) =>
   Object.prototype.hasOwnProperty.call(CUSTOM_EXTENSION_PRESETS, oid)
     ? CUSTOM_EXTENSION_PRESETS[oid]
     : undefined;
+
+export const getPresetExtensionCriticality = (oid: string): CertExtensionCriticality | null => {
+  const preset = getCustomExtensionPreset(oid);
+  if (!preset) return null;
+  return preset.critical
+    ? CertExtensionCriticality.CRITICAL
+    : CertExtensionCriticality.NOT_CRITICAL;
+};
 
 export const isPresetExtensionOid = (oid: string) => Boolean(getCustomExtensionPreset(oid));
 
@@ -401,3 +423,44 @@ export const validateCustomExtensionValue = (oid: string, value: string): string
 
 export const getCustomExtensionValuePlaceholder = (oid: string) =>
   getCustomExtensionPreset(oid)?.placeholder ?? "Value";
+
+export type TCustomExtensionRow = {
+  oid: string;
+  label?: string;
+  critical?: CertExtensionCriticality | "";
+  include: CertExtensionInclude;
+  value: string;
+};
+
+export const groupCustomExtensionRows = (rows?: TCustomExtensionRow[] | null) => {
+  const byOid = new Map<
+    string,
+    {
+      oid: string;
+      label?: string;
+      critical?: CertExtensionCriticality;
+      allowed: string[];
+      required: string[];
+      denied: string[];
+    }
+  >();
+
+  (rows ?? [])
+    .filter((row) => row.oid.trim())
+    .forEach((row) => {
+      const oid = row.oid.trim();
+      const existing = byOid.get(oid) ?? { oid, allowed: [], required: [], denied: [] };
+      const label = row.label?.trim();
+      if (label) existing.label = label;
+      if (row.critical) existing.critical = row.critical;
+      existing[row.include].push(row.value.trim() || "*");
+      byOid.set(oid, existing);
+    });
+
+  return [...byOid.values()].map(({ allowed, required, denied, ...rest }) => ({
+    ...rest,
+    ...(allowed.length && { allowed }),
+    ...(required.length && { required }),
+    ...(denied.length && { denied })
+  }));
+};

@@ -355,7 +355,7 @@ describe("CertificateProfileService", () => {
       it("accepts a declaration the policy permits", async () => {
         (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
           ...samplePolicy,
-          customExtensions: [{ oid: SID_OID, rule: "allow", value: "*" }]
+          customExtensions: [{ oid: SID_OID, allowed: ["*"] }]
         });
 
         await expect(createWithExtensions([{ oid: SID_OID, value: "S-1-5-21-1-2-3-1103" }])).resolves.toBeDefined();
@@ -382,7 +382,7 @@ describe("CertificateProfileService", () => {
       it("rejects an OID the policy does not mention", async () => {
         (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
           ...samplePolicy,
-          customExtensions: [{ oid: SID_OID, rule: "allow", value: "*" }]
+          customExtensions: [{ oid: SID_OID, allowed: ["*"] }]
         });
 
         await expect(createWithExtensions([{ oid: CUSTOM_OID }])).rejects.toThrow("is not allowed by this policy");
@@ -391,7 +391,7 @@ describe("CertificateProfileService", () => {
       it("rejects a declared value the policy forbids", async () => {
         (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
           ...samplePolicy,
-          customExtensions: [{ oid: SID_OID, rule: "allow", value: "S-1-5-21-1-2-3-*" }]
+          customExtensions: [{ oid: SID_OID, allowed: ["S-1-5-21-1-2-3-*"] }]
         });
 
         await expect(createWithExtensions([{ oid: SID_OID, value: "S-1-5-21-9-9-9-1103" }])).rejects.toThrow(
@@ -406,7 +406,7 @@ describe("CertificateProfileService", () => {
         });
         (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
           ...samplePolicy,
-          customExtensions: [{ oid: SID_OID, rule: "allow", value: "*" }]
+          customExtensions: [{ oid: SID_OID, allowed: ["*"] }]
         });
 
         await expect(createWithExtensions([{ oid: SID_OID, value: "S-1-5-21-1-2-3-1103" }])).rejects.toThrow(
@@ -417,7 +417,7 @@ describe("CertificateProfileService", () => {
       it("rejects setting criticality on a preset OID", async () => {
         (mockCertificatePolicyDAL.findById as any).mockResolvedValue({
           ...samplePolicy,
-          customExtensions: [{ oid: SID_OID, rule: "allow", value: "*" }]
+          customExtensions: [{ oid: SID_OID, allowed: ["*"] }]
         });
 
         await expect(

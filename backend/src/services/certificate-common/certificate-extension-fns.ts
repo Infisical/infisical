@@ -8,7 +8,6 @@ import { matchesNormalizedPattern } from "../certificate-policy/certificate-poli
 import {
   CERT_EXTENSION_OID_PATTERN_SOURCE,
   CertExtensionCriticality,
-  CertExtensionRuleKind,
   CUSTOM_EXTENSION_PRESET_OIDS,
   MAX_CUSTOM_EXTENSION_VALUE_BYTES,
   MAX_CUSTOM_EXTENSIONS_PER_AWS_PCA_PROFILE,
@@ -29,8 +28,9 @@ export type TCustomExtensionRule = {
   oid: string;
   label?: string;
   critical?: CertExtensionCriticality;
-  rule: CertExtensionRuleKind;
-  value: string;
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
 };
 
 export type TProfileCustomExtension = {
@@ -146,14 +146,14 @@ export const CUSTOM_EXTENSION_PRESETS_BY_OID: Record<string, TCustomExtensionPre
     validateInput: (value) =>
       SID_PATTERN.test(value)
         ? null
-        : "Enter a security identifier, for example S-1-5-21-1004336348-1177238915-682003330-1103",
+        : "Value must be a security identifier, for example S-1-5-21-1004336348-1177238915-682003330-1103",
     encode: encodeNtdsSid,
     describe: describeNtdsSid
   },
   [CUSTOM_EXTENSION_PRESET_OIDS.MS_CERTIFICATE_TEMPLATE_NAME]: asn1StringPreset({
     Type: asn1js.BmpString,
     validateInput: (value) => {
-      if (!value.length) return "Enter a certificate template name";
+      if (!value.length) return "Value must be a certificate template name";
       if (value.length > 64) return "Template name cannot exceed 64 characters";
       if (Array.from(value).some((character) => (character.codePointAt(0) ?? 0) > 0xffff)) {
         return "Template name cannot contain characters outside the basic multilingual plane";
@@ -166,7 +166,7 @@ export const CUSTOM_EXTENSION_PRESETS_BY_OID: Record<string, TCustomExtensionPre
     validateInput: (value) =>
       TEMPLATE_INFORMATION_PATTERN.test(value)
         ? null
-        : "Enter the template OID, a colon, then the version, for example 1.3.6.1.4.1.311.21.8.1.2:100.3",
+        : "Value must be the template OID, a colon, then the version, for example 1.3.6.1.4.1.311.21.8.1.2:100.3",
     encode: (value) => {
       const match = TEMPLATE_INFORMATION_PATTERN.exec(value);
       if (!match) throw new BadRequestError({ message: "Certificate template information value is malformed" });
@@ -200,7 +200,7 @@ const getCustomExtensionPreset = (oid: string): TCustomExtensionPreset | undefin
 export const validateCustomExtensionValue = (oid: string, value: string): string | null => {
   const preset = getCustomExtensionPreset(oid);
   if (preset) return preset.validateInput(value);
-  if (!value.length) return "Enter a value";
+  if (!value.length) return "Value cannot be empty";
   if (Buffer.byteLength(value, "utf8") > MAX_CUSTOM_EXTENSION_VALUE_BYTES) {
     return `Value cannot exceed ${MAX_CUSTOM_EXTENSION_VALUE_BYTES} bytes`;
   }
@@ -255,6 +255,12 @@ export const parseCustomExtensionsFromCertificate = (
     .sort((a, b) => a.oid.localeCompare(b.oid));
 };
 
+const withDisplayValue = (extensions: TIssuedCustomExtension[]): TIssuedCustomExtension[] =>
+  extensions.map((extension) => ({
+    ...extension,
+    displayValue: describeCustomExtensionValue(extension.oid, extension.value) ?? undefined
+  }));
+
 export const parseIssuedCustomExtensions = (
   certificateDer: Buffer,
   resolved?: TResolvedCustomExtension[]
@@ -262,13 +268,13 @@ export const parseIssuedCustomExtensions = (
   if (!resolved?.length) return [];
   const resolvedOids = new Set(resolved.map((extension) => extension.oid));
 
-  return parseCustomExtensionsFromCertificate(certificateDer)
-    .filter((extension) => resolvedOids.has(extension.oid))
-    .map((extension) => ({
-      ...extension,
-      displayValue: describeCustomExtensionValue(extension.oid, extension.value) ?? undefined
-    }));
+  return withDisplayValue(
+    parseCustomExtensionsFromCertificate(certificateDer).filter((extension) => resolvedOids.has(extension.oid))
+  );
 };
+
+export const parseImportedCustomExtensions = (certificateDer: Buffer): TIssuedCustomExtension[] =>
+  withDisplayValue(parseCustomExtensionsFromCertificate(certificateDer));
 
 export type TCsrCustomExtensionMismatch = { oid: string; reason: "missing" | "value" | "criticality" };
 
@@ -347,7 +353,10 @@ export const appendCustomExtensions = (extensions: x509.Extension[], resolved: T
   }
 };
 
-const ALLOW_ANY_RULE: TCustomExtensionRule = { oid: "", rule: CertExtensionRuleKind.ALLOW, value: "*" };
+const ALLOW_ANY_RULE: TCustomExtensionRule = { oid: "", allowed: ["*"] };
+
+const matchesAnyPattern = (value: string, patterns: string[]) =>
+  patterns.some((pattern) => matchesNormalizedPattern(value, pattern));
 
 const buildRuleLookup = (rules?: TCustomExtensionRule[] | null) => {
   if (rules === undefined || rules === null) return null;
@@ -457,22 +466,30 @@ export const resolveCustomExtensions = ({
       continue;
     }
 
-    const matchesRule = matchesNormalizedPattern(displayValue, rule.value);
-    if (rule.rule === CertExtensionRuleKind.DENY && matchesRule) {
-      errors.push(`Custom extension '${oid}' value '${displayValue}' is denied by this policy.`);
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-    if (rule.rule === CertExtensionRuleKind.REQUIRE && !matchesRule) {
+    const denied = rule.denied ?? [];
+    const required = rule.required ?? [];
+    const allowed = rule.allowed ?? [];
+
+    if (matchesAnyPattern(displayValue, denied)) {
       errors.push(
-        `Custom extension '${oid}' value '${displayValue}' does not match the value required by this policy: ${rule.value}`
+        `Custom extension '${oid}' value '${displayValue}' is denied by this policy. Denied values: ${denied.join(", ")}`
       );
       // eslint-disable-next-line no-continue
       continue;
     }
-    if (rule.rule === CertExtensionRuleKind.ALLOW && !matchesRule) {
+
+    const satisfiesRequired = required.length > 0 && matchesAnyPattern(displayValue, required);
+    if (required.length > 0 && !satisfiesRequired) {
       errors.push(
-        `Custom extension '${oid}' value '${displayValue}' is not allowed by this policy. Allowed values: ${rule.value}`
+        `Custom extension '${oid}' value '${displayValue}' does not match any value required by this policy: ${required.join(", ")}`
+      );
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    if (!satisfiesRequired && allowed.length > 0 && !matchesAnyPattern(displayValue, allowed)) {
+      errors.push(
+        `Custom extension '${oid}' value '${displayValue}' is not allowed by this policy. Allowed values: ${allowed.join(", ")}`
       );
       // eslint-disable-next-line no-continue
       continue;
@@ -489,13 +506,13 @@ export const resolveCustomExtensions = ({
 
   if (!skipRequired && rulesByOid !== null) {
     for (const rule of rulesByOid.values()) {
-      if (rule.rule !== CertExtensionRuleKind.REQUIRE) {
+      if (!rule.required?.length) {
         // eslint-disable-next-line no-continue
         continue;
       }
       if (!resolvedOids.has(rule.oid)) {
         errors.push(
-          `This policy requires custom extension '${rule.oid}' matching '${rule.value}'. Supply it on the request, or set it as a default on the certificate profile.`
+          `This policy requires custom extension '${rule.oid}' matching one of: ${rule.required.join(", ")}. Supply it on the request, or set it as a default on the certificate profile.`
         );
       }
     }
