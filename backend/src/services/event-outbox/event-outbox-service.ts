@@ -27,6 +27,9 @@ import {
 const PRUNE_BATCH_SIZE = 5_000;
 const PRUNE_MAX_BATCHES = 20;
 
+const STALE_SWEEP_BATCH_SIZE = 1_000;
+const STALE_SWEEP_MAX_BATCHES = 10;
+
 // Frequent enough that one missed beat (a slow query, a paused event loop) doesn't let the sweeper
 // call a live claim stale.
 const CLAIM_HEARTBEAT_INTERVAL_MS = STALE_CLAIM_THRESHOLD_MS / 4;
@@ -276,7 +279,33 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   };
 
   const sweepStaleClaims = async (): Promise<void> => {
-    const { retried, failed } = await eventOutboxDAL.recoverStaleClaims(STALE_CLAIM_THRESHOLD_MS, MAX_OUTBOX_ATTEMPTS);
+    let retried = 0;
+    const failedByConsumer = new Map<string, number>();
+
+    for (let batch = 0; batch < STALE_SWEEP_MAX_BATCHES; batch += 1) {
+      // eslint-disable-next-line no-await-in-loop -- batches must run serially to stay paced
+      const outcome = await eventOutboxDAL.recoverStaleClaims({
+        thresholdMs: STALE_CLAIM_THRESHOLD_MS,
+        maxAttempts: MAX_OUTBOX_ATTEMPTS,
+        limit: STALE_SWEEP_BATCH_SIZE
+      });
+      retried += outcome.retried;
+      let failedInBatch = 0;
+      for (const { consumer, count } of outcome.failed) {
+        failedInBatch += count;
+        failedByConsumer.set(consumer, (failedByConsumer.get(consumer) ?? 0) + count);
+      }
+      if (outcome.retried + failedInBatch < STALE_SWEEP_BATCH_SIZE) break;
+    }
+
+    for (const [consumer, count] of failedByConsumer) {
+      recordEventOutboxExhaustedMetric({ consumer, count });
+      logger.error(
+        `event-outbox: gave up on ${count} event(s) whose worker never reported back [consumer=${consumer}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
+      );
+    }
+
+    const failed = [...failedByConsumer.values()].reduce((sum, count) => sum + count, 0);
     if (retried > 0 || failed > 0) {
       logger.warn(
         `event-outbox: recovered stale claims [retried=${retried}] [failed=${failed}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`

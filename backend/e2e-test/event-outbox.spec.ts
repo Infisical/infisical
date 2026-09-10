@@ -137,9 +137,13 @@ describe("event outbox (postgres)", () => {
       .where("id", exhausted.id)
       .update({ lockedAt: longAgo, attempts: MAX_OUTBOX_ATTEMPTS - 1 });
 
-    const outcome = await dal.recoverStaleClaims(10 * 60_000, MAX_OUTBOX_ATTEMPTS);
+    const outcome = await dal.recoverStaleClaims({
+      thresholdMs: 10 * 60_000,
+      maxAttempts: MAX_OUTBOX_ATTEMPTS,
+      limit: 100
+    });
 
-    expect(outcome).toEqual({ retried: 1, failed: 1 });
+    expect(outcome).toEqual({ retried: 1, failed: [{ consumer: CONSUMER, count: 1 }] });
     const [untouched, retried, failed] = await rowsFor();
     expect(untouched.status).toBe(EventOutboxStatus.Processing);
     expect(retried.status).toBe(EventOutboxStatus.Retry);

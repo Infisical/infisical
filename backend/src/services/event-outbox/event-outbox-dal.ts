@@ -161,23 +161,27 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  const recoverStaleClaims = async (
-    thresholdMs: number,
-    maxAttempts: number
-  ): Promise<{ retried: number; failed: number }> => {
+  const recoverStaleClaims = async (input: {
+    thresholdMs: number;
+    maxAttempts: number;
+    limit: number;
+  }): Promise<{ retried: number; failed: { consumer: string; count: number }[] }> => {
     try {
       return await db.transaction(async (tx) => {
         const staleRows = await tx(TableName.EventOutbox)
           .where("status", EventOutboxStatus.Processing)
-          .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
+          .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [input.thresholdMs])
+          .orderBy("lockedAt", "asc")
+          .limit(input.limit)
           .forUpdate()
           .skipLocked()
-          .select<{ id: string; attempts: number }[]>("id", "attempts");
+          .select<{ id: string; consumer: string; attempts: number }[]>("id", "consumer", "attempts");
 
-        if (staleRows.length === 0) return { retried: 0, failed: 0 };
+        if (staleRows.length === 0) return { retried: 0, failed: [] };
 
-        const exhausted = staleRows.filter((row) => row.attempts + 1 >= maxAttempts).map((row) => row.id);
-        const retriable = staleRows.filter((row) => row.attempts + 1 < maxAttempts);
+        const exhaustedRows = staleRows.filter((row) => row.attempts + 1 >= input.maxAttempts);
+        const exhausted = exhaustedRows.map((row) => row.id);
+        const retriable = staleRows.filter((row) => row.attempts + 1 < input.maxAttempts);
 
         const retriableByAttempt = new Map<number, string[]>();
         for (const row of retriable) {
@@ -209,7 +213,15 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             });
         }
 
-        return { retried: retriable.length, failed: exhausted.length };
+        const failedByConsumer = new Map<string, number>();
+        for (const row of exhaustedRows) {
+          failedByConsumer.set(row.consumer, (failedByConsumer.get(row.consumer) ?? 0) + 1);
+        }
+
+        return {
+          retried: retriable.length,
+          failed: [...failedByConsumer].map(([consumer, count]) => ({ consumer, count }))
+        };
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: recoverStaleClaims" });

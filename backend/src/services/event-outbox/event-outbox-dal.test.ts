@@ -277,11 +277,24 @@ describe("event outbox dal", () => {
   test("recoverStaleClaims looks only at claims older than the threshold", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.recoverStaleClaims(600_000, 5);
+    await dal.recoverStaleClaims({ thresholdMs: 600_000, maxAttempts: 5, limit: 1_000 });
 
     expect(calls.where).toContainEqual(["status", EventOutboxStatus.Processing]);
     expect(calls.andWhereRaw[0][0]).toBe(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`);
     expect(calls.andWhereRaw[0][1]).toEqual([600_000]);
+  });
+
+  // The transaction bounds itself rather than trusting worker concurrency to keep `processing` small,
+  // and takes the oldest claims first so a limit never starves one.
+  test("recoverStaleClaims recovers a bounded batch, oldest claim first", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.recoverStaleClaims({ thresholdMs: 600_000, maxAttempts: 5, limit: 1_000 });
+
+    expect(calls.limit).toContain(1_000);
+    expect(calls.orderBy).toContainEqual(["lockedAt", "asc"]);
+    expect(calls.forUpdate).toBe(1);
+    expect(calls.skipLocked).toBe(1);
   });
 
   test("prune targets the outbox table", async () => {

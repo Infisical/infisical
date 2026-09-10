@@ -16,6 +16,14 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
+const { exhaustedMetrics } = vi.hoisted(() => ({ exhaustedMetrics: [] as { consumer: string; count: number }[] }));
+vi.mock("@app/lib/telemetry/metrics", () => ({
+  recordEventOutboxLagMetric: () => {},
+  recordEventOutboxExhaustedMetric: (params: { consumer: string; count: number }) => {
+    exhaustedMetrics.push(params);
+  }
+}));
+
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
 const makeEvent = (overrides?: Partial<TOutboxEvent>): TOutboxEvent => ({
@@ -402,5 +410,78 @@ describe("event outbox drain", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("event outbox stale sweep", () => {
+  const buildSweep = (batches: { retried: number; failed: { consumer: string; count: number }[] }[]) => {
+    const calls: { limit: number }[] = [];
+    const service = eventOutboxServiceFactory({
+      eventOutboxDAL: {
+        recoverStaleClaims: async (input: { limit: number }) => {
+          calls.push(input);
+          return batches[calls.length - 1] ?? { retried: 0, failed: [] };
+        }
+      } as never,
+      eventOutboxRegistry: eventOutboxRegistryFactory()
+    });
+    return { service, calls };
+  };
+
+  beforeEach(() => {
+    exhaustedMetrics.length = 0;
+  });
+
+  // A row the sweeper gives up on is as lost as one a consumer gives up on. Without this the metric
+  // that promises to count every abandoned notification misses the ones caused by dead workers.
+  test("counts events the sweeper gives up on, per consumer, on the exhausted metric", async () => {
+    const { service } = buildSweep([
+      {
+        retried: 3,
+        failed: [
+          { consumer: "alert", count: 2 },
+          { consumer: "audit", count: 1 }
+        ]
+      }
+    ]);
+
+    await service.sweepStaleClaims();
+
+    expect(exhaustedMetrics).toEqual([
+      { consumer: "alert", count: 2 },
+      { consumer: "audit", count: 1 }
+    ]);
+  });
+
+  test("records nothing when the sweep found no stale claims", async () => {
+    const { service, calls } = buildSweep([]);
+
+    await service.sweepStaleClaims();
+
+    expect(calls).toHaveLength(1);
+    expect(exhaustedMetrics).toEqual([]);
+  });
+
+  test("keeps sweeping while batches come back full, and stops at a bound", async () => {
+    const { service, calls } = buildSweep(
+      Array.from({ length: 50 }, () => ({ retried: 1_000, failed: [] as { consumer: string; count: number }[] }))
+    );
+
+    await service.sweepStaleClaims();
+
+    expect(calls).toHaveLength(10);
+    expect(calls.every((call) => call.limit === 1_000)).toBe(true);
+  });
+
+  test("stops after the first batch that comes back short", async () => {
+    const { service, calls } = buildSweep([
+      { retried: 1_000, failed: [] },
+      { retried: 998, failed: [{ consumer: "alert", count: 1 }] },
+      { retried: 1_000, failed: [] }
+    ]);
+
+    await service.sweepStaleClaims();
+
+    expect(calls).toHaveLength(2);
   });
 });
