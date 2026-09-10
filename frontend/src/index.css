@@ -111,6 +111,9 @@
   --color-container: #1a1c1e;
   --color-container-hover: #1f2123;
 
+  /* Elevation */
+  --shadow-floating: 0 8px 32px rgb(0 0 0 / 0.6);
+
   /* Sidebar */
   --color-sidebar: #19191c;
   --color-sidebar-foreground: #ebebeb;

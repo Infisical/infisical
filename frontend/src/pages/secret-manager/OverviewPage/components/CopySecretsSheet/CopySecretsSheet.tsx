@@ -39,7 +39,7 @@ import {
   SheetHeader,
   SheetTitle,
   Skeleton,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -699,7 +699,7 @@ const CopySecretsSession = ({
             <SheetFooter className="flex-wrap items-center border-t">
               <div className="mr-auto flex min-w-0 flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <Switch
+                  <Toggle
                     id="copy-secrets-values"
                     variant="project"
                     checked={includeValues}

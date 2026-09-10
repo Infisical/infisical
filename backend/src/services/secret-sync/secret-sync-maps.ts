@@ -1,6 +1,7 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { TDaytonaConnection } from "@app/services/app-connection/daytona";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
@@ -53,7 +54,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.HasuraCloud]: "Hasura Cloud",
   [SecretSync.Qovery]: "Qovery",
   [SecretSync.Cloud66]: "Cloud 66",
-  [SecretSync.Spacelift]: "Spacelift"
+  [SecretSync.Spacelift]: "Spacelift",
+  [SecretSync.Daytona]: "Daytona"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -104,7 +106,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66,
-  [SecretSync.Spacelift]: AppConnection.Spacelift
+  [SecretSync.Spacelift]: AppConnection.Spacelift,
+  [SecretSync.Daytona]: AppConnection.Daytona
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -155,7 +158,8 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.HasuraCloud]: SecretSyncPlanType.Regular,
   [SecretSync.Qovery]: SecretSyncPlanType.Regular,
   [SecretSync.Cloud66]: SecretSyncPlanType.Regular,
-  [SecretSync.Spacelift]: SecretSyncPlanType.Regular
+  [SecretSync.Spacelift]: SecretSyncPlanType.Regular,
+  [SecretSync.Daytona]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -215,7 +219,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.HasuraCloud]: ["projectName"],
   [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
   [SecretSync.Cloud66]: ["stackName"],
-  [SecretSync.Spacelift]: ["contextName"]
+  [SecretSync.Spacelift]: ["contextName"],
+  [SecretSync.Daytona]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
@@ -244,6 +249,27 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
   if (!existingAccountId || !newAccountId) return false;
 
   return existingAccountId === newAccountId;
+};
+
+// A Daytona API key is bound to one organization and nothing scopes below it, so two syncs collide
+// exactly when their connections resolve to the same organization, whether or not they share a
+// connection.
+const daytonaDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId || !existingSync.connectionId) return false;
+
+  if (existingSync.connectionId === newSync.connectionId) return true;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  const existingOrgId = (existingConn as TDaytonaConnection).credentials.organizationId;
+  const newOrgId = (newConn as TDaytonaConnection).credentials.organizationId;
+
+  if (!existingOrgId || !newOrgId) return false;
+
+  return existingOrgId === newOrgId;
 };
 
 const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
@@ -334,7 +360,8 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.HasuraCloud]: defaultDuplicateCheck,
   [SecretSync.Qovery]: defaultDuplicateCheck,
   [SecretSync.Cloud66]: defaultDuplicateCheck,
-  [SecretSync.Spacelift]: defaultDuplicateCheck
+  [SecretSync.Spacelift]: defaultDuplicateCheck,
+  [SecretSync.Daytona]: daytonaDuplicateCheck
 };
 
 /**

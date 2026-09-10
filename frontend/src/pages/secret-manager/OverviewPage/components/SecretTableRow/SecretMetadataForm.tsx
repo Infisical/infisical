@@ -15,7 +15,7 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -216,7 +216,7 @@ export const SecretMetadataForm = ({
                 control={control}
                 name={`metadata.${index}.isEncrypted`}
                 render={({ field: switchField }) => (
-                  <Switch
+                  <Toggle
                     className="mt-2"
                     variant="project"
                     size="default"

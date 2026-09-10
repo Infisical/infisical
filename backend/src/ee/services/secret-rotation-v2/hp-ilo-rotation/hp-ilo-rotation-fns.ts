@@ -38,7 +38,11 @@ const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
   allowedSymbols: ""
 };
 
-const ILO_PROMPT = "hpiLO->";
+// iLO 5/6 present the prompt as "hpiLO->", iLO 7 as "hpeiLO->"; match the common suffix
+const ILO_PROMPT = "iLO->";
+
+export const isIloPrompt = (output: string) => output.includes(ILO_PROMPT);
+
 const COMMAND_COMPLETED = "status_tag=COMMAND COMPLETED";
 const COMMAND_FAILED = "COMMAND PROCESSING FAILED";
 const CONNECTION_TIMEOUT = 45000;
@@ -77,7 +81,7 @@ const executeIloShell = (conn: Client, command: string): Promise<string> => {
           return;
         }
 
-        if (buffer.includes(ILO_PROMPT) && !commandSent) {
+        if (isIloPrompt(buffer) && !commandSent) {
           commandSent = true;
           stream.write(`${command}\n`);
         }

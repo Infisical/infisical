@@ -10,7 +10,6 @@ import {
   TableName,
   TSecretsV2
 } from "@app/db/schemas";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -183,7 +182,6 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -213,8 +211,7 @@ export const secretV2BridgeServiceFactory = ({
   reminderDAL,
   secretValidationRuleService,
   projectFolderGrantDAL,
-  orgDAL,
-  licenseService
+  orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
   const { getSecretMetadata } = secretMetadataServiceFactory({
     permissionService,
@@ -1601,7 +1598,6 @@ export const secretV2BridgeServiceFactory = ({
           : undefined,
       actorOrgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService,
@@ -1749,7 +1745,6 @@ export const secretV2BridgeServiceFactory = ({
       projectFolderGrantDAL,
       actorOrgId,
       orgDAL,
-      licenseService,
       kmsService
     });
 
@@ -1953,7 +1948,6 @@ export const secretV2BridgeServiceFactory = ({
       userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined,
       actorOrgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -1989,7 +1983,6 @@ export const secretV2BridgeServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
-        licenseService,
         kmsService
       });
 
@@ -3275,7 +3268,6 @@ export const secretV2BridgeServiceFactory = ({
         }),
       actorOrgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService

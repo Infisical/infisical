@@ -41,6 +41,7 @@ import {
   TFindingsPayload,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
+  TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningFinding
@@ -144,7 +145,7 @@ export const secretScanningV2QueueServiceFactory = ({
         for (const scan of scans) {
           // eslint-disable-next-line no-await-in-loop
           await queueService.queue(
-            QueueName.SecretScanningV2,
+            QueueName.SecretScanningV2FullScan,
             QueueJobs.SecretScanningV2FullScan,
             {
               scanId: scan.id,
@@ -409,7 +410,7 @@ export const secretScanningV2QueueServiceFactory = ({
     payload,
     dataSourceId,
     dataSourceType
-  }: Pick<TQueueSecretScanningResourceDiffScan, "payload" | "dataSourceId" | "dataSourceType">) => {
+  }: Omit<TQueueSecretScanningResourceDiffScanPayload, "scanId" | "resourceId">) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]({
       kmsService,
       appConnectionDAL
@@ -445,7 +446,7 @@ export const secretScanningV2QueueServiceFactory = ({
       });
 
       await queueService.queue(
-        QueueName.SecretScanningV2,
+        QueueName.SecretScanningV2RealtimeScan,
         QueueJobs.SecretScanningV2DiffScan,
         {
           payload,
@@ -854,7 +855,25 @@ export const secretScanningV2QueueServiceFactory = ({
     }
   });
 
+  queueService.start(
+    QueueName.SecretScanningV2FullScan,
+    async (job) => {
+      await handleFullScan(job as Parameters<typeof handleFullScan>[0]);
+    },
+    { concurrency: 1 }
+  );
+
+  queueService.start(
+    QueueName.SecretScanningV2RealtimeScan,
+    async (job) => {
+      await handleDiffScan(job as Parameters<typeof handleDiffScan>[0]);
+    },
+    { concurrency: 5 }
+  );
+
   queueService.start(QueueName.SecretScanningV2, async (job) => {
+    // We are keeping this for now because once deployed, the queue might still have
+    // full scan and diff scan messages in it and need to be processed.
     if (job.name === QueueJobs.SecretScanningV2FullScan) {
       await handleFullScan(job as Parameters<typeof handleFullScan>[0]);
     } else if (job.name === QueueJobs.SecretScanningV2DiffScan) {

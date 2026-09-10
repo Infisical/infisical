@@ -1,5 +1,6 @@
-import { AccessScope, ProjectType } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -44,3 +45,25 @@ export const assertSecretsTemporaryAccessAllowed = async ({
     });
   }
 };
+
+type TMembershipRole = {
+  role: string;
+  customRoleSlug?: string | null;
+  isTemporary?: boolean;
+  temporaryAccessEndTime?: Date | null;
+};
+
+export const roleNeedsPrivilegeBoundary = (role: string) =>
+  role !== OrgMembershipRole.NoAccess && role !== ProjectMembershipRole.NoAccess;
+
+export const filterRolesNeedingPrivilegeBoundary = <T extends { role: string }>(roles: T[]) =>
+  roles.filter((el) => roleNeedsPrivilegeBoundary(el.role));
+
+export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
+  ...new Set(
+    roles
+      .filter(isActiveRole)
+      .map((role) => role.customRoleSlug || role.role)
+      .filter((slug) => slug !== OrgMembershipRole.NoAccess && slug !== ProjectMembershipRole.NoAccess)
+  )
+];

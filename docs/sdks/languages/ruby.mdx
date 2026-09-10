@@ -36,7 +36,7 @@ puts secret.secret_value
 This example demonstrates how to use the Infisical Ruby SDK in a simple Ruby application. The application retrieves a secret named `API_KEY` from the `dev` environment of the `YOUR_PROJECT_ID` project.
 
 <Warning>
-  We do not recommend hardcoding your [Machine Identity
+  We don't recommend hardcoding your [Machine Identity
   Tokens](/documentation/platform/identities/machine-identities). Setting it as
   an environment variable would be best.
 </Warning>
@@ -112,7 +112,7 @@ client.auth.universal_auth_login(
 
 ### Access token
 
-If you already have a valid access token, set it on the client directly instead of logging in. This does not make a network request.
+If you already have a valid access token, set it on the client directly instead of logging in. This doesn't make a network request.
 
 ```ruby
 client.auth.access_token("YOUR_ACCESS_TOKEN")
@@ -121,7 +121,7 @@ client.auth.access_token("YOUR_ACCESS_TOKEN")
 **Parameters**
 
 <ParamField query="access_token" type="string" required>
-  The access token to authenticate with. This should not include the `Bearer` prefix.
+  The access token to authenticate with. This shouldn't include the `Bearer` prefix.
 </ParamField>
 
 # Secrets
@@ -174,7 +174,7 @@ secrets = client.secrets.list(
 
 `client.secrets.get(secret_name, options)`
 
-Retrieve a single secret by name. Raises `Infisical::NotFoundError` if the secret does not exist.
+Retrieve a single secret by name. Raises `Infisical::NotFoundError` if the secret doesn't exist.
 
 ```ruby
 secret = client.secrets.get(
@@ -312,7 +312,7 @@ secret = client.secrets.update(
 
 `client.secrets.delete(secret_name, options)`
 
-Delete a secret by name. Raises `Infisical::NotFoundError` if the secret does not exist. Returns the deleted secret.
+Delete a secret by name. Raises `Infisical::NotFoundError` if the secret doesn't exist. Returns the deleted secret.
 
 ```ruby
 secret = client.secrets.delete(

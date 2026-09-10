@@ -23,6 +23,7 @@ import {
 import {
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
+  TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
@@ -38,7 +39,6 @@ import {
   queueStalledCounter,
   resolveCoreMeter
 } from "@app/lib/telemetry/metrics";
-import { QueueWorkerProfile } from "@app/lib/types";
 import {
   TAppConnectionCredentialRotationRotateJobPayload,
   TAppConnectionCredentialRotationSendNotificationJobPayload
@@ -99,9 +99,13 @@ export enum QueueName {
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   PamCredentialRotation = "pam-credential-rotation",
   PamCredentialRotationRotate = "pam-credential-rotation-rotate",
+  PamHeartbeat = "pam-heartbeat",
+  PamHeartbeatCheck = "pam-heartbeat-check",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
+  SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
+  SecretScanningV2RealtimeScan = "secret-scanning-v2-realtime-scan",
   UserNotification = "user-notification",
   AlertDispatch = "alert-dispatch",
   AuditReportGeneration = "audit-report-generation",
@@ -161,10 +165,14 @@ export enum QueueJobs {
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
   PamCredentialRotationQueueRotations = "pam-credential-rotation-queue-rotations",
   PamCredentialRotationRotate = "pam-credential-rotation-rotate",
+  PamHeartbeatQueueChecks = "pam-heartbeat-queue-checks",
+  PamHeartbeatCheck = "pam-heartbeat-check",
   CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
+  // Kept as "diff-scan" while the queue moved to "realtime-scan": jobs already enqueued under this
+  // name carry it, and the drain branch on QueueName.SecretScanningV2 matches on it.
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
@@ -429,6 +437,14 @@ export type TQueueJobTypes = {
     name: QueueJobs.PamCredentialRotationRotate;
     payload: { accountId: string };
   };
+  [QueueName.PamHeartbeat]: {
+    name: QueueJobs.PamHeartbeatQueueChecks;
+    payload: undefined;
+  };
+  [QueueName.PamHeartbeatCheck]: {
+    name: QueueJobs.PamHeartbeatCheck;
+    payload: { accountId: string };
+  };
   [QueueName.InvalidateCache]: {
     name: QueueJobs.InvalidateCache;
     payload: {
@@ -450,6 +466,14 @@ export type TQueueJobTypes = {
         name: QueueJobs.SecretScanningV2SendNotification;
         payload: TQueueSecretScanningSendNotification;
       };
+  [QueueName.SecretScanningV2FullScan]: {
+    name: QueueJobs.SecretScanningV2FullScan;
+    payload: TQueueSecretScanningDataSourceFullScan;
+  };
+  [QueueName.SecretScanningV2RealtimeScan]: {
+    name: QueueJobs.SecretScanningV2DiffScan;
+    payload: TQueueSecretScanningResourceDiffScanPayload;
+  };
   [QueueName.CaLifecycle]: {
     name: QueueJobs.CaOrderCertificateForSubscriber;
     payload: {
@@ -586,24 +610,17 @@ export type TQueueJobTypes = {
 
 const SECRET_SCANNING_QUEUES = [
   QueueName.SecretScanningV2,
+  QueueName.SecretScanningV2FullScan,
+  QueueName.SecretScanningV2RealtimeScan,
   QueueName.SecretFullRepoScan,
   QueueName.SecretPushEventScan
 ];
 
-const NON_STANDARD_QUEUES = [...SECRET_SCANNING_QUEUES];
-
 const isQueueEnabled = (name: QueueName) => {
   const appCfg = getConfig();
-  switch (appCfg.QUEUE_WORKER_PROFILE) {
-    case QueueWorkerProfile.Standard:
-      return !NON_STANDARD_QUEUES.includes(name);
-    case QueueWorkerProfile.SecretScanning:
-      return SECRET_SCANNING_QUEUES.includes(name);
-    case QueueWorkerProfile.All:
-    default:
-      // allow all
-      return true;
-  }
+  return SECRET_SCANNING_QUEUES.includes(name)
+    ? appCfg.isSecretScanningRunModeEnabled
+    : appCfg.isGeneralWorkerRunModeEnabled;
 };
 
 export type TQueueServiceFactory = {
@@ -717,7 +734,13 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   // Remove orphaned job schedulers left in Redis by deleted queues.
   // Queues migrated to the cronJob system (cron-job.ts) are listed here so their
   // BullMQ schedulers and pending jobs are cleaned up on first boot of the new image.
+  //
+  // Gated to general-workers because every name below belongs to that fleet, and obliterate() is
+  // called with force, which deletes active jobs too. Reaping is the consuming pod's job: an API
+  // pod has no worker on these queues and must not clear work another pod is running.
   void (async () => {
+    if (!getConfig().isGeneralWorkerRunModeEnabled) return;
+
     const staleQueueNames = [
       "queue-internal-recovery",
       "queue-internal-reconciliation",
@@ -794,15 +817,11 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       throw new Error(`${name} queue is already initialized`);
     }
 
-    const appCfg = getConfig();
-
-    if (!appCfg.QUEUE_WORKERS_ENABLED) return;
-
     const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
 
-    // The Queue (producer) is created regardless of worker profile — only the Worker (consumer) is
+    // The Queue (producer) is created regardless of run mode — only the Worker (consumer) is
     // gated below. A pod that doesn't consume a queue must still be able to enqueue onto it, or
-    // splitting the fleet by profile silently drops every job destined for another profile's worker.
+    // splitting the fleet by run mode silently drops every job destined for another pod's worker.
     queueContainer[name] = new Queue(name as string, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...queueSettings,
@@ -873,8 +892,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   };
 
   const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {
-    const appCfg = getConfig();
-    if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
+    if (!isQueueEnabled(name)) {
       return;
     }
 

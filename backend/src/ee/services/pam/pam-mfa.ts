@@ -22,13 +22,15 @@ export const enforceMfa = async (
     orgId,
     actorEmail,
     accountId,
-    mfaSessionId
+    mfaSessionId,
+    tokenVersionId
   }: {
     userId: string;
     orgId: string;
     actorEmail: string;
     accountId: string;
     mfaSessionId?: string;
+    tokenVersionId?: string;
   }
 ) => {
   if (!mfaSessionId) {
@@ -39,7 +41,8 @@ export const enforceMfa = async (
     const userMfaMethod = user?.isMfaEnabled ? (user.selectedMfaMethod as MfaMethod | null) : undefined;
     const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
 
-    const newMfaSessionId = await mfaSessionService.createMfaSession(userId, accountId, mfaMethod);
+    // Bound to the session that raised the challenge
+    const newMfaSessionId = await mfaSessionService.createMfaSession(userId, accountId, mfaMethod, tokenVersionId);
 
     if (mfaMethod === MfaMethod.EMAIL && actorEmail) {
       await mfaSessionService.sendMfaCode(userId, actorEmail);
@@ -61,6 +64,9 @@ export const enforceMfa = async (
   }
   if (mfaSession.resourceId !== accountId) {
     throw new BadRequestError({ message: "MFA session is for a different account" });
+  }
+  if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+    throw new BadRequestError({ message: "MFA session belongs to a different login session" });
   }
   if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
     throw new BadRequestError({ message: "MFA session is not verified. Please complete MFA verification first." });

@@ -46,6 +46,8 @@ export type Project = {
   isLegacyAdditionalPrivilegesEnabled: boolean;
 };
 
+export type TProjectNavigation = Pick<Project, "id" | "orgId" | "name" | "slug" | "type">;
+
 export type ProjectEnv = {
   id: string;
   name: string;

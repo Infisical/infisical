@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { Button } from "../../generic/Button";
 import { AccessRestrictedDialog } from "./AccessRestrictedDialog";
@@ -64,7 +65,7 @@ export const WithAction: Story = {
     docs: {
       description: {
         story:
-          "Surfaces with a self-serve flow (e.g. request access) can append a call to action after the standard navigation buttons."
+          "Surfaces with a self-serve flow (e.g. request access) can append a call to action after the standard navigation buttons. The footer gives it the remaining row width and stacks it when the panel is narrow."
       }
     }
   }
@@ -79,6 +80,32 @@ export const CustomCopy: Story = {
     docs: {
       description: {
         story: "Override the description when the page has a more specific access rule."
+      }
+    }
+  }
+};
+
+export const Prerequisite: Story = {
+  name: "Example: Prerequisite",
+  args: {
+    title: "Upgrade your secrets engine to view your project dashboard.",
+    subtitle: null,
+    description: "Upgrade this project before viewing its secrets in the UI.",
+    badgeIcon: <TriangleAlertIcon />,
+    badgeLabel: "Upgrade Required",
+    docsUrl: null,
+    showGoBack: false,
+    action: (
+      <Button variant="project" isFullWidth>
+        Upgrade Secrets Engine
+      </Button>
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Customize the badge, omit the access-control link, and hide history-based navigation when a page is gated by a prerequisite rather than a missing permission."
       }
     }
   }

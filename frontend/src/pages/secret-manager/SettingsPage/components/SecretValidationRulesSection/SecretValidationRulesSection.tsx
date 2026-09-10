@@ -57,13 +57,13 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -244,7 +244,7 @@ const RuleFormContent = ({
         {isEditing && (
           <div className="flex items-center justify-between border-b border-border px-6 py-3">
             <span className="text-xs text-muted">{isActive ? "Enabled" : "Disabled"}</span>
-            <Switch checked={isActive} onCheckedChange={setIsActive} variant="project" />
+            <Toggle checked={isActive} onCheckedChange={setIsActive} variant="project" />
           </div>
         )}
         <div

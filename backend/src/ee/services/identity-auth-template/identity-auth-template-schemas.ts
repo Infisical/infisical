@@ -5,6 +5,7 @@ import {
   kubernetesHostSchema,
   superRefineKubernetesConnectionFields
 } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
+import { formatOidcAudiences } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 
 import { TEMPLATE_VALIDATION_MESSAGES } from "./identity-auth-template-enums";
 
@@ -62,6 +63,55 @@ export const kubernetesTemplateFieldsCreateSchema = kubernetesTemplateFieldsBase
   superRefineKubernetesConnectionFields
 );
 
+export const oidcTemplateFieldsSchema = z.object({
+  oidcDiscoveryUrl: z
+    .string()
+    .trim()
+    .url()
+    .min(1, TEMPLATE_VALIDATION_MESSAGES.OIDC.DISCOVERY_URL_REQUIRED)
+    .max(2048)
+    // the login flow builds the document URL by string concatenation, so anything that
+    // cannot carry a trailing path segment breaks every login: a query or fragment would
+    // swallow the suffix (<url>?a=b/.well-known/openid-configuration). The identity attach
+    // route predates these checks, but a template is authored once and copied everywhere,
+    // so it must not store a form that cannot work
+    .refine((val) => {
+      const parsed = new URL(val);
+      return !parsed.search && !parsed.hash;
+    }, TEMPLATE_VALIDATION_MESSAGES.OIDC.DISCOVERY_URL_QUERY_OR_FRAGMENT)
+    // a trailing slash concatenates to a double slash, which providers that route on the
+    // exact path (Keycloak realms, for one) 404. Normalized rather than rejected: pasting
+    // a URL with one is not a mistake worth failing the form over
+    .transform((val) => val.replace(/\/+$/, ""))
+    // checked after the strip so the trailing-slash spelling is caught too
+    .refine(
+      (val) => !val.endsWith("/.well-known/openid-configuration"),
+      TEMPLATE_VALIDATION_MESSAGES.OIDC.DISCOVERY_URL_WELL_KNOWN_SUFFIX
+    )
+    .describe("The URL used to retrieve the OpenID Connect configuration from the identity provider"),
+  boundIssuer: z
+    .string()
+    .trim()
+    .min(1, TEMPLATE_VALIDATION_MESSAGES.OIDC.ISSUER_REQUIRED)
+    .max(2048)
+    .describe("The unique identifier of the identity provider issuing the JWT"),
+  // same normalization as the identity attach route, bounded because a template is a new
+  // contract (the shared validator is unbounded only for the pre-existing identity routes)
+  boundAudiences: z
+    .string()
+    .trim()
+    .max(2048)
+    .default("")
+    .transform(formatOidcAudiences)
+    .describe("The comma-separated list of intended recipients that JWT tokens must have in their aud claim"),
+  caCert: z
+    .string()
+    .trim()
+    .max(102400)
+    .optional()
+    .describe("The PEM-encoded CA certificate used to validate the identity provider's TLS certificate")
+});
+
 // response shapes: each write-only credential is replaced by a boolean presence flag,
 // mirroring $redactTemplateSecrets. Derived from the request schemas so a new template
 // field cannot reach the API undocumented, and so the response serializer drops anything
@@ -82,7 +132,34 @@ export const kubernetesTemplateFieldsResponseSchema = kubernetesTemplateFieldsBa
     hasTokenReviewerJwt: z.boolean().describe("Whether a token reviewer JWT is stored for this template")
   });
 
+// OIDC templates hold no write-only credentials, so the response is the stored shape.
+// The two normalized fields are re-declared as plain strings so no request-side transform
+// or refinement runs on serialization and one stored row cannot fail a list response
+export const oidcTemplateFieldsResponseSchema = oidcTemplateFieldsSchema.extend({
+  oidcDiscoveryUrl: z
+    .string()
+    .describe("The URL used to retrieve the OpenID Connect configuration from the identity provider"),
+  boundAudiences: z
+    .string()
+    .default("")
+    .describe("The comma-separated list of intended recipients that JWT tokens must have in their aud claim")
+});
+
 export const templateFieldPatchKeysByMethod = {
   ldap: Object.keys(ldapTemplateFieldsSchema.shape),
-  kubernetes: Object.keys(kubernetesTemplateFieldsBaseSchema.shape)
+  kubernetes: Object.keys(kubernetesTemplateFieldsBaseSchema.shape),
+  oidc: Object.keys(oidcTemplateFieldsSchema.shape)
 } as const;
+
+// not a union of per-method partials: zod reports only the first failing branch, so every
+// bad value surfaced as an LDAP unrecognized-key error. The service checks method membership
+export const templateFieldsPatchSchema = ldapTemplateFieldsSchema
+  .merge(kubernetesTemplateFieldsBaseSchema)
+  .merge(oidcTemplateFieldsSchema)
+  .extend({
+    caCert: oidcTemplateFieldsSchema.shape.caCert.describe(
+      "The PEM-encoded CA certificate used to validate the TLS certificate of the Kubernetes API server or identity provider"
+    )
+  })
+  .partial()
+  .strict();

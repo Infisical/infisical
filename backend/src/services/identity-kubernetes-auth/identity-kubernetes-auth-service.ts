@@ -363,6 +363,9 @@ export const identityKubernetesAuthServiceFactory = ({
         caCert = decryptor({ cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate }).toString();
       }
 
+      if (appCfg.isCloud) {
+        logger.info(`Processing k8s auth for the identity=${identity.id}`);
+      }
       const tokenReviewCallbackRaw = async ({
         host = identityKubernetesAuth.kubernetesHost,
         port,
@@ -467,13 +470,17 @@ export const identityKubernetesAuthServiceFactory = ({
       };
 
       const tokenReviewCallbackThroughGateway = async (host: string, port?: number) => {
+        // localPort is the correlation key into the gatewayTunnel:* lines, which carry the tunnel id
+        // and outlive this request: the tunnel is torn down after the response is already logged.
+        const gatewayIdForLog =
+          identityKubernetesAuth.gatewayV2Id ??
+          identityKubernetesAuth.gatewayId ??
+          identityKubernetesAuth.gatewayPoolId;
         logger.info(
-          {
-            host,
-            port
-          },
-          "tokenReviewCallbackThroughGateway: Processing kubernetes token review using gateway"
+          { host, port },
+          `tokenReviewCallbackThroughGateway: Processing kubernetes token review using gateway [identityId=${identityKubernetesAuth.identityId}] [gatewayId=${gatewayIdForLog}] [localPort=${port}]`
         );
+        const startedAt = Date.now();
 
         const res = await request
           .post<TCreateTokenReviewResponse>(
@@ -500,7 +507,7 @@ export const identityKubernetesAuthServiceFactory = ({
           .catch((err) => {
             logger.error(
               { error: err as Error, host, port },
-              "tokenReviewCallbackThroughGateway: Kubernetes token review request error"
+              `tokenReviewCallbackThroughGateway: Kubernetes token review request error [identityId=${identityKubernetesAuth.identityId}] [gatewayId=${gatewayIdForLog}] [localPort=${port}] [elapsedMs=${Date.now() - startedAt}]`
             );
 
             if (err instanceof AxiosError) {
@@ -517,6 +524,12 @@ export const identityKubernetesAuthServiceFactory = ({
               error: err
             });
           });
+
+        const reviewStatus = res.data?.status;
+        const authenticated = Boolean(reviewStatus && "authenticated" in reviewStatus && reviewStatus.authenticated);
+        logger.info(
+          `tokenReviewCallbackThroughGateway: Kubernetes token review completed [identityId=${identityKubernetesAuth.identityId}] [gatewayId=${gatewayIdForLog}] [localPort=${port}] [authenticated=${authenticated}] [elapsedMs=${Date.now() - startedAt}]`
+        );
 
         return res.data;
       };
