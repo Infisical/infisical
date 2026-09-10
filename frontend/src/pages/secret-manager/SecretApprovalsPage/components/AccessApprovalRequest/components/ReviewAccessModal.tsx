@@ -266,6 +266,12 @@ export const ReviewAccessRequestModal = ({
   const isExternalRequest = Boolean(
     request.policy.externalApprovalPolicyId || request.externalApproval
   );
+  const canViewExternalApproval =
+    isExternalRequest &&
+    permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
   const externalApprovalType = policies.find((el) => el.id === request.policy.id)?.externalApproval
     ?.type;
   const { data: externalApprovalOptions = [] } = useGetExternalApprovalOptions();
@@ -277,11 +283,8 @@ export const ReviewAccessRequestModal = ({
     ? EXTERNAL_STATUS_PRESENTATION[externalApprovalStatus]
     : undefined;
   const canRetryDispatch =
-    externalApprovalStatus === ExternalApprovalRequestStatus.FailedDispatch &&
-    permission.can(
-      ProjectPermissionApprovalRequestActions.Read,
-      ProjectPermissionSub.ApprovalRequests
-    );
+    canViewExternalApproval &&
+    externalApprovalStatus === ExternalApprovalRequestStatus.FailedDispatch;
 
   const assignPrivilegesConditions = useMemo(
     () => getMemberAssignPrivilegesConditions(permission),
@@ -537,8 +540,9 @@ export const ReviewAccessRequestModal = ({
     isReviewedByMe ||
     (!approverSequence?.isMyReviewInThisSequence && !canBypass);
 
-  const showExternalStatusOnly =
+  const isExternalPending =
     isExternalRequest && request.status === ApprovalStatus.PENDING && !hasExpired;
+  const showExternalStatusOnly = isExternalPending && canViewExternalApproval;
 
   const renderCompletedMessages = () => {
     if (hasExpired) return "This request has expired.";
@@ -550,6 +554,7 @@ export const ReviewAccessRequestModal = ({
     if (hasAccessExpired) return "This request's access has expired.";
     if (hasApproved && request.bypassReason) return "This request was approved via bypass.";
     if (hasApproved) return "This request has been approved.";
+    if (isExternalPending) return "This request is awaiting approval.";
     if (isReviewedByMe) return "You have reviewed this request.";
     return "You are not the reviewer in this step.";
   };
@@ -586,6 +591,8 @@ export const ReviewAccessRequestModal = ({
       );
       return `Approved on ${approvedAt}`;
     }
+    if (isExternalPending)
+      return `Requested on ${format(new Date(request.createdAt), "MMM d, yyyy h:mm aa")}`;
     return null;
   };
 
@@ -610,6 +617,14 @@ export const ReviewAccessRequestModal = ({
   const isRejectionDisabled = request.isRequestedByCurrentUser
     ? false
     : !request.isApprover && !bypassApproval;
+
+  const getSheetDescription = () => {
+    if (canViewExternalApproval)
+      return `Approval for this request is handled in ${externalSystemName}.`;
+    if (isExternalRequest) return "Review the details of this access request.";
+    return "Review the request and approve or deny access.";
+  };
+  const sheetDescription = getSheetDescription();
 
   const requesterFullName = [request.user?.firstName, request.user?.lastName]
     .filter(Boolean)
@@ -846,11 +861,7 @@ export const ReviewAccessRequestModal = ({
         >
           <SheetHeader className="border-b">
             <SheetTitle>Review Request</SheetTitle>
-            <SheetDescription>
-              {isExternalRequest
-                ? `Approval for this request is handled in ${externalSystemName}.`
-                : "Review the request and approve or deny access."}
-            </SheetDescription>
+            <SheetDescription>{sheetDescription}</SheetDescription>
           </SheetHeader>
           <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
             {shouldBlockRequestActions && !showExternalStatusOnly && (
@@ -1038,7 +1049,7 @@ export const ReviewAccessRequestModal = ({
               </Table>
             </section>
 
-            {isExternalRequest ? (
+            {canViewExternalApproval && (
               <>
                 <section className="flex flex-col gap-3">
                   <h3 className="text-sm font-medium text-foreground">Approval</h3>
@@ -1094,7 +1105,8 @@ export const ReviewAccessRequestModal = ({
                   </section>
                 )}
               </>
-            ) : (
+            )}
+            {!isExternalRequest && (
               <section className="flex flex-col gap-3">
                 <h3 className="text-sm font-medium text-foreground">Approvers</h3>
                 {approvers.length === 1 ? (
