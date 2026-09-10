@@ -7,6 +7,7 @@ import { recordEventOutboxExhaustedMetric, recordEventOutboxLagMetric } from "@a
 import { TEventOutboxDALFactory, TOutboxInsertRow } from "./event-outbox-dal";
 import { TEventOutboxRegistry } from "./event-outbox-registry";
 import {
+  computeBackoffMs,
   DELIVERED_RETENTION_MS,
   EventOutboxStatus,
   FAILED_RETENTION_MS,
@@ -14,7 +15,6 @@ import {
   MAX_BATCHES_PER_FLUSH,
   MAX_OUTBOX_ATTEMPTS,
   MAX_OUTBOX_PAYLOAD_BYTES,
-  OUTBOX_BACKOFF_BASE_MS,
   OUTBOX_CLAIM_BATCH_SIZE,
   OutboxEventSchema,
   STALE_CLAIM_THRESHOLD_MS,
@@ -31,12 +31,13 @@ const PRUNE_MAX_BATCHES = 20;
 // call a live claim stale.
 const CLAIM_HEARTBEAT_INTERVAL_MS = STALE_CLAIM_THRESHOLD_MS / 4;
 
-const computeBackoffMs = (attemptsAfterIncrement: number): number => {
-  const exponent = Math.min(attemptsAfterIncrement - 1, 10);
-  const base = OUTBOX_BACKOFF_BASE_MS * 2 ** exponent;
-  const jitter = Math.floor(Math.random() * Math.min(base / 2, 30_000));
-  return base + jitter;
-};
+const COMMIT_ATTEMPTS = 3;
+const COMMIT_RETRY_DELAY_MS = 250;
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 const formatIssues = (issues: { path: (string | number)[]; message: string }[]) =>
   issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ");
@@ -127,6 +128,27 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     await eventOutboxDAL.insertEvents(rows, tx);
   };
 
+  const $commitWithRetry = async (
+    { consumer, resourceType, resourceId }: TOutboxFlushKey,
+    input: Parameters<TEventOutboxDALFactory["commitResults"]>[0]
+  ): Promise<void> => {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- retrying the same statement is the point
+        await eventOutboxDAL.commitResults(input);
+        return;
+      } catch (error) {
+        if (attempt >= COMMIT_ATTEMPTS) throw error;
+        logger.warn(
+          error,
+          `event-outbox: failed to commit results, retrying [attempt=${attempt}] [consumer=${consumer}] [resourceType=${resourceType}] [resourceId=${resourceId}]`
+        );
+        // eslint-disable-next-line no-await-in-loop -- see above
+        await sleep(COMMIT_RETRY_DELAY_MS * attempt);
+      }
+    }
+  };
+
   const $applyResults = async (rows: TEventOutboxRow[], results: TOutboxRowResult[]): Promise<void> => {
     const byId = new Map(results.map((result) => [result.id, result]));
     const now = Date.now();
@@ -176,7 +198,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       });
     }
 
-    await eventOutboxDAL.commitResults({
+    await $commitWithRetry(rows[0], {
       delivered: groupByOutcome(delivered, (item) => JSON.stringify(item.progress ?? null)),
       retriable: groupByOutcome(retriable, (item) =>
         JSON.stringify([item.nextRetryDelayMs, item.error ?? null, item.progress ?? null])

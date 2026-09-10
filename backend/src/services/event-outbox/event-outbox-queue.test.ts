@@ -16,6 +16,7 @@ const KEY: TOutboxFlushKey = { consumer: "alert", resourceType: "approval.workfl
 
 const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promise<void> }) => {
   const queued: { name: string; data: unknown; jobId?: string; attempts?: number }[] = [];
+  const discoveredFor: string[][] = [];
   let discoverCalls = 0;
 
   const factory = eventOutboxQueueFactory({
@@ -26,9 +27,11 @@ const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promis
       start: () => {}
     } as never,
     cronJob: { register: () => {} } as never,
+    eventOutboxRegistry: { names: () => ["alert", "audit"] },
     eventOutboxDAL: {
-      findDueFlushKeys: async () => {
+      findDueFlushKeys: async (_limit: number, consumers: string[]) => {
         discoverCalls += 1;
+        discoveredFor.push(consumers);
         if (opts?.onDiscover) await opts.onDiscover();
         return opts?.keys ?? [];
       },
@@ -41,10 +44,18 @@ const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promis
     } as never
   });
 
-  return { factory, queued, getDiscoverCalls: () => discoverCalls };
+  return { factory, queued, discoveredFor, getDiscoverCalls: () => discoverCalls };
 };
 
 describe("event outbox relay", () => {
+  test("discovers work only for the consumers registered in this process", async () => {
+    const { factory, discoveredFor } = buildQueue();
+
+    await factory.runRelayTick();
+
+    expect(discoveredFor).toEqual([["alert", "audit"]]);
+  });
+
   test("enqueues one flush job per discovered key", async () => {
     const { factory, queued } = buildQueue({ keys: [KEY, { ...KEY, resourceId: "policy-2" }] });
 

@@ -4,7 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-import { EventOutboxStatus, TEventOutboxRow, TOutboxFlushKey } from "./event-outbox-types";
+import { computeBackoffMs, EventOutboxStatus, TEventOutboxRow, TOutboxFlushKey } from "./event-outbox-types";
 
 export type TEventOutboxDALFactory = ReturnType<typeof eventOutboxDALFactory>;
 
@@ -40,10 +40,12 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findDueFlushKeys = async (limit: number): Promise<TOutboxFlushKey[]> => {
+  const findDueFlushKeys = async (limit: number, consumers: string[]): Promise<TOutboxFlushKey[]> => {
+    if (consumers.length === 0) return [];
     try {
       const rows = await db
         .replicaNode()(TableName.EventOutbox)
+        .whereIn("consumer", consumers)
         .whereIn("status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry])
         .andWhere("nextRetryAt", "<=", db.fn.now())
         .groupBy("consumer", "resourceType", "resourceId")
@@ -69,8 +71,6 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             .where(key)
             .whereIn("status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry])
             .andWhere("nextRetryAt", "<=", db.fn.now())
-            // By id, never by a timestamp: a fresh row's nextRetryAt is its insert time, so sorting on
-            // that would let a later event overtake an earlier one that took a backoff.
             .orderBy("id", "asc")
             .limit(limit)
             .forUpdate()
@@ -79,7 +79,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
         .update({ status: EventOutboxStatus.Processing, lockedAt: db.fn.now() })
         .returning("*");
 
-      return claimed as unknown as TEventOutboxRow[];
+      return (claimed as unknown as TEventOutboxRow[]).sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
     } catch (error) {
       throw new DatabaseError({ error, name: "EventOutbox: claimBatch" });
     }
@@ -177,15 +177,22 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
         if (staleRows.length === 0) return { retried: 0, failed: 0 };
 
         const exhausted = staleRows.filter((row) => row.attempts + 1 >= maxAttempts).map((row) => row.id);
-        const retriable = staleRows.filter((row) => row.attempts + 1 < maxAttempts).map((row) => row.id);
+        const retriable = staleRows.filter((row) => row.attempts + 1 < maxAttempts);
 
-        if (retriable.length > 0) {
+        const retriableByAttempt = new Map<number, string[]>();
+        for (const row of retriable) {
+          const ids = retriableByAttempt.get(row.attempts) ?? [];
+          ids.push(row.id);
+          retriableByAttempt.set(row.attempts, ids);
+        }
+        for (const [attempts, ids] of retriableByAttempt) {
+          // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
           await tx(TableName.EventOutbox)
-            .whereIn("id", retriable)
+            .whereIn("id", ids)
             .update({
               status: EventOutboxStatus.Retry,
               attempts: db.raw('"attempts" + 1'),
-              nextRetryAt: tx.fn.now(),
+              nextRetryAt: db.raw(`NOW() + (? || ' milliseconds')::INTERVAL`, [computeBackoffMs(attempts + 1)]),
               lockedAt: null,
               lastError: "Worker did not report a result before the claim went stale"
             });

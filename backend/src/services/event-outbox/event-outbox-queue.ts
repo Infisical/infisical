@@ -5,6 +5,7 @@ import { resolveCoreMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TEventOutboxDALFactory } from "./event-outbox-dal";
+import { TEventOutboxRegistry } from "./event-outbox-registry";
 import { TEventOutboxServiceFactory } from "./event-outbox-service";
 import { OUTBOX_RELAY_INTERVAL_MS, RELAY_DISCOVERY_LIMIT, TOutboxFlushKey } from "./event-outbox-types";
 
@@ -19,6 +20,7 @@ const RELAY_START_JITTER_MS = 5_000;
 export type TEventOutboxQueueFactoryDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
+  eventOutboxRegistry: Pick<TEventOutboxRegistry, "names">;
   eventOutboxDAL: Pick<TEventOutboxDALFactory, "findDueFlushKeys" | "findOldestPendingAgeSeconds">;
   eventOutboxService: Pick<TEventOutboxServiceFactory, "drain" | "sweepStaleClaims" | "pruneTerminalRows">;
 };
@@ -26,6 +28,7 @@ export type TEventOutboxQueueFactoryDep = {
 export const eventOutboxQueueFactory = ({
   queueService,
   cronJob,
+  eventOutboxRegistry,
   eventOutboxDAL,
   eventOutboxService
 }: TEventOutboxQueueFactoryDep) => {
@@ -72,7 +75,7 @@ export const eventOutboxQueueFactory = ({
     });
 
   const runRelayTick = async () => {
-    const keys = await eventOutboxDAL.findDueFlushKeys(RELAY_DISCOVERY_LIMIT);
+    const keys = await eventOutboxDAL.findDueFlushKeys(RELAY_DISCOVERY_LIMIT, eventOutboxRegistry.names());
     lastDiscoveryCount = keys.length;
 
     if (keys.length === RELAY_DISCOVERY_LIMIT) {

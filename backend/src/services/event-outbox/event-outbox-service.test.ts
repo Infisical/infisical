@@ -2,7 +2,13 @@ import { z } from "zod";
 
 import { eventOutboxRegistryFactory } from "./event-outbox-registry";
 import { eventOutboxServiceFactory } from "./event-outbox-service";
-import { EventOutboxStatus, IEventOutboxConsumer, TEventOutboxRow, TOutboxEvent } from "./event-outbox-types";
+import {
+  EventOutboxStatus,
+  IEventOutboxConsumer,
+  MAX_OUTBOX_ATTEMPTS,
+  TEventOutboxRow,
+  TOutboxEvent
+} from "./event-outbox-types";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
@@ -232,7 +238,7 @@ describe("event outbox drain", () => {
 
   test("fails a row terminally once it has used up its attempts", async () => {
     const { service, commits } = buildDrain({
-      batches: [[makeRow({ attempts: 4 })]],
+      batches: [[makeRow({ attempts: MAX_OUTBOX_ATTEMPTS - 1 })]],
       handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Retry })),
       consumerName: "alert"
     });
@@ -322,5 +328,78 @@ describe("event outbox drain", () => {
 
     expect(result.unknownConsumer).toBe(true);
     expect(commits).toHaveLength(0);
+  });
+
+  // By this point the consumer has already sent. Letting a transient commit failure escape would leave
+  // the rows to the stale sweeper and re-notify ten minutes later, so the commit itself is retried.
+  test("retries a failed commit before giving up on it", async () => {
+    vi.useFakeTimers();
+    try {
+      const registry = eventOutboxRegistryFactory();
+      registry.register(
+        makeConsumer({
+          name: "alert",
+          handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+        })
+      );
+      let commitCalls = 0;
+      let batchServed = false;
+      const service = eventOutboxServiceFactory({
+        eventOutboxDAL: {
+          claimBatch: async () => {
+            if (batchServed) return [];
+            batchServed = true;
+            return [makeRow()];
+          },
+          extendClaims: async () => {},
+          commitResults: async () => {
+            commitCalls += 1;
+            if (commitCalls === 1) throw new Error("connection reset");
+          }
+        } as never,
+        eventOutboxRegistry: registry
+      });
+
+      const draining = service.drain(KEY);
+      await vi.advanceTimersByTimeAsync(1_000);
+      await expect(draining).resolves.toEqual({ handled: 1, unknownConsumer: false });
+      expect(commitCalls).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("gives up on a commit that keeps failing so the sweeper can take over", async () => {
+    vi.useFakeTimers();
+    try {
+      const registry = eventOutboxRegistryFactory();
+      registry.register(
+        makeConsumer({
+          name: "alert",
+          handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+        })
+      );
+      let commitCalls = 0;
+      const service = eventOutboxServiceFactory({
+        eventOutboxDAL: {
+          claimBatch: async () => [makeRow()],
+          extendClaims: async () => {},
+          commitResults: async () => {
+            commitCalls += 1;
+            throw new Error("connection reset");
+          }
+        } as never,
+        eventOutboxRegistry: registry
+      });
+
+      const draining = service.drain(KEY);
+      // Attach the handler before advancing so the rejection has a listener when the retries run out.
+      const outcome = expect(draining).rejects.toThrow("connection reset");
+      await vi.advanceTimersByTimeAsync(5_000);
+      await outcome;
+      expect(commitCalls).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

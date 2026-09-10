@@ -1079,6 +1079,7 @@ export const registerRoutes = async (
   const eventOutboxQueue = eventOutboxQueueFactory({
     queueService,
     cronJob,
+    eventOutboxRegistry,
     eventOutboxDAL,
     eventOutboxService
   });

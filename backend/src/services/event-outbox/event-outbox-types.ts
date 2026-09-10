@@ -22,9 +22,16 @@ export const MAX_BATCHES_PER_FLUSH = 10;
 
 export const OUTBOX_CLAIM_BATCH_SIZE = 100;
 
-export const MAX_OUTBOX_ATTEMPTS = 5;
+export const MAX_OUTBOX_ATTEMPTS = 8;
 
 export const OUTBOX_BACKOFF_BASE_MS = 30_000;
+
+export const computeBackoffMs = (attemptsAfterIncrement: number): number => {
+  const exponent = Math.min(attemptsAfterIncrement - 1, 10);
+  const base = OUTBOX_BACKOFF_BASE_MS * 2 ** exponent;
+  const jitter = Math.floor(Math.random() * Math.min(base / 2, 30_000));
+  return base + jitter;
+};
 
 export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
 

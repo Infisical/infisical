@@ -6,7 +6,7 @@ import { EventOutboxStatus } from "./event-outbox-types";
 // These assert query *shape*, in the style of alert-dal.test.ts. Only a real database can show that
 // two claimers never take the same row, so what a unit test protects is that the clauses buying that
 // guarantee are still there.
-const buildDAL = () => {
+const buildDAL = (opts?: { returning?: unknown[] }) => {
   const calls = {
     where: [] as unknown[][],
     whereIn: [] as unknown[][],
@@ -87,7 +87,7 @@ const buildDAL = () => {
       calls.update.push(patch);
       return chain;
     },
-    returning: async () => [],
+    returning: async () => opts?.returning ?? [],
     del: async () => 0,
     // Returns the chain so a subquery keeps building; awaiting it resolves through `then` below.
     select: () => chain,
@@ -158,6 +158,19 @@ describe("event outbox dal", () => {
     expect(calls.orderBy[0]).toEqual(["id", "asc"]);
   });
 
+  // RETURNING hands rows back in whatever order the UPDATE touched them, while handle() is promised id
+  // order. Seen for real against Postgres: a 3-row claim came back 8, 7, 6.
+  test("claimBatch returns the claimed rows in id order regardless of how RETURNING ordered them", async () => {
+    const { dal } = buildDAL({ returning: [{ id: "8" }, { id: "6" }, { id: "10" }, { id: "7" }] });
+
+    const claimed = await dal.claimBatch(
+      { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" },
+      10
+    );
+
+    expect(claimed.map((row) => String(row.id))).toEqual(["6", "7", "8", "10"]);
+  });
+
   test("claimBatch flips the locked rows to processing in the same statement", async () => {
     const { dal, calls } = buildDAL();
 
@@ -201,11 +214,29 @@ describe("event outbox dal", () => {
   test("findDueFlushKeys groups by the flush key and takes the most overdue first", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.findDueFlushKeys(200);
+    await dal.findDueFlushKeys(200, ["alert"]);
 
     expect(calls.groupBy[0]).toEqual(["consumer", "resourceType", "resourceId"]);
     expect(calls.orderByRaw[0]).toBe('MIN("nextRetryAt") ASC');
     expect(calls.limit).toContain(200);
+  });
+
+  // Rows for a consumer this process can't drain would otherwise sort first on every tick and, once
+  // there are more of them than the limit, hide every real key behind them.
+  test("findDueFlushKeys only looks at consumers this process has registered", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findDueFlushKeys(200, ["alert", "audit"]);
+
+    expect(calls.whereIn).toContainEqual(["consumer", ["alert", "audit"]]);
+  });
+
+  test("findDueFlushKeys issues no statement when nothing is registered", async () => {
+    const { dal, calls } = buildDAL();
+
+    await expect(dal.findDueFlushKeys(200, [])).resolves.toEqual([]);
+
+    expect(calls.groupBy).toHaveLength(0);
   });
 
   // Same clock the claim compares against, so app/DB skew can't shift the retry schedule.

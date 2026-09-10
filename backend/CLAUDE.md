@@ -681,13 +681,25 @@ the transaction.
 
 **The row owns the retry state machine** (`attempts`, `nextRetryAt`, backoff, terminal `failed`) and the
 outbox owns the lag and exhausted metrics. `consumer.handle` owns delivery and what "delivered" means,
-reporting per row: `Delivered` / `Retry` / `Failed` plus `progress`.
+reporting per row: `Delivered` / `Retry` / `Failed` plus `progress`. Backoff is exponential with jitter
+from a 30s base, and `MAX_OUTBOX_ATTEMPTS` is sized so the last attempt lands about an hour after the
+first: a `failed` row is a notification the customer never receives and nothing replays it, so the
+horizon has to outlast a realistic outage of the endpoint being delivered to. The stale sweeper applies
+the same backoff rather than handing rows straight back, so a consumer that hangs every time cannot hold
+a worker slot for the full threshold on repeat. To replay `failed` rows by hand, flip them to
+`status = 'retry', attempts = 0, nextRetryAt = now()`; the next relay tick picks them up.
 
 **A claim is a lease, and `drain` keeps it alive.** The sweeper treats any `processing` row whose
 `lockedAt` is older than `STALE_CLAIM_THRESHOLD_MS` as a dead worker and hands it back out. A batch can
 legitimately outlive that (one slow webhook endpoint timing out on every row of a resource), so `drain`
 refreshes `lockedAt` on the claimed ids every quarter of the threshold while `handle` runs. Without it
 the sweeper re-queues rows a live worker is still delivering and the customer is notified twice.
+
+**Discovery is scoped to the consumers this process has registered.** `findDueFlushKeys` takes
+`eventOutboxRegistry.names()`, and that filter is load-bearing: rows for a name nobody here can drain (a
+renamed consumer, a rolling deploy) stay `pending` forever, are never pruned, and sort first on every
+tick, so without it they would fill the discovery limit and hide every real key behind them. They now
+wait harmlessly and show up on the oldest-pending gauge instead.
 
 **A consumer must not let one row's failure escape `handle`.** The outbox retries the whole batch when
 `handle` throws, because it cannot know which rows already delivered. A consumer that processes rows one
@@ -720,9 +732,15 @@ undelivered row, trading a rare reorder for one failing event stalling everythin
 notifications that is the wrong trade, so do not promise callers strict ordering.
 
 **Delivery is at-least-once.** A send that succeeds and whose `commitResults` then fails is redelivered.
-Consumers narrow the blast radius with `progress` (alerting stores the channels that already succeeded
-and skips them on the retry), and an emitter that needs to dedupe its own retries passes an
-`idempotencyKey`.
+The commit is retried a few times in-process first, since by then the consumer has already sent and the
+alternative is the sweeper re-notifying ten minutes later. Consumers narrow what is left with `progress`
+(alerting stores the channels that already succeeded and skips them on the retry), and an emitter that
+needs to dedupe its own retries passes an `idempotencyKey`.
+
+**`claimBatch` sorts what `RETURNING` gives it.** The subquery picks rows in id order, but
+`UPDATE ... RETURNING` hands them back in whatever order it touched them (seen for real: 8, 7, 6), and
+`handle` is promised id order. The `e2e-test/event-outbox.spec.ts` suite runs these queries against
+Postgres because that is the only place this class of bug shows up.
 
 **Watch `infisical.event_outbox.oldest_pending_age`.** It is the canonical canary, the one signal that
 catches a dead relay, a wedged consumer and a stuck claim alike. Alarm when it exceeds a small multiple
