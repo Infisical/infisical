@@ -13,6 +13,7 @@ export const connectThroughRelay = async (relayPort: number, account: string): P
     password: "pam",
     accessUrl: `http://127.0.0.1:${relayPort}`,
     application: "Infisical",
+    fetchAsString: ["Boolean", "Number"],
     timeout: STATEMENT_TIMEOUT_MS
   });
 

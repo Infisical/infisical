@@ -25,6 +25,18 @@ import { connectThroughRelay } from "./pam-snowflake-relay-client";
 
 const MAX_ROWS = 1000;
 
+const asDateOnly = (rows: Record<string, unknown>[], dateColumns: string[]) => {
+  if (dateColumns.length === 0) return rows;
+  return rows.map((row) => {
+    const next = { ...row };
+    for (const name of dateColumns) {
+      const value = next[name];
+      if (value instanceof Date) next[name] = value.toISOString().slice(0, 10);
+    }
+    return next;
+  });
+};
+
 const readRows = (
   statement: snowflake.RowStatement
 ): Promise<{ rows: Record<string, unknown>[]; truncated: boolean }> =>
@@ -140,8 +152,12 @@ export const createSnowflakeConnectionController = async (params: ControllerPara
 
         lastCommand = extractCommand(statementSql);
         isInTransaction = nextTransactionState(lastCommand, isInTransaction);
-        lastRows = rows;
-        lastFields = (statement.getColumns() ?? []).map((column) => ({ name: column.getName() }));
+        const columns = statement.getColumns() ?? [];
+        lastRows = asDateOnly(
+          rows,
+          columns.filter((column) => column.getType()?.toLowerCase() === "date").map((column) => column.getName())
+        );
+        lastFields = columns.map((column) => ({ name: column.getName() }));
         // The driver reports -1, not undefined, when nothing was updated, so a SELECT falls through
         const updatedRows = statement.getNumUpdatedRows();
         lastRowCount =

@@ -131,7 +131,7 @@ export function buildCountQuery(params: {
   const { schema, table, filters, dialect = "postgres" } = params;
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const where = buildWhereClause(filters, dialect);
-  return `SELECT COUNT(*) AS count FROM ${tableName}${where}`;
+  return `SELECT COUNT(*) AS ${quoteIdent("count", dialect)} FROM ${tableName}${where}`;
 }
 
 export function buildInsertQuery(params: {
