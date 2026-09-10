@@ -211,6 +211,14 @@ export const secretV2BridgeServiceFactory = ({
   projectFolderGrantDAL,
   orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
+  // A duplicate-value violation may only name where the value is already used when the writer can read there.
+  const $canDescribeSecretAt =
+    (permission: MongoAbility<ProjectPermissionSet>) => (environment: string, secretPath: string) =>
+      permission.can(
+        ProjectPermissionSecretActions.DescribeSecret,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+
   const $validateSecretReferences = async (
     projectId: string,
     permission: MongoAbility<ProjectPermissionSet>,
@@ -410,14 +418,6 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    await secretValidationRuleService.validateSecrets({
-      projectId,
-      environment,
-      envId: folder.envId,
-      secretPath,
-      secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
-    });
-
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
     const allSecretReferences = nestedReferences.concat(
       localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
@@ -434,6 +434,18 @@ export const secretV2BridgeServiceFactory = ({
       ? await generateSecretBlindIndex(Buffer.from(inputSecretData.secretValue))
       : undefined;
     const secret = await secretDAL.transaction(async (tx) => {
+      await secretValidationRuleService.validateSecrets(
+        {
+          projectId,
+          environment,
+          envId: folder.envId,
+          secretPath,
+          secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }],
+          canAccessLocation: $canDescribeSecretAt(permission)
+        },
+        tx
+      );
+
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
         orgId: actorOrgId,
@@ -698,16 +710,6 @@ export const secretV2BridgeServiceFactory = ({
 
     // Validate against secret validation rules (key rename and/or value change)
     const finalKey = inputSecret.newSecretName || secretName;
-    if (secretValue || inputSecret.newSecretName) {
-      await secretValidationRuleService.validateSecrets({
-        projectId,
-        environment,
-        envId: folder.envId,
-        secretPath,
-        secrets: [{ key: finalKey, value: secretValue, secretId }]
-      });
-    }
-
     if (secretValue) {
       const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
       const allSecretReferences = nestedReferences.concat(
@@ -742,6 +744,20 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const updatedSecret = await secretDAL.transaction(async (tx) => {
+      if (secretValue || inputSecret.newSecretName) {
+        await secretValidationRuleService.validateSecrets(
+          {
+            projectId,
+            environment,
+            envId: folder.envId,
+            secretPath,
+            secrets: [{ key: finalKey, value: secretValue, secretId }],
+            canAccessLocation: $canDescribeSecretAt(permission)
+          },
+          tx
+        );
+      }
+
       const modifiedSecretsInDB = await fnSecretBulkUpdate({
         folderId,
         orgId: actorOrgId,
@@ -2156,14 +2172,6 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    await secretValidationRuleService.validateSecrets({
-      projectId,
-      environment,
-      envId: folder.envId,
-      secretPath,
-      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
-    });
-
     // get all tags
     const sanitizedTagIds = [...new Set(deduplicatedSecrets.flatMap(({ tagIds = [] }) => tagIds))];
     const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds) : [];
@@ -2205,6 +2213,18 @@ export const secretV2BridgeServiceFactory = ({
     } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const executeBulkInsert = async (tx: Knex) => {
+      await secretValidationRuleService.validateSecrets(
+        {
+          projectId,
+          environment,
+          envId: folder.envId,
+          secretPath,
+          secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })),
+          canAccessLocation: $canDescribeSecretAt(permission)
+        },
+        tx
+      );
+
       const inputSecretsWithBlindIndex = await Promise.all(
         deduplicatedSecrets.map(async (el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
@@ -2576,13 +2596,17 @@ export const secretV2BridgeServiceFactory = ({
         ];
         if (secretsToValidate.length) {
           // eslint-disable-next-line no-await-in-loop
-          await secretValidationRuleService.validateSecrets({
-            projectId,
-            environment,
-            envId: folder.envId,
-            secretPath,
-            secrets: secretsToValidate
-          });
+          await secretValidationRuleService.validateSecrets(
+            {
+              projectId,
+              environment,
+              envId: folder.envId,
+              secretPath,
+              secrets: secretsToValidate,
+              canAccessLocation: $canDescribeSecretAt(permission)
+            },
+            tx
+          );
         }
 
         const secretKeyUpdates: {

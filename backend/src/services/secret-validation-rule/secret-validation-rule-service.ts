@@ -7,14 +7,16 @@ import {
   ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
-import { expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
+import { containsSecretReference, expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "./secret-validation-rule-constants";
@@ -23,6 +25,7 @@ import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
 import { ConstraintTarget, SecretValidationRuleType } from "./secret-validation-rule-enums";
 import {
   checkForOverlappingRules,
+  doesRulePathCover,
   enforceSecretValidationRules,
   findRulesCoveringScope,
   getConstraintsByTarget,
@@ -46,14 +49,19 @@ import {
   TUpdateSecretValidationRuleDTO,
   TValidateSecretsDTO
 } from "./secret-validation-rule-types";
-import { TStaticSecretsRuleConfig } from "./static-secrets";
+import { TDuplicateSecret, TStaticSecretsRuleConfig } from "./static-secrets";
+
+/** Only static-secret rules can ask for a value no other secret already holds. */
+const $wantsCrossSecretUniqueness = (config: TSecretValidationRuleConfig) =>
+  Boolean((config as TStaticSecretsRuleConfig).valueConstraints?.reusePrevention?.otherSecrets);
 
 type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   secretDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: TKmsServiceFactory;
 };
@@ -66,6 +74,7 @@ export const secretValidationRuleServiceFactory = ({
   folderDAL,
   secretDAL,
   secretVersionV2BridgeDAL,
+  projectDAL,
   permissionService,
   kmsService
 }: TSecretValidationRuleServiceFactoryDep) => {
@@ -191,6 +200,19 @@ export const secretValidationRuleServiceFactory = ({
     );
   };
 
+  // Cross-secret uniqueness is answered from the blind index, so a project without one cannot enforce it.
+  const $assertBlindIndexingAvailable = async (projectId: string, config: TSecretValidationRuleConfig) => {
+    if (!$wantsCrossSecretUniqueness(config)) return;
+
+    const project = await projectDAL.findById(projectId);
+    if (!project.secretBlindIndexEnabled) {
+      throw new BadRequestError({
+        message:
+          "Enable secret blind indexing on this project before preventing reuse of a value another secret already holds"
+      });
+    }
+  };
+
   const listSecretValidationRules = async (
     { projectId, type }: TListSecretValidationRulesDTO,
     actor: OrgServiceActor
@@ -269,6 +291,7 @@ export const secretValidationRuleServiceFactory = ({
 
     $assertConstrainsSomething(type, config);
     $assertGeneratorCanSatisfy(type, config);
+    await $assertBlindIndexingAvailable(projectId, config);
     await $assertNoOverlap({ projectId, type, envId, secretPath, config });
 
     const { encryptor } = await $getCipher(projectId);
@@ -334,6 +357,7 @@ export const secretValidationRuleServiceFactory = ({
 
     $assertConstrainsSomething(type, config);
     $assertGeneratorCanSatisfy(type, config);
+    await $assertBlindIndexingAvailable(projectId, config);
     await $assertNoOverlap({ projectId, type, envId, secretPath: finalSecretPath, config, excludeRuleId: ruleId });
 
     const rule = await secretValidationRuleDAL.updateByIdWithEnv(ruleId, {
@@ -373,11 +397,111 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   /**
+   * The secret already holding each incoming value, keyed by the incoming key, for the secrets that
+   * collide with one. Values are matched through the project's blind index rather than by reading
+   * every secret in the project back out.
+   *
+   * The index is built over the value as stored, so a value carrying a `${...}` reference is skipped:
+   * its stored form would never line up with the resolved one anyway.
+   */
+  const $findDuplicatesInScope = async (
+    {
+      projectId,
+      environment,
+      secretPath,
+      secrets,
+      scope,
+      canAccessLocation,
+      generateSecretBlindIndex
+    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets" | "canAccessLocation"> & {
+      scope: { envId?: string | null; secretPath: string };
+      generateSecretBlindIndex: (value: Buffer) => Promise<string>;
+    },
+    tx?: Knex
+  ): Promise<Record<string, TDuplicateSecret>> => {
+    const candidates = secrets.filter(
+      (secret): secret is typeof secret & { value: string } =>
+        secret.value !== undefined && !containsSecretReference(secret.value)
+    );
+    if (!candidates.length) return {};
+
+    // Two writes of the same value would each find no duplicate and both land. The lock makes this
+    // check and the write that follows it atomic, so the second one sees the first.
+    if (tx) await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretValueUniqueCheck(projectId)]);
+
+    const blindIndexes = await Promise.all(
+      candidates.map((secret) => generateSecretBlindIndex(Buffer.from(secret.value)))
+    );
+
+    const duplicates: Record<string, TDuplicateSecret> = {};
+
+    // Two secrets in one request can collide with each other before either exists in the database.
+    const seenInBatch = new Map<string, TDuplicateSecret>();
+    candidates.forEach((secret, idx) => {
+      const seen = seenInBatch.get(blindIndexes[idx]);
+      if (seen) duplicates[secret.key] = seen;
+      else seenInBatch.set(blindIndexes[idx], { key: secret.key, environment, secretPath });
+    });
+
+    const excludedSecretIds = candidates.map((secret) => secret.secretId).filter(Boolean) as string[];
+    const existing = await secretDAL.findExistingSecretsByBlindIndexes(
+      projectId,
+      [...new Set(blindIndexes)],
+      excludedSecretIds.length ? excludedSecretIds : undefined,
+      scope.envId ?? undefined,
+      tx
+    );
+    if (!existing.length) return duplicates;
+
+    const folderIds = [...new Set(existing.map((secret) => secret.folderId))];
+    const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, tx);
+    const pathByFolderId = new Map(folderIds.map((id, idx) => [id, folderPaths[idx]?.path ?? "/"]));
+
+    const accessByLocation = new Map<string, boolean>();
+    const isHidden = (dupEnvironment: string, dupPath: string) => {
+      if (!canAccessLocation) return false;
+
+      const location = `${dupEnvironment}:${dupPath}`;
+      let hidden = accessByLocation.get(location);
+      if (hidden === undefined) {
+        hidden = !canAccessLocation(dupEnvironment, dupPath);
+        accessByLocation.set(location, hidden);
+      }
+      return hidden;
+    };
+
+    // The lookup spans the project, so drop the hits the rule's own path does not reach.
+    const inScope = new Map<string, TDuplicateSecret>();
+    existing.forEach((secret) => {
+      if (!secret.secretValueBlindIndex || inScope.has(secret.secretValueBlindIndex)) return;
+
+      const dupPath = pathByFolderId.get(secret.folderId) ?? "/";
+      if (!doesRulePathCover(scope.secretPath, dupPath)) return;
+
+      inScope.set(secret.secretValueBlindIndex, {
+        key: secret.key,
+        environment: secret.environment,
+        secretPath: dupPath,
+        hidden: isHidden(secret.environment, dupPath)
+      });
+    });
+
+    candidates.forEach((secret, idx) => {
+      if (duplicates[secret.key]) return;
+
+      const duplicate = inScope.get(blindIndexes[idx]);
+      if (duplicate) duplicates[secret.key] = duplicate;
+    });
+
+    return duplicates;
+  };
+
+  /**
    * Pass `tx` when the caller already holds a transaction, or this checks out a second connection.
    * `${env.key}` references are expanded first, so constraints see the resolved value.
    */
   const validateSecrets = async (
-    { projectId, environment, envId, secretPath, secrets }: TValidateSecretsDTO,
+    { projectId, environment, envId, secretPath, secrets, canAccessLocation }: TValidateSecretsDTO,
     tx?: Knex
   ) => {
     if (!secrets.length) return;
@@ -388,10 +512,11 @@ export const secretValidationRuleServiceFactory = ({
     );
     if (!rules.length) return;
 
-    const { decryptor } = await $getCipher(projectId);
+    const { decryptor, generateSecretBlindIndex } = await $getCipher(projectId);
 
     const coveringRules = findRulesCoveringScope(rules, { envId, secretPath }).map((rule) => ({
       name: rule.name,
+      scope: { envId: rule.envId, secretPath: rule.secretPath },
       config: parseSecretValidationRuleConfig(
         rule.type,
         JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
@@ -426,6 +551,23 @@ export const secretValidationRuleServiceFactory = ({
       });
     }
 
+    // Only one covering rule can ask for cross-secret uniqueness; overlap is rejected at save time.
+    const uniquenessRule = coveringRules.find((rule) => $wantsCrossSecretUniqueness(rule.config));
+    const duplicates = uniquenessRule
+      ? await $findDuplicatesInScope(
+          {
+            projectId,
+            environment,
+            secretPath,
+            secrets,
+            scope: uniquenessRule.scope,
+            canAccessLocation,
+            generateSecretBlindIndex
+          },
+          tx
+        )
+      : {};
+
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
@@ -443,7 +585,8 @@ export const secretValidationRuleServiceFactory = ({
           environment,
           secretKey: secret.key
         }),
-        ...(secret.secretId && { previousValues: previousValuesBySecretId[secret.secretId] })
+        ...(secret.secretId && { previousValues: previousValuesBySecretId[secret.secretId] }),
+        ...(duplicates[secret.key] && { duplicateOf: duplicates[secret.key] })
       }))
     );
 

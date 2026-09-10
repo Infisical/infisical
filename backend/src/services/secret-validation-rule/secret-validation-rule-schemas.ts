@@ -50,7 +50,8 @@ const ReusePreventionSchema = z
       .min(1)
       .max(MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS)
       .optional()
-      .describe(SecretValidationRules.REUSE_PREVENTION.previousVersions)
+      .describe(SecretValidationRules.REUSE_PREVENTION.previousVersions),
+    otherSecrets: z.boolean().optional().describe(SecretValidationRules.REUSE_PREVENTION.otherSecrets)
   })
   .refine((reusePrevention) => Object.values(reusePrevention).some((value) => value !== undefined), {
     message: "Set at least one reuse prevention option, or leave reusePrevention out entirely"
@@ -107,7 +108,7 @@ export const buildValueConstraintsSchema = (target: ConstraintTarget) =>
 
 export type TConstraints = z.infer<typeof BaseConstraintsSchema>;
 
-export type TReusePrevention = { previousVersions?: number };
+export type TReusePrevention = { previousVersions?: number; otherSecrets?: boolean };
 
 // a secret value additionally supports being checked against values it has already had
 export type TValueConstraints = TConstraints & { reusePrevention?: TReusePrevention };

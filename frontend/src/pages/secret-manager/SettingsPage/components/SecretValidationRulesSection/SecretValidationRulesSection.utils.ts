@@ -1,4 +1,5 @@
 import {
+  CopyIcon,
   DatabaseIcon,
   HashIcon,
   HistoryIcon,
@@ -34,7 +35,8 @@ export enum ConstraintType {
   RegexPattern = "regex-pattern",
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
-  PreventValueReuse = "prevent-value-reuse"
+  PreventValueReuse = "prevent-value-reuse",
+  PreventDuplicateValues = "prevent-duplicate-values"
 }
 
 export enum ConstraintTarget {
@@ -96,6 +98,15 @@ export const CONSTRAINT_OPTIONS: {
     placeholder: 10,
     icon: HistoryIcon,
     allowedTargets: [ConstraintTarget.SecretValue]
+  },
+  {
+    type: ConstraintType.PreventDuplicateValues,
+    label: "Prevent Duplicate Values",
+    description: "Prevent reusing a value another secret holds",
+    cardDescription:
+      "A secret cannot be given a value that another secret in this rule's scope already holds. Requires secret blind indexing on the project.",
+    icon: CopyIcon,
+    allowedTargets: [ConstraintTarget.SecretValue]
   }
 ];
 
@@ -105,7 +116,8 @@ export const CONSTRAINT_VALUE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.RequiredPrefix]: "Text",
   [ConstraintType.RequiredSuffix]: "Text",
-  [ConstraintType.PreventValueReuse]: "Previous versions"
+  [ConstraintType.PreventValueReuse]: "Previous versions",
+  [ConstraintType.PreventDuplicateValues]: "Enabled"
 };
 
 export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
@@ -114,7 +126,8 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex Pattern",
   [ConstraintType.RequiredPrefix]: "Required Prefix",
   [ConstraintType.RequiredSuffix]: "Required Suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent Value Reuse"
+  [ConstraintType.PreventValueReuse]: "Prevent Value Reuse",
+  [ConstraintType.PreventDuplicateValues]: "Prevent Duplicate Values"
 };
 
 export const RULE_TYPE_LABELS: Record<RuleType, string> = {
@@ -167,19 +180,25 @@ export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRul
   }
 ];
 
-// PreventValueReuse is intentionally static-secret-only. For dynamic secrets
+// Both reuse checks are intentionally static-secret-only. For dynamic secrets
 // each lease is independent so reuse has no meaning; for rotations we drive
 // uniqueness through password generation (length/regex) rather than failing a
-// rotation at issue time because the generator happened to land on a prior
-// value.
+// rotation at issue time because the generator happened to land on a value
+// that is already in use.
 export const DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse
+  ConstraintType.PreventValueReuse,
+  ConstraintType.PreventDuplicateValues
 ];
 export const SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse
+  ConstraintType.PreventValueReuse,
+  ConstraintType.PreventDuplicateValues
 ];
 
 export const MAX_PREVENT_VALUE_REUSE_VERSIONS = MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS;
+
+// Switching this one on is the whole setting, so the form carries no value alongside it.
+export const isValuelessConstraint = (type: ConstraintType) =>
+  type === ConstraintType.PreventDuplicateValues;
 
 export const constraintSchema = z
   .object({
@@ -187,10 +206,16 @@ export const constraintSchema = z
     appliesTo: z.nativeEnum(ConstraintTarget),
     value: z.string()
   })
-  .refine((c) => c.type === ConstraintType.PreventValueReuse || c.value.length > 0, {
-    message: "Value is required",
-    path: ["value"]
-  })
+  .refine(
+    (c) =>
+      c.type === ConstraintType.PreventValueReuse ||
+      isValuelessConstraint(c.type) ||
+      c.value.length > 0,
+    {
+      message: "Value is required",
+      path: ["value"]
+    }
+  )
   .superRefine((c, ctx) => {
     if (c.type === ConstraintType.PreventValueReuse) {
       const num = Number(c.value);
@@ -305,16 +330,22 @@ export const groupConstraintsByTarget = (constraints: TConstraint[]) => {
   constraints.forEach(({ type, appliesTo, value }) => {
     const current = grouped[appliesTo] ?? {};
 
-    grouped[appliesTo] =
-      type === ConstraintType.PreventValueReuse
-        ? {
-            ...current,
-            reusePrevention: { ...current.reusePrevention, previousVersions: Number(value) }
-          }
-        : {
-            ...current,
-            [CONSTRAINT_FIELDS[type]]: NUMERIC_CONSTRAINTS.includes(type) ? Number(value) : value
-          };
+    if (type === ConstraintType.PreventValueReuse) {
+      grouped[appliesTo] = {
+        ...current,
+        reusePrevention: { ...current.reusePrevention, previousVersions: Number(value) }
+      };
+    } else if (type === ConstraintType.PreventDuplicateValues) {
+      grouped[appliesTo] = {
+        ...current,
+        reusePrevention: { ...current.reusePrevention, otherSecrets: true }
+      };
+    } else {
+      grouped[appliesTo] = {
+        ...current,
+        [CONSTRAINT_FIELDS[type]]: NUMERIC_CONSTRAINTS.includes(type) ? Number(value) : value
+      };
+    }
   });
 
   return grouped;
@@ -330,14 +361,17 @@ export const flattenConstraints = (
     .filter(([, value]) => value !== undefined)
     .map(([field, value]) => ({ type: CONSTRAINT_TYPES[field], appliesTo, value: String(value) }));
 
-  if (reusePrevention?.previousVersions === undefined) return flattened;
-
-  return [
-    ...flattened,
-    {
+  if (reusePrevention?.previousVersions !== undefined) {
+    flattened.push({
       type: ConstraintType.PreventValueReuse,
       appliesTo,
       value: String(reusePrevention.previousVersions)
-    }
-  ];
+    });
+  }
+
+  if (reusePrevention?.otherSecrets) {
+    flattened.push({ type: ConstraintType.PreventDuplicateValues, appliesTo, value: "" });
+  }
+
+  return flattened;
 };
