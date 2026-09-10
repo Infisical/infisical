@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   check-be-pr:
-    name: Run integration test
+    name: Backend tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -59,7 +59,7 @@ jobs:
         working-directory: backend
       - name: Start Secret Rotation testing databases
         run: docker compose -f docker-compose.e2e-dbs.yml up -d
-      - name: Run unit test
+      - name: Run unit tests
         run: npm run test:unit
         working-directory: backend
       - name: Log in to GHCR
@@ -100,7 +100,7 @@ jobs:
       # The same command a developer runs. The rotation databases above share the test stack's
       # compose project, so the suite reaches them by service name and CI needs no networking of
       # its own. Connection strings, mounts and the image build all live in the compose files.
-      - name: Run integration test
+      - name: Run end-to-end tests
         run: make test-api-e2e
         env:
           E2E_TEST_ORACLE_DB_19_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}
