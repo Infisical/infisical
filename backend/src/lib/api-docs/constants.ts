@@ -2282,6 +2282,7 @@ export const CERTIFICATES = {
     externalMetadata:
       'Identifies this certificate at the provider that issued it. Required when the chosen profile issues from an external certificate authority. For DigiCert, pass the CertCentral order ID as { type: "digicert", orderId: 2081714 }.',
 
+    certificateId: "The ID of the imported certificate.",
     certificate: "The imported certificate.",
     certificateChain:
       "The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.",

@@ -89,7 +89,7 @@ export type TRevokeCertDTO = {
 export type TImportPkcs12EntriesDTO = {
   entries: TPkcs12Entry[];
   applicationId?: string;
-  profileId?: string;
+  profileIdByFingerprint?: Record<string, string>;
   externalMetadataByFingerprint?: Record<string, TCertificateExternalMetadata>;
 };
 
@@ -116,6 +116,7 @@ export type TImportCertificateDTO = {
 };
 
 export type TImportCertificateResponse = {
+  certificateId: string;
   certificate: string;
   certificateChain?: string;
   privateKey?: string;

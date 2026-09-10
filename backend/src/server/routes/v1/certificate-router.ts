@@ -1642,6 +1642,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
+          certificateId: z.string().uuid().describe(CERTIFICATES.IMPORT.certificateId),
           certificate: z.string().trim().describe(CERTIFICATES.IMPORT.certificate),
           certificateChain: z.string().trim().optional().describe(CERTIFICATES.IMPORT.certificateChain),
           privateKey: z.string().trim().optional().describe(CERTIFICATES.IMPORT.privateKey),
@@ -1689,6 +1690,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
+        certificateId: cert.id,
         certificate,
         certificateChain,
         privateKey,

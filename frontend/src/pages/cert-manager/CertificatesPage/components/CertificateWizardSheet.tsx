@@ -43,6 +43,7 @@ type Props = {
   isSubmitting?: boolean;
   isSubmitDisabled?: boolean;
   isContinueDisabled?: boolean;
+  isContinuePending?: boolean;
 };
 
 export const useWizardSteps = <TStepKey extends string>({
@@ -110,7 +111,8 @@ export const CertificateWizardSheet = ({
   onContinue,
   isSubmitting = false,
   isSubmitDisabled = false,
-  isContinueDisabled = false
+  isContinueDisabled = false,
+  isContinuePending = false
 }: Props) => {
   const step = steps[Math.min(activeStep, steps.length - 1)];
   const isLastStep = activeStep === steps.length - 1;
@@ -204,6 +206,7 @@ export const CertificateWizardSheet = ({
                 <Button
                   type="button"
                   variant="project"
+                  isPending={isContinuePending}
                   isDisabled={isContinueDisabled}
                   onClick={onContinue}
                 >

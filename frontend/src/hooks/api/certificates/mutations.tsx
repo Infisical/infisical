@@ -119,7 +119,12 @@ export const useImportCertificate = () => {
 export const useImportPkcs12Entries = () => {
   const queryClient = useQueryClient();
   return useMutation<TImportPkcs12EntriesResult[], object, TImportPkcs12EntriesDTO>({
-    mutationFn: async ({ entries, applicationId, profileId, externalMetadataByFingerprint }) => {
+    mutationFn: async ({
+      entries,
+      applicationId,
+      profileIdByFingerprint,
+      externalMetadataByFingerprint
+    }) => {
       const results: TImportPkcs12EntriesResult[] = [];
 
       await entries.reduce<Promise<void>>(async (prev, entry) => {
@@ -131,7 +136,9 @@ export const useImportPkcs12Entries = () => {
               certificatePem: entry.certificatePem,
               ...(entry.chainPem ? { chainPem: entry.chainPem } : {}),
               ...(entry.privateKeyPem ? { privateKeyPem: entry.privateKeyPem } : {}),
-              ...(profileId ? { profileId } : {}),
+              ...(profileIdByFingerprint?.[entry.fingerprintSha256]
+                ? { profileId: profileIdByFingerprint[entry.fingerprintSha256] }
+                : {}),
               ...(externalMetadataByFingerprint?.[entry.fingerprintSha256]
                 ? { externalMetadata: externalMetadataByFingerprint[entry.fingerprintSha256] }
                 : {}),

@@ -134,7 +134,7 @@ export const useCertificateImportReference = (profile: ProfileOption | null) => 
   return { reference, referenceOptions, isOptionsLoading: isResolvingOptions, useFreeText };
 };
 
-export type TCertificateReferenceSource = ReturnType<typeof useCertificateImportReference>;
+type TCertificateReferenceSource = ReturnType<typeof useCertificateImportReference>;
 
 export const CertificateReferenceField = ({
   source,
