@@ -363,6 +363,52 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
+    url: "/:requestId/retry-external-dispatch",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        requestId: z.string().uuid().describe(AccessApprovalRequests.RETRY_EXTERNAL_DISPATCH.requestId)
+      }),
+      response: {
+        200: z.object({
+          message: z.string().describe(AccessApprovalRequests.RETRY_EXTERNAL_DISPATCH.message)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, policyId, externalApprovalRequestId, externalApprovalPolicyId } =
+        await server.services.accessApprovalRequest.retryExternalApprovalDispatch({
+          requestId: req.params.requestId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY,
+          metadata: {
+            requestId: req.params.requestId,
+            policyId,
+            externalApprovalRequestId,
+            externalApprovalPolicyId
+          }
+        }
+      });
+
+      return { message: "The request was resent to the external approval system." };
+    }
+  });
+
+  server.route({
     url: "/:requestId/revoke",
     method: "POST",
     config: {

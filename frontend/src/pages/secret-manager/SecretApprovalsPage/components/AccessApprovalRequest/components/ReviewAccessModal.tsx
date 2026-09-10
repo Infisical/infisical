@@ -6,6 +6,7 @@ import {
   FilterIcon,
   HourglassIcon,
   InfoIcon,
+  RefreshCwIcon,
   ShieldAlertIcon,
   SquarePenIcon,
   TimerIcon,
@@ -78,11 +79,15 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
+import {
+  PermissionConditionOperators,
+  ProjectPermissionApprovalRequestActions
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useGetExternalApprovalOptions,
   useListWorkspaceGroups,
+  useRetryExternalApprovalDispatch,
   useReviewAccessRequest,
   useRevokeAccessRequest
 } from "@app/hooks/api";
@@ -271,6 +276,12 @@ export const ReviewAccessRequestModal = ({
   const externalStatus = externalApprovalStatus
     ? EXTERNAL_STATUS_PRESENTATION[externalApprovalStatus]
     : undefined;
+  const canRetryDispatch =
+    externalApprovalStatus === ExternalApprovalRequestStatus.FailedDispatch &&
+    permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
 
   const assignPrivilegesConditions = useMemo(
     () => getMemberAssignPrivilegesConditions(permission),
@@ -366,6 +377,23 @@ export const ReviewAccessRequestModal = ({
 
   const reviewAccessRequest = useReviewAccessRequest();
   const revokeAccessRequest = useRevokeAccessRequest();
+  const retryExternalDispatch = useRetryExternalApprovalDispatch();
+
+  const handleRetryDispatch = useCallback(async () => {
+    try {
+      await retryExternalDispatch.mutateAsync({
+        requestId: request.id,
+        projectSlug
+      });
+      createNotification({
+        title: "Request resent",
+        text: `The request was sent to ${externalSystemName} again.`,
+        type: "success"
+      });
+    } catch {
+      // The global mutation error handler already reports the failure
+    }
+  }, [retryExternalDispatch, request.id, projectSlug, externalSystemName]);
 
   const handleReview = useCallback(
     async (status: "approved" | "rejected") => {
@@ -1044,10 +1072,22 @@ export const ReviewAccessRequestModal = ({
                             {externalStatus.getMessage(externalSystemName)}
                           </span>
                         </ItemContent>
-                        <ItemActions className="shrink-0">
+                        <ItemActions className="shrink-0 items-center gap-3">
                           <span className="text-xs whitespace-nowrap text-muted">
                             Requested {format(new Date(request.createdAt), "MMM d, yyyy h:mm aa")}
                           </span>
+                          {canRetryDispatch && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              isPending={retryExternalDispatch.isPending}
+                              onClick={handleRetryDispatch}
+                            >
+                              <RefreshCwIcon />
+                              Retry
+                            </Button>
+                          )}
                         </ItemActions>
                       </Item>
                     </ItemGroup>

@@ -1,9 +1,12 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
+import {
+  ExternalApprovalProductType,
+  ExternalApprovalRequestStatus
+} from "../external-approval/external-approval-enums";
 import { accessApprovalRequestServiceFactory } from "./access-approval-request-service";
 import { ApprovalStatus } from "./access-approval-request-types";
 
@@ -66,11 +69,13 @@ const makeService = ({
   request = buildRequest(),
   lockedRow = { id: REQUEST_ID, status: ApprovalStatus.PENDING, privilegeId: null },
   canReview = true,
+  canReadRequests = true,
   project = { id: PROJECT_ID, orgId: ORG_ID, name: "Project" }
 }: {
   request?: ReturnType<typeof buildRequest> | undefined;
   lockedRow?: Record<string, unknown> | undefined;
   canReview?: boolean;
+  canReadRequests?: boolean;
   project?: Record<string, unknown> | undefined;
 } = {}) => {
   const accessApprovalRequestDAL = {
@@ -87,7 +92,17 @@ const makeService = ({
     canReviewExternalApprovals: vi.fn().mockResolvedValue(canReview),
     resolveExternalApprovalDecision: vi.fn().mockResolvedValue({ alreadyFinalized: false })
   };
-  const permissionService = { getProjectPermission: vi.fn() };
+  const permissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue({ permission: { can: vi.fn(() => canReadRequests) } })
+  };
+  const externalApprovalQueue = { queueExternalApprovalDispatch: vi.fn().mockResolvedValue(undefined) };
+  const externalApprovalRequestDAL = {
+    create: vi.fn(),
+    updateById: vi.fn().mockResolvedValue(undefined),
+    update: vi
+      .fn<(filter: Record<string, unknown>, patch: Record<string, unknown>) => Promise<Record<string, unknown>[]>>()
+      .mockImplementation(async (filter, patch) => [{ ...filter, ...patch }])
+  };
   const projectDAL = { findById: vi.fn().mockResolvedValue(project) };
   const queueService = { queue: vi.fn().mockResolvedValue(undefined) };
   const projectEnvDAL = { findOne: vi.fn().mockResolvedValue({ name: "Development" }) };
@@ -111,11 +126,19 @@ const makeService = ({
     projectMicrosoftTeamsConfigDAL: {} as never,
     projectSlackConfigDAL: {} as never,
     notificationService: {} as never,
-    externalApprovalQueue: {} as never,
-    externalApprovalRequestDAL: {} as never
+    externalApprovalQueue: externalApprovalQueue as never,
+    externalApprovalRequestDAL: externalApprovalRequestDAL as never
   });
 
-  return { service, accessApprovalRequestDAL, additionalPrivilegeDAL, externalApprovalService, permissionService };
+  return {
+    service,
+    accessApprovalRequestDAL,
+    additionalPrivilegeDAL,
+    externalApprovalService,
+    permissionService,
+    externalApprovalQueue,
+    externalApprovalRequestDAL
+  };
 };
 
 const review = (
@@ -227,5 +250,132 @@ describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
 
     await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(BadRequestError);
     expect(additionalPrivilegeDAL.create).not.toHaveBeenCalled();
+  });
+});
+
+const USER_ID = "44444444-4444-4444-8444-444444444444";
+
+const failedRequest = (patch: Record<string, unknown> = {}) =>
+  buildRequest({
+    externalApproval: {
+      id: EXTERNAL_REQUEST_ID,
+      status: ExternalApprovalRequestStatus.FailedDispatch,
+      externalId: null
+    },
+    ...patch
+  });
+
+const retry = (service: ReturnType<typeof makeService>["service"]) =>
+  service.retryExternalApprovalDispatch({
+    requestId: REQUEST_ID,
+    actor: ActorType.USER,
+    actorId: USER_ID,
+    actorOrgId: ORG_ID,
+    actorAuthMethod: null
+  });
+
+describe("accessApprovalRequestService.retryExternalApprovalDispatch", () => {
+  test("resets a failed dispatch to pending and queues the job again", async () => {
+    const { service, accessApprovalRequestDAL, externalApprovalRequestDAL, externalApprovalQueue } = makeService({
+      request: failedRequest()
+    });
+
+    const result = await retry(service);
+
+    expect(accessApprovalRequestDAL.findById).toHaveBeenCalledWith(REQUEST_ID, TX);
+    expect(externalApprovalRequestDAL.update).toHaveBeenCalledWith(
+      { id: EXTERNAL_REQUEST_ID, status: ExternalApprovalRequestStatus.FailedDispatch },
+      { status: ExternalApprovalRequestStatus.PendingDispatch },
+      TX
+    );
+    expect(externalApprovalQueue.queueExternalApprovalDispatch).toHaveBeenCalledWith({
+      externalApprovalRequestId: EXTERNAL_REQUEST_ID,
+      accessApprovalRequestId: REQUEST_ID,
+      projectId: PROJECT_ID,
+      productType: ExternalApprovalProductType.SecretsManagement
+    });
+    expect(result.projectId).toBe(PROJECT_ID);
+    expect(result.externalApprovalRequestId).toBe(EXTERNAL_REQUEST_ID);
+    expect(result.externalApprovalPolicyId).toBe(EXTERNAL_POLICY_ID);
+  });
+
+  test("an actor without Read on Approval Requests is forbidden before anything is written", async () => {
+    const { service, accessApprovalRequestDAL, externalApprovalRequestDAL, externalApprovalQueue } = makeService({
+      request: failedRequest(),
+      canReadRequests: false
+    });
+
+    await expect(retry(service)).rejects.toBeInstanceOf(ForbiddenRequestError);
+    expect(accessApprovalRequestDAL.transaction).not.toHaveBeenCalled();
+    expect(externalApprovalRequestDAL.update).not.toHaveBeenCalled();
+    expect(externalApprovalQueue.queueExternalApprovalDispatch).not.toHaveBeenCalled();
+  });
+
+  test("a request in another org is reported as not found before the permission check", async () => {
+    const { service, permissionService } = makeService({
+      request: failedRequest(),
+      project: { id: PROJECT_ID, orgId: "other-org" }
+    });
+
+    await expect(retry(service)).rejects.toBeInstanceOf(NotFoundError);
+    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
+  });
+
+  test("a request without an external approval policy is a 400", async () => {
+    const { service } = makeService({
+      request: buildRequest({
+        externalApproval: null,
+        policy: { ...buildRequest().policy, externalApprovalPolicyId: null }
+      })
+    });
+
+    await expect(retry(service)).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  test.each([
+    ExternalApprovalRequestStatus.PendingDispatch,
+    ExternalApprovalRequestStatus.WaitingApproval,
+    ExternalApprovalRequestStatus.Approved,
+    ExternalApprovalRequestStatus.Rejected
+  ])("an external approval in status %s cannot be resent", async (status) => {
+    const { service, externalApprovalRequestDAL, externalApprovalQueue } = makeService({
+      request: buildRequest({ externalApproval: { id: EXTERNAL_REQUEST_ID, status, externalId: null } })
+    });
+
+    await expect(retry(service)).rejects.toBeInstanceOf(BadRequestError);
+    expect(externalApprovalRequestDAL.update).not.toHaveBeenCalled();
+    expect(externalApprovalQueue.queueExternalApprovalDispatch).not.toHaveBeenCalled();
+  });
+
+  test("a closed request cannot be resent", async () => {
+    const { service } = makeService({ request: failedRequest({ status: ApprovalStatus.REJECTED }) });
+
+    await expect(retry(service)).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  test("a concurrent retry that already reset the status succeeds without queueing twice", async () => {
+    const { service, externalApprovalRequestDAL, externalApprovalQueue } = makeService({ request: failedRequest() });
+    externalApprovalRequestDAL.update.mockResolvedValueOnce([]);
+
+    const result = await retry(service);
+
+    expect(result.projectId).toBe(PROJECT_ID);
+    expect(result.externalApprovalRequestId).toBe(EXTERNAL_REQUEST_ID);
+    expect(externalApprovalRequestDAL.update).toHaveBeenCalledWith(
+      { id: EXTERNAL_REQUEST_ID, status: ExternalApprovalRequestStatus.FailedDispatch },
+      { status: ExternalApprovalRequestStatus.PendingDispatch },
+      TX
+    );
+    expect(externalApprovalQueue.queueExternalApprovalDispatch).not.toHaveBeenCalled();
+  });
+
+  test("a queue failure marks the dispatch failed again and surfaces an error", async () => {
+    const { service, externalApprovalRequestDAL, externalApprovalQueue } = makeService({ request: failedRequest() });
+    externalApprovalQueue.queueExternalApprovalDispatch.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(retry(service)).rejects.toBeInstanceOf(InternalServerError);
+    expect(externalApprovalRequestDAL.updateById).toHaveBeenCalledWith(EXTERNAL_REQUEST_ID, {
+      status: ExternalApprovalRequestStatus.FailedDispatch
+    });
   });
 });

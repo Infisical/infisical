@@ -214,6 +214,33 @@ export const useRevokeAccessRequest = () => {
   });
 };
 
+export const useRetryExternalApprovalDispatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { message: string },
+    object,
+    {
+      requestId: string;
+      projectSlug: string;
+    }
+  >({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post<{ message: string }>(
+        `/api/v1/access-approvals/requests/${requestId}/retry-external-dispatch`
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
+    }
+  });
+};
+
 export const useReviewAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<

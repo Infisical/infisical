@@ -4187,5 +4187,10 @@ export const AccessApprovalRequests = {
     externalNumber:
       "The human readable reference of the request in the external approval system, recorded on the audit log entry for this review.",
     productType: "The Infisical product the access request belongs to. Must be 'secrets_management' for this endpoint."
+  },
+  RETRY_EXTERNAL_DISPATCH: {
+    requestId:
+      "The ID of the access approval request whose delivery to the external approval system failed and should be attempted again.",
+    message: "Confirmation that the request was resent to the external approval system."
   }
 } as const;

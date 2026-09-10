@@ -43,6 +43,10 @@ export type TRevokeAccessRequestDTO = {
   requestId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TRetryExternalApprovalDispatchDTO = {
+  requestId: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateAccessApprovalRequestDTO = {
   requestId: string;
   temporaryRange: string;
@@ -225,6 +229,12 @@ export interface TAccessApprovalRequestServiceFactory {
   }>;
   reviewExternalAccessRequest: (arg: TReviewExternalAccessRequestDTO) => Promise<{
     request: TAccessApprovalRequests;
+    projectId: string;
+    policyId: string;
+    externalApprovalRequestId: string;
+    externalApprovalPolicyId: string;
+  }>;
+  retryExternalApprovalDispatch: (arg: TRetryExternalApprovalDispatchDTO) => Promise<{
     projectId: string;
     policyId: string;
     externalApprovalRequestId: string;

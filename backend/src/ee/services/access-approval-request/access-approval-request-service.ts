@@ -3,7 +3,7 @@ import msFn from "ms";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -35,7 +35,10 @@ import { TNotificationServiceFactory } from "../../../services/notification/noti
 import { NotificationType } from "../../../services/notification/notification-types";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
-import { ExternalApprovalProductType, ExternalApprovalRequestStatus } from "../external-approval/external-approval-enums";
+import {
+  ExternalApprovalProductType,
+  ExternalApprovalRequestStatus
+} from "../external-approval/external-approval-enums";
 import { TExternalApprovalQueueFactory } from "../external-approval/external-approval-queue";
 import { TExternalApprovalRequestDALFactory } from "../external-approval/external-approval-request-dal";
 import { TExternalApprovalServiceFactory } from "../external-approval/external-approval-service";
@@ -91,7 +94,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   queueService: Pick<TQueueServiceFactory, "queue">;
   externalApprovalQueue: Pick<TExternalApprovalQueueFactory, "queueExternalApprovalDispatch">;
-  externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "create" | "updateById">;
+  externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "create" | "updateById" | "update">;
   externalApprovalService: Pick<
     TExternalApprovalServiceFactory,
     "authorizeExternalReview" | "resolveExternalApprovalDecision" | "canReviewExternalApprovals"
@@ -232,6 +235,40 @@ export const accessApprovalRequestServiceFactory = ({
     );
   };
 
+  const $queueExternalApprovalDispatch = async ({
+    externalApprovalRequestId,
+    accessApprovalRequestId,
+    projectId
+  }: {
+    externalApprovalRequestId: string;
+    accessApprovalRequestId: string;
+    projectId: string;
+  }) => {
+    try {
+      await externalApprovalQueue.queueExternalApprovalDispatch({
+        externalApprovalRequestId,
+        accessApprovalRequestId,
+        projectId,
+        productType: ExternalApprovalProductType.SecretsManagement
+      });
+      return true;
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue external approval dispatch [externalApprovalRequestId=${externalApprovalRequestId}] [requestId=${accessApprovalRequestId}]`
+      );
+      await externalApprovalRequestDAL
+        .updateById(externalApprovalRequestId, { status: ExternalApprovalRequestStatus.FailedDispatch })
+        .catch((updateError: unknown) => {
+          logger.error(
+            updateError,
+            `Failed to mark external approval request as failed dispatch [externalApprovalRequestId=${externalApprovalRequestId}]`
+          );
+        });
+      return false;
+    }
+  };
+
   const reviewExternalAccessRequest: TAccessApprovalRequestServiceFactory["reviewExternalAccessRequest"] = async ({
     requestId,
     externalId,
@@ -342,6 +379,98 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     return { ...result, request };
+  };
+
+  const retryExternalApprovalDispatch: TAccessApprovalRequestServiceFactory["retryExternalApprovalDispatch"] = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }) => {
+    const notFound = () => new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
+
+    const existing = await accessApprovalRequestDAL.findById(requestId);
+    if (!existing) throw notFound();
+
+    const project = await projectDAL.findById(existing.projectId);
+    if (!project || project.orgId !== actorOrgId) throw notFound();
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: existing.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    if (!permission.can(ProjectPermissionApprovalRequestActions.Read, ProjectPermissionSub.ApprovalRequests)) {
+      throw new ForbiddenRequestError({
+        message: "You need the Read permission on Approval Requests in this project to resend an access request."
+      });
+    }
+
+    const { policy, externalApproval } = existing;
+    if (!policy.externalApprovalPolicyId || !externalApproval) {
+      throw new BadRequestError({ message: "This access request is not under an external approval policy" });
+    }
+
+    if (policy.deletedAt) {
+      throw new BadRequestError({
+        message: "The policy associated with this access request has been deleted."
+      });
+    }
+
+    const result = {
+      projectId: existing.projectId,
+      policyId: existing.policyId,
+      externalApprovalRequestId: externalApproval.id,
+      externalApprovalPolicyId: policy.externalApprovalPolicyId
+    };
+
+    const reset = await accessApprovalRequestDAL.transaction(async (tx) => {
+      const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId, tx);
+      if (!accessApprovalRequest) throw notFound();
+
+      if (accessApprovalRequest.expiresAt && new Date() > new Date(accessApprovalRequest.expiresAt)) {
+        throw new BadRequestError({ message: "This access request has expired and can no longer be sent for review" });
+      }
+
+      if (accessApprovalRequest.status !== ApprovalStatus.PENDING) {
+        throw new BadRequestError({ message: "The request has been closed" });
+      }
+
+      if (accessApprovalRequest.externalApproval?.status !== ExternalApprovalRequestStatus.FailedDispatch) {
+        throw new BadRequestError({
+          message: `This request can only be resent after a failed delivery. Its current status is '${accessApprovalRequest.externalApproval?.status ?? "unknown"}'.`
+        });
+      }
+
+      const updated = await externalApprovalRequestDAL.update(
+        { id: accessApprovalRequest.externalApproval.id, status: ExternalApprovalRequestStatus.FailedDispatch },
+        { status: ExternalApprovalRequestStatus.PendingDispatch },
+        tx
+      );
+
+      return updated.length > 0;
+    });
+
+    if (!reset) {
+      return result;
+    }
+
+    const queued = await $queueExternalApprovalDispatch({
+      externalApprovalRequestId: result.externalApprovalRequestId,
+      accessApprovalRequestId: requestId,
+      projectId: result.projectId
+    });
+    if (!queued) {
+      throw new InternalServerError({
+        message: "Infisical could not schedule delivery to the external approval system. Try again in a few minutes."
+      });
+    }
+
+    return result;
   };
 
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
@@ -588,27 +717,11 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     if (externalApprovalRequestId) {
-      try {
-        await externalApprovalQueue.queueExternalApprovalDispatch({
-          externalApprovalRequestId,
-          accessApprovalRequestId: approval.id,
-          projectId: project.id,
-          productType: ExternalApprovalProductType.SecretsManagement
-        });
-      } catch (error) {
-        logger.error(
-          error,
-          `Failed to queue external approval dispatch [externalApprovalRequestId=${externalApprovalRequestId}] [requestId=${approval.id}]`
-        );
-        await externalApprovalRequestDAL
-          .updateById(externalApprovalRequestId, { status: ExternalApprovalRequestStatus.FailedDispatch })
-          .catch((updateError: unknown) => {
-            logger.error(
-              updateError,
-              `Failed to mark external approval request as failed dispatch [externalApprovalRequestId=${externalApprovalRequestId}]`
-            );
-          });
-      }
+      await $queueExternalApprovalDispatch({
+        externalApprovalRequestId,
+        accessApprovalRequestId: approval.id,
+        projectId: project.id
+      });
     }
 
     return { request: approval, projectId: project.id };
@@ -1329,6 +1442,7 @@ export const accessApprovalRequestServiceFactory = ({
     listApprovalRequests,
     reviewAccessRequest,
     reviewExternalAccessRequest,
+    retryExternalApprovalDispatch,
     revokeAccessRequest,
     getCount
   };

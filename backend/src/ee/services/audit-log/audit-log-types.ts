@@ -769,6 +769,7 @@ export enum EventType {
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW = "access-approval-request-external-review",
+  ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY = "access-approval-request-external-dispatch-retry",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
   VIEW_AUDIT_LOGS = "view-audit-logs",
@@ -6490,6 +6491,16 @@ interface AccessApprovalRequestExternalReviewEvent {
   };
 }
 
+interface AccessApprovalRequestExternalDispatchRetryEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    externalApprovalRequestId: string;
+    externalApprovalPolicyId: string;
+  };
+}
+
 interface AccessApprovalRequestRevokeEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_REVOKE;
   metadata: {
@@ -7866,6 +7877,7 @@ export type Event =
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestExternalReviewEvent
+  | AccessApprovalRequestExternalDispatchRetryEvent
   | AccessApprovalRequestRevokeEvent
   | AccessApprovalRequestUpdateEvent
   | CreateAcmeAccountEvent
