@@ -2,7 +2,7 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccessStatus, PamAccountType } from "@app/ee/services/pam/pam-enums";
+import { PamAccessStatus, PamAccountType, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
@@ -58,12 +58,26 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
     .describe("Reasons the account cannot launch a session, if any"),
   isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account."),
+  heartbeatStatus: z
+    .nativeEnum(PamHeartbeatStatus)
+    .nullable()
+    .optional()
+    .describe("Result of the most recent credential health check, if one has run."),
+  heartbeatEnabled: z
+    .boolean()
+    .describe("Whether the account's template has scheduled credential health checks turned on."),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+  pendingRequestId: z.string().nullable().describe("The caller's pending access request for this account, if any"),
+  canBreakGlass: z.boolean().describe("Whether the caller may self-approve their own pending request for this account"),
   supportsCredentialReveal: z.boolean().describe("Whether this account type stores a credential that can be revealed"),
   credentialAccessStatus: z.nativeEnum(PamAccessStatus).describe("Current credential-approval status for the caller"),
+  credentialPendingRequestId: z
+    .string()
+    .nullable()
+    .describe("The caller's pending credential access request for this account, if any"),
   permissions: z.any().array().describe("The caller's effective (packed) resource permissions on this account")
 });
 
@@ -439,6 +453,13 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
                 ),
               accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
               grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+              pendingRequestId: z
+                .string()
+                .nullable()
+                .describe("The caller's pending access request for this account, if any"),
+              canBreakGlass: z
+                .boolean()
+                .describe("Whether the caller may self-approve their own pending request for this account"),
               disabledReason: z.string().nullable().describe("Why this account is disabled, or null if usable")
             })
           ),
@@ -640,6 +661,94 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         .catch(() => {});
 
       return { rotationAccountId: result.rotationAccountId };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/health",
+    schema: {
+      operationId: "getPamAccountCredentialHealth",
+      description: "Get a PAM account's credential health",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          heartbeat: z.object({
+            enabled: z.boolean(),
+            intervalSeconds: z.number().nullable(),
+            status: z.nativeEnum(PamHeartbeatStatus).nullable().describe("Most recent check result"),
+            lastCheckedAt: z.date().nullable(),
+            lastHealthyAt: z.date().nullable(),
+            nextCheckAt: z.date().nullable(),
+            templateName: z.string(),
+            lastMessage: z.string().nullable()
+          })
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const heartbeat = await server.services.pamAccountHeartbeat.getHeartbeat(
+        { accountId: req.params.accountId, projectId: req.internalPamProjectId },
+        {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+      return { heartbeat };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accountId/health/check",
+    schema: {
+      operationId: "checkPamAccountCredentialHealth",
+      description: "Run a credential health check on a PAM account now",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          heartbeatStatus: z.string(),
+          message: z.string().optional()
+        })
+      }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const result = await server.services.pamAccountHeartbeat.checkAccount(
+        { accountId: req.params.accountId, projectId: req.internalPamProjectId },
+        {
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod
+        }
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_HEARTBEAT,
+          metadata: {
+            accountId: req.params.accountId,
+            accountName: result.accountName,
+            accountType: result.accountType,
+            heartbeatStatus: result.status,
+            manual: true,
+            ...(result.message ? { message: result.message } : {})
+          }
+        }
+      });
+
+      return { heartbeatStatus: result.status, ...(result.message ? { message: result.message } : {}) };
     }
   });
 

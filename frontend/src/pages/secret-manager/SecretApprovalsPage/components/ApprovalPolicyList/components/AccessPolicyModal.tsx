@@ -49,6 +49,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -1135,6 +1136,13 @@ const Form = ({
                 />
                 <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
               </FieldContent>
+              <Toggle
+                id="self-approvals"
+                aria-label="Allow self approvals"
+                variant="project"
+                checked={value}
+                onCheckedChange={onChange}
+              />
             </Field>
             {renderSelfApprovals()}
           </>
@@ -1152,7 +1160,7 @@ const Form = ({
                     When enabled, machine identities can modify secrets without requiring approval
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="bypass-machine-identities"
                   aria-label="Bypass approval for machine identities"
                   variant="project"
@@ -1175,7 +1183,7 @@ const Form = ({
                   Allow certain users to bypass policy in break-glass situations
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="bypass-approvals"
                 aria-label="Allow approval bypass"
                 variant="project"

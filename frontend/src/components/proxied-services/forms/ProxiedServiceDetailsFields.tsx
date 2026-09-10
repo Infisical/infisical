@@ -9,7 +9,7 @@ import {
   FieldLabel,
   FieldTitle,
   Input,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -85,7 +85,7 @@ export const ProxiedServiceDetailsFields = ({ isDuplicateName }: Props) => {
                 When off, the proxy stops brokering this service&apos;s traffic.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id="proxied-service-enabled"
               variant="project"
               checked={field.value}

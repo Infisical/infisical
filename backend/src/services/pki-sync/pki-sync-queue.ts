@@ -6,7 +6,6 @@ import { randomUUID } from "crypto";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -30,18 +29,12 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
+import { releasePkiSyncConcurrency, tryAdmitPkiSyncConcurrency } from "./pki-sync-concurrency-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import {
-  PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-  PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S,
-  PKI_SYNC_CONNECTION_LOCK_RETRY,
-  PkiSyncFailureKind,
-  PkiSyncStatus
-} from "./pki-sync-enums";
+import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
 import {
-  enterprisePkiSyncCheck,
   getPkiSyncProviderCapabilities,
   parsePkiSyncErrorMessage,
   PkiSyncFns,
@@ -58,6 +51,7 @@ import {
   getPostSyncCommand,
   TPostSyncCommandResult
 } from "./pki-sync-post-sync-command-fns";
+import { getPkiSyncTargetHost } from "./pki-sync-target-host-fns";
 import {
   TCertificateMap,
   TPkiSyncImportCertificatesDTO,
@@ -78,7 +72,10 @@ type TPkiSyncQueueFactoryDep = {
     "createCipherPairWithDataKey" | "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey"
   >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete" | "getItem" | "setItemWithExpiry"
+  >;
   pkiSyncDAL: Pick<
     TPkiSyncDALFactory,
     "findById" | "find" | "updateById" | "deleteById" | "update" | "findFailureNotificationRecipients"
@@ -87,14 +84,13 @@ type TPkiSyncQueueFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   projectDAL: TProjectDALFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateSyncDAL: TCertificateSyncDALFactory;
-  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -125,7 +121,6 @@ export const pkiSyncQueueFactory = ({
   notificationService,
   pkiApplicationDAL,
   projectDAL,
-  licenseService,
   certificateDAL,
   certificateBodyDAL,
   certificateSecretDAL,
@@ -152,19 +147,11 @@ export const pkiSyncQueueFactory = ({
     unit: "1"
   });
 
-  const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
-    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT,
-      PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S
-    );
+  const $tryAdmitConnectionConcurrency = (connectionId: string, targetHost?: string) =>
+    tryAdmitPkiSyncConcurrency(keyStore, connectionId, targetHost);
 
-    return count !== -1;
-  };
-
-  const $releaseConnectionConcurrency = async (connectionId: string) => {
-    await keyStore.decrementByOrDelete(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-  };
+  const $releaseConnectionConcurrency = (connectionId: string, targetHost?: string) =>
+    releasePkiSyncConcurrency(keyStore, connectionId, targetHost);
 
   const $certificatesForSync = (pkiSync: TPkiSyncRaw) =>
     buildCertificateMap(pkiSync, {
@@ -224,13 +211,6 @@ export const pkiSyncQueueFactory = ({
       data: { syncId, auditLogInfo }
     } = job;
 
-    await enterprisePkiSyncCheck(
-      licenseService,
-      pkiSync.connection.orgId,
-      pkiSync.destination,
-      "Failed to sync certificates due to plan restriction. Upgrade plan to access enterprise PKI syncs."
-    );
-
     await pkiSyncDAL.updateById(syncId, {
       syncStatus: PkiSyncStatus.Running
     });
@@ -277,7 +257,8 @@ export const pkiSyncQueueFactory = ({
         certificateDAL,
         certificateSyncDAL,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        keyStore
       });
 
       logger.info(
@@ -614,13 +595,6 @@ export const pkiSyncQueueFactory = ({
       data: { syncId, auditLogInfo, deleteSyncOnComplete, certificateIds: certificateIdsToRemove }
     } = job;
 
-    await enterprisePkiSyncCheck(
-      licenseService,
-      pkiSync.connection.orgId,
-      pkiSync.destination,
-      "Failed to remove certificates due to plan restriction. Upgrade plan to access enterprise PKI syncs."
-    );
-
     await pkiSyncDAL.updateById(syncId, {
       removeStatus: PkiSyncStatus.Running
     });
@@ -657,7 +631,8 @@ export const pkiSyncQueueFactory = ({
         certificateDAL,
         certificateMap,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        keyStore
       });
 
       isSuccess = true;
@@ -788,11 +763,13 @@ export const pkiSyncQueueFactory = ({
     const needsHostSerialisation =
       needsConnectionSlot && getPkiSyncProviderCapabilities(pkiSync.destination).canRunHealthCheckCommand;
 
+    const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
+
     let connectionLock: Awaited<ReturnType<typeof keyStore.acquireLock>> | null = null;
     if (needsHostSerialisation) {
       connectionLock = await keyStore
         .acquireLock(
-          [KeyStorePrefixes.AppConnectionCommandLock(connectionId)],
+          [KeyStorePrefixes.AppConnectionCommandLock(connectionId, targetHost)],
           HOST_SERIALISATION_LOCK_TTL_MS,
           PKI_SYNC_CONNECTION_LOCK_RETRY
         )
@@ -805,7 +782,7 @@ export const pkiSyncQueueFactory = ({
       }
     }
 
-    if (needsConnectionSlot && !(await $tryAdmitConnectionConcurrency(connectionId))) {
+    if (needsConnectionSlot && !(await $tryAdmitConnectionConcurrency(connectionId, targetHost))) {
       await connectionLock?.release();
       await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
@@ -821,7 +798,7 @@ export const pkiSyncQueueFactory = ({
         5 * 60 * 1000
       );
     } catch (e) {
-      if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId);
+      if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId, targetHost);
       await connectionLock?.release();
       await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
@@ -844,7 +821,7 @@ export const pkiSyncQueueFactory = ({
           throw new Error(`Unhandled PKI Sync Job ${String(job.name)}`);
       }
     } finally {
-      if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId);
+      if (needsConnectionSlot) await $releaseConnectionConcurrency(connectionId, targetHost);
 
       await Promise.allSettled([lock.release(), connectionLock?.release()]);
     }

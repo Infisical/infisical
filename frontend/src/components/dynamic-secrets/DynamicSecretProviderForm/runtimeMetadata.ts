@@ -123,7 +123,7 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   },
   [DynamicSecretProviders.RabbitMq]: {
-    presentation: { providerFamily: "RabbitMQ" },
+    presentation: { providerFamily: "RabbitMQ", logoFileName: "RabbitMQ.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   },
   [DynamicSecretProviders.AzureEntraId]: {
@@ -150,11 +150,11 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.SapHana]: {
-    presentation: { providerFamily: "SAP" },
+    presentation: { providerFamily: "SAP", logoFileName: "SAP.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   },
   [DynamicSecretProviders.SapAse]: {
-    presentation: { providerFamily: "SAP" },
+    presentation: { providerFamily: "SAP", logoFileName: "SAP.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Snowflake]: {
@@ -162,14 +162,14 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   },
   [DynamicSecretProviders.Totp]: {
-    presentation: { providerFamily: "TOTP" },
+    presentation: { providerFamily: "TOTP", logoFileName: "TOTP.png" },
     leaseCapabilities: {
       ...createDefaultLeaseCapabilities({ type: "totp" }),
       autoGenerate: true
     }
   },
   [DynamicSecretProviders.Vertica]: {
-    presentation: { providerFamily: "Vertica" },
+    presentation: { providerFamily: "Vertica", logoFileName: "Vertica.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Kubernetes]: {
@@ -198,7 +198,7 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     }
   },
   [DynamicSecretProviders.Couchbase]: {
-    presentation: { providerFamily: "Couchbase" },
+    presentation: { providerFamily: "Couchbase", logoFileName: "Couchbase.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(
       oneTimeFields([
         { key: "username", label: "Username" },
@@ -207,11 +207,11 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.Milvus]: {
-    presentation: { providerFamily: "Milvus" },
+    presentation: { providerFamily: "Milvus", logoFileName: "Milvus.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Clickhouse]: {
-    presentation: { providerFamily: "ClickHouse" },
+    presentation: { providerFamily: "ClickHouse", logoFileName: "ClickHouse.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(databaseCredentials)
   },
   [DynamicSecretProviders.Ssh]: {
@@ -232,7 +232,7 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     )
   },
   [DynamicSecretProviders.Tailscale]: {
-    presentation: { providerFamily: "Tailscale" },
+    presentation: { providerFamily: "Tailscale", logoFileName: "Tailscale.png" },
     leaseCapabilities: {
       provisioner: "default",
       output: oneTimeFields([

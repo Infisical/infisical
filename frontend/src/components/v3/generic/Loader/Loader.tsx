@@ -1,6 +1,6 @@
 import { type ComponentProps, useEffect, useRef } from "react";
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "motion/react";
 
 import { cn } from "../../utils";
 

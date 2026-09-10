@@ -9,6 +9,9 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { BadRequestError } from "@app/lib/errors";
+import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { slugSchema } from "@app/server/lib/schemas";
 
 import { getExternalApprovalProviderName } from "../external-approval/external-approval-map";
 import { TExternalApprovalPolicyDALFactory } from "../external-approval/external-approval-policy-dal";
@@ -43,6 +46,8 @@ export const getExternalApprovalProvider = async (
   return toExternalApprovalProvider(externalApprovalPolicy.type);
 };
 
+const ACCESS_REQUEST_SECRET_PATH_MAX_LENGTH = 512;
+
 // Turn a permission slug into a human-readable label, e.g. "dynamic-secrets" -> "Dynamic Secrets"
 // and "read-root-credential" -> "Read Root Credential". Used for review notifications.
 const humanizeSlug = (slug: string) =>
@@ -62,10 +67,25 @@ type TUnpackedAccessApprovalRequestRule = {
   reason?: string;
 };
 
+// Exactly the conditions shape RequestAccessForm.tsx ever produces:
+// { environment: data.environmentSlug, secretPath: { $glob: data.secretPath } }.
+// .strict() at both levels so no other operator ($in/$eq/...) or key
+// (secretName, secretTags, connectionId, metadata, ...) can be smuggled in.
+// The $glob value reuses the same validator as every other permission surface, with the length cap
+// added here rather than on the shared schema so the tightening stays local.
 const AccessApprovalRequestConditionsSchema = z
   .object({
-    environment: z.string().min(1),
-    secretPath: z.object({ $glob: PermissionConditionSchema[PermissionConditionOperators.$GLOB] }).strict()
+    environment: slugSchema({ max: 64, field: "Environment slug", trim: false }),
+    secretPath: z
+      .object({
+        $glob: z
+          .string()
+          .max(ACCESS_REQUEST_SECRET_PATH_MAX_LENGTH, {
+            message: `Secret path must be ${ACCESS_REQUEST_SECRET_PATH_MAX_LENGTH} or fewer characters`
+          })
+          .pipe(PermissionConditionSchema[PermissionConditionOperators.$GLOB])
+      })
+      .strict()
   })
   .strict();
 
@@ -135,6 +155,17 @@ const parseAccessApprovalRequestPermissions = (permissions: TUnpackedAccessAppro
   });
 
 export const verifyRequestedPermissions = ({ permissions }: TVerifyPermission) => {
+  try {
+    validateHandlebarTemplate("Access Request Permissions", JSON.stringify(permissions ?? []), {
+      allowedExpressions: () => false,
+      allowedHelpers: [],
+      rejectUnescaped: true
+    });
+  } catch (error) {
+    if (error instanceof BadRequestError) throw error;
+    throw new BadRequestError({ message: "Requested permissions contain a malformed template expression" });
+  }
+
   const permission = unpackRules(permissions as PackRule<TUnpackedAccessApprovalRequestRule>[]);
 
   if (!permission || !permission.length) {

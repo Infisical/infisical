@@ -27,13 +27,13 @@ import {
   FileDropzone,
   IconButton,
   Input,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -609,7 +609,7 @@ const ImportSecretsContent = ({
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
-            <Switch
+            <Toggle
               variant="danger"
               checked={shouldOverwrite}
               onCheckedChange={setShouldOverwrite}

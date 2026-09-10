@@ -50,19 +50,19 @@ import {
   SheetHeader,
   SheetTitle,
   Skeleton,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
@@ -175,7 +175,7 @@ function AddMemberPopover({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canGrantAccess =
-    orgPermission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Member) &&
+    orgPermission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member) &&
     permission.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member) &&
     permission.can(
       ProjectPermissionMemberActions.AssignAdditionalPrivileges,
@@ -185,7 +185,7 @@ function AddMemberPopover({
 
   const canAddParentOrgUsers =
     isSubOrganization &&
-    orgPermission.can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+    orgPermission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
 
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: parentOrgAvailableUsers } = useGetAvailableOrgUsers(canAddParentOrgUsers);
@@ -592,7 +592,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
       <div className="flex thin-scrollbar flex-col gap-4 overflow-y-auto p-4">
         <div className="flex items-center gap-2">
           <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
-            <Switch
+            <Toggle
               size="sm"
               variant="project"
               checked={showAllEntities}

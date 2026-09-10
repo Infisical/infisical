@@ -9,6 +9,7 @@ import {
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
+import { AccountHealthBadge } from "../../components/AccountHealthBadge";
 import { AccountStaleBadge } from "../../components/AccountStaleBadge";
 import { PamAccountRow } from "../../components/PamAccountRow";
 import { AccountAccessibilityBadgeWithPermission } from "./AccountAccessibilityBadgeWithPermission";
@@ -65,7 +66,10 @@ export const FolderAccountRow = ({
     requireReason: account.requireReason,
     accessStatus,
     grantExpiresAt: account.grantExpiresAt,
+    pendingRequestId: account.pendingRequestId,
+    canBreakGlass: account.canBreakGlass,
     credentialAccessStatus: account.credentialAccessStatus,
+    credentialPendingRequestId: account.credentialPendingRequestId,
     createdAt: account.createdAt,
     updatedAt: account.updatedAt
   };
@@ -90,6 +94,7 @@ export const FolderAccountRow = ({
             issues={account.accessibilityIssues}
           />
           <AccountStaleBadge isStale={account.isStale} />
+          <AccountHealthBadge status={account.heartbeatStatus} enabled={account.heartbeatEnabled} />
         </>
       }
       actions={

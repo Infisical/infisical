@@ -101,6 +101,14 @@ export enum OrgPermissionKmipServerActions {
   RevokeKmipServerAccess = "revoke-kmip-server-access"
 }
 
+export enum OrgPermissionMemberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
 export enum OrgPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -209,7 +217,7 @@ export type OrgPermissionSet =
   | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
-  | [OrgPermissionActions, OrgPermissionSubjects.Member]
+  | [OrgPermissionMemberActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionSsoActions, OrgPermissionSubjects.Sso]
@@ -284,7 +292,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Member).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionMemberActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Settings).describe("The entity this permission pertains to."),
@@ -467,10 +477,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.GrantPrivileges, OrgPermissionSubjects.Member);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
@@ -639,7 +650,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project);
   can(OrgPermissionProjectActions.RequestAccess, OrgPermissionSubjects.Project);
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);

@@ -2,8 +2,6 @@
 import path from "node:path";
 
 import type { ClickHouseClient } from "@clickhouse/client";
-import type { FastifyCookieOptions } from "@fastify/cookie";
-import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
@@ -113,10 +111,6 @@ export const main = async ({
   });
 
   try {
-    await server.register<FastifyCookieOptions>(cookie, {
-      secret: appCfg.COOKIE_SECRET_SIGN_KEY
-    });
-
     await server.register(fastifyEtag);
 
     await server.register<FastifyCorsOptions>(cors, {
@@ -181,10 +175,12 @@ export const main = async ({
       kmsRootConfigDAL
     });
 
-    await server.register(registerServeUI, {
-      standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
-      dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
-    });
+    if (appCfg.isApiRunModeEnabled) {
+      await server.register(registerServeUI, {
+        standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
+        dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
+      });
+    }
 
     await server.ready();
     server.swagger();

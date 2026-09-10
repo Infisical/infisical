@@ -9,6 +9,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";
 import { PKI_SYNC_NAME_MAP } from "@app/services/pki-sync/pki-sync-maps";
+import { getPkiSyncTargetHost } from "@app/services/pki-sync/pki-sync-target-host-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSyncPkiEndpoints = ({
@@ -172,6 +173,8 @@ export const registerSyncPkiEndpoints = ({
         req.permission
       );
 
+      const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: pkiSync.projectId,
@@ -182,6 +185,8 @@ export const registerSyncPkiEndpoints = ({
             name: pkiSync.name,
             destination,
             connectionId: pkiSync.connectionId,
+            connectionName: pkiSync.appConnectionName,
+            ...(targetHost && { targetHost }),
             hasCredentials: Boolean(req.body.credentials?.exportPassword),
             hasPostSyncCommand: Boolean(req.body.syncOptions?.postSyncCommand),
             hasHealthCheckCommand: Boolean(req.body.syncOptions?.healthCheckCommand),
@@ -231,6 +236,8 @@ export const registerSyncPkiEndpoints = ({
 
       const pkiSync = await server.services.pkiSync.updatePkiSync({ ...req.body, id: pkiSyncId }, req.permission);
 
+      const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: pkiSync.projectId,
@@ -240,6 +247,10 @@ export const registerSyncPkiEndpoints = ({
             pkiSyncId,
             name: pkiSync.name,
             ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            destination: pkiSync.destination,
+            connectionId: pkiSync.connectionId,
+            connectionName: pkiSync.appConnectionName,
+            ...(targetHost && { targetHost }),
             hasPostSyncCommand: Boolean(pkiSync.syncOptions?.postSyncCommand),
             hasHealthCheckCommand: Boolean(pkiSync.syncOptions?.healthCheckCommand)
           }

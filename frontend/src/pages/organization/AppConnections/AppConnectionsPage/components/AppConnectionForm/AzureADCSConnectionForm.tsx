@@ -18,12 +18,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -233,7 +233,7 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         self-signed certificates.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
                       checked={sslEnabled ? value : false}
