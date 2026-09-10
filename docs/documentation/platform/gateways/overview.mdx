@@ -5,11 +5,11 @@ sidebarTitle: "Networking"
 icon: "network-wired"
 ---
 
-Some of the systems Infisical connects to aren't reachable from the internet: a database in a private subnet, an on-premises appliance, a server behind a corporate firewall. This section covers the two pieces that make those reachable, without opening an inbound port.
+Some of the systems Infisical connects to aren't reachable from the internet: a database in a private subnet, an on-premises appliance, a server behind a corporate firewall. This section covers the two pieces that make those reachable.
 
 <CardGroup cols={2}>
   <Card title="Gateways" icon="server" href="/documentation/platform/gateways/gateway-deployment">
-    A lightweight service you run inside your own network, next to the resources Infisical needs to reach. It only makes outbound connections, so no inbound firewall rules are needed.
+    A lightweight service you run inside your own network, next to the resources Infisical needs to reach. It can connect out to a relay, or listen for Infisical to connect to it.
   </Card>
   <Card title="Relays" icon="route" href="/documentation/platform/gateways/relay-deployment/overview">
     The routing layer between Infisical and your gateways. Passes encrypted traffic through without storing or inspecting it. Use the managed relays, or run your own closer to your infrastructure.
@@ -27,7 +27,11 @@ If the target is already reachable and you would rather not run a gateway, you c
 
 ## How it works
 
-In relay mode the gateway uses an SSH reverse tunnel, so connectivity works without changing inbound firewall rules. In [direct listen mode](/documentation/platform/gateways/network-architecture#direct-listen-mode) Infisical connects to the gateway instead, and the steps below don't apply:
+A gateway runs in one of two modes, and they differ in which side opens the connection. See [Choose a connection mode](/documentation/platform/gateways/gateway-deployment#choose-a-connection-mode) for picking between them.
+
+### Relay mode
+
+The gateway uses an SSH reverse tunnel, so connectivity works without changing inbound firewall rules.
 
 ![Architecture Overview](../../../images/platform/gateways/gateway-highlevel-diagram.png)
 
@@ -35,6 +39,14 @@ In relay mode the gateway uses an SSH reverse tunnel, so connectivity works with
 2. **Persistent connection.** The gateway holds that TCP connection open, giving Infisical a channel it can send requests down.
 3. **Request routing.** When Infisical needs one of your resources, the request travels through the relay and into the tunnel that is already established.
 4. **Resource access.** The gateway receives the request and connects to your private resource on Infisical's behalf.
+
+### Direct listen mode
+
+Infisical connects to the gateway, so there's no relay in the path. Available on self-hosted Infisical only.
+
+1. **Registration.** The gateway registers the listen address you set, and Infisical issues it a server certificate for that address.
+2. **Listening.** The gateway accepts inbound connections on that address, from the Infisical host only.
+3. **Resource access.** Infisical connects over mutually authenticated TLS, and the gateway connects to your private resource on its behalf.
 
 ## Health checks
 

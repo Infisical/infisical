@@ -12,24 +12,23 @@ This guide covers everything you need to deploy and configure Infisical Gateways
 
 ## Choose a connection mode
 
-Before you deploy, decide which side opens the connection between Infisical and the Gateway.
+There are two ways to connect a Gateway, and your network usually decides which one you can use:
+
+- **On Infisical Cloud?** Use relay mode. Cloud runs outside your network and has no route into it, so there's no address it could dial.
+- **Self-hosted, and you can open an inbound port on the Gateway host?** Use direct listen. It's the simpler setup, with no relay in the path.
+- **Self-hosted, but the Gateway sits behind NAT or a firewall you can't change?** Use relay mode.
 
 | | Direct listen | Relay |
 |---|---|---|
-| Who connects | Infisical connects to the Gateway | The Gateway connects out to a relay |
-| Firewall | Inbound port open to the Infisical host | Outbound only |
-| Relay required | No | Yes |
-| Needs a stable Gateway address | Yes | No |
-| PAM CLI from outside the network | No | Yes |
+| Firewall change | Inbound port open to the Infisical host | None, outbound only |
+| Relay to run | None | Managed on Cloud (US/EU), otherwise your own |
+| Stable Gateway address | Required | Not needed |
 | Infisical Cloud | Not available | Yes |
+| PAM CLI from outside the network | No | Yes |
 
-**Use direct listen** when Infisical can already reach the Gateway host at a stable address. This is the common case when you self-host Infisical in the same network as your resources, and it means there's no relay to deploy or operate.
+The difference underneath is which side opens the connection, and that's what drives every row above.
 
-**Use relay mode** when the Gateway sits behind NAT or a firewall you can't open, when you're on Infisical Cloud, or when PAM CLI users connect from outside the Gateway's network.
-
-Direct listen isn't a paid feature you can turn on for Cloud. Cloud runs outside your network and has no route into it, leaving no address it could dial. Relay mode exists for exactly that case: the Gateway opens the connection from the inside.
-
-You can also run both at once, which is how you move an existing Gateway from one mode to the other without an outage. Pass `--relay` and `--listen-address` together, and Infisical uses the direct address first and falls back to the relay when it stops answering. See [Running both modes](/documentation/platform/gateways/network-architecture#running-both-modes).
+You can also run both at once, which is how you move an existing Gateway from one mode to the other without an outage. See [Switching modes without an outage](#switching-modes-without-an-outage).
 
 For the ports, certificates, and traffic flow behind each mode, see [Network architecture](/documentation/platform/gateways/network-architecture).
 
@@ -76,14 +75,10 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
 
     If you're in a corporate environment with strict egress filtering, ensure outbound TCP 2222 to relay servers and outbound HTTPS 443 to Infisical API endpoints are allowed.
 
-    **Direct listen mode.** The Gateway accepts inbound connections. One port has to be open to Infisical.
+    **Direct listen mode.** The Gateway accepts inbound connections. On the Gateway host, allow:
 
-    | Protocol | Direction | Source or destination | Port | Purpose |
-    | -------- | --------- | --------------------- | ---- | ------- |
-    | TCP      | Inbound   | Infisical instance host | the port in your listen address | Platform connects to the gateway |
-    | TCP      | Outbound  | Infisical instance host | 443  | API communication and certificate requests |
-
-    Scope the inbound rule to the Infisical instance host rather than opening the port broadly.
+    - **Inbound** on the port in your listen address, from the Infisical instance host only
+    - **Outbound TCP 443** to the Infisical instance host
 
     <Tip>
       For the full connection model, a complete port reference, and firewall details (including self-hosted relays and HTTP forward proxies), see the [Network Architecture](/documentation/platform/gateways/network-architecture) page.
@@ -322,7 +317,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
   </Step>
   <Step title="Verify your gateway deployment">
     After deployment, verify your gateway is working:
-    1. **Check logs** for the "Gateway started successfully" message. In direct listen mode you'll also see "Direct gateway listener started" with the address it's advertising and the port it bound.
+    1. **Check logs** for the "Gateway started successfully" message. In direct listen mode you'll also see "Direct gateway listener started" with the listen address it's advertising and the port it bound.
     2. **Verify registration** in the Infisical UI. Go to **Networking > Gateways** and confirm the gateway shows a **Healthy** status. A gateway running both modes stays healthy while either one works.
     3. **Test connectivity** by creating a resource that uses the gateway to access a private service.
   </Step>
@@ -338,6 +333,22 @@ From the gateway's detail page (select the gateway row in the list):
 - **Options → Delete Gateway** — Permanently removes the gateway.
 
 To migrate a gateway to a different host with zero downtime: select **Generate deploy command** to generate a fresh token, run it on the new host, and the new login will rotate credentials away from the old host.
+
+## Switching modes without an outage
+
+A Gateway can run both modes at once. Pass `--relay` and `--listen-address` together, and Infisical uses the listen address first, falling back to the relay when that address stops answering. Health checks probe each mode separately. The Gateway stays healthy while either one works.
+
+Running both is mainly how you switch an existing Gateway between modes without an outage. A Gateway declares its transports every time it registers, so the move is a flag change and a restart:
+
+| Flags | Mode |
+|---|---|
+| `--relay=my-relay` | Relay only |
+| `--relay=my-relay --listen-address=gateway.internal:8443` | Both |
+| `--listen-address=gateway.internal:8443` | Direct only |
+
+Stop at the middle step and check the Gateway's health. A wrong address costs you nothing there: operations keep completing over the relay, and the Gateway page reports the direct path as unreachable. Drop `--relay` once direct is healthy, or drop `--listen-address` to go back.
+
+Running both permanently only helps clients that can reach the listen address. PAM CLI sessions dial the Gateway from the user's own machine. A user outside the network waits for that attempt to time out before the session falls back to the relay. If most of your CLI users are outside the network, relay mode alone serves them better.
 
 ## Frequently asked questions
 
@@ -370,11 +381,9 @@ Direct listen is also unavailable on Infisical Cloud, which runs outside your ne
 </Accordion>
 
 <Accordion title="Do PAM sessions work in direct listen mode?">
-Only from a machine that can reach the gateway's registered address. The CLI connects to the gateway from the user's own machine rather than through Infisical, so a laptop outside the network can't reach a gateway listening on an internal address. Give those users a VPN into the network, or run a relay on the gateway alongside direct listen.
+Only from a machine that can reach the gateway's listen address. The CLI connects to the gateway from the user's own machine rather than through Infisical, so a laptop outside the network can't reach a gateway listening on an internal address. Give those users a VPN into the network, or run a relay on the gateway alongside direct listen.
 
 Browser-based PAM access works in either mode, because the platform brokers that connection.
-
-Using direct listen also requires a current Infisical CLI. An older CLI can't connect to a gateway that only listens directly, and reports that the gateway needs a newer CLI.
 
 </Accordion>
 
@@ -407,12 +416,12 @@ If the gateway can't connect to the relay:
 The gateway registers and looks healthy only once Infisical can reach it, so start from the Infisical host:
 
 1. Confirm the gateway logged "Direct gateway listener started" and check the port it bound
-2. From the Infisical instance host, test the registered address:
+2. From the Infisical instance host, test the listen address:
   ```bash
   nc -zv gateway.internal 8443
   ```
 3. Check the inbound firewall rule allows the Infisical instance host on that port
-4. Confirm the registered address resolves from the Infisical host, not just from your own machine
+4. Confirm the listen address resolves from the Infisical host, not just from your own machine
 
 If the gateway binds a different local port than the one you advertise, such as behind a load balancer, pass `--bind` to set the local address and keep `--listen-address` as the address Infisical dials.
 </Accordion>
@@ -458,7 +467,7 @@ Yes. Each gateway stores its credentials in a separate config file scoped by nam
 The gateway is designed to handle network interruptions gracefully:
 
 - **Automatic reconnection**: The gateway will automatically attempt to reconnect to relay servers if the SSH connection is lost
-- **Transport fallback**: A gateway running both modes falls back to its relay when its direct address stops answering, and returns to direct connections once it recovers
+- **Transport fallback**: A gateway running both modes falls back to its relay when its listen address stops answering, and returns to direct connections once it recovers
 - **Connection retry logic**: Built-in retry mechanisms handle temporary network outages without manual intervention
 - **Automatic failover**: Gateways configured with automatic relay selection will switch to a different healthy relay if the current one becomes unreachable
 - **Gateway Pools**: If the gateway itself becomes unavailable, a [Gateway Pool](/documentation/platform/gateways/gateway-pools) will automatically route through a healthy member

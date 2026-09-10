@@ -11,15 +11,15 @@ Before diving in, work out whether you need a relay at all, and if you do, wheth
 
 ## Do you need a relay at all?
 
-If you self-host Infisical and it can reach your gateway host at a stable address, you can skip relays entirely. Deploy the gateway in [direct listen mode](/documentation/platform/gateways/gateway-deployment) instead, and Infisical connects to it.
+If you self-host Infisical and it can reach your gateway host at a stable address, you can skip relays entirely. Deploy the gateway in [direct listen mode](/documentation/platform/gateways/gateway-deployment#choose-a-connection-mode) instead, and Infisical connects to it.
 
 A relay is what you need when:
 
 - The gateway sits behind NAT or a firewall you can't open for inbound connections
-- You're on Infisical Cloud, which runs outside your network and has no route into it, so a gateway there can't be dialed and has to open the connection itself
+- You're on Infisical Cloud, which runs outside your network and has no route into it, so a gateway there can't be dialed
 - PAM CLI users connect from outside the gateway's network, since the CLI dials the gateway from their own machine
 
-A gateway can also run both, which is mainly how you switch an existing gateway between modes without an outage. See [Running both modes](/documentation/platform/gateways/network-architecture#running-both-modes).
+A gateway can also run both, which is mainly how you switch an existing gateway between modes without an outage. See [Switching modes without an outage](/documentation/platform/gateways/gateway-deployment#switching-modes-without-an-outage).
 
 ## Do you need to deploy your own relay?
 

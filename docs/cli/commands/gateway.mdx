@@ -22,10 +22,10 @@ The Infisical gateway runs inside your network and lets Infisical reach systems 
 
 There are two ways the gateway and Infisical reach each other:
 
-- **Direct listen.** The gateway listens on an address you register with `--listen-address`, and Infisical connects to it. No relay is needed. Self-hosted Infisical only.
+- **Direct listen.** The gateway listens on the address you set with `--listen-address`, and Infisical connects to it. No relay is needed. Self-hosted Infisical only.
 - **Relay.** The gateway opens an SSH reverse tunnel to a relay server, and Infisical reaches it back through that tunnel. No inbound ports have to be open on the gateway host.
 
-Passing `--listen-address` and `--relay` together runs both, and Infisical uses the direct address first, keeping the relay as a fallback. See [Network architecture](/documentation/platform/gateways/network-architecture) for the ports and traffic flow of each.
+Passing `--listen-address` and `--relay` together runs both, and Infisical uses the listen address first, keeping the relay as a fallback. See [Network architecture](/documentation/platform/gateways/network-architecture) for the ports and traffic flow of each.
 
 ## Subcommands & flags
 
@@ -147,10 +147,6 @@ In direct listen mode it also:
 
     For Infisical Cloud users on instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, start a relay server first. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
 
-    <Note>
-      This flag was previously named `--target-relay-name`, which still works but is deprecated.
-    </Note>
-
   </Accordion>
 
   <Accordion title="--listen-address">
@@ -163,7 +159,7 @@ In direct listen mode it also:
     infisical gateway start my-gateway --listen-address=gateway.internal:8443 --enroll-method=token --token=<token> --domain=<domain>
     ```
 
-    Pass it alongside `--relay` to run both modes, so Infisical uses the direct address first and falls back to the relay. This is how you switch an existing gateway between modes without an outage, and [Running both modes](/documentation/platform/gateways/network-architecture#running-both-modes) covers when to keep both:
+    Pass it alongside `--relay` to run both modes, so Infisical uses the listen address first and falls back to the relay. This is how you switch an existing gateway between modes without an outage, and [Switching modes without an outage](/documentation/platform/gateways/gateway-deployment#switching-modes-without-an-outage) covers when to keep both:
 
     ```bash
     infisical gateway start my-gateway --listen-address=gateway.internal:8443 --relay=my-relay --enroll-method=token --token=<token> --domain=<domain>
@@ -172,7 +168,7 @@ In direct listen mode it also:
     Can also be set with the `INFISICAL_GATEWAY_LISTEN_ADDRESS` environment variable.
 
     <Note>
-      Direct listen is available on self-hosted Infisical. Infisical Cloud runs outside your network and has no route into it, leaving no address it could dial. On Cloud, use `--relay` or omit both flags.
+      Direct listen is only available on self-hosted Infisical.
     </Note>
 
   </Accordion>
@@ -277,14 +273,10 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
 
     For Infisical Cloud users on instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, start a relay server first. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
 
-    <Note>
-      This flag was previously named `--target-relay-name`, which still works but is deprecated.
-    </Note>
-
   </Accordion>
 
   <Accordion title="--listen-address">
-    The `host:port` address that Infisical dials to reach this gateway, which runs it in direct listen mode. The systemd unit captures the flag, so every restart advertises the same address.
+    The `host:port` address that Infisical dials to reach this gateway, which runs it in direct listen mode.
 
     ```bash
     # Example
@@ -368,11 +360,6 @@ The gateway name is provided as a positional argument.
   </Accordion>
   <Accordion title="Which mode do I get if I pass no connection flags?">
       Relay mode, with a relay chosen automatically. Direct listen is opt-in: the gateway only listens for connections when you pass `--listen-address`.
-  </Accordion>
-  <Accordion title="Do PAM sessions work in direct listen mode?">
-      Browser-based sessions work in either mode, because the platform brokers the connection. `infisical pam access` connects from your own machine instead, so it needs to reach the gateway's registered address.
-
-      See [Gateway deployment](/documentation/platform/gateways/gateway-deployment#frequently-asked-questions) for what to give users outside the network.
   </Accordion>
   <Accordion title="When restarting the gateway without a relay flag, does it select a new relay every time?">
       No. The first time the gateway starts, it selects the optimal relay (based on latency) and caches that selection. On subsequent restarts, it will prioritize connecting to the cached relay. If it's unable to connect, it will then re-evaluate and connect to the next most optimal relay available.
