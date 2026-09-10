@@ -93,7 +93,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         .refine((val) => val.userIds.length + val.emails.length > 0, {
           message: "Provide at least one userId or email."
         }),
-      response: { 200: z.object({ memberships: MemberResultSchema.array(), skipped: z.string().array() }) }
+      response: { 200: z.object({ members: MemberResultSchema.array(), skipped: z.string().array() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -117,7 +117,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         )
       );
 
-      return { memberships, skipped };
+      return { members: memberships, skipped };
     }
   });
 

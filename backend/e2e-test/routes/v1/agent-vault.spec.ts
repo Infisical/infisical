@@ -1395,7 +1395,7 @@ describe("Agent Vault V1 Router", async () => {
           groupIds: [first.id, second.id, first.id]
         });
         expect(granted.statusCode).toBe(200);
-        expect(JSON.parse(granted.payload)).toMatchObject({ skippedCount: 0 });
+        expect(JSON.parse(granted.payload)).toMatchObject({ skipped: [] });
         expect(JSON.parse(granted.payload).members).toHaveLength(2);
         expect(await grantRows(bundle.id, { actorGroupId: first.id })).toHaveLength(1);
         expect(await grantRows(bundle.id, { actorGroupId: second.id })).toHaveLength(1);
@@ -1404,7 +1404,9 @@ describe("Agent Vault V1 Router", async () => {
           groupIds: [first.id, second.id]
         });
         expect(again.statusCode).toBe(200);
-        expect(JSON.parse(again.payload)).toMatchObject({ members: [], skippedCount: 2 });
+        const repeat = JSON.parse(again.payload) as { members: unknown[]; skipped: string[] };
+        expect(repeat.members).toEqual([]);
+        expect(repeat.skipped.sort()).toEqual([first.id, second.id].sort());
       } finally {
         await first.cleanup();
         await second.cleanup();
@@ -1734,7 +1736,7 @@ describe("Agent Vault V1 Router", async () => {
         identityIds: [identity.id]
       });
       expect(again.statusCode).toBe(200);
-      expect(JSON.parse(again.payload)).toMatchObject({ members: [], skippedCount: 1 });
+      expect(JSON.parse(again.payload)).toMatchObject({ members: [], skipped: [identity.id] });
 
       expect(await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id)).toBe(
         seatsBefore

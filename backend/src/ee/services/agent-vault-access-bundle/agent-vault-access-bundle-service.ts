@@ -701,18 +701,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           })
         );
 
+        const skipped = actors.filter((actor) => alreadyGranted.has(actorKey(actor))).map((actor) => actor.actorId);
         const toGrant = actors.filter((actor) => !alreadyGranted.has(actorKey(actor)));
-        if (!toGrant.length) return [];
+        if (!toGrant.length) return { created: [] as TMemberships[], skipped };
 
-        return writeGrants(
+        const created = await writeGrants(
           { projectId: rest.projectId, orgId: rest.ctx.actorOrgId, accessBundleId: bundle.id, actors: toGrant },
           tx
         );
+        return { created, skipped };
       });
 
-    let created: TMemberships[] = [];
+    let outcome: { created: TMemberships[]; skipped: string[] };
     try {
-      created = await grant();
+      outcome = await grant();
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw new BadRequestError({ message: "That user, machine identity or group already has this access bundle" });
@@ -721,8 +723,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     return {
-      members: created.map(toMember),
-      skippedCount: actors.length - created.length,
+      members: outcome.created.map(toMember),
+      skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
   };

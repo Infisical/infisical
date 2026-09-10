@@ -124,7 +124,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
       const idsOfKind = (kind: MemberKind) =>
         selected.filter((option) => option.kind === kind).map((option) => option.id);
 
-      const { members: granted, skippedCount } = await addMembers.mutateAsync({
+      const { members: granted, skipped } = await addMembers.mutateAsync({
         accessBundleId,
         userIds: idsOfKind(MemberKind.User),
         identityIds: idsOfKind(MemberKind.Identity),
@@ -139,7 +139,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
             ? `Access bundle granted to "${selected[0].label}"`
             : `Access bundle granted to ${granted.length} members`;
         createNotification({
-          text: skippedCount ? `${grantedText}. ${skippedCount} already had it.` : grantedText,
+          text: skipped.length ? `${grantedText}. ${skipped.length} already had it.` : grantedText,
           type: "success"
         });
       }

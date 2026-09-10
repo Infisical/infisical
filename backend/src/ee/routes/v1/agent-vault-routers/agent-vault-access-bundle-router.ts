@@ -447,13 +447,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           members: AgentVaultCreatedMemberSchema.array(),
-          skippedCount: z.number().describe(AGENT_VAULT.MEMBER.skippedCount)
+          skipped: z.string().uuid().array().describe(AGENT_VAULT.MEMBER.skipped)
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { members, skippedCount, accessBundleName } = await server.services.agentVaultAccessBundle.addMembers({
+      const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.addMembers({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -481,7 +481,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         )
       );
 
-      return { members, skippedCount };
+      return { members, skipped };
     }
   });
 

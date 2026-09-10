@@ -158,7 +158,7 @@ export const useAddAgentVaultAccessBundleMembers = () => {
     mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
       const { data } = await apiRequest.post<{
         members: { id: string }[];
-        skippedCount: number;
+        skipped: string[];
       }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
       return data;
     },
@@ -347,7 +347,7 @@ export const useAddAgentVaultProductUserMembers = () => {
       role: string;
     }) => {
       const { data } = await apiRequest.post<{
-        memberships: { membershipId: string; userId?: string; role: string; createdAt: string }[];
+        members: { membershipId: string; userId?: string; role: string; createdAt: string }[];
         skipped: string[];
       }>("/api/v1/agent-vault/memberships/users", dto);
       return data;

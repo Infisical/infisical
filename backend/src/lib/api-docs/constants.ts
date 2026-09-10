@@ -4196,7 +4196,7 @@ export const AGENT_VAULT = {
     userIds: "The IDs of the users to grant the access bundle to.",
     identityIds: "The IDs of the machine identities to grant the access bundle to.",
     groupIds: "The IDs of the groups to grant the access bundle to.",
-    skippedCount: "How many of the requested grantees already had the access bundle."
+    skipped: "The IDs of the requested grantees who already had the access bundle and were left as they were."
   },
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member."
