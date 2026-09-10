@@ -498,11 +498,16 @@ export const ACCOUNT_TYPE_CONFIGS = {
         tooltip:
           "The account identifier from the Snowflake URL, without the snowflakecomputing.com suffix (e.g. myorg-myaccount)."
       },
-      warehouse: { tooltip: "The warehouse sessions run their queries on. Snowflake charges for its compute." },
+      warehouse: {
+        tooltip: "The warehouse sessions run their queries on. Leave empty to use the user's default warehouse."
+      },
       database: { tooltip: "The database sessions open. The explorer lists the schemas and tables inside it." },
-      schema: { tooltip: "The schema sessions open by default." },
+      schema: {
+        tooltip: "The schema a session starts in. A session can still switch to another schema the role can reach."
+      },
       role: {
-        tooltip: "The role sessions activate. Leave empty to use the user's default role."
+        tooltip:
+          "The role a session starts with. A session can still switch to another role the user holds, so grant the user only the roles its sessions should reach."
       },
       authMethod: {
         label: "Auth Method",

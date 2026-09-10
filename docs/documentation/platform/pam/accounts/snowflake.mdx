@@ -6,12 +6,12 @@ description: "Add and connect to Snowflake accounts."
 
 Snowflake accounts let you manage access to a Snowflake database. Users connect through Web Access or the CLI, and every statement they run is recorded in the [session](/documentation/platform/pam/sessions/overview).
 
-Snowflake has no database wire protocol, so the [gateway](/documentation/platform/gateways/overview) answers the REST API its drivers speak and runs each statement itself. The credential never reaches the client, and because the gateway sits in your own network, an account behind AWS PrivateLink or a network policy is reachable like any other target.
+Every statement runs from the [gateway](/documentation/platform/gateways/overview) in your own network, and the credential never reaches the client. Make sure the gateway can reach your Snowflake account, including over AWS PrivateLink if that's how you expose it.
 
 ## Prerequisites
 
 - A Snowflake user for Infisical to connect as.
-- A warehouse the user's role can use. Snowflake bills for the compute a session's queries consume.
+- A warehouse the user's role can use.
 - A [gateway](/documentation/platform/gateways/overview) that can reach your Snowflake account. Snowflake returns large results from cloud object storage rather than from the account host, so a gateway behind an egress allowlist needs that storage reachable too.
 - A key pair or a programmatic access token for that user. Snowflake blocks single-factor password sign-in for human users, so password authentication only works for a service user whose account policy still permits it.
 
@@ -125,7 +125,7 @@ Command blocking matches the text of each statement, so a statement that builds 
   </Tab>
 </Tabs>
 
-Results are capped at 10,000 rows per statement, and the Data Explorer shows the first 1,000 rows of a result and tells you when there are more.
+Infisical caps results at 10,000 rows per statement so a large query can't exhaust the gateway's memory, and the Data Explorer shows the first 1,000 of those and tells you when there are more. Snowflake itself imposes no such limit; use the CLI with your own client to work with a full result set.
 
 <Note>
   Snowflake doesn't enforce primary keys, but the Data Explorer still needs one declared on a table before it can edit that table's rows. A table without one is read-only in the grid, and editable from the SQL editor.
