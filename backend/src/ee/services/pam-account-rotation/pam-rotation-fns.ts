@@ -59,6 +59,8 @@ export const withGatewayRetry = async (
           err instanceof Error ? err.message : String(err)
         }]`
       );
+      // Each retry of a rejected credential is another failed logon counting toward lockout.
+      if ((err as { gatewayFailureKind?: string }).gatewayFailureKind === "auth") throw err;
       // eslint-disable-next-line no-await-in-loop
       if (attempt < maxAttempts) await sleep(baseDelayMs * attempt);
     }

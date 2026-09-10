@@ -4,9 +4,9 @@ sidebarTitle: "Windows KSP"
 description: "Sign Windows executables, DLLs, and MSIs with Microsoft signtool, using a signing key kept in Infisical."
 ---
 
-Code signing adds a tamper-proof seal to your software, so Windows and your users can trust that it really came from you and has not been changed.
+Code signing adds a tamper-proof seal to your software, so Windows and your users can trust that it really came from you and hasn't been changed.
 
-The Infisical **Windows KSP** lets Microsoft's standard signing tool, `signtool`, add that seal to your `.exe`, `.dll`, and `.msi` files, using a signing key that stays locked inside Infisical. It is a small plug-in for Windows' built-in cryptography system, called [Cryptography API: Next Generation (CNG)](https://learn.microsoft.com/en-us/windows/win32/seccng/cng-portal). "KSP" is short for **Key Storage Provider**, which is just Windows' name for a plug-in that supplies signing keys.
+The Infisical **Windows KSP** lets Microsoft's standard signing tool, `signtool`, add that seal to your `.exe`, `.dll`, and `.msi` files, using a signing key that stays locked inside Infisical. It's a small plug-in for Windows' built-in cryptography system, called [Cryptography API: Next Generation (CNG)](https://learn.microsoft.com/en-us/windows/win32/seccng/cng-portal). "KSP" is short for **Key Storage Provider**, which is just Windows' name for a plug-in that supplies signing keys.
 
 Here is what happens when you sign a file: `signtool` hands the plug-in a short fingerprint of the file, the plug-in sends that fingerprint to Infisical, Infisical signs it and sends the signature back, and `signtool` attaches the signature to your file. Your private signing key never leaves Infisical.
 
@@ -16,8 +16,8 @@ This is the Windows version of the [PKCS#11 module](/documentation/platform/pki/
 
 You authenticate as a member of the Signer, using either a **Machine Identity** or your own Infisical **access token**. To use a Machine Identity, set it up once in Infisical:
 
-1. **Create a Machine Identity** and enable **[Universal Auth](/documentation/platform/identities/universal-auth)** on it, then copy its **Client ID** and **Client Secret**. The provider uses these to authenticate, and you will set them in [Configuration](#configuration) below.
-2. **Add the identity to the Signer** with the Administrator or Operator role, from the Signer's **Members** tab. Auditors cannot sign.
+1. **Create a Machine Identity** and enable **[Universal Auth](/documentation/platform/identities/universal-auth)** on it, then copy its **Client ID** and **Client Secret**. The provider uses these to authenticate, and you'll set them in [Configuration](#configuration) below.
+2. **Add the identity to the Signer** with the Administrator or Operator role, from the Signer's **Members** tab. Auditors can't sign.
 3. If the Signer has an [approval policy](/documentation/platform/pki/code-signing/approvals), get [active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
 
 <Note>
@@ -25,17 +25,17 @@ You authenticate as a member of the Signer, using either a **Machine Identity** 
 </Note>
 
 <Info>
-  The [Signer](/documentation/platform/pki/code-signing/signers) itself is created by a Product Admin. If you do not have one yet, create it first.
+  The [Signer](/documentation/platform/pki/code-signing/signers) itself is created by a Product Admin. If you don't have one yet, create it first.
 </Info>
 
 ## Requirements
 
-- A 64-bit Windows computer (Windows 10/11 or Windows Server 2016 and later) where you are an **Administrator**. Setting up the plug-in changes a system-wide Windows setting, which needs admin rights.
+- A 64-bit Windows computer (Windows 10/11 or Windows Server 2016 and later) where you're an **Administrator**. Setting up the plug-in changes a system-wide Windows setting, which needs admin rights.
 - **`signtool`**, Microsoft's signing tool, which comes with the [Windows SDK](https://developer.microsoft.com/windows/downloads/windows-sdk/). Most setups use the 64-bit `signtool`; there is also a 32-bit build, with a matching plug-in. The two plug-in files are `infisical-ksp.dll` (64-bit) and `infisical-ksp-x86.dll` (32-bit). Use the one that matches the `signtool` you run.
 
 ## Installation
 
-Download the plug-in file from the [releases page](https://github.com/Infisical/infisical-ksp/releases) into the folder you are working in. Most people use the 64-bit `signtool`, so get `infisical-ksp.dll`:
+Download the plug-in file from the [releases page](https://github.com/Infisical/infisical-ksp/releases) into the folder you're working in. Most people use the 64-bit `signtool`, so get `infisical-ksp.dll`:
 
 ```powershell
 Invoke-WebRequest `
@@ -66,7 +66,7 @@ if ($cur -notcontains $prov) { Set-ItemProperty -Path $iface -Name Providers -Va
 ```
 
 <Note>
-  **Using the 32-bit `signtool`?** It loads plug-ins from `SysWOW64` instead of `System32`, so also place the 32-bit file there under the same name. The registry entries above are shared by both, so you do not repeat them: `Copy-Item .\infisical-ksp-x86.dll "$env:windir\SysWOW64\infisical-ksp.dll" -Force`.
+  **Using the 32-bit `signtool`?** It loads plug-ins from `SysWOW64` instead of `System32`, so also place the 32-bit file there under the same name. The registry entries above are shared by both, so you don't repeat them: `Copy-Item .\infisical-ksp-x86.dll "$env:windir\SysWOW64\infisical-ksp.dll" -Force`.
 </Note>
 
 <Warning>
@@ -93,7 +93,7 @@ If you prefer a config file, create one at `%ProgramData%\Infisical\config.json`
 ```
 
 <Note>
-  You can also put these credentials inside the config file (`auth.client_id` and `auth.client_secret`), but environment variables are safer, because the secret will not get saved into your code or log files. Whatever runs `signtool` must have these variables set: for a build pipeline that is the build job, and for hands-on use it is the same PowerShell window.
+  You can also put these credentials inside the config file (`auth.client_id` and `auth.client_secret`), but environment variables are safer, because the secret won't get saved into your code or log files. Whatever runs `signtool` must have these variables set: for a build pipeline that is the build job, and for hands-on use it's the same PowerShell window.
 </Note>
 
 #### Sign with an access token instead
@@ -106,7 +106,7 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 ```
 
 <Warning>
-  JWT tokens expire, so this access is **temporary**. The plug-in does not refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off, but for unattended or CI/CD signing use a machine identity with Universal Auth (client ID and secret), which the plug-in re-authenticates automatically.
+  JWT tokens expire, so this access is **temporary**. The plug-in doesn't refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off, but for unattended or CI/CD signing use a machine identity with Universal Auth (client ID and secret), which the plug-in re-authenticates automatically.
 </Warning>
 
 ### Configuration reference
@@ -123,10 +123,10 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 | `cache.token_ttl_seconds` | No | `300` | How long to reuse a login token before logging in again. |
 | `cache.cert_ttl_seconds` | No | `3600` | How long to reuse a downloaded certificate. |
 | `cache.signer_ttl_seconds` | No | `300` | How long to reuse the list of Signers. |
-| `approval.signing_duration` | No | None | Ask for an access window of this length when signing is denied for want of approved access (`30m`, `8h`, `2d`). The provider accepts 1m to 30d as a sanity check; the real limit is the Signer's approval policy. The window starts when the request is approved, so time spent waiting for an approver does not eat into it. |
+| `approval.signing_duration` | No | None | Ask for an access window of this length when signing is denied for want of approved access (`30m`, `8h`, `2d`). The provider accepts 1m to 30d as a sanity check; the real limit is the Signer's approval policy. The window starts when the request is approved, so time spent waiting for an approver doesn't eat into it. |
 | `approval.signing_count` | No | None | Ask for access good for this many signing operations. |
 | `approval.exclude_scope_fields` | No | None | Signing parameters to leave out of the requests the provider opens, so one approval covers any value of them. Any of `command`, `signing_application`, `signing_application_hash`, `hostname`, `os_username`, `ip_address`, `data_hash`. An unknown name is rejected at startup. |
-| `approval.ip_address` | No | None | Pin the requests the provider opens to this address instead of the one Infisical sees them arrive from, which is what it uses when this is unset. It does not have to be this machine's, so you can name a build agent's egress address. |
+| `approval.ip_address` | No | None | Pin the requests the provider opens to this address instead of the one Infisical sees them arrive from, which is what it uses when this is unset. It doesn't have to be this machine's, so you can name a build agent's egress address. |
 | `log_level` | No | `info` | How much detail to log: `trace`, `debug`, `info`, `warn`, or `error`. |
 | `log_file` | No | `%ProgramData%\Infisical\ksp.log` | Where to write the log. `signtool` has no window to print to, so the plug-in writes here by default. |
 
@@ -146,7 +146,7 @@ $env:INFISICAL_TOKEN = "<your-access-token>"
 
 ## Sign with signtool
 
-First, put the Signer's certificate on the computer. A certificate is the public half of your signing identity, so it is safe to share. In Infisical, open the Signer and use **Export certificate** to download it, or paste it in:
+First, put the Signer's certificate on the computer. A certificate is the public half of your signing identity, so it's safe to share. In Infisical, open the Signer and use **Export certificate** to download it, or paste it in:
 
 ```powershell
 $certPem = @"
@@ -179,7 +179,7 @@ signtool verify /pa /v MyApp.exe
 ```
 
 <Note>
-  If your certificate comes from your own private CA (instead of one Windows already trusts), `signtool verify` shows the warning `A certificate chain could not be built to a trusted root authority` (`0x800B010A`). The signature is still valid; Windows just does not recognize who issued the certificate. To clear the warning, add your CA to the computer's Trusted Root store.
+  If your certificate comes from your own private CA (instead of one Windows already trusts), `signtool verify` shows the warning `A certificate chain could not be built to a trusted root authority` (`0x800B010A`). The signature is still valid; Windows just doesn't recognize who issued the certificate. To clear the warning, add your CA to the computer's Trusted Root store.
 </Note>
 
 ## Automatic signing access requests
@@ -204,13 +204,13 @@ Set one or both, depending on what the Signer's policy expects. Both are capped 
 The request is [scoped](/documentation/platform/pki/code-signing/approvals#scoping-an-approval) to what the provider saw: the command, the host process, the machine, the Windows account, and the artifact. Approvers review the real signing situation, and the approval only covers that situation.
 
 <Warning>
-  Values following credential flags (`/p`, `-storepass`, `-keypass`, `-pass`, `--password`, and MSBuild's `/p:Password=`) are redacted before the command line leaves the machine, because it is stored on the approval record where approvers and auditors can read it. Everything else in the command line is sent as-is, so review your commands if they carry other sensitive arguments.
+  Values following credential flags (`/p`, `-storepass`, `-keypass`, `-pass`, `--password`, and MSBuild's `/p:Password=`) are redacted before the command line leaves the machine, because it's stored on the approval record where approvers and auditors can read it. Everything else in the command line is sent as-is, so review your commands if they carry other sensitive arguments.
 </Warning>
 
 <Note>
   The first signing attempt **still fails**, because an approver has to act on the request. Once approved, run the same command again and it succeeds.
 
-  The approval covers that exact command and artifact, so a different artifact, a changed argument, or reordered flags needs a new request. A request's parameters are fixed once it is open, so when they are wrong the request is rejected and reopened rather than edited. To have one approval cover a batch, leave the parameters that vary out of the request from the start.
+  The approval covers that exact command and artifact, so a different artifact, a changed argument, or reordered flags needs a new request. A request's parameters are fixed once it's open, so when they're wrong the request is rejected and reopened rather than edited. To have one approval cover a batch, leave the parameters that vary out of the request from the start.
 </Note>
 
 ### Leaving parameters out of a request
@@ -239,7 +239,7 @@ An excluded parameter is still recorded on the signing operation, so the command
 
 ### Scoping by address
 
-The address is the one parameter the provider cannot observe, because what counts is the address Infisical receives the sign call from, after any NAT or proxy in between. Infisical fills it in from the request itself, the same value it records in the audit log, so requests are scoped by address without any configuration.
+The address is the one parameter the provider can't observe, because what counts is the address Infisical receives the sign call from, after any NAT or proxy in between. Infisical fills it in from the request itself, the same value it records in the audit log, so requests are scoped by address without any configuration.
 
 Two settings change that:
 
@@ -273,13 +273,13 @@ The plug-in writes a log to `%ProgramData%\Infisical\ksp.log`. `signtool` itself
 
 <AccordionGroup>
   <Accordion title="signtool fails immediately and the log you configured is empty">
-    The config file could not be read, so the log path named inside it is unknown too. The reason is written to the default log at `%ProgramData%\Infisical\ksp.log` instead, and it names the setting at fault: an `exclude_scope_fields` entry that is not a signing parameter, an `ip_address` that is not an address, or invalid JSON. A UTF-8 byte order mark counts as invalid JSON, so write the file with `[IO.File]::WriteAllText` rather than `Set-Content -Encoding utf8`.
+    The config file couldn't be read, so the log path named inside it is unknown too. The reason is written to the default log at `%ProgramData%\Infisical\ksp.log` instead, and it names the setting at fault: an `exclude_scope_fields` entry that isn't a signing parameter, an `ip_address` that isn't an address, or invalid JSON. A UTF-8 byte order mark counts as invalid JSON, so write the file with `[IO.File]::WriteAllText` rather than `Set-Content -Encoding utf8`.
   </Accordion>
   <Accordion title="signtool says 'Invalid provider specified' right after setup">
-    Windows has not picked up the new plug-in yet. **Restart the computer once** and try again.
+    Windows hasn't picked up the new plug-in yet. **Restart the computer once** and try again.
   </Accordion>
   <Accordion title="Access denied (HTTP 403 in the log)">
-    Your identity is not allowed to sign yet. Either it needs approved access to sign, or it must be a member of the Signer with the Administrator or Operator role (Auditors cannot sign). Fix the access (see [Approvals](/documentation/platform/pki/code-signing/approvals)), then run the same command again.
+    Your identity isn't allowed to sign yet. Either it needs approved access to sign, or it must be a member of the Signer with the Administrator or Operator role (Auditors can't sign). Fix the access (see [Approvals](/documentation/platform/pki/code-signing/approvals)), then run the same command again.
   </Accordion>
   <Accordion title="HTTP 401 in the log">
     The login is missing or wrong. Set `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`, and check that the identity is a member of the Signer.
@@ -287,8 +287,8 @@ The plug-in writes a log to `%ProgramData%\Infisical\ksp.log`. `signtool` itself
   <Accordion title="Cannot reach Infisical / connection refused">
     A network or TLS problem. Check that `server_url` is correct and that the computer can reach it. For self-hosted Infisical with a private CA, set `tls.ca_cert_path` to the CA file.
   </Accordion>
-  <Accordion title="'signtool' is not recognized">
-    `signtool` is not installed or is not on your `PATH`. Install the Windows SDK, or open a Developer Command Prompt, so Windows can find `signtool`.
+  <Accordion title="'signtool' isn't recognized">
+    `signtool` isn't installed or isn't on your `PATH`. Install the Windows SDK, or open a Developer Command Prompt, so Windows can find `signtool`.
   </Accordion>
 </AccordionGroup>
 

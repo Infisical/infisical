@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  hasOneShotOverviewSearchState,
   hasOverviewScopeChanged,
   hasSensitiveOverviewSearchState,
   normalizeOverviewEnvironments,
   parseOverviewTags,
   resolveOverviewEnvironmentSlugs,
+  resolveOverviewSearchFilter,
   serializeOverviewResourceFilter,
+  stripOneShotOverviewSearchState,
   stripSensitiveOverviewSearchState,
   updateOverviewSecretPath
 } from "./overviewSearchState";
@@ -53,6 +56,27 @@ describe("Secrets overview query state", () => {
       hasSensitiveOverviewSearchState({ secretPath: "/apps", environments: ["prod"] }),
       false
     );
+  });
+
+  it("consumes explicit search clearing without erasing a previously consumed search", () => {
+    assert.equal(resolveOverviewSearchFilter("DATABASE_URL", { clearSearch: true }), "");
+    assert.equal(resolveOverviewSearchFilter("DATABASE_URL", { search: "API_KEY" }), "API_KEY");
+    assert.equal(resolveOverviewSearchFilter("API_KEY", { search: "" }), "API_KEY");
+
+    const current = {
+      secretPath: "/apps",
+      environments: ["prod"],
+      clearSearch: true,
+      unrelated: "preserved"
+    };
+
+    assert.equal(hasOneShotOverviewSearchState(current), true);
+    assert.deepEqual(stripOneShotOverviewSearchState(current), {
+      ...current,
+      clearSearch: undefined,
+      search: undefined,
+      tags: undefined
+    });
   });
 
   it("normalizes direct environment links to accessible project slugs", () => {

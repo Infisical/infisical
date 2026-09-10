@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -19,6 +18,7 @@ import {
   TrashIcon,
   UnlockIcon
 } from "lucide-react";
+import { motion } from "motion/react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";

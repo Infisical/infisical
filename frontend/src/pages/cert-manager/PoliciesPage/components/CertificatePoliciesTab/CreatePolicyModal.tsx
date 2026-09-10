@@ -37,7 +37,6 @@ import {
   Stepper,
   StepperList,
   StepperStep,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -45,7 +44,8 @@ import {
   TableHeader,
   TableHeadLabel,
   TableRow,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import {
@@ -449,7 +449,7 @@ const SectionToggle = ({
         <p className="text-sm font-medium text-foreground">{title}</p>
         <p className="mt-0.5 text-xs text-muted">{description}</p>
       </div>
-      <Switch checked={enabled} onCheckedChange={onChange} variant="project" />
+      <Toggle checked={enabled} onCheckedChange={onChange} variant="project" />
     </div>
     {enabled && children && <div className="mt-4">{children}</div>}
     {error && <p className="mt-2 text-xs text-danger">{error}</p>}

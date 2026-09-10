@@ -17,7 +17,7 @@ Infisical supports connecting to Azure DNS using a Service Principal with Client
 
   <Steps>
     <Step title="Navigate to your DNS Zone">
-      In the Azure Portal, navigate to your DNS Zone that you want to use for ACME DNS validation. Click on **Access control (IAM)** in the left sidebar, then click **Add** > **Add role assignment**.
+      In the Azure Portal, navigate to your DNS Zone that you want to use for ACME DNS validation. Select **Access control (IAM)** in the left sidebar, then select **Add** > **Add role assignment**.
 
       ![Navigate to DNS Zone](/images/app-connections/azure-dns/azure-dns-zone.png)
     </Step>
@@ -72,7 +72,7 @@ Infisical can automatically rotate the Client Secret of your Azure application o
 
 <Steps>
     <Step title="Locate the Key ID of your Client Secret">
-        Before enabling rotation, you'll need the **Key ID** of the Client Secret you are using to authenticate. Navigate to your App Registration in the Azure Portal, then go to **Certificates & secrets**. Copy the **Secret ID** (Key ID) of the secret you are providing to Infisical.
+        Before enabling rotation, you'll need the **Key ID** of the Client Secret you're using to authenticate. Navigate to your App Registration in the Azure Portal, then go to **Certificates & secrets**. Copy the **Secret ID** (Key ID) of the secret you're providing to Infisical.
 
         ![Azure Client Secret Key ID](/images/app-connections/azure-dns/credential-rotation-key-id.png)
     </Step>

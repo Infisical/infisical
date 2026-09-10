@@ -10,7 +10,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -39,7 +39,7 @@ export const SpaceliftSyncOptionsFields = () => {
                   the web GUI or through the API.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="spacelift-write-only"
                 variant="project"
                 checked={value}
@@ -56,8 +56,8 @@ export const SpaceliftSyncOptionsFields = () => {
           <AlertTitle>Secret values cannot be read back</AlertTitle>
           <AlertDescription>
             Existing secret values in the Spacelift context cannot be read by Infisical. Any secret
-            values not present in Infisical will be deleted during sync. Enable secret deletion
-            protection to prevent this.
+            values not present in Infisical will be deleted during sync. Turn on &quot;Prevent
+            secret deletion&quot; above to keep them.
           </AlertDescription>
         </Alert>
       )}

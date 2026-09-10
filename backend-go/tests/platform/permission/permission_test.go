@@ -525,6 +525,7 @@ func TestGroupViewer_UserInheritsReadOnly(t *testing.T) {
 
 func TestIdentityAdditionalPrivilege_ExtendsRole(t *testing.T) {
 	nodejs := stack.NodeJS()
+	stack.EnableLegacyAdditionalPrivileges(t, proj.ID)
 
 	identity := nodejs.CreateIdentity(t, "addl-priv-identity")
 	nodejs.AddIdentityToProject(t, proj.ID, identity.ID, infra.Role("viewer"))

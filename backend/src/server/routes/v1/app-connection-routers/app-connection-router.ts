@@ -86,6 +86,10 @@ import {
   DatadogConnectionListItemSchema,
   SanitizedDatadogConnectionSchema
 } from "@app/services/app-connection/datadog";
+import {
+  DaytonaConnectionListItemSchema,
+  SanitizedDaytonaConnectionSchema
+} from "@app/services/app-connection/daytona";
 import { DbtConnectionListItemSchema, SanitizedDbtConnectionSchema } from "@app/services/app-connection/dbt";
 import { DevinConnectionListItemSchema, SanitizedDevinConnectionSchema } from "@app/services/app-connection/devin";
 import {
@@ -345,7 +349,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
   ...SanitizedNutanixPrismCentralConnectionSchema.options,
-  ...SanitizedSpaceliftConnectionSchema.options
+  ...SanitizedSpaceliftConnectionSchema.options,
+  ...SanitizedDaytonaConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -431,7 +436,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
   NutanixPrismCentralConnectionListItemSchema,
-  SpaceliftConnectionListItemSchema
+  SpaceliftConnectionListItemSchema,
+  DaytonaConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

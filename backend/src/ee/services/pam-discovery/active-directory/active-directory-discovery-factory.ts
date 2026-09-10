@@ -6,6 +6,7 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
+import { buildDomainBaseDN, getLdapAttribute, getLdapAttributeBuffer, searchLdap } from "@app/lib/ldap/ldap-search-fns";
 import { logger } from "@app/lib/logger";
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
@@ -26,16 +27,9 @@ const LDAP_PAGE_SIZE = 500;
 const TRAILING_HYPHENS_REGEX = new RE2(/-+$/);
 
 type TGatewayDep = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-type TLdapAttribute = { type: string; values: string[]; buffers: Buffer[] };
 type TLdapComputer = { cn: string; dNSHostName: string; objectGUID: string; resolvedIp?: string };
 type TLdapUser = { sAMAccountName: string; objectGUID: string };
 type TWinRmLocalUser = { Name: string };
-
-const buildDomainDN = (domainFqdn: string) =>
-  domainFqdn
-    .split(".")
-    .map((part) => `DC=${part}`)
-    .join(",");
 
 const parseObjectGUID = (buf: Buffer | undefined): string => {
   if (buf && buf.length === 16) {
@@ -50,35 +44,6 @@ const parseObjectGUID = (buf: Buffer | undefined): string => {
   }
   return "";
 };
-
-const getAttr = (entry: ldapjs.SearchEntry, name: string): string =>
-  (entry as unknown as { attributes: TLdapAttribute[] }).attributes?.find(
-    (a) => a.type.toLowerCase() === name.toLowerCase()
-  )?.values?.[0] ?? "";
-
-const getAttrBuffer = (entry: ldapjs.SearchEntry, name: string): Buffer | undefined =>
-  (entry as unknown as { attributes: TLdapAttribute[] }).attributes?.find(
-    (a) => a.type.toLowerCase() === name.toLowerCase()
-  )?.buffers?.[0];
-
-const ldapSearch = (client: ldapjs.Client, baseDN: string, filter: string, attributes: string[]) =>
-  new Promise<ldapjs.SearchEntry[]>((resolve, reject) => {
-    const results: ldapjs.SearchEntry[] = [];
-    client.search(
-      baseDN,
-      { filter, scope: "sub", attributes, paged: { pageSize: LDAP_PAGE_SIZE }, timeLimit: LDAP_TIMEOUT / 1000 },
-      (err, res) => {
-        if (err) return reject(err);
-        res.on("searchEntry", (entry) => results.push(entry));
-        res.on("error", reject);
-        res.on("end", (result) =>
-          result?.status !== 0
-            ? reject(new Error(`LDAP search failed with status ${result?.status}`))
-            : resolve(results)
-        );
-      }
-    );
-  });
 
 type TAdConnection = {
   domain: string;
@@ -318,7 +283,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
 
   const scan = async (signal: AbortSignal): Promise<TDiscoveryScanResult> => {
     const domain = connectionDetails.domain.toLowerCase();
-    const baseDN = buildDomainDN(connectionDetails.domain);
+    const baseDN = buildDomainBaseDN(connectionDetails.domain);
     const machineErrors: TDiscoveryMachineError[] = [];
     const dependencies: TDiscoveredDependency[] = [];
     const scannedDependencyMachines: string[] = [];
@@ -331,29 +296,34 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
       computers: TLdapComputer[];
       netbiosName: string | null;
     }>(conn, credentials, gatewayId, gatewayV2Service, async (client) => {
-      const userEntries = await ldapSearch(client, baseDN, "(&(objectClass=user)(objectCategory=person))", [
-        "sAMAccountName",
-        "objectGUID"
-      ]);
+      const userEntries = await searchLdap(client, {
+        baseDN,
+        filter: "(&(objectClass=user)(objectCategory=person))",
+        attributes: ["sAMAccountName", "objectGUID"],
+        pageSize: LDAP_PAGE_SIZE,
+        timeLimitSeconds: LDAP_TIMEOUT / 1000
+      });
       const parsedUsers = userEntries
         .map((entry) => ({
-          sAMAccountName: getAttr(entry, "sAMAccountName"),
-          objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
+          sAMAccountName: getLdapAttribute(entry, "sAMAccountName"),
+          objectGUID: parseObjectGUID(getLdapAttributeBuffer(entry, "objectGUID"))
         }))
         .filter((u) => u.sAMAccountName && u.objectGUID);
 
       if (!enumerateComputers) return { users: parsedUsers, computers: [] as TLdapComputer[], netbiosName: null };
 
-      const computerEntries = await ldapSearch(client, baseDN, "(&(objectClass=computer)(operatingSystem=*Server*))", [
-        "cn",
-        "dNSHostName",
-        "objectGUID"
-      ]);
+      const computerEntries = await searchLdap(client, {
+        baseDN,
+        filter: "(&(objectClass=computer)(operatingSystem=*Server*))",
+        attributes: ["cn", "dNSHostName", "objectGUID"],
+        pageSize: LDAP_PAGE_SIZE,
+        timeLimitSeconds: LDAP_TIMEOUT / 1000
+      });
       const parsedComputers = computerEntries
         .map((entry) => ({
-          cn: getAttr(entry, "cn"),
-          dNSHostName: getAttr(entry, "dNSHostName"),
-          objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
+          cn: getLdapAttribute(entry, "cn"),
+          dNSHostName: getLdapAttribute(entry, "dNSHostName"),
+          objectGUID: parseObjectGUID(getLdapAttributeBuffer(entry, "objectGUID"))
         }))
         .filter((c) => (c.dNSHostName || c.cn) && c.objectGUID);
 
@@ -361,13 +331,14 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
       // the Partitions container so a NETBIOS\user run-as isn't wrongly rejected and its dependencies dropped.
       let resolvedNetbios: string | null = null;
       try {
-        const partitions = await ldapSearch(
-          client,
-          `CN=Partitions,CN=Configuration,${baseDN}`,
-          `(&(objectClass=crossRef)(nETBIOSName=*)(nCName=${baseDN}))`,
-          ["nETBIOSName"]
-        );
-        resolvedNetbios = partitions.length ? getAttr(partitions[0], "nETBIOSName") || null : null;
+        const partitions = await searchLdap(client, {
+          baseDN: `CN=Partitions,CN=Configuration,${baseDN}`,
+          filter: `(&(objectClass=crossRef)(nETBIOSName=*)(nCName=${baseDN}))`,
+          attributes: ["nETBIOSName"],
+          pageSize: LDAP_PAGE_SIZE,
+          timeLimitSeconds: LDAP_TIMEOUT / 1000
+        });
+        resolvedNetbios = partitions.length ? getLdapAttribute(partitions[0], "nETBIOSName") || null : null;
       } catch (err) {
         logger.warn(err, `PAM AD discovery could not read the NetBIOS name; using the DNS label [domain=${domain}]`);
       }

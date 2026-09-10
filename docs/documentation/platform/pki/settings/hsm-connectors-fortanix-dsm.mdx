@@ -31,18 +31,18 @@ flowchart LR
     Driver -- "connects and authenticates" --> DSM
 ```
 
-Two pieces of configuration are involved, and they are separate:
+Two pieces of configuration are involved, and they're separate:
 
 - **The driver's config file (`pkcs11.conf`) on the Gateway host** tells the Fortanix driver which DSM endpoint to connect to. This is the standard Fortanix client configuration that any PKCS#11 application uses.
 - **The Connector's PIN in Infisical** is your Fortanix API key. The Gateway passes it to DSM as the PKCS#11 login credential.
 
-Your API key is a credential, so it goes only in Infisical as the PIN. It does not belong in `pkcs11.conf`.
+Your API key is a credential, so it goes only in Infisical as the PIN. It doesn't belong in `pkcs11.conf`.
 
 ## Set up the connection
 
 <Steps>
   <Step title="Get your Fortanix application API key">
-    In the Fortanix DSM dashboard, go to **Apps**, open the application you use for PKCS#11 access, and find the **API Key** section. Click **View API Key Details** to copy the key, or **Regenerate** to create a new one.
+    In the Fortanix DSM dashboard, go to **Apps**, open the application you use for PKCS#11 access, and find the **API Key** section. Select **View API Key Details** to copy the key, or **Regenerate** to create a new one.
 
     The application can only use keys in the groups it belongs to (shown in the **Groups** section of the app), so make sure the keys you want Infisical to use live in a group this app can access.
 
@@ -96,7 +96,7 @@ Your API key is a credential, so it goes only in Infisical as the PIN. It does n
   </Step>
 
   <Step title="Create the HSM Connector in Infisical">
-    In **Certificate Manager > Settings > HSM Connectors**, click **Add HSM Connector** and fill in:
+    In **Certificate Manager > Settings > HSM Connectors**, select **Add HSM Connector** and fill in:
 
     | Field | Value |
     |-------|-------|

@@ -11,6 +11,7 @@ Expect it to grow as we find more worth checking.
 - [Paginate external API calls](#paginate-external-api-calls)
 - [Do not create deadlock conditions](#do-not-create-deadlock-conditions)
 - [Intuitive API interfaces](#intuitive-api-interfaces)
+- [License checks](#license-checks)
 
 ---
 
@@ -259,3 +260,82 @@ alternative, and let the author confirm the deviation is intentional. An intenti
 deviation is fine and should be noted in a comment on the route so the next person does
 not read it as an accident. An unintentional one is much cheaper to catch now than after
 customers are calling it.
+
+---
+
+## License Checks
+
+A license check answers exactly one question: **is this org entitled to use this feature
+right now?** It must never be allowed to answer a second one, which is whether the data the
+org already has still means what it meant yesterday.
+
+Plans move. A customer gets a feature, builds on it, and later downgrades. So:
+
+**Check the license when someone creates, enables, or edits something that uses the feature.
+Do not check it when reading, resolving, evaluating, listing, or deleting.** Losing an
+entitlement makes a feature read-only. It does not delete, hide, or reinterpret what the
+customer built while they had it.
+
+### The failure this prevents
+
+#### Example 1
+
+An org had cross-project secret sharing and used it to structure real projects, with folders
+pulling secrets in from another project. Then they downgraded. `expandSecretReferences` was
+consulting `plan.crossProjectSecretSharing` on the read path
+(`checkCrossProjectAllowed` in `src/services/secret-v2-bridge/secret-reference-fns.ts`), so
+every cross-project reference stopped resolving and their applications started reading empty
+values from a `GET` they had not changed. Nobody wrote anything. Nothing was deleted. Their
+secrets simply stopped being their secrets.
+
+That shape is not specific to secrets management. Any license check on a read path gives a
+customer a different answer to the same request depending on their billing state, and the
+customer finds out at runtime, in production, on a request they did not make.
+
+#### Example 2
+
+Custom project roles are a paid feature, and they show what the correct outcome looks like.
+An org on a paid plan creates custom roles and assigns them to users. Later they downgrade to
+a free plan. Those roles keep working: the rows stay, the assignments stay, and every user
+holding one keeps exactly the access that role grants. `permission-service` never reads the
+plan while it builds a CASL ability, so a downgrade cannot quietly narrow someone's access or
+hand them a different set of permissions than they had the day before.
+
+What the downgrade takes away is the ability to change the set. Creating a new custom role
+and editing an existing one both fail with a message naming the plan, and the UI opens the
+upgrade modal on those same two actions. `role-service.ts` is the model to copy: `createRole`
+and `updateRole` check `plan.rbac`, while `listRoles`, `getRoleBySlug`, and `deleteRole`
+check nothing.
+
+One rule produces both outcomes. Entitlement decides what a customer can build. It never
+decides what an already-built thing does.
+
+### What that means in practice
+
+- **The plan must never change a response.** Not its shape, not its contents, not whether a
+  reference resolves. Same request and same data means the same answer, whatever the license
+  says.
+- **Gate the write that introduces the dependency**, at the moment the customer asks for the
+  feature: creating a cross-project grant, creating a secret import from another project,
+  creating or updating a custom role, turning a configuration on.
+- **Never gate a delete or a revoke.** A downgraded customer has to be able to remove the
+  thing they can no longer create. `deleteGrant` in
+  `src/services/project-folder-grant/project-folder-grant-service.ts` refuses without the
+  entitlement, so the grant stays in place with no way to take it back.
+- **Never gate a list, a read, or a usage lookup of the feature's own records.**
+  `listGrantsByProject` in that same file returns `[]` once the entitlement is gone, so an
+  admin cannot see, audit, or clean up grants that are still live and still resolving.
+  Hiding a record does not disable it, it only removes the operator's way to deal with it.
+- **Existing objects keep working, and keep being enforced.** Whatever a customer built while
+  entitled stays in effect after the downgrade, exactly as it was. Only creating and editing
+  it is blocked (Example 2).
+- **Quantitative limits are write-path checks too.** Enforce a seat, project, or retention
+  cap where the count grows. Never enforce one by hiding or dropping rows that already exist.
+- **Audit every call site of an entitlement helper, not just the helper.** A predicate such
+  as `isCrossProjectEnabled` is fine to share; one caller of it on a read path is the bug.
+- **Do not hide the feature in the UI either.** Leave the entry point where it is, and when
+  an unentitled user tries to use it, open `UpgradePlanModal`
+  (`frontend/src/components/license/UpgradePlanModal`) so they learn what the feature is and
+  how to get it. A hidden feature teaches a customer nothing and looks like it does not
+  exist. The modal is the frontend half of the same rule the backend follows: the block
+  lands on the attempt to create or edit, never on viewing what is already there.

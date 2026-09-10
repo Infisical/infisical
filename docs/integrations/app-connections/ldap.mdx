@@ -8,7 +8,7 @@ Infisical supports the use of [Simple Binding](https://ldap.com/the-ldap-bind-op
 
 ## Prerequisites
 
-You will need the following information to establish an LDAP connection:
+You'll need the following information to establish an LDAP connection:
 
 - **LDAP URL** - The LDAP/LDAPS URL to connect to (e.g., ldap://domain-or-ip:389 or ldaps://domain-or-ip:636)
 - **Binding DN/UPN** - The Distinguished Name (DN), or User Principal Name (UPN) if supported, of the principal to bind with (e.g., 'CN=John,CN=Users,DC=example,DC=com')
@@ -25,6 +25,17 @@ Depending on how you intend to use your LDAP connection, there may be additional
             - The binding user must either have:
                 - Permission to change other users passwords if rotating directory users' passwords
                 - Permission to update their own password if rotating their personal password
+        </Note>
+    </Tab>
+    <Tab title="Certificate Syncs">
+        <Note>
+            To back a [Linux Server](/documentation/platform/pki/applications/certificate-syncs/linux-server) or [Windows Server](/documentation/platform/pki/applications/certificate-syncs/windows-server) certificate sync, the following requirements must additionally be met:
+            - You must use an LDAPS connection, because a hardened domain controller rejects a plaintext simple bind on port 389
+            - Windows Server syncs must have a Gateway assigned to this connection, and that Gateway must reach both the domain controller and the target servers
+            - Each target host must accept the binding account in `DOMAIN\user` form, which Infisical derives from the directory
+        </Note>
+        <Note>
+            A sync authenticates to its **Target Host** with this connection's credential. Application Admins can set it, so give the binding account only the access it needs to deliver certificates.
         </Note>
     </Tab>
 </Tabs>

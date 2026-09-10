@@ -71,17 +71,17 @@ The Infisical SAP ASE dynamic secret allows you to generate SAP ASE database cre
 
 If you want to provide specific privileges for the generated dynamic credentials, you can modify the SQL statement to your needs.
 <Warning>
-Due to SAP ASE limitations, the attached SQL statements are not executed as a transaction.
+Due to SAP ASE limitations, the attached SQL statements aren't executed as a transaction.
 </Warning>
 </ParamField>
 
   </Step>
   <Step title="Click 'Submit'">
-  	After submitting the form, you will see a dynamic secret created in the dashboard.
+  	After submitting the form, you'll see a dynamic secret created in the dashboard.
   </Step>
   <Step title="Generate dynamic secrets">
 	Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-	To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+	To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
 	Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
     ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -105,17 +105,17 @@ Due to SAP ASE limitations, the attached SQL statements are not executed as a tr
 
 ## Audit or revoke leases
 
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 This will allow you see the lease details and delete the lease ahead of its expiration time.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
 ## Renew leases
 
-To extend the life of the generated dynamic secret lease past its initial time to live, simply click on the **Renew** as illustrated below.
+To extend the life of the generated dynamic secret lease past its initial time to live, simply select the **Renew** as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic
+  Lease renewals can't exceed the maximum TTL set when configuring the dynamic
   secret.
 </Warning>

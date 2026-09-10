@@ -6,7 +6,7 @@ description: "Learn how to configure SCIM provisioning with PingFederate for Inf
 <Info>
     PingFederate SCIM provisioning is a paid feature.
 
-    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    If you're using Infisical Cloud, then it's available under the **Enterprise Tier**. If you're self-hosting Infisical,
     then you should contact sales@infisical.com to purchase a self-hosted license to use it.
 </Info>
 
@@ -73,7 +73,7 @@ Prerequisites:
     <Step title="Configure the Provisioner Data Store">
         PingFederate persists provisioning state (last-sync timestamps, externalId mappings, etc.) in a dedicated database.
         This is **separate** from your user source — it's PingFederate's internal bookkeeping. The provisioner data store
-        must be a JDBC database; LDAP data stores cannot be used for this purpose.
+        must be a JDBC database; LDAP data stores can't be used for this purpose.
 
         1. Create an empty schema in your RDBMS for PingFederate's provisioner state.
         2. Run the schema script that matches your RDBMS against that schema. The scripts ship with PingFederate and live at `<pf-install>/server/default/conf/provisioner/sql-scripts/`:
@@ -133,23 +133,23 @@ Prerequisites:
     </Step>
 
     <Step title="Generate a SCIM token in Infisical">
-       In Infisical, head to the **Organization Settings** page and select the **Provisioning** tab. Under SCIM Configuration,
-        press the **Enable SCIM provisioning** toggle to allow PingFederate to provision/deprovision users for your organization.
-        
+        In Infisical, head to **SSO & Provisioning** and select the **Provisioning** tab. Under **SCIM Provisioning**,
+        turn on the **Enable SCIM** toggle to allow PingFederate to provision and deprovision users for your organization.
+
         ![SCIM enable provisioning](/images/platform/scim/scim-enable-provisioning-new.png)
-        
-        Press **Configure** and then **Create** to generate a SCIM token for PingFederate.
+
+        Select **Configure** on the SCIM Provisioning card, then select **Create Token** in the **Manage SCIM Credentials** modal to generate a SCIM token for PingFederate.
 
         ![SCIM create token](/images/platform/scim/scim-create-token.png)
 
         Copy the **SCIM URL** and **New SCIM Token** — you'll paste them into PingFederate's SP Connection in a later step.
-        The token is shown once and cannot be retrieved again.
+        The token is shown once and can't be retrieved again.
 
         ![SCIM copy token](/images/platform/scim/scim-copy-token.png)
     </Step>
 
     <Step title="Create the SP Connection">
-        Navigate to **Applications → Integration → SP Connections** and click **Create Connection**.
+        Navigate to **Applications → Integration → SP Connections** and select **Create Connection**.
 
         ![Sp connections tab](/images/platform/scim/pingfederate/connection-step-1.png)
 
@@ -220,7 +220,7 @@ Prerequisites:
     </Step>
 
     <Step title="Configure the SCIM channel">
-        On the Manage Channels tab, click **Create**. This opens the per-channel wizard with six tabs.
+        On the **Manage Channels** tab, select **Create**. This opens the per-channel wizard with six tabs.
 
         ![create channel](/images/platform/scim/pingfederate/channel-step-1.png)
 
@@ -303,7 +303,7 @@ Prerequisites:
         | `givenName` | `user` | `givenName` | `inetOrgPerson` | `givenName` |
         | `familyName` | `user` | `sn` | `person` | `sn` |
 
-        For each row: click **Edit** → pick **Root Object Class** → pick **Attribute** → click **Add Attribute** → click **Done**.
+        For each row, select **Edit**, choose **Root Object Class** and **Attribute**, then select **Add Attribute** and **Done**.
 
         `active` doesn't need an explicit mapping — PingFederate derives it from the Account Status Attribute settings in Source Settings.
 
@@ -332,7 +332,7 @@ Prerequisites:
 
         ![channel done](/images/platform/scim/pingfederate/channel-step-11.png)
 
-        On the parent SP Connection wizard's **Outbound Provisioning** tab, click **Next**.
+        On the parent SP Connection wizard's **Outbound Provisioning** tab, select **Next**.
 
         ![connection next](/images/platform/scim/pingfederate/connection-step-7.png)
 

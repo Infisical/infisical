@@ -4,91 +4,86 @@ sidebarTitle: "Databricks"
 description: "Learn how to configure a Databricks Connection for Infisical."
 ---
 
-Infisical supports the use of [service principals](https://docs.databricks.com/en/admin/users-groups/service-principals.html) to connect with your Databricks workspaces.
+import ConfigureServicePrincipal from "/snippets/app-connections/databricks/configure-service-principal.mdx";
+import ConnectionFormFields from "/snippets/app-connections/databricks/form-fields.mdx";
 
-## Configure a service principal for Infisical
+A Databricks connection authenticates Infisical to your Databricks workspace using a [service principal](https://docs.databricks.com/en/admin/users-groups/service-principals.html) that you create for it.
 
-<Steps>
-    <Step title="Databricks Workspace Settings">
-        Navigate to your Databricks Workspace **Settings** via the dropdown in the top right.
-        ![Workspace Settings Page](/images/app-connections/databricks/workspace-settings.png)
-    </Step>
-    <Step title="Manage Service Principals">
-        Under the **Identity & Access** tab, click the **Manage** button in the **Service Principals** section.
+<Note>
+    This guide doesn’t configure any behavior—it just authenticates Infisical with Databricks. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
 
-        ![Manage Service Principals](/images/app-connections/databricks/manage-service-principals.png)
-    </Step>
-    <Step title="Service Principal Management">
-        Click the **Add Service Principal** button.
+## Step 1: Configure a service principal in Databricks
 
-        ![Add Service Principal](/images/app-connections/databricks/add-service-principal.png)
-    </Step>
-    <Step title="Add Service Principal">
-        Select the **Add New** option and create a service principal for Infisical.
+<ConfigureServicePrincipal />
 
-        ![Create Service Principal](/images/app-connections/databricks/create-service-principal.png)
-    </Step>
-    <Step title="Generate Service Principal Secret">
-        Click on your new service principal, select the **Secrets** tab and click the **Generate Secret** button.
+## Step 2: Create the app connection
 
-        ![Generate Secret](/images/app-connections/databricks/service-principal-secrets.png)
-    </Step>
-    <Step title="Service Principal Secret">
-        Copy your service principal **Secret** and **Client ID** for use in the following steps.
+Next, create the app connection in Infisical.
 
-        ![Generate Secret](/images/app-connections/databricks/service-principal-ids.png)
-    </Step>
-</Steps>
+<Tip>
+    To create the connection using the API, use the [Create Databricks Connection](/api-reference/endpoints/app-connections/databricks/create) endpoint.
+</Tip>
 
-<Accordion title="Configure Permissions for Secret Rotation">
+<View title="Organization-level">
     <Steps>
-        <Step title="Add Service Principal to Admin Group">
-            Navigate to **Settings** > **Identity & Access** > **Groups** and select the admin group (typically named "admins" or "workspace-admins").
+        <Step>
+            In the sidebar, select **Organization Settings**, then open the **App Connections** tab.
 
-            ![Admin Group](/images/app-connections/databricks/admin-group.png)
-
-            Click **Add** and select the service principal you created for Infisical to add it to the admin group.
-
-            ![Add to Admin Group](/images/app-connections/databricks/add-to-admin-group.png)
-            ![Add to Admin Group Modal](/images/app-connections/databricks/add-to-admin-group-form.png)
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
         </Step>
-        <Step title="Grant Manage Permission for Target Service Principals">
-            For each service principal whose secrets you want to rotate, navigate to **Settings** > **Identity & Access** > **Service Principals** and select the target service principal.
+        <Step>
+            Select **+ Add Connection** and choose **Databricks Connection**.
 
-            ![Select Target Service Principal](/images/app-connections/databricks/select-target-service-principal.png)
+            ![Select Databricks Connection](/images/app-connections/databricks/select-databricks-connection.png)
         </Step>
-        <Step title="Open Permissions Tab">
-            Click on the **Permissions** tab for the selected service principal. And then click the **Grant access** button to open the permission modal
+        <Step>
+            Select the **Service Principal** method, then fill out the form's fields:
 
-            ![Permissions Tab](/images/app-connections/databricks/permissions-tab.png)
-        </Step>
-        <Step title="Grant Manage Permission to Infisical Service Principal">
-            In the **User, Group or Service Principal** field, select the service principal you created for Infisical. In the **Permission** field, select **Manage** to allow the Infisical service principal to manage credentials and secrets for this service principal. Click **Save** to apply the permissions. Repeat these steps for each service principal whose secrets you want to rotate.
+            <ConnectionFormFields />
 
-            ![Assign Manage Permission](/images/app-connections/databricks/assign-manage-permission.png)
+            Then, select **Connect to Databricks**.
+
+            ![Connect via Databricks service principal](/images/app-connections/databricks/create-databricks-service-principal-method.png)
         </Step>
     </Steps>
-</Accordion>
+</View>
 
-## Setup Databricks connection in Infisical
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Databricks Connection**.
 
-<Steps>
-  <Step title="Navigate to App Connections">
-    Navigate to the **Integrations** tab in the desired project, then select **App Connections**. ![App Connections
-    Tab](/images/app-connections/general/add-connection.png)
-  </Step>
-  <Step title="Add Connection">
-    Select the **Databricks Connection** option from the connection options modal.
-    ![Select Databricks
-    Connection](/images/app-connections/databricks/select-databricks-connection.png)
-  </Step>
-  <Step title="Authorize Connection">
-    Select the **Service Principal** method, add your **workspace URL** and **service principal credentials**, then click **Connect to
-    Databricks**. ![Connect via Databricks
-    service principal](/images/app-connections/databricks/create-databricks-service-principal-method.png)
-  </Step>
-  <Step title="Connection Created">
-    Your **Databricks Connection** is now available for use. ![Databricks Service Principal
-    Connection](/images/app-connections/databricks/databricks-service-principal-connection.png)
-  </Step>
-</Steps>
+            ![Select Databricks Connection](/images/app-connections/databricks/select-databricks-connection-project.png)
+        </Step>
+        <Step>
+            Select the **Service Principal** method, then fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Databricks**.
+
+            ![Connect via Databricks service principal](/images/app-connections/databricks/create-databricks-service-principal-method-project.png)
+        </Step>
+    </Steps>
+</View>
+
+<Check>
+    Your Databricks app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Databricks app connection is configured, you can use it to set up the following integrations:
+
+<CardGroup cols={2}>
+    <Card title="Databricks secret sync" icon="arrows-rotate" href="/integrations/secret-syncs/databricks">
+        Sync secrets from Infisical to a Databricks secret scope.
+    </Card>
+    <Card title="Databricks service principal secret rotation" icon="key" href="/documentation/platform/secret-rotation/databricks-service-principal-secret">
+        Rotate the OAuth client secret of a Databricks service principal.
+    </Card>
+</CardGroup>

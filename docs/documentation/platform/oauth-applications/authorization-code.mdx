@@ -8,11 +8,11 @@ The **authorization code** flow lets an [OAuth application](/documentation/platf
 A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
 
 <Info>
-  This page covers the browser-based flow, where each user approves the application on a consent screen. If you are registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [token exchange](/documentation/platform/oauth-applications/token-exchange).
+  This page covers the browser-based flow, where each user approves the application on a consent screen. If you're registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [token exchange](/documentation/platform/oauth-applications/token-exchange).
 </Info>
 
 <Note>
-  A delegated OAuth token can never do more than the user who authorized it. Scopes only **narrow** what the token can do; they never grant access the user does not already have. When the user's access changes or their session is revoked, every token issued for them through OAuth is affected immediately.
+  A delegated OAuth token can never do more than the user who authorized it. Scopes only **narrow** what the token can do; they never grant access the user doesn't already have. When the user's access changes or their session is revoked, every token issued for them through OAuth is affected immediately.
 </Note>
 
 ## Concept
@@ -149,7 +149,7 @@ GET /api/v1/oauth/validate
 
 A lightweight introspection endpoint. Send the delegated access token as a Bearer token; a `200` with `{ "active": true }` confirms the token is valid.
 
-Any other status means the token is not usable. A `401` covers an expired, revoked, or otherwise dead token, including one whose application was deleted. Middleware should treat any 4xx from this endpoint as a signal to obtain a fresh token rather than to retry.
+Any other status means the token isn't usable. A `401` covers an expired, revoked, or otherwise dead token, including one whose application was deleted. Middleware should treat any 4xx from this endpoint as a signal to obtain a fresh token rather than to retry.
 
 ## Accessing the API
 
@@ -175,4 +175,4 @@ curl https://app.infisical.com/api/v4/secrets \
 
 Deleting an OAuth application from the **OAuth Applications** tab immediately revokes every access and refresh token that application issued, so they stop working on the next request rather than living until expiry.
 
-Rotating the client secret invalidates the old secret for future token requests but leaves already-issued tokens working until they expire, so users of the integration are not signed out. The secret alone cannot mint a token in this flow: it has to be paired with an authorization code from a user's browser or with a refresh token. To cut existing access off immediately, delete the application. Rotation on a [token exchange](/documentation/platform/oauth-applications/token-exchange) application behaves differently, because there the secret is sufficient on its own.
+Rotating the client secret invalidates the old secret for future token requests but leaves already-issued tokens working until they expire, so users of the integration aren't signed out. The secret alone can't mint a token in this flow: it has to be paired with an authorization code from a user's browser or with a refresh token. To cut existing access off immediately, delete the application. Rotation on a [token exchange](/documentation/platform/oauth-applications/token-exchange) application behaves differently, because there the secret is sufficient on its own.
