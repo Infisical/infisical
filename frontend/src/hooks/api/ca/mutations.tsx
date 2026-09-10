@@ -73,6 +73,10 @@ export const useCreateCa = () => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listExternalCasByProjectId()
       });
+      // Both caps count every CA type, so creating or deleting either kind moves the quota.
+      queryClient.invalidateQueries({
+        queryKey: caKeys.getCaQuota()
+      });
     }
   });
 };
@@ -95,6 +99,9 @@ export const useDeleteCa = () => {
       });
       queryClient.invalidateQueries({
         queryKey: caKeys.listExternalCasByProjectId()
+      });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.getCaQuota()
       });
     }
   });

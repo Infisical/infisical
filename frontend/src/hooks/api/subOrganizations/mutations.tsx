@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { organizationKeys } from "@app/hooks/api/organization/queries";
+import { projectKeys } from "@app/hooks/api/projects/query-keys";
 
 import { subOrganizationsQuery } from "./queries";
 import {
@@ -23,6 +25,9 @@ export const useCreateSubOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getUserOrganizationsWithSubOrgs
+      });
     }
   });
 };
@@ -39,6 +44,9 @@ export const useUpdateSubOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getUserOrganizationsWithSubOrgs
+      });
     }
   });
 };
@@ -53,7 +61,11 @@ export const useDeleteSubOrganization = () => {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
       queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getUserOrganizationsWithSubOrgs
+      });
     }
   });
 };
@@ -68,7 +80,11 @@ export const useJoinSubOrganization = () => {
       return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
       queryClient.invalidateQueries({ queryKey: subOrganizationsQuery.allKey() });
+      queryClient.invalidateQueries({
+        queryKey: organizationKeys.getUserOrganizationsWithSubOrgs
+      });
     }
   });
 };

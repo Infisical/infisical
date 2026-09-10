@@ -2,7 +2,6 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -13,6 +12,7 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
@@ -1349,7 +1349,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema.omit({ orderId: true }).extend({
+          certificate: SanitizedCertificateSchema.extend({
             subject: z
               .object({
                 commonName: z.string().optional(),
@@ -1767,7 +1767,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema.omit({ orderId: true })
+          certificate: SanitizedCertificateSchema
         })
       }
     },
@@ -1828,7 +1828,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema.omit({ orderId: true })
+          certificate: SanitizedCertificateSchema
         })
       }
     },

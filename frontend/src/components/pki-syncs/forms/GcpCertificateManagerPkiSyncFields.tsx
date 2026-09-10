@@ -17,7 +17,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -307,7 +307,7 @@ export const GcpCertificateManagerPkiSyncFields = ({ isUpdate }: Props) => {
               Attach to a certificate map
             </Label>
           </FieldContent>
-          <Switch
+          <Toggle
             id="gcp-attach-certificate-map"
             variant="project"
             checked={Boolean(certificateMapBinding)}

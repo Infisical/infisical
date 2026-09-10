@@ -3,7 +3,7 @@ import { useFormContext } from "react-hook-form";
 import { Button, SheetFooter } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
 
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 
 type Props = {
   submitLabel: string;
@@ -26,6 +26,8 @@ export const AppConnectionFormFooter = ({
     formState: { isSubmitting, isDirty }
   } = useFormContext();
   const scopeVariant = useScopeVariant();
+
+  useAppConnectionFormDirtyState(isDirty);
 
   return (
     <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">

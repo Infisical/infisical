@@ -66,6 +66,7 @@ export const DashboardPage = () => {
       <div className="mx-auto flex flex-col bg-page text-foreground-inverse">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader
+            className="mb-6 md:mb-10"
             scope={ProjectType.CertificateManager}
             title="Certificate Dashboard"
             description="See the overall state of your certificates at a glance."

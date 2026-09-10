@@ -203,6 +203,7 @@ export const IdentityAuthMethodsTable = ({
           if (!open) setRevokeAuthMethod(null);
         }}
         identityId={identityId}
+        identityName={identityName}
         authMethod={revokeAuthMethod}
         onSuccess={onMutated}
       />

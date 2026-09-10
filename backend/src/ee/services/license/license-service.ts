@@ -129,11 +129,13 @@ export const licenseServiceFactory = ({
 
         if (isValidOfflineLicense) {
           // v2 offline licenses carry License Server v2 entitlements; project them into the feature
-          // shape. v1 (or version-less) licenses carry the legacy feature set directly.
+          // shape. A v1 feature set is a snapshot frozen when the key was issued, so it is layered over
+          // current defaults: otherwise every flag added since reads as undefined on an air-gapped
+          // instance, withdrawing features the license paid for.
           const features =
             contents.license.version === 2 && contents.license.entitlements
               ? projectV2ToFeatureSet(getDefaultOnPremFeatures(), contents.license.entitlements)
-              : contents.license.features;
+              : { ...getDefaultOnPremFeatures(), ...contents.license.features };
 
           onPremFeatures = {
             ...features,
