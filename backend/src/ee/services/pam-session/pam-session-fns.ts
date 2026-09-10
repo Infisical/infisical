@@ -116,7 +116,8 @@ export const sendPamSessionCancellationSignal = ({
         accountType: accountType as PamAccountType,
         host: "0.0.0.0",
         port: 0,
-        actorMetadata: { id: actorId, type: actorType, name: actorEmail }
+        actorMetadata: { id: actorId, type: actorType, name: actorEmail },
+        clientSupportsDirect: true
       });
       if (!certs) {
         logger.error(

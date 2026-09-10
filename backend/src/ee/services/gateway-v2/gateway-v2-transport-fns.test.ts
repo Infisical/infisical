@@ -141,72 +141,59 @@ describe("resolveClientTransports", () => {
   const relay = { directAddress: null, relayId: "relay-1", heartbeatTTL: TTL };
   const dual = { directAddress: "gw.internal:8443", relayId: "relay-1", heartbeatTTL: TTL };
 
-  test("browser access omits the list and takes whatever the gateway has", () => {
-    expect(resolveClientTransports({ gateway: { ...dual, directHeartbeat: fresh } })).toMatchObject({
-      useDirect: true,
-      useRelay: true
-    });
+  test("browser access takes whatever the gateway has", () => {
+    expect(
+      resolveClientTransports({ gateway: { ...dual, directHeartbeat: fresh }, clientSupportsDirect: true })
+    ).toMatchObject({ useDirect: true, useRelay: true });
   });
 
   // Covers a real bug: direct went out on client capability alone, so every session paid the timeout.
   test("a stale direct probe is skipped when the relay can take over", () => {
     expect(
-      resolveClientTransports({
-        gateway: { ...dual, directHeartbeat: stale },
-        supportedTransports: [GatewayTransport.Direct, GatewayTransport.Relay]
-      })
+      resolveClientTransports({ gateway: { ...dual, directHeartbeat: stale }, clientSupportsDirect: true })
     ).toMatchObject({ useDirect: false, useRelay: true, hasTransport: true });
   });
 
   test("a stale direct probe is still used when it is the only path the client has", () => {
     expect(
-      resolveClientTransports({
-        gateway: { ...direct, directHeartbeat: stale },
-        supportedTransports: [GatewayTransport.Direct]
-      })
+      resolveClientTransports({ gateway: { ...direct, directHeartbeat: stale }, clientSupportsDirect: true })
     ).toMatchObject({ useDirect: true, useRelay: false, hasTransport: true });
   });
 
-  test("a stale direct probe is still used when the client cannot dial the relay", () => {
+  test("an older CLI gets the relay and never the direct address", () => {
     expect(
-      resolveClientTransports({
-        gateway: { ...dual, directHeartbeat: stale },
-        supportedTransports: [GatewayTransport.Direct]
-      })
-    ).toMatchObject({ useDirect: true, useRelay: false, hasTransport: true });
-  });
-
-  test("an empty list is an older CLI, which gets the relay and never the direct address", () => {
-    expect(
-      resolveClientTransports({ gateway: { ...dual, directHeartbeat: fresh }, supportedTransports: [] })
+      resolveClientTransports({ gateway: { ...dual, directHeartbeat: fresh }, clientSupportsDirect: false })
     ).toMatchObject({ useDirect: false, useRelay: true, hasTransport: true });
   });
 
   test("an older CLI against a direct-only gateway is told to upgrade rather than given nothing", () => {
     expect(
-      resolveClientTransports({ gateway: { ...direct, directHeartbeat: fresh }, supportedTransports: [] })
+      resolveClientTransports({ gateway: { ...direct, directHeartbeat: fresh }, clientSupportsDirect: false })
     ).toMatchObject({ hasTransport: false, isDirectOnlyForOlderClient: true, gatewayHasTransport: true });
   });
 
   test("a relay-only gateway serves an older CLI", () => {
     expect(
-      resolveClientTransports({ gateway: { ...relay, directHeartbeat: null }, supportedTransports: [] })
+      resolveClientTransports({ gateway: { ...relay, directHeartbeat: null }, clientSupportsDirect: false })
     ).toMatchObject({ useDirect: false, useRelay: true, isDirectOnlyForOlderClient: false });
   });
 
   test("a gateway with no transport is reported as such, not as a client problem", () => {
     expect(
       resolveClientTransports({
-        gateway: { directAddress: null, relayId: null, directHeartbeat: null, heartbeatTTL: TTL }
+        gateway: { directAddress: null, relayId: null, directHeartbeat: null, heartbeatTTL: TTL },
+        clientSupportsDirect: true
       })
     ).toMatchObject({ hasTransport: false, gatewayHasTransport: false, isDirectOnlyForOlderClient: false });
   });
 
   test("the TTL kill switch drops a dual gateway to its relay", () => {
-    expect(resolveClientTransports({ gateway: { ...dual, directHeartbeat: fresh, heartbeatTTL: 0 } })).toMatchObject({
-      useDirect: false,
-      useRelay: true
-    });
+    expect(
+      resolveClientTransports({
+        gateway: { ...dual, directHeartbeat: fresh, heartbeatTTL: 0 },
+        clientSupportsDirect: true
+      })
+    ).toMatchObject({ useDirect: false, useRelay: true });
   });
 });
 

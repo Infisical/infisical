@@ -504,7 +504,7 @@ export const gatewayV2ServiceFactory = ({
     host,
     port,
     actorMetadata,
-    supportedTransports
+    clientSupportsDirect
   }: {
     gatewayId: string;
     sessionId: string;
@@ -513,7 +513,7 @@ export const gatewayV2ServiceFactory = ({
     host: string;
     port?: number;
     actorMetadata: { id: string; type: ActorType; name: string };
-    supportedTransports?: GatewayTransport[];
+    clientSupportsDirect: boolean;
   }) => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -525,8 +525,10 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
     }
 
-    const { allowDirect, allowRelay, hasTransport, isDirectOnlyForOlderClient, gatewayHasTransport } =
-      resolveClientTransports({ gateway, supportedTransports });
+    const { allowDirect, hasTransport, isDirectOnlyForOlderClient, gatewayHasTransport } = resolveClientTransports({
+      gateway,
+      clientSupportsDirect
+    });
 
     if (isDirectOnlyForOlderClient) {
       throw new BadRequestError({
@@ -647,17 +649,16 @@ export const gatewayV2ServiceFactory = ({
 
     const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
 
-    const relayCredentials =
-      allowRelay && gateway.relayId
-        ? await relayService.getCredentialsForClient({
-            relayId: gateway.relayId,
-            orgId: gateway.orgId,
-            orgName: gateway.orgName,
-            gatewayId,
-            gatewayName: gateway.name,
-            duration
-          })
-        : undefined;
+    const relayCredentials = gateway.relayId
+      ? await relayService.getCredentialsForClient({
+          relayId: gateway.relayId,
+          orgId: gateway.orgId,
+          orgName: gateway.orgName,
+          gatewayId,
+          gatewayName: gateway.name,
+          duration
+        })
+      : undefined;
 
     return {
       gatewayId,

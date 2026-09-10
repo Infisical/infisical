@@ -543,7 +543,9 @@ export const pamWebAccessServiceFactory = ({
               id: userId,
               type: ActorType.USER,
               name: user?.email ?? ""
-            }
+            },
+            // The platform opens this tunnel itself, so no client version gates the transport.
+            clientSupportsDirect: true
           });
 
           if (!attemptCerts) {

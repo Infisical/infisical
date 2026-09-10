@@ -3,7 +3,6 @@ import z from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { hostPattern } from "@app/ee/services/pam-account/pam-account-schemas";
@@ -324,14 +323,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           .max(255)
           .regex(hostPattern, "Must be a valid hostname or IP address")
           .optional()
-          .describe("Target host to connect to, for accounts that allow multiple hosts"),
-        supportedTransports: z
-          .array(z.nativeEnum(GatewayTransport))
-          .max(2)
-          .optional()
-          .describe(
-            "Transports the client can dial. Omit to let the platform choose. A CLI that predates direct connections omits it, so the platform treats an omitted list as relay-only for CLI access."
-          )
+          .describe("Target host to connect to, for accounts that allow multiple hosts")
       }),
       response: {
         200: z.object({
@@ -386,10 +378,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         mfaSessionId: req.body.mfaSessionId,
         tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
         accessMethod: req.body.accessMethod === "web" ? PamAccessMethod.Web : PamAccessMethod.Cli,
-        targetHost: req.body.targetHost,
-        // [] is an older CLI that only knows relays, so it must not collapse to undefined.
-        supportedTransports:
-          req.body.accessMethod === PamAccessMethod.Web ? undefined : (req.body.supportedTransports ?? [])
+        targetHost: req.body.targetHost
       });
 
       await server.services.auditLog.createAuditLog({

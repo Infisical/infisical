@@ -71,10 +71,9 @@ export const gatewayTransports = ({
   return transports;
 };
 
-// undefined means the platform dials on the client's behalf; [] is an older CLI that only knows relays.
 export const resolveClientTransports = ({
   gateway,
-  supportedTransports
+  clientSupportsDirect
 }: {
   gateway: {
     directAddress?: string | null;
@@ -82,31 +81,22 @@ export const resolveClientTransports = ({
     directHeartbeat?: Date | null;
     heartbeatTTL?: number | null;
   };
-  supportedTransports?: GatewayTransport[];
+  clientSupportsDirect: boolean;
 }) => {
-  const clientAllowsDirect = supportedTransports === undefined || supportedTransports.includes(GatewayTransport.Direct);
-  const allowRelay =
-    supportedTransports === undefined ||
-    supportedTransports.length === 0 ||
-    supportedTransports.includes(GatewayTransport.Relay);
-
   // Skip a stale direct address only when the relay can take over; otherwise it is the client's only path.
-  const canFallBackToRelay = allowRelay && Boolean(gateway.relayId);
   const allowDirect =
-    clientAllowsDirect &&
-    (!canFallBackToRelay ||
-      isTransportHealthy({ probedAt: gateway.directHeartbeat, heartbeatTTL: gateway.heartbeatTTL }));
+    clientSupportsDirect &&
+    (!gateway.relayId || isTransportHealthy({ probedAt: gateway.directHeartbeat, heartbeatTTL: gateway.heartbeatTTL }));
 
   const useDirect = allowDirect && Boolean(gateway.directAddress);
-  const useRelay = allowRelay && Boolean(gateway.relayId);
+  const useRelay = Boolean(gateway.relayId);
 
   return {
     allowDirect,
-    allowRelay,
     useDirect,
     useRelay,
     hasTransport: useDirect || useRelay,
-    isDirectOnlyForOlderClient: Boolean(gateway.directAddress) && !gateway.relayId && !clientAllowsDirect,
+    isDirectOnlyForOlderClient: Boolean(gateway.directAddress) && !gateway.relayId && !clientSupportsDirect,
     gatewayHasTransport: Boolean(gateway.directAddress || gateway.relayId)
   };
 };
