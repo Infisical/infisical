@@ -117,6 +117,7 @@ export const eventOutboxQueueFactory = ({
       name: CronJobName.EventOutboxStaleClaimSweeper,
       pattern: STALE_CLAIM_SWEEPER_CRON,
       runHashTtlS: CRON_RUN_HASH_TTL_S,
+      enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         await eventOutboxService.sweepStaleClaims();
       }
@@ -126,12 +127,13 @@ export const eventOutboxQueueFactory = ({
       name: CronJobName.EventOutboxCleanup,
       pattern: CLEANUP_CRON,
       runHashTtlS: CRON_RUN_HASH_TTL_S,
+      enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         await eventOutboxService.pruneTerminalRows();
       }
     });
 
-    if (!appCfg.isGeneralWorkerRunModeEnabled) return;
+    if (!appCfg.isGeneralWorkerRunModeEnabled || appCfg.isSecondaryInstance) return;
 
     $registerGauges();
     startTimer = setTimeout(

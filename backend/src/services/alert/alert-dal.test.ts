@@ -127,7 +127,7 @@ describe("alert dal", () => {
 
   // An empty result here is terminal for the event, so it must not come from a replica that has yet
   // to see the alert commit.
-  test("findEnabledForEvent reads the primary while the scheduled lookup keeps the replica", async () => {
+  test("findEnabledForEvent reads the primary while the scheduled and list lookups keep the replica", async () => {
     const { dal, getReplicaReads } = buildDAL();
 
     await dal.findEnabledForEvent({
@@ -140,6 +140,9 @@ describe("alert dal", () => {
 
     await dal.findEnabledByResourceType("approval.workflow");
     expect(getReplicaReads()).toBe(1);
+
+    await dal.findActiveByScope({ orgId: "org-1", resourceType: "approval.workflow" });
+    expect(getReplicaReads()).toBe(2);
   });
 
   test("findEnabledForEvent applies the same soft-deleted-project and enabled-channel filters", async () => {

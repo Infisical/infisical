@@ -8,15 +8,27 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
+const config = {
+  isGeneralWorkerRunModeEnabled: true,
+  isSecondaryInstance: false,
+  OTEL_TELEMETRY_COLLECTION_ENABLED: false
+};
+
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ isGeneralWorkerRunModeEnabled: true, OTEL_TELEMETRY_COLLECTION_ENABLED: false })
+  getConfig: () => config
 }));
+
+beforeEach(() => {
+  config.isGeneralWorkerRunModeEnabled = true;
+  config.isSecondaryInstance = false;
+});
 
 const KEY: TOutboxFlushKey = { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" };
 
 const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promise<void> }) => {
   const queued: { name: string; data: unknown; jobId?: string; attempts?: number }[] = [];
   const discoveredFor: string[][] = [];
+  const registeredCrons: { name: string; enabled?: boolean }[] = [];
   let discoverCalls = 0;
 
   const factory = eventOutboxQueueFactory({
@@ -26,7 +38,11 @@ const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promis
       },
       start: () => {}
     } as never,
-    cronJob: { register: () => {} } as never,
+    cronJob: {
+      register: (entry: { name: string; enabled?: boolean }) => {
+        registeredCrons.push({ name: entry.name, enabled: entry.enabled });
+      }
+    } as never,
     eventOutboxRegistry: { names: () => ["alert", "audit"] },
     eventOutboxDAL: {
       findDueFlushKeys: async (_limit: number, consumers: string[]) => {
@@ -44,7 +60,7 @@ const buildQueue = (opts?: { keys?: TOutboxFlushKey[]; onDiscover?: () => Promis
     } as never
   });
 
-  return { factory, queued, discoveredFor, getDiscoverCalls: () => discoverCalls };
+  return { factory, queued, discoveredFor, registeredCrons, getDiscoverCalls: () => discoverCalls };
 };
 
 describe("event outbox relay", () => {
@@ -103,6 +119,35 @@ describe("event outbox relay", () => {
     await factory.runRelayTick();
 
     expect(queued).toHaveLength(0);
+  });
+
+  // Every other cron in the codebase sits behind this flag, and the docs promise a secondary region
+  // runs no background jobs beyond audit logs.
+  test("registers its crons disabled and never starts the relay on a secondary instance", async () => {
+    vi.useFakeTimers();
+    config.isSecondaryInstance = true;
+    const { factory, registeredCrons, getDiscoverCalls } = buildQueue({ keys: [KEY] });
+
+    factory.init();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await factory.shutdown();
+    vi.useRealTimers();
+
+    expect(registeredCrons.map((cron) => cron.enabled)).toEqual([false, false]);
+    expect(getDiscoverCalls()).toBe(0);
+  });
+
+  test("registers its crons enabled and starts the relay on a primary general worker", async () => {
+    vi.useFakeTimers();
+    const { factory, registeredCrons, getDiscoverCalls } = buildQueue({ keys: [KEY] });
+
+    factory.init();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await factory.shutdown();
+    vi.useRealTimers();
+
+    expect(registeredCrons.map((cron) => cron.enabled)).toEqual([true, true]);
+    expect(getDiscoverCalls()).toBeGreaterThan(0);
   });
 
   test("stops cleanly when nothing was ever started", async () => {
