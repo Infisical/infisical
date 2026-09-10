@@ -476,23 +476,8 @@ export const agentVaultMembershipServiceFactory = ({
     return { membershipId, ...dto, ...(await resolveActorLabel(dto)) };
   };
 
-  // The whole set rather than a page: the grant picker filters client-side.
-  const listProductIdentities = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
-    await assertCanReadIdentities(projectId, ctx);
-
-    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
-    const identityIds = memberships.map((m) => m.actorIdentityId).filter((id): id is string => Boolean(id));
-    if (!identityIds.length) return [];
-
-    const identities = await identityDAL.find({ $in: { id: identityIds } });
-    return identities
-      .map((identity) => ({ id: identity.id, name: identity.name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  };
-
   return {
     addProductUserMembers,
-    listProductIdentities,
     listProductIdentityMembers,
     addProductMember,
     updateProductMemberRole,

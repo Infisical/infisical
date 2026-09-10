@@ -228,11 +228,7 @@ export const CreateProjectIdentityForm = ({
         queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
       }
       if (isAgentVault) {
-        // productMembers covers the Access Control table; productIdentities only feeds the pickers.
         queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers(currentOrg.id) });
-        queryClient.invalidateQueries({
-          queryKey: agentVaultKeys.productIdentities(currentOrg.id)
-        });
       }
 
       const hasTemplateGrants = data.templateIds.length > 0;

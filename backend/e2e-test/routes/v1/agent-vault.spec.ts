@@ -420,7 +420,7 @@ describe("Agent Vault V1 Router", async () => {
       const added = await inject("POST", `${memberships}/identities/${identity.id}`, { role: "member" });
       expect(added.statusCode).toBe(200);
 
-      const listed = await inject("GET", `${memberships}/identity-members`);
+      const listed = await inject("GET", `${memberships}/identities`);
       const { members } = JSON.parse(listed.payload) as {
         members: { identityId: string; role: string; name: string }[];
       };
@@ -435,7 +435,7 @@ describe("Agent Vault V1 Router", async () => {
       const removed = await inject("DELETE", `${memberships}/identities/${identity.id}`);
       expect(removed.statusCode).toBe(200);
 
-      const after = JSON.parse((await inject("GET", `${memberships}/identity-members`)).payload) as {
+      const after = JSON.parse((await inject("GET", `${memberships}/identities`)).payload) as {
         members: { identityId: string }[];
       };
       expect(after.members.some((m) => m.identityId === identity.id)).toBe(false);

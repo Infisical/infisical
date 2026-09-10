@@ -18,7 +18,7 @@ import {
 import { useProject } from "@app/context";
 import {
   useAddAgentVaultAccessBundleMembers,
-  useListAgentVaultProductIdentities
+  useListAgentVaultProductIdentityMembers
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api/projects/queries";
@@ -70,7 +70,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     currentProject.type,
     { enabled: isOpen }
   );
-  const { data: identities } = useListAgentVaultProductIdentities(isOpen);
+  const { data: identities } = useListAgentVaultProductIdentityMembers(isOpen);
 
   const grantedIds = useMemo(
     () =>
@@ -104,13 +104,15 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
       .filter((option) => !grantedIds.has(option.id));
 
     const identityOptions = (identities ?? [])
-      .map((identity) => ({
+      .filter((member) => member.identityId)
+      .map((member) => ({
         kind: MemberKind.Identity,
-        id: identity.id,
-        label: identity.name,
+        id: member.identityId as string,
+        label: member.name,
         subtitle: "Machine Identity"
       }))
-      .filter((option) => !grantedIds.has(option.id));
+      .filter((option) => !grantedIds.has(option.id))
+      .sort((a, b) => a.label.localeCompare(b.label));
 
     return [...userOptions, ...groupOptions, ...identityOptions];
   }, [users, groupMemberships, identities, grantedIds]);

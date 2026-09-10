@@ -119,12 +119,7 @@ export const IdentitiesTab = () => {
           identityId: toRemove.identityId,
           projectId: currentProject.id
         });
-        // productMembers is the prefix the table's own query sits under; productIdentities only feeds
-        // the pickers, so invalidating that alone leaves the row on screen until a refresh.
         queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers(currentOrg.id) });
-        queryClient.invalidateQueries({
-          queryKey: agentVaultKeys.productIdentities(currentOrg.id)
-        });
         createNotification({ text: `"${toRemove.name}" deleted`, type: "success" });
       } else {
         await removeMember.mutateAsync({

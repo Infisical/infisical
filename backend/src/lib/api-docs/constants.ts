@@ -4199,8 +4199,7 @@ export const AGENT_VAULT = {
     skippedCount: "How many of the requested grantees already had the access bundle."
   },
   MEMBERSHIP: {
-    role: "The Agent Vault role: admin or member.",
-    identityName: "The name of the machine identity."
+    role: "The Agent Vault role: admin or member."
   },
   PROXY: {
     proxyId: "The ID of the proxy.",

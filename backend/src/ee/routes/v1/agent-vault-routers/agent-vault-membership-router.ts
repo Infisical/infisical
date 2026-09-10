@@ -44,11 +44,11 @@ const MemberResultSchema = z.object({
 export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/identity-members",
+    url: "/identities",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "listAgentVaultProductIdentityMembers",
-      description: "List the machine identities that are members of Agent Vault, with their names",
+      description: "List the machine identities that are members of Agent Vault",
       tags: [ApiDocsTags.AgentVaultMemberships],
       response: {
         200: z.object({
@@ -60,7 +60,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => ({
       members: await server.services.agentVaultMembership.listProductIdentityMembers({
         projectId: req.internalAgentVaultProjectId,
@@ -68,35 +68,6 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       })
     })
   });
-  server.route({
-    method: "GET",
-    url: "/identities",
-    config: { rateLimit: readLimit },
-    schema: {
-      operationId: "listAgentVaultProductIdentities",
-      description: "List the machine identities that are members of Agent Vault",
-      tags: [ApiDocsTags.AgentVaultMemberships],
-      response: {
-        200: z.object({
-          identities: z
-            .object({
-              id: z.string().uuid().describe(AGENT_VAULT.MEMBER.identityId),
-              name: z.string().describe(AGENT_VAULT.MEMBERSHIP.identityName)
-            })
-            .array()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const identities = await server.services.agentVaultMembership.listProductIdentities({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req)
-      });
-      return { identities };
-    }
-  });
-
   server.route({
     method: "POST",
     url: "/users",

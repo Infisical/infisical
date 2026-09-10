@@ -328,7 +328,6 @@ const invalidateProductMembers = (
 ) => {
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers(orgId) });
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) });
-  queryClient.invalidateQueries({ queryKey: agentVaultKeys.productIdentities(orgId) });
   queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
   queryClient.invalidateQueries({ queryKey: projectKeys.getProjectGroupMemberships(projectId) });
 };

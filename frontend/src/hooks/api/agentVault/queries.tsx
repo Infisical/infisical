@@ -30,8 +30,6 @@ export const agentVaultKeys = {
   sessionList: (orgId: string, params?: TListAgentVaultSessionsDTO) =>
     [...agentVaultKeys.sessions(orgId), params] as const,
   proxies: (orgId: string) => [...agentVaultKeys.all(orgId), "proxies"] as const,
-  productIdentities: (orgId: string) =>
-    [...agentVaultKeys.all(orgId), "product-identities"] as const,
   productMembers: (orgId: string) => [...agentVaultKeys.all(orgId), "product-members"] as const,
   productIdentityMembers: (orgId: string) =>
     [...agentVaultKeys.productMembers(orgId), "identities"] as const
@@ -44,26 +42,12 @@ const fetchProductMembers = async <T,>(path: string) => {
   return data.members;
 };
 
-export const useListAgentVaultProductIdentityMembers = () => {
+export const useListAgentVaultProductIdentityMembers = (enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
     queryKey: agentVaultKeys.productIdentityMembers(currentOrg.id),
-    queryFn: () => fetchProductMembers<TAgentVaultProductIdentityMember>("identity-members")
-  });
-};
-
-export const useListAgentVaultProductIdentities = (enabled = true) => {
-  const { currentOrg } = useOrganization();
-
-  return useQuery({
-    queryKey: agentVaultKeys.productIdentities(currentOrg.id),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ identities: { id: string; name: string }[] }>(
-        "/api/v1/agent-vault/memberships/identities"
-      );
-      return data.identities;
-    },
+    queryFn: () => fetchProductMembers<TAgentVaultProductIdentityMember>("identities"),
     enabled
   });
 };
