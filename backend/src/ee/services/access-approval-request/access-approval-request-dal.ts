@@ -1041,7 +1041,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           .count("*")
           .first();
 
-        return parseInt((doc?.count as string) ?? "0", 10) || 0;
+        return parseInt((doc as unknown as { count: string })?.count || "0", 10);
       } catch (error) {
         throw new DatabaseError({ error, name: "CountPendingExternalRequestsByPolicyId" });
       }

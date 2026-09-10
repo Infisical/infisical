@@ -17,8 +17,7 @@ const ORG_ID = "55555555-5555-4555-8555-555555555555";
 const BYPASSERS_REJECTED = /Bypassers cannot be set on a policy reviewed by an external approval system/;
 const SOFT_ENFORCEMENT_REJECTED = /Soft enforcement cannot be set on a policy reviewed by an external approval system/;
 const PENDING_EXTERNAL_REQUESTS_REJECTED = /still awaiting a decision from its external approval system/;
-const PENDING_EXTERNAL_REROUTE_REJECTED =
-  /before changing the approval service, app connection, or approver identity/;
+const PENDING_EXTERNAL_REROUTE_REJECTED = /before changing the approval service, app connection, or approver identity/;
 
 const EXTERNAL_APPROVAL = {
   type: ExternalApprovalType.ServiceNow,
@@ -158,9 +157,7 @@ describe("access approval policy external approval guards", () => {
   test("rejects detaching external approval while requests still await an external decision", async () => {
     const { service, accessApprovalPolicyDAL } = makeService({ externalApprovalPolicyId: POLICY_ID }, 2);
 
-    await expect(updatePolicy(service, { externalApproval: null })).rejects.toThrow(
-      PENDING_EXTERNAL_REQUESTS_REJECTED
-    );
+    await expect(updatePolicy(service, { externalApproval: null })).rejects.toThrow(PENDING_EXTERNAL_REQUESTS_REJECTED);
     expect(accessApprovalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
