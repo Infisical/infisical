@@ -57,6 +57,7 @@ import {
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
+import { useImplicitProduct } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
 import { useGetAccessibleProjectsWithSubOrgs } from "@app/hooks/api/projects/queries";
 import type { Project, TProjectNavigation } from "@app/hooks/api/projects/types";
@@ -990,8 +991,8 @@ const CurrentProjectCommandMenu = ({ content }: { content: CommandContent }) => 
 };
 
 const OrganizationCommandMenu = () => {
-  const { pathname } = useLocation();
   const { projectId } = useParams({ strict: false }) as { projectId?: string };
+  const orgScopedProduct = useImplicitProduct();
   const { currentOrg, isRootOrganization } = useOrganization();
   const user = useRouteContext({ from: "/_authenticate", select: (context) => context.user });
   const { permission } = useOrgPermission();
@@ -1060,10 +1061,7 @@ const OrganizationCommandMenu = () => {
       ...entityGroups.searchGroups
     ]
   };
-  const isProjectRoute = Boolean(projectId);
-  const isPamRoute = pathname.startsWith(`/organizations/${currentOrg.id}/pam`);
-
-  if (isProjectRoute || isPamRoute) return <CurrentProjectCommandMenu content={content} />;
+  if (projectId || orgScopedProduct) return <CurrentProjectCommandMenu content={content} />;
   return <NavigationCommandMenu {...content} />;
 };
 
