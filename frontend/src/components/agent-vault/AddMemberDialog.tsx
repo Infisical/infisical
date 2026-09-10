@@ -15,13 +15,13 @@ import {
   FieldContent,
   FieldLabel
 } from "@app/components/v3";
-import { useProject } from "@app/context";
 import {
   useAddAgentVaultAccessBundleMembers,
-  useListAgentVaultProductIdentityMembers
+  useListAgentVaultProductGroupMembers,
+  useListAgentVaultProductIdentityMembers,
+  useListAgentVaultProductUserMembers
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
-import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api/projects/queries";
 
 import { PendingInvitationBadge } from "./PendingInvitationBadge";
 
@@ -53,7 +53,6 @@ type Props = {
 };
 
 export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members }: Props) => {
-  const { currentProject } = useProject();
   const addMembers = useAddAgentVaultAccessBundleMembers();
 
   const [selected, setSelected] = useState<Option[]>([]);
@@ -62,14 +61,8 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     if (isOpen) setSelected([]);
   }, [isOpen]);
 
-  const { data: users } = useGetWorkspaceUsers(currentProject.id, false, undefined, {
-    enabled: isOpen
-  });
-  const { data: groupMemberships } = useListWorkspaceGroups(
-    currentProject.id,
-    currentProject.type,
-    { enabled: isOpen }
-  );
+  const { data: users } = useListAgentVaultProductUserMembers(isOpen);
+  const { data: groupMemberships } = useListAgentVaultProductGroupMembers(isOpen);
   const { data: identities } = useListAgentVaultProductIdentityMembers(isOpen);
 
   const grantedIds = useMemo(
@@ -80,25 +73,25 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
 
   const options = useMemo<Option[]>(() => {
     const userOptions = (users ?? [])
-      .map((membership) => {
-        const fullName = [membership.user.firstName, membership.user.lastName]
-          .filter(Boolean)
-          .join(" ");
+      .filter((member) => member.userId)
+      .map((member) => {
+        const fullName = [member.firstName, member.lastName].filter(Boolean).join(" ");
         return {
           kind: MemberKind.User,
-          id: membership.user.id,
-          label: fullName || membership.user.username || membership.user.email,
-          subtitle: membership.user.email || membership.user.username,
-          isPendingInvitation: membership.user.isOrgMembershipPending
+          id: member.userId as string,
+          label: fullName || member.username || member.email || "",
+          subtitle: member.email || member.username,
+          isPendingInvitation: member.isOrgMembershipPending
         };
       })
       .filter((option) => !grantedIds.has(option.id));
 
     const groupOptions = (groupMemberships ?? [])
-      .map((membership) => ({
+      .filter((member) => member.groupId)
+      .map((member) => ({
         kind: MemberKind.Group,
-        id: membership.group.id,
-        label: membership.group.name,
+        id: member.groupId as string,
+        label: member.name,
         subtitle: "Group"
       }))
       .filter((option) => !grantedIds.has(option.id));

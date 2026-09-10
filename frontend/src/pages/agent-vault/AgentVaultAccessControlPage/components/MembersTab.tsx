@@ -36,34 +36,34 @@ import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
-  useProject,
   useProjectPermission,
   useUser
 } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { useGetWorkspaceUsers } from "@app/hooks/api";
-import { useRemoveAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import {
+  useListAgentVaultProductUserMembers,
+  useRemoveAgentVaultProductMember
+} from "@app/hooks/api/agentVault";
+import { TAgentVaultProductUserMember } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 import { InviteMembersDialog } from "./InviteMembersDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
-const displayName = (member: TWorkspaceUser) => {
-  const full = `${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim();
-  return full || member.user.username || member.inviteEmail || "";
+const displayName = (member: TAgentVaultProductUserMember) => {
+  const full = `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim();
+  return full || member.username || member.email || "";
 };
 
 export const MembersTab = () => {
-  const { currentProject } = useProject();
   const { user } = useUser();
-  const { data: members = [], isPending } = useGetWorkspaceUsers(currentProject.id);
+  const { data: members = [], isPending } = useListAgentVaultProductUserMembers();
   const removeMember = useRemoveAgentVaultProductMember();
 
   const [search, setSearch] = useState("");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [memberToEdit, setMemberToEdit] = useState<TWorkspaceUser | null>(null);
-  const [memberToRemove, setMemberToRemove] = useState<TWorkspaceUser | null>(null);
+  const [memberToEdit, setMemberToEdit] = useState<TAgentVaultProductUserMember | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<TAgentVaultProductUserMember | null>(null);
 
   const { permission } = useProjectPermission();
   const canAddMembers = permission.can(
@@ -86,18 +86,14 @@ export const MembersTab = () => {
     return members.filter(
       (member) =>
         displayName(member).toLowerCase().includes(term) ||
-        (member.user.email ?? "").toLowerCase().includes(term) ||
-        (member.inviteEmail ?? "").toLowerCase().includes(term)
+        (member.email ?? "").toLowerCase().includes(term)
     );
   }, [members, search]);
 
   const handleRemove = async () => {
     try {
-      if (!memberToRemove) return;
-      await removeMember.mutateAsync({
-        projectId: currentProject.id,
-        userId: memberToRemove.user.id
-      });
+      if (!memberToRemove?.userId) return;
+      await removeMember.mutateAsync({ userId: memberToRemove.userId });
       createNotification({
         text: `${displayName(memberToRemove)} removed`,
         type: "success"
@@ -167,26 +163,24 @@ export const MembersTab = () => {
               ))}
             {!isPending &&
               filtered.map((member) => {
-                const role = member.roles?.[0]?.role ?? ProjectMembershipRole.Member;
-                const isSelf = member.user.id === user?.id;
+                const isSelf = member.userId === user?.id;
 
                 return (
-                  <TableRow key={member.id}>
+                  <TableRow key={member.membershipId}>
                     <TableCell>
                       <div className="flex items-center gap-x-1.5">
                         <HighlightText text={displayName(member)} highlight={search} />
-                        <PendingInvitationBadge isPending={member.user.isOrgMembershipPending} />
+                        <PendingInvitationBadge isPending={member.isOrgMembershipPending} />
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">
-                      <HighlightText
-                        text={member.user.email || member.inviteEmail || member.user.username || ""}
-                        highlight={search}
-                      />
+                      <HighlightText text={member.email || member.username} highlight={search} />
                     </TableCell>
                     <TableCell>
-                      <Badge variant={role === ProjectMembershipRole.Admin ? "av" : "neutral"}>
-                        {formatProjectRoleName(role, member.roles?.[0]?.customRoleName)}
+                      <Badge
+                        variant={member.role === ProjectMembershipRole.Admin ? "av" : "neutral"}
+                      >
+                        {formatProjectRoleName(member.role)}
                       </Badge>
                     </TableCell>
                     <TableCell variant="action">
@@ -223,8 +217,8 @@ export const MembersTab = () => {
         isOpen={Boolean(memberToEdit)}
         onOpenChange={() => setMemberToEdit(null)}
         subject={memberToEdit ? displayName(memberToEdit) : ""}
-        currentRole={memberToEdit?.roles?.[0]?.role ?? ProjectMembershipRole.Member}
-        actor={memberToEdit ? { userId: memberToEdit.user.id } : {}}
+        currentRole={memberToEdit?.role ?? ProjectMembershipRole.Member}
+        actor={memberToEdit?.userId ? { userId: memberToEdit.userId } : {}}
       />
 
       <DeleteConfirmDialog

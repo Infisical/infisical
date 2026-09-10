@@ -14,9 +14,12 @@ import {
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { useGetOrganizationGroups, useListWorkspaceGroups } from "@app/hooks/api";
-import { useAddAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import { useOrganization } from "@app/context";
+import { useGetOrganizationGroups } from "@app/hooks/api";
+import {
+  useAddAgentVaultProductMember,
+  useListAgentVaultProductGroupMembers
+} from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleField } from "./ProductRoleField";
@@ -30,16 +33,15 @@ type Props = {
 
 export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const { data: orgGroups = [] } = useGetOrganizationGroups(currentOrg.id);
-  const { data: projectGroups = [] } = useListWorkspaceGroups(currentProject.id);
+  const { data: projectGroups = [] } = useListAgentVaultProductGroupMembers();
   const addMember = useAddAgentVaultProductMember();
 
   const [group, setGroup] = useState<TOption | null>(null);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
 
   const options = useMemo(() => {
-    const attached = new Set(projectGroups.map((membership) => membership.group.id));
+    const attached = new Set(projectGroups.map((membership) => membership.groupId));
     return orgGroups
       .filter((orgGroup) => !attached.has(orgGroup.id))
       .map((orgGroup) => ({ value: orgGroup.id, label: orgGroup.name }));
@@ -48,7 +50,7 @@ export const AddGroupDialog = ({ isOpen, onOpenChange }: Props) => {
   const handleAdd = async () => {
     try {
       if (!group) return;
-      await addMember.mutateAsync({ projectId: currentProject.id, groupId: group.value, role });
+      await addMember.mutateAsync({ groupId: group.value, role });
       createNotification({ text: `"${group.label}" added`, type: "success" });
       setGroup(null);
       onOpenChange(false);

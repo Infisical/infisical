@@ -209,11 +209,7 @@ export const CreateProjectIdentityForm = ({
             role: data.role.slug
           });
         } else if (isAgentVault) {
-          await addAgentVaultProductMember({
-            projectId,
-            identityId,
-            role: data.role.slug
-          });
+          await addAgentVaultProductMember({ identityId, role: data.role.slug });
         } else {
           await createMembership({
             projectId,

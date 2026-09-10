@@ -44,6 +44,52 @@ const MemberResultSchema = z.object({
 export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/users",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listAgentVaultProductUserMembers",
+      description: "List the users that are members of Agent Vault",
+      tags: [ApiDocsTags.AgentVaultMemberships],
+      response: {
+        200: z.object({
+          members: MemberSchema.extend({
+            email: z.string().nullable(),
+            username: z.string(),
+            firstName: z.string().nullable(),
+            lastName: z.string().nullable(),
+            isOrgMembershipPending: z.boolean()
+          }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => ({
+      members: await server.services.agentVaultMembership.listProductUserMembers({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req)
+      })
+    })
+  });
+  server.route({
+    method: "GET",
+    url: "/groups",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listAgentVaultProductGroupMembers",
+      description: "List the groups that are members of Agent Vault",
+      tags: [ApiDocsTags.AgentVaultMemberships],
+      response: { 200: z.object({ members: MemberSchema.extend({ name: z.string() }).array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => ({
+      members: await server.services.agentVaultMembership.listProductGroupMembers({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req)
+      })
+    })
+  });
+  server.route({
+    method: "GET",
     url: "/identities",
     config: { rateLimit: readLimit },
     schema: {

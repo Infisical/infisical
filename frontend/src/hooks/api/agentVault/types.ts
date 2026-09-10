@@ -181,6 +181,18 @@ export type TAgentVaultProductMember = {
   createdAt: string;
 };
 
+export type TAgentVaultProductUserMember = TAgentVaultProductMember & {
+  email: string | null;
+  username: string;
+  firstName: string | null;
+  lastName: string | null;
+  isOrgMembershipPending: boolean;
+};
+
+export type TAgentVaultProductGroupMember = TAgentVaultProductMember & {
+  name: string;
+};
+
 export type TAgentVaultProductIdentityMember = TAgentVaultProductMember & {
   name: string;
   identityProjectId: string | null;

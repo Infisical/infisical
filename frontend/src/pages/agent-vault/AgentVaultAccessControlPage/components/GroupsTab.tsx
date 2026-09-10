@@ -30,20 +30,21 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { useListWorkspaceGroups } from "@app/hooks/api";
-import { useRemoveAgentVaultProductMember } from "@app/hooks/api/agentVault";
+import {
+  useListAgentVaultProductGroupMembers,
+  useRemoveAgentVaultProductMember
+} from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AddGroupDialog } from "./AddGroupDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
-type TGroupRow = { id: string; name: string; role: string; customRoleName?: string };
+type TGroupRow = { id: string; name: string; role: string };
 
 export const GroupsTab = () => {
-  const { currentProject } = useProject();
-  const { data: groups = [], isPending } = useListWorkspaceGroups(currentProject.id);
+  const { data: groups = [], isPending } = useListAgentVaultProductGroupMembers();
   const removeMember = useRemoveAgentVaultProductMember();
 
   const [search, setSearch] = useState("");
@@ -54,11 +55,11 @@ export const GroupsTab = () => {
   const rows = useMemo<TGroupRow[]>(() => {
     const term = search.trim().toLowerCase();
     return groups
+      .filter((membership) => membership.groupId)
       .map((membership) => ({
-        id: membership.group.id,
-        name: membership.group.name,
-        role: membership.roles?.[0]?.role ?? ProjectMembershipRole.Member,
-        customRoleName: membership.roles?.[0]?.customRoleName
+        id: membership.groupId as string,
+        name: membership.name,
+        role: membership.role
       }))
       .filter((row) => row.name.toLowerCase().includes(term));
   }, [groups, search]);
@@ -66,7 +67,7 @@ export const GroupsTab = () => {
   const handleRemove = async () => {
     try {
       if (!groupToRemove) return;
-      await removeMember.mutateAsync({ projectId: currentProject.id, groupId: groupToRemove.id });
+      await removeMember.mutateAsync({ groupId: groupToRemove.id });
       createNotification({
         text: `"${groupToRemove.name}" removed`,
         type: "success"
@@ -143,7 +144,7 @@ export const GroupsTab = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={row.role === ProjectMembershipRole.Admin ? "av" : "neutral"}>
-                      {formatProjectRoleName(row.role, row.customRoleName)}
+                      {formatProjectRoleName(row.role)}
                     </Badge>
                   </TableCell>
                   <TableCell variant="action">

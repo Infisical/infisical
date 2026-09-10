@@ -6,7 +6,9 @@ import { useOrganization } from "@app/context";
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultProductGroupMember,
   TAgentVaultProductIdentityMember,
+  TAgentVaultProductUserMember,
   TAgentVaultProxy,
   TAgentVaultSession,
   TListAgentVaultSessionsDTO
@@ -31,6 +33,10 @@ export const agentVaultKeys = {
     [...agentVaultKeys.sessions(orgId), params] as const,
   proxies: (orgId: string) => [...agentVaultKeys.all(orgId), "proxies"] as const,
   productMembers: (orgId: string) => [...agentVaultKeys.all(orgId), "product-members"] as const,
+  productUserMembers: (orgId: string) =>
+    [...agentVaultKeys.productMembers(orgId), "users"] as const,
+  productGroupMembers: (orgId: string) =>
+    [...agentVaultKeys.productMembers(orgId), "groups"] as const,
   productIdentityMembers: (orgId: string) =>
     [...agentVaultKeys.productMembers(orgId), "identities"] as const
 };
@@ -40,6 +46,26 @@ const fetchProductMembers = async <T,>(path: string) => {
     `/api/v1/agent-vault/memberships/${path}`
   );
   return data.members;
+};
+
+export const useListAgentVaultProductUserMembers = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.productUserMembers(currentOrg.id),
+    queryFn: () => fetchProductMembers<TAgentVaultProductUserMember>("users"),
+    enabled
+  });
+};
+
+export const useListAgentVaultProductGroupMembers = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.productGroupMembers(currentOrg.id),
+    queryFn: () => fetchProductMembers<TAgentVaultProductGroupMember>("groups"),
+    enabled
+  });
 };
 
 export const useListAgentVaultProductIdentityMembers = (enabled = true) => {

@@ -17,9 +17,12 @@ import {
   FieldLabel,
   FilterableSelect
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
-import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
-import { useAddAgentVaultProductUserMembers } from "@app/hooks/api/agentVault";
+import { useOrganization } from "@app/context";
+import { useGetOrgUsers } from "@app/hooks/api";
+import {
+  useAddAgentVaultProductUserMembers,
+  useListAgentVaultProductUserMembers
+} from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
 
@@ -34,9 +37,8 @@ type Props = {
 
 export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const { data: orgUsers = [] } = useGetOrgUsers(currentOrg.id);
-  const { data: projectUsers = [] } = useGetWorkspaceUsers(currentProject.id);
+  const { data: projectUsers = [] } = useListAgentVaultProductUserMembers();
   const addMembers = useAddAgentVaultProductUserMembers();
   const navigate = useNavigate({ from: "" });
   const requesterEmail = useSearch({
@@ -48,7 +50,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
 
   const candidates = useMemo(() => {
-    const attached = new Set(projectUsers.map((member) => member.user.id));
+    const attached = new Set(projectUsers.map((member) => member.userId));
     return orgUsers
       .filter((orgUser) => !attached.has(orgUser.user.id))
       .map((orgUser) => {
@@ -59,7 +61,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   }, [orgUsers, projectUsers]);
 
   const memberUsernames = useMemo(
-    () => new Set(projectUsers.map((member) => member.user.username)),
+    () => new Set(projectUsers.map((member) => member.username)),
     [projectUsers]
   );
 
@@ -104,7 +106,6 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const handleAdd = () => {
     addMembers.mutate(
       {
-        projectId: currentProject.id,
         userIds: selected.map((candidate) => candidate.value),
         emails: [],
         role

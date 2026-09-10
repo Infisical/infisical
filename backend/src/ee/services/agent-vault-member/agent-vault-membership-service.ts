@@ -1,10 +1,20 @@
 import { ForbiddenError } from "@casl/ability";
-import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, RESOURCE_SCOPE } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  RESOURCE_SCOPE
+} from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -36,7 +46,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
 
-export type TListAgentVaultProductIdentitiesDTO = {
+export type TListAgentVaultProductMembersDTO = {
   projectId: string;
   ctx: TAgentVaultActorContext;
 };
@@ -82,8 +92,8 @@ export const agentVaultMembershipServiceFactory = ({
   permissionService,
   usageMeteringService
 }: TAgentVaultMembershipServiceFactoryDep) => {
-  const checkProductAdmin = async (projectId: string, ctx: TAgentVaultActorContext) => {
-    const { hasRole } = await permissionService.getProjectPermission({
+  const getActorPermission = (projectId: string, ctx: TAgentVaultActorContext) =>
+    permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -91,6 +101,9 @@ export const agentVaultMembershipServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.AgentVault
     });
+
+  const checkProductAdmin = async (projectId: string, ctx: TAgentVaultActorContext) => {
+    const { hasRole } = await getActorPermission(projectId, ctx);
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only Agent Vault admins can perform this action" });
     }
@@ -226,21 +239,6 @@ export const agentVaultMembershipServiceFactory = ({
     return { memberships, skipped };
   };
 
-  const assertCanReadIdentities = async (projectId: string, ctx: TAgentVaultActorContext) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      actionProjectType: ActionProjectType.AgentVault
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Read,
-      ProjectPermissionSub.Identity
-    );
-  };
-
   const resolveMemberships = async (memberships: Awaited<ReturnType<typeof membershipDAL.find>>) => {
     if (!memberships.length) return [];
 
@@ -261,8 +259,55 @@ export const agentVaultMembershipServiceFactory = ({
     });
   };
 
-  const listProductIdentityMembers = async ({ projectId, ctx }: TListAgentVaultProductIdentitiesDTO) => {
-    await assertCanReadIdentities(projectId, ctx);
+  const listProductUserMembers = async ({ projectId, ctx }: TListAgentVaultProductMembersDTO) => {
+    const { permission } = await getActorPermission(projectId, ctx);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
+    const resolved = await resolveMemberships(memberships.filter((m) => m.actorUserId));
+
+    const userIds = resolved.map((m) => m.userId).filter((v): v is string => Boolean(v));
+    if (!userIds.length) return [];
+    const [users, orgMemberships] = await Promise.all([
+      userDAL.find({ $in: { id: userIds } }),
+      membershipDAL.find({ scope: AccessScope.Organization, scopeOrgId: ctx.actorOrgId, $in: { actorUserId: userIds } })
+    ]);
+    const userById = new Map(users.map((u) => [u.id, u]));
+    const orgStatusByUser = new Map(orgMemberships.map((m) => [m.actorUserId, m.status]));
+
+    return resolved.map((m) => {
+      const user = m.userId ? userById.get(m.userId) : undefined;
+      return {
+        ...m,
+        email: user?.email ?? null,
+        username: user?.username ?? "",
+        firstName: user?.firstName ?? null,
+        lastName: user?.lastName ?? null,
+        isOrgMembershipPending: orgStatusByUser.get(m.userId ?? "") === OrgMembershipStatus.Invited
+      };
+    });
+  };
+
+  const listProductGroupMembers = async ({ projectId, ctx }: TListAgentVaultProductMembersDTO) => {
+    const { permission } = await getActorPermission(projectId, ctx);
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+
+    const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
+    const resolved = await resolveMemberships(memberships.filter((m) => m.actorGroupId));
+
+    const groupIds = resolved.map((m) => m.groupId).filter((v): v is string => Boolean(v));
+    const groups = groupIds.length ? await groupDAL.find({ $in: { id: groupIds } }) : [];
+    const groupById = new Map(groups.map((g) => [g.id, g]));
+
+    return resolved.map((m) => ({ ...m, name: (m.groupId && groupById.get(m.groupId)?.name) || "" }));
+  };
+
+  const listProductIdentityMembers = async ({ projectId, ctx }: TListAgentVaultProductMembersDTO) => {
+    const { permission } = await getActorPermission(projectId, ctx);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionSub.Identity
+    );
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     const identityMemberships = memberships.filter((m) => m.actorIdentityId);
@@ -474,6 +519,8 @@ export const agentVaultMembershipServiceFactory = ({
 
   return {
     addProductUserMembers,
+    listProductUserMembers,
+    listProductGroupMembers,
     listProductIdentityMembers,
     addProductMember,
     updateProductMemberRole,

@@ -18,7 +18,7 @@ never in anything the agent holds.
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, connections, credential encryption, grants
-agent-vault-member/          product membership (add, role, remove)
+agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, retention sweep
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           enroll, heartbeat, resolve

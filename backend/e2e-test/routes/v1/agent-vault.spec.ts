@@ -443,6 +443,31 @@ describe("Agent Vault V1 Router", async () => {
       await deleteOrgIdentity(identity.id);
     });
 
+    test("the user and group lists carry the names the Access Control page shows", async () => {
+      const users = JSON.parse((await inject("GET", `${memberships}/users`)).payload) as {
+        members: { userId: string; role: string; email: string | null; isOrgMembershipPending: boolean }[];
+      };
+      const self = users.members.find((m) => m.userId === seedData1.id);
+      expect(self?.role).toBe("admin");
+      expect(self?.email).toBe(seedData1.email);
+      expect(self?.isOrgMembershipPending).toBe(false);
+
+      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
+        projectId: string;
+      };
+      const group = await createProjectGroup(projectId, "av-list-groups", ProjectMembershipRole.Member);
+      try {
+        const groups = JSON.parse((await inject("GET", `${memberships}/groups`)).payload) as {
+          members: { groupId: string; role: string; name: string }[];
+        };
+        const row = groups.members.find((m) => m.groupId === group.id);
+        expect(row?.role).toBe("member");
+        expect(row?.name).toBe("av-list-groups");
+      } finally {
+        await group.cleanup();
+      }
+    });
+
     test("removing a user from the organization takes their grants too", async () => {
       const bundle = await createAccessBundle("org-removal-reap");
       const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {

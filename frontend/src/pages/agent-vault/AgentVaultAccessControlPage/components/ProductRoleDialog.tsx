@@ -13,7 +13,6 @@ import {
   FieldContent,
   FieldLabel
 } from "@app/components/v3";
-import { useProject } from "@app/context";
 import { useUpdateAgentVaultProductMemberRole } from "@app/hooks/api/agentVault";
 import { TAgentVaultProductMemberActor } from "@app/hooks/api/agentVault/types";
 
@@ -28,7 +27,6 @@ type Props = {
 };
 
 export const ProductRoleDialog = ({ isOpen, onOpenChange, subject, currentRole, actor }: Props) => {
-  const { currentProject } = useProject();
   const updateRole = useUpdateAgentVaultProductMemberRole();
   const [role, setRole] = useState(currentRole);
 
@@ -38,7 +36,7 @@ export const ProductRoleDialog = ({ isOpen, onOpenChange, subject, currentRole, 
 
   const handleSave = async () => {
     try {
-      await updateRole.mutateAsync({ projectId: currentProject.id, ...actor, role });
+      await updateRole.mutateAsync({ ...actor, role });
       createNotification({
         text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
         type: "success"

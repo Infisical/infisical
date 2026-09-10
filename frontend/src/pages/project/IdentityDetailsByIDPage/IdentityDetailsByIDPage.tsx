@@ -144,10 +144,7 @@ const Page = () => {
     } else if (isAgentVault) {
       // Same reason as PAM: the product route keeps the last-admin guard, emits the Agent Vault event
       // and reaps the identity's bundle grants, none of which the generic route does.
-      await removeAgentVaultIdentityMutateAsync({
-        identityId,
-        projectId
-      });
+      await removeAgentVaultIdentityMutateAsync({ identityId });
     } else {
       await removeIdentityMutateAsync({
         identityId,

@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
-import { projectKeys } from "../projects/query-keys";
 import { ApiErrorTypes } from "../types";
 import { agentVaultKeys } from "./queries";
 import {
@@ -324,35 +323,24 @@ const agentVaultMemberPath = ({
 
 const invalidateProductMembers = (
   queryClient: ReturnType<typeof useQueryClient>,
-  orgId: string,
-  projectId: string
+  orgId: string
 ) => {
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers(orgId) });
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) });
-  queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
-  queryClient.invalidateQueries({ queryKey: projectKeys.getProjectGroupMemberships(projectId) });
 };
 
 export const useAddAgentVaultProductUserMembers = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      projectId: _projectId,
-      ...dto
-    }: {
-      projectId: string;
-      userIds: string[];
-      emails: string[];
-      role: string;
-    }) => {
+    mutationFn: async (dto: { userIds: string[]; emails: string[]; role: string }) => {
       const { data } = await apiRequest.post<{
         members: { membershipId: string; userId?: string; role: string; createdAt: string }[];
         skipped: string[];
       }>("/api/v1/agent-vault/memberships/users", dto);
       return data;
     },
-    onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateProductMembers(queryClient, currentOrg.id)
   });
 };
 
@@ -361,17 +349,14 @@ export const useAddAgentVaultProductMember = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      role,
-      ...actor
-    }: TAgentVaultProductMemberActor & { projectId: string; role: string }) => {
+    mutationFn: async ({ role, ...actor }: TAgentVaultProductMemberActor & { role: string }) => {
       const { data } = await apiRequest.post(
         `/api/v1/agent-vault/memberships/${agentVaultMemberPath(actor)}`,
         { role }
       );
       return data;
     },
-    onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateProductMembers(queryClient, currentOrg.id)
   });
 };
 
@@ -379,17 +364,14 @@ export const useUpdateAgentVaultProductMemberRole = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      role,
-      ...actor
-    }: TAgentVaultProductMemberActor & { projectId: string; role: string }) => {
+    mutationFn: async ({ role, ...actor }: TAgentVaultProductMemberActor & { role: string }) => {
       const { data } = await apiRequest.patch(
         `/api/v1/agent-vault/memberships/${agentVaultMemberPath(actor)}`,
         { role }
       );
       return data;
     },
-    onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateProductMembers(queryClient, currentOrg.id)
   });
 };
 
@@ -397,12 +379,12 @@ export const useRemoveAgentVaultProductMember = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (actor: TAgentVaultProductMemberActor & { projectId: string }) => {
+    mutationFn: async (actor: TAgentVaultProductMemberActor) => {
       const { data } = await apiRequest.delete(
         `/api/v1/agent-vault/memberships/${agentVaultMemberPath(actor)}`
       );
       return data;
     },
-    onSuccess: (_, { projectId }) => invalidateProductMembers(queryClient, currentOrg.id, projectId)
+    onSuccess: () => invalidateProductMembers(queryClient, currentOrg.id)
   });
 };
