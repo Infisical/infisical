@@ -15,6 +15,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
   BadRequestError,
   DatabaseError,
+  ForbiddenRequestError,
   NotFoundError,
   PermissionBoundaryError,
   UnauthorizedError
@@ -1043,8 +1044,14 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
+    if (groupMembership.group.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
+      });
+    }
+
     const oidcConfig = await oidcConfigDAL.findOne({
-      orgId: actorOrgId,
+      orgId: groupMembership.group.orgId,
       isActive: true
     });
 
@@ -1152,6 +1159,12 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
+    if (groupMembership.group.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
+      });
+    }
+
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
     const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
       ignoreUnresolvedRoles: true
@@ -1233,6 +1246,12 @@ export const groupServiceFactory = ({
       throw new NotFoundError({
         message: `Failed to find group with ID ${id}`
       });
+
+    if (groupMembership.group.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
+      });
+    }
 
     const oidcConfig = await oidcConfigDAL.findOne({
       orgId: groupMembership.group.orgId,
@@ -1321,6 +1340,12 @@ export const groupServiceFactory = ({
       throw new NotFoundError({
         message: `Failed to find group with ID ${id}`
       });
+
+    if (groupMembership.group.orgId !== actorOrgId) {
+      throw new ForbiddenRequestError({
+        message: `Group '${groupMembership.group.slug}' is owned by a parent organization. Its members must be managed from that organization.`
+      });
+    }
 
     const groupRoles = resolveMembershipRoleSlugs(groupMembership.roles);
     const rolePermissionDetails = await permissionService.getOrgPermissionByRoles(groupRoles, actorOrgId, {
