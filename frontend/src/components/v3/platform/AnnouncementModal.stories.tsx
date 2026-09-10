@@ -52,6 +52,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   name: "Example: Announcement Navigation",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Side arrows sit 12px from the card and bring adjacent previews into the center. Previews use a fixed 32px offset. Only their artwork and text blur as they recede, then sharpen as they become active; card surfaces and borders stay sharp. Hover or focus a preview to move it outward another 8px and brighten it; select it to navigate. Pointer and arrow-key navigation share the transition; reduced motion disables it. The card has no footer; close it with the top-right button, Escape, or the backdrop. Long content scrolls independently of the controls."
+      }
+    }
+  },
   render: function Render(args) {
     const [isOpen, setIsOpen] = useState(args.isOpen);
 
@@ -63,5 +71,27 @@ export const Default: Story = {
         <AnnouncementModal {...args} isOpen={isOpen} onOpenChange={setIsOpen} />
       </>
     );
+  }
+};
+
+export const SingleAnnouncement: Story = {
+  ...Default,
+  name: "Example: Single Announcement",
+  args: {
+    announcements: [meta.args.announcements[0]]
+  }
+};
+
+export const LongTitle: Story = {
+  ...Default,
+  name: "State: Long Title",
+  args: {
+    announcements: [
+      {
+        ...meta.args.announcements[0],
+        title: "New Controls for Managing Secrets Across Your Organization and Projects"
+      },
+      ...meta.args.announcements.slice(1)
+    ]
   }
 };
