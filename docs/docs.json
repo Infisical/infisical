@@ -414,7 +414,7 @@
                   {
                     "group": "Agent Vault",
                     "icon": "arrow-up-right-from-square",
-                    "root": "https://docs.agent-vault.dev/"
+                    "href": "https://docs.agent-vault.dev/"
                   }
                 ]
               }
