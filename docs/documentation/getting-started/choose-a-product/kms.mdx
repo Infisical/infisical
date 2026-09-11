@@ -1,0 +1,43 @@
+---
+title: "Manage cryptographic keys"
+sidebarTitle: "Manage cryptographic keys"
+description: "Perform encryption, decryption, and signing operations using keys stored centrally in Infisical."
+---
+
+Infisical KMS is a key management service that stores cryptographic keys and performs cryptographic operations with them on behalf of applications. Applications reference a key by its identifier when calling the KMS API, so they never receive the key material directly.
+
+<Card title="KMS docs" icon="key" href="/documentation/platform/kms/overview">
+  Creating keys, encryption and decryption, signing and verification, and HSM integration.
+</Card>
+
+## Use cases
+
+<CardGroup cols={2}>
+  <Card title="Encrypt and decrypt with a KMS key" icon="lock" href="/documentation/platform/kms/overview">
+    Encrypt sensitive data by reference to a key that never leaves Infisical.
+  </Card>
+  <Card title="Sign and verify with a KMS key" icon="signature" href="/documentation/platform/kms/overview">
+    Sign payloads with an asymmetric key managed centrally, and verify signatures without holding the key.
+  </Card>
+  <Card title="Back the root key with an HSM" icon="microchip" href="/self-hosting/guides/hsm-integration">
+    Use a hardware security module for the root key that protects data stored in Infisical.
+  </Card>
+</CardGroup>
+
+## What is a key management service?
+
+A key management service (KMS) is a system that stores cryptographic keys in a central location and provides an API through which applications can request cryptographic operations. Instead of storing a private key locally, an application stores a reference to the key and calls the KMS to perform operations such as encryption, decryption, or signing. Because the key material isn't stored on the application side, an application that has been compromised doesn't expose the key.
+
+## Why manage keys centrally
+
+Cryptographic keys require careful handling. If a key is lost or exposed, the data and systems that depend on it are also compromised. Rotating a key that is stored across many applications requires coordinating the rotation across every location that uses it. If a key is stored in a container image or on disk, every location that stores or transmits that image also stores the key.
+
+A centralized key management service reduces these risks by keeping the key in a single location. Applications interact with the key through an API rather than storing it locally, so the key isn't present on application servers, in container images, or in configuration files. When the key is rotated in the KMS, applications continue to use the same reference and don't need to be updated.
+
+## How Infisical does it
+
+Infisical KMS stores cryptographic keys within the platform and provides an API for using them. Each key is created with an algorithm (for example, `AES-GCM-256` for symmetric encryption, or an asymmetric algorithm for signing) and a usage type, such as encrypt and decrypt, sign and verify, or generate and verify a message authentication code (MAC). To perform an operation, an application calls the KMS API with the key's identifier and the input payload, and Infisical returns the operation's result.
+
+When a key is created, it can be configured so that its raw key material can't be exported. In this configuration, the key material remains inside Infisical regardless of a user's permissions. The root key that Infisical uses to protect platform data can itself be backed by a hardware security module ([HSM](/self-hosting/guides/hsm-integration)).
+
+Infisical also uses its own KMS internally. Projects and the data within them are encrypted at rest using a key managed by Infisical, so the protections applied to customer-managed keys also apply to Infisical's own storage.

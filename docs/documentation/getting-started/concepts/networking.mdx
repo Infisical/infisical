@@ -1,0 +1,13 @@
+---
+title: "Private network access"
+sidebarTitle: "Private network access"
+description: "How Infisical reaches systems that aren't directly accessible from its own network."
+---
+
+<Card title="Networking docs" icon="network-wired" href="/documentation/platform/gateways/overview">
+  Gateways, gateway pools, relays, and the network architecture that connects them to Infisical.
+</Card>
+
+Infisical uses gateways and relays to reach systems that aren't directly accessible from its own network. A gateway is a process that runs inside a customer network and forwards requests from Infisical to systems on the same network, such as an internal database or an on-premises certificate authority. A relay is a component that connects a gateway to Infisical when a direct network connection between the two isn't possible.
+
+Gateways are required when Infisical needs to access a system that isn't exposed to the public internet, such as a database inside a private cloud VPC, a Kubernetes cluster in an air-gapped environment, or a device management server behind a corporate firewall.

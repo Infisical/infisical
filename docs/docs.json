@@ -43,22 +43,39 @@
         "pages": [
           "documentation/getting-started/overview",
           "documentation/getting-started/introduction",
+          "documentation/getting-started/set-up-with-ai",
+          "documentation/platform/external-migrations/overview",
+          "documentation/getting-started/concepts/deployment-models",
           {
-            "group": "Concepts",
+            "group": "Use cases",
             "pages": [
-              "documentation/getting-started/concepts/deployment-models",
-              "documentation/getting-started/concepts/platform-hierarchy",
-              "documentation/getting-started/concepts/platform-iam",
-              "documentation/getting-started/concepts/client-integrations",
-              "documentation/getting-started/concepts/audit-logs"
+              {
+                "group": "Manage secrets",
+                "root": "documentation/getting-started/choose-a-product/secrets-management/overview",
+                "pages": [
+                  "documentation/getting-started/choose-a-product/secrets-management/deliver-secrets",
+                  "documentation/getting-started/choose-a-product/secrets-management/local-development",
+                  "documentation/getting-started/choose-a-product/secrets-management/rotate-credentials",
+                  "documentation/getting-started/choose-a-product/secrets-management/dynamic-credentials",
+                  "documentation/getting-started/choose-a-product/secrets-management/sync-secrets",
+                  "documentation/getting-started/choose-a-product/secrets-management/broker-agent-credentials"
+                ]
+              },
+              "documentation/getting-started/choose-a-product/secret-scanning",
+              "documentation/getting-started/choose-a-product/pki",
+              "documentation/getting-started/choose-a-product/kms",
+              "documentation/getting-started/choose-a-product/pam"
             ]
           },
           {
-            "group": "Migrate to Infisical",
+            "group": "Understand the platform",
             "pages": [
-              "documentation/platform/external-migrations/overview",
-              "documentation/platform/external-migrations/doppler",
-              "documentation/platform/external-migrations/vault"
+              "documentation/getting-started/concepts/platform-hierarchy",
+              "documentation/getting-started/concepts/platform-iam",
+              "documentation/getting-started/concepts/app-connections",
+              "documentation/getting-started/concepts/networking",
+              "documentation/getting-started/concepts/internals",
+              "documentation/getting-started/concepts/contributing"
             ]
           }
         ]
@@ -87,7 +104,15 @@
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
-                  "documentation/platform/secret-sharing"
+                  "documentation/platform/secret-sharing",
+                  {
+                    "group": "Migrate to Infisical",
+                    "root": "documentation/platform/secrets-mgmt/quick-starts/migrate",
+                    "pages": [
+                      "documentation/platform/external-migrations/doppler",
+                      "documentation/platform/external-migrations/vault"
+                    ]
+                  }
                 ]
               },
               {
@@ -4653,6 +4678,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/ai/model-context-protocol",
+      "destination": "/documentation/getting-started/set-up-with-ai"
+    },
     {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"
