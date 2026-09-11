@@ -231,7 +231,7 @@ import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceB
 import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
-import { InviteMembersModal } from "./components/InviteMembersModal";
+import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -773,7 +773,7 @@ const OverviewPageContent = () => {
   } = overview ?? {};
 
   // Growth nudge: when the user creates a secret, ask the backend whether to surface the
-  // "Invite your team" modal. The check runs at most once per session, opens the modal only if
+  // "Invite your team" card. The check runs at most once per session, opens the card only if
   // the backend says so, and is a no-op on failure.
   const {
     popUp: invitePopUp,
@@ -903,6 +903,10 @@ const OverviewPageContent = () => {
   const isBatchModeActive = isOverviewBatchMode && isSingleEnvView;
   const hasPendingBatchChanges =
     isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
+  // Mirrors SelectionPanel's selectedCount > 0, which is when its SelectedActionBar is visible.
+  const hasSelectedEntries = Object.values(selectedEntries).some(
+    (entries) => Object.keys(entries).length > 0
+  );
 
   useEffect(() => {
     if (hasPendingBatchChanges) {
@@ -4144,9 +4148,11 @@ const OverviewPageContent = () => {
           environment={singleEnvSlug}
         />
       )}
-      {invitePopUp.inviteMembers.isOpen && (
-        <InviteMembersModal popUp={invitePopUp} handlePopUpToggle={handleInvitePopUpToggle} />
-      )}
+      <SecretsActivationNudge
+        popUp={invitePopUp}
+        handlePopUpToggle={handleInvitePopUpToggle}
+        isLifted={hasPendingBatchChanges || hasSelectedEntries}
+      />
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm
           onCommit={handleCreateCommit}
