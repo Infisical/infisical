@@ -106,10 +106,12 @@ const extractOrgId = () => {
   }
 };
 
+const getLogLevel = () => process.env.PINO_LOG_LEVEL || "info";
+
 export const initLogger = () => {
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
-      level: "info",
+      level: getLogLevel(),
       target: "pino/file",
       options: {
         destination: 1,
@@ -151,7 +153,7 @@ export const initLogger = () => {
       mixin(_context, level) {
         return { severity: logLevelToSeverityLookup[level] || logLevelToSeverityLookup["30"] };
       },
-      level: process.env.PINO_LOG_LEVEL || "info",
+      level: getLogLevel(),
       formatters: {
         bindings: (bindings) => ({
           pid: bindings.pid,

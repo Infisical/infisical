@@ -7,28 +7,33 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
-  FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
-  Input
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useUpdateKmipServer } from "@app/hooks/api/kmipServers";
 import { TKmipServerAuthMethodView } from "@app/hooks/api/kmipServers/types";
-
-type SettableMethod = "aws" | "token";
 
 const METHOD_OPTIONS: { value: SettableMethod; label: string }[] = [
   { value: "token", label: "Token Auth" },
   { value: "aws", label: "AWS Auth" }
 ];
+
+const DEFAULT_STS_ENDPOINT = "https://sts.amazonaws.com/";
 
 const schema = z
   .object({
@@ -59,13 +64,14 @@ const schema = z
     }
   });
 
-type FormData = z.infer<typeof schema>;
-
-type Props = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  kmipServerId: string;
-  currentMethod: TKmipServerAuthMethodView;
+const toFormDefaults = (currentMethod: TKmipServerAuthMethodView): FormData => {
+  const aws = currentMethod.method === "aws" ? currentMethod.config : null;
+  return {
+    method: currentMethod.method === "aws" ? "aws" : "token",
+    stsEndpoint: aws?.stsEndpoint ?? DEFAULT_STS_ENDPOINT,
+    allowedPrincipalArns: aws?.allowedPrincipalArns ?? "",
+    allowedAccountIds: aws?.allowedAccountIds ?? ""
+  };
 };
 
 export const KmipServerAuthMethodModal = ({
@@ -75,10 +81,7 @@ export const KmipServerAuthMethodModal = ({
   currentMethod
 }: Props) => {
   const { mutateAsync: updateKmipServer, isPending } = useUpdateKmipServer();
-  const { isSubOrganization } = useOrganization();
-
-  const initialMethod: SettableMethod = currentMethod.method === "aws" ? "aws" : "token";
-  const initialAws = currentMethod.method === "aws" ? currentMethod.config : null;
+  const scopeVariant = useScopeVariant();
 
   const {
     control,
@@ -88,23 +91,11 @@ export const KmipServerAuthMethodModal = ({
     formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      method: initialMethod,
-      stsEndpoint: initialAws?.stsEndpoint ?? "https://sts.amazonaws.com/",
-      allowedPrincipalArns: initialAws?.allowedPrincipalArns ?? "",
-      allowedAccountIds: initialAws?.allowedAccountIds ?? ""
-    }
+    defaultValues: toFormDefaults(currentMethod)
   });
 
   useEffect(() => {
-    if (isOpen) {
-      reset({
-        method: initialMethod,
-        stsEndpoint: initialAws?.stsEndpoint ?? "https://sts.amazonaws.com/",
-        allowedPrincipalArns: initialAws?.allowedPrincipalArns ?? "",
-        allowedAccountIds: initialAws?.allowedAccountIds ?? ""
-      });
-    }
+    if (isOpen) reset(toFormDefaults(currentMethod));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -128,46 +119,45 @@ export const KmipServerAuthMethodModal = ({
       createNotification({ type: "success", text: "Auth method updated" });
       onOpenChange(false);
     } catch {
-      createNotification({ type: "error", text: "Failed to update auth method" });
+      // MutationCache.onError already surfaces the API error.
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Auth Method</DialogTitle>
           <DialogDescription>
             Switch the KMIP server&apos;s auth method or update the current method&apos;s config.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Controller
             control={control}
             name="method"
-            render={({ field }) => {
-              const selected =
-                METHOD_OPTIONS.find((o) => o.value === field.value) ?? METHOD_OPTIONS[0];
-              return (
-                <Field>
-                  <FieldLabel>Method</FieldLabel>
-                  <FieldContent>
-                    <FilterableSelect
-                      value={selected}
-                      onChange={(opt) => {
-                        const next = opt as { value: SettableMethod } | null;
-                        if (next) field.onChange(next.value);
-                      }}
-                      options={METHOD_OPTIONS}
-                      isSearchable={false}
-                      isClearable={false}
-                      getOptionLabel={(o) => o.label}
-                      getOptionValue={(o) => o.value}
-                    />
-                  </FieldContent>
-                </Field>
-              );
-            }}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="kmip-server-auth-method">Method</FieldLabel>
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger
+                    id="kmip-server-auth-method"
+                    isError={Boolean(error)}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {METHOD_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
           />
 
           {method === "aws" && (
@@ -176,16 +166,21 @@ export const KmipServerAuthMethodModal = ({
                 control={control}
                 name="allowedPrincipalArns"
                 render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel>Allowed Principal ARNs</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        {...field}
-                        isError={Boolean(error)}
-                        placeholder="arn:aws:iam::123456789012:role/MyRoleName, arn:aws:iam::123456789012:user/MyUserName..."
-                      />
-                      <FieldError errors={[error]} />
-                    </FieldContent>
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="kmip-server-allowed-principal-arns">
+                      Allowed Principal ARNs
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="kmip-server-allowed-principal-arns"
+                      isError={Boolean(error)}
+                      placeholder="arn:aws:iam::123456789012:role/MyRoleName, arn:aws:iam::123456789012:user/MyUserName"
+                    />
+                    <FieldDescription>
+                      Comma-separated. Set at least one of allowed principal ARNs or allowed account
+                      IDs.
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
                   </Field>
                 )}
               />
@@ -193,12 +188,17 @@ export const KmipServerAuthMethodModal = ({
                 control={control}
                 name="allowedAccountIds"
                 render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel>Allowed Account IDs</FieldLabel>
-                    <FieldContent>
-                      <Input {...field} isError={Boolean(error)} placeholder="123456789012, ..." />
-                      <FieldError errors={[error]} />
-                    </FieldContent>
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="kmip-server-allowed-account-ids">
+                      Allowed Account IDs
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="kmip-server-allowed-account-ids"
+                      isError={Boolean(error)}
+                      placeholder="123456789012, 210987654321"
+                    />
+                    <FieldError>{error?.message}</FieldError>
                   </Field>
                 )}
               />
@@ -206,37 +206,49 @@ export const KmipServerAuthMethodModal = ({
                 control={control}
                 name="stsEndpoint"
                 render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel>STS Endpoint</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        {...field}
-                        isError={Boolean(error)}
-                        placeholder="https://sts.amazonaws.com/"
-                      />
-                      <FieldError errors={[error]} />
-                    </FieldContent>
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="kmip-server-sts-endpoint">STS Endpoint</FieldLabel>
+                    <Input
+                      {...field}
+                      id="kmip-server-sts-endpoint"
+                      isError={Boolean(error)}
+                      placeholder={DEFAULT_STS_ENDPOINT}
+                    />
+                    <FieldError>{error?.message}</FieldError>
                   </Field>
                 )}
               />
             </>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
               type="submit"
-              variant={isSubOrganization ? "sub-org" : "org"}
+              variant={scopeVariant}
               isPending={isSubmitting || isPending}
               isDisabled={isSubmitting || isPending || !isDirty}
             >
-              Update
+              Update Auth Method
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
+};
+
+type SettableMethod = "aws" | "token";
+
+type FormData = z.infer<typeof schema>;
+
+type Props = {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  kmipServerId: string;
+  currentMethod: TKmipServerAuthMethodView;
 };

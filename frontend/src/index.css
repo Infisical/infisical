@@ -80,6 +80,30 @@
 @theme {
   /* Semantic color tokens */
   /* Surface, content, structure, status, scope, and resource roles */
+  --z-index-sticky: 10;
+  --z-index-backdrop: 20;
+  --z-index-modal: 30;
+  --z-index-dropdown: 40;
+  --z-index-popover: 50;
+  --z-index-tooltip: 60;
+  --z-index-toast: 70;
+
+  --breakpoint-dashboard: 1400px;
+
+  /* Fonts */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --font-alliance:
+    "Alliance No. 2", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-inter: "Inter", sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono", monospace;
+  --text-2xs: 0.7rem;
+  --text-2xs--line-height: 1rem;
+  --max-width-8xl: 88rem; /* 1408px */
+
+  /* Colors v2 */
   --color-page: #0e1014;
   --color-background: #19191c;
   --color-foreground: #ebebeb;
