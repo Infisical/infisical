@@ -9,6 +9,7 @@ import {
   IdCardIcon,
   MoreHorizontalIcon,
   PackageIcon,
+  PlusIcon,
   SearchIcon,
   UserIcon
 } from "lucide-react";
@@ -160,6 +161,7 @@ export const AgentVaultSessionsPage = () => {
               isDisabled={!hasReachableBundles}
               onClick={() => setIsCreateSheetOpen(true)}
             >
+              <PlusIcon />
               Create Session
             </Button>
           </CardAction>
