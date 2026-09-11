@@ -18,6 +18,21 @@ const ctx = {
   actorAuthMethod: undefined
 } as unknown as Parameters<ReturnType<typeof agentVaultMembershipServiceFactory>["addProductMember"]>[0]["ctx"];
 
+const buildTx = (adminCount: number) => {
+  const chain: Record<string, unknown> = {};
+  ["join", "where", "orWhere", "whereNotIn", "countDistinct"].forEach((method) => {
+    chain[method] = vi.fn((arg: unknown) => {
+      if (typeof arg === "function") (arg as (qb: unknown) => void)(chain);
+      return chain;
+    });
+  });
+  chain.first = vi.fn().mockResolvedValue({ count: String(adminCount) });
+
+  const tx = vi.fn(() => chain) as unknown as { raw: ReturnType<typeof vi.fn> };
+  tx.raw = vi.fn();
+  return tx;
+};
+
 // Only the collaborators these three guards touch; everything else is left undefined so a guard that
 // fails to short-circuit shows up as a crash rather than a silent pass.
 const buildService = ({
@@ -41,8 +56,10 @@ const buildService = ({
       find: vi.fn(({ scope }: { scope: string }) =>
         Promise.resolve(scope === AccessScope.Project ? productMemberships : [])
       ),
-      // raw() because assertNotLastAdmin takes an advisory lock before it counts admins.
-      transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb({ raw: vi.fn() }))),
+      // assertWillRetainProjectAdmin takes an advisory lock through tx.raw, then counts live admins
+      // with a query built off tx() itself. The chain answers with the fixture's admin count, so
+      // adminMembershipIds still decides whether the guard lets the write through.
+      transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(buildTx(adminMembershipIds.length)))),
       create: vi.fn().mockResolvedValue({ id: "mem-new", createdAt: new Date() }),
       delete: vi.fn().mockResolvedValue(undefined),
       deleteById: vi.fn().mockResolvedValue(undefined)
