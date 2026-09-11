@@ -101,7 +101,7 @@ import {
   InternalMetadataType,
   RequestState,
   TApprovalRequestCountDTO,
-  TDispatchSecretApprovalRequestCreateSideEffectsDTO,
+  TCreateSecretApprovalSideEffectsDTO,
   TGenerateSecretApprovalRequestDTO,
   TGenerateSecretApprovalRequestV2BridgeDTO,
   TInternalMetadata,
@@ -1974,7 +1974,7 @@ export const secretApprovalRequestServiceFactory = ({
     return secretApprovalRequest;
   };
 
-  const dispatchSecretApprovalRequestCreateSideEffects = async ({
+  const createSecretApprovalSideEffects = async ({
     secretApprovalRequest,
     projectId,
     environment,
@@ -1984,7 +1984,7 @@ export const secretApprovalRequestServiceFactory = ({
     actorId,
     actorOrgId,
     tx
-  }: TDispatchSecretApprovalRequestCreateSideEffectsDTO) => {
+  }: TCreateSecretApprovalSideEffectsDTO) => {
     const user =
       actor === ActorType.IDENTITY
         ? undefined
@@ -2003,7 +2003,8 @@ export const secretApprovalRequestServiceFactory = ({
         notification: {
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
-            userEmail: user?.email ?? "machine-identity",
+            machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
+            userEmail: user?.email ?? undefined,
             environment: env.name,
             secretPath,
             projectId,
@@ -2467,14 +2468,16 @@ export const secretApprovalRequestServiceFactory = ({
     if (!commits.length) throw new BadRequestError({ message: "Empty commits" });
 
     if (secretsToValidate.length) {
-      await secretValidationRuleService.validateSecrets({
-        projectId,
-        environment,
-        envId: folder.envId,
-        secretPath,
-        secrets: secretsToValidate,
-        tx: providedTx
-      });
+      await secretValidationRuleService.validateSecrets(
+        {
+          projectId,
+          environment,
+          envId: folder.envId,
+          secretPath,
+          secrets: secretsToValidate
+        },
+        providedTx
+      );
     }
 
     const tagIds = unique(Object.values(commitTagIds).flat());
@@ -2568,7 +2571,7 @@ export const secretApprovalRequestServiceFactory = ({
       : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
     if (!skipPostProcessing) {
-      await dispatchSecretApprovalRequestCreateSideEffects({
+      await createSecretApprovalSideEffects({
         secretApprovalRequest,
         projectId,
         environment,
@@ -2587,7 +2590,7 @@ export const secretApprovalRequestServiceFactory = ({
   return {
     generateSecretApprovalRequest,
     generateSecretApprovalRequestV2Bridge,
-    dispatchSecretApprovalRequestCreateSideEffects,
+    createSecretApprovalSideEffects,
     mergeSecretApprovalRequest,
     reviewApproval,
     updateApprovalStatus,

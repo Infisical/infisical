@@ -87,7 +87,7 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
   };
 } & TProjectPermission;
 
-export type TDispatchSecretApprovalRequestCreateSideEffectsDTO = {
+export type TCreateSecretApprovalSideEffectsDTO = {
   secretApprovalRequest: Pick<TSecretApprovalRequests, "id" | "policyId"> & { commits: { id: string }[] };
   environment: string;
   secretPath: string;
