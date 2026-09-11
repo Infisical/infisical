@@ -1200,7 +1200,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
 
   const findProjectSecretsWithNullBlindIndex = async (projectId: string, limit: number, tx?: Knex) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
+      const docs = await (tx || db)(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .where(`${TableName.Environment}.projectId`, projectId)
