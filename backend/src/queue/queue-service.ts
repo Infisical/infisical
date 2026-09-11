@@ -878,8 +878,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
         "attempts.exhausted": attemptsExhausted ? "true" : "false"
       });
 
-      // A handler that throws without catching leaves no other trace: the metrics above carry no
-      // message and no stack, so without this the only evidence is a counter moving.
       logger.error(
         err,
         `Queue job failed [queue=${name}] [job=${job?.name ?? "unknown"}] [jobId=${job?.id ?? "unknown"}] [attempt=${

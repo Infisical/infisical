@@ -106,13 +106,15 @@ const extractOrgId = () => {
   }
 };
 
+// A transport target filters independently of the logger instance, so both have to be set from
+// the same place. Pinning the target to info while the instance read the variable is what made
+// PINO_LOG_LEVEL=debug do nothing.
+const getLogLevel = () => process.env.PINO_LOG_LEVEL || "info";
+
 export const initLogger = () => {
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
-      // Follows the same env var as the logger instance below. A transport target filters
-      // independently of the logger, so pinning this to info silently discarded every debug
-      // record no matter what PINO_LOG_LEVEL said.
-      level: process.env.PINO_LOG_LEVEL || "info",
+      level: getLogLevel(),
       target: "pino/file",
       options: {
         destination: 1,
@@ -154,7 +156,7 @@ export const initLogger = () => {
       mixin(_context, level) {
         return { severity: logLevelToSeverityLookup[level] || logLevelToSeverityLookup["30"] };
       },
-      level: process.env.PINO_LOG_LEVEL || "info",
+      level: getLogLevel(),
       formatters: {
         bindings: (bindings) => ({
           pid: bindings.pid,
