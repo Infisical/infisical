@@ -1,6 +1,6 @@
 import { subject } from "@casl/ability";
 import { format } from "date-fns";
-import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
+import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon, VaultIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -150,7 +150,7 @@ export const ProjectIdentityDetailsSection = ({
                   </Badge>
                 ) : (
                   <Badge variant={isAgentVault ? "av" : "project"}>
-                    <ProjectIcon />
+                    {isAgentVault ? <VaultIcon /> : <ProjectIcon />}
                     {productLabel}
                   </Badge>
                 )}
