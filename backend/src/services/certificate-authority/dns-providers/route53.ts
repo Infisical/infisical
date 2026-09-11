@@ -64,3 +64,13 @@ export const route53GetHostedZone = async (connection: TAwsConnectionConfig, hos
   const route53Client = await buildClient(connection);
   await route53Client.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
 };
+
+export const route53GetHostedZoneName = async (
+  connection: TAwsConnectionConfig,
+  hostedZoneId: string
+): Promise<string> => {
+  const route53Client = await buildClient(connection);
+  const response = await route53Client.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
+  const name = response.HostedZone?.Name ?? "";
+  return name.endsWith(".") ? name.slice(0, -1) : name;
+};
