@@ -96,7 +96,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
           {isPending && <Skeleton className="h-16 w-full" />}
 
           {!isPending && members.length === 0 && (
-            <Empty className="border">
+            <Empty className="flex-none border">
               <EmptyHeader>
                 <EmptyTitle>No members yet</EmptyTitle>
                 <EmptyDescription>
