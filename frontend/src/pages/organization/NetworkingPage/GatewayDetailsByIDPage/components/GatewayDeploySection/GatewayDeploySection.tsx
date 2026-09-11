@@ -133,7 +133,7 @@ export const GatewayDeploySection = ({
     if (nextMode === connectionMode) return;
     setConnectionMode(nextMode);
     // The command rewrites its flags on mode change, and enrollment tokens are single use.
-    if (enrollment) void handleGenerate();
+    if (enrollment) handleGenerate();
   };
 
   return (
