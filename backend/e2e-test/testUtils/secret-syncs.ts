@@ -66,6 +66,7 @@ export const createSecretSync = async (dto: {
   initialSyncBehavior?: SecretSyncInitialSyncBehavior;
   keySchema?: string;
   disableSecretDeletion?: boolean;
+  recursive?: boolean;
   isAutoSyncEnabled?: boolean;
   authToken: string;
   expectStatusCode?: number;
@@ -84,7 +85,8 @@ export const createSecretSync = async (dto: {
       syncOptions: {
         initialSyncBehavior: dto.initialSyncBehavior ?? SecretSyncInitialSyncBehavior.OverwriteDestination,
         ...(dto.keySchema ? { keySchema: dto.keySchema } : {}),
-        ...(dto.disableSecretDeletion === undefined ? {} : { disableSecretDeletion: dto.disableSecretDeletion })
+        ...(dto.disableSecretDeletion === undefined ? {} : { disableSecretDeletion: dto.disableSecretDeletion }),
+        ...(dto.recursive === undefined ? {} : { recursive: dto.recursive })
       },
       destinationConfig: { region: dto.region, path: dto.destinationPath }
     }

@@ -11,7 +11,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -22,6 +22,7 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -30,6 +31,7 @@ import {
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions
 } from "@app/services/secret-sync/secret-sync-fns";
+import { resolveSyncFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
   TCheckDuplicateDestinationDTO,
@@ -69,7 +71,8 @@ type TSecretSyncServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId" | "findById" | "findBySecretPath">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId" | "findById" | "findBySecretPath" | "find">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "getItem">;
   secretSyncQueue: Pick<
     TSecretSyncQueueFactory,
@@ -83,6 +86,7 @@ export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFacto
 export const secretSyncServiceFactory = ({
   secretSyncDAL,
   folderDAL,
+  projectEnvDAL,
   secretImportDAL,
   secretV2BridgeDAL,
   appConnectionDAL,
@@ -120,6 +124,56 @@ export const secretSyncServiceFactory = ({
   };
 
   const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsService };
+
+  // The sync worker reads its folders with every access check disabled, so this is the only place
+  // the actor's read access to them is established. A recursive sync reads the whole subtree, and
+  // folder grants let an actor hold read on a parent while being denied on a child.
+  const $assertCanReadSyncedFolders = async (
+    projectPermission: Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>["permission"],
+    {
+      projectId,
+      environment,
+      sourcePath,
+      sourceFolderId,
+      recursive
+    }: {
+      projectId: string;
+      environment: string;
+      sourcePath: string;
+      sourceFolderId: string;
+      recursive: boolean;
+    }
+  ) => {
+    const folders = await resolveSyncFolders({
+      folderDAL,
+      projectEnvDAL,
+      projectId,
+      environment,
+      sourcePath,
+      sourceFolderId,
+      recursive
+    });
+
+    for (const { path } of folders) {
+      try {
+        throwIfMissingSecretReadValueOrDescribePermission(
+          projectPermission,
+          ProjectPermissionSecretActions.DescribeSecret,
+          {
+            environment,
+            secretPath: path
+          }
+        );
+      } catch {
+        throw new ForbiddenRequestError({
+          message:
+            path === sourcePath
+              ? `You do not have permission to read secrets at path "${path}" in environment "${environment}".`
+              : `You do not have permission to read secrets at path "${path}" in environment "${environment}". This sync includes subfolders, so it reads every folder beneath "${sourcePath}".`
+        });
+      }
+    }
+  };
 
   const listSecretSyncsByProjectId = async (
     { projectId, destination }: TListSecretSyncsByProjectId,
@@ -414,21 +468,20 @@ export const secretSyncServiceFactory = ({
       })
     );
 
-    throwIfMissingSecretReadValueOrDescribePermission(
-      projectPermission,
-      ProjectPermissionSecretActions.DescribeSecret,
-      {
-        environment,
-        secretPath
-      }
-    );
-
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
     if (!folder)
       throw new BadRequestError({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
+
+    await $assertCanReadSyncedFolders(projectPermission, {
+      projectId,
+      environment,
+      sourcePath: secretPath,
+      sourceFolderId: folder.id,
+      recursive: Boolean((params.syncOptions as { recursive?: boolean } | undefined)?.recursive)
+    });
 
     // getProjectPermission above throws NotFoundError if the project doesn't exist and
     // guarantees actor.orgId === project.orgId — no separate project lookup needed.
@@ -612,29 +665,43 @@ export const secretSyncServiceFactory = ({
       }
     }
 
-    if (
-      (secretPath && secretPath !== secretSync.folder?.path) ||
-      (environment && environment !== secretSync.environment?.slug)
-    ) {
+    const isSourceChanged =
+      (Boolean(secretPath) && secretPath !== secretSync.folder?.path) ||
+      (Boolean(environment) && environment !== secretSync.environment?.slug);
+
+    const wasRecursive = Boolean((secretSync.syncOptions as { recursive?: boolean } | undefined)?.recursive);
+    const isRecursive = Boolean((params.syncOptions as { recursive?: boolean } | undefined)?.recursive ?? wasRecursive);
+
+    if (isSourceChanged || (isRecursive && !wasRecursive)) {
       const updatedEnvironment = environment ?? secretSync.environment?.slug;
       const updatedSecretPath = secretPath ?? secretSync.folder?.path;
 
       if (!updatedEnvironment || !updatedSecretPath)
         throw new BadRequestError({ message: "Must specify both source environment and secret path" });
 
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-        environment: updatedEnvironment,
-        secretPath: updatedSecretPath
-      });
+      if (isSourceChanged) {
+        const newFolder = await folderDAL.findBySecretPath(secretSync.projectId, updatedEnvironment, updatedSecretPath);
 
-      const newFolder = await folderDAL.findBySecretPath(secretSync.projectId, updatedEnvironment, updatedSecretPath);
+        if (!newFolder)
+          throw new BadRequestError({
+            message: `Could not find folder with path "${updatedSecretPath}" in environment "${updatedEnvironment}" for project with ID "${secretSync.projectId}"`
+          });
 
-      if (!newFolder)
+        folderId = newFolder.id;
+      }
+
+      if (!folderId)
         throw new BadRequestError({
-          message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${secretSync.projectId}"`
+          message: `Could not find folder with path "${updatedSecretPath}" in environment "${updatedEnvironment}" for project with ID "${secretSync.projectId}"`
         });
 
-      folderId = newFolder.id;
+      await $assertCanReadSyncedFolders(permission, {
+        projectId: secretSync.projectId,
+        environment: updatedEnvironment,
+        sourcePath: updatedSecretPath,
+        sourceFolderId: folderId,
+        recursive: isRecursive
+      });
     }
 
     const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
