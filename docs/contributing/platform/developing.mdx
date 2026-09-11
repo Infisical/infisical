@@ -94,6 +94,69 @@ Once running, access the BullBoard UI at [http://localhost:3008](http://localhos
 docker compose -f docker-compose.dev.yml down
 ```
 
+## Installing dependencies
+
+The Docker stack installs its own dependencies inside the containers, so the
+steps above need nothing on your machine. Lint and type checks run against the
+host instead, so install those once before using them:
+
+```bash
+$ make install
+```
+
+## Running several stacks at once
+
+The stack above uses fixed ports, so only one can run at a time.
+To keep a second branch running, for example to review a pull request without
+tearing down your own work, run each checkout as its own stack.
+
+Each stack gets its own database, Redis instance, mail server and hostname, so
+nothing is shared. The stack is named after the checkout's directory, lowercased
+and shortened, and its ports come from hashing that name. They are therefore
+stable across runs and differ between checkouts, and switching branches inside a
+checkout never moves its ports.
+
+This needs [portless](https://portless.sh) to map each stack to a hostname:
+
+```bash
+$ npm install -g portless
+$ portless proxy start --tld test
+```
+
+Then, in any checkout or `git worktree`:
+
+```bash
+$ make stack-init
+$ make stack-up
+```
+
+`stack-init` writes the stack's name and ports into `.env`, creates its database
+volume and registers the hostnames. It prints the name it chose, and `stack-up`
+prints every address the stack listens on.
+
+| Command | What it does |
+| --- | --- |
+| `make stack-init` | Prepare this checkout: `.env`, ports, volume, hostnames |
+| `make stack-up` | Launch the stack |
+| `make stack-down` | Stop it, keeping the database and hostnames |
+| `make stack-rm` | Remove containers, volumes, images and hostnames |
+| `make stack-db` | Open `psql` against this stack's database |
+
+A new stack starts empty and migrates on first boot. Seeding it from a copy of
+an existing volume is quicker: `stack-init` writes `STACK_SEED_VOLUME` into
+`.env`, and you can point that at any volume or blank it to always start empty.
+
+<Warning>
+  Seeded data only reads back with the `ENCRYPTION_KEY` that wrote it, so `.env`
+  must carry the same key. Otherwise the backend starts but cannot decrypt.
+</Warning>
+
+`make stack-rm` leaves the checkout in place. Remove a worktree afterwards with
+`git worktree remove`.
+
+If a port is already taken, two stack names have hashed to the same number. Set
+a different `STACK_NAME` in `.env` and run `make stack-init` again.
+
 ## Starting Infisical docs locally
 
 We use [Mintlify](https://mintlify.com/) for our docs.
