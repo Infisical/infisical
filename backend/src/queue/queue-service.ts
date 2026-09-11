@@ -922,12 +922,12 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       jobId
     };
 
-    await q?.add(job, data, finalOptions);
+    const addedJob = await q?.add(job, data, finalOptions);
 
     // Only when the job really exists. `q` is undefined only where QUEUE_WORKERS_ENABLED is false,
     // and a pod in that mode neither produces nor consumes, so a no-op there is expected rather
     // than a dropped job worth reporting.
-    if (q) logger.debug({ queue: name, job, jobId }, "Queue job enqueued");
+    if (addedJob) logger.debug({ queue: name, job, jobId: addedJob.id }, "Queue job enqueued");
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {
