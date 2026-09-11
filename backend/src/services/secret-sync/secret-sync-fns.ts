@@ -84,7 +84,7 @@ import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
-import { createSecretSyncPayload, TSecretSyncPayload } from "./secret-sync-payload";
+import { TSecretSyncPayload } from "./secret-sync-payload";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -290,16 +290,8 @@ export const SecretSyncFns = {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
         return AwsParameterStoreSyncFns.syncSecrets(secretSync, payload);
-      case SecretSync.AWSSecretsManager: {
-        // The many-to-one mapping combines every secret into one AWS secret's JSON body under
-        // its own (unprefixed) key, so this destination genuinely needs both views: the
-        // schema-applied map for the one-to-one path, and a schema-free one for that JSON body.
-        // Re-flatten with no schema to keep this view's duplicate-name detection.
-        const unmodifiedPayload = createSecretSyncPayload(payload.all(), {
-          environment: secretSync.environment?.slug || ""
-        });
-        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, payload.flatten(), unmodifiedPayload.flatten());
-      }
+      case SecretSync.AWSSecretsManager:
+        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.GitHub:
         return GithubSyncFns.syncSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService, {
           gitHubAppDAL,
@@ -395,16 +387,8 @@ export const SecretSyncFns = {
         return CircleCISyncFns.syncSecrets(secretSync, payload);
       case SecretSync.AzureEntraIdScim:
         return AzureEntraIdScimSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsService });
-      case SecretSync.ExternalInfisical: {
-        // Key schema must never be applied for Infisical-to-Infisical syncs, or the prefixed
-        // key triggers another sync cycle. Re-flatten with no schema rather than passing the
-        // payload through, since payload.flatten() would apply the schema this destination
-        // carries for every other provider.
-        const unschematizedPayload = createSecretSyncPayload(payload.all(), {
-          environment: secretSync.environment?.slug || ""
-        });
-        return ExternalInfisicalSyncFns.syncSecrets(secretSync, unschematizedPayload.flatten());
-      }
+      case SecretSync.ExternalInfisical:
+        return ExternalInfisicalSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.OVH:
         return OvhSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Devin:
@@ -724,14 +708,8 @@ export const SecretSyncFns = {
         return CircleCISyncFns.removeSecrets(secretSync, payload);
       case SecretSync.AzureEntraIdScim:
         return AzureEntraIdScimSyncFns.removeSecrets();
-      case SecretSync.ExternalInfisical: {
-        // See the matching case in syncSecrets: this destination always gets the raw,
-        // unschematized view, never payload.flatten().
-        const unschematizedPayload = createSecretSyncPayload(payload.all(), {
-          environment: secretSync.environment?.slug || ""
-        });
-        return ExternalInfisicalSyncFns.removeSecrets(secretSync, unschematizedPayload.flatten());
-      }
+      case SecretSync.ExternalInfisical:
+        return ExternalInfisicalSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.OVH:
         return OvhSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Devin:

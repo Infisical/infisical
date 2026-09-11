@@ -15,8 +15,9 @@ export type TSecretPayload = {
 };
 
 export type TSecretSyncPayload = {
-  all: () => TSecretPayload[];
-  flatten: () => TSecretMap;
+  secrets: TSecretPayload[];
+  environment: string;
+  flatten: (opts?: { applySchema?: boolean }) => TSecretMap;
 };
 
 export const getKeyWithSchema = ({
@@ -87,41 +88,42 @@ export const dedupeEntriesByDestinationKey = (
 export const createSecretSyncPayload = (
   secrets: TSecretPayload[],
   { environment, keySchema }: { environment: string; keySchema?: string }
-): TSecretSyncPayload => {
-  let flattened: TSecretMap | undefined;
+): TSecretSyncPayload => ({
+  secrets,
+  environment,
+  // A destination whose sync targets can't carry the configured key schema (eg a many-to-one
+  // JSON body whose fields are app-facing variable names, or an Infisical-to-Infisical sync,
+  // where a schema-renamed key would look like a new secret and retrigger a sync cycle) calls
+  // flatten({ applySchema: false }) to get the raw-key view instead. Either way flatten() still
+  // groups by the resulting destination key and rejects collisions, so duplicate-name detection
+  // never depends on whether the schema was applied.
+  flatten: ({ applySchema = true }: { applySchema?: boolean } = {}) => {
+    const schema = applySchema ? keySchema : undefined;
+    const grouped = new Map<string, TSecretPayload[]>();
 
-  return {
-    all: () => secrets,
-    flatten: () => {
-      if (flattened) return flattened;
+    for (const entry of secrets) {
+      const destinationKey = getKeyWithSchema({ key: entry.key, environment, schema });
+      const group = grouped.get(destinationKey);
 
-      const grouped = new Map<string, TSecretPayload[]>();
-
-      for (const entry of secrets) {
-        const destinationKey = getKeyWithSchema({ key: entry.key, environment, schema: keySchema });
-        const group = grouped.get(destinationKey);
-
-        if (group) group.push(entry);
-        else grouped.set(destinationKey, [entry]);
-      }
-
-      const conflicts = [...grouped.entries()].filter(([, group]) => group.length > 1);
-
-      if (conflicts.length) throw buildConflictError(conflicts);
-
-      const map: TSecretMap = {};
-
-      for (const [destinationKey, [entry]] of grouped) {
-        map[destinationKey] = {
-          value: entry.value,
-          id: entry.id,
-          comment: entry.comment,
-          secretMetadata: entry.secretMetadata
-        };
-      }
-
-      flattened = map;
-      return map;
+      if (group) group.push(entry);
+      else grouped.set(destinationKey, [entry]);
     }
-  };
-};
+
+    const conflicts = [...grouped.entries()].filter(([, group]) => group.length > 1);
+
+    if (conflicts.length) throw buildConflictError(conflicts);
+
+    const map: TSecretMap = {};
+
+    for (const [destinationKey, [entry]] of grouped) {
+      map[destinationKey] = {
+        value: entry.value,
+        id: entry.id,
+        comment: entry.comment,
+        secretMetadata: entry.secretMetadata
+      };
+    }
+
+    return map;
+  }
+});

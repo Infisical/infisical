@@ -439,15 +439,13 @@ export const secretSyncQueueFactory = ({
 
     // Import behavior is never combined with a recursive sync, so this payload always covers
     // exactly one folder. Comparison is against raw keys as returned by the destination
-    // (already schema-stripped), so entries come from all() rather than the schema-applying flatten().
+    // (already schema-stripped), so entries come from `secrets` rather than the schema-applying flatten().
     const payload = await $getInfisicalSecrets(secretSync, false);
     const secretMap: TSecretMap = Object.fromEntries(
-      payload
-        .all()
-        .map((entry) => [
-          entry.key,
-          { value: entry.value, id: entry.id, comment: entry.comment, secretMetadata: entry.secretMetadata }
-        ])
+      payload.secrets.map((entry) => [
+        entry.key,
+        { value: entry.value, id: entry.id, comment: entry.comment, secretMetadata: entry.secretMetadata }
+      ])
     );
 
     const secretsToCreate: Parameters<typeof $createManySecretsRawFn>[0]["secrets"] = [];

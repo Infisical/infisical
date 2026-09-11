@@ -356,12 +356,14 @@ const getSingleSecretValue = async (
 };
 
 export const AwsSecretsManagerSyncFns = {
-  syncSecrets: async (
-    secretSync: TAwsSecretsManagerSyncWithCredentials,
-    secretMap: TSecretMap,
-    unmodifiedSecretMap: TSecretMap // ie not schematized
-  ) => {
+  syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
+
+    // The many-to-one mapping combines every secret into one AWS secret's JSON body under its
+    // own (unprefixed) key, so this destination needs both views: the schema-applied map for
+    // the one-to-one path below, and the raw-key map for that JSON body.
+    const secretMap = payload.flatten();
+    const unmodifiedSecretMap = payload.flatten({ applySchema: false });
 
     const client = await getSecretsManagerClient(secretSync);
 

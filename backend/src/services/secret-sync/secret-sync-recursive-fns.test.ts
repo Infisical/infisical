@@ -114,7 +114,7 @@ describe("assertWithinSecretLimit", () => {
     }
 
     expect(error).toBeInstanceOf(Error);
-    const message = (error as Error).message;
+    const { message } = error as Error;
     const overIndex = message.indexOf(String(SECRET_SYNC_MAX_SECRETS + 1));
     const limitIndex = message.indexOf(String(SECRET_SYNC_MAX_SECRETS), overIndex + 1);
     expect(overIndex).toBeGreaterThanOrEqual(0);
@@ -245,10 +245,7 @@ describe("buildSyncPayload", () => {
       includeImports: true
     });
 
-    const paths = payload
-      .all()
-      .map((entry) => entry.path)
-      .sort();
+    const paths = payload.secrets.map((entry) => entry.path).sort();
 
     expect(paths).toEqual(["/", "/api"]);
   });

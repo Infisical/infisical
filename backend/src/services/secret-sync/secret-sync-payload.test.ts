@@ -3,12 +3,12 @@ import { createSecretSyncPayload, dedupeEntriesByDestinationKey, TSecretPayload 
 const secret = (key: string, path: string, value = "v"): TSecretPayload => ({ key, path, value });
 
 describe("createSecretSyncPayload", () => {
-  test("all() returns every secret, including ones that share a name", () => {
+  test("secrets includes every secret, including ones that share a name", () => {
     const payload = createSecretSyncPayload([secret("DB_URL", "/"), secret("DB_URL", "/api")], {
       environment: "dev"
     });
 
-    expect(payload.all()).toHaveLength(2);
+    expect(payload.secrets).toHaveLength(2);
   });
 
   test("flatten() returns one entry per secret when names are unique", () => {
@@ -54,6 +54,24 @@ describe("createSecretSyncPayload", () => {
     });
 
     expect(Object.keys(payload.flatten())).toEqual(["dev_DB_URL"]);
+  });
+
+  test("flatten({ applySchema: false }) ignores the key schema", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/")], {
+      environment: "dev",
+      keySchema: "{{environment}}_{{secretKey}}"
+    });
+
+    expect(Object.keys(payload.flatten({ applySchema: false }))).toEqual(["DB_URL"]);
+  });
+
+  test("flatten({ applySchema: false }) still rejects a raw-key collision", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
+      environment: "dev",
+      keySchema: "{{environment}}_{{secretKey}}"
+    });
+
+    expect(() => payload.flatten({ applySchema: false })).toThrow(/"DB_URL" in \/backend and \/backend\/api/);
   });
 
   test("flatten() does not treat a name that only resembles a schema-prefixed one as a conflict", () => {
