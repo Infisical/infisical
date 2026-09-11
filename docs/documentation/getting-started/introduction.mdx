@@ -12,22 +12,9 @@ It provides modern security workflows — including secrets rotation, dynamic cr
 
 Start managing secrets securely with [Infisical Cloud](https://app.infisical.com) or learn how to [host Infisical](/self-hosting/overview) yourself.
 
-The short video below provides a guided overview of Infisical's platform and key concepts, helping you build the right mental model before diving into the rest of the documentation.
-
-<br />
-
-
-<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
-  <iframe
-    src="https://www.youtube.com/embed/2GrrScI2Qms"
-    title="YouTube video player"
-    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-    allowFullScreen
-  ></iframe>
-</div>
-
-<br />
+<Tip>
+  Visual learner? Watch a [guided overview of the Infisical platform](https://www.youtube.com/watch?v=2GrrScI2Qms) to build the right mental model before diving into the rest of the documentation.
+</Tip>
 
 ## Why use Infisical?
 
@@ -46,12 +33,52 @@ Infisical addresses this challenge by providing an all-in-one platform and workf
 
 Infisical is designed to integrate cleanly into your stack—improving security without adding complexity.
 
-## What does Infisical include?
+## What can you do with Infisical?
 
-Infisical consists of several tightly integrated products, each designed to solve a specific part of the infrastructure security surface:
+Infisical consists of five integrated products, each addressing a specific aspect of infrastructure security. The cards below link to an introduction to each product and the tasks it can be used for.
 
-- [Secrets Management](/documentation/platform/secrets-mgmt/overview): Securely store, access, and distribute secrets across environments with fine-grained controls, automatic rotation, and audit logging.
-- [Secrets Scanning](/documentation/platform/secret-scanning/overview): Detect hardcoded secrets in code, CI pipelines, and infrastructure—integrated with GitHub, GitLab, Bitbucket, and more.
-- [Certificate Management](/documentation/platform/pki/overview): Issue and manage X.509 certificates using protocols like EST, with support for internal and external CAs.
-- [Infisical KMS](/documentation/platform/kms/overview): Encrypt and decrypt data using centrally managed keys with enforced access policies and full audit visibility.
-- [Infisical PAM](/documentation/platform/pam/overview): Manage access to resources like databases, servers, and accounts with policy-based controls and approvals.
+<CardGroup cols={2}>
+  <Card title="Manage secrets" icon="vault" href="/documentation/getting-started/choose-a-product/secrets-management/overview">
+    Store, deliver, and rotate credentials used by applications, and broker access to services for AI agents.
+  </Card>
+  <Card title="Detect leaked secrets" icon="radar" href="/documentation/getting-started/choose-a-product/secret-scanning">
+    Scan source code and developer systems to identify credentials that have been exposed.
+  </Card>
+  <Card title="Manage certificates" icon="file-certificate" href="/documentation/getting-started/choose-a-product/pki">
+    Issue and automatically renew TLS, mTLS, and device certificates from internal or external certificate authorities.
+  </Card>
+  <Card title="Manage cryptographic keys" icon="key" href="/documentation/getting-started/choose-a-product/kms">
+    Perform encryption, decryption, and signing operations using keys stored within Infisical.
+  </Card>
+  <Card title="Manage privileged access" icon="user-shield" href="/documentation/getting-started/choose-a-product/pam">
+    Give users and AI agents session-based access to databases and servers without providing them with the underlying credentials.
+  </Card>
+</CardGroup>
+
+## How the platform fits together
+
+All five products share the same underlying platform. This platform includes organizations, projects, identities, deployment configuration, and integrations with external services. Access controls, hierarchy, and environments are defined at the platform level and apply consistently across every product.
+
+<CardGroup cols={2}>
+  <Card title="Account structure" icon="building" href="/documentation/getting-started/concepts/platform-hierarchy">
+    How organizations, projects, and members are structured within Infisical.
+  </Card>
+  <Card title="Identity and access" icon="id-card" href="/documentation/getting-started/concepts/platform-iam">
+    How users and machine identities authenticate, and how roles determine their permissions.
+  </Card>
+  <Card title="External integrations" icon="plug" href="/documentation/getting-started/concepts/app-connections">
+    Stored credentials that allow Infisical to authenticate with third-party services on your behalf.
+  </Card>
+  <Card title="Private network access" icon="network-wired" href="/documentation/getting-started/concepts/networking">
+    How Infisical reaches systems that aren't directly accessible from its own network.
+  </Card>
+  <Card title="Cloud vs. self-host" icon="server" href="/documentation/getting-started/concepts/deployment-models">
+    Choose between running Infisical on Infisical Cloud or on your own infrastructure.
+  </Card>
+  <Card title="Architecture and security" icon="diagram-project" href="/documentation/getting-started/concepts/internals">
+    How Infisical is built, how permissions are evaluated, and how data is encrypted.
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/documentation/getting-started/concepts/contributing">
+    How to propose a change to Infisical, run the platform locally, and open a pull request.
+  </Card>
+</CardGroup>

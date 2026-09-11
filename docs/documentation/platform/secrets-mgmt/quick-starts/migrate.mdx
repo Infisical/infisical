@@ -1,0 +1,18 @@
+---
+title: "Migrate your secrets"
+sidebarTitle: "Migrate your secrets"
+description: "Import existing secrets from another platform into an Infisical Secrets Management project."
+---
+
+Existing secrets can be migrated into an Infisical Secrets Management project from another platform. The guides below cover the migration process for each supported platform, including the steps to configure the connection, a description of which secrets can be migrated, and any translation that Infisical performs during the import.
+
+<CardGroup cols={2}>
+  <Card title="Vault" icon="vault" href="/documentation/platform/external-migrations/vault">
+    Migrate KV secrets, Kubernetes authentication configuration, dynamic secret configurations, and policies from HashiCorp Vault.
+  </Card>
+  <Card title="Doppler" icon="capsules" href="/documentation/platform/external-migrations/doppler">
+    Migrate secrets from Doppler projects and configs, including both root and branch environments.
+  </Card>
+</CardGroup>
+
+If a platform isn't listed, open an issue on the [Infisical repository](https://github.com/infisical/infisical/issues) to request support for it.

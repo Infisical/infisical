@@ -1,0 +1,210 @@
+---
+title: "Quickstarts"
+description: "Guides for the most common tasks in Infisical."
+mode: "frame"
+---
+
+<div className="qs-index">
+
+<div className="qs-index__hero">
+  <h1 className="qs-index__title">Quickstarts</h1>
+  <p className="qs-index__description">Guides for the most common tasks in Infisical, grouped by product area.</p>
+</div>
+
+<div className="qs-index__jump" role="navigation" aria-label="Quickstart sections">
+  <span className="qs-index__jump-label">Jump to</span>
+  <div className="qs-index__jump-links">
+    <a href="#secrets-management" className="qs-index__jump-chip qs-index__jump-chip--secrets">Secrets Management</a>
+    <a href="#secrets-scanning" className="qs-index__jump-chip qs-index__jump-chip--scanning">Secrets Scanning</a>
+    <a href="#certificate-management" className="qs-index__jump-chip qs-index__jump-chip--certificates">Certificates</a>
+    <a href="#key-management" className="qs-index__jump-chip qs-index__jump-chip--kms">Key Management</a>
+    <a href="#privileged-access-management" className="qs-index__jump-chip qs-index__jump-chip--pam">Privileged Access</a>
+  </div>
+  <div className="qs-index__jump-links">
+    <a href="#self-hosting" className="qs-index__jump-chip qs-index__jump-chip--self-hosting">Self-hosting</a>
+    <a href="#networking" className="qs-index__jump-chip qs-index__jump-chip--networking">Networking</a>
+    <a href="#identity-and-access" className="qs-index__jump-chip qs-index__jump-chip--identity">Identity</a>
+  </div>
+</div>
+
+<section className="qs-index__section qs-index__section--secrets">
+  <h2 id="secrets-management"><a href="/documentation/platform/secrets-mgmt/overview" className="qs-index__section-link">Secrets Management<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+  <p className="qs-index__section-desc">Store secrets in Infisical and deliver them to the applications and infrastructure that use them.</p>
+  <div className="qs-index__grid">
+    <a href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" className="qs-index__item">
+      <div className="qs-index__item-title">Add your secrets to Infisical</div>
+      <div className="qs-index__item-desc">Store your secrets in Infisical and inject them into a running application.</div>
+    </a>
+    <a href="/documentation/guides/local-development" className="qs-index__item">
+      <div className="qs-index__item-title">Run an app locally with secrets from Infisical</div>
+      <div className="qs-index__item-desc">Use the Infisical CLI to inject secrets into a locally running application.</div>
+    </a>
+    <a href="/integrations/platforms/docker" className="qs-index__item">
+      <div className="qs-index__item-title">Inject secrets into a Docker container</div>
+      <div className="qs-index__item-desc">Deliver secrets from Infisical to a Docker container at startup.</div>
+    </a>
+    <a href="/integrations/cicd/githubactions" className="qs-index__item">
+      <div className="qs-index__item-title">Inject secrets into a GitHub Actions workflow</div>
+      <div className="qs-index__item-desc">Fetch secrets from Infisical inside a GitHub Actions workflow at runtime.</div>
+    </a>
+    <a href="/documentation/guides/kubernetes-operator" className="qs-index__item">
+      <div className="qs-index__item-title">Sync secrets into Kubernetes</div>
+      <div className="qs-index__item-desc">Use the Infisical Kubernetes Operator to pull secrets into a cluster.</div>
+    </a>
+    <a href="/documentation/platform/secret-rotation/postgres-credentials" className="qs-index__item">
+      <div className="qs-index__item-title">Rotate a PostgreSQL credential</div>
+      <div className="qs-index__item-desc">Automatically replace a PostgreSQL credential on a schedule.</div>
+    </a>
+    <a href="/documentation/platform/dynamic-secrets/postgresql" className="qs-index__item">
+      <div className="qs-index__item-title">Generate a short-lived PostgreSQL credential</div>
+      <div className="qs-index__item-desc">Generate a PostgreSQL credential on demand and revoke it after a short period.</div>
+    </a>
+  </div>
+</section>
+
+<section className="qs-index__section qs-index__section--scanning">
+  <h2 id="secrets-scanning"><a href="/documentation/platform/secret-scanning/overview" className="qs-index__section-link">Secrets Scanning<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+  <p className="qs-index__section-desc">Detect credentials that have been committed to a source code repository.</p>
+  <div className="qs-index__grid">
+    <a href="/documentation/platform/secret-scanning/github" className="qs-index__item">
+      <div className="qs-index__item-title">Scan a GitHub repository for leaked secrets</div>
+      <div className="qs-index__item-desc">Connect a GitHub repository to Infisical and detect exposed credentials.</div>
+    </a>
+    <a href="/documentation/platform/secret-scanning/gitlab" className="qs-index__item">
+      <div className="qs-index__item-title">Scan a GitLab repository for leaked secrets</div>
+      <div className="qs-index__item-desc">Connect a GitLab repository to Infisical and detect exposed credentials.</div>
+    </a>
+    <a href="/documentation/platform/secret-scanning/bitbucket" className="qs-index__item">
+      <div className="qs-index__item-title">Scan a Bitbucket repository for leaked secrets</div>
+      <div className="qs-index__item-desc">Connect a Bitbucket repository to Infisical and detect exposed credentials.</div>
+    </a>
+  </div>
+</section>
+
+<section className="qs-index__section qs-index__section--certificates">
+  <h2 id="certificate-management"><a href="/documentation/platform/pki/overview" className="qs-index__section-link">Certificate Management<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+  <p className="qs-index__section-desc">Issue and manage X.509 certificates through a private or public certificate authority.</p>
+  <div className="qs-index__grid">
+    <a href="/documentation/platform/pki/quick-starts/issue-first-certificate" className="qs-index__item">
+      <div className="qs-index__item-title">Issue your first certificate</div>
+      <div className="qs-index__item-desc">Set up a certificate authority and issue an X.509 certificate.</div>
+    </a>
+    <a href="/documentation/platform/pki/applications/enrollment-methods/acme" className="qs-index__item">
+      <div className="qs-index__item-title">Enroll certificates with ACME</div>
+      <div className="qs-index__item-desc">Issue certificates to servers and workloads through the ACME protocol.</div>
+    </a>
+    <a href="/documentation/platform/pki/guides/applications/microsoft-intune-scep" className="qs-index__item">
+      <div className="qs-index__item-title">Enroll a device with Microsoft Intune SCEP</div>
+      <div className="qs-index__item-desc">Push certificates to Intune-managed devices through SCEP.</div>
+    </a>
+  </div>
+</section>
+
+<section className="qs-index__section qs-index__section--kms">
+  <h2 id="key-management"><a href="/documentation/platform/kms/overview" className="qs-index__section-link">Key Management<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+  <p className="qs-index__section-desc">Store cryptographic keys in Infisical and use them to encrypt, decrypt, and sign.</p>
+  <div className="qs-index__grid">
+    <a href="/self-hosting/guides/hsm-integration" className="qs-index__item">
+      <div className="qs-index__item-title">Back Infisical KMS with an HSM</div>
+      <div className="qs-index__item-desc">Use a hardware security module to protect the root key.</div>
+    </a>
+    <a href="/documentation/platform/kms/kubernetes-encryption" className="qs-index__item">
+      <div className="qs-index__item-title">Encrypt Kubernetes secrets with Infisical KMS</div>
+      <div className="qs-index__item-desc">Use Infisical KMS as the encryption provider for Kubernetes secrets.</div>
+    </a>
+    <a href="/documentation/platform/kms/sigstore-cosign" className="qs-index__item">
+      <div className="qs-index__item-title">Sign container images with Cosign</div>
+      <div className="qs-index__item-desc">Use a key from Infisical KMS to sign and verify container images with Cosign.</div>
+    </a>
+    <a href="/documentation/platform/kms/kmip" className="qs-index__item">
+      <div className="qs-index__item-title">Serve keys through KMIP</div>
+      <div className="qs-index__item-desc">Expose keys from Infisical KMS to KMIP clients.</div>
+    </a>
+  </div>
+</section>
+
+<section className="qs-index__section qs-index__section--pam">
+  <h2 id="privileged-access-management"><a href="/documentation/platform/pam/overview" className="qs-index__section-link">Privileged Access Management<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+  <p className="qs-index__section-desc">Give users time-bound, audited access to databases and servers without sharing the underlying credential.</p>
+  <div className="qs-index__grid">
+    <a href="/documentation/platform/pam/quick-starts/launch-first-session" className="qs-index__item">
+      <div className="qs-index__item-title">Access a database or server through Infisical</div>
+      <div className="qs-index__item-desc">Open a session to a database or server without exposing the credential.</div>
+    </a>
+    <a href="/documentation/platform/pam/accounts/ssh" className="qs-index__item">
+      <div className="qs-index__item-title">Open an SSH session through Infisical</div>
+      <div className="qs-index__item-desc">Reach a server over SSH without handing out the credential.</div>
+    </a>
+    <a href="/documentation/platform/pam/accounts/postgresql" className="qs-index__item">
+      <div className="qs-index__item-title">Access a PostgreSQL database through Infisical</div>
+      <div className="qs-index__item-desc">Open a session to a PostgreSQL database without exposing the credential.</div>
+    </a>
+  </div>
+</section>
+
+<section className="qs-index__section qs-index__section--self-hosting">
+  <h2 id="self-hosting"><a href="/self-hosting/overview" className="qs-index__section-link">Self-hosting<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+  <p className="qs-index__section-desc">Run Infisical on your own infrastructure.</p>
+  <div className="qs-index__grid">
+    <a href="/self-hosting/deployment-options/docker-compose" className="qs-index__item">
+      <div className="qs-index__item-title">Self-host Infisical with Docker Compose</div>
+      <div className="qs-index__item-desc">Run Infisical on your own infrastructure using Docker Compose.</div>
+    </a>
+    <a href="/self-hosting/deployment-options/standalone-infisical" className="qs-index__item">
+      <div className="qs-index__item-title">Self-host Infisical with the standalone Docker image</div>
+      <div className="qs-index__item-desc">Run the frontend and backend from a single Docker image.</div>
+    </a>
+    <a href="/self-hosting/deployment-options/kubernetes-helm" className="qs-index__item">
+      <div className="qs-index__item-title">Self-host Infisical on Kubernetes with Helm</div>
+      <div className="qs-index__item-desc">Deploy Infisical to a Kubernetes cluster with the Helm chart.</div>
+    </a>
+    <a href="/self-hosting/deployment-options/native/linux-package/installation" className="qs-index__item">
+      <div className="qs-index__item-title">Install Infisical from the Linux package</div>
+      <div className="qs-index__item-desc">Install Infisical directly on a Linux host with the native package.</div>
+    </a>
+    <a href="/self-hosting/guides/production-hardening" className="qs-index__item">
+      <div className="qs-index__item-title">Harden a self-hosted Infisical install</div>
+      <div className="qs-index__item-desc">Apply the recommended settings before running Infisical in production.</div>
+    </a>
+  </div>
+</section>
+
+<section className="qs-index__section qs-index__section--networking">
+  <h2 id="networking"><a href="/documentation/platform/gateways/overview" className="qs-index__section-link">Networking<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+  <p className="qs-index__section-desc">Reach systems that aren't on the public internet through a Gateway.</p>
+  <div className="qs-index__grid">
+    <a href="/documentation/platform/gateways/overview" className="qs-index__item">
+      <div className="qs-index__item-title">Reach private systems with a Gateway</div>
+      <div className="qs-index__item-desc">Set up a Gateway to reach systems that aren't on the public internet.</div>
+    </a>
+    <a href="/documentation/platform/gateways/gateway-deployment" className="qs-index__item">
+      <div className="qs-index__item-title">Deploy a Gateway</div>
+      <div className="qs-index__item-desc">Install and run a Gateway in your own infrastructure.</div>
+    </a>
+  </div>
+</section>
+
+<section className="qs-index__section qs-index__section--identity">
+  <h2 id="identity-and-access"><a href="/documentation/platform/identities/overview" className="qs-index__section-link">Identity and access<svg className="qs-index__section-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></a></h2>
+  <p className="qs-index__section-desc">Authenticate applications and users to Infisical.</p>
+  <div className="qs-index__grid">
+    <a href="/documentation/platform/identities/universal-auth" className="qs-index__item">
+      <div className="qs-index__item-title">Authenticate a machine identity with universal auth</div>
+      <div className="qs-index__item-desc">Configure universal auth so an application can authenticate with a client ID and secret.</div>
+    </a>
+    <a href="/documentation/platform/identities/kubernetes-auth" className="qs-index__item">
+      <div className="qs-index__item-title">Authenticate a workload from Kubernetes</div>
+      <div className="qs-index__item-desc">Use a Kubernetes service account token to authenticate a workload with Infisical.</div>
+    </a>
+    <a href="/documentation/platform/identities/oidc-auth/general" className="qs-index__item">
+      <div className="qs-index__item-title">Authenticate a workload with OIDC</div>
+      <div className="qs-index__item-desc">Use an OIDC identity token from a supported provider to authenticate a workload.</div>
+    </a>
+    <a href="/documentation/platform/sso/overview" className="qs-index__item">
+      <div className="qs-index__item-title">Set up single sign-on</div>
+      <div className="qs-index__item-desc">Configure SSO through a supported identity provider.</div>
+    </a>
+  </div>
+</section>
+
+</div>
