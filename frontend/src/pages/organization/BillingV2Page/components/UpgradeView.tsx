@@ -85,17 +85,22 @@ export const UpgradeView = ({
 
   const handleUpgrade = async () => {
     let priced = preview.data;
-    // A stale preview would be rejected on apply, and a version published in between would charge a
-    // number the customer never saw, so re-price first and confirm the total is unchanged.
     if (Date.now() - pricedAt > PREVIEW_MAX_AGE_MS) {
       const fresh = await rePreview();
       if (!fresh) {
         return;
       }
-      if (fresh.totalDueNow !== priced?.totalDueNow) {
+      // Every term the customer was shown has to match, not just today's charge. A republished price
+      // can move the recurring total or the plan version while the prorated remainder rounds to the
+      // same cents, and accepting the new version here would defeat expectedPlanVersionId.
+      const changed =
+        fresh.totalDueNow !== priced?.totalDueNow ||
+        fresh.nextRecurringTotal !== priced?.nextRecurringTotal ||
+        fresh.toPlanVersionId !== priced?.toPlanVersionId;
+      if (changed) {
         createNotification({
           type: "info",
-          text: "Prices changed while you were reviewing. Check the new total and confirm again."
+          text: "Pricing changed while you were reviewing. Check the updated total and confirm again."
         });
         return;
       }

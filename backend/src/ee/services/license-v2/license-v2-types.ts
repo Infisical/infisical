@@ -207,6 +207,7 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
+  trialedProductKeys: string[];
   trials: BillingV2Trial[];
   // Total monthly on-demand overage across all products (dollars), for the summary's on-demand note.
   onDemandAmount: number;

@@ -182,6 +182,7 @@ const BillingV2OverviewSchema = z.object({
     .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema),
+  trialedProductKeys: z.string().array(),
   trials: BillingV2TrialSchema.array(),
   onDemandAmount: z.number(),
   checkoutFrozen: z.boolean(),

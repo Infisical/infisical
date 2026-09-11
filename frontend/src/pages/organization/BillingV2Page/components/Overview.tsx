@@ -136,6 +136,7 @@ export const Overview = ({
       <TrialBanners
         overview={overview}
         catalog={catalog}
+        readOnly={productsReadOnly}
         onManage={onUpgrade}
         onUpdatePayment={onUpdatePayment}
         onContact={onContact}

@@ -119,6 +119,9 @@ const formatIsoDate = (iso: string | null | undefined): string | null => {
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
+const PRORATION_MAX_AGE_SECONDS = 15 * 60;
+const PRORATION_MAX_SKEW_SECONDS = 60;
+
 const daysUntil = (unixSeconds: number | null | undefined): number | null => {
   if (!unixSeconds) {
     return null;
@@ -812,6 +815,7 @@ export const licenseV2ServiceFactory = ({
       billingDetails,
       invoices,
       entitlements,
+      trialedProductKeys: [...new Set(trialHistory.map((trial) => trial.productKey))],
       trials: trialHistory,
       onDemandAmount,
       checkoutFrozen: subscription?.capabilities?.checkoutFrozen ?? false,
@@ -1017,6 +1021,15 @@ export const licenseV2ServiceFactory = ({
     prorationDate
   }: TUpgradeBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
+    if (prorationDate !== undefined) {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const age = nowSeconds - prorationDate;
+      if (age > PRORATION_MAX_AGE_SECONDS || age < -PRORATION_MAX_SKEW_SECONDS) {
+        throw new BadRequestError({
+          message: "This quote is no longer current. Review the updated total and confirm again."
+        });
+      }
+    }
     const result = await licenseClient.upgradeProduct(orgId, {
       productId,
       plan,

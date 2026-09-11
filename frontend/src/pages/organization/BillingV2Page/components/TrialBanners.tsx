@@ -43,6 +43,7 @@ const isRecentRevert = (trial: BillingV2Trial): boolean =>
 type Props = {
   overview: BillingV2Overview;
   catalog: BillingV2CatalogProduct[];
+  readOnly: boolean;
   onManage: (productId: string) => void;
   onUpdatePayment: () => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
@@ -53,6 +54,7 @@ type Props = {
 export const TrialBanners = ({
   overview,
   catalog,
+  readOnly,
   onManage,
   onUpdatePayment,
   onContact
@@ -81,7 +83,7 @@ export const TrialBanners = ({
             </AlertTitle>
             <AlertDescription>
               {reason?.body ?? "Your trial ended."} You&apos;re still on {basePlan}.
-              {overview.selfServe && (
+              {overview.selfServe && !readOnly && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {reason?.action === "payment" && (
                     <Button variant="outline" size="xs" onClick={onUpdatePayment}>

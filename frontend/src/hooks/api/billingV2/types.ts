@@ -211,6 +211,7 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
+  trialedProductKeys: string[];
   trials: BillingV2Trial[];
   // Mutating billing actions are frozen server-side; the UI disables purchase/commit/remove controls.
   checkoutFrozen: boolean;
