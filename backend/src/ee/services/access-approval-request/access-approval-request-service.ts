@@ -105,7 +105,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   queueService: Pick<TQueueServiceFactory, "queue">;
   externalApprovalQueue: Pick<TExternalApprovalQueueFactory, "queueExternalApprovalDispatch">;
-  externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "create" | "updateById" | "update">;
+  externalApprovalRequestDAL: Pick<TExternalApprovalRequestDALFactory, "create" | "updateById" | "update" | "findById">;
   externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "findById">;
   externalApprovalService: Pick<
     TExternalApprovalServiceFactory,
@@ -469,7 +469,8 @@ export const accessApprovalRequestServiceFactory = ({
     };
 
     const reset = await accessApprovalRequestDAL.transaction(async (tx) => {
-      const accessApprovalRequest = await accessApprovalRequestDAL.findById(requestId, tx);
+      // hold the lock so a concurrent review cannot close the request between this read and the dispatch reset
+      const accessApprovalRequest = await accessApprovalRequestDAL.findByIdForUpdate(requestId, tx);
       if (!accessApprovalRequest) throw notFound();
 
       if (accessApprovalRequest.expiresAt && new Date() > new Date(accessApprovalRequest.expiresAt)) {
@@ -480,14 +481,22 @@ export const accessApprovalRequestServiceFactory = ({
         throw new BadRequestError({ message: "The request has been closed" });
       }
 
-      if (accessApprovalRequest.externalApproval?.status !== ExternalApprovalRequestStatus.FailedDispatch) {
+      if (!accessApprovalRequest.externalApprovalRequestId) {
+        throw new BadRequestError({ message: "This access request is not under an external approval policy" });
+      }
+
+      const lockedExternalApproval = await externalApprovalRequestDAL.findById(
+        accessApprovalRequest.externalApprovalRequestId,
+        tx
+      );
+      if (lockedExternalApproval?.status !== ExternalApprovalRequestStatus.FailedDispatch) {
         throw new BadRequestError({
-          message: `This request can only be resent after a failed delivery. Its current status is '${accessApprovalRequest.externalApproval?.status ?? "unknown"}'.`
+          message: `This request can only be resent after a failed delivery. Its current status is '${lockedExternalApproval?.status ?? "unknown"}'.`
         });
       }
 
       const updated = await externalApprovalRequestDAL.update(
-        { id: accessApprovalRequest.externalApproval.id, status: ExternalApprovalRequestStatus.FailedDispatch },
+        { id: accessApprovalRequest.externalApprovalRequestId, status: ExternalApprovalRequestStatus.FailedDispatch },
         { status: ExternalApprovalRequestStatus.PendingDispatch },
         tx
       );

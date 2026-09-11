@@ -48,7 +48,11 @@ const ACTOR = {
   actorParentOrgId: ORG_ID
 };
 
-const makeService = (policy: Record<string, unknown> = {}, pendingExternalRequests = 0) => {
+const makeService = (
+  policy: Record<string, unknown> = {},
+  pendingExternalRequests = 0,
+  lockedPolicy?: Record<string, unknown>
+) => {
   const accessApprovalPolicyDAL = {
     findById: vi.fn().mockResolvedValue({
       id: POLICY_ID,
@@ -60,9 +64,10 @@ const makeService = (policy: Record<string, unknown> = {}, pendingExternalReques
     findByIdForUpdate: vi.fn().mockResolvedValue({
       id: POLICY_ID,
       name: "external policy",
-      ...policy
+      ...policy,
+      ...lockedPolicy
     }),
-    updateById: vi.fn(),
+    updateById: vi.fn().mockResolvedValue({ id: POLICY_ID }),
     transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(TX))
   };
   const projectDAL = { findProjectBySlug: vi.fn() };
@@ -72,13 +77,34 @@ const makeService = (policy: Record<string, unknown> = {}, pendingExternalReques
     })
   };
   const accessApprovalRequestDAL = {
-    countPendingExternalRequestsByPolicyId: vi.fn().mockResolvedValue(pendingExternalRequests)
+    countPendingExternalRequestsByPolicyId: vi.fn().mockResolvedValue(pendingExternalRequests),
+    resetReviewByPolicyId: vi.fn()
+  };
+  const accessApprovalPolicyApproverDAL = {
+    delete: vi.fn(),
+    insertMany: vi.fn()
+  };
+  const accessApprovalPolicyBypasserDAL = {
+    delete: vi.fn(),
+    insertMany: vi.fn()
+  };
+  const externalApprovalPolicyDAL = {
+    findById: vi.fn().mockImplementation(async (id: string) => ({
+      id,
+      type: ExternalApprovalType.ServiceNow,
+      connectionId: CONNECTION_ID,
+      approverIdentityId: IDENTITY_ID,
+      ...(policy.externalApproval && typeof policy.externalApproval === "object" ? policy.externalApproval : {})
+    })),
+    create: vi.fn(),
+    updateById: vi.fn(),
+    deleteById: vi.fn()
   };
 
   const service = accessApprovalPolicyServiceFactory({
     accessApprovalPolicyDAL: accessApprovalPolicyDAL as never,
-    accessApprovalPolicyApproverDAL: {} as never,
-    accessApprovalPolicyBypasserDAL: {} as never,
+    accessApprovalPolicyApproverDAL: accessApprovalPolicyApproverDAL as never,
+    accessApprovalPolicyBypasserDAL: accessApprovalPolicyBypasserDAL as never,
     accessApprovalPolicyEnvironmentDAL: {} as never,
     groupDAL: {} as never,
     permissionService: permissionService as never,
@@ -89,10 +115,18 @@ const makeService = (policy: Record<string, unknown> = {}, pendingExternalReques
     additionalPrivilegeDAL: {} as never,
     accessApprovalRequestReviewerDAL: {} as never,
     externalApprovalService: { validateExternalApprovalPolicyInput: vi.fn() } as never,
-    externalApprovalPolicyDAL: {} as never
+    externalApprovalPolicyDAL: externalApprovalPolicyDAL as never
   });
 
-  return { service, accessApprovalPolicyDAL, projectDAL, permissionService, accessApprovalRequestDAL };
+  return {
+    service,
+    accessApprovalPolicyDAL,
+    projectDAL,
+    permissionService,
+    accessApprovalRequestDAL,
+    accessApprovalPolicyApproverDAL,
+    externalApprovalPolicyDAL
+  };
 };
 
 type TService = ReturnType<typeof makeService>["service"];
@@ -162,7 +196,7 @@ describe("access approval policy external approval guards", () => {
   });
 
   test("rejects detaching external approval while requests still await an external decision", async () => {
-    const { service, accessApprovalPolicyDAL, accessApprovalRequestDAL } = makeService(
+    const { service, accessApprovalPolicyDAL, accessApprovalRequestDAL, externalApprovalPolicyDAL } = makeService(
       { externalApprovalPolicyId: POLICY_ID },
       2
     );
@@ -170,6 +204,7 @@ describe("access approval policy external approval guards", () => {
     await expect(updatePolicy(service, { externalApproval: null })).rejects.toThrow(PENDING_EXTERNAL_REQUESTS_REJECTED);
     expect(accessApprovalPolicyDAL.transaction).toHaveBeenCalled();
     expect(accessApprovalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith(POLICY_ID, TX);
+    expect(externalApprovalPolicyDAL.findById).toHaveBeenCalledWith(POLICY_ID, TX);
     expect(accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId).toHaveBeenCalledWith(POLICY_ID, TX);
     expect(accessApprovalPolicyDAL.updateById).not.toHaveBeenCalled();
   });
@@ -204,7 +239,10 @@ describe("access approval policy external approval guards", () => {
   });
 
   test("rejects changing the app connection while requests still await an external decision", async () => {
-    const { service, accessApprovalPolicyDAL, accessApprovalRequestDAL } = makeService(EXTERNAL_POLICY, 2);
+    const { service, accessApprovalPolicyDAL, accessApprovalRequestDAL, externalApprovalPolicyDAL } = makeService(
+      EXTERNAL_POLICY,
+      2
+    );
 
     await expect(
       updatePolicy(service, {
@@ -213,6 +251,7 @@ describe("access approval policy external approval guards", () => {
     ).rejects.toThrow(PENDING_EXTERNAL_REROUTE_REJECTED);
     expect(accessApprovalPolicyDAL.transaction).toHaveBeenCalled();
     expect(accessApprovalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith(POLICY_ID, TX);
+    expect(externalApprovalPolicyDAL.findById).toHaveBeenCalledWith(POLICY_ID, TX);
     expect(accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId).toHaveBeenCalledWith(POLICY_ID, TX);
     expect(accessApprovalPolicyDAL.updateById).not.toHaveBeenCalled();
   });
@@ -273,5 +312,62 @@ describe("access approval policy external approval guards", () => {
       PENDING_EXTERNAL_REQUESTS_REJECTED
     );
     expect(accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId).not.toHaveBeenCalled();
+  });
+
+  test("rejects a reroute when the unlocked read is stale and the locked policy has pending requests", async () => {
+    const { service, accessApprovalPolicyDAL, accessApprovalRequestDAL, externalApprovalPolicyDAL } = makeService(
+      { externalApprovalPolicyId: null, externalApproval: null },
+      2,
+      { externalApprovalPolicyId: POLICY_ID }
+    );
+
+    await expect(
+      updatePolicy(service, {
+        externalApproval: { ...EXTERNAL_APPROVAL, connectionId: "66666666-6666-4666-8666-666666666666" }
+      })
+    ).rejects.toThrow(PENDING_EXTERNAL_REROUTE_REJECTED);
+    expect(accessApprovalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith(POLICY_ID, TX);
+    expect(externalApprovalPolicyDAL.findById).toHaveBeenCalledWith(POLICY_ID, TX);
+    expect(accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId).toHaveBeenCalledWith(POLICY_ID, TX);
+    expect(accessApprovalPolicyDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("leaves existing approvers in place when the update omits them", async () => {
+    const { service, accessApprovalPolicyApproverDAL } = makeService(EXTERNAL_POLICY);
+
+    await service.updateAccessApprovalPolicy({
+      ...ACTOR,
+      policyId: POLICY_ID,
+      allowedSelfApprovals: true
+    });
+
+    expect(accessApprovalPolicyApproverDAL.delete).not.toHaveBeenCalled();
+    expect(accessApprovalPolicyApproverDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("rejects detaching external approval without approvers when the policy has none", async () => {
+    const { service } = makeService({ externalApprovalPolicyId: POLICY_ID });
+
+    await expect(
+      service.updateAccessApprovalPolicy({
+        ...ACTOR,
+        policyId: POLICY_ID,
+        allowedSelfApprovals: true,
+        externalApproval: null
+      })
+    ).rejects.toThrow(/At least one approver should be provided/);
+  });
+
+  test("allows detaching external approval without sending approvers when the policy already has them", async () => {
+    const { service } = makeService({ externalApprovalPolicyId: POLICY_ID, approvers: APPROVERS });
+
+    await expect(
+      service.updateAccessApprovalPolicy({
+        ...ACTOR,
+        policyId: POLICY_ID,
+        allowedSelfApprovals: true,
+        externalApproval: null
+      })
+    ).resolves.toMatchObject({ id: POLICY_ID });
   });
 });

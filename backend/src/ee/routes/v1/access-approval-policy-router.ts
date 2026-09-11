@@ -117,7 +117,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               // @ts-expect-error this is ok
               (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
               "Must provide either username or id"
-            ),
+            )
+            .optional()
+            .default([]),
           bypassers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -309,7 +311,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               // @ts-expect-error this is ok
               (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
               "Must provide either username or id"
-            ),
+            )
+            .optional(),
           bypassers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -337,7 +340,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           requestExpirationTime: requestExpirationTimeSchema,
           externalApproval: externalApprovalSchema.nullish()
         })
-        .refine((val) => Boolean(val.externalApproval) || val.approvers.length > 0, {
+        .refine((val) => val.approvers === undefined || Boolean(val.externalApproval) || val.approvers.length > 0, {
           message: "At least one approver should be provided",
           path: ["approvers"]
         }),

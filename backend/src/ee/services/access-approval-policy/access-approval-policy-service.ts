@@ -55,7 +55,10 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
   accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
   externalApprovalService: Pick<TExternalApprovalServiceFactory, "validateExternalApprovalPolicyInput">;
-  externalApprovalPolicyDAL: Pick<TExternalApprovalPolicyDALFactory, "create" | "updateById" | "deleteById">;
+  externalApprovalPolicyDAL: Pick<
+    TExternalApprovalPolicyDALFactory,
+    "create" | "updateById" | "deleteById" | "findById"
+  >;
 };
 
 export const accessApprovalPolicyServiceFactory = ({
@@ -398,13 +401,15 @@ export const accessApprovalPolicyServiceFactory = ({
     actorRootOrgId,
     actorParentOrgId
   }: TUpdateAccessApprovalPolicy) => {
-    const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
+    const groupApprovers = (approvers ?? []).filter((approver) => approver.type === ApproverType.Group);
 
-    const userApprovers = approvers.filter((approver) => approver.type === ApproverType.User && approver.id) as {
+    const userApprovers = (approvers ?? []).filter(
+      (approver) => approver.type === ApproverType.User && approver.id
+    ) as {
       id: string;
       sequence?: number;
     }[];
-    const userApproverNames = approvers.filter(
+    const userApproverNames = (approvers ?? []).filter(
       (approver) => approver.type === ApproverType.User && approver.username
     ) as { username: string; sequence?: number }[];
 
@@ -422,15 +427,16 @@ export const accessApprovalPolicyServiceFactory = ({
       validateExternalPolicyBypassConfig({ bypassers, enforcementLevel });
     }
 
-    if (!isExternalPolicy && approvers.length === 0) {
+    const nextApproverCount = approvers?.length ?? accessApprovalPolicy.approvers?.length ?? 0;
+    if (!isExternalPolicy && nextApproverCount === 0) {
       throw new BadRequestError({ message: "At least one approver should be provided" });
     }
 
     const currentApprovals = approvals || accessApprovalPolicy.approvals;
     if (
+      approvers &&
       !isExternalPolicy &&
-      groupApprovers?.length === 0 &&
-      userApprovers &&
+      groupApprovers.length === 0 &&
       currentApprovals > userApprovers.length + userApproverNames.length
     ) {
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
@@ -543,24 +549,59 @@ export const accessApprovalPolicyServiceFactory = ({
 
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const { doc: updatedPolicy, externalApprovalPolicy } = await accessApprovalPolicyDAL.transaction(async (tx) => {
-      // holding the lock on the policy to avoid race conditions
-      await accessApprovalPolicyDAL.findByIdForUpdate(accessApprovalPolicy.id, tx);
+      const lockedPolicy = await accessApprovalPolicyDAL.findByIdForUpdate(accessApprovalPolicy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({
+          message: `Access approval policy with ID '${policyId}' not found`
+        });
+      }
+
+      let lockedExternalApproval: TAccessApprovalPolicyExternalApproval | null = null;
+      if (lockedPolicy.externalApprovalPolicyId) {
+        const lockedExternalApprovalPolicy = await externalApprovalPolicyDAL.findById(
+          lockedPolicy.externalApprovalPolicyId,
+          tx
+        );
+        if (lockedExternalApprovalPolicy) {
+          lockedExternalApproval = {
+            id: lockedExternalApprovalPolicy.id,
+            type: lockedExternalApprovalPolicy.type,
+            connectionId: lockedExternalApprovalPolicy.connectionId,
+            approverIdentityId: lockedExternalApprovalPolicy.approverIdentityId
+          };
+        }
+      }
+
+      const isLockedExternalPolicy =
+        externalApproval === null ? false : Boolean(externalApproval || lockedPolicy.externalApprovalPolicyId);
+
+      if (isLockedExternalPolicy) {
+        validateExternalPolicyBypassConfig({ bypassers, enforcementLevel });
+      }
+
+      if (!isLockedExternalPolicy && nextApproverCount === 0) {
+        throw new BadRequestError({ message: "At least one approver should be provided" });
+      }
 
       await validateExternalPolicyPendingRequests({
-        policy: accessApprovalPolicy,
+        policy: {
+          id: lockedPolicy.id,
+          name: lockedPolicy.name,
+          externalApprovalPolicyId: lockedPolicy.externalApprovalPolicyId,
+          externalApproval: lockedExternalApproval
+        },
         externalApproval,
         countPendingExternalRequestsByPolicyId: accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId,
         tx
       });
 
-      let currentExternalApprovalPolicy: TAccessApprovalPolicyExternalApproval | null =
-        accessApprovalPolicy.externalApproval ?? null;
+      let currentExternalApprovalPolicy: TAccessApprovalPolicyExternalApproval | null = lockedExternalApproval;
       if (externalApproval === null) {
         currentExternalApprovalPolicy = null;
       } else if (externalApproval) {
-        currentExternalApprovalPolicy = accessApprovalPolicy.externalApprovalPolicyId
+        currentExternalApprovalPolicy = lockedPolicy.externalApprovalPolicyId
           ? await externalApprovalPolicyDAL.updateById(
-              accessApprovalPolicy.externalApprovalPolicyId,
+              lockedPolicy.externalApprovalPolicyId,
               {
                 type: externalApproval.type,
                 connectionId: externalApproval.connectionId,
@@ -594,74 +635,76 @@ export const accessApprovalPolicyServiceFactory = ({
         tx
       );
 
-      if (externalApproval === null && accessApprovalPolicy.externalApprovalPolicyId) {
-        await externalApprovalPolicyDAL.deleteById(accessApprovalPolicy.externalApprovalPolicyId, tx);
+      if (externalApproval === null && lockedPolicy.externalApprovalPolicyId) {
+        await externalApprovalPolicyDAL.deleteById(lockedPolicy.externalApprovalPolicyId, tx);
       }
 
-      await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
+      if (approvers !== undefined) {
+        await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
-      let approverUserIds = userApprovers;
-      if (userApprovers.length || userApproverNames.length) {
-        if (userApproverNames.length) {
-          const approverUsersInDB = await userDAL.find({
-            $in: {
-              username: userApproverNames.map((el) => el.username)
-            }
-          });
-          const approverUsersInDBGroupByUsername = groupBy(approverUsersInDB, (i) => i.username);
-
-          const invalidUsernames = userApproverNames.filter(
-            (el) => !approverUsersInDBGroupByUsername?.[el.username]?.[0]
-          );
-
-          if (invalidUsernames.length) {
-            throw new BadRequestError({
-              message: `Invalid approver user: ${invalidUsernames.map((i) => i.username).join(", ")}`
+        let approverUserIds = userApprovers;
+        if (userApprovers.length || userApproverNames.length) {
+          if (userApproverNames.length) {
+            const approverUsersInDB = await userDAL.find({
+              $in: {
+                username: userApproverNames.map((el) => el.username)
+              }
             });
-          }
+            const approverUsersInDBGroupByUsername = groupBy(approverUsersInDB, (i) => i.username);
 
-          approverUserIds = approverUserIds.concat(
-            userApproverNames.map((el) => ({
-              id: approverUsersInDBGroupByUsername[el.username]?.[0].id,
-              sequence: el.sequence
-            }))
+            const invalidUsernames = userApproverNames.filter(
+              (el) => !approverUsersInDBGroupByUsername?.[el.username]?.[0]
+            );
+
+            if (invalidUsernames.length) {
+              throw new BadRequestError({
+                message: `Invalid approver user: ${invalidUsernames.map((i) => i.username).join(", ")}`
+              });
+            }
+
+            approverUserIds = approverUserIds.concat(
+              userApproverNames.map((el) => ({
+                id: approverUsersInDBGroupByUsername[el.username]?.[0].id,
+                sequence: el.sequence
+              }))
+            );
+          }
+        }
+        if (approverUserIds.length > 0 || groupApprovers.length > 0) {
+          await verifyProjectSubjectsMembership({
+            userIds: approverUserIds.map((au) => au.id),
+            groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
+            orgId: actorOrgId,
+            projectId: accessApprovalPolicy.projectId
+          });
+        }
+        if (userApprovers.length || userApproverNames.length) {
+          await accessApprovalPolicyApproverDAL.insertMany(
+            approverUserIds.map((el) => ({
+              approverUserId: el.id,
+              policyId: doc.id,
+              sequence: el.sequence,
+              approvalsRequired: el.sequence
+                ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
+                : approvals
+            })),
+            tx
           );
         }
-      }
-      if (approverUserIds.length > 0 || groupApprovers.length > 0) {
-        await verifyProjectSubjectsMembership({
-          userIds: approverUserIds.map((au) => au.id),
-          groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
-          orgId: actorOrgId,
-          projectId: accessApprovalPolicy.projectId
-        });
-      }
-      if (userApprovers.length || userApproverNames.length) {
-        await accessApprovalPolicyApproverDAL.insertMany(
-          approverUserIds.map((el) => ({
-            approverUserId: el.id,
-            policyId: doc.id,
-            sequence: el.sequence,
-            approvalsRequired: el.sequence
-              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
-              : approvals
-          })),
-          tx
-        );
-      }
 
-      if (groupApprovers) {
-        await accessApprovalPolicyApproverDAL.insertMany(
-          groupApprovers.map((el) => ({
-            approverGroupId: el.id,
-            policyId: doc.id,
-            sequence: el.sequence,
-            approvalsRequired: el.sequence
-              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
-              : approvals
-          })),
-          tx
-        );
+        if (groupApprovers.length) {
+          await accessApprovalPolicyApproverDAL.insertMany(
+            groupApprovers.map((el) => ({
+              approverGroupId: el.id,
+              policyId: doc.id,
+              sequence: el.sequence,
+              approvalsRequired: el.sequence
+                ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
+                : approvals
+            })),
+            tx
+          );
+        }
       }
 
       if (environments) {

@@ -59,7 +59,7 @@ export type TCreateAccessApprovalPolicy = {
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
   approvals?: number;
-  approvers: (
+  approvers?: (
     | { type: ApproverType.Group; id: string; sequence?: number }
     | { type: ApproverType.User; id?: string; username?: string; sequence?: number }
   )[];

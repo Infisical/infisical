@@ -81,7 +81,16 @@ const buildRequest = (patch: Record<string, unknown> = {}) => ({
 
 const makeService = ({
   request = buildRequest(),
-  lockedRow = { id: REQUEST_ID, status: ApprovalStatus.PENDING, privilegeId: null },
+  lockedRow = {
+    id: REQUEST_ID,
+    status: request.status,
+    privilegeId: request.privilegeId ?? null,
+    expiresAt: request.expiresAt ?? null,
+    externalApprovalRequestId:
+      (request.externalApproval as { id?: string } | null | undefined)?.id ??
+      (request as { externalApprovalRequestId?: string }).externalApprovalRequestId ??
+      null
+  },
   canReview = true,
   canReadRequests = true,
   project = { id: PROJECT_ID, orgId: ORG_ID, name: "Project" },
@@ -129,6 +138,7 @@ const makeService = ({
   const externalApprovalQueue = { queueExternalApprovalDispatch: vi.fn().mockResolvedValue(undefined) };
   const externalApprovalRequestDAL = {
     create: vi.fn(),
+    findById: vi.fn().mockResolvedValue(request?.externalApproval ?? undefined),
     updateById: vi.fn().mockResolvedValue(undefined),
     update: vi
       .fn<(filter: Record<string, unknown>, patch: Record<string, unknown>) => Promise<Record<string, unknown>[]>>()
@@ -332,7 +342,8 @@ describe("accessApprovalRequestService.retryExternalApprovalDispatch", () => {
 
     const result = await retry(service);
 
-    expect(accessApprovalRequestDAL.findById).toHaveBeenCalledWith(REQUEST_ID, TX);
+    expect(accessApprovalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith(REQUEST_ID, TX);
+    expect(externalApprovalRequestDAL.findById).toHaveBeenCalledWith(EXTERNAL_REQUEST_ID, TX);
     expect(externalApprovalRequestDAL.update).toHaveBeenCalledWith(
       { id: EXTERNAL_REQUEST_ID, status: ExternalApprovalRequestStatus.FailedDispatch },
       { status: ExternalApprovalRequestStatus.PendingDispatch },
@@ -443,6 +454,24 @@ describe("accessApprovalRequestService.retryExternalApprovalDispatch", () => {
     expect(externalApprovalRequestDAL.updateById).toHaveBeenCalledWith(EXTERNAL_REQUEST_ID, {
       status: ExternalApprovalRequestStatus.FailedDispatch
     });
+  });
+
+  test("a concurrent review that closed the request is refused from the locked row", async () => {
+    const { service, accessApprovalRequestDAL, externalApprovalRequestDAL, externalApprovalQueue } = makeService({
+      request: failedRequest(),
+      lockedRow: {
+        id: REQUEST_ID,
+        status: ApprovalStatus.APPROVED,
+        privilegeId: "priv-1",
+        expiresAt: null,
+        externalApprovalRequestId: EXTERNAL_REQUEST_ID
+      }
+    });
+
+    await expect(retry(service)).rejects.toBeInstanceOf(BadRequestError);
+    expect(accessApprovalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith(REQUEST_ID, TX);
+    expect(externalApprovalRequestDAL.update).not.toHaveBeenCalled();
+    expect(externalApprovalQueue.queueExternalApprovalDispatch).not.toHaveBeenCalled();
   });
 });
 
