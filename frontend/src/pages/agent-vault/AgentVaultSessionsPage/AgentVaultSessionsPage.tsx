@@ -3,7 +3,14 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BotIcon, MoreHorizontalIcon, SearchIcon, TicketIcon, UserIcon } from "lucide-react";
+import {
+  BanIcon,
+  BotIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  TicketIcon,
+  UserIcon
+} from "lucide-react";
 
 import {
   Button,
@@ -314,7 +321,11 @@ export const AgentVaultSessionsPage = () => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem onClick={() => setSessionToRevoke(session)}>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setSessionToRevoke(session)}
+                            >
+                              <BanIcon />
                               Revoke Session
                             </DropdownMenuItem>
                           </DropdownMenuContent>
