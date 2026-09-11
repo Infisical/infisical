@@ -382,6 +382,17 @@ html[data-platform="ios"] {
   }
 
   /* Keyframes */
+  /* Proportional bars grow from their left edge when they first paint. scaleX rather than width keeps
+     the work on the compositor, which matters because a scope breakdown can hold dozens of bars. */
+  @keyframes barGrow {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
   @keyframes fadeIn {
     0% {
       opacity: 0;
@@ -491,6 +502,11 @@ html[data-platform="ios"] {
   /* Animation classes */
   .fadeIn {
     animation: fadeIn 100ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-bar-grow {
+    transform-origin: left;
+    animation: barGrow 420ms ease-out both;
   }
 
   .popIn {

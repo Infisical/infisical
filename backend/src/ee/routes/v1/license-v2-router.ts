@@ -1,10 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { BillingV2BreakdownDimension } from "@app/ee/services/license-v2/license-v2-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 // The license server joins this onto its configured portal origin, so it must be a single-rooted
 // relative path. Reject protocol-relative ("//host", "/\\host") values that browsers can normalize
@@ -172,6 +174,32 @@ const BillingV2OverviewSchema = z.object({
   selfServe: z.boolean()
 });
 
+const BillingV2BreakdownScopeSchema = z.object({
+  orgId: z.string().describe("ID of the organization the units were created in."),
+  name: z.string().describe("Display name of the organization."),
+  isRoot: z.boolean().describe("Whether this is the root organization of the billing tree."),
+  count: z.number().describe("Metered units attributed to this organization."),
+  orgLevelCount: z.number().describe("Units created on the organization itself rather than in a project."),
+  projects: z
+    .object({
+      id: z.string().describe("ID of the project the units were created in."),
+      name: z.string().describe("Display name of the project."),
+      count: z.number().describe("Metered units created in this project.")
+    })
+    .array()
+    .describe("Per-project split of this organization's units; empty when the dimension has no project detail.")
+});
+
+const BillingV2UsageBreakdownSchema = z.object({
+  dimensionKey: z.string().describe("The metered dimension this breakdown explains."),
+  total: z.number().describe("Live total for the dimension, counted the same way the meter counts it."),
+  userCount: z.number().describe("Human seats in the metered set; 0 for dimensions that count no users."),
+  machineCount: z.number().describe("The part of the total the scopes partition."),
+  hasProjectDetail: z.boolean().describe("Whether units can be attributed to individual projects."),
+  unit: z.string().describe("Singular noun for what is counted, e.g. 'machine identity'."),
+  scopes: BillingV2BreakdownScopeSchema.array().describe("Organizations the total is drawn from, largest first.")
+});
+
 const BillingV2PreviewLineSchema = z.object({
   description: z.string(),
   amount: z.number(),
@@ -225,7 +253,69 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.getOverview({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
+        actor: buildActor(req.permission),
+        isInstanceAdmin: isSuperAdmin(req.auth)
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/billing/v2/organizations",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listBillableOrganizations",
+      description:
+        "List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.",
+      params: z.object({ organizationId: z.string().trim().uuid() }),
+      response: {
+        200: z.object({
+          organizations: z
+            .object({
+              id: z.string().describe("ID of the root organization."),
+              name: z.string().describe("Display name of the root organization.")
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      return server.services.licenseV2.getBillableOrganizations({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        isInstanceAdmin: isSuperAdmin(req.auth)
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/billing/v2/usage/:dimensionKey/breakdown",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getBillingUsageBreakdown",
+      description:
+        "Break one metered usage dimension down by the organizations and projects its units were created in.",
+      params: z.object({
+        organizationId: z.string().trim().uuid(),
+        dimensionKey: z.nativeEnum(BillingV2BreakdownDimension).describe("The metered dimension to break down.")
+      }),
+      response: {
+        200: z.object({ breakdown: BillingV2UsageBreakdownSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      return server.services.licenseV2.getUsageBreakdown({
+        orgId: req.params.organizationId,
+        dimensionKey: req.params.dimensionKey,
+        actor: buildActor(req.permission),
+        isInstanceAdmin: isSuperAdmin(req.auth)
       });
     }
   });
@@ -267,7 +357,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.getCatalog({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
+        actor: buildActor(req.permission),
+        isInstanceAdmin: isSuperAdmin(req.auth)
       });
     }
   });

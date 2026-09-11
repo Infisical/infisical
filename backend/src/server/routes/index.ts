@@ -93,6 +93,7 @@ import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { LicenseType } from "@app/ee/services/license/license-types";
+import { licenseV2BreakdownDALFactory } from "@app/ee/services/license-v2/license-v2-breakdown-dal";
 import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
@@ -843,6 +844,7 @@ export const registerRoutes = async (
   // Usage metering: counts the metered features and reports them to the License Server. Inert when no
   // license server is configured (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
+  const licenseV2BreakdownDAL = licenseV2BreakdownDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
   const usageReporter = isOfflineLicense ? null : buildUsageReporter(envConfig);
@@ -870,7 +872,10 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     meteredFeatures,
-    licenseClient
+    licenseClient,
+    licenseDAL,
+    usageCounterDAL,
+    breakdownDAL: licenseV2BreakdownDAL
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)

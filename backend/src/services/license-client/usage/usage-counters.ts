@@ -35,7 +35,14 @@ export const METERED_DIMENSION_KEYS: string[] = [
 
 type TBuildMeteredFeaturesDep = {
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities" | "countOfOrgMembers">;
-  usageCounterDAL: TUsageCounterDALFactory;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    | "countInternalCas"
+    | "resolveRootOrgId"
+    | "countActiveCertificateQuotaKeysByOrg"
+    | "countSecretManagementIdentities"
+    | "countPamIdentities"
+  >;
   // Cloud meters per org; self-hosted meters the whole instance (a single license covers the DB).
   isCloud: boolean;
 };
