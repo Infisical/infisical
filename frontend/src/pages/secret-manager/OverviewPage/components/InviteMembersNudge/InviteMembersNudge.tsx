@@ -162,7 +162,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
     autoDismissTimeoutRef.current = setTimeout(close, SUCCESS_AUTO_DISMISS_MS);
   };
 
-  const canSubmit = isRolesPending || Boolean(defaultRole);
+  const canSubmit = !isRolesPending && Boolean(defaultRole);
   const roleName = defaultRole?.name;
   const prefersReducedMotion = useReducedMotion();
 
@@ -173,7 +173,9 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
   const shown = { opacity: 1, y: 0, bottom: bottomOffset };
 
   let roleDescription: string | undefined;
-  if (roleName) {
+  if (isRolesPending) {
+    roleDescription = "Loading project roles...";
+  } else if (roleName) {
     roleDescription = `Invited teammates join this project as ${roleName}.`;
   } else if (!canSubmit) {
     roleDescription =
