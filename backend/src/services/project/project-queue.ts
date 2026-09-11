@@ -683,65 +683,69 @@ export const projectQueueFactory = ({
     );
   };
 
-  queueService.start(QueueName.SecretBlindIndexMigration, async (job) => {
-    const { projectId } = job.data;
-    const BATCH_SIZE = 1000;
+  queueService.start(
+    QueueName.SecretBlindIndexMigration,
+    async (job) => {
+      const { projectId } = job.data;
+      const BATCH_SIZE = 1000;
 
-    logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
+      logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
 
-    const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    let totalProcessed = 0;
-
-    // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
-    while (true) {
-      const secrets = await secretV2BridgeDAL.findProjectSecretsWithNullBlindIndex(projectId, BATCH_SIZE);
-
-      if (secrets.length === 0) break;
-
-      const updates: { id: string; secretValueBlindIndex: string }[] = [];
-      for (const secret of secrets) {
-        if (secret.encryptedValue) {
-          const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
-          const blindIndex = await generateSecretBlindIndex(decryptedValue);
-          updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
-        }
-      }
-
-      if (updates.length > 0) {
-        await secretV2BridgeDAL.batchSetBlindIndexes(updates);
-      }
-
-      totalProcessed += updates.length;
-      logger.info(
-        `SecretBlindIndexMigration: processed batch [projectId=${projectId}] [batchSize=${updates.length}] [totalProcessed=${totalProcessed}]`
-      );
-
-      // Prevents job from being marked as stalled
-      await job.updateProgress(totalProcessed);
-
-      if (secrets.length < BATCH_SIZE) break;
-
-      // pause between batches to avoid saturating the CPU
-      const jitter = 100 + Math.floor(Math.random() * 100);
-      await new Promise((resolve) => {
-        setTimeout(resolve, jitter);
+      const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
       });
-    }
 
-    await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
+      let totalProcessed = 0;
 
-    await keyStore.deleteItems({
-      pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*`
-    });
+      // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const secrets = await secretV2BridgeDAL.findProjectSecretsWithNullBlindIndex(projectId, BATCH_SIZE);
 
-    logger.info(
-      `SecretBlindIndexMigration: migration complete [projectId=${projectId}] [totalProcessed=${totalProcessed}]`
-    );
-  });
+        if (secrets.length === 0) break;
+
+        const updates: { id: string; secretValueBlindIndex: string }[] = [];
+        for (const secret of secrets) {
+          if (secret.encryptedValue) {
+            const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
+            const blindIndex = await generateSecretBlindIndex(decryptedValue);
+            updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
+          }
+        }
+
+        if (updates.length > 0) {
+          await secretV2BridgeDAL.batchSetBlindIndexes(updates);
+        }
+
+        totalProcessed += updates.length;
+        logger.info(
+          `SecretBlindIndexMigration: processed batch [projectId=${projectId}] [batchSize=${updates.length}] [totalProcessed=${totalProcessed}]`
+        );
+
+        // Prevents job from being marked as stalled
+        await job.updateProgress(totalProcessed);
+
+        if (secrets.length < BATCH_SIZE) break;
+
+        // pause between batches to avoid saturating the CPU
+        const jitter = 100 + Math.floor(Math.random() * 100);
+        await new Promise((resolve) => {
+          setTimeout(resolve, jitter);
+        });
+      }
+
+      await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
+
+      await keyStore.deleteItems({
+        pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*`
+      });
+
+      logger.info(
+        `SecretBlindIndexMigration: migration complete [projectId=${projectId}] [totalProcessed=${totalProcessed}]`
+      );
+    },
+    { limiter: { max: 8, duration: 10_000 } }
+  );
 
   queueService.listen(QueueName.SecretBlindIndexMigration, "failed", (job, err) => {
     logger.error(err, `SecretBlindIndexMigration: failed [projectId=${job?.data.projectId}]`);
