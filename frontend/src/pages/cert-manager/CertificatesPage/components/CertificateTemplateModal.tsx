@@ -238,7 +238,12 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="My Certificate Template" />
+                <Input
+                  {...field}
+                  placeholder="My Certificate Template"
+                  autoComplete="off"
+                  name="certificate-template-name"
+                />
               </FormControl>
             )}
           />

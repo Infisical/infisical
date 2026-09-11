@@ -96,7 +96,14 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
           <Field>
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
-              <Input {...field} autoFocus placeholder="Machine 1" isError={Boolean(error)} />
+              <Input
+                {...field}
+                autoFocus
+                placeholder="Machine 1"
+                isError={Boolean(error)}
+                autoComplete="off"
+                name="project-identity-name"
+              />
             </FieldContent>
             {error && <FieldError>{error.message}</FieldError>}
           </Field>

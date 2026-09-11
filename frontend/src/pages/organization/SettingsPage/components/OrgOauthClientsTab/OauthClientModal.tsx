@@ -313,6 +313,8 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
                       placeholder="e.g. Coder"
                       isError={Boolean(error)}
                       {...field}
+                      autoComplete="off"
+                      name="oauth-client-name"
                     />
                     <FieldError>{error?.message}</FieldError>
                   </Field>

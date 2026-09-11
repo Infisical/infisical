@@ -350,7 +350,12 @@ export const DiscoveryJobModal = ({ isOpen, onClose, projectId, discovery }: Pro
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="my-discovery-job" />
+                <Input
+                  {...field}
+                  placeholder="my-discovery-job"
+                  autoComplete="off"
+                  name="discovery-job-name"
+                />
               </FormControl>
             )}
           />

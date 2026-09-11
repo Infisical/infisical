@@ -123,6 +123,8 @@ const Content = ({ onClose }: ContentProps) => {
               onChange={onChange}
               placeholder="My Organization"
               isError={Boolean(error)}
+              autoComplete="off"
+              name="new-organization-name"
             />
             <FieldError>{error?.message}</FieldError>
           </Field>

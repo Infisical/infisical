@@ -157,6 +157,7 @@ const Content = ({ role, onClose }: ContentProps) => {
                         shouldValidate: true
                       });
                     }}
+                    name="duplicate-project-role-name"
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

@@ -124,6 +124,8 @@ export const OrgNameChangeSection = (): JSX.Element => {
                       placeholder="Acme Corp"
                       isError={Boolean(error)}
                       {...field}
+                      autoComplete="off"
+                      name="org-name"
                     />
                     <FieldError>{error?.message}</FieldError>
                   </Field>

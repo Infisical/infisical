@@ -486,7 +486,13 @@ export const CreateAccountSheet = ({
                         Name<span className="text-product-pam">*</span>
                       </FieldLabel>
                       <FieldContent>
-                        <Input {...field} placeholder="My account" isError={!!fieldState.error} />
+                        <Input
+                          {...field}
+                          placeholder="My account"
+                          isError={!!fieldState.error}
+                          autoComplete="off"
+                          name="pam-account-name"
+                        />
                         <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
                     </Field>

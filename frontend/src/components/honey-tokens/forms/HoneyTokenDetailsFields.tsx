@@ -20,6 +20,8 @@ export const HoneyTokenDetailsFields = () => {
                 onChange={onChange}
                 placeholder="aws-canary-prod-key"
                 isError={Boolean(error)}
+                autoComplete="off"
+                name="honey-token-name"
               />
               {error && <FieldError>{error.message}</FieldError>}
             </FieldContent>

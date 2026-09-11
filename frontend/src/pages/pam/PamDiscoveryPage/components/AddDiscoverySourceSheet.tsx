@@ -107,6 +107,8 @@ const NameField = ({ control }: { control: Control<{ name: string }> }) => (
             placeholder="e.g. corp-servers"
             isError={!!fieldState.error}
             {...field}
+            autoComplete="off"
+            name="pam-discovery-source-name"
           />
           <FieldError>{fieldState.error?.message}</FieldError>
         </FieldContent>
