@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
   BotIcon,
   MoreHorizontalIcon,
+  PackageIcon,
   SearchIcon,
   TicketIcon,
   UserIcon
@@ -287,9 +288,18 @@ export const AgentVaultSessionsPage = () => {
                           items={session.accessBundles}
                           getKey={(bundle) => bundle.id ?? bundle.name}
                           getLabel={(bundle) => bundle.name}
+                          icon={<PackageIcon />}
                           getClassName={(bundle) => (bundle.id ? undefined : "text-muted")}
                           getTooltip={(bundle) =>
                             bundle.id ? bundle.name : `${bundle.name} (deleted)`
+                          }
+                          getLinkProps={(bundle) =>
+                            bundle.id
+                              ? linkOptions({
+                                  to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+                                  params: { orgId: currentOrg.id, accessBundleId: bundle.id }
+                                })
+                              : undefined
                           }
                         />
                       </div>

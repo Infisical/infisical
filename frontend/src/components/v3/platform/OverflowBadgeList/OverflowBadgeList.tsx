@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { Link, LinkComponentProps } from "@tanstack/react-router";
 
 import { Badge, TBadgeProps } from "../../generic/Badge";
 import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
@@ -13,6 +14,8 @@ type TOverflowBadgeListProps<T> = {
   getTooltip?: (item: T) => React.ReactNode;
   getClassName?: (item: T) => string | undefined;
   appearance?: "badge" | "text";
+  icon?: React.ReactNode;
+  getLinkProps?: (item: T) => LinkComponentProps | undefined;
   onItemClick?: (item: T) => void;
   maxBadgeWidth?: number;
   className?: string;
@@ -31,6 +34,8 @@ export const OverflowBadgeList = <T,>({
   getTooltip,
   getClassName,
   appearance = "badge",
+  icon,
+  getLinkProps,
   onItemClick,
   maxBadgeWidth = 160,
   className
@@ -108,7 +113,7 @@ export const OverflowBadgeList = <T,>({
     resizeObserver.observe(container);
 
     return () => resizeObserver.disconnect();
-  }, [getLabel, getVariant, getClassName, items, maxBadgeWidth]);
+  }, [getLabel, getVariant, getClassName, icon, items, maxBadgeWidth]);
 
   const renderItem = (item: T, width?: number) => {
     const label = getLabel(item);
@@ -135,6 +140,8 @@ export const OverflowBadgeList = <T,>({
       );
     }
 
+    const linkProps = getLinkProps?.(item);
+
     return (
       <Tooltip key={getKey(item)}>
         <TooltipTrigger asChild>
@@ -142,11 +149,23 @@ export const OverflowBadgeList = <T,>({
             variant={getVariant?.(item) ?? "neutral"}
             className={getClassName?.(item)}
             isTruncatable
+            iconPosition={icon ? "left" : undefined}
+            asChild={Boolean(linkProps)}
             style={{
               maxWidth: width ?? maxBadgeWidth
             }}
           >
-            <span>{label}</span>
+            {linkProps ? (
+              <Link {...linkProps}>
+                {icon}
+                <span>{label}</span>
+              </Link>
+            ) : (
+              <>
+                {icon}
+                <span>{label}</span>
+              </>
+            )}
           </Badge>
         </TooltipTrigger>
         <TooltipContent>{tooltip}</TooltipContent>
@@ -214,8 +233,10 @@ export const OverflowBadgeList = <T,>({
               variant={getVariant?.(item) ?? "neutral"}
               className={getClassName?.(item)}
               isTruncatable
+              iconPosition={icon ? "left" : undefined}
               style={{ maxWidth: maxBadgeWidth }}
             >
+              {icon}
               <span>{getLabel(item)}</span>
             </Badge>
           )
@@ -223,7 +244,8 @@ export const OverflowBadgeList = <T,>({
         {appearance === "text" ? (
           <span data-overflow-badge-minimum className="w-6 text-sm" />
         ) : (
-          <Badge data-overflow-badge-minimum isTruncatable>
+          <Badge data-overflow-badge-minimum isTruncatable iconPosition={icon ? "left" : undefined}>
+            {icon}
             <span />
           </Badge>
         )}
