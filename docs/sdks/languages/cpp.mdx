@@ -308,7 +308,7 @@ const auto secrets = client.secrets().listSecrets(listSecretsOptions);
 - `withProjectId(string)`: Specify the ID of the project to fetch secrets from.
 - `withSecretPath(string)`: Specify the secret path to fetch secrets from. Defaults to `/`
 - `withExpandSecretReferences(bool)` _(optional)_: Whether or not to expand secret references automatically. Defaults to `true`.
-- `withRecursive(bool)` _(optional)_: Wether or not to recursively fetch secrets from sub-folders. If set to true, all secrets from the secret path specified with `withSecretPath()` and downwards will be fetched.
+- `withRecursive(bool)` _(optional)_: Whether or not to recursively fetch secrets from sub-folders. If set to true, all secrets from the secret path specified with `withSecretPath()` and downwards will be fetched.
 - `withAddSecretsToEnvironmentVariables(bool)` _(optional)_: If set to true, the fetched secrets will be automatically set as environment variables, making them accessible with `std::getenv` or equivalent by secret key.
 - `build()`: Returns the `ListSecretsOptions` class that can be passed into the `listSecrets()` method.
 
