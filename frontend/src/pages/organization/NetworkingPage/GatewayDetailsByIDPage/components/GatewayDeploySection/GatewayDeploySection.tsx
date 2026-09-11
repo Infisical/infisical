@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -96,6 +96,7 @@ export const GatewayDeploySection = ({
     (TGatewayEnrollmentToken & { gatewayId: string }) | null
   >(null);
   const [isCommandDirty, setIsCommandDirty] = useState(false);
+  const mintSequence = useRef(0);
   const { mutateAsync: mint, isPending: isMinting } = useMintGatewayToken();
   const { permission } = useOrgPermission();
   const enrollment = mintedEnrollment?.gatewayId === gatewayId ? mintedEnrollment : null;
@@ -115,12 +116,24 @@ export const GatewayDeploySection = ({
     : deploymentTabs[0];
 
   const handleGenerate = async () => {
+    const sequence = mintSequence.current + 1;
+    mintSequence.current = sequence;
     try {
       const result = await mint({ gatewayId });
+      // Minting deletes the previous token, so a slower earlier response would show a dead one.
+      if (mintSequence.current !== sequence) return;
       setMintedEnrollment({ ...result, gatewayId });
     } catch {
       createNotification({ type: "error", text: "Failed to generate enrollment token" });
     }
+  };
+
+  const handleConnectionModeChange = (value: string) => {
+    const nextMode = value as "relay" | "direct";
+    if (nextMode === connectionMode) return;
+    setConnectionMode(nextMode);
+    // The command rewrites its flags on mode change, and enrollment tokens are single use.
+    if (enrollment) void handleGenerate();
   };
 
   return (
@@ -168,10 +181,7 @@ export const GatewayDeploySection = ({
               {!isCloud && (
                 <Field>
                   <FieldLabel>Connection Mode</FieldLabel>
-                  <RadioGroup
-                    value={connectionMode}
-                    onValueChange={(value) => setConnectionMode(value as "relay" | "direct")}
-                  >
+                  <RadioGroup value={connectionMode} onValueChange={handleConnectionModeChange}>
                     <FieldLabel htmlFor="gateway-connection-mode-direct" variant="org">
                       <Field orientation="horizontal">
                         <FieldContent>
