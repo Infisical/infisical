@@ -361,6 +361,11 @@ export const authLoginServiceFactory = ({
         },
         { status: OrgMembershipStatus.Accepted }
       );
+      await tokenService.revokeTokensForUser({
+        type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+        userId: user.id,
+        orgId: organizationId
+      });
     }
 
     return { result: ProviderAuthResult.SESSION, tokens, callbackPort } as const;
@@ -1275,6 +1280,12 @@ export const authLoginServiceFactory = ({
         },
         { status: OrgMembershipStatus.Accepted }
       );
+      // The invitation has served its purpose, so retire the emailed link ahead of its expiry.
+      await tokenService.revokeTokensForUser({
+        type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+        userId: user.id,
+        orgId: organizationId
+      });
     }
 
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
