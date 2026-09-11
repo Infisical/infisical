@@ -9,7 +9,8 @@ export {
   useRefreshBillingV2Entitlements,
   useRemoveBillingV2Product,
   useResumeBillingV2Subscription,
-  useStartBillingV2Trial
+  useStartBillingV2Trial,
+  useUpgradeBillingV2Product
 } from "./mutations";
 export { billingV2Keys, useGetBillingV2Catalog, useGetBillingV2Overview } from "./queries";
 export type {
@@ -28,5 +29,8 @@ export type {
   BillingV2Preview,
   BillingV2PreviewLine,
   BillingV2SubState,
-  BillingV2TrialResult
+  BillingV2Trial,
+  BillingV2TrialOutcome,
+  BillingV2TrialResult,
+  BillingV2UpgradeResult
 } from "./types";

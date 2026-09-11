@@ -13,7 +13,8 @@ import {
   TEntitlementOrg,
   TLicenseClientBackend,
   TStartTrialPayload,
-  TSubscriptionPreviewPayload
+  TSubscriptionPreviewPayload,
+  TUpgradePayload
 } from "./license-client-types";
 import { createSelfHostedTokenProvider } from "./license-token-provider";
 
@@ -176,6 +177,13 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     return backend.removeProduct(orgId, productId);
   };
 
+  const upgradeProduct = async (orgId: string, payload: TUpgradePayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.upgradeProduct(orgId, payload);
+  };
+
   const changeCommitments = async (orgId: string, payload: TChangeCommitmentsPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
@@ -236,6 +244,7 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     previewSubscriptionChange,
     buyProduct,
     removeProduct,
+    upgradeProduct,
     changeCommitments,
     startTrial,
     cancelTrial,
