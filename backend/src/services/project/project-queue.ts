@@ -5,6 +5,7 @@ import {
   AccessScope,
   IntegrationAuthsSchema,
   ProjectMembershipRole,
+  ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
   SecretApprovalRequestsSecretsSchema,
@@ -54,7 +55,11 @@ import {
   assignWorkspaceKeysToMembers,
   createProjectKey,
   releaseSecretBlindIndexMigrationOrgSlot,
+  SECRET_BLIND_INDEX_MIGRATION_DISPATCH_MAX_STALLED_ITERATIONS,
+  SECRET_BLIND_INDEX_MIGRATION_MAX_ATTEMPTS,
+  SECRET_BLIND_INDEX_MIGRATION_ORG_IN_FLIGHT_LIMIT,
   SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_RETRY_DELAY_MS,
+  SECRET_BLIND_INDEX_MIGRATION_WORKER_CONCURRENCY,
   tryAdmitSecretBlindIndexMigrationOrgSlot
 } from "./project-fns";
 
@@ -671,7 +676,7 @@ export const projectQueueFactory = ({
         await existingJob.remove();
       } else {
         logger.info(`Job for project ${projectId} already exists, skipping`);
-        return;
+        return false;
       }
     }
 
@@ -684,19 +689,113 @@ export const projectQueueFactory = ({
         removeOnComplete: { age: 60 },
         // 1 day, this gives us time to display the error to the customer
         removeOnFail: { age: 24 * 3600 },
-        attempts: 5,
+        attempts: SECRET_BLIND_INDEX_MIGRATION_MAX_ATTEMPTS,
         backoff: { type: "fixed", delay: SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_RETRY_DELAY_MS },
         jobId
       }
     );
+
+    return true;
   };
 
   const startSecretBlindIndexMigrationPerOrg = async (orgId: string, limit: number) => {
-    const projects = await projectDAL.find({ orgId, secretBlindIndexEnabled: false }, { limit, sort: [["id", "asc"]] });
+    const projects = await projectDAL.find(
+      {
+        orgId,
+        secretBlindIndexEnabled: false,
+        type: ProjectType.SecretManager,
+        version: ProjectVersion.V3
+      },
+      { limit, sort: [["id", "asc"]], count: true }
+    );
+    const pendingProjectCount = projects.length ? Number((projects[0] as unknown as { count: string }).count) : 0;
+
+    const enqueuedProjectIds: string[] = [];
     for (const project of projects) {
-      await startSecretBlindIndexMigration(project.id);
+      if (await startSecretBlindIndexMigration(project.id)) enqueuedProjectIds.push(project.id);
     }
+
+    return { enqueuedProjectIds, pendingProjectCount };
   };
+
+  const startSecretBlindIndexMigrationForOrg = async (orgId: string) => {
+    const jobId = `enable-blind-index-org-${orgId}`;
+
+    const existingJob = await queueService.getJob(QueueName.SecretBlindIndexMigrationDispatch, jobId);
+    if (existingJob) {
+      const state = await existingJob.getState();
+      if (state === "completed" || state === "failed") {
+        await existingJob.remove();
+      } else {
+        logger.info(`SecretBlindIndexMigrationDispatch: already running, skipping [orgId=${orgId}]`);
+        return false;
+      }
+    }
+
+    await queueService.queue(
+      QueueName.SecretBlindIndexMigrationDispatch,
+      QueueJobs.SecretBlindIndexMigrationDispatch,
+      { orgId },
+      {
+        removeOnComplete: { age: 60 },
+        removeOnFail: { age: 24 * 3600 },
+        attempts: 1,
+        jobId
+      }
+    );
+
+    return true;
+  };
+
+  queueService.start(
+    QueueName.SecretBlindIndexMigrationDispatch,
+    async (job) => {
+      const { orgId } = job.data;
+
+      let totalEnqueued = 0;
+      let stalledIterations = 0;
+      let lastPendingProjectCount = Infinity;
+
+      for (;;) {
+        const { enqueuedProjectIds, pendingProjectCount } = await startSecretBlindIndexMigrationPerOrg(
+          orgId,
+          SECRET_BLIND_INDEX_MIGRATION_ORG_IN_FLIGHT_LIMIT
+        );
+
+        if (!pendingProjectCount) {
+          logger.info(`SecretBlindIndexMigrationDispatch: complete [orgId=${orgId}] [totalEnqueued=${totalEnqueued}]`);
+          return;
+        }
+
+        totalEnqueued += enqueuedProjectIds.length;
+        await job.updateProgress(totalEnqueued);
+
+        const backlogDrained = pendingProjectCount < lastPendingProjectCount;
+        if (backlogDrained) {
+          stalledIterations = 0;
+        } else {
+          stalledIterations += 1;
+        }
+        lastPendingProjectCount = pendingProjectCount;
+
+        if (stalledIterations >= SECRET_BLIND_INDEX_MIGRATION_DISPATCH_MAX_STALLED_ITERATIONS) {
+          logger.error(
+            `SecretBlindIndexMigrationDispatch: giving up, backlog is not draining [orgId=${orgId}] [pendingProjectCount=${pendingProjectCount}] [totalEnqueued=${totalEnqueued}]`
+          );
+          return;
+        }
+
+        await new Promise((resolve) => {
+          setTimeout(resolve, 30_000);
+        });
+      }
+    },
+    { concurrency: 5 }
+  );
+
+  queueService.listen(QueueName.SecretBlindIndexMigrationDispatch, "failed", (job, err) => {
+    logger.error(err, `SecretBlindIndexMigrationDispatch: failed [orgId=${job?.data.orgId}]`);
+  });
 
   queueService.start(
     QueueName.SecretBlindIndexMigration,
@@ -785,7 +884,10 @@ export const projectQueueFactory = ({
         await releaseSecretBlindIndexMigrationOrgSlot(keyStore, orgId);
       }
     },
-    { concurrency: 2, limiter: { max: 20, duration: 60_000 } }
+    {
+      concurrency: SECRET_BLIND_INDEX_MIGRATION_WORKER_CONCURRENCY,
+      limiter: { max: 20, duration: 60_000 }
+    }
   );
 
   queueService.listen(QueueName.SecretBlindIndexMigration, "failed", (job, err) => {
@@ -816,6 +918,7 @@ export const projectQueueFactory = ({
   return {
     upgradeProject,
     startSecretBlindIndexMigration,
+    startSecretBlindIndexMigrationForOrg,
     startSecretBlindIndexMigrationPerOrg,
     getJobState
   };

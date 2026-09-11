@@ -107,6 +107,10 @@ export const getProjectKmsCertificateKeyId = async ({
 export const SECRET_BLIND_INDEX_MIGRATION_ORG_IN_FLIGHT_LIMIT = 4;
 export const SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_TTL_SECONDS = 60 * 60;
 export const SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_RETRY_DELAY_MS = 30_000;
+export const SECRET_BLIND_INDEX_MIGRATION_MAX_ATTEMPTS = 5;
+export const SECRET_BLIND_INDEX_MIGRATION_WORKER_CONCURRENCY = 2;
+
+export const SECRET_BLIND_INDEX_MIGRATION_DISPATCH_MAX_STALLED_ITERATIONS = 60;
 
 type TOrgSlotKeyStore = Pick<TKeyStoreFactory, "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
 

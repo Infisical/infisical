@@ -65,7 +65,8 @@ const projectScopedDepStubs: Pick<
     getBotKey: unreachable("projectBotService.getBotKey")
   },
   projectDAL: {
-    findById: unreachable("projectDAL.findById")
+    findById: unreachable("projectDAL.findById"),
+    countOrgProjectsPendingSecretBlindIndex: unreachable("projectDAL.countOrgProjectsPendingSecretBlindIndex")
   },
   userDAL: {
     find: unreachable("userDAL.find")
@@ -120,6 +121,9 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
       getItem: async () => null,
       setItemWithExpiry: async () => "OK",
       ttl: async () => -2
+    },
+    projectQueue: {
+      startSecretBlindIndexMigrationForOrg: unreachable("projectQueue.startSecretBlindIndexMigrationForOrg")
     },
     orgDAL: { countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers") },
     identityOrgMembershipDAL: {

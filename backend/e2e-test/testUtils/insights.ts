@@ -22,10 +22,7 @@ const unreachable = (method: string) => (): never => {
 };
 
 // Specs supply their own getOrgPermission; this fills the other half of the permissionService contract.
-const unreachableGetProjectPermission: Pick<
-  TInsightsServiceFactoryDep["permissionService"],
-  "getProjectPermission"
-> = {
+const unreachableGetProjectPermission: Pick<TInsightsServiceFactoryDep["permissionService"], "getProjectPermission"> = {
   getProjectPermission: unreachable("permissionService.getProjectPermission")
 };
 
@@ -42,6 +39,7 @@ export const projectScopedInsightsDepStubs: Pick<
   | "projectDAL"
   | "userDAL"
   | "kmsService"
+  | "projectQueue"
 > = {
   auditLogDAL: {
     countByDateAndActor: unreachable("auditLogDAL.countByDateAndActor"),
@@ -75,13 +73,17 @@ export const projectScopedInsightsDepStubs: Pick<
     getBotKey: unreachable("projectBotService.getBotKey")
   },
   projectDAL: {
-    findById: unreachable("projectDAL.findById")
+    findById: unreachable("projectDAL.findById"),
+    countOrgProjectsPendingSecretBlindIndex: unreachable("projectDAL.countOrgProjectsPendingSecretBlindIndex")
   },
   userDAL: {
     find: unreachable("userDAL.find")
   },
   kmsService: {
     createCipherPairWithDataKey: unreachable("kmsService.createCipherPairWithDataKey")
+  },
+  projectQueue: {
+    startSecretBlindIndexMigrationForOrg: unreachable("projectQueue.startSecretBlindIndexMigrationForOrg")
   }
 };
 

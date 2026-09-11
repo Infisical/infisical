@@ -932,6 +932,10 @@ export const INSIGHTS = {
     totalProjects: "The total number of secret management projects in the organization.",
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
   },
+  START_SECRET_BLIND_INDEX_MIGRATION: {
+    pendingProjectCount:
+      "The number of the organization's secret management projects that were scheduled for a secret blind index migration. The migrations run in the background."
+  },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
     date: "The day the accesses happened on, in UTC, as YYYY-MM-DD.",
