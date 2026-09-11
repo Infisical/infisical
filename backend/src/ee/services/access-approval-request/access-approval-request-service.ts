@@ -349,6 +349,16 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const request = await accessApprovalRequestDAL.transaction(async (tx) => {
+      const lockedPolicy = await accessApprovalPolicyDAL.findByIdForUpdate(policy.id, tx);
+      if (!lockedPolicy || lockedPolicy.deletedAt) {
+        throw new BadRequestError({
+          message: "The policy associated with this access request has been deleted."
+        });
+      }
+      if (lockedPolicy.externalApprovalPolicyId !== policy.externalApprovalPolicyId) {
+        throw new BadRequestError({ message: "This access request is not under an external approval policy" });
+      }
+
       const { alreadyFinalized } = await externalApprovalService.resolveExternalApprovalDecision(
         {
           externalApprovalRequestId: externalApproval.id,

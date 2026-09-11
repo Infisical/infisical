@@ -91,6 +91,11 @@ const makeService = ({
       (request as { externalApprovalRequestId?: string }).externalApprovalRequestId ??
       null
   },
+  lockedPolicy = {
+    id: "policy-1",
+    deletedAt: null,
+    externalApprovalPolicyId: EXTERNAL_POLICY_ID
+  },
   canReview = true,
   canReadRequests = true,
   project = { id: PROJECT_ID, orgId: ORG_ID, name: "Project" },
@@ -98,6 +103,7 @@ const makeService = ({
 }: {
   request?: ReturnType<typeof buildRequest> | undefined;
   lockedRow?: Record<string, unknown> | undefined;
+  lockedPolicy?: Record<string, unknown> | null | undefined;
   canReview?: boolean;
   canReadRequests?: boolean;
   project?: Record<string, unknown> | undefined;
@@ -110,6 +116,9 @@ const makeService = ({
       .fn<(id: string, patch: Record<string, unknown>, tx?: unknown) => Promise<Record<string, unknown>>>()
       .mockImplementation(async (id, patch) => ({ ...lockedRow, id, ...patch })),
     transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(TX))
+  };
+  const accessApprovalPolicyDAL = {
+    findByIdForUpdate: vi.fn().mockResolvedValue(lockedPolicy)
   };
   const additionalPrivilegeDAL = { create: vi.fn().mockResolvedValue({ id: "priv-1" }) };
   const externalApprovalService = {
@@ -157,7 +166,7 @@ const makeService = ({
     projectEnvDAL: projectEnvDAL as never,
     queueService: queueService as never,
     accessApprovalRequestReviewerDAL: {} as never,
-    accessApprovalPolicyDAL: {} as never,
+    accessApprovalPolicyDAL: accessApprovalPolicyDAL as never,
     accessApprovalPolicyApproverDAL: {} as never,
     groupDAL: {} as never,
     smtpService: {} as never,
@@ -176,6 +185,7 @@ const makeService = ({
   return {
     service,
     accessApprovalRequestDAL,
+    accessApprovalPolicyDAL,
     additionalPrivilegeDAL,
     externalApprovalService,
     permissionService,
@@ -193,10 +203,20 @@ const review = (
 
 describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
   test("approval records the external decision, grants the privilege, and leaves approvedByUserId null", async () => {
-    const { service, accessApprovalRequestDAL, additionalPrivilegeDAL, externalApprovalService } = makeService();
+    const {
+      service,
+      accessApprovalRequestDAL,
+      accessApprovalPolicyDAL,
+      additionalPrivilegeDAL,
+      externalApprovalService
+    } = makeService();
 
     const result = await review(service, ApprovalStatus.APPROVED);
 
+    expect(accessApprovalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
+    expect(accessApprovalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+      externalApprovalService.resolveExternalApprovalDecision.mock.invocationCallOrder[0]
+    );
     expect(externalApprovalService.resolveExternalApprovalDecision).toHaveBeenCalledWith(
       {
         externalApprovalRequestId: EXTERNAL_REQUEST_ID,
@@ -311,6 +331,33 @@ describe("accessApprovalRequestService.reviewExternalAccessRequest", () => {
     await expect(review(service, ApprovalStatus.APPROVED)).rejects.toBeInstanceOf(BadRequestError);
     expect(additionalPrivilegeDAL.create).not.toHaveBeenCalled();
   });
+
+  test("a policy deleted between the read and the lock does not record a decision or grant", async () => {
+    const { service, additionalPrivilegeDAL, externalApprovalService } = makeService({
+      lockedPolicy: { id: "policy-1", deletedAt: new Date(), externalApprovalPolicyId: EXTERNAL_POLICY_ID }
+    });
+
+    await expect(review(service, ApprovalStatus.APPROVED)).rejects.toThrow(
+      "The policy associated with this access request has been deleted."
+    );
+    expect(externalApprovalService.resolveExternalApprovalDecision).not.toHaveBeenCalled();
+    expect(additionalPrivilegeDAL.create).not.toHaveBeenCalled();
+  });
+
+  test.each([{ externalApprovalPolicyId: null }, { externalApprovalPolicyId: "99999999-9999-4999-8999-999999999999" }])(
+    "a locked policy that no longer references this external approval policy does not record a decision or grant",
+    async (lockedPolicy) => {
+      const { service, additionalPrivilegeDAL, externalApprovalService } = makeService({
+        lockedPolicy: { id: "policy-1", deletedAt: null, ...lockedPolicy }
+      });
+
+      await expect(review(service, ApprovalStatus.APPROVED)).rejects.toThrow(
+        "This access request is not under an external approval policy"
+      );
+      expect(externalApprovalService.resolveExternalApprovalDecision).not.toHaveBeenCalled();
+      expect(additionalPrivilegeDAL.create).not.toHaveBeenCalled();
+    }
+  );
 });
 
 const USER_ID = "44444444-4444-4444-8444-444444444444";
