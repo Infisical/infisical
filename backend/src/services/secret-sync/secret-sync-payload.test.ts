@@ -1,4 +1,9 @@
-import { createSecretSyncPayload, dedupeEntriesByDestinationKey, TSecretPayload } from "./secret-sync-payload";
+import {
+  createSecretSyncPayload,
+  dedupeEntriesByDestinationKey,
+  findFlattenConflicts,
+  TSecretPayload
+} from "./secret-sync-payload";
 
 const secret = (key: string, path: string, value = "v"): TSecretPayload => ({ key, path, value });
 
@@ -81,6 +86,43 @@ describe("createSecretSyncPayload", () => {
     });
 
     expect(() => payload.flatten()).not.toThrow();
+  });
+});
+
+describe("findFlattenConflicts", () => {
+  test("returns every conflict, uncapped, unlike flatten()'s thrown message", () => {
+    const secrets = Array.from({ length: 7 }, (_, i) => [secret(`K${i}`, "/"), secret(`K${i}`, "/api")]).flat();
+
+    const conflicts = findFlattenConflicts({ secrets, environment: "dev" });
+
+    expect(conflicts).toHaveLength(7);
+    expect(conflicts.map((c) => c.key).sort()).toEqual(["K0", "K1", "K2", "K3", "K4", "K5", "K6"]);
+  });
+
+  test("reports the destination key and every path it appears in", () => {
+    const conflicts = findFlattenConflicts({
+      secrets: [secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")],
+      environment: "dev"
+    });
+
+    expect(conflicts).toEqual([{ key: "DB_URL", paths: ["/backend", "/backend/api"] }]);
+  });
+
+  test("returns an empty array when there are no conflicts", () => {
+    expect(findFlattenConflicts({ secrets: [secret("DB_URL", "/")], environment: "dev" })).toEqual([]);
+  });
+
+  test("applySchema: false reports raw-key collisions instead of schema-applied ones", () => {
+    const conflicts = findFlattenConflicts(
+      {
+        secrets: [secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")],
+        environment: "dev",
+        keySchema: "{{environment}}_{{secretKey}}"
+      },
+      { applySchema: false }
+    );
+
+    expect(conflicts).toEqual([{ key: "DB_URL", paths: ["/backend", "/backend/api"] }]);
   });
 });
 

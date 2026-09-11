@@ -17,7 +17,13 @@ export type TSecretPayload = {
 export type TSecretSyncPayload = {
   secrets: TSecretPayload[];
   environment: string;
+  keySchema?: string;
   flatten: (opts?: { applySchema?: boolean }) => TSecretMap;
+};
+
+export type TSecretSyncConflict = {
+  key: string;
+  paths: string[];
 };
 
 export const getKeyWithSchema = ({
@@ -37,19 +43,43 @@ export const getKeyWithSchema = ({
   });
 };
 
-const buildConflictError = (conflicts: [string, TSecretPayload[]][]) => {
+const groupByDestinationKey = (
+  { secrets, environment }: Pick<TSecretSyncPayload, "secrets" | "environment">,
+  schema?: string
+): Map<string, TSecretPayload[]> => {
+  const grouped = new Map<string, TSecretPayload[]>();
+
+  for (const entry of secrets) {
+    const destinationKey = getKeyWithSchema({ key: entry.key, environment, schema });
+    const group = grouped.get(destinationKey);
+
+    if (group) group.push(entry);
+    else grouped.set(destinationKey, [entry]);
+  }
+
+  return grouped;
+};
+
+// Returns every destination-key collision, unordered and untruncated: the caller decides how much
+// of this to show. The recursive-conflicts preview endpoint sends the full list so the UI can
+// paginate/truncate it; flatten() below caps what it puts in a thrown error message.
+export const findFlattenConflicts = (
+  payload: Pick<TSecretSyncPayload, "secrets" | "environment" | "keySchema">,
+  { applySchema = true }: { applySchema?: boolean } = {}
+): TSecretSyncConflict[] => {
+  const schema = applySchema ? payload.keySchema : undefined;
+  const grouped = groupByDestinationKey(payload, schema);
+
+  return [...grouped.entries()]
+    .filter(([, group]) => group.length > 1)
+    .map(([key, group]) => ({ key, paths: group.map((entry) => entry.path).sort() }));
+};
+
+const buildConflictError = (conflicts: TSecretSyncConflict[]) => {
   const shown = conflicts.slice(0, MAX_REPORTED_KEY_CONFLICTS);
   const remainder = conflicts.length - shown.length;
 
-  const detail = shown
-    .map(
-      ([key, group]) =>
-        `"${key}" in ${group
-          .map((entry) => entry.path)
-          .sort()
-          .join(" and ")}`
-    )
-    .join("; ");
+  const detail = shown.map(({ key, paths }) => `"${key}" in ${paths.join(" and ")}`).join("; ");
 
   return new SecretSyncError({
     message: `This destination stores secrets in a single flat list, so each name can be used only once. These names are used in more than one folder: ${detail}${
@@ -91,6 +121,7 @@ export const createSecretSyncPayload = (
 ): TSecretSyncPayload => ({
   secrets,
   environment,
+  keySchema,
   // A destination whose sync targets can't carry the configured key schema (eg a many-to-one
   // JSON body whose fields are app-facing variable names, or an Infisical-to-Infisical sync,
   // where a schema-renamed key would look like a new secret and retrigger a sync cycle) calls
@@ -98,21 +129,12 @@ export const createSecretSyncPayload = (
   // groups by the resulting destination key and rejects collisions, so duplicate-name detection
   // never depends on whether the schema was applied.
   flatten: ({ applySchema = true }: { applySchema?: boolean } = {}) => {
-    const schema = applySchema ? keySchema : undefined;
-    const grouped = new Map<string, TSecretPayload[]>();
-
-    for (const entry of secrets) {
-      const destinationKey = getKeyWithSchema({ key: entry.key, environment, schema });
-      const group = grouped.get(destinationKey);
-
-      if (group) group.push(entry);
-      else grouped.set(destinationKey, [entry]);
-    }
-
-    const conflicts = [...grouped.entries()].filter(([, group]) => group.length > 1);
+    const conflicts = findFlattenConflicts({ secrets, environment, keySchema }, { applySchema });
 
     if (conflicts.length) throw buildConflictError(conflicts);
 
+    const schema = applySchema ? keySchema : undefined;
+    const grouped = groupByDestinationKey({ secrets, environment }, schema);
     const map: TSecretMap = {};
 
     for (const [destinationKey, [entry]] of grouped) {

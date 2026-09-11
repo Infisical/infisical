@@ -2,8 +2,9 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SecretSyncs } from "@app/lib/api-docs";
-import { startsWithVowel } from "@app/lib/fn";
+import { removeTrailingSlash, startsWithVowel } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -535,6 +536,47 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           excludeSyncId,
           projectId
         },
+        req.permission
+      );
+
+      return result;
+    }
+  });
+
+  // Destination-agnostic: flatten() never uses the destination or source folder path to build a
+  // key, so this is safe to call from the Source step before a destination is even chosen.
+  server.route({
+    method: "POST",
+    url: "/recursive-conflicts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: `check${destinationNameForOpId}SecretSyncRecursiveConflicts`,
+      tags: [ApiDocsTags.SecretSyncs],
+      body: z.object({
+        projectId: z.string().uuid(),
+        environment: slugSchema({ field: "environment", max: 64 }),
+        secretPath: z.string().trim().min(1, "Secret path required").transform(removeTrailingSlash),
+        keySchema: z.string().trim().max(255).optional()
+      }),
+      response: {
+        200: z.object({
+          conflicts: z.array(
+            z.object({
+              key: z.string(),
+              paths: z.array(z.string())
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { projectId, environment, secretPath, keySchema } = req.body;
+
+      const result = await server.services.secretSync.findRecursiveConflicts(
+        { projectId, environment, secretPath, keySchema },
         req.permission
       );
 

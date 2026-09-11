@@ -28,7 +28,28 @@ export const secretSyncKeys = {
       destinationConfig,
       connectionId,
       excludeSyncId
+    ] as const,
+  recursiveConflicts: (
+    destination: SecretSync,
+    projectId: string,
+    environment?: string,
+    secretPath?: string,
+    keySchema?: string
+  ) =>
+    [
+      ...secretSyncKeys.all,
+      destination,
+      "recursive-conflicts",
+      projectId,
+      environment,
+      secretPath,
+      keySchema
     ] as const
+};
+
+export type TSecretSyncRecursiveConflict = {
+  key: string;
+  paths: string[];
 };
 
 export const useSecretSyncOptions = (
@@ -140,6 +161,43 @@ export const useCheckDuplicateDestination = (
       return data;
     },
     enabled: Boolean(destinationConfig) && Object.keys(destinationConfig || {}).length > 0,
+    ...options
+  });
+};
+
+export const useCheckRecursiveConflicts = (
+  destination: SecretSync,
+  projectId: string,
+  environment?: string,
+  secretPath?: string,
+  keySchema?: string,
+  options?: Omit<
+    UseQueryOptions<
+      { conflicts: TSecretSyncRecursiveConflict[] },
+      unknown,
+      { conflicts: TSecretSyncRecursiveConflict[] },
+      ReturnType<typeof secretSyncKeys.recursiveConflicts>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretSyncKeys.recursiveConflicts(
+      destination,
+      projectId,
+      environment,
+      secretPath,
+      keySchema
+    ),
+    queryFn: async () => {
+      const { data } = await apiRequest.post<{ conflicts: TSecretSyncRecursiveConflict[] }>(
+        `/api/v1/secret-syncs/${destination}/recursive-conflicts`,
+        { projectId, environment, secretPath, keySchema }
+      );
+
+      return data;
+    },
+    enabled: Boolean(environment) && Boolean(secretPath),
     ...options
   });
 };

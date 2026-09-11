@@ -35,12 +35,14 @@ import {
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions
 } from "@app/services/secret-sync/secret-sync-fns";
+import { findFlattenConflicts } from "@app/services/secret-sync/secret-sync-payload";
 import { buildSyncPayload, resolveSyncFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
   TCheckDuplicateDestinationDTO,
   TCreateSecretSyncDTO,
   TDeleteSecretSyncDTO,
+  TFindRecursiveSyncConflictsDTO,
   TFindSecretSyncByIdDTO,
   TFindSecretSyncByNameDTO,
   TListSecretSyncsByFolderId,
@@ -264,6 +266,103 @@ export const secretSyncServiceFactory = ({
       );
 
       payload.flatten();
+    } catch (error) {
+      if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
+
+      throw error;
+    }
+  };
+
+  // Lets the frontend check for duplicate-name conflicts while the user is still on the Source
+  // step, before a provider or destination is even chosen: the check is destination-agnostic
+  // (flatten() never uses the destination or the source folder path to build a key), so nothing
+  // downstream can change the answer. Returns every conflict, untruncated, unlike the
+  // BadRequestError $assertSyncableAtDestination throws at create/update time.
+  const findRecursiveConflicts = async (
+    { projectId, environment, secretPath, keySchema }: TFindRecursiveSyncConflictsDTO,
+    actor: OrgServiceActor
+  ) => {
+    const { permission: projectPermission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(projectPermission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSub.SecretSyncs
+    );
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+
+    if (!folder)
+      throw new BadRequestError({
+        message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
+      });
+
+    await $assertCanReadSyncedFolders(projectPermission, {
+      projectId,
+      environment,
+      sourcePath: secretPath,
+      sourceFolderId: folder.id,
+      recursive: true
+    });
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const decryptSecretValue = (value?: Buffer | null) =>
+      value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
+
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      decryptSecretValue,
+      secretDAL: secretV2BridgeDAL,
+      folderDAL,
+      projectId,
+      canExpandValue: () => true,
+      actorOrgId: actor.orgId,
+      orgDAL,
+      licenseService,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
+    });
+
+    try {
+      const payload = await buildSyncPayload(
+        {
+          folderDAL,
+          projectEnvDAL,
+          secretV2BridgeDAL,
+          secretImportDAL,
+          expandSecretReferences,
+          decryptSecretValue,
+          fnSecretsV2FromImportsDeps: {
+            projectFolderGrantDAL,
+            actorOrgId: actor.orgId,
+            orgDAL,
+            licenseService,
+            kmsService
+          }
+        },
+        {
+          projectId,
+          environment,
+          sourcePath: secretPath,
+          sourceFolderId: folder.id,
+          recursive: true,
+          keySchema,
+          includeImports: true,
+          dedupeForRemoval: false
+        }
+      );
+
+      return { conflicts: findFlattenConflicts(payload) };
     } catch (error) {
       if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
 
@@ -1130,6 +1229,7 @@ export const secretSyncServiceFactory = ({
     triggerSecretSyncSyncSecretsById,
     triggerSecretSyncImportSecretsById,
     triggerSecretSyncRemoveSecretsById,
-    checkDuplicateDestination
+    checkDuplicateDestination,
+    findRecursiveConflicts
   };
 };

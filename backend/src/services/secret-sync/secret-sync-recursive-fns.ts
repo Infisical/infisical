@@ -36,7 +36,10 @@ export const getAncestorPaths = (path: string): string[] => {
   return segments.map((_, index) => (index === 0 ? "/" : `/${segments.slice(0, index).join("/")}`));
 };
 
-export const SECRET_SYNC_MAX_SECRETS = 10_000;
+// buildSyncPayload expands secret references for every secret concurrently
+// (Promise.allSettled below), and expansion can hit the DB per secret. Kept low against a
+// 10-connection pool; raise it if customers need more room and the concurrency is bounded first.
+export const SECRET_SYNC_MAX_SECRETS = 100;
 
 export const assertWithinSecretLimit = (count: number) => {
   if (count <= SECRET_SYNC_MAX_SECRETS) return;
