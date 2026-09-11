@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import {
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  Trash2Icon,
+  VaultIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -25,7 +32,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
   OrgIcon,
-  ProjectIcon,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -83,7 +89,7 @@ export const IdentitiesTab = () => {
     if (isAgentVaultManaged(identity)) {
       return (
         <Badge variant="av">
-          <ProjectIcon />
+          <VaultIcon />
           Agent Vault
         </Badge>
       );
