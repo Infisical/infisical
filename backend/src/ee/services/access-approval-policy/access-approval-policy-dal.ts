@@ -112,6 +112,7 @@ export interface TAccessApprovalPolicyDALFactory
       }
     | undefined
   >;
+  findByIdForUpdate: (id: string, tx: Knex) => Promise<TAccessApprovalPolicies | undefined>;
   softDeleteById: (
     policyId: string,
     tx?: Knex
@@ -542,6 +543,15 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
     }
   };
 
+  const findByIdForUpdate: TAccessApprovalPolicyDALFactory["findByIdForUpdate"] = async (id, tx) => {
+    try {
+      const doc = await tx(TableName.AccessApprovalPolicy).where({ id }).forUpdate().first();
+      return doc ? AccessApprovalPoliciesSchema.parse(doc) : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdForUpdateAccessApprovalPolicy" });
+    }
+  };
+
   const find: TAccessApprovalPolicyDALFactory["find"] = async (filter, customFilter, tx) => {
     try {
       const docs = await accessApprovalPolicyFindQuery(tx || db.replicaNode(), filter, customFilter);
@@ -731,6 +741,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
     ...accessApprovalPolicyOrm,
     find,
     findById,
+    findByIdForUpdate,
     softDeleteById,
     findLastValidPolicy,
     findPolicyByEnvIdAndSecretPath

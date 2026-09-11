@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { BadRequestError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -27,7 +29,8 @@ export const validateExternalPolicyBypassConfig = ({
 export const validateExternalPolicyPendingRequests = async ({
   policy,
   externalApproval,
-  countPendingExternalRequestsByPolicyId
+  countPendingExternalRequestsByPolicyId,
+  tx
 }: {
   policy: {
     id: string;
@@ -36,7 +39,8 @@ export const validateExternalPolicyPendingRequests = async ({
     externalApproval: TAccessApprovalPolicyExternalApproval | null;
   };
   externalApproval?: TExternalApprovalPolicyInput | null;
-  countPendingExternalRequestsByPolicyId: (policyId: string) => Promise<number>;
+  countPendingExternalRequestsByPolicyId: (policyId: string, tx?: Knex) => Promise<number>;
+  tx?: Knex;
 }) => {
   const currentExternalApproval = policy.externalApproval;
   const isDetachingExternalApproval = externalApproval === null && Boolean(policy.externalApprovalPolicyId);
@@ -52,7 +56,7 @@ export const validateExternalPolicyPendingRequests = async ({
     return;
   }
 
-  const pendingExternalRequests = await countPendingExternalRequestsByPolicyId(policy.id);
+  const pendingExternalRequests = await countPendingExternalRequestsByPolicyId(policy.id, tx);
 
   if (pendingExternalRequests > 0) {
     throw new BadRequestError({

@@ -1,3 +1,4 @@
+import { packRules } from "@casl/ability/extra";
 import { describe, expect, test, vi } from "vitest";
 
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -13,6 +14,14 @@ import { ApprovalStatus } from "./access-approval-request-types";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() }
+}));
+
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => ({ SITE_URL: "http://localhost" })
+}));
+
+vi.mock("@app/lib/workflow-integrations/trigger-notification", () => ({
+  triggerWorkflowIntegrationNotification: vi.fn().mockResolvedValue(undefined)
 }));
 
 const REQUEST_ID = "22222222-2222-4222-8222-222222222222";
@@ -434,5 +443,137 @@ describe("accessApprovalRequestService.retryExternalApprovalDispatch", () => {
     expect(externalApprovalRequestDAL.updateById).toHaveBeenCalledWith(EXTERNAL_REQUEST_ID, {
       status: ExternalApprovalRequestStatus.FailedDispatch
     });
+  });
+});
+
+const packedCreatePermissions = packRules([
+  {
+    subject: "secrets",
+    action: "read",
+    conditions: { environment: "dev", secretPath: { $glob: "/" } }
+  }
+]);
+
+const makeCreateService = ({
+  lockedExternalApprovalPolicyId = EXTERNAL_POLICY_ID
+}: {
+  lockedExternalApprovalPolicyId?: string | null;
+} = {}) => {
+  const createdRequest = { id: REQUEST_ID, policyId: "policy-1" };
+  const accessApprovalRequestDAL = {
+    find: vi.fn().mockResolvedValue([]),
+    findById: vi.fn().mockResolvedValue(createdRequest),
+    create: vi.fn().mockResolvedValue(createdRequest),
+    transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(TX))
+  };
+  const accessApprovalPolicyDAL = {
+    findLastValidPolicy: vi.fn().mockResolvedValue({
+      id: "policy-1",
+      deletedAt: null,
+      requestExpirationTime: null,
+      maxTimePeriod: null,
+      externalApprovalPolicyId: EXTERNAL_POLICY_ID
+    }),
+    findByIdForUpdate: vi.fn().mockResolvedValue({
+      id: "policy-1",
+      deletedAt: null,
+      externalApprovalPolicyId: lockedExternalApprovalPolicyId
+    })
+  };
+  const externalApprovalRequestDAL = {
+    create: vi.fn().mockResolvedValue({ id: EXTERNAL_REQUEST_ID }),
+    updateById: vi.fn(),
+    update: vi.fn()
+  };
+  const externalApprovalPolicyDAL = {
+    findById: vi.fn().mockResolvedValue({
+      id: EXTERNAL_POLICY_ID,
+      type: ExternalApprovalType.ServiceNow,
+      connectionId: CONNECTION_ID
+    })
+  };
+  const externalApprovalQueue = { queueExternalApprovalDispatch: vi.fn().mockResolvedValue(undefined) };
+
+  const service = accessApprovalRequestServiceFactory({
+    accessApprovalRequestDAL: accessApprovalRequestDAL as never,
+    accessApprovalPolicyDAL: accessApprovalPolicyDAL as never,
+    accessApprovalPolicyApproverDAL: { find: vi.fn().mockResolvedValue([]) } as never,
+    additionalPrivilegeDAL: {} as never,
+    externalApprovalService: {} as never,
+    permissionService: {
+      getProjectPermission: vi.fn().mockResolvedValue({ permission: { can: vi.fn(() => true) } })
+    } as never,
+    projectDAL: {
+      findProjectBySlug: vi.fn().mockResolvedValue({
+        id: PROJECT_ID,
+        orgId: ORG_ID,
+        name: "Project"
+      }),
+      checkProjectUpgradeStatus: vi.fn().mockResolvedValue(undefined)
+    } as never,
+    projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: "dev" }) } as never,
+    queueService: { queue: vi.fn().mockResolvedValue(undefined) } as never,
+    accessApprovalRequestReviewerDAL: { find: vi.fn() } as never,
+    groupDAL: {} as never,
+    smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) } as never,
+    userDAL: {
+      findById: vi.fn().mockResolvedValue({
+        id: USER_ID,
+        firstName: "A",
+        lastName: "B",
+        email: REQUESTER_EMAIL
+      }),
+      find: vi.fn().mockResolvedValue([])
+    } as never,
+    kmsService: {} as never,
+    microsoftTeamsService: {} as never,
+    projectMicrosoftTeamsConfigDAL: {} as never,
+    projectSlackConfigDAL: {} as never,
+    notificationService: { createUserNotifications: vi.fn().mockResolvedValue(undefined) } as never,
+    externalApprovalQueue: externalApprovalQueue as never,
+    externalApprovalRequestDAL: externalApprovalRequestDAL as never,
+    externalApprovalPolicyDAL: externalApprovalPolicyDAL as never,
+    appConnectionDAL: {} as never
+  });
+
+  return { service, accessApprovalPolicyDAL, externalApprovalRequestDAL };
+};
+
+const createRequest = (service: ReturnType<typeof makeCreateService>["service"]) =>
+  service.createAccessApprovalRequest({
+    projectSlug: "project-1",
+    permissions: packedCreatePermissions,
+    isTemporary: false,
+    actor: ActorType.USER,
+    actorId: USER_ID,
+    actorOrgId: ORG_ID,
+    actorAuthMethod: null
+  });
+
+describe("accessApprovalRequestService.createAccessApprovalRequest", () => {
+  test("locks the policy row before creating an external approval request", async () => {
+    const { service, accessApprovalPolicyDAL, externalApprovalRequestDAL } = makeCreateService();
+
+    await createRequest(service);
+
+    expect(accessApprovalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
+    expect(externalApprovalRequestDAL.create).toHaveBeenCalledWith(
+      { status: ExternalApprovalRequestStatus.PendingDispatch },
+      TX
+    );
+    expect(accessApprovalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+      externalApprovalRequestDAL.create.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("does not create an external approval request when the locked policy has been detached", async () => {
+    const { service, accessApprovalPolicyDAL, externalApprovalRequestDAL } = makeCreateService({
+      lockedExternalApprovalPolicyId: null
+    });
+
+    await createRequest(service);
+
+    expect(accessApprovalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
+    expect(externalApprovalRequestDAL.create).not.toHaveBeenCalled();
   });
 });

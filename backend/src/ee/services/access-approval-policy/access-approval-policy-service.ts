@@ -470,12 +470,6 @@ export const accessApprovalPolicyServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
-    await validateExternalPolicyPendingRequests({
-      policy: accessApprovalPolicy,
-      externalApproval,
-      countPendingExternalRequestsByPolicyId: accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId
-    });
-
     if (externalApproval) {
       await externalApprovalService.validateExternalApprovalPolicyInput({
         input: externalApproval,
@@ -549,6 +543,16 @@ export const accessApprovalPolicyServiceFactory = ({
 
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const { doc: updatedPolicy, externalApprovalPolicy } = await accessApprovalPolicyDAL.transaction(async (tx) => {
+      // holding the lock on the policy to avoid race conditions
+      await accessApprovalPolicyDAL.findByIdForUpdate(accessApprovalPolicy.id, tx);
+
+      await validateExternalPolicyPendingRequests({
+        policy: accessApprovalPolicy,
+        externalApproval,
+        countPendingExternalRequestsByPolicyId: accessApprovalRequestDAL.countPendingExternalRequestsByPolicyId,
+        tx
+      });
+
       let currentExternalApprovalPolicy: TAccessApprovalPolicyExternalApproval | null =
         accessApprovalPolicy.externalApproval ?? null;
       if (externalApproval === null) {

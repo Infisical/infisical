@@ -84,7 +84,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "getCount"
     | "findByIdForUpdate"
   >;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find" | "findLastValidPolicy">;
+  accessApprovalPolicyDAL: Pick<
+    TAccessApprovalPolicyDALFactory,
+    "findOne" | "find" | "findLastValidPolicy" | "findByIdForUpdate"
+  >;
   accessApprovalRequestReviewerDAL: Pick<
     TAccessApprovalRequestReviewerDALFactory,
     "create" | "find" | "findOne" | "transaction" | "delete"
@@ -641,10 +644,15 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     const txResult = await accessApprovalRequestDAL.transaction(async (tx) => {
+      const lockedPolicy = await accessApprovalPolicyDAL.findByIdForUpdate(policy.id, tx);
+      if (!lockedPolicy || lockedPolicy.deletedAt) {
+        throw new BadRequestError({ message: "The policy linked to this request has been deleted" });
+      }
+
       const parsedMs = policy.requestExpirationTime ? ms(policy.requestExpirationTime) : null;
       const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
-      const externalApprovalRequest = policy.externalApprovalPolicyId
+      const externalApprovalRequest = lockedPolicy.externalApprovalPolicyId
         ? await externalApprovalRequestDAL.create({ status: ExternalApprovalRequestStatus.PendingDispatch }, tx)
         : null;
 
