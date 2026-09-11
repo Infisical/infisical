@@ -26,7 +26,7 @@ func main() {
 
 	client := infisical.NewInfisicalClient(context.Background(), infisical.Config{
 		SiteUrl: "https://app.infisical.com", // Optional, default is https://app.infisical.com
-    AutoTokenRefresh: true, // Wether or not to let the SDK handle the access token lifecycle. Defaults to true if not specified.
+    AutoTokenRefresh: true, // Whether or not to let the SDK handle the access token lifecycle. Defaults to true if not specified.
 	})
 
 	_, err := client.Auth().UniversalAuthLogin("YOUR_CLIENT_ID", "YOUR_CLIENT_SECRET")
