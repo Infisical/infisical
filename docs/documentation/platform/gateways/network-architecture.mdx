@@ -44,6 +44,14 @@ No inbound rules are required.
 
 With the default **Auto Select Relay** option there is no single relay address to allowlist, since the gateway may fail over between managed relays. See [Which relay address do I need to allowlist?](#frequently-asked-questions) below for the endpoints to include and how to pin to a single relay.
 
+### Self-hosted relay (optional)
+
+If you run a self-hosted relay, that host needs:
+
+- **Inbound TCP 2222** from your gateways (SSH reverse tunnels)
+- **Inbound TCP 8443** from the Infisical instance host (platform to relay)
+- **Outbound TCP 443** to the Infisical instance host (relay API + certificates)
+
 ## Direct listen mode
 
 ```mermaid
@@ -74,14 +82,6 @@ On the Gateway host, allow:
 The listen address is the one Infisical dials, and it's written into the Gateway's server certificate, so it has to be stable. An internal DNS name or a load balancer in front of the Gateway both work. Changing it means updating `--listen-address` and restarting the Gateway, so it's issued a certificate for the new address.
 
 By default the Gateway binds the port from `--listen-address` on every interface. To bind somewhere else, such as one interface or a different local port behind a load balancer, pass `--bind` as well.
-
-## Self-hosted relay (optional)
-
-If you run a self-hosted relay, that host needs:
-
-- **Inbound TCP 2222** from your gateways (SSH reverse tunnels)
-- **Inbound TCP 8443** from the Infisical instance host (platform to relay)
-- **Outbound TCP 443** to the Infisical instance host (relay API + certificates)
 
 ## Frequently asked questions
 
