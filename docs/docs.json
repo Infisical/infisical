@@ -50,18 +50,7 @@
           {
             "group": "Use cases",
             "pages": [
-              {
-                "group": "Manage secrets",
-                "root": "documentation/getting-started/choose-a-product/secrets-management/overview",
-                "pages": [
-                  "documentation/getting-started/choose-a-product/secrets-management/deliver-secrets",
-                  "documentation/getting-started/choose-a-product/secrets-management/local-development",
-                  "documentation/getting-started/choose-a-product/secrets-management/rotate-credentials",
-                  "documentation/getting-started/choose-a-product/secrets-management/dynamic-credentials",
-                  "documentation/getting-started/choose-a-product/secrets-management/sync-secrets",
-                  "documentation/getting-started/choose-a-product/secrets-management/broker-agent-credentials"
-                ]
-              },
+              "documentation/getting-started/choose-a-product/secrets-management/overview",
               "documentation/getting-started/choose-a-product/secret-scanning",
               "documentation/getting-started/choose-a-product/pki",
               "documentation/getting-started/choose-a-product/kms",
