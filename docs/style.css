@@ -66,7 +66,7 @@
   gap: 0.5rem;
   padding: 0.375rem 0.75rem;
   border: 1px solid #ebebeb;
-  background: #ffffff;
+  background: #fbfbfa;
   color: #5c5c5c;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -94,7 +94,7 @@
 
 .qs-index__jump-chip:hover {
   border-color: var(--qs-chip-color, #cfcfcf);
-  background-color: color-mix(in srgb, var(--qs-chip-color, #cfcfcf) 7%, #ffffff);
+  background-color: color-mix(in srgb, var(--qs-chip-color, #cfcfcf) 7%, #fbfbfa);
 }
 
 .qs-index__jump-chip:focus-visible {
@@ -108,7 +108,7 @@
 
 .dark .qs-index__jump-chip {
   background: #101114;
-  border-color: #292a2f;
+  border-color: #1e1f24;
   color: #b4b4b4;
 }
 
@@ -203,14 +203,14 @@
   display: block;
   padding: 0.75rem 0.875rem 0.8125rem;
   border: 1px solid #ebebeb;
-  background: #ffffff;
+  background: #fbfbfa;
   text-decoration: none;
   transition: border-color 0.2s, background-color 0.2s;
 }
 
 .qs-index__item:hover {
   border-color: var(--qs-accent);
-  background-color: color-mix(in srgb, var(--qs-accent) 7%, #ffffff);
+  background-color: color-mix(in srgb, var(--qs-accent) 7%, #fbfbfa);
 }
 
 .qs-index__item:focus-visible {
@@ -254,7 +254,7 @@
 
 .dark .qs-index__item {
   background: #101114;
-  border-color: #292a2f;
+  border-color: #1e1f24;
 }
 
 .dark .qs-index__item:hover {
