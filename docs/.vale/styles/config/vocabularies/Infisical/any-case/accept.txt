@@ -283,6 +283,7 @@ I
 (?i)Agent Proxy
 (?i)Secrets Management
 (?i)Certificate Management
+(?i)Key Management
 (?i)Privileged Access Management
 (?i)Honey Token
 (?i)Honey Tokens

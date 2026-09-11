@@ -1,0 +1,44 @@
+---
+title: "Manage privileged access"
+sidebarTitle: "Manage privileged access"
+description: "Broker access to databases and servers so that users and applications don't receive the underlying credentials."
+---
+
+Infisical Privileged Access Management (PAM) brokers connections to systems such as databases and servers. When a user or application needs to access one of these systems, Infisical opens the connection using a credential stored within Infisical, without providing the credential to the requester. All sessions are recorded, and the credential isn't exposed at any point during the session.
+
+<Card title="PAM docs" icon="user-shield" href="/documentation/platform/pam/overview">
+  Templates, folders, and accounts; access control; AI agent workflows; and the Gateway architecture.
+</Card>
+
+## Use cases
+
+<CardGroup cols={2}>
+  <Card title="Broker access to a database" icon="database" href="/documentation/platform/pam/quick-starts/launch-first-session">
+    Allow users to connect to PostgreSQL, MySQL, and other databases without providing them with the credential.
+  </Card>
+  <Card title="Broker access to a server" icon="server" href="/documentation/platform/pam/quick-starts/launch-first-session">
+    Allow users to open SSH sessions to jump boxes and production servers under policy-gated, recorded sessions.
+  </Card>
+  <Card title="Give AI agents scoped access" icon="robot" href="/documentation/platform/pam/ai-agents/overview">
+    Allow an AI agent to access infrastructure under the identity of the user who started it, or as its own machine identity.
+  </Card>
+  <Card title="Record and replay sessions" icon="film" href="/documentation/platform/pam/overview">
+    Attribute every action to the identity that opened the session, and replay the session for later review.
+  </Card>
+</CardGroup>
+
+## What is privileged access?
+
+A privileged credential is a credential that grants access to a sensitive system, such as a production database, a shared administrator account on a server, or an administrator login to a web-based console. Privileged credentials are often used by multiple people or applications, and each use of the credential can have significant impact on the system it accesses. For these reasons, access to privileged credentials is typically subject to additional controls, such as logging and approval.
+
+## Why broker privileged access
+
+Without a system for brokering access, privileged credentials are typically shared between users. This is often done by storing credentials in a shared password manager, or by distributing them through messaging or documentation tools. When a credential is shared in this way, rotating it requires updating every location where it has been shared, auditing who has used it becomes difficult, and removing a person's access when they leave the team requires rotating the credential.
+
+When access is brokered instead, the credential is stored in a single location and isn't distributed to users. To access a system, a user requests a session. Infisical opens a connection to the target system on the user's behalf and uses the stored credential to authenticate. The user doesn't see or hold the credential. Each session is recorded and attributed to the user or application that requested it.
+
+## How Infisical does it
+
+Infisical PAM organizes credentials into three types of resources: templates, folders, and accounts. A template defines the structure of a type of credential, a folder groups related credentials, and an account is a specific credential that can be used to access a system. To access a system, a user requests a session against an account they have been granted access to. Infisical opens a connection to the target system through a [Gateway](/documentation/platform/gateways/overview), and the account's credential is applied within that connection. The credential isn't sent to the user's client. Sessions are recorded and can be replayed for later review.
+
+PAM sessions can be requested by users or by AI agents. A user connects through a browser or through the CLI. An [AI agent](/documentation/platform/pam/ai-agents/overview) can be configured to act as the user who started it, or to act as its own [machine identity](/documentation/platform/identities/machine-identities) with a distinct set of permissions. In both configurations, the credential is stored in Infisical, and every action is recorded in the audit log.
