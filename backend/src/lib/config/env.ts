@@ -251,6 +251,7 @@ const envSchema = z
     ),
     ACME_DNS_RESOLVE_RESOLVER_SERVERS_HOST_ENABLED: zodStrBool.default("false").optional(),
     DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.default("false").optional(),
+    EASYDNS_SANDBOX_ENABLED: zodStrBool.default("false"),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),
