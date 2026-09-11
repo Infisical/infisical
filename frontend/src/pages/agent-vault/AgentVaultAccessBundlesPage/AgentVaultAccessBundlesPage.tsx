@@ -16,7 +16,7 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
-import { ConnectionIconStack } from "@app/components/agent-vault/ConnectionIconStack";
+import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import {
   Button,
@@ -62,7 +62,7 @@ import { DeleteAccessBundleDialog } from "./components/DeleteAccessBundleDialog"
 
 enum SortColumn {
   Name = "name",
-  Connections = "connections",
+  Services = "services",
   Created = "created"
 }
 
@@ -71,7 +71,7 @@ const SORT_COMPARATORS: Record<
   (a: TAgentVaultAccessBundleListItem, b: TAgentVaultAccessBundleListItem) => number
 > = {
   [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Connections]: (a, b) => a.connectionCount - b.connectionCount,
+  [SortColumn.Services]: (a, b) => a.serviceCount - b.serviceCount,
   [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 };
 
@@ -136,7 +136,7 @@ export const AgentVaultAccessBundlesPage = () => {
     emptyDescription = "Try a different search term.";
   } else if (isAdmin) {
     emptyTitle = "No access bundles yet";
-    emptyDescription = "Create one to group the connections an agent may use.";
+    emptyDescription = "Create one to group the services an agent may use.";
   } else {
     emptyTitle = "No access bundles available";
     emptyDescription = "Ask an admin to grant you an access bundle.";
@@ -161,8 +161,8 @@ export const AgentVaultAccessBundlesPage = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
           </CardTitle>
           <CardDescription>
-            Each bundle holds the connections an agent may use and the members who can mint a
-            session over it.
+            Each bundle holds the services an agent may use and the members who can mint a session
+            over it.
           </CardDescription>
           {isAdmin && (
             <CardAction>
@@ -209,11 +209,11 @@ export const AgentVaultAccessBundlesPage = () => {
                   <ChevronDownIcon className={sortIconClassName(SortColumn.Name)} />
                 </TableHead>
                 <TableHead
-                  sortDirection={sortColumn === SortColumn.Connections ? sortDirection : "none"}
-                  onSortChange={(direction) => handleSort(SortColumn.Connections, direction)}
+                  sortDirection={sortColumn === SortColumn.Services ? sortDirection : "none"}
+                  onSortChange={(direction) => handleSort(SortColumn.Services, direction)}
                 >
-                  Connections
-                  <ChevronDownIcon className={sortIconClassName(SortColumn.Connections)} />
+                  Services
+                  <ChevronDownIcon className={sortIconClassName(SortColumn.Services)} />
                 </TableHead>
                 <TableHead>Members</TableHead>
                 <TableHead
@@ -266,7 +266,7 @@ export const AgentVaultAccessBundlesPage = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <ConnectionIconStack hostPatterns={bundle.hostPatterns} />
+                      <ServiceIconStack hostPatterns={bundle.hostPatterns} />
                     </TableCell>
                     <TableCell>
                       {isAdmin ? (

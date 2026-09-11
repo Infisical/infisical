@@ -8,17 +8,17 @@ import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
   TAgentVaultAccessBundle,
-  TAgentVaultConnection,
+  TAgentVaultService,
   TAgentVaultEnrollment,
   TAgentVaultMintedSession,
   TAgentVaultProductMemberActor,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TCreateAgentVaultAccessBundleDTO,
-  TCreateAgentVaultConnectionDTO,
+  TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TUpdateAgentVaultAccessBundleDTO,
-  TUpdateAgentVaultConnectionDTO
+  TUpdateAgentVaultServiceDTO
 } from "./types";
 
 export const useCreateAgentVaultAccessBundle = () => {
@@ -75,16 +75,16 @@ export const useDeleteAgentVaultAccessBundle = () => {
   });
 };
 
-export const useCreateAgentVaultConnection = () => {
+export const useCreateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
     // so the global toast must not also fire for it.
     meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
-    mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultConnectionDTO) => {
-      const { data } = await apiRequest.post<{ connection: TAgentVaultConnection }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/connections`,
+    mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultServiceDTO) => {
+      const { data } = await apiRequest.post<{ service: TAgentVaultService }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`,
         params
       );
       return data;
@@ -98,20 +98,16 @@ export const useCreateAgentVaultConnection = () => {
   });
 };
 
-export const useUpdateAgentVaultConnection = () => {
+export const useUpdateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
     // so the global toast must not also fire for it.
     meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
-    mutationFn: async ({
-      accessBundleId,
-      connectionId,
-      ...params
-    }: TUpdateAgentVaultConnectionDTO) => {
-      const { data } = await apiRequest.patch<{ connection: TAgentVaultConnection }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/connections/${connectionId}`,
+    mutationFn: async ({ accessBundleId, serviceId, ...params }: TUpdateAgentVaultServiceDTO) => {
+      const { data } = await apiRequest.patch<{ service: TAgentVaultService }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}`,
         params
       );
       return data;
@@ -125,21 +121,21 @@ export const useUpdateAgentVaultConnection = () => {
   });
 };
 
-export const useDeleteAgentVaultConnection = () => {
+export const useDeleteAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       accessBundleId,
-      connectionId
+      serviceId
     }: {
       accessBundleId: string;
-      connectionId: string;
+      serviceId: string;
     }) => {
-      const { data } = await apiRequest.delete<{ connection: { id: string; name: string } }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/connections/${connectionId}`
+      const { data } = await apiRequest.delete<{ service: { id: string; name: string } }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}`
       );
-      return data.connection;
+      return data.service;
     },
     onSuccess: (_, { accessBundleId }) => {
       queryClient.invalidateQueries({

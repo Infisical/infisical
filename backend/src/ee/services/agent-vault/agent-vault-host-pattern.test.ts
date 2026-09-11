@@ -145,7 +145,7 @@ describe("errors name the offending entry", () => {
   );
 
   test("the message names the field being edited", () => {
-    expect(parseHostPatterns("*", "connection").errors[0]).toContain("A connection must name specific hosts");
+    expect(parseHostPatterns("*", "service").errors[0]).toContain("A service must name specific hosts");
     expect(parseHostPatterns("*", "bypass host").errors[0]).toContain("A bypass host must name specific hosts");
   });
 });

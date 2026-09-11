@@ -43,7 +43,7 @@ export type TResolveSessionDTO = {
   sessionToken: string;
 };
 
-export type TResolvedConnection = {
+export type TResolvedService = {
   id: string;
   name: string;
   accessBundleName: string;

@@ -35,24 +35,24 @@ export type TUpdateAccessBundleDTO = TAgentVaultProjectScoped & {
 
 export type TDeleteAccessBundleDTO = TAgentVaultProjectScoped & { accessBundleId: string };
 
-export type TCreateConnectionDTO = TAgentVaultProjectScoped & {
+export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   name: string;
   hostPattern: string;
   credential: TAgentVaultCredentialInput;
 };
 
-export type TUpdateConnectionDTO = TAgentVaultProjectScoped & {
+export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
-  connectionId: string;
+  serviceId: string;
   name?: string;
   hostPattern?: string;
   credential?: TAgentVaultCredentialUpdate;
 };
 
-export type TDeleteConnectionDTO = TAgentVaultProjectScoped & {
+export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
-  connectionId: string;
+  serviceId: string;
 };
 
 export type TListMembersDTO = TAgentVaultProjectScoped & { accessBundleId: string };

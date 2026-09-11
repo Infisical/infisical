@@ -192,24 +192,24 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countAgentVaultConnectionsForOrg = async (orgId: string, tx?: Knex) => {
+  const countAgentVaultServicesForOrg = async (orgId: string, tx?: Knex) => {
     try {
-      const result = (await (tx || db.replicaNode())(TableName.AgentVaultConnection)
+      const result = (await (tx || db.replicaNode())(TableName.AgentVaultService)
         .join(
           TableName.AgentVaultAccessBundle,
-          `${TableName.AgentVaultConnection}.accessBundleId`,
+          `${TableName.AgentVaultService}.accessBundleId`,
           `${TableName.AgentVaultAccessBundle}.id`
         )
         .join(TableName.Project, `${TableName.AgentVaultAccessBundle}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.AgentVault)
-        .count(`${TableName.AgentVaultConnection}.id as count`)
+        .count(`${TableName.AgentVaultService}.id as count`)
         .first()) as { count: string } | undefined;
 
       return parseInt(result?.count || "0", 10);
     } catch (error) {
-      throw new DatabaseError({ error, name: "CountAgentVaultConnectionsForOrg" });
+      throw new DatabaseError({ error, name: "CountAgentVaultServicesForOrg" });
     }
   };
 
@@ -296,7 +296,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     countPamAccountTemplatesForOrg,
     countPamFoldersForOrg,
     countAgentVaultAccessBundlesForOrg,
-    countAgentVaultConnectionsForOrg,
+    countAgentVaultServicesForOrg,
     countAgentVaultProxiesForOrg,
     countProjectsByTypeForOrg
   };

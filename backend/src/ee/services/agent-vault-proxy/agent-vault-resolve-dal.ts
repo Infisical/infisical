@@ -6,7 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 
 export type TAgentVaultResolveDALFactory = ReturnType<typeof agentVaultResolveDALFactory>;
 
-export type TResolveConnectionRow = {
+export type TResolveServiceRow = {
   id: string;
   name: string;
   accessBundleName: string;
@@ -24,7 +24,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
    *
    * Read on the replica, so replica lag adds to the one-poll-interval staleness promise.
    */
-  const findResolvableConnections = async (
+  const findResolvableServices = async (
     {
       sessionId,
       projectId,
@@ -35,7 +35,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
       accessBundleIds: string[] | null;
     },
     tx?: Knex
-  ): Promise<TResolveConnectionRow[]> => {
+  ): Promise<TResolveServiceRow[]> => {
     if (accessBundleIds?.length === 0) return [];
     try {
       const conn = tx || db.replicaNode();
@@ -50,8 +50,8 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         )
         .where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId)
         .join(
-          TableName.AgentVaultConnection,
-          `${TableName.AgentVaultConnection}.accessBundleId`,
+          TableName.AgentVaultService,
+          `${TableName.AgentVaultService}.accessBundleId`,
           `${TableName.AgentVaultAccessBundle}.id`
         );
 
@@ -59,22 +59,22 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
 
       return (await query
         .select(
-          db.ref("id").withSchema(TableName.AgentVaultConnection),
-          db.ref("name").withSchema(TableName.AgentVaultConnection),
-          db.ref("hostPattern").withSchema(TableName.AgentVaultConnection),
-          db.ref("credentialType").withSchema(TableName.AgentVaultConnection),
-          db.ref("credentialConfig").withSchema(TableName.AgentVaultConnection),
-          db.ref("encryptedCredential").withSchema(TableName.AgentVaultConnection),
+          db.ref("id").withSchema(TableName.AgentVaultService),
+          db.ref("name").withSchema(TableName.AgentVaultService),
+          db.ref("hostPattern").withSchema(TableName.AgentVaultService),
+          db.ref("credentialType").withSchema(TableName.AgentVaultService),
+          db.ref("credentialConfig").withSchema(TableName.AgentVaultService),
+          db.ref("encryptedCredential").withSchema(TableName.AgentVaultService),
           // Resolve only reaches live bundles, so the current name is always the truthful one here.
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName"),
           db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
         )
         .orderBy(`${TableName.AgentVaultSessionAccessBundle}.position`, "asc")
-        .orderBy(`${TableName.AgentVaultConnection}.name`, "asc")) as TResolveConnectionRow[];
+        .orderBy(`${TableName.AgentVaultService}.name`, "asc")) as TResolveServiceRow[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find resolvable agent vault connections" });
+      throw new DatabaseError({ error, name: "Find resolvable agent vault services" });
     }
   };
 
-  return { findResolvableConnections };
+  return { findResolvableServices };
 };

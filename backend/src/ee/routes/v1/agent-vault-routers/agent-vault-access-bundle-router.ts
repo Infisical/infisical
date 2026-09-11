@@ -16,7 +16,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import {
-  AgentVaultConnectionSchema,
+  AgentVaultServiceSchema,
   AgentVaultCreatedMemberSchema,
   AgentVaultCredentialInputSchema,
   AgentVaultCredentialUpdateSchema,
@@ -48,7 +48,7 @@ const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
   actorAuthMethod: req.permission.authMethod
 });
 
-// A passthrough switch is a replacement: mergeCredential returns a null secret and updateConnection nulls
+// A passthrough switch is a replacement: mergeCredential returns a null secret and updateService nulls
 // the sealed column. The old check only looked at bearer and basic, so it reported no replacement for the
 // one case that destroys the credential outright.
 const isStoredSecretReplaced = (credential?: z.infer<typeof AgentVaultCredentialUpdateSchema>) => {
@@ -72,7 +72,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           accessBundles: AccessBundleSchema.extend({
-            connectionCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.connectionCount),
+            serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns)
           }).array()
@@ -135,7 +135,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getAgentVaultAccessBundle",
-      description: "Get an Agent Vault access bundle with its connections",
+      description: "Get an Agent Vault access bundle with its services",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -143,7 +143,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           accessBundle: AccessBundleSchema.extend({
-            connections: AgentVaultConnectionSchema.array(),
+            services: AgentVaultServiceSchema.array(),
             members: AgentVaultMemberSchema.array().optional()
           })
         })
@@ -246,27 +246,27 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
   server.route({
     method: "POST",
-    url: "/:accessBundleId/connections",
+    url: "/:accessBundleId/services",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "createAgentVaultConnection",
-      description: "Add a connection to an Agent Vault access bundle",
+      operationId: "createAgentVaultService",
+      description: "Add a service to an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: z.object({
-        name: AgentVaultNameSchema.describe(AGENT_VAULT.CONNECTION.name),
+        name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
         hostPattern: AgentVaultHostPatternSchema,
         credential: AgentVaultCredentialInputSchema
       }),
       response: {
-        200: z.object({ connection: AgentVaultConnectionSchema })
+        200: z.object({ service: AgentVaultServiceSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { connection } = await server.services.agentVaultAccessBundle.createConnection({
+      const { service } = await server.services.agentVaultAccessBundle.createService({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -278,44 +278,40 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_CONNECTION_CREATE,
+          type: EventType.AGENT_VAULT_SERVICE_CREATE,
           metadata: {
             accessBundleId: req.params.accessBundleId,
-            connectionId: connection.id,
-            name: connection.name,
-            hostPattern: connection.hostPattern,
-            credentialType: connection.credentialType,
+            serviceId: service.id,
+            name: service.name,
+            hostPattern: service.hostPattern,
+            credentialType: service.credentialType,
             headerName:
-              connection.credential.type === AgentVaultCredentialType.Bearer
-                ? connection.credential.headerName
-                : undefined,
+              service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
             headerPrefix:
-              connection.credential.type === AgentVaultCredentialType.Bearer
-                ? connection.credential.headerPrefix
-                : undefined
+              service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerPrefix : undefined
           }
         }
       });
 
-      return { connection };
+      return { service };
     }
   });
 
   server.route({
     method: "PATCH",
-    url: "/:accessBundleId/connections/:connectionId",
+    url: "/:accessBundleId/services/:serviceId",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "updateAgentVaultConnection",
-      description: "Update a connection in an Agent Vault access bundle",
+      operationId: "updateAgentVaultService",
+      description: "Update a service in an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-        connectionId: z.string().uuid().describe(AGENT_VAULT.CONNECTION.connectionId)
+        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
       body: z
         .object({
-          name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.CONNECTION.name),
+          name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
           hostPattern: AgentVaultHostPatternSchema.optional(),
           credential: AgentVaultCredentialUpdateSchema.optional()
         })
@@ -324,16 +320,16 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           "Provide at least one of 'name', 'hostPattern' or 'credential' to update"
         ),
       response: {
-        200: z.object({ connection: AgentVaultConnectionSchema })
+        200: z.object({ service: AgentVaultServiceSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { connection } = await server.services.agentVaultAccessBundle.updateConnection({
+      const { service } = await server.services.agentVaultAccessBundle.updateService({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
-        connectionId: req.params.connectionId,
+        serviceId: req.params.serviceId,
         ...req.body
       });
 
@@ -342,11 +338,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_CONNECTION_UPDATE,
+          type: EventType.AGENT_VAULT_SERVICE_UPDATE,
           // Every field comes off the body, so an absent one means the PATCH did not touch it.
           metadata: {
             accessBundleId: req.params.accessBundleId,
-            connectionId: connection.id,
+            serviceId: service.id,
             name: req.body.name,
             hostPattern: req.body.hostPattern,
             credentialType: req.body.credential?.type,
@@ -363,31 +359,31 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
-      return { connection };
+      return { service };
     }
   });
 
   server.route({
     method: "DELETE",
-    url: "/:accessBundleId/connections/:connectionId",
+    url: "/:accessBundleId/services/:serviceId",
     config: { rateLimit: writeLimit },
     schema: {
-      operationId: "deleteAgentVaultConnection",
-      description: "Delete a connection from an Agent Vault access bundle",
+      operationId: "deleteAgentVaultService",
+      description: "Delete a service from an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-        connectionId: z.string().uuid().describe(AGENT_VAULT.CONNECTION.connectionId)
+        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
-      response: { 200: z.object({ connection: AgentVaultConnectionSchema }) }
+      response: { 200: z.object({ service: AgentVaultServiceSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const connection = await server.services.agentVaultAccessBundle.deleteConnection({
+      const service = await server.services.agentVaultAccessBundle.deleteService({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
-        connectionId: req.params.connectionId
+        serviceId: req.params.serviceId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -395,16 +391,16 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_CONNECTION_DELETE,
+          type: EventType.AGENT_VAULT_SERVICE_DELETE,
           metadata: {
             accessBundleId: req.params.accessBundleId,
-            connectionId: connection.id,
-            name: connection.name
+            serviceId: service.id,
+            name: service.name
           }
         }
       });
 
-      return { connection };
+      return { service };
     }
   });
 

@@ -14,7 +14,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 
 export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
 
-export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.CONNECTION.hostPattern);
+export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.SERVICE.hostPattern);
 
 const basicHalvesAreNotBothEmpty = (
   data: { type: AgentVaultCredentialType; username?: string; password?: string },
@@ -44,29 +44,29 @@ export const AgentVaultCredentialInputSchema = z
         .max(128)
         .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
         .optional()
-        .describe(AGENT_VAULT.CONNECTION.headerName),
+        .describe(AGENT_VAULT.SERVICE.headerName),
       headerPrefix: z
         .string()
         .trim()
         .max(64)
         .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
         .optional()
-        .describe(AGENT_VAULT.CONNECTION.headerPrefix),
+        .describe(AGENT_VAULT.SERVICE.headerPrefix),
       value: z
         .string()
         .min(1)
         .max(8192)
         .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .describe(AGENT_VAULT.CONNECTION.value)
+        .describe(AGENT_VAULT.SERVICE.value)
     }),
     z.object({
       type: z.literal(AgentVaultCredentialType.Basic),
-      username: z.string().trim().max(256).describe(AGENT_VAULT.CONNECTION.username),
+      username: z.string().trim().max(256).describe(AGENT_VAULT.SERVICE.username),
       password: z
         .string()
         .max(8192)
         .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .describe(AGENT_VAULT.CONNECTION.password)
+        .describe(AGENT_VAULT.SERVICE.password)
     }),
     z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
   ])
@@ -84,31 +84,31 @@ export const AgentVaultCredentialUpdateSchema = z
         .max(128)
         .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
         .optional()
-        .describe(AGENT_VAULT.CONNECTION.headerName),
+        .describe(AGENT_VAULT.SERVICE.headerName),
       headerPrefix: z
         .string()
         .trim()
         .max(64)
         .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
         .optional()
-        .describe(AGENT_VAULT.CONNECTION.headerPrefix),
+        .describe(AGENT_VAULT.SERVICE.headerPrefix),
       value: z
         .string()
         .min(1)
         .max(8192)
         .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
         .optional()
-        .describe(AGENT_VAULT.CONNECTION.updateValue)
+        .describe(AGENT_VAULT.SERVICE.updateValue)
     }),
     z.object({
       type: z.literal(AgentVaultCredentialType.Basic),
-      username: z.string().trim().max(256).optional().describe(AGENT_VAULT.CONNECTION.updateUsername),
+      username: z.string().trim().max(256).optional().describe(AGENT_VAULT.SERVICE.updateUsername),
       password: z
         .string()
         .max(8192)
         .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
         .optional()
-        .describe(AGENT_VAULT.CONNECTION.updatePassword)
+        .describe(AGENT_VAULT.SERVICE.updatePassword)
     }),
     z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
   ])
@@ -117,20 +117,20 @@ export const AgentVaultCredentialUpdateSchema = z
 export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(AgentVaultCredentialType.Bearer),
-    headerName: z.string().describe(AGENT_VAULT.CONNECTION.headerName),
-    headerPrefix: z.string().describe(AGENT_VAULT.CONNECTION.headerPrefix)
+    headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
+    headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix)
   }),
   z.object({ type: z.literal(AgentVaultCredentialType.Basic) }),
   z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
 ]);
 
-export const AgentVaultConnectionSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.CONNECTION.connectionId),
+export const AgentVaultServiceSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-  name: z.string().describe(AGENT_VAULT.CONNECTION.name),
-  hostPattern: z.string().describe(AGENT_VAULT.CONNECTION.hostPattern),
+  name: z.string().describe(AGENT_VAULT.SERVICE.name),
+  hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPattern),
   credential: AgentVaultCredentialSummarySchema,
-  createdAt: z.date().describe(AGENT_VAULT.CONNECTION.createdAt)
+  createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt)
 });
 
 // One list per actor type rather than a list of one-of-three objects: the field name carries the type,

@@ -12,7 +12,7 @@ export type TAgentVaultAccessBundleListRow = {
   name: string;
   description: string | null;
   createdAt: Date;
-  connectionCount: number;
+  serviceCount: number;
   hostPatterns: string[];
   memberCount: number;
 };
@@ -61,8 +61,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           if (accessBundleIds) void qb.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
         })
         .leftJoin(
-          TableName.AgentVaultConnection,
-          `${TableName.AgentVaultConnection}.accessBundleId`,
+          TableName.AgentVaultService,
+          `${TableName.AgentVaultService}.accessBundleId`,
           `${TableName.AgentVaultAccessBundle}.id`
         )
         .leftJoin(memberCounts, function joinMemberCount() {
@@ -73,8 +73,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("description").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("createdAt").withSchema(TableName.AgentVaultAccessBundle),
-          db.ref("id").withSchema(TableName.AgentVaultConnection).as("connectionId"),
-          db.ref("hostPattern").withSchema(TableName.AgentVaultConnection),
+          db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
+          db.ref("hostPattern").withSchema(TableName.AgentVaultService),
           db.raw('COALESCE(mc.count, 0)::int as "memberCount"')
         )
         .orderBy(`${TableName.AgentVaultAccessBundle}.name`, "asc")) as {
@@ -82,7 +82,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         name: string;
         description: string | null;
         createdAt: Date;
-        connectionId: string | null;
+        serviceId: string | null;
         hostPattern: string | null;
         memberCount: number;
       }[];
@@ -96,14 +96,14 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
             name: row.name,
             description: row.description,
             createdAt: row.createdAt,
-            connectionCount: 0,
+            serviceCount: 0,
             hostPatterns: [],
             memberCount: row.memberCount
           };
           byBundle.set(row.id, bundle);
         }
-        if (!row.connectionId) return;
-        bundle.connectionCount += 1;
+        if (!row.serviceId) return;
+        bundle.serviceCount += 1;
         if (row.hostPattern) bundle.hostPatterns.push(...row.hostPattern.split(","));
       });
 

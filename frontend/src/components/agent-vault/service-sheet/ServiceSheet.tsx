@@ -22,28 +22,28 @@ import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
-  useCreateAgentVaultConnection,
-  useUpdateAgentVaultConnection
+  useCreateAgentVaultService,
+  useUpdateAgentVaultService
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
-import { ConnectionTemplateSelect } from "../ConnectionTemplateSelect";
+import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
 import {
-  buildConnectionSchema,
-  CONNECTION_STEP_FIELDS,
-  ConnectionStep,
+  buildServiceSchema,
+  SERVICE_STEP_FIELDS,
+  ServiceStep,
   displayHostPattern,
-  TConnectionForm,
+  TServiceForm,
   UNCHANGED_SECRET
-} from "./connectionSchema";
+} from "./serviceSchema";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { ReviewFields } from "./ReviewFields";
-import { CONNECTION_DOCS_URL, CONNECTION_STEPS } from "./stepMeta";
+import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 
-const BLANK_CONNECTION_FORM: TConnectionForm = {
+const BLANK_SERVICE_FORM: TServiceForm = {
   name: "",
   hostPattern: "",
   credentialType: AgentVaultCredentialType.Bearer,
@@ -57,19 +57,19 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   accessBundleId: string;
-  connection?: TAgentVaultConnection | null;
+  service?: TAgentVaultService | null;
 };
 
-export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connection }: Props) => {
-  const isUpdate = Boolean(connection);
-  const createConnection = useCreateAgentVaultConnection();
-  const updateConnection = useUpdateAgentVaultConnection();
+export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: Props) => {
+  const isUpdate = Boolean(service);
+  const createService = useCreateAgentVaultService();
+  const updateService = useUpdateAgentVaultService();
 
   const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
 
-  const schema = useMemo(() => buildConnectionSchema(connection), [connection]);
+  const schema = useMemo(() => buildServiceSchema(service), [service]);
 
-  const formMethods = useForm<TConnectionForm>({ resolver: zodResolver(schema) });
+  const formMethods = useForm<TServiceForm>({ resolver: zodResolver(schema) });
   const {
     handleSubmit,
     reset,
@@ -83,20 +83,17 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
 
   const steps = useMemo(
     () =>
-      isUpdate
-        ? CONNECTION_STEPS.filter((meta) => meta.step !== ConnectionStep.Template)
-        : CONNECTION_STEPS,
+      isUpdate ? SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template) : SERVICE_STEPS,
     [isUpdate]
   );
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
-  const { step, isLastStep, goBack, goNext, onFormInvalid, setStep } =
-    useWizardSteps<ConnectionStep>({
-      stepKeys,
-      stepFields: CONNECTION_STEP_FIELDS,
-      invalidMessage: "Fix the errors before saving.",
-      validateStep: (fields) => trigger(fields as (keyof TConnectionForm)[])
-    });
+  const { step, isLastStep, goBack, goNext, onFormInvalid, setStep } = useWizardSteps<ServiceStep>({
+    stepKeys,
+    stepFields: SERVICE_STEP_FIELDS,
+    invalidMessage: "Fix the errors before saving.",
+    validateStep: (fields) => trigger(fields as (keyof TServiceForm)[])
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -104,14 +101,14 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     setStep(0);
     setTemplate(null);
 
-    if (connection) {
-      const { credential } = connection;
+    if (service) {
+      const { credential } = service;
       reset({
-        name: connection.name,
-        hostPattern: displayHostPattern(connection.hostPattern),
+        name: service.name,
+        hostPattern: displayHostPattern(service.hostPattern),
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
-        // the same defaults a new connection gets. Left undefined, the submit would send an empty
+        // the same defaults a new service gets. Left undefined, the submit would send an empty
         // prefix and the proxy would attach a bare token.
         headerName:
           credential.type === AgentVaultCredentialType.Bearer
@@ -123,9 +120,9 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
       });
     } else {
-      reset(BLANK_CONNECTION_FORM);
+      reset(BLANK_SERVICE_FORM);
     }
-  }, [isOpen, connection, isUpdate, reset, setStep]);
+  }, [isOpen, service, isUpdate, reset, setStep]);
 
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
     setTemplate(picked);
@@ -133,7 +130,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     if (picked) {
       const cred = picked.credential;
       reset({
-        ...BLANK_CONNECTION_FORM,
+        ...BLANK_SERVICE_FORM,
         name: picked.key,
         hostPattern: picked.hostPattern,
         credentialType: cred.type,
@@ -143,12 +140,12 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         })
       });
     } else {
-      reset(BLANK_CONNECTION_FORM);
+      reset(BLANK_SERVICE_FORM);
     }
     setStep(1);
   };
 
-  const buildCredential = (data: TConnectionForm) => {
+  const buildCredential = (data: TServiceForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
     }
@@ -167,7 +164,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     };
   };
 
-  const buildCredentialPatch = (data: TConnectionForm) => {
+  const buildCredentialPatch = (data: TServiceForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
     }
@@ -188,18 +185,18 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     };
   };
 
-  const onSubmit = async (data: TConnectionForm) => {
+  const onSubmit = async (data: TServiceForm) => {
     try {
-      if (connection) {
-        await updateConnection.mutateAsync({
+      if (service) {
+        await updateService.mutateAsync({
           accessBundleId,
-          connectionId: connection.id,
+          serviceId: service.id,
           name: data.name,
           hostPattern: data.hostPattern,
           credential: buildCredentialPatch(data)
         });
       } else {
-        await createConnection.mutateAsync({
+        await createService.mutateAsync({
           accessBundleId,
           name: data.name,
           hostPattern: data.hostPattern,
@@ -208,7 +205,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
       }
 
       createNotification({
-        text: `Connection "${data.name}" ${isUpdate ? "updated" : "created"}`,
+        text: `Service "${data.name}" ${isUpdate ? "updated" : "created"}`,
         type: "success"
       });
 
@@ -223,7 +220,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         serverResponse.message.includes("already covers")
       ) {
         setError("hostPattern", { type: "server", message: serverResponse.message });
-        setStep(stepKeys.indexOf(ConnectionStep.Details));
+        setStep(stepKeys.indexOf(ServiceStep.Details));
         return;
       }
 
@@ -236,7 +233,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
             type: "server",
             message: hostIssues.map((issue) => issue.message).join(" ")
           });
-          setStep(stepKeys.indexOf(ConnectionStep.Details));
+          setStep(stepKeys.indexOf(ServiceStep.Details));
         }
         if (hostIssues.length < serverResponse.message.length) onRequestError(error);
         return;
@@ -256,7 +253,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     }
     for (let i = step; i < target; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      if (!(await trigger(CONNECTION_STEP_FIELDS[stepKeys[i]] as (keyof TConnectionForm)[]))) {
+      if (!(await trigger(SERVICE_STEP_FIELDS[stepKeys[i]] as (keyof TServiceForm)[]))) {
         return;
       }
     }
@@ -271,15 +268,15 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
     await goNext();
   };
 
-  const stepDescription = (meta: (typeof CONNECTION_STEPS)[number]) => {
-    if (meta.step === ConnectionStep.Template) return template?.name ?? "Custom";
-    if (meta.step === ConnectionStep.Review && isUpdate) return "Confirm and save";
+  const stepDescription = (meta: (typeof SERVICE_STEPS)[number]) => {
+    if (meta.step === ServiceStep.Template) return template?.name ?? "Custom";
+    if (meta.step === ServiceStep.Review && isUpdate) return "Confirm and save";
     return meta.shortDescription;
   };
 
   const current = steps[step];
-  const isTemplateStep = current.step === ConnectionStep.Template;
-  const saveLabel = isUpdate ? "Save" : "Add Connection";
+  const isTemplateStep = current.step === ServiceStep.Template;
+  const saveLabel = isUpdate ? "Save" : "Add Service";
 
   return (
     <Sheet
@@ -298,7 +295,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
             <>
               <SheetTitle>Choose a template</SheetTitle>
               <SheetDescription>
-                Pick a service to get a head start, or set one up yourself.
+                Start from a template, or configure the service yourself.
               </SheetDescription>
             </>
           ) : (
@@ -311,8 +308,8 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                     className="size-6 object-contain"
                   />
                 )}
-                {template?.name ?? (isUpdate ? connection?.name : "Custom")}
-                <DocumentationLinkBadge href={CONNECTION_DOCS_URL} />
+                {template?.name ?? (isUpdate ? service?.name : "Custom")}
+                <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
               </SheetTitle>
               <SheetDescription>Set up the service and its credentials.</SheetDescription>
             </>
@@ -322,7 +319,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
         <FormProvider {...formMethods}>
           {isTemplateStep ? (
             <div className="min-h-0 flex-1 overflow-y-auto p-6">
-              <ConnectionTemplateSelect onSelect={handleTemplatePicked} />
+              <ServiceTemplateSelect onSelect={handleTemplatePicked} />
             </div>
           ) : (
             // Nothing submits natively: a type="submit" on the last step is the same reconciled node as Continue,
@@ -353,11 +350,11 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
                   </div>
 
-                  {current.step === ConnectionStep.Details && <DetailsFields />}
-                  {current.step === ConnectionStep.Credential && (
-                    <CredentialFields storedType={connection?.credential.type} />
+                  {current.step === ServiceStep.Details && <DetailsFields />}
+                  {current.step === ServiceStep.Credential && (
+                    <CredentialFields storedType={service?.credential.type} />
                   )}
-                  {current.step === ConnectionStep.Review && <ReviewFields isUpdate={isUpdate} />}
+                  {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
@@ -365,7 +362,7 @@ export const ConnectionSheet = ({ isOpen, onOpenChange, accessBundleId, connecti
                     <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
                       Step {step + 1} · {current.rightLabel}
                     </p>
-                    <DocumentationLinkBadge href={CONNECTION_DOCS_URL} />
+                    <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
                   </div>
                   <p className="text-sm font-semibold text-foreground">What this step does</p>
                   <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>

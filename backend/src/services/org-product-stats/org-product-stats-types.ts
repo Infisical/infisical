@@ -30,7 +30,7 @@ export type TOrgProductStats = {
   };
   agentVault: {
     accessBundlesCount: number;
-    connectionsCount: number;
+    servicesCount: number;
     proxiesCount: number;
   };
 };

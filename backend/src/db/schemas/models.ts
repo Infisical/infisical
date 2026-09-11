@@ -271,7 +271,7 @@ export enum TableName {
   PamDomain = "pam_domains",
   PamAccountPolicy = "pam_account_policies",
   AgentVaultAccessBundle = "agent_vault_access_bundles",
-  AgentVaultConnection = "agent_vault_connections",
+  AgentVaultService = "agent_vault_services",
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",

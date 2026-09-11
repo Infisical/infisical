@@ -234,7 +234,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("race-hosts");
       const attempts = await Promise.all(
         [1, 2].map((n) =>
-          inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+          inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
             name: `race-${n}`,
             hostPattern: "api.raced.example.com",
             credential: { type: "passthrough" }
@@ -248,21 +248,21 @@ describe("Agent Vault V1 Router", async () => {
       expect(refused.statusCode).toBe(400);
       expect(JSON.parse(refused.payload).message).toContain("api.raced.example.com");
 
-      const rows = await testDb("agent_vault_connections").where({ accessBundleId: bundle.id });
+      const rows = await testDb("agent_vault_services").where({ accessBundleId: bundle.id });
       expect(rows).toHaveLength(1);
     });
 
-    test("a connection is rejected when it shares a host with another in the same bundle", async () => {
+    test("a service is rejected when it shares a host with another in the same bundle", async () => {
       const bundle = await createAccessBundle("overlap-check");
 
-      const first = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const first = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "datadog-us5",
         hostPattern: "api.us5.datadoghq.com, api.datadoghq.eu",
         credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
       });
       expect(first.statusCode).toBe(200);
 
-      const overlapping = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const overlapping = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "datadog-eu",
         hostPattern: "api.datadoghq.eu, api.datadoghq.com",
         credential: { type: "bearer", value: "def456" }
@@ -270,7 +270,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(overlapping.statusCode).toBe(400);
       expect(JSON.parse(overlapping.payload).message).toContain("api.datadoghq.eu:443");
 
-      const contained = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const contained = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "datadog-wildcard",
         hostPattern: "*.datadoghq.com",
         credential: { type: "passthrough" }
@@ -278,50 +278,50 @@ describe("Agent Vault V1 Router", async () => {
       expect(contained.statusCode).toBe(200);
     });
 
-    test("a connection never echoes its secret, and its host pattern is kept as typed", async () => {
+    test("a service never echoes its secret, and its host pattern is kept as typed", async () => {
       const bundle = await createAccessBundle("secret-handling");
 
-      const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "github",
         hostPattern: " API.GitHub.com ",
         credential: { type: "bearer", value: "ghp_secret_value" }
       });
       expect(res.statusCode).toBe(200);
 
-      const { connection } = JSON.parse(res.payload) as {
-        connection: { id: string; hostPattern: string; credential: Record<string, unknown> };
+      const { service } = JSON.parse(res.payload) as {
+        service: { id: string; hostPattern: string; credential: Record<string, unknown> };
       };
-      expect(connection.hostPattern).toBe("API.GitHub.com");
-      expect(connection.credential).toEqual({ type: "bearer", headerName: "Authorization", headerPrefix: "Bearer" });
+      expect(service.hostPattern).toBe("API.GitHub.com");
+      expect(service.credential).toEqual({ type: "bearer", headerName: "Authorization", headerPrefix: "Bearer" });
       expect(res.payload).not.toContain("ghp_secret_value");
 
       const detail = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
       expect(detail.payload).not.toContain("ghp_secret_value");
 
-      const row = await testDb("agent_vault_connections").where({ id: connection.id }).first();
+      const row = await testDb("agent_vault_services").where({ id: service.id }).first();
       expect(row.encryptedCredential).toBeTruthy();
       expect(row.encryptedCredential.toString("utf-8")).not.toContain("ghp_secret_value");
       expect(JSON.stringify(row.credentialConfig)).not.toContain("ghp_secret_value");
     });
 
-    test("updating a connection patches the credential instead of replacing it", async () => {
+    test("updating a service patches the credential instead of replacing it", async () => {
       const bundle = await createAccessBundle("credential-patch");
 
-      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "datadog",
         hostPattern: "api.datadoghq.com",
         credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
       });
       expect(created.statusCode).toBe(200);
-      const { connection } = JSON.parse(created.payload) as { connection: { id: string } };
-      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
       const sealed = async () =>
-        (await testDb("agent_vault_connections").where({ id: connection.id }).first()).encryptedCredential;
+        (await testDb("agent_vault_services").where({ id: service.id }).first()).encryptedCredential;
 
       const before = await sealed();
       const rotated = await inject("PATCH", url, { credential: { type: "bearer", value: "rotated456" } });
       expect(rotated.statusCode).toBe(200);
-      expect(JSON.parse(rotated.payload).connection.credential).toEqual({
+      expect(JSON.parse(rotated.payload).service.credential).toEqual({
         type: "bearer",
         headerName: "DD-API-KEY",
         headerPrefix: ""
@@ -331,28 +331,28 @@ describe("Agent Vault V1 Router", async () => {
       const afterRotate = await sealed();
       const renamed = await inject("PATCH", url, { credential: { type: "bearer", headerName: "X-Api-Key" } });
       expect(renamed.statusCode).toBe(200);
-      expect(JSON.parse(renamed.payload).connection.credential.headerName).toBe("X-Api-Key");
+      expect(JSON.parse(renamed.payload).service.credential.headerName).toBe("X-Api-Key");
       expect((await sealed()).equals(afterRotate)).toBe(true);
     });
 
     test("a basic credential keeps one half while the other changes, and refuses to lose both", async () => {
       const bundle = await createAccessBundle("basic-halves");
 
-      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "stripe",
         hostPattern: "api.stripe.com",
         credential: { type: "basic", username: "sk_live_key", password: "" }
       });
       expect(created.statusCode).toBe(200);
-      const { connection } = JSON.parse(created.payload) as {
-        connection: { id: string; credential: Record<string, unknown> };
+      const { service } = JSON.parse(created.payload) as {
+        service: { id: string; credential: Record<string, unknown> };
       };
-      expect(connection.credential).toEqual({ type: "basic" });
+      expect(service.credential).toEqual({ type: "basic" });
       expect(created.payload).not.toContain("sk_live_key");
 
-      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
+      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
       const sealedPair = async () => {
-        const row = await testDb("agent_vault_connections").where({ id: connection.id }).first();
+        const row = await testDb("agent_vault_services").where({ id: service.id }).first();
         expect(JSON.stringify(row.credentialConfig)).not.toContain("sk_live_key");
         return row.encryptedCredential as Buffer;
       };
@@ -382,13 +382,13 @@ describe("Agent Vault V1 Router", async () => {
     test("changing the credential type requires whatever the new type needs", async () => {
       const bundle = await createAccessBundle("type-change");
 
-      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "bearer", value: "ghp_one" }
       });
-      const { connection } = JSON.parse(created.payload) as { connection: { id: string } };
-      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/connections/${connection.id}`;
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+      const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
 
       const emptyBasic = await inject("PATCH", url, { credential: { type: "basic" } });
       expect(emptyBasic.statusCode).toBe(400);
@@ -402,7 +402,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a path in a host pattern is rejected", async () => {
       const bundle = await createAccessBundle("no-paths");
-      const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "with-path",
         hostPattern: "gitlab.com/api/v4",
         credential: { type: "passthrough" }
@@ -593,7 +593,7 @@ describe("Agent Vault V1 Router", async () => {
         ["GET", `/api/v1/agent-vault/access-bundles/${unknown}/members`, undefined],
         [
           "POST",
-          `/api/v1/agent-vault/access-bundles/${unknown}/connections`,
+          `/api/v1/agent-vault/access-bundles/${unknown}/services`,
           { name: "c", hostPattern: "api.foo.com", credential: { type: "passthrough" } }
         ]
       ];
@@ -910,12 +910,12 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a deactivated actor stops resolving, and resolves again once reactivated", async () => {
       const bundle = await createAccessBundle("resolve-deactivation");
-      const connection = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      const service = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
       });
-      expect(connection.statusCode).toBe(200);
+      expect(service.statusCode).toBe(200);
 
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
         accessBundles: [bundle.name],
@@ -940,7 +940,7 @@ describe("Agent Vault V1 Router", async () => {
         .first();
 
       const before = await resolve();
-      expect(before.connections).toHaveLength(1);
+      expect(before.services).toHaveLength(1);
 
       try {
         await testDb("memberships").where({ id: membership.id }).update({ isActive: false });
@@ -950,14 +950,14 @@ describe("Agent Vault V1 Router", async () => {
       }
 
       const after = await resolve();
-      expect(after.connections).toHaveLength(1);
+      expect(after.services).toHaveLength(1);
     });
     test("an expired time-limited role stops resolving even though its membership row remains", async () => {
       const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
         projectId: string;
       };
       const bundle = await createAccessBundle("resolve-temporary-role");
-      await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+      await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "echo",
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
@@ -1006,7 +1006,7 @@ describe("Agent Vault V1 Router", async () => {
         await testKeyStore.deleteItemsByKeyIn(cacheKeys);
       }
 
-      expect((await resolve()).connections).toHaveLength(1);
+      expect((await resolve()).services).toHaveLength(1);
     });
   });
 
@@ -1523,7 +1523,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("group-inheritance");
       expect(
         (
-          await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+          await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
             name: "echo",
             hostPattern: "echo.example.com",
             credential: { type: "passthrough" }
@@ -1570,7 +1570,7 @@ describe("Agent Vault V1 Router", async () => {
         const resolve = () =>
           resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
 
-        expect((await resolve()).connections).toHaveLength(1);
+        expect((await resolve()).services).toHaveLength(1);
 
         expect(
           (
@@ -1579,13 +1579,13 @@ describe("Agent Vault V1 Router", async () => {
             })
           ).statusCode
         ).toBe(200);
-        expect((await resolve()).connections).toHaveLength(1);
+        expect((await resolve()).services).toHaveLength(1);
 
         const [grant] = await grantRows(bundle.id, { actorGroupId: group.id });
         expect(
           (await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/${grant.id}`)).statusCode
         ).toBe(200);
-        expect((await resolve()).connections).toHaveLength(0);
+        expect((await resolve()).services).toHaveLength(0);
 
         const remint = await agent.asIdentity("POST", "/api/v1/agent-vault/sessions", {
           accessBundles: [bundle.name],
@@ -1604,7 +1604,7 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("group-role-lapse");
       expect(
         (
-          await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/connections`, {
+          await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
             name: "echo",
             hostPattern: "echo.example.com",
             credential: { type: "passthrough" }
@@ -1654,7 +1654,7 @@ describe("Agent Vault V1 Router", async () => {
         });
         const resolve = () =>
           resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
-        expect((await resolve()).connections).toHaveLength(1);
+        expect((await resolve()).services).toHaveLength(1);
 
         const groupMembership = await testDb("memberships")
           .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorGroupId: group.id })
@@ -1664,7 +1664,7 @@ describe("Agent Vault V1 Router", async () => {
           .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
         await testKeyStore.deleteItemsByKeyIn(cacheKeys);
 
-        expect((await resolve()).connections).toHaveLength(0);
+        expect((await resolve()).services).toHaveLength(0);
         const lapsed = await mint();
         expect(lapsed.statusCode).toBe(400);
         expect(JSON.parse(lapsed.payload).message).toContain("is granted to you");

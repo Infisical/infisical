@@ -9,7 +9,7 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const AgentVaultConnectionsSchema = z.object({
+export const AgentVaultServicesSchema = z.object({
   id: z.string().uuid(),
   accessBundleId: z.string().uuid(),
   name: z.string(),
@@ -21,6 +21,6 @@ export const AgentVaultConnectionsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TAgentVaultConnections = z.infer<typeof AgentVaultConnectionsSchema>;
-export type TAgentVaultConnectionsInsert = Omit<z.input<typeof AgentVaultConnectionsSchema>, TImmutableDBKeys>;
-export type TAgentVaultConnectionsUpdate = Partial<Omit<z.input<typeof AgentVaultConnectionsSchema>, TImmutableDBKeys>>;
+export type TAgentVaultServices = z.infer<typeof AgentVaultServicesSchema>;
+export type TAgentVaultServicesInsert = Omit<z.input<typeof AgentVaultServicesSchema>, TImmutableDBKeys>;
+export type TAgentVaultServicesUpdate = Partial<Omit<z.input<typeof AgentVaultServicesSchema>, TImmutableDBKeys>>;

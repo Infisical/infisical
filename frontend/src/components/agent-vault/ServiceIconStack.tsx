@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 
-type TConnectionIcon = {
+type TServiceIcon = {
   label: string;
   image?: string;
 };
@@ -19,13 +19,13 @@ const labelOf = (pattern: string) => {
   return host || trimmed;
 };
 
-const iconFromHostPattern = (hostPattern: string): TConnectionIcon => {
+const iconFromHostPattern = (hostPattern: string): TServiceIcon => {
   const template = findTemplateForHostPattern(hostPattern);
   return { label: template?.name ?? labelOf(hostPattern), image: template?.image };
 };
 
-const iconsFromHostPatterns = (hostPatterns: string[]): TConnectionIcon[] => {
-  const byLabel = new Map<string, TConnectionIcon>();
+const iconsFromHostPatterns = (hostPatterns: string[]): TServiceIcon[] => {
+  const byLabel = new Map<string, TServiceIcon>();
 
   hostPatterns.forEach((pattern) => {
     const icon = iconFromHostPattern(pattern);
@@ -43,9 +43,9 @@ const chipClassName =
 const stackedChipClassName =
   "ring-2 ring-container transition-shadow duration-75 [tr:hover_&]:ring-container-hover";
 
-type TConnectionChipProps = ComponentPropsWithoutRef<"div"> & { icon: TConnectionIcon };
+type TServiceChipProps = ComponentPropsWithoutRef<"div"> & { icon: TServiceIcon };
 
-const ConnectionChip = forwardRef<HTMLDivElement, TConnectionChipProps>(
+const ServiceChip = forwardRef<HTMLDivElement, TServiceChipProps>(
   ({ icon, className, ...props }, ref) => {
     const [hasImageError, setHasImageError] = useState(false);
 
@@ -66,9 +66,9 @@ const ConnectionChip = forwardRef<HTMLDivElement, TConnectionChipProps>(
   }
 );
 
-ConnectionChip.displayName = "ConnectionChip";
+ServiceChip.displayName = "ServiceChip";
 
-export const ConnectionIcon = ({
+export const ServiceIcon = ({
   hostPattern,
   className
 }: {
@@ -76,7 +76,7 @@ export const ConnectionIcon = ({
   className?: string;
 }) => {
   const icon = useMemo(() => iconFromHostPattern(hostPattern), [hostPattern]);
-  return <ConnectionChip icon={icon} className={className} />;
+  return <ServiceChip icon={icon} className={className} />;
 };
 
 type Props = {
@@ -86,7 +86,7 @@ type Props = {
   className?: string;
 };
 
-export const ConnectionIconStack = ({
+export const ServiceIconStack = ({
   hostPatterns,
   maxVisible = 4,
   emptyPlaceholder = <span className="text-muted">&mdash;</span>,
@@ -107,7 +107,7 @@ export const ConnectionIconStack = ({
       {visible.map((icon, index) => (
         <Tooltip key={icon.label}>
           <TooltipTrigger asChild>
-            <ConnectionChip
+            <ServiceChip
               icon={icon}
               className={cn(stackedChipClassName, "relative")}
               style={{ zIndex: visible.length - index }}

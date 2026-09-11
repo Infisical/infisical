@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
-import { ConnectionSheet } from "@app/components/agent-vault/connection-sheet";
+import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import {
   Button,
@@ -29,12 +29,12 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
 import { useGetAgentVaultAccessBundle } from "@app/hooks/api/agentVault";
-import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
-import { ConnectionsCard } from "./components/ConnectionsCard";
+import { ServicesCard } from "./components/ServicesCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
   const { t } = useTranslation();
@@ -53,8 +53,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isConnectionSheetOpen, setIsConnectionSheetOpen] = useState(false);
-  const [connectionToEdit, setConnectionToEdit] = useState<TAgentVaultConnection | null>(null);
+  const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
+  const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
 
   if (isPending) return <PageLoader />;
   if (!accessBundle) {
@@ -125,17 +125,17 @@ export const AgentVaultAccessBundleDetailPage = () => {
         )}
       </PageHeader>
 
-      <ConnectionsCard
+      <ServicesCard
         accessBundleId={accessBundle.id}
-        connections={accessBundle.connections}
+        services={accessBundle.services}
         canManage={isAdmin}
         onAdd={() => {
-          setConnectionToEdit(null);
-          setIsConnectionSheetOpen(true);
+          setServiceToEdit(null);
+          setIsServiceSheetOpen(true);
         }}
-        onEdit={(connection) => {
-          setConnectionToEdit(connection);
-          setIsConnectionSheetOpen(true);
+        onEdit={(service) => {
+          setServiceToEdit(service);
+          setIsServiceSheetOpen(true);
         }}
       />
 
@@ -144,11 +144,11 @@ export const AgentVaultAccessBundleDetailPage = () => {
         onOpenChange={setIsManageAccessOpen}
       />
 
-      <ConnectionSheet
-        isOpen={isConnectionSheetOpen}
-        onOpenChange={setIsConnectionSheetOpen}
+      <ServiceSheet
+        isOpen={isServiceSheetOpen}
+        onOpenChange={setIsServiceSheetOpen}
         accessBundleId={accessBundle.id}
-        connection={connectionToEdit}
+        service={serviceToEdit}
       />
 
       <AccessBundleFormDialog

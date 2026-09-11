@@ -105,7 +105,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     config: { rateLimit: agentVaultResolveLimit },
     schema: {
       operationId: "resolveAgentVaultSession",
-      description: "Resolve a session into the connections and credentials the proxy should attach",
+      description: "Resolve a session into the services and credentials the proxy should attach",
       tags: [ApiDocsTags.AgentVaultProxies],
       headers: z
         .object({
@@ -122,7 +122,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         200: z.object({
           sessionId: z.string().uuid(),
           expiresAt: z.date().nullable(),
-          connections: z
+          services: z
             .object({
               id: z.string().uuid(),
               name: z.string(),

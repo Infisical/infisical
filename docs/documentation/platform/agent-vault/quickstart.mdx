@@ -4,7 +4,7 @@ sidebarTitle: "Quickstart"
 description: "Create an access bundle, enroll a proxy, and launch an agent that makes authenticated GitHub calls with a token it never sees."
 ---
 
-Every Agent Vault setup starts with the same things in Infisical: an access bundle holding a connection for each API, a proxy enrolled where your agent's traffic leaves the network, and a session for the agent to run with. This quickstart walks you through creating all three and launching an agent.
+Every Agent Vault setup starts with the same things in Infisical: an access bundle holding a service for each API, a proxy enrolled where your agent's traffic leaves the network, and a session for the agent to run with. This quickstart walks you through creating all three and launching an agent.
 
 GitHub is this guide's running example. Any other API works the same way, and the steps are identical.
 
@@ -30,10 +30,10 @@ Then, in Infisical, open **Agent Vault** from the product switcher and go to **A
   <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with coding-agent entered as the name" />
 </Frame>
 
-Select **Add Connection** and work through the steps:
+Select **Add Service** and work through the steps:
 
 <Frame>
-  <img src="/images/platform/agent-vault/connection-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
+  <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
 </Frame>
 
 <Steps>
@@ -41,18 +41,18 @@ Select **Add Connection** and work through the steps:
     The template fills everything in for you: the host `api.github.com` and the header GitHub expects, `Authorization: Bearer <token>`.
   </Step>
   <Step title="Details">
-    Keep the connection name `github` and the host pattern `api.github.com`.
+    Keep the service name `github` and the host pattern `api.github.com`.
   </Step>
   <Step title="Credential">
     Paste your `github_pat_…` token into **Token**. It's stored encrypted and never shown again.
   </Step>
   <Step title="Review and create">
-    Check the host and the header, then select **Add Connection**.
+    Check the host and the header, then select **Add Service**.
   </Step>
 </Steps>
 
 <Note>
-  Not on the template list? Pick **Custom** and set the host, header name, and prefix yourself. See [Access bundles and connections](/documentation/platform/agent-vault/access-bundles).
+  Not on the template list? Pick **Custom** and set the host, header name, and prefix yourself. See [Access bundles and services](/documentation/platform/agent-vault/access-bundles).
 </Note>
 
 You're an admin, so you can already create sessions with this access bundle. To let a teammate or a machine identity run agents with it, select **Manage Access** on the access bundle and grant it to them. They have to be a member of Agent Vault first, under **Access Control**.
@@ -137,7 +137,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 </Tabs>
 
 <Note>
-  Getting a `401`? The credential wasn't applied. Open the `coding-agent` access bundle and confirm a connection covers `api.github.com`; if one does, the stored token is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
+  Getting a `401`? The credential wasn't applied. Open the `coding-agent` access bundle and confirm a service covers `api.github.com`; if one does, the stored token is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
 </Note>
 
 <Note>

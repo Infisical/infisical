@@ -67,12 +67,12 @@ Every setting lives in Infisical and reaches a running proxy on its next poll. S
 
 ### Unmatched hosts
 
-What the proxy does with a request to a host no connection in the session covers.
+What the proxy does with a request to a host no service in the session covers.
 
 - **Allow**, the default: the request passes through with no credential attached.
 - **Deny**: the request is rejected. The agent reaches the hosts in its access bundle, the bypass list, and nothing else.
 
-Use **Deny** when the proxy sits somewhere it could reach more than you intend, such as a network with internal services on it. Under **Deny**, a pass-through connection is how an access bundle makes a host reachable without giving it a credential.
+Use **Deny** when the proxy sits somewhere it could reach more than you intend, such as a network with internal systems on it. Under **Deny**, a pass-through service is how an access bundle makes a host reachable without giving it a credential.
 
 <Frame>
   <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the Allow and Deny unmatched host options and the poll interval" />

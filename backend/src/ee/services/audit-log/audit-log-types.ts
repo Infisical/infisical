@@ -756,9 +756,9 @@ export enum EventType {
   AGENT_VAULT_ACCESS_BUNDLE_CREATE = "agent-vault-access-bundle-create",
   AGENT_VAULT_ACCESS_BUNDLE_UPDATE = "agent-vault-access-bundle-update",
   AGENT_VAULT_ACCESS_BUNDLE_DELETE = "agent-vault-access-bundle-delete",
-  AGENT_VAULT_CONNECTION_CREATE = "agent-vault-connection-create",
-  AGENT_VAULT_CONNECTION_UPDATE = "agent-vault-connection-update",
-  AGENT_VAULT_CONNECTION_DELETE = "agent-vault-connection-delete",
+  AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
+  AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
+  AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -6185,11 +6185,11 @@ interface AgentVaultAccessBundleDeleteEvent {
   };
 }
 
-interface AgentVaultConnectionCreateEvent {
-  type: EventType.AGENT_VAULT_CONNECTION_CREATE;
+interface AgentVaultServiceCreateEvent {
+  type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
     accessBundleId: string;
-    connectionId: string;
+    serviceId: string;
     name: string;
     hostPattern: string;
     credentialType: string;
@@ -6198,11 +6198,11 @@ interface AgentVaultConnectionCreateEvent {
   };
 }
 
-interface AgentVaultConnectionUpdateEvent {
-  type: EventType.AGENT_VAULT_CONNECTION_UPDATE;
+interface AgentVaultServiceUpdateEvent {
+  type: EventType.AGENT_VAULT_SERVICE_UPDATE;
   metadata: {
     accessBundleId: string;
-    connectionId: string;
+    serviceId: string;
     name?: string;
     hostPattern?: string;
     credentialType?: string;
@@ -6212,11 +6212,11 @@ interface AgentVaultConnectionUpdateEvent {
   };
 }
 
-interface AgentVaultConnectionDeleteEvent {
-  type: EventType.AGENT_VAULT_CONNECTION_DELETE;
+interface AgentVaultServiceDeleteEvent {
+  type: EventType.AGENT_VAULT_SERVICE_DELETE;
   metadata: {
     accessBundleId: string;
-    connectionId: string;
+    serviceId: string;
     name: string;
   };
 }
@@ -8068,9 +8068,9 @@ export type Event =
   | AgentVaultAccessBundleCreateEvent
   | AgentVaultAccessBundleUpdateEvent
   | AgentVaultAccessBundleDeleteEvent
-  | AgentVaultConnectionCreateEvent
-  | AgentVaultConnectionUpdateEvent
-  | AgentVaultConnectionDeleteEvent
+  | AgentVaultServiceCreateEvent
+  | AgentVaultServiceUpdateEvent
+  | AgentVaultServiceDeleteEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent

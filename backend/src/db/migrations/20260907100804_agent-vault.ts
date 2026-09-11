@@ -21,8 +21,8 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.AgentVaultAccessBundle);
   }
 
-  if (!(await knex.schema.hasTable(TableName.AgentVaultConnection))) {
-    await knex.schema.createTable(TableName.AgentVaultConnection, (t) => {
+  if (!(await knex.schema.hasTable(TableName.AgentVaultService))) {
+    await knex.schema.createTable(TableName.AgentVaultService, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.uuid("accessBundleId").notNullable();
@@ -45,10 +45,10 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await knex.raw(
-      `ALTER TABLE "${TableName.AgentVaultConnection}" ADD CONSTRAINT "agent_vault_connections_credential_type_check" CHECK ("credentialType" IN ('bearer', 'basic', 'passthrough'))`
+      `ALTER TABLE "${TableName.AgentVaultService}" ADD CONSTRAINT "agent_vault_services_credential_type_check" CHECK ("credentialType" IN ('bearer', 'basic', 'passthrough'))`
     );
 
-    await createOnUpdateTrigger(knex, TableName.AgentVaultConnection);
+    await createOnUpdateTrigger(knex, TableName.AgentVaultService);
   }
 
   if (!(await knex.schema.hasTable(TableName.AgentVaultSession))) {
@@ -212,8 +212,8 @@ export async function down(knex: Knex): Promise<void> {
     .where({ scope: "resource", scopeResourceType: "agent-vault-access-bundle" })
     .delete();
 
-  await dropOnUpdateTrigger(knex, TableName.AgentVaultConnection);
-  await knex.schema.dropTableIfExists(TableName.AgentVaultConnection);
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultService);
+  await knex.schema.dropTableIfExists(TableName.AgentVaultService);
 
   await dropOnUpdateTrigger(knex, TableName.AgentVaultAccessBundle);
   await knex.schema.dropTableIfExists(TableName.AgentVaultAccessBundle);

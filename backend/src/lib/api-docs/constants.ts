@@ -4194,30 +4194,30 @@ export const AGENT_VAULT = {
     accessBundleId: "The ID of the access bundle.",
     name: "The name of the access bundle.",
     description: "A description of what this access bundle is for.",
-    connectionCount: "How many connections the access bundle holds.",
+    serviceCount: "How many services the access bundle holds.",
     memberCount: "How many users, machine identities and groups can reach the access bundle.",
-    hostPatterns: "Every host pattern the access bundle's connections cover."
+    hostPatterns: "Every host pattern the access bundle's services cover."
   },
-  CONNECTION: {
-    connectionId: "The ID of the connection.",
-    name: "The name of the connection.",
+  SERVICE: {
+    serviceId: "The ID of the service.",
+    name: "The name of the service.",
     hostPattern:
-      "A comma-separated set of hosts this connection covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
     credentialType: "How the credential is attached to the request: bearer, basic or passthrough.",
     headerName: "The header the credential is written to. Defaults to Authorization.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY.",
     username:
-      "The username half of the basic credential. May be empty if a password is set. Never returned once saved, since some services put the whole key here.",
+      "The username half of the basic credential. May be empty if a password is set. Never returned once saved, since some APIs put the whole key here.",
     updateUsername:
       "The username half of the basic credential. Omit to keep the stored username; send an empty string to remove it, which requires a password.",
     updateValue: "The secret. Omit to keep the stored secret.",
     updatePassword:
       "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
-    createdAt: "When the connection was added to the access bundle.",
+    createdAt: "When the service was added to the access bundle.",
     value: "The secret. Never returned once saved.",
     password:
-      "The password half of the basic credential. May be empty if a username is set, for services that carry the whole key in the username. Never returned once saved."
+      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved."
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",
@@ -4243,7 +4243,7 @@ export const AGENT_VAULT = {
     rootCaFingerprint:
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
-    unmatchedHost: "What the proxy does with a host no connection covers: allow it through untouched, or deny it.",
+    unmatchedHost: "What the proxy does with a host no service covers: allow it through untouched, or deny it.",
     bypassHosts:
       "Hosts that stay reachable when unmatchedHost is deny, handled like any other host and given no credential.",
     pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",

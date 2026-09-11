@@ -1,11 +1,11 @@
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
-import { ConnectionStep } from "./connectionSchema";
+import { ServiceStep } from "./serviceSchema";
 
-export const CONNECTION_DOCS_URL = AgentVaultDocsUrls.accessBundles;
+export const SERVICE_DOCS_URL = AgentVaultDocsUrls.accessBundles;
 
 type StepMeta = {
-  step: ConnectionStep;
+  step: ServiceStep;
   name: string;
   shortDescription?: string;
   title?: string;
@@ -14,22 +14,22 @@ type StepMeta = {
   rightDescription?: string;
 };
 
-export const CONNECTION_STEPS: StepMeta[] = [
+export const SERVICE_STEPS: StepMeta[] = [
   {
-    step: ConnectionStep.Template,
+    step: ServiceStep.Template,
     name: "Template"
   },
   {
-    step: ConnectionStep.Details,
+    step: ServiceStep.Details,
     name: "Details",
     shortDescription: "Name and hosts",
     title: "Details",
-    subtitle: "What this connection is called, and the hosts it covers.",
+    subtitle: "What this service is called, and the hosts it covers.",
     rightLabel: "DETAILS",
     rightDescription: "The credentials are only used for the hosts you list here."
   },
   {
-    step: ConnectionStep.Credential,
+    step: ServiceStep.Credential,
     name: "Credential",
     shortDescription: "How to authenticate",
     title: "Credential",
@@ -38,7 +38,7 @@ export const CONNECTION_STEPS: StepMeta[] = [
     rightDescription: "Agents reach this service without ever holding the credentials themselves."
   },
   {
-    step: ConnectionStep.Review,
+    step: ServiceStep.Review,
     name: "Review",
     shortDescription: "Confirm and add",
     title: "Review",

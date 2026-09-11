@@ -24,7 +24,7 @@ import {
 } from "@app/components/v3";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
-import { CREDENTIAL_LABELS, TConnectionForm, UNCHANGED_SECRET } from "./connectionSchema";
+import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 
 export const credentialPreview = (
   form: {
@@ -50,7 +50,7 @@ const SecretInput = <TName extends SecretName>({
   isError,
   isUntouched
 }: {
-  field: ControllerRenderProps<TConnectionForm, TName>;
+  field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
   placeholder: string;
   isError: boolean;
@@ -89,7 +89,7 @@ type Props = {
 };
 
 export const CredentialFields = ({ storedType }: Props) => {
-  const { control, watch, setValue } = useFormContext<TConnectionForm>();
+  const { control, watch, setValue } = useFormContext<TServiceForm>();
   const credentialType = watch("credentialType");
   const secret = watch("secret");
   const username = watch("username");

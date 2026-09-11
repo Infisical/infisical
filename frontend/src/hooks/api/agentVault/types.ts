@@ -30,7 +30,7 @@ export type TAgentVaultCredentialUpdate =
   | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
-export type TAgentVaultConnection = {
+export type TAgentVaultService = {
   id: string;
   accessBundleId: string;
   name: string;
@@ -63,13 +63,13 @@ export type TAgentVaultAccessBundle = {
 };
 
 export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
-  connectionCount: number;
+  serviceCount: number;
   memberCount: number;
   hostPatterns: string[];
 };
 
 export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
-  connections: TAgentVaultConnection[];
+  services: TAgentVaultService[];
   members?: TAgentVaultMember[];
 };
 
@@ -137,16 +137,16 @@ export type TUpdateAgentVaultAccessBundleDTO = {
   description?: string | null;
 };
 
-export type TCreateAgentVaultConnectionDTO = {
+export type TCreateAgentVaultServiceDTO = {
   accessBundleId: string;
   name: string;
   hostPattern: string;
   credential: TAgentVaultCredentialInput;
 };
 
-export type TUpdateAgentVaultConnectionDTO = {
+export type TUpdateAgentVaultServiceDTO = {
   accessBundleId: string;
-  connectionId: string;
+  serviceId: string;
   name?: string;
   hostPattern?: string;
   credential?: TAgentVaultCredentialUpdate;

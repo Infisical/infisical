@@ -10,14 +10,14 @@ never in anything the agent holds.
 
 | Noun | What it is |
 | --- | --- |
-| **Access bundle** | A named set of connections. The unit you grant |
-| **Connection** | One host pattern set plus its credential |
+| **Access bundle** | A named set of services. The unit you grant |
+| **Service** | One host pattern set plus its credential |
 | **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
 | **Proxy** | One deployed egress node with its own CA. One row per box |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
-agent-vault-access-bundle/   bundles, connections, credential encryption, grants
+agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, retention sweep
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
@@ -124,8 +124,8 @@ the matching at runtime and reimplements the same rules, so a change here needs 
 - The KMS cipher pair is project-scoped (`KmsDataKey.SecretManager`) and built once per resolve.
 - `credentialType` is a column and `credentialConfig` the plaintext half (header name, prefix), so a list page
   renders without a decrypt and a new credential type is a config entry, not a migration. For basic, the
-  username is sealed with the password: some services put the whole key in the username.
-- A connection update is a patch. `AgentVaultCredentialUpdateSchema` makes every field optional and
+  username is sealed with the password: some APIs put the whole key in the username.
+- A service update is a patch. `AgentVaultCredentialUpdateSchema` makes every field optional and
   `mergeCredential` overlays what arrived. Never reuse `AgentVaultBearerConfigSchema` on that path: its
   `.default()`s would reset an omitted `headerName` to `Authorization`.
 - The sealed secret has three write states: a value re-seals, `null` clears it (passthrough), `undefined`

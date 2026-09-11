@@ -145,7 +145,7 @@ const parseSegment = (segment: string, subject: string): TParseResult => {
 
 export const parseHostPatterns = (
   raw: string,
-  subject = "connection"
+  subject = "service"
 ): { patterns: TAgentVaultHostPattern[]; errors: string[] } => {
   const patterns: TAgentVaultHostPattern[] = [];
   const errors: string[] = [];
@@ -183,7 +183,7 @@ export const buildHostPatternSchema = (subject: string) =>
       });
     });
 
-export const hostPatternSchema = buildHostPatternSchema("connection");
+export const hostPatternSchema = buildHostPatternSchema("service");
 
 export const matchesHost = (pattern: TAgentVaultHostPattern, host: string, port: string): boolean => {
   if (pattern.port !== port) return false;

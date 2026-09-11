@@ -1,16 +1,16 @@
 ---
-title: "Access bundles and connections"
-description: "What a connection sends and where, how access bundles group connections, and who can run agents with them."
+title: "Access bundles and services"
+description: "What a service sends and where, how access bundles group services, and who can run agents with them."
 ---
 
-An access bundle is what you hand an agent: everything it needs for a job, granted and revoked as one unit. Today an access bundle holds connections, each mapping an external service to the credential the proxy applies to requests bound for it, and names who may run agents with them. You grant access bundles and create sessions with them; the proxy brokers the connections inside.
+An access bundle is what you hand an agent: everything it needs for a job, granted and revoked as one unit. A bundle holds services, and names who may run agents with it. A service is one external API the agent may reach, with the hosts that API answers on and the credential the proxy attaches to requests bound for it. You grant access bundles and create sessions with them; the proxy brokers the services inside.
 
-## Connections
+## Services
 
-Each connection has a name, the hosts it covers, and a credential. Open an access bundle from **Access Bundles** and select **Add Connection** to add one.
+Each service has a name, the hosts it covers, and a credential. Open an access bundle from **Access Bundles** and select **Add Service** to add one.
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundle-connections.png" alt="An access bundle's Connections table with one GitHub connection, its Bearer credential, and its host" />
+  <img src="/images/platform/agent-vault/access-bundle-services.png" alt="An access bundle's Services table with one GitHub service, its Bearer credential, and its host" />
 </Frame>
 
 ### Credential types
@@ -24,10 +24,10 @@ Each connection has a name, the hosts it covers, and a credential. Open an acces
 The first step offers a **Template** for common services, which fills in the hosts and the header. Choose **Custom** to set them yourself.
 
 <Frame>
-  <img src="/images/platform/agent-vault/connection-template-picker.png" alt="The Choose a template panel with Custom, OpenAI, Anthropic, Slack, GitHub, and Google Workspace" />
+  <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with Custom, OpenAI, Anthropic, Slack, GitHub, and Google Workspace" />
 </Frame>
 
-If the agent's request already carries a header with the same name, the proxy replaces it with the connection's credential.
+If the agent's request already carries a header with the same name, the proxy replaces it with the service's credential.
 
 ### Host patterns
 
@@ -41,24 +41,24 @@ internal-api.example.com:8443
 
 - A host without a port means port `443`. Credentials are attached to HTTPS traffic only.
 - `*.` at the start matches exactly one label. `*.example.com` covers `api.example.com`, not `a.b.example.com` or `example.com`.
-- Paths aren't allowed. A connection covers a host, not a route on it.
+- Paths aren't allowed. A service covers a host, not a route on it.
 
 Keep patterns as narrow as the API allows. A wildcard covers every host under it, and the credential goes to all of them. Some templates carry a placeholder such as `<your-tenant>.atlassian.net` for this reason; replace it with your own tenant before saving.
 
-### When two connections cover one host
+### When two services cover one host
 
-Within one access bundle, two connections can't cover the same host with the same pattern. Infisical rejects the save and names the connection that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one connection covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first connection's credential.
+Within one access bundle, two services can't cover the same host with the same pattern. Infisical rejects the save and names the service that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one service covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first service's credential.
 
 Different access bundles can cover the same host with different credentials. An agent gets the credential from the access bundle its session carries.
 
 ## Access bundles
 
-An access bundle has a name, an optional description, its connections, and its members. Granting an access bundle to a user, machine identity, or group lets them create sessions with it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
+An access bundle has a name, an optional description, its services, and its members. Granting an access bundle to a user, machine identity, or group lets them create sessions with it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing two access bundles with their connections and member counts" />
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing two access bundles with their services and member counts" />
 </Frame>
 
 Access bundles are how you scope access. An agent for on-call work gets the incident tooling, an agent for code review gets GitHub, and neither reaches the other's hosts.
 
-Removing a member from an access bundle, or from Agent Vault, takes effect on their running agents within one poll interval of the proxy. Deleting one removes its connections from every session that carries it. See [Sessions](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach).
+Removing a member from an access bundle, or from Agent Vault, takes effect on their running agents within one poll interval of the proxy. Deleting one removes its services from every session that carries it. See [Sessions](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach).

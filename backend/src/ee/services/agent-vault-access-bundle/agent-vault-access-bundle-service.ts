@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, RESOURCE_SCOPE, ResourceType, TAgentVaultConnections, TMemberships } from "@app/db/schemas";
+import { AccessScope, RESOURCE_SCOPE, ResourceType, TAgentVaultServices, TMemberships } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -31,21 +31,21 @@ import {
   TAgentVaultCredentialSummary,
   TAgentVaultCredentialUpdate,
   TCreateAccessBundleDTO,
-  TCreateConnectionDTO,
+  TCreateServiceDTO,
   TDeleteAccessBundleDTO,
-  TDeleteConnectionDTO,
+  TDeleteServiceDTO,
   TGetAccessBundleDTO,
   TListAccessBundlesDTO,
   TListMembersDTO,
   TRemoveMemberDTO,
   TUpdateAccessBundleDTO,
-  TUpdateConnectionDTO
+  TUpdateServiceDTO
 } from "./agent-vault-access-bundle-types";
-import { TAgentVaultConnectionDALFactory } from "./agent-vault-connection-dal";
+import { TAgentVaultServiceDALFactory } from "./agent-vault-service-dal";
 
 type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultAccessBundleDAL: TAgentVaultAccessBundleDALFactory;
-  agentVaultConnectionDAL: TAgentVaultConnectionDALFactory;
+  agentVaultServiceDAL: TAgentVaultServiceDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   membershipDAL: Pick<
@@ -65,7 +65,7 @@ export const AGENT_VAULT_MAX_GRANTEES = 100;
 export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBundleServiceFactoryDep) => {
   const {
     agentVaultAccessBundleDAL,
-    agentVaultConnectionDAL,
+    agentVaultServiceDAL,
     permissionService,
     kmsService,
     membershipDAL,
@@ -243,7 +243,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const mergeCredential = (
     credential: TAgentVaultCredentialUpdate,
-    stored: TAgentVaultConnections,
+    stored: TAgentVaultServices,
     storedSecret: Record<string, string> | null
   ): TCredentialWrite => {
     if (credential.type !== stored.credentialType) {
@@ -288,9 +288,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
-  const summarizeCredential = (connection: TAgentVaultConnections): TAgentVaultCredentialSummary => {
-    const config = connection.credentialConfig as Record<string, string>;
-    switch (connection.credentialType as AgentVaultCredentialType) {
+  const summarizeCredential = (service: TAgentVaultServices): TAgentVaultCredentialSummary => {
+    const config = service.credentialConfig as Record<string, string>;
+    switch (service.credentialType as AgentVaultCredentialType) {
       case AgentVaultCredentialType.Bearer:
         return {
           type: AgentVaultCredentialType.Bearer,
@@ -339,7 +339,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const connections = await agentVaultConnectionDAL.findByAccessBundleId(bundle.id);
+    const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
     const members = isAdmin
       ? await agentVaultAccessBundleDAL.findMembers({ projectId: dto.projectId, accessBundleId: bundle.id })
       : undefined;
@@ -349,13 +349,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       name: bundle.name,
       description: bundle.description ?? null,
       createdAt: bundle.createdAt,
-      connections: connections.map((connection) => ({
-        id: connection.id,
-        accessBundleId: connection.accessBundleId,
-        name: connection.name,
-        hostPattern: connection.hostPattern,
-        credential: summarizeCredential(connection),
-        createdAt: connection.createdAt
+      services: services.map((service) => ({
+        id: service.id,
+        accessBundleId: service.accessBundleId,
+        name: service.name,
+        hostPattern: service.hostPattern,
+        credential: summarizeCredential(service),
+        createdAt: service.createdAt
       })),
       members
     };
@@ -453,35 +453,35 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     {
       accessBundleId,
       hostPattern,
-      excludeConnectionId
+      excludeServiceId
     }: {
       accessBundleId: string;
       hostPattern: string;
-      excludeConnectionId?: string;
+      excludeServiceId?: string;
     },
     // Without a tx this reads the replica outside any lock, so two creates for the same host both pass.
     tx?: Knex
   ) => {
-    const siblings = await agentVaultConnectionDAL.findByAccessBundleId(accessBundleId, tx);
+    const siblings = await agentVaultServiceDAL.findByAccessBundleId(accessBundleId, tx);
     const conflicts = findHostPatternConflicts(
       hostPattern,
-      siblings.filter((candidate) => candidate.id !== excludeConnectionId)
+      siblings.filter((candidate) => candidate.id !== excludeServiceId)
     );
     if (conflicts.length) {
       throw new BadRequestError({ message: describeConflict(conflicts[0]) });
     }
   };
 
-  const createConnection = async ({ accessBundleId, name, hostPattern, credential, ...rest }: TCreateConnectionDTO) => {
+  const createService = async ({ accessBundleId, name, hostPattern, credential, ...rest }: TCreateServiceDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const existing = await agentVaultConnectionDAL.findOne({ accessBundleId: bundle.id, name });
+    const existing = await agentVaultServiceDAL.findOne({ accessBundleId: bundle.id, name });
     if (existing) {
-      throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });
+      throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
     }
 
     await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern });
@@ -496,7 +496,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // The pre-check above is only a fast failure. The authoritative one runs under the bundle row lock,
     // the same lock addMembers takes, because no database constraint can express host-pattern overlap.
     const write = () =>
-      agentVaultConnectionDAL.transaction(async (tx) => {
+      agentVaultServiceDAL.transaction(async (tx) => {
         const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
           { id: bundle.id, projectId: rest.projectId },
           tx
@@ -505,7 +505,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
         await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern }, tx);
 
-        return agentVaultConnectionDAL.create(
+        return agentVaultServiceDAL.create(
           {
             accessBundleId: bundle.id,
             name,
@@ -518,48 +518,48 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         );
       });
 
-    let connection;
+    let service;
     try {
-      connection = await write();
+      service = await write();
     } catch (err) {
       if (isUniqueViolation(err)) {
-        throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });
+        throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
       throw err;
     }
 
-    return { connection: { ...connection, credential: summarizeCredential(connection) } };
+    return { service: { ...service, credential: summarizeCredential(service) } };
   };
 
-  const updateConnection = async ({
+  const updateService = async ({
     accessBundleId,
-    connectionId,
+    serviceId,
     name,
     hostPattern,
     credential,
     ...rest
-  }: TUpdateConnectionDTO) => {
+  }: TUpdateServiceDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const connection = await agentVaultConnectionDAL.findOne({ id: connectionId, accessBundleId: bundle.id });
-    if (!connection) throw new NotFoundError({ message: `Connection with ID '${connectionId}' not found` });
+    const service = await agentVaultServiceDAL.findOne({ id: serviceId, accessBundleId: bundle.id });
+    if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
-    if (name && name !== connection.name) {
-      const existing = await agentVaultConnectionDAL.findOne({ accessBundleId: bundle.id, name });
+    if (name && name !== service.name) {
+      const existing = await agentVaultServiceDAL.findOne({ accessBundleId: bundle.id, name });
       if (existing) {
-        throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });
+        throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
     }
 
-    if (hostPattern && hostPattern !== connection.hostPattern) {
+    if (hostPattern && hostPattern !== service.hostPattern) {
       await checkHostPatternConflicts({
         accessBundleId: bundle.id,
         hostPattern,
-        excludeConnectionId: connection.id
+        excludeServiceId: service.id
       });
     }
 
@@ -567,17 +567,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (credential) {
       const needsStoredSecret =
         credential.type === AgentVaultCredentialType.Basic &&
-        connection.credentialType === AgentVaultCredentialType.Basic &&
+        service.credentialType === AgentVaultCredentialType.Basic &&
         (credential.username === undefined) !== (credential.password === undefined) &&
-        Boolean(connection.encryptedCredential);
+        Boolean(service.encryptedCredential);
       const cipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
       const storedSecret = cipher
-        ? (JSON.parse(
-            cipher.decryptor({ cipherTextBlob: connection.encryptedCredential! }).toString("utf-8")
-          ) as Record<string, string>)
+        ? (JSON.parse(cipher.decryptor({ cipherTextBlob: service.encryptedCredential! }).toString("utf-8")) as Record<
+            string,
+            string
+          >)
         : null;
 
-      const { config, secret } = mergeCredential(credential, connection, storedSecret);
+      const { config, secret } = mergeCredential(credential, service, storedSecret);
       let encryptedCredential: Buffer | null | undefined;
       if (secret === null) encryptedCredential = null;
       if (secret) {
@@ -595,22 +596,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // Same lock as create, and below the credential work so no KMS call sits inside the transaction. The
     // re-check only earns its place when the pattern actually changes.
     const write = () =>
-      agentVaultConnectionDAL.transaction(async (tx) => {
+      agentVaultServiceDAL.transaction(async (tx) => {
         const locked = await agentVaultAccessBundleDAL.lockByIdInProject(
           { id: bundle.id, projectId: rest.projectId },
           tx
         );
         if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
 
-        if (hostPattern && hostPattern !== connection.hostPattern) {
-          await checkHostPatternConflicts(
-            { accessBundleId: bundle.id, hostPattern, excludeConnectionId: connection.id },
-            tx
-          );
+        if (hostPattern && hostPattern !== service.hostPattern) {
+          await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern, excludeServiceId: service.id }, tx);
         }
 
-        return agentVaultConnectionDAL.updateById(
-          connection.id,
+        return agentVaultServiceDAL.updateById(
+          service.id,
           {
             name,
             hostPattern,
@@ -625,25 +623,25 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       updated = await write();
     } catch (err) {
       if (isUniqueViolation(err)) {
-        throw new BadRequestError({ message: `A connection named '${name}' already exists in this access bundle` });
+        throw new BadRequestError({ message: `A service named '${name}' already exists in this access bundle` });
       }
       throw err;
     }
 
-    return { connection: { ...updated, credential: summarizeCredential(updated) } };
+    return { service: { ...updated, credential: summarizeCredential(updated) } };
   };
 
-  const deleteConnection = async ({ accessBundleId, connectionId, ...rest }: TDeleteConnectionDTO) => {
+  const deleteService = async ({ accessBundleId, serviceId, ...rest }: TDeleteServiceDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    const connection = await agentVaultConnectionDAL.findOne({ id: connectionId, accessBundleId: bundle.id });
-    if (!connection) throw new NotFoundError({ message: `Connection with ID '${connectionId}' not found` });
+    const service = await agentVaultServiceDAL.findOne({ id: serviceId, accessBundleId: bundle.id });
+    if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
-    const deleted = await agentVaultConnectionDAL.deleteById(connection.id);
+    const deleted = await agentVaultServiceDAL.deleteById(service.id);
     return { ...deleted, credential: summarizeCredential(deleted) };
   };
 
@@ -757,9 +755,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     createAccessBundle,
     updateAccessBundle,
     deleteAccessBundle,
-    createConnection,
-    updateConnection,
-    deleteConnection,
+    createService,
+    updateService,
+    deleteService,
     listMembers,
     addMembers,
     removeMember

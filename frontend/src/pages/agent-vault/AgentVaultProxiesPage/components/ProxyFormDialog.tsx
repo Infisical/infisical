@@ -211,7 +211,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                           Hosts listed here are reached even though no access bundle covers them,
                           with nothing added to the request. If a bundle does cover the same host,
                           its credential still applies. To open a host for one bundle only, add a
-                          Pass-through connection to that bundle instead.
+                          Pass-through service to that bundle instead.
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>

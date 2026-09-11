@@ -9,7 +9,7 @@ import {
 } from "@app/components/v3";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
-import { CREDENTIAL_LABELS, TConnectionForm, UNCHANGED_SECRET } from "./connectionSchema";
+import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 import { credentialPreview } from "./CredentialFields";
 
 type Props = {
@@ -17,7 +17,7 @@ type Props = {
 };
 
 export const ReviewFields = ({ isUpdate }: Props) => {
-  const { watch } = useFormContext<TConnectionForm>();
+  const { watch } = useFormContext<TServiceForm>();
   const form = watch();
 
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;

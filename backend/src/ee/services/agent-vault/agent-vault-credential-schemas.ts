@@ -7,7 +7,7 @@ import { AgentVaultCredentialType } from "./agent-vault-enums";
 // than a field inside the blob, so a new credential type needs no migration.
 
 // The characters RFC 7230 allows. Go's HTTP client refuses to send anything else, so a name saved
-// without this check 502s every request through the connection.
+// without this check 502s every request through the service.
 export const AGENT_VAULT_HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
 
 export const AGENT_VAULT_HEADER_NAME_MESSAGE =

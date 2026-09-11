@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
-import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
 /**
@@ -24,27 +24,21 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Passthrough]: "Pass-through"
 };
 
-export enum ConnectionStep {
+export enum ServiceStep {
   Template = "template",
   Details = "details",
   Credential = "credential",
   Review = "review"
 }
 
-export const CONNECTION_STEP_FIELDS: Record<ConnectionStep, string[]> = {
-  [ConnectionStep.Template]: [],
-  [ConnectionStep.Details]: ["name", "hostPattern"],
-  [ConnectionStep.Credential]: [
-    "credentialType",
-    "headerName",
-    "headerPrefix",
-    "username",
-    "secret"
-  ],
-  [ConnectionStep.Review]: []
+export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
+  [ServiceStep.Template]: [],
+  [ServiceStep.Details]: ["name", "hostPattern"],
+  [ServiceStep.Credential]: ["credentialType", "headerName", "headerPrefix", "username", "secret"],
+  [ServiceStep.Review]: []
 };
 
-export const buildConnectionSchema = (connection?: TAgentVaultConnection | null) =>
+export const buildServiceSchema = (service?: TAgentVaultService | null) =>
   z
     .object({
       name: slugSchema({ max: 64, field: "Name" }),
@@ -68,11 +62,10 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
 
       const isUnchanged = data.secret === UNCHANGED_SECRET;
 
-      const typeChanged =
-        Boolean(connection) && connection?.credential.type !== data.credentialType;
+      const typeChanged = Boolean(service) && service?.credential.type !== data.credentialType;
 
       if (data.credentialType === AgentVaultCredentialType.Bearer) {
-        if ((!connection || typeChanged) && !data.secret) {
+        if ((!service || typeChanged) && !data.secret) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
         }
         return;
@@ -95,4 +88,4 @@ export const buildConnectionSchema = (connection?: TAgentVaultConnection | null)
       });
     });
 
-export type TConnectionForm = z.infer<ReturnType<typeof buildConnectionSchema>>;
+export type TServiceForm = z.infer<ReturnType<typeof buildServiceSchema>>;

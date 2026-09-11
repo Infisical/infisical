@@ -25,7 +25,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       accountTemplatesCount,
       foldersCount,
       accessBundlesCount,
-      connectionsCount,
+      servicesCount,
       proxiesCount,
       projectCounts
     ] = await Promise.all([
@@ -42,7 +42,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       orgProductStatsDAL.countPamAccountTemplatesForOrg(actorOrgId),
       orgProductStatsDAL.countPamFoldersForOrg(actorOrgId),
       orgProductStatsDAL.countAgentVaultAccessBundlesForOrg(actorOrgId),
-      orgProductStatsDAL.countAgentVaultConnectionsForOrg(actorOrgId),
+      orgProductStatsDAL.countAgentVaultServicesForOrg(actorOrgId),
       orgProductStatsDAL.countAgentVaultProxiesForOrg(actorOrgId),
       orgProductStatsDAL.countProjectsByTypeForOrg(actorOrgId)
     ]);
@@ -75,7 +75,7 @@ export const orgProductStatsServiceFactory = ({ orgProductStatsDAL }: TOrgProduc
       },
       agentVault: {
         accessBundlesCount,
-        connectionsCount,
+        servicesCount,
         proxiesCount
       }
     };

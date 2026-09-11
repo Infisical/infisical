@@ -10,10 +10,10 @@ import {
   TextArea
 } from "@app/components/v3";
 
-import { TConnectionForm } from "./connectionSchema";
+import { TServiceForm } from "./serviceSchema";
 
 export const DetailsFields = () => {
-  const { control } = useFormContext<TConnectionForm>();
+  const { control } = useFormContext<TServiceForm>();
 
   return (
     <div className="flex flex-col gap-5">

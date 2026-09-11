@@ -13,8 +13,8 @@ import { twMerge } from "tailwind-merge";
 import {
   CREDENTIAL_LABELS,
   displayHostPattern
-} from "@app/components/agent-vault/connection-sheet/connectionSchema";
-import { ConnectionIcon } from "@app/components/agent-vault/ConnectionIconStack";
+} from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -48,8 +48,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useDeleteAgentVaultConnection } from "@app/hooks/api/agentVault";
-import { TAgentVaultConnection } from "@app/hooks/api/agentVault/types";
+import { useDeleteAgentVaultService } from "@app/hooks/api/agentVault";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
@@ -62,7 +62,7 @@ enum SortColumn {
 
 const SORT_COMPARATORS: Record<
   SortColumn,
-  (a: TAgentVaultConnection, b: TAgentVaultConnection) => number
+  (a: TAgentVaultService, b: TAgentVaultService) => number
 > = {
   [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
   [SortColumn.Credential]: (a, b) =>
@@ -73,14 +73,14 @@ const SORT_COMPARATORS: Record<
 
 type Props = {
   accessBundleId: string;
-  connections: TAgentVaultConnection[];
+  services: TAgentVaultService[];
   canManage: boolean;
   onAdd: () => void;
-  onEdit: (connection: TAgentVaultConnection) => void;
+  onEdit: (service: TAgentVaultService) => void;
 };
 
 // Two hosts is what the column fits comfortably; the rest go behind the count so the table keeps its
-// width no matter how many a connection covers.
+// width no matter how many a service covers.
 const HOSTS_SHOWN = 2;
 
 const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
@@ -100,31 +100,25 @@ const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
   );
 };
 
-export const ConnectionsCard = ({
-  accessBundleId,
-  connections,
-  canManage,
-  onAdd,
-  onEdit
-}: Props) => {
+export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdit }: Props) => {
   const [search, setSearch] = useState("");
-  const [connectionToDelete, setConnectionToDelete] = useState<TAgentVaultConnection | null>(null);
-  const deleteConnection = useDeleteAgentVaultConnection();
+  const [serviceToDelete, setServiceToDelete] = useState<TAgentVaultService | null>(null);
+  const deleteService = useDeleteAgentVaultService();
 
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
 
   const displayed = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = connections.filter(
-      (connection) =>
-        connection.name.toLowerCase().includes(term) ||
-        connection.hostPattern.toLowerCase().includes(term)
+    const filtered = services.filter(
+      (service) =>
+        service.name.toLowerCase().includes(term) ||
+        service.hostPattern.toLowerCase().includes(term)
     );
 
     const ordered = [...filtered].sort(SORT_COMPARATORS[sortColumn]);
     return sortDirection === "ascending" ? ordered : ordered.reverse();
-  }, [connections, search, sortColumn, sortDirection]);
+  }, [services, search, sortColumn, sortDirection]);
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
     if (direction === "none") {
@@ -145,17 +139,17 @@ export const ConnectionsCard = ({
 
   const handleDelete = async () => {
     try {
-      if (!connectionToDelete) return;
+      if (!serviceToDelete) return;
 
-      await deleteConnection.mutateAsync({
+      await deleteService.mutateAsync({
         accessBundleId,
-        connectionId: connectionToDelete.id
+        serviceId: serviceToDelete.id
       });
       createNotification({
-        text: `Connection "${connectionToDelete.name}" deleted`,
+        text: `Service "${serviceToDelete.name}" deleted`,
         type: "success"
       });
-      setConnectionToDelete(null);
+      setServiceToDelete(null);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
@@ -165,23 +159,24 @@ export const ConnectionsCard = ({
     <Card>
       <CardHeader>
         <CardTitle>
-          Connections
+          Services
           <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
         </CardTitle>
         <CardDescription>
-          The services in this bundle, and the credentials used for each.
+          A service names one API the agent may reach, the hosts it answers on, and the credential
+          the proxy attaches.
         </CardDescription>
         {canManage && (
           <CardAction>
             <Button variant="av" onClick={onAdd}>
               <PlusIcon />
-              Add Connection
+              Add Service
             </Button>
           </CardAction>
         )}
       </CardHeader>
 
-      {connections.length > 0 && (
+      {services.length > 0 && (
         <CardContent>
           <InputGroup>
             <InputGroupAddon>
@@ -190,7 +185,7 @@ export const ConnectionsCard = ({
             <InputGroupInput
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search connections..."
+              placeholder="Search services..."
             />
           </InputGroup>
         </CardContent>
@@ -201,13 +196,11 @@ export const ConnectionsCard = ({
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>
-                {connections.length === 0
-                  ? "No connections yet"
-                  : "No connections match your search"}
+                {services.length === 0 ? "No services yet" : "No services match your search"}
               </EmptyTitle>
               <EmptyDescription>
-                {connections.length === 0
-                  ? "Add a connection to give this bundle a host and a credential."
+                {services.length === 0
+                  ? "Add a service to give this bundle a host and a credential."
                   : "Try a different search term."}
               </EmptyDescription>
             </EmptyHeader>
@@ -249,27 +242,27 @@ export const ConnectionsCard = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayed.map((connection) => (
-              <TableRow key={connection.id}>
+            {displayed.map((service) => (
+              <TableRow key={service.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <ConnectionIcon hostPattern={connection.hostPattern} />
-                    {connection.name}
+                    <ServiceIcon hostPattern={service.hostPattern} />
+                    {service.name}
                   </div>
                 </TableCell>
-                <TableCell>{CREDENTIAL_LABELS[connection.credential.type]}</TableCell>
+                <TableCell>{CREDENTIAL_LABELS[service.credential.type]}</TableCell>
                 <TableCell>
-                  <HostsCell hostPattern={connection.hostPattern} />
+                  <HostsCell hostPattern={service.hostPattern} />
                 </TableCell>
                 <TableCell>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="text-sm">
-                        {format(new Date(connection.createdAt), "MMM d, yyyy")}
+                        {format(new Date(service.createdAt), "MMM d, yyyy")}
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {format(new Date(connection.createdAt), "MMM d, yyyy h:mm a")}
+                      {format(new Date(service.createdAt), "MMM d, yyyy h:mm a")}
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
@@ -277,18 +270,18 @@ export const ConnectionsCard = ({
                   {canManage && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <IconButton variant="ghost" size="xs" aria-label="Open connection actions">
+                        <IconButton variant="ghost" size="xs" aria-label="Open service actions">
                           <MoreHorizontalIcon />
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent sideOffset={2} align="end">
-                        <DropdownMenuItem onClick={() => onEdit(connection)}>
+                        <DropdownMenuItem onClick={() => onEdit(service)}>
                           <PencilIcon />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           variant="danger"
-                          onClick={() => setConnectionToDelete(connection)}
+                          onClick={() => setServiceToDelete(service)}
                         >
                           <TrashIcon />
                           Delete
@@ -304,14 +297,14 @@ export const ConnectionsCard = ({
       )}
 
       <DeleteConfirmDialog
-        isOpen={Boolean(connectionToDelete)}
+        isOpen={Boolean(serviceToDelete)}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setConnectionToDelete(null);
+          if (!isOpen) setServiceToDelete(null);
         }}
-        title={`Delete "${connectionToDelete?.name}"`}
+        title={`Delete "${serviceToDelete?.name}"`}
         description="Agents lose this credential at the next proxy poll. This cannot be undone."
-        confirmKey={connectionToDelete?.name ?? ""}
-        isPending={deleteConnection.isPending}
+        confirmKey={serviceToDelete?.name ?? ""}
+        isPending={deleteService.isPending}
         onConfirm={handleDelete}
       />
     </Card>

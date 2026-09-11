@@ -16,7 +16,7 @@ Agent Vault is organization-wide, so there is one membership list for the whole 
 
 | Role | What they can do |
 |------|------------------|
-| **Admin** | Create and manage access bundles, connections, and proxies. Grant access bundles. Manage membership. Read audit logs |
+| **Admin** | Create and manage access bundles, services, and proxies. Grant access bundles. Manage membership. Read audit logs |
 | **Member** | Create sessions with the access bundles granted to them, and revoke their own |
 
 An admin reaches every access bundle without being granted one. A member reaches nothing until an admin grants them one, and sees only the ones they hold. Members see their own sessions; admins can switch the Sessions page between **All Sessions** and **My Sessions**.
@@ -38,7 +38,7 @@ You can't change your own role or remove your own access. Ask another admin to d
 
 ## Access bundle grants
 
-Product membership is the entry ticket. Reaching a service still takes a grant on the [access bundle](/documentation/platform/agent-vault/access-bundles) that holds its connection.
+Product membership is the entry ticket. Reaching a host still takes a grant on the [access bundle](/documentation/platform/agent-vault/access-bundles) that holds the service covering it.
 
 Open an access bundle and select **Manage Access** to grant it to a user, machine identity, or group. The grantee has to be an Agent Vault member already.
 

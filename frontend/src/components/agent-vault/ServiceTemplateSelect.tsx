@@ -79,7 +79,7 @@ type Props = {
   onSelect: (template: AgentVaultTemplate | null) => void;
 };
 
-export const ConnectionTemplateSelect = ({ onSelect }: Props) => {
+export const ServiceTemplateSelect = ({ onSelect }: Props) => {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -106,7 +106,7 @@ export const ConnectionTemplateSelect = ({ onSelect }: Props) => {
         <InputGroupInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search services — OpenAI, Anthropic, Slack, GitHub..."
+          placeholder="Search templates — OpenAI, Anthropic, Slack, GitHub..."
         />
       </InputGroup>
 

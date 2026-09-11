@@ -37,7 +37,7 @@ import {
   THeartbeatDTO,
   TListProxiesDTO,
   TProxyByIdDTO,
-  TResolvedConnection,
+  TResolvedService,
   TResolveSessionDTO,
   TUpdateProxyDTO
 } from "./agent-vault-proxy-types";
@@ -273,7 +273,7 @@ export const agentVaultProxyServiceFactory = ({
   const $decryptCredential = (
     row: { credentialType: string; credentialConfig: unknown; encryptedCredential: Buffer | null },
     decryptor: ((input: { cipherTextBlob: Buffer }) => Buffer) | null
-  ): TResolvedConnection["credential"] => {
+  ): TResolvedService["credential"] => {
     const config = (row.credentialConfig ?? {}) as Record<string, string>;
     if (row.credentialType === AgentVaultCredentialType.Passthrough || !row.encryptedCredential) {
       return { type: "passthrough" };
@@ -371,13 +371,13 @@ export const agentVaultProxyServiceFactory = ({
           groupIds: liveGroupIds
         });
 
-    const rows = await agentVaultResolveDAL.findResolvableConnections({
+    const rows = await agentVaultResolveDAL.findResolvableServices({
       sessionId: session.id,
       projectId: session.projectId,
       accessBundleIds
     });
 
-    // A bundle of pass-through connections has nothing sealed, so deriving the project data key would be
+    // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const decryptor = rows.some((row) => row.encryptedCredential)
       ? (
@@ -388,7 +388,7 @@ export const agentVaultProxyServiceFactory = ({
         ).decryptor
       : null;
 
-    const connections: TResolvedConnection[] = rows.map((row) => ({
+    const services: TResolvedService[] = rows.map((row) => ({
       id: row.id,
       name: row.name,
       accessBundleName: row.accessBundleName,
@@ -397,13 +397,13 @@ export const agentVaultProxyServiceFactory = ({
     }));
 
     logger.info(
-      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [connections=${connections.length}]`
+      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}]`
     );
 
     return {
       sessionId: session.id,
       expiresAt: session.expiresAt ?? null,
-      connections
+      services
     };
   };
 

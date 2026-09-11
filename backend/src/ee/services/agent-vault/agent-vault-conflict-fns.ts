@@ -7,7 +7,7 @@ export type TConflictCandidate = {
 };
 
 export type TAgentVaultConflict = {
-  connectionName: string;
+  serviceName: string;
   patterns: string[];
 };
 
@@ -18,10 +18,10 @@ export const findHostPatternConflicts = (
 ): TAgentVaultConflict[] =>
   candidates
     .map((candidate) => ({
-      connectionName: candidate.name,
+      serviceName: candidate.name,
       patterns: intersectHostPatterns(hostPattern, candidate.hostPattern)
     }))
     .filter((conflict) => conflict.patterns.length > 0);
 
 export const describeConflict = (conflict: TAgentVaultConflict): string =>
-  `'${conflict.connectionName}' already covers ${conflict.patterns.join(", ")} in this access bundle.`;
+  `'${conflict.serviceName}' already covers ${conflict.patterns.join(", ")} in this access bundle.`;
