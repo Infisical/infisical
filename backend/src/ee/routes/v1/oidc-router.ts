@@ -37,7 +37,9 @@ const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
   isActive: true,
   allowedEmailDomains: true,
   manageGroupMemberships: true,
-  jwtSignatureAlgorithm: true
+  jwtSignatureAlgorithm: true,
+  claimEmailPath: true,
+  claimNamePath: true
 });
 
 export const registerOidcRouter = async (server: FastifyZodProvider) => {
@@ -219,7 +221,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           orgId: true,
           allowedEmailDomains: true,
           manageGroupMemberships: true,
-          jwtSignatureAlgorithm: true
+          jwtSignatureAlgorithm: true,
+          claimEmailPath: true,
+          claimNamePath: true
         }).extend({
           clientId: z.string(),
           clientSecret: z.string()
@@ -286,7 +290,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           jwtSignatureAlgorithm: z
             .nativeEnum(OIDCJWTSignatureAlgorithm)
             .optional()
-            .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm)
+            .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm),
+          claimEmailPath: z.string().trim().nullable().optional().describe(OidcSSo.UPDATE_CONFIG.claimEmailPath),
+          claimNamePath: z.string().trim().nullable().optional().describe(OidcSSo.UPDATE_CONFIG.claimNamePath)
         })
         .partial()
         .merge(z.object({ organizationId: z.string().describe(OidcSSo.UPDATE_CONFIG.organizationId) })),
@@ -303,7 +309,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           orgId: true,
           allowedEmailDomains: true,
           isActive: true,
-          manageGroupMemberships: true
+          manageGroupMemberships: true,
+          claimEmailPath: true,
+          claimNamePath: true
         })
       }
     },
@@ -390,7 +398,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             .nativeEnum(OIDCJWTSignatureAlgorithm)
             .optional()
             .default(OIDCJWTSignatureAlgorithm.RS256)
-            .describe(OidcSSo.CREATE_CONFIG.jwtSignatureAlgorithm)
+            .describe(OidcSSo.CREATE_CONFIG.jwtSignatureAlgorithm),
+          claimEmailPath: z.string().trim().nullable().optional().describe(OidcSSo.CREATE_CONFIG.claimEmailPath),
+          claimNamePath: z.string().trim().nullable().optional().describe(OidcSSo.CREATE_CONFIG.claimNamePath)
         })
         .superRefine((data, ctx) => {
           if (data.configurationType === OIDCConfigurationType.CUSTOM) {
