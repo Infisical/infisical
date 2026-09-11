@@ -4,8 +4,15 @@ import { BanIcon, MoreHorizontalIcon, UserPlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
-  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -50,6 +57,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
   const removeMember = useRemoveAgentVaultAccessBundleMember();
 
   const members = bundleDetails?.members ?? [];
+  const memberToRemoveName = memberToRemove ? memberDisplayName(memberToRemove) : "";
 
   const handleRemove = async () => {
     try {
@@ -60,7 +68,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
         memberId: memberToRemove.id
       });
       createNotification({
-        text: `Access bundle revoked from "${memberDisplayName(memberToRemove)}"`,
+        text: `Access bundle revoked from "${memberToRemoveName}"`,
         type: "success"
       });
       setMemberToRemove(null);
@@ -152,18 +160,37 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
           />
         )}
 
-        <DeleteConfirmDialog
-          isOpen={Boolean(memberToRemove)}
+        <AlertDialog
+          open={Boolean(memberToRemove)}
           onOpenChange={(isOpen) => {
-            if (!isOpen) setMemberToRemove(null);
+            if (!isOpen && !removeMember.isPending) setMemberToRemove(null);
           }}
-          title={`Revoke access for "${memberToRemove ? memberDisplayName(memberToRemove) : ""}"`}
-          description="They lose this bundle, and any live session they hold stops reaching its hosts at the next proxy poll."
-          confirmKey={memberToRemove ? memberDisplayName(memberToRemove) : ""}
-          confirmLabel="Revoke Access"
-          isPending={removeMember.isPending}
-          onConfirm={handleRemove}
-        />
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Revoke access for &quot;{memberToRemoveName}&quot;
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                They lose this bundle, and any live session they hold stops reaching its hosts at
+                the next proxy poll.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel isDisabled={removeMember.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="danger"
+                isPending={removeMember.isPending}
+                onClick={async (event) => {
+                  event.preventDefault();
+                  await handleRemove();
+                }}
+              >
+                Revoke Access
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );
