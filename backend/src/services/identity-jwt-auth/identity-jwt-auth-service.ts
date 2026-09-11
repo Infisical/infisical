@@ -43,6 +43,7 @@ import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
+import { splitCommaSeparatedPolicyValues } from "../identity/identity-auth-policy-values";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -253,9 +254,9 @@ export const identityJwtAuthServiceFactory = ({
         }
 
         if (
-          !identityJwtAuth.boundAudiences
-            .split(", ")
-            .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
+          !splitCommaSeparatedPolicyValues(identityJwtAuth.boundAudiences).some((policyValue) =>
+            doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue)
+          )
         ) {
           throw new UnauthorizedError({
             message: "Access denied: token audience not allowed",
@@ -287,7 +288,11 @@ export const identityJwtAuthServiceFactory = ({
           }
 
           // handle both single and multi-valued claims
-          if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
+          if (
+            !splitCommaSeparatedPolicyValues(claimValue).some((claimEntry) =>
+              doesFieldValueMatchJwtPolicy(value, claimEntry)
+            )
+          ) {
             throw new UnauthorizedError({
               message: `Access denied: claim mismatch for field ${claimKey}`,
               detail: {
