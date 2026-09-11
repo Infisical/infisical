@@ -149,7 +149,7 @@ export interface TAccessApprovalPolicyDALFactory
     | undefined
   >;
   findPolicyByEnvIdAndSecretPath: (
-    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
     tx?: Knex
   ) => Promise<{
     name: string;
@@ -618,11 +618,11 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
   };
 
   const findPolicyByEnvIdAndSecretPath: TAccessApprovalPolicyDALFactory["findPolicyByEnvIdAndSecretPath"] = async (
-    { envIds, secretPath },
+    { envIds, secretPath, excludePolicyId },
     tx
   ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.AccessApprovalPolicy)
+      const query = (tx || db.replicaNode())(TableName.AccessApprovalPolicy)
         .join(
           TableName.AccessApprovalPolicyEnvironment,
           `${TableName.AccessApprovalPolicyEnvironment}.policyId`,
@@ -653,7 +653,11 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
             TableName.AccessApprovalPolicy
           )
         )
-        .whereNull(`${TableName.AccessApprovalPolicy}.deletedAt`)
+        .whereNull(`${TableName.AccessApprovalPolicy}.deletedAt`);
+      if (excludePolicyId) {
+        void query.whereNot(`${TableName.AccessApprovalPolicy}.id`, excludePolicyId);
+      }
+      const docs = await query
         .orderBy("deletedAt", "desc")
         .orderByRaw(`"deletedAt" IS NULL`)
         .select(selectAllTableCols(TableName.AccessApprovalPolicy))
