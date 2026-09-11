@@ -338,6 +338,7 @@ export const VercelSyncFields = () => {
                       const selected = availableApps.find((app) => app.id === id);
                       if (!selected || id === value) return;
                       onChange(id);
+                      setValue("destinationConfig.env", VercelEnvironmentType.Production);
                       setValue("destinationConfig.branch", "");
                       setValue("destinationConfig.teamId", selected.teamId);
                       setValue("destinationConfig.teamName", selected.teamName);

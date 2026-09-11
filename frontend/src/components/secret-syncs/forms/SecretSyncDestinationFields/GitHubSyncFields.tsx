@@ -115,7 +115,12 @@ export const GitHubSyncFields = () => {
                     isLoading={isOrganizationsPending && Boolean(connectionId)}
                     isDisabled={!connectionId}
                     value={organizations.find((org) => org.login === value) ?? null}
-                    onValueChange={(option) => onChange(option.login ?? null)}
+                    onValueChange={(option) => {
+                      if (option.login === value) return;
+
+                      onChange(option.login);
+                      setValue("destinationConfig.selectedRepositoryIds", []);
+                    }}
                     options={organizations}
                     placeholder="Select an organization..."
                     getOptionLabel={(option) => option.login}

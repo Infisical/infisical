@@ -177,6 +177,8 @@ export const AwsParameterStoreSyncOptionsFields = () => {
                     isDisabled={!connectionId}
                     value={kmsKeys.find((org) => org.alias === value) ?? null}
                     onValueChange={(option) => onChange(option.alias ?? null)}
+                    onClear={() => onChange(undefined)}
+                    clearAriaLabel="Clear KMS key"
                     isError={Boolean(error)}
                     emptyMessage={(inputValue) =>
                       inputValue ? "No KMS keys match your search." : "No KMS keys found."

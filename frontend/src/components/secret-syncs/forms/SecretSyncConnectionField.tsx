@@ -102,7 +102,6 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
                 onValueChange={(newValue) => {
                   if (newValue.id === "_create") {
                     handlePopUpOpen("addConnection");
-                    onChange(null);
                     // store for oauth callback connections
                     localStorage.setItem("secretSyncFormData", JSON.stringify(watch()));
                     if (callback) callback();
@@ -149,7 +148,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
         app={app}
         onComplete={(connection) => {
           if (connection) {
-            setValue("connection", connection);
+            setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
           }
         }}
       />
