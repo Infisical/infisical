@@ -7,6 +7,7 @@ import {
   DatabaseIcon,
   FileTextIcon,
   FolderOpenIcon,
+  IdCardIcon,
   InboxIcon,
   KeyIcon,
   KeyRoundIcon,
@@ -16,7 +17,6 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   ShieldIcon,
-  TicketIcon,
   UserIcon,
   UsersIcon
 } from "lucide-react";
@@ -642,7 +642,7 @@ const getProjectLandingItem = ({
       [ProjectType.KMS]: { label: "Overview", icon: KeyIcon },
       [ProjectType.SecretScanning]: { label: "Data Sources", icon: DatabaseIcon },
       [ProjectType.PAM]: { label: "Accounts", icon: FolderOpenIcon },
-      [ProjectType.AgentVault]: { label: "Sessions", icon: TicketIcon }
+      [ProjectType.AgentVault]: { label: "Sessions", icon: IdCardIcon }
     };
 
   return {
