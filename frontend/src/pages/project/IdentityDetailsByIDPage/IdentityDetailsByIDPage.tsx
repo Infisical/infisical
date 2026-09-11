@@ -45,7 +45,7 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectIdentityMembership,
@@ -90,6 +90,7 @@ const Page = () => {
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
   // Products where the underlying project is an internal detail the user never sees
   const isStandaloneProduct = isCertManager || isPam || isAgentVault;
+  const canAssumePrivileges = supportsAssumePrivileges(currentProject.type);
 
   let removeMenuItemLabel = "Remove From Project";
   if (isProjectIdentity) {
@@ -264,32 +265,34 @@ const Page = () => {
                   >
                     Copy Machine Identity ID
                   </DropdownMenuItem>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionIdentityActions.AssumePrivileges}
-                    a={subject(ProjectPermissionSub.Identity, {
-                      identityId: identityMembershipDetails?.identity.id
-                    })}
-                  >
-                    {(isAllowed) => (
-                      <Tooltip>
-                        <TooltipTrigger className="block w-full">
-                          <DropdownMenuItem
-                            isDisabled={!isAllowed}
-                            onClick={() => handlePopUpOpen("assumePrivileges")}
-                          >
-                            Assume Privileges
-                            {isAllowed && <InfoIcon className="text-muted" />}
-                          </DropdownMenuItem>
-                        </TooltipTrigger>
-                        {isAllowed && (
-                          <TooltipContent className="max-w-80" side="left">
-                            Assume the privileges of this machine identity, allowing you to
-                            replicate their access behavior.
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    )}
-                  </ProjectPermissionCan>
+                  {canAssumePrivileges && (
+                    <ProjectPermissionCan
+                      I={ProjectPermissionIdentityActions.AssumePrivileges}
+                      a={subject(ProjectPermissionSub.Identity, {
+                        identityId: identityMembershipDetails?.identity.id
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <Tooltip>
+                          <TooltipTrigger className="block w-full">
+                            <DropdownMenuItem
+                              isDisabled={!isAllowed}
+                              onClick={() => handlePopUpOpen("assumePrivileges")}
+                            >
+                              Assume Privileges
+                              {isAllowed && <InfoIcon className="text-muted" />}
+                            </DropdownMenuItem>
+                          </TooltipTrigger>
+                          {isAllowed && (
+                            <TooltipContent className="max-w-80" side="left">
+                              Assume the privileges of this machine identity, allowing you to
+                              replicate their access behavior.
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      )}
+                    </ProjectPermissionCan>
+                  )}
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Delete}
                     a={subject(ProjectPermissionSub.Identity, {

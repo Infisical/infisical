@@ -130,6 +130,11 @@ const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([ProjectType.PAM, ProjectT
 
 export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
 
+const PRODUCTS_WITHOUT_ASSUME_PRIVILEGES = new Set<ProjectType>([ProjectType.AgentVault]);
+
+export const supportsAssumePrivileges = (type: ProjectType) =>
+  !PRODUCTS_WITHOUT_ASSUME_PRIVILEGES.has(type);
+
 const ORG_SCOPED_PRODUCT_PATH_RE = /^\/organizations\/[^/]+\/(pam|agent-vault)(?:\/|$)/;
 
 export const getOrgScopedProductFromPath = (pathname: string): ProjectType | null => {
