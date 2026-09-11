@@ -106,9 +106,6 @@ const extractOrgId = () => {
   }
 };
 
-// A transport target filters independently of the logger instance, so both have to be set from
-// the same place. Pinning the target to info while the instance read the variable is what made
-// PINO_LOG_LEVEL=debug do nothing.
 const getLogLevel = () => process.env.PINO_LOG_LEVEL || "info";
 
 export const initLogger = () => {
