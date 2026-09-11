@@ -41,9 +41,17 @@ export const SupabaseSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select a project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-supabase-project-id-label"
+              htmlFor="secret-sync-supabase-project-id"
+            >
+              Select a project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-supabase-project-id-label"
+                aria-describedby={error ? "secret-sync-supabase-project-id-error" : undefined}
+                id="secret-sync-supabase-project-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -60,7 +68,7 @@ export const SupabaseSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-supabase-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

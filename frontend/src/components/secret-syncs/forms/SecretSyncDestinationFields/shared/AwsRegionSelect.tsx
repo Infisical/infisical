@@ -11,14 +11,18 @@ const renderRegion = (option: (typeof AWS_REGIONS)[number]) => (
 );
 
 type Props = {
+  id: string;
   value: string;
   onChange: (value: string | undefined) => void;
   isError?: boolean;
+  "aria-describedby"?: string;
+  "aria-labelledby"?: string;
 };
 
-export const AwsRegionSelect = ({ value, onChange, isError }: Props) => {
+export const AwsRegionSelect = ({ id, value, onChange, isError, ...props }: Props) => {
   return (
     <Combobox
+      id={id}
       value={AWS_REGIONS.find((region) => region.slug === value)}
       onValueChange={(option) => onChange(option.slug)}
       options={AWS_REGIONS}
@@ -30,6 +34,7 @@ export const AwsRegionSelect = ({ value, onChange, isError }: Props) => {
       renderOption={renderRegion}
       renderValue={renderRegion}
       modal
+      {...props}
     />
   );
 };

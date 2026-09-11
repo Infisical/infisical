@@ -46,7 +46,10 @@ export const WindmillSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-windmill-workspace-label"
+              htmlFor="secret-sync-windmill-workspace"
+            >
               Workspace
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -59,6 +62,9 @@ export const WindmillSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-windmill-workspace-label"
+                aria-describedby={error ? "secret-sync-windmill-workspace-error" : undefined}
+                id="secret-sync-windmill-workspace"
                 isError={Boolean(error)}
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -70,7 +76,7 @@ export const WindmillSyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-windmill-workspace-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

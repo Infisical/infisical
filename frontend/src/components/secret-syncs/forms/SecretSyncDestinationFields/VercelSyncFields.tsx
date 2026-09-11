@@ -191,9 +191,17 @@ export const VercelSyncFields = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Team</FieldLabel>
+                <FieldLabel
+                  id="secret-sync-vercel-team-id-label"
+                  htmlFor="secret-sync-vercel-team-id"
+                >
+                  Team
+                </FieldLabel>
                 <FieldContent>
                   <Combobox
+                    aria-labelledby="secret-sync-vercel-team-id-label"
+                    aria-describedby={error ? "secret-sync-vercel-team-id-error" : undefined}
+                    id="secret-sync-vercel-team-id"
                     isError={Boolean(error)}
                     value={value || null}
                     onValueChange={(id) => {
@@ -214,7 +222,7 @@ export const VercelSyncFields = () => {
                     ]}
                     modal
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="secret-sync-vercel-team-id-error" errors={[error]} />
                 </FieldContent>
               </Field>
             )}
@@ -225,9 +233,19 @@ export const VercelSyncFields = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Target Environments</FieldLabel>
+                <FieldLabel
+                  id="secret-sync-vercel-target-environments-label"
+                  htmlFor="secret-sync-vercel-target-environments"
+                >
+                  Target Environments
+                </FieldLabel>
                 <FieldContent>
                   <Combobox
+                    aria-labelledby="secret-sync-vercel-target-environments-label"
+                    aria-describedby={
+                      error ? "secret-sync-vercel-target-environments-error" : undefined
+                    }
+                    id="secret-sync-vercel-target-environments"
                     isError={Boolean(error)}
                     multiple
                     value={teamVercelEnvironments.filter((env) => (value || []).includes(env.slug))}
@@ -239,7 +257,7 @@ export const VercelSyncFields = () => {
                     getOptionKeywords={(option) => [option.slug]}
                     modal
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="secret-sync-vercel-target-environments-error" errors={[error]} />
                 </FieldContent>
               </Field>
             )}
@@ -250,9 +268,19 @@ export const VercelSyncFields = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Target Projects (Optional)</FieldLabel>
+                <FieldLabel
+                  id="secret-sync-vercel-target-projects-label"
+                  htmlFor="secret-sync-vercel-target-projects"
+                >
+                  Target Projects (Optional)
+                </FieldLabel>
                 <FieldContent>
                   <Combobox
+                    aria-labelledby="secret-sync-vercel-target-projects-label"
+                    aria-describedby={
+                      error ? "secret-sync-vercel-target-projects-error" : undefined
+                    }
+                    id="secret-sync-vercel-target-projects"
                     isError={Boolean(error)}
                     multiple
                     value={availableApps.filter((app) => (value || []).includes(app.id))}
@@ -264,7 +292,7 @@ export const VercelSyncFields = () => {
                     getOptionKeywords={(option) => [option.id]}
                     modal
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="secret-sync-vercel-target-projects-error" errors={[error]} />
                 </FieldContent>
               </Field>
             )}
@@ -303,7 +331,7 @@ export const VercelSyncFields = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>
+                <FieldLabel id="secret-sync-vercel-app-label" htmlFor="secret-sync-vercel-app">
                   Vercel Project
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -325,6 +353,9 @@ export const VercelSyncFields = () => {
                 </FieldLabel>
                 <FieldContent>
                   <Combobox
+                    aria-labelledby="secret-sync-vercel-app-label"
+                    aria-describedby={error ? "secret-sync-vercel-app-error" : undefined}
+                    id="secret-sync-vercel-app"
                     isError={Boolean(error)}
                     emptyMessage={(inputValue) => {
                       return inputValue
@@ -359,7 +390,7 @@ export const VercelSyncFields = () => {
                     }
                     modal
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="secret-sync-vercel-app-error" errors={[error]} />
                 </FieldContent>
               </Field>
             )}
@@ -370,9 +401,14 @@ export const VercelSyncFields = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Vercel Project Environment</FieldLabel>
+                <FieldLabel id="secret-sync-vercel-env-label" htmlFor="secret-sync-vercel-env">
+                  Vercel Project Environment
+                </FieldLabel>
                 <FieldContent>
                   <Combobox
+                    aria-labelledby="secret-sync-vercel-env-label"
+                    aria-describedby={error ? "secret-sync-vercel-env-error" : undefined}
+                    id="secret-sync-vercel-env"
                     isError={Boolean(error)}
                     isDisabled={!connectionId || !currentApp}
                     value={
@@ -401,7 +437,7 @@ export const VercelSyncFields = () => {
                     getOptionKeywords={(option) => [option.key || ""]}
                     modal
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="secret-sync-vercel-env-error" errors={[error]} />
                 </FieldContent>
               </Field>
             )}

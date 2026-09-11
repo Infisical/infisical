@@ -119,11 +119,13 @@ export const HasuraCloudConnectionForm = ({ appConnection, onSubmit }: Props) =>
                 </Tooltip>
               </FieldLabel>
               <SecretInput
+                aria-describedby={error ? "access-token-error" : undefined}
+                id="access-token"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="access-token-error" errors={[error]} />
             </Field>
           )}
         />

@@ -41,9 +41,19 @@ export const DigitalOceanAppPlatformSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select an app</FieldLabel>
+            <FieldLabel
+              id="secret-sync-digital-ocean-app-platform-app-id-label"
+              htmlFor="secret-sync-digital-ocean-app-platform-app-id"
+            >
+              Select an app
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-digital-ocean-app-platform-app-id-label"
+                aria-describedby={
+                  error ? "secret-sync-digital-ocean-app-platform-app-id-error" : undefined
+                }
+                id="secret-sync-digital-ocean-app-platform-app-id"
                 isError={Boolean(error)}
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -60,7 +70,10 @@ export const DigitalOceanAppPlatformSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError
+                id="secret-sync-digital-ocean-app-platform-app-id-error"
+                errors={[error]}
+              />
             </FieldContent>
           </Field>
         )}

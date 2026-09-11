@@ -122,14 +122,23 @@ export const SqlConnectionFields = ({
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="flex-1">
-                  <FieldLabel>Password</FieldLabel>
+                  <FieldLabel htmlFor="app-connection-sql-connection-fields-password">
+                    Password
+                  </FieldLabel>
                   <SecretInput
+                    aria-describedby={
+                      error ? "app-connection-sql-connection-fields-password-error" : undefined
+                    }
+                    id="app-connection-sql-connection-fields-password"
                     isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     isDisabled={isPlatformManagedCredentials}
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError
+                    id="app-connection-sql-connection-fields-password-error"
+                    errors={[error]}
+                  />
                 </Field>
               )}
             />

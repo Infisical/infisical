@@ -60,9 +60,17 @@ export const RailwaySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select a project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-railway-project-id-label"
+              htmlFor="secret-sync-railway-project-id"
+            >
+              Select a project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-railway-project-id-label"
+                aria-describedby={error ? "secret-sync-railway-project-id-error" : undefined}
+                id="secret-sync-railway-project-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -79,7 +87,7 @@ export const RailwaySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-railway-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -90,9 +98,17 @@ export const RailwaySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select an environment</FieldLabel>
+            <FieldLabel
+              id="secret-sync-railway-environment-id-label"
+              htmlFor="secret-sync-railway-environment-id"
+            >
+              Select an environment
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-railway-environment-id-label"
+                aria-describedby={error ? "secret-sync-railway-environment-id-error" : undefined}
+                id="secret-sync-railway-environment-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -109,7 +125,7 @@ export const RailwaySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-railway-environment-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -121,7 +137,10 @@ export const RailwaySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-railway-service-id-label"
+              htmlFor="secret-sync-railway-service-id"
+            >
               Select a service
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -134,6 +153,13 @@ export const RailwaySyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-railway-service-id-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-railway-service-id-description secret-sync-railway-service-id-error"
+                    : "secret-sync-railway-service-id-description"
+                }
+                id="secret-sync-railway-service-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -150,10 +176,10 @@ export const RailwaySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-railway-service-id-description">
                 Scope your secrets to a specific service within the environment.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-railway-service-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

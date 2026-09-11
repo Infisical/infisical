@@ -186,12 +186,13 @@ export const ExternalInfisicalConnectionForm = ({ appConnection, onSubmit }: Pro
                 Machine Identity Client Secret
               </FieldLabel>
               <SecretInput
+                aria-describedby={error ? "machine-identity-client-secret-error" : undefined}
                 isError={Boolean(error)}
                 id="machine-identity-client-secret"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="machine-identity-client-secret-error" errors={[error]} />
             </Field>
           )}
         />

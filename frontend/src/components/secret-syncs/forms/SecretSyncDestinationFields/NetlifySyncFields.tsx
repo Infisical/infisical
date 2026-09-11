@@ -62,9 +62,17 @@ export const NetlifySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Account</FieldLabel>
+            <FieldLabel
+              id="secret-sync-netlify-account-id-label"
+              htmlFor="secret-sync-netlify-account-id"
+            >
+              Account
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-netlify-account-id-label"
+                aria-describedby={error ? "secret-sync-netlify-account-id-error" : undefined}
+                id="secret-sync-netlify-account-id"
                 isError={Boolean(error)}
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -83,7 +91,7 @@ export const NetlifySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-netlify-account-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -93,9 +101,21 @@ export const NetlifySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Site (Optional)</FieldLabel>
+            <FieldLabel
+              id="secret-sync-netlify-site-id-label"
+              htmlFor="secret-sync-netlify-site-id"
+            >
+              Site (Optional)
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-netlify-site-id-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-netlify-site-id-description secret-sync-netlify-site-id-error"
+                    : "secret-sync-netlify-site-id-description"
+                }
+                id="secret-sync-netlify-site-id"
                 isError={Boolean(error)}
                 isLoading={isSitesLoading && Boolean(accountId)}
                 isDisabled={!accountId}
@@ -115,10 +135,10 @@ export const NetlifySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-netlify-site-id-description">
                 If you do not select a site, the secrets will be synced to all sites in the account.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-netlify-site-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -128,9 +148,21 @@ export const NetlifySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Context (Optional)</FieldLabel>
+            <FieldLabel
+              id="secret-sync-netlify-context-label"
+              htmlFor="secret-sync-netlify-context"
+            >
+              Context (Optional)
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-netlify-context-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-netlify-context-description secret-sync-netlify-context-error"
+                    : "secret-sync-netlify-context-description"
+                }
+                id="secret-sync-netlify-context"
                 isError={Boolean(error)}
                 isDisabled={!accountId}
                 value={contexts.find((p) => p.value === value) ?? undefined}
@@ -143,12 +175,12 @@ export const NetlifySyncFields = () => {
                 getOptionKeywords={(option) => [option.value]}
                 modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-netlify-context-description">
                 Avoid configuring multiple syncs with overlapping contexts for the same site.
                 &quot;All Contexts&quot; overlaps with every context. Overlapping syncs may delete
                 each other&apos;s secrets.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-netlify-context-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

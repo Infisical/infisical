@@ -146,17 +146,20 @@ export const DigiCertConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="api-key">CertCentral API Key</FieldLabel>
               <SecretInput
+                aria-describedby={
+                  error ? "api-key-description api-key-error" : "api-key-description"
+                }
                 isError={Boolean(error)}
                 id="api-key"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
               {!error && (
-                <FieldDescription>
+                <FieldDescription id="api-key-description">
                   Generate an API key in CertCentral under Automation &gt; API Keys.
                 </FieldDescription>
               )}
-              <FieldError errors={[error]} />
+              <FieldError id="api-key-error" errors={[error]} />
             </Field>
           )}
         />

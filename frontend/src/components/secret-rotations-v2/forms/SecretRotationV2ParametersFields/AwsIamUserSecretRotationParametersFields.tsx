@@ -84,13 +84,21 @@ export const AwsIamUserSecretRotationParametersFields = () => {
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field data-invalid={Boolean(error)}>
             <FieldLabelWithTooltip
+              id="aws-region-label"
               htmlFor="aws-region"
               tooltip="Required only if no global scope is set."
             >
               Region <span className="font-normal text-muted">(optional)</span>
             </FieldLabelWithTooltip>
-            <AwsRegionSelect value={value ?? ""} onChange={onChange} isError={Boolean(error)} />
-            <FieldError>{error?.message}</FieldError>
+            <AwsRegionSelect
+              id="aws-region"
+              value={value ?? ""}
+              onChange={onChange}
+              isError={Boolean(error)}
+              aria-labelledby="aws-region-label"
+              aria-describedby={error ? "aws-region-error" : undefined}
+            />
+            <FieldError id="aws-region-error">{error?.message}</FieldError>
           </Field>
         )}
       />

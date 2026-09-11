@@ -123,11 +123,13 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Tooltip>
               </FieldLabel>
               <SecretInput
+                aria-describedby={error ? "private-key-error" : undefined}
+                id="private-key"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="private-key-error" errors={[error]} />
             </Field>
           )}
         />
@@ -150,11 +152,13 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Tooltip>
               </FieldLabel>
               <SecretInput
+                aria-describedby={error ? "certificate-error" : undefined}
+                id="certificate"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="certificate-error" errors={[error]} />
             </Field>
           )}
         />

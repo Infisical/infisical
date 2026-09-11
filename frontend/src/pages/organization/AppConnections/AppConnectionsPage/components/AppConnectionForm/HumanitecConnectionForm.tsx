@@ -106,13 +106,17 @@ export const HumanitecConnectionForm = ({ appConnection, onSubmit }: Props) => {
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel>Service API Token</FieldLabel>
+              <FieldLabel htmlFor="app-connection-humanitec-api-token">
+                Service API Token
+              </FieldLabel>
               <SecretInput
+                aria-describedby={error ? "app-connection-humanitec-api-token-error" : undefined}
+                id="app-connection-humanitec-api-token"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="app-connection-humanitec-api-token-error" errors={[error]} />
             </Field>
           )}
         />

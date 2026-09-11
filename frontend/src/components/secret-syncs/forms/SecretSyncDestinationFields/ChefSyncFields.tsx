@@ -51,9 +51,17 @@ export const ChefSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Data Bag</FieldLabel>
+            <FieldLabel
+              id="secret-sync-chef-data-bag-name-label"
+              htmlFor="secret-sync-chef-data-bag-name"
+            >
+              Data Bag
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-chef-data-bag-name-label"
+                aria-describedby={error ? "secret-sync-chef-data-bag-name-error" : undefined}
+                id="secret-sync-chef-data-bag-name"
                 isError={Boolean(error)}
                 isLoading={isDataBagsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -69,7 +77,7 @@ export const ChefSyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-chef-data-bag-name-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -80,9 +88,17 @@ export const ChefSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Data Bag Item</FieldLabel>
+            <FieldLabel
+              id="secret-sync-chef-data-bag-item-name-label"
+              htmlFor="secret-sync-chef-data-bag-item-name"
+            >
+              Data Bag Item
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-chef-data-bag-item-name-label"
+                aria-describedby={error ? "secret-sync-chef-data-bag-item-name-error" : undefined}
+                id="secret-sync-chef-data-bag-item-name"
                 isError={Boolean(error)}
                 isLoading={isDataBagItemsLoading && Boolean(connectionId && dataBagName)}
                 isDisabled={!connectionId || !dataBagName}
@@ -97,7 +113,7 @@ export const ChefSyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-chef-data-bag-item-name-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

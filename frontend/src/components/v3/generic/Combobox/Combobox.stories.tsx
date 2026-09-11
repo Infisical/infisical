@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
 
 import { Button } from "../Button";
 import {
@@ -237,9 +238,12 @@ const MultipleRender = () => {
 
   return (
     <Field>
-      <FieldLabel htmlFor="combobox-projects">Projects</FieldLabel>
+      <FieldLabel id="combobox-projects-label" htmlFor="combobox-projects">
+        Projects
+      </FieldLabel>
       <StoryCombobox
         id="combobox-projects"
+        aria-labelledby="combobox-projects-label"
         multiple
         options={PROJECTS}
         value={value}
@@ -262,7 +266,16 @@ const MultipleRender = () => {
  */
 export const Multiple: Story = {
   name: "Multiple: Chips",
-  render: () => <MultipleRender />
+  render: () => <MultipleRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const combobox = canvas.getByRole("combobox", { name: "Projects" });
+
+    await userEvent.click(canvas.getByText("Projects"));
+    await userEvent.type(combobox, "Project 3");
+    await expect(combobox).toHaveFocus();
+    await expect(combobox).toHaveAccessibleName("Projects");
+  }
 };
 
 const SelectAllRender = () => {
@@ -460,9 +473,12 @@ export const States: Story = {
         />
       </Field>
       <Field data-disabled="true">
-        <FieldLabel htmlFor="combobox-disabled-projects">Projects</FieldLabel>
+        <FieldLabel id="combobox-disabled-projects-label" htmlFor="combobox-disabled-projects">
+          Projects
+        </FieldLabel>
         <StoryCombobox
           id="combobox-disabled-projects"
+          aria-labelledby="combobox-disabled-projects-label"
           multiple
           options={PROJECTS}
           value={PROJECTS.slice(0, 2)}

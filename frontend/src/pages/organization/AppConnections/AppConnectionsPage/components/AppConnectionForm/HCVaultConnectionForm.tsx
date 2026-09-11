@@ -241,9 +241,14 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
             shouldUnregister
             render={({ field, fieldState: { error } }) => (
               <Field className="mb-4">
-                <FieldLabel>Access Token</FieldLabel>
-                <SecretInput isError={Boolean(error)} {...field} />
-                <FieldError errors={[error]} />
+                <FieldLabel htmlFor="app-connection-hcvault-access-token">Access Token</FieldLabel>
+                <SecretInput
+                  aria-describedby={error ? "app-connection-hcvault-access-token-error" : undefined}
+                  id="app-connection-hcvault-access-token"
+                  isError={Boolean(error)}
+                  {...field}
+                />
+                <FieldError id="app-connection-hcvault-access-token-error" errors={[error]} />
               </Field>
             )}
           />
@@ -272,9 +277,14 @@ export const HCVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
               shouldUnregister
               render={({ field, fieldState: { error } }) => (
                 <Field className="mb-4">
-                  <FieldLabel>Secret ID</FieldLabel>
-                  <SecretInput isError={Boolean(error)} {...field} />
-                  <FieldError errors={[error]} />
+                  <FieldLabel htmlFor="app-connection-hcvault-secret-id">Secret ID</FieldLabel>
+                  <SecretInput
+                    aria-describedby={error ? "app-connection-hcvault-secret-id-error" : undefined}
+                    id="app-connection-hcvault-secret-id"
+                    isError={Boolean(error)}
+                    {...field}
+                  />
+                  <FieldError id="app-connection-hcvault-secret-id-error" errors={[error]} />
                 </Field>
               )}
             />

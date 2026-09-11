@@ -155,11 +155,13 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
               <Field className="mb-4">
                 <FieldLabel htmlFor="token">Service Access Token</FieldLabel>
                 <SecretInput
+                  aria-describedby={error ? "token-error" : undefined}
+                  id="token"
                   isError={Boolean(error)}
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="token-error" errors={[error]} />
               </Field>
             )}
           />
@@ -173,11 +175,13 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 <Field className="mb-4">
                   <FieldLabel htmlFor="api-key">API Key</FieldLabel>
                   <SecretInput
+                    aria-describedby={error ? "api-key-error" : undefined}
+                    id="api-key"
                     isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="api-key-error" errors={[error]} />
                 </Field>
               )}
             />
@@ -189,11 +193,13 @@ export const DatadogConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 <Field className="mb-4">
                   <FieldLabel htmlFor="application-key">Application Key</FieldLabel>
                   <SecretInput
+                    aria-describedby={error ? "application-key-error" : undefined}
+                    id="application-key"
                     isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="application-key-error" errors={[error]} />
                 </Field>
               )}
             />

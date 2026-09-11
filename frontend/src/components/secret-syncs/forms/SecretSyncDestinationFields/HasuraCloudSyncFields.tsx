@@ -39,9 +39,17 @@ export const HasuraCloudSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select a project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-hasura-cloud-project-id-label"
+              htmlFor="secret-sync-hasura-cloud-project-id"
+            >
+              Select a project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-hasura-cloud-project-id-label"
+                aria-describedby={error ? "secret-sync-hasura-cloud-project-id-error" : undefined}
+                id="secret-sync-hasura-cloud-project-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -58,7 +66,7 @@ export const HasuraCloudSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-hasura-cloud-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

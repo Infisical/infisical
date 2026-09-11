@@ -114,9 +114,17 @@ export const RenderSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Service</FieldLabel>
+              <FieldLabel
+                id="secret-sync-render-service-id-label"
+                htmlFor="secret-sync-render-service-id"
+              >
+                Service
+              </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-render-service-id-label"
+                  aria-describedby={error ? "secret-sync-render-service-id-error" : undefined}
+                  id="secret-sync-render-service-id"
                   isError={Boolean(error)}
                   isLoading={isServicesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
@@ -132,7 +140,7 @@ export const RenderSyncFields = () => {
                   getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-render-service-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}
@@ -145,9 +153,19 @@ export const RenderSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Environment Group</FieldLabel>
+              <FieldLabel
+                id="secret-sync-render-environment-group-id-label"
+                htmlFor="secret-sync-render-environment-group-id"
+              >
+                Environment Group
+              </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-render-environment-group-id-label"
+                  aria-describedby={
+                    error ? "secret-sync-render-environment-group-id-error" : undefined
+                  }
+                  id="secret-sync-render-environment-group-id"
                   isError={Boolean(error)}
                   isLoading={isGroupsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
@@ -163,7 +181,7 @@ export const RenderSyncFields = () => {
                   getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-render-environment-group-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

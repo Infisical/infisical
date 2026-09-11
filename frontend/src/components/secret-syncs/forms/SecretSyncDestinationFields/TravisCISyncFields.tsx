@@ -52,9 +52,17 @@ export const TravisCISyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Repository</FieldLabel>
+            <FieldLabel
+              id="secret-sync-travis-ci-repository-id-label"
+              htmlFor="secret-sync-travis-ci-repository-id"
+            >
+              Repository
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-travis-ci-repository-id-label"
+                aria-describedby={error ? "secret-sync-travis-ci-repository-id-error" : undefined}
+                id="secret-sync-travis-ci-repository-id"
                 isError={Boolean(error)}
                 isLoading={isRepositoriesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -72,7 +80,7 @@ export const TravisCISyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-travis-ci-repository-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -82,9 +90,17 @@ export const TravisCISyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Branch (Optional)</FieldLabel>
+            <FieldLabel
+              id="secret-sync-travis-ci-branch-label"
+              htmlFor="secret-sync-travis-ci-branch"
+            >
+              Branch (Optional)
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-travis-ci-branch-label"
+                aria-describedby={error ? "secret-sync-travis-ci-branch-error" : undefined}
+                id="secret-sync-travis-ci-branch"
                 isError={Boolean(error)}
                 isLoading={
                   isBranchesPending && Boolean(connectionId) && Boolean(currentRepositoryId)
@@ -104,7 +120,7 @@ export const TravisCISyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-travis-ci-branch-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

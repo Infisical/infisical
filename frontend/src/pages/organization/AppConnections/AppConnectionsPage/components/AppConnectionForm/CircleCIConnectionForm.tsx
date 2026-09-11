@@ -155,11 +155,13 @@ export const CircleCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Tooltip>
               </FieldLabel>
               <SecretInput
+                aria-describedby={error ? "api-token-error" : undefined}
+                id="api-token"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="api-token-error" errors={[error]} />
             </Field>
           )}
         />

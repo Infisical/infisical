@@ -125,13 +125,15 @@ export const AwsConnectionForm = ({ appConnection, onSubmit }: Props) => {
               shouldUnregister
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="mb-4">
-                  <FieldLabel>Role ARN</FieldLabel>
+                  <FieldLabel htmlFor="app-connection-aws-role-arn">Role ARN</FieldLabel>
                   <SecretInput
+                    aria-describedby={error ? "app-connection-aws-role-arn-error" : undefined}
+                    id="app-connection-aws-role-arn"
                     isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="app-connection-aws-role-arn-error" errors={[error]} />
                 </Field>
               )}
             />
@@ -190,13 +192,19 @@ export const AwsConnectionForm = ({ appConnection, onSubmit }: Props) => {
               shouldUnregister
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="mb-4">
-                  <FieldLabel>Secret Access Key</FieldLabel>
+                  <FieldLabel htmlFor="app-connection-aws-secret-access-key">
+                    Secret Access Key
+                  </FieldLabel>
                   <SecretInput
+                    aria-describedby={
+                      error ? "app-connection-aws-secret-access-key-error" : undefined
+                    }
+                    id="app-connection-aws-secret-access-key"
                     isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="app-connection-aws-secret-access-key-error" errors={[error]} />
                 </Field>
               )}
             />

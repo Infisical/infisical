@@ -57,9 +57,17 @@ export const ChecklySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select an account</FieldLabel>
+            <FieldLabel
+              id="secret-sync-checkly-account-id-label"
+              htmlFor="secret-sync-checkly-account-id"
+            >
+              Select an account
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-checkly-account-id-label"
+                aria-describedby={error ? "secret-sync-checkly-account-id-error" : undefined}
+                id="secret-sync-checkly-account-id"
                 isError={Boolean(error)}
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -78,7 +86,7 @@ export const ChecklySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-checkly-account-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -89,9 +97,21 @@ export const ChecklySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select a group (Optional)</FieldLabel>
+            <FieldLabel
+              id="secret-sync-checkly-group-id-label"
+              htmlFor="secret-sync-checkly-group-id"
+            >
+              Select a group (Optional)
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-checkly-group-id-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-checkly-group-id-description secret-sync-checkly-group-id-error"
+                    : "secret-sync-checkly-group-id-description"
+                }
+                id="secret-sync-checkly-group-id"
                 isError={Boolean(error)}
                 isLoading={isGroupsLoading && Boolean(connectionId && accountId)}
                 isDisabled={!connectionId || !accountId}
@@ -112,10 +132,10 @@ export const ChecklySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-checkly-group-id-description">
                 If provided, secrets will be scoped to a check group instead
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-checkly-group-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

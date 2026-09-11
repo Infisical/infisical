@@ -58,9 +58,14 @@ export const HumanitecSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel id="secret-sync-humanitec-org-label" htmlFor="secret-sync-humanitec-org">
+              Organization
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-humanitec-org-label"
+                aria-describedby={error ? "secret-sync-humanitec-org-error" : undefined}
+                id="secret-sync-humanitec-org"
                 isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -77,7 +82,7 @@ export const HumanitecSyncFields = () => {
                 getOptionKeywords={(option) => [option.id.toString()]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-humanitec-org-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -87,7 +92,7 @@ export const HumanitecSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel id="secret-sync-humanitec-app-label" htmlFor="secret-sync-humanitec-app">
               App
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -101,6 +106,9 @@ export const HumanitecSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-humanitec-app-label"
+                aria-describedby={error ? "secret-sync-humanitec-app-error" : undefined}
+                id="secret-sync-humanitec-app"
                 isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                 isDisabled={!connectionId || !currentOrg}
@@ -122,7 +130,7 @@ export const HumanitecSyncFields = () => {
                 getOptionKeywords={(option) => [option.id.toString()]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-humanitec-app-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -189,9 +197,14 @@ export const HumanitecSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Environment</FieldLabel>
+              <FieldLabel id="secret-sync-humanitec-env-label" htmlFor="secret-sync-humanitec-env">
+                Environment
+              </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-humanitec-env-label"
+                  aria-describedby={error ? "secret-sync-humanitec-env-error" : undefined}
+                  id="secret-sync-humanitec-env"
                   isError={Boolean(error)}
                   isLoading={
                     isOrganizationsPending &&
@@ -209,7 +222,7 @@ export const HumanitecSyncFields = () => {
                   getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-humanitec-env-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

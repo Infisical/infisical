@@ -68,9 +68,17 @@ export const BitbucketSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Bitbucket Workspace</FieldLabel>
+            <FieldLabel
+              id="secret-sync-bitbucket-workspace-slug-label"
+              htmlFor="secret-sync-bitbucket-workspace-slug"
+            >
+              Bitbucket Workspace
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-bitbucket-workspace-slug-label"
+                aria-describedby={error ? "secret-sync-bitbucket-workspace-slug-error" : undefined}
+                id="secret-sync-bitbucket-workspace-slug"
                 isError={Boolean(error)}
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -93,7 +101,7 @@ export const BitbucketSyncFields = () => {
                 }
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-bitbucket-workspace-slug-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -104,9 +112,17 @@ export const BitbucketSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Bitbucket Repository</FieldLabel>
+            <FieldLabel
+              id="secret-sync-bitbucket-repository-slug-label"
+              htmlFor="secret-sync-bitbucket-repository-slug"
+            >
+              Bitbucket Repository
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-bitbucket-repository-slug-label"
+                aria-describedby={error ? "secret-sync-bitbucket-repository-slug-error" : undefined}
+                id="secret-sync-bitbucket-repository-slug"
                 isError={Boolean(error)}
                 isLoading={isRepositoriesLoading && Boolean(workspace)}
                 isDisabled={!workspace}
@@ -132,7 +148,7 @@ export const BitbucketSyncFields = () => {
                 }
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-bitbucket-repository-slug-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -143,9 +159,17 @@ export const BitbucketSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Bitbucket Deployment Environment (Optional)</FieldLabel>
+            <FieldLabel
+              id="secret-sync-bitbucket-environment-id-label"
+              htmlFor="secret-sync-bitbucket-environment-id"
+            >
+              Bitbucket Deployment Environment (Optional)
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-bitbucket-environment-id-label"
+                aria-describedby={error ? "secret-sync-bitbucket-environment-id-error" : undefined}
+                id="secret-sync-bitbucket-environment-id"
                 isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(repository)}
                 isDisabled={!repository}
@@ -163,7 +187,7 @@ export const BitbucketSyncFields = () => {
                 getOptionKeywords={(option) => [option]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-bitbucket-environment-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

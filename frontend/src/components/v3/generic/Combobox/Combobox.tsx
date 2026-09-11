@@ -4,6 +4,7 @@ import { CheckIcon, ChevronDownIcon, Loader2Icon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 import { useScrollEdges } from "../../utils/useScrollEdges";
+import { getComboboxInputAriaLabel } from "./combobox-accessibility";
 import { mergeComboboxItems } from "./combobox-items";
 
 import "../../utils/ScrollEdgeFade.css";
@@ -590,6 +591,8 @@ const MultipleCombobox = <TOption,>({
   shouldFilter = true,
   includeMissingSelectedOptions = true,
   id,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
   onKeyDown,
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
@@ -749,7 +752,13 @@ const MultipleCombobox = <TOption,>({
           <ComboboxPrimitive.Input
             ref={inputRef}
             id={id}
-            aria-label={searchAriaLabel}
+            aria-label={getComboboxInputAriaLabel({
+              ariaLabel,
+              ariaLabelledBy,
+              id,
+              searchAriaLabel
+            })}
+            aria-labelledby={ariaLabelledBy}
             aria-invalid={isError || undefined}
             aria-busy={isLoading || undefined}
             placeholder={value.length === 0 ? placeholder : undefined}

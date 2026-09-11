@@ -56,7 +56,10 @@ export const NorthflankSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-northflank-project-id-label"
+              htmlFor="secret-sync-northflank-project-id"
+            >
               Project
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -70,6 +73,9 @@ export const NorthflankSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-northflank-project-id-label"
+                aria-describedby={error ? "secret-sync-northflank-project-id-error" : undefined}
+                id="secret-sync-northflank-project-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -88,7 +94,7 @@ export const NorthflankSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-northflank-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -98,7 +104,10 @@ export const NorthflankSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-northflank-secret-group-id-label"
+              htmlFor="secret-sync-northflank-secret-group-id"
+            >
               Secret Group
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -112,6 +121,11 @@ export const NorthflankSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-northflank-secret-group-id-label"
+                aria-describedby={
+                  error ? "secret-sync-northflank-secret-group-id-error" : undefined
+                }
+                id="secret-sync-northflank-secret-group-id"
                 isError={Boolean(error)}
                 isLoading={isSecretGroupsLoading && Boolean(projectId)}
                 isDisabled={!projectId}
@@ -128,7 +142,7 @@ export const NorthflankSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-northflank-secret-group-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

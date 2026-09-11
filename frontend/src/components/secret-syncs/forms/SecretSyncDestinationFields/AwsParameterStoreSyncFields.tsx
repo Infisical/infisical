@@ -36,7 +36,10 @@ export const AwsParameterStoreSyncFields = () => {
         name="destinationConfig.region"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-aws-parameter-store-region-label"
+              htmlFor="secret-sync-aws-parameter-store-region"
+            >
               Region
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -49,8 +52,17 @@ export const AwsParameterStoreSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <AwsRegionSelect value={value} onChange={onChange} isError={Boolean(error)} />
-              <FieldError errors={[error]} />
+              <AwsRegionSelect
+                id="secret-sync-aws-parameter-store-region"
+                value={value}
+                onChange={onChange}
+                isError={Boolean(error)}
+                aria-labelledby="secret-sync-aws-parameter-store-region-label"
+                aria-describedby={
+                  error ? "secret-sync-aws-parameter-store-region-error" : undefined
+                }
+              />
+              <FieldError id="secret-sync-aws-parameter-store-region-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

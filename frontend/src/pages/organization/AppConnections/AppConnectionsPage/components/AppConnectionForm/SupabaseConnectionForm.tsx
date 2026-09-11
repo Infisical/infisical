@@ -141,12 +141,13 @@ export const SupabaseConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="access-key">Access Key Value</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "access-key-error" : undefined}
                 isError={Boolean(error)}
                 id="access-key"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="access-key-error" errors={[error]} />
             </Field>
           )}
         />

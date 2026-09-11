@@ -148,11 +148,13 @@ export const DatabricksConnectionForm = ({ appConnection, onSubmit }: Props) => 
             <Field className="mb-4">
               <FieldLabel htmlFor="client-secret">Client Secret</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "client-secret-error" : undefined}
+                id="client-secret"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="client-secret-error" errors={[error]} />
             </Field>
           )}
         />

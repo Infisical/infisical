@@ -52,7 +52,10 @@ export const TeamCitySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-team-city-project-label"
+              htmlFor="secret-sync-team-city-project"
+            >
               Project
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -65,6 +68,9 @@ export const TeamCitySyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-team-city-project-label"
+                aria-describedby={error ? "secret-sync-team-city-project-error" : undefined}
+                id="secret-sync-team-city-project"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -80,7 +86,7 @@ export const TeamCitySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-team-city-project-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -91,7 +97,10 @@ export const TeamCitySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-team-city-build-config-label"
+              htmlFor="secret-sync-team-city-build-config"
+            >
               Build Configuration (Optional)
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -105,6 +114,13 @@ export const TeamCitySyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-team-city-build-config-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-team-city-build-config-description secret-sync-team-city-build-config-error"
+                    : "secret-sync-team-city-build-config-description"
+                }
+                id="secret-sync-team-city-build-config"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !selectedProject}
@@ -121,10 +137,10 @@ export const TeamCitySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-team-city-build-config-description">
                 Not selecting a Build Configuration will sync your secrets to the entire project.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-team-city-build-config-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

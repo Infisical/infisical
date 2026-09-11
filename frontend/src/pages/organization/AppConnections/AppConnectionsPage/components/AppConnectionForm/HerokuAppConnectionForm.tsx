@@ -251,11 +251,13 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                   </Tooltip>
                 </FieldLabel>
                 <SecretInput
+                  aria-describedby={error ? "heroku-auth-token-error" : undefined}
+                  id="heroku-auth-token"
                   isError={Boolean(error)}
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="heroku-auth-token-error" errors={[error]} />
               </Field>
             )}
           />

@@ -109,13 +109,15 @@ export const NorthflankConnectionForm = ({ appConnection, onSubmit }: Props) => 
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel>API Token</FieldLabel>
+              <FieldLabel htmlFor="app-connection-northflank-api-token">API Token</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "app-connection-northflank-api-token-error" : undefined}
+                id="app-connection-northflank-api-token"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="app-connection-northflank-api-token-error" errors={[error]} />
             </Field>
           )}
         />

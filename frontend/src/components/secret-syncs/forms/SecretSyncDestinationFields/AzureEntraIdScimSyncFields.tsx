@@ -53,7 +53,10 @@ export const AzureEntraIdScimSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-azure-entra-id-scim-service-principal-id-label"
+              htmlFor="secret-sync-azure-entra-id-scim-service-principal-id"
+            >
               SCIM Service Principal
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -67,6 +70,11 @@ export const AzureEntraIdScimSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-azure-entra-id-scim-service-principal-id-label"
+                aria-describedby={
+                  error ? "secret-sync-azure-entra-id-scim-service-principal-id-error" : undefined
+                }
+                id="secret-sync-azure-entra-id-scim-service-principal-id"
                 isError={Boolean(error)}
                 value={value || null}
                 onValueChange={(option) => {
@@ -98,7 +106,10 @@ export const AzureEntraIdScimSyncFields = () => {
                 }
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError
+                id="secret-sync-azure-entra-id-scim-service-principal-id-error"
+                errors={[error]}
+              />
             </FieldContent>
           </Field>
         )}

@@ -46,9 +46,17 @@ export const Cloud66SyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Stack</FieldLabel>
+            <FieldLabel
+              id="secret-sync-cloud66-stack-id-label"
+              htmlFor="secret-sync-cloud66-stack-id"
+            >
+              Stack
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-cloud66-stack-id-label"
+                aria-describedby={error ? "secret-sync-cloud66-stack-id-error" : undefined}
+                id="secret-sync-cloud66-stack-id"
                 isError={Boolean(error)}
                 isLoading={isStacksLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -65,7 +73,7 @@ export const Cloud66SyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-cloud66-stack-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

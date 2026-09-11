@@ -67,7 +67,10 @@ export const OCIVaultSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-ocivault-compartment-ocid-label"
+              htmlFor="secret-sync-ocivault-compartment-ocid"
+            >
               Compartment
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -80,6 +83,9 @@ export const OCIVaultSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-ocivault-compartment-ocid-label"
+                aria-describedby={error ? "secret-sync-ocivault-compartment-ocid-error" : undefined}
+                id="secret-sync-ocivault-compartment-ocid"
                 isError={Boolean(error)}
                 isLoading={isCompartmentsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -96,7 +102,7 @@ export const OCIVaultSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-ocivault-compartment-ocid-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -107,7 +113,10 @@ export const OCIVaultSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-ocivault-vault-ocid-label"
+              htmlFor="secret-sync-ocivault-vault-ocid"
+            >
               Vault
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -121,6 +130,9 @@ export const OCIVaultSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-ocivault-vault-ocid-label"
+                aria-describedby={error ? "secret-sync-ocivault-vault-ocid-error" : undefined}
+                id="secret-sync-ocivault-vault-ocid"
                 isError={Boolean(error)}
                 isLoading={isVaultsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !selectedCompartment}
@@ -136,7 +148,7 @@ export const OCIVaultSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-ocivault-vault-ocid-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -147,7 +159,10 @@ export const OCIVaultSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-ocivault-key-ocid-label"
+              htmlFor="secret-sync-ocivault-key-ocid"
+            >
               Encryption Key
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -161,6 +176,9 @@ export const OCIVaultSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-ocivault-key-ocid-label"
+                aria-describedby={error ? "secret-sync-ocivault-key-ocid-error" : undefined}
+                id="secret-sync-ocivault-key-ocid"
                 isError={Boolean(error)}
                 isLoading={isKeysLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !selectedCompartment || !selectedVault}
@@ -175,7 +193,7 @@ export const OCIVaultSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-ocivault-key-ocid-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

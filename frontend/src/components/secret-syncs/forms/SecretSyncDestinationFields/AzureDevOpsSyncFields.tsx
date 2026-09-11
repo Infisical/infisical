@@ -43,7 +43,10 @@ export const AzureDevOpsSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-azure-dev-ops-devops-project-id-label"
+              htmlFor="secret-sync-azure-dev-ops-devops-project-id"
+            >
               Project
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -56,6 +59,11 @@ export const AzureDevOpsSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-azure-dev-ops-devops-project-id-label"
+                aria-describedby={
+                  error ? "secret-sync-azure-dev-ops-devops-project-id-error" : undefined
+                }
+                id="secret-sync-azure-dev-ops-devops-project-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -71,7 +79,7 @@ export const AzureDevOpsSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-azure-dev-ops-devops-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

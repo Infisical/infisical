@@ -116,11 +116,13 @@ export const SalesforceConnectionForm = ({ appConnection, onSubmit }: Props) => 
             <Field className="mb-4">
               <FieldLabel htmlFor="consumer-secret">Consumer Secret</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "consumer-secret-error" : undefined}
+                id="consumer-secret"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="consumer-secret-error" errors={[error]} />
             </Field>
           )}
         />
