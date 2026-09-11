@@ -1,6 +1,6 @@
 image:
   repository: infisical/cli
-  tag: "0.43.123"
+  tag: "0.43.131"
   pullPolicy: IfNotPresent
 
 # Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
@@ -55,8 +55,8 @@ gateway:
   relayName: ""
 
   # Stable host:port advertised by a gateway accepting direct connections.
-  # Requires an image.tag whose CLI supports --listen-address; older images reject the flag and the
-  # pod crash-loops on startup.
+  # Requires an image.tag of 0.43.131 or newer; older images reject the flag and the pod
+  # crash-loops on startup.
   listenAddress: ""
 
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
