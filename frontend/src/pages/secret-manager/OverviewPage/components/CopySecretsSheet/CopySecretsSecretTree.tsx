@@ -47,7 +47,6 @@ type Props = {
   selectedFolderPaths?: string[];
   isDisabled?: boolean;
   isReadOnly?: boolean;
-  includeValues?: boolean;
   showChangesFilter?: boolean;
   previewFilter?: PreviewFilter;
   onPreviewFilterChange?: (filter: PreviewFilter) => void;
@@ -62,6 +61,12 @@ const getRestrictionLabel = (secret: CopySecretsSource) => {
   if (secret.isHoneyToken) return "Honey token";
   if (secret.isValueHidden) return "No value access";
   return undefined;
+};
+
+const getRestrictionDescription = (secret: CopySecretsSource) => {
+  if (secret.isRotated) return "Rotated secrets cannot be copied.";
+  if (secret.isHoneyToken) return "Honey token secrets cannot be copied.";
+  return "No value access: this key will be copied without its value. Existing destination values are preserved.";
 };
 
 const createTree = (
@@ -149,7 +154,6 @@ const Folder = ({
   selectedFolderPaths,
   isDisabled,
   isReadOnly,
-  includeValues,
   isChangePreview,
   idPrefix,
   onSelectionChange
@@ -160,7 +164,6 @@ const Folder = ({
   selectedFolderPaths: Set<string>;
   isDisabled: boolean;
   isReadOnly: boolean;
-  includeValues: boolean;
   isChangePreview: boolean;
   idPrefix: string;
   onSelectionChange: (ids: string[], folderPaths: string[]) => void;
@@ -249,13 +252,7 @@ const Folder = ({
               .sort((left, right) => left.name.localeCompare(right.name))
               .map((secret) => {
                 const secretId = `${idPrefix}-secret-${secret.id}`;
-                const disabledReason = !isCopySecretSelectable(secret)
-                  ? "This managed secret cannot be copied"
-                  : undefined;
-                const valueNote =
-                  includeValues && secret.isValueHidden
-                    ? "No value access: this key will be copied without its value. Existing destination values are preserved."
-                    : undefined;
+                const isSelectable = isCopySecretSelectable(secret);
                 const restrictionLabel = getRestrictionLabel(secret);
                 return (
                   <li
@@ -274,7 +271,7 @@ const Folder = ({
                         id={secretId}
                         variant="project"
                         isChecked={selectedIds.has(secret.id)}
-                        isDisabled={isDisabled || Boolean(disabledReason)}
+                        isDisabled={isDisabled || !isSelectable}
                         onCheckedChange={(checked) => {
                           const next = new Set(selectedIds);
                           if (checked === true) next.add(secret.id);
@@ -292,7 +289,7 @@ const Folder = ({
                         htmlFor={secretId}
                         className={cn(
                           "min-w-0 flex-1 truncate font-mono text-xs",
-                          disabledReason
+                          !isSelectable
                             ? "cursor-not-allowed text-muted"
                             : "cursor-pointer text-foreground"
                         )}
@@ -312,7 +309,7 @@ const Folder = ({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-72">
-                          {valueNote ?? "This secret will be copied without its value."}
+                          {getRestrictionDescription(secret)}
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -330,9 +327,12 @@ const Folder = ({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-72">
-                          {secret.previewStatus === "conflict"
-                            ? "This key already exists. Choose whether to overwrite or skip it when you copy."
-                            : "This key will be created at the destination."}
+                          {secret.previewStatus === "conflict" &&
+                            "This key already exists. Choose whether to overwrite or skip it when you copy."}
+                          {secret.previewStatus === "overwrite" &&
+                            "This key already exists and will be overwritten."}
+                          {secret.previewStatus === "new" &&
+                            "This key will be created at the destination."}
                           {secret.isValueHidden &&
                             " Its source value is unavailable; existing destination values are preserved."}
                         </TooltipContent>
@@ -354,7 +354,6 @@ const Folder = ({
                   selectedFolderPaths={selectedFolderPaths}
                   isDisabled={isDisabled}
                   isReadOnly={isReadOnly}
-                  includeValues={includeValues}
                   isChangePreview={isChangePreview}
                   idPrefix={idPrefix}
                   onSelectionChange={onSelectionChange}
@@ -375,7 +374,6 @@ export const CopySecretsSecretTree = ({
   selectedFolderPaths = [],
   isDisabled = false,
   isReadOnly = false,
-  includeValues = false,
   showChangesFilter = false,
   previewFilter: controlledPreviewFilter,
   onPreviewFilterChange,
@@ -467,7 +465,6 @@ export const CopySecretsSecretTree = ({
           selectedFolderPaths={new Set(selectedFolderPaths)}
           isDisabled={isDisabled}
           isReadOnly={isReadOnly}
-          includeValues={includeValues}
           isChangePreview={showChangesFilter}
           idPrefix={idPrefix}
           onSelectionChange={onSelectionChange}

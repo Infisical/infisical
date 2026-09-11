@@ -646,6 +646,18 @@ const OverviewPageContent = () => {
       )
     );
 
+  const canCreateFoldersAt = useCallback(
+    (environment: string, folderPath: string) =>
+      permission.can(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.SecretFolders, {
+          environment,
+          secretPath: folderPath
+        })
+      ),
+    [permission]
+  );
+
   const canReadSecrets =
     canSecretActionInVisibleEnv(ProjectPermissionSecretActions.DescribeSecret) ||
     canSecretActionInVisibleEnv(ProjectPermissionSecretActions.DescribeAndReadValue);
@@ -3743,6 +3755,7 @@ const OverviewPageContent = () => {
         isOpen={Boolean(copySecretsInvocation)}
         invocation={copySecretsInvocation}
         environments={copySecretsEnvironments}
+        canCreateFoldersAt={canCreateFoldersAt}
         onCompleted={handleCopySecretsCompleted}
         onOpenChange={(isOpen) => {
           if (!isOpen) setCopySecretsInvocation(null);

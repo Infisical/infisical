@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowDownIcon,
   ArrowRightIcon,
   CheckIcon,
   ClipboardCopyIcon,
+  InfoIcon,
   LockIcon
 } from "lucide-react";
 
@@ -61,10 +62,10 @@ import type {
 import {
   chunkCopySecretIds,
   getCopyDestinationFolderPaths,
-  getCopyFolderCreationSteps,
   getCopySecretConflicts,
   getInitialCopyState,
   getInvocationCopySelection,
+  getMissingCopyFolderCreationSteps,
   getRelativeCopyPath,
   groupCopySecretsRequests,
   isCopyingToSameLocation,
@@ -81,6 +82,7 @@ type Props = {
   isOpen: boolean;
   invocation: CopySecretsInvocation | null;
   environments: CopySecretsEnvironment[];
+  canCreateFoldersAt: (environment: string, secretPath: string) => boolean;
   onOpenChange: (isOpen: boolean) => void;
   onCompleted?: (copiedSecretIds: string[]) => void;
 };
@@ -93,6 +95,7 @@ const CopySecretsSession = ({
   isOpen,
   invocation,
   environments,
+  canCreateFoldersAt,
   onOpenChange,
   onCompleted
 }: Props & { invocation: CopySecretsInvocation }) => {
@@ -119,6 +122,7 @@ const CopySecretsSession = ({
     skipMultilineEncoding: true
   });
   const includeValues = attributes.value;
+  const [shouldOverwrite, setShouldOverwrite] = useState(false);
   const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [debouncedSourcePath] = useDebounce(sourcePath, 250);
@@ -142,18 +146,15 @@ const CopySecretsSession = ({
     projectId,
     environment: sourceEnvironmentSlug,
     secretPath: normalizedSourcePath,
-    enabled: isOpen && foldersQuery.isSuccess && isSourcePathSettled
+    enabled: isOpen && !isSubmitting && foldersQuery.isSuccess && isSourcePathSettled
   });
   const destinationQuery = useCopySecretsQuery({
     projectId,
     environment: destinationEnvironmentSlug,
     secretPath: normalizedDestinationPath,
-    enabled: isOpen && foldersQuery.isSuccess && isDestinationPathSettled
+    enabled: isOpen && !isSubmitting && foldersQuery.isSuccess && isDestinationPathSettled
   });
-  const sourceSecrets = useMemo(
-    () => (sourceQuery.data ?? []).filter(isCopySecretSelectable),
-    [sourceQuery.data]
-  );
+  const sourceSecrets = sourceQuery.data ?? [];
   const invocationSelection = getInvocationCopySelection({
     invocation,
     sourcePath: normalizedSourcePath,
@@ -161,7 +162,9 @@ const CopySecretsSession = ({
     folders: sourceFolders
   });
   const currentSelection = selection ?? invocationSelection;
-  const selectedSecrets = sourceSecrets.filter(({ id }) => currentSelection.secretIds.includes(id));
+  const selectedSecrets = sourceSecrets.filter(
+    (secret) => isCopySecretSelectable(secret) && currentSelection.secretIds.includes(secret.id)
+  );
   const selectedIds = selectedSecrets.map(({ id }) => id);
   const selectedFolderPaths = sourceFolders
     .filter(({ path }) => path !== "/" && currentSelection.folderPaths.includes(path))
@@ -180,17 +183,27 @@ const CopySecretsSession = ({
     sourceRootPath: normalizedSourcePath,
     destinationRootPath: normalizedDestinationPath
   });
+  const destinationPaths = [
+    ...new Set([
+      ...destinationFolderPaths,
+      ...requestGroups.map(({ destinationPath: path }) => path)
+    ])
+  ];
+  const destinationFolderSteps = getMissingCopyFolderCreationSteps({
+    paths: destinationPaths,
+    existingFolderPaths: (foldersQuery.data?.[destinationEnvironmentSlug]?.folders ?? []).map(
+      ({ path }) => path
+    )
+  });
   const previewFolders: CopySecretsFolder[] = [...destinationFolders];
   const existingFolderPaths = new Set(destinationFolders.map(({ path }) => path));
-  [...destinationFolderPaths, ...requestGroups.map((group) => group.destinationPath)]
-    .flatMap(getCopyFolderCreationSteps)
-    .forEach(({ parentPath, name }) => {
-      const path = joinCopyPath(parentPath, name);
-      if (!existingFolderPaths.has(path)) {
-        previewFolders.push({ path, previewStatus: "new" });
-        existingFolderPaths.add(path);
-      }
-    });
+  destinationFolderSteps.forEach(({ parentPath, name }) => {
+    const path = joinCopyPath(parentPath, name);
+    if (!existingFolderPaths.has(path)) {
+      previewFolders.push({ path, previewStatus: "new" });
+      existingFolderPaths.add(path);
+    }
+  });
   const isSourceLoading =
     !isSourcePathSettled ||
     foldersQuery.isPending ||
@@ -215,11 +228,12 @@ const CopySecretsSession = ({
   if (invocation.origin === "bulk") {
     const count = invocation.selectedSecretCount + invocation.folderNames.length;
     const availableSecretCount = sourceSecrets.filter(
-      ({ name, path }) =>
-        normalizeCopyPath(path) === normalizedSourcePath &&
+      (secret) =>
+        isCopySecretSelectable(secret) &&
+        normalizeCopyPath(secret.path) === normalizedSourcePath &&
         Object.values(invocation.secretsByEnvironment)
           .flat()
-          .some((secret) => secret.name === name)
+          .some(({ name }) => name === secret.name)
     ).length;
     const availableFolderCount = invocation.folderNames.filter((name) =>
       sourceFolders.some(({ path }) => path === joinCopyPath(normalizedSourcePath, name))
@@ -232,7 +246,7 @@ const CopySecretsSession = ({
       bulkSelectionSummary = `${availableSecretCount + availableFolderCount} of ${count} originally selected items are available in ${sourceEnvironment.name} at ${normalizedSourcePath}. Unavailable items won’t be copied.`;
     }
   }
-  const destinationContents = useMemo<CopySecretsSource[]>(() => {
+  const destinationContents: CopySecretsSource[] = (() => {
     const contents: CopySecretsSource[] = (destinationQuery.data ?? []).map((secret) => ({
       ...secret
     }));
@@ -249,7 +263,7 @@ const CopySecretsSession = ({
       const key = `${path}\u0000${secret.name}`;
       const existing = byLocation.get(key);
       if (existing) {
-        existing.previewStatus = "conflict";
+        existing.previewStatus = shouldOverwrite ? "overwrite" : "conflict";
         existing.isValueHidden = secret.isValueHidden;
         return;
       }
@@ -265,7 +279,7 @@ const CopySecretsSession = ({
     });
 
     return contents;
-  }, [destinationQuery.data, requestGroups, selectedSecrets]);
+  })();
   const conflictingSecrets = getCopySecretConflicts({
     secrets: selectedSecrets,
     destinationSecrets: destinationQuery.data ?? [],
@@ -290,6 +304,12 @@ const CopySecretsSession = ({
     if (isSourceLoading) return "Loading source secrets";
     if (isDestinationLoading) return "Loading destination secrets";
     if (!selectedItemCount) return "Select at least one secret or folder";
+    if (
+      destinationFolderSteps.some(
+        ({ parentPath }) => !canCreateFoldersAt(destinationEnvironmentSlug, parentPath)
+      )
+    )
+      return "Folder create permission is required for the missing destination path";
     return undefined;
   })();
 
@@ -297,7 +317,7 @@ const CopySecretsSession = ({
   const getOrCreateFolder = useGetOrCreateFolder();
 
   const copySecrets = async ({
-    shouldOverwrite,
+    shouldOverwrite: overwriteExisting,
     skippedSecretIds = []
   }: {
     shouldOverwrite: boolean;
@@ -313,19 +333,6 @@ const CopySecretsSession = ({
           secretIds: group.secretIds.filter((id) => !skippedIds.has(id))
         }))
         .filter(({ secretIds }) => secretIds.length > 0);
-      const destinationPaths = [
-        ...new Set([
-          ...destinationFolderPaths,
-          ...copyRequestGroups.map(({ destinationPath: path }) => path)
-        ])
-      ].sort((left, right) => left.split("/").length - right.split("/").length);
-      const destinationFolderSteps = [
-        ...new Map(
-          destinationPaths
-            .flatMap(getCopyFolderCreationSteps)
-            .map((step) => [joinCopyPath(step.parentPath, step.name), step])
-        ).values()
-      ];
       await destinationFolderSteps.reduce(async (previous, { parentPath, name }) => {
         await previous;
         await getOrCreateFolder.mutateAsync({
@@ -350,7 +357,7 @@ const CopySecretsSession = ({
               destinationEnvironment: destinationEnvironmentSlug,
               destinationSecretPath: group.destinationPath,
               secretIds,
-              shouldOverwrite,
+              shouldOverwrite: overwriteExisting,
               attributesToCopy: {
                 ...attributes,
                 value: group.includeValues
@@ -407,19 +414,19 @@ const CopySecretsSession = ({
   const handleSubmit = async () => {
     if (disabledReason || isSubmitting) return;
 
-    if (conflictingSecrets.length > 0) {
+    if (conflictingSecrets.length > 0 && !shouldOverwrite) {
       setIsConflictDialogOpen(true);
       return;
     }
 
-    await copySecrets({ shouldOverwrite: false });
+    await copySecrets({ shouldOverwrite });
   };
 
-  const handleConflictResolution = async (resolution: "override" | "skip") => {
+  const handleConflictResolution = async (resolution: "overwrite" | "skip") => {
     if (disabledReason || isSubmitting) return;
     setIsConflictDialogOpen(false);
     await copySecrets({
-      shouldOverwrite: resolution === "override",
+      shouldOverwrite: resolution === "overwrite",
       skippedSecretIds:
         resolution === "skip" ? conflictingSecrets.map(({ sourceSecretId }) => sourceSecretId) : []
     });
@@ -433,7 +440,6 @@ const CopySecretsSession = ({
       sourcePath={normalizedSourcePath}
       selectedIds={selectedIds}
       isDisabled={isSubmitting}
-      includeValues={includeValues}
       onSelectionChange={(secretIds, folderPaths) => setSelection({ secretIds, folderPaths })}
     />
   );
@@ -681,7 +687,9 @@ const CopySecretsSession = ({
                     </div>
                     {hasDestinationConflicts && (
                       <p className="text-xs text-muted" aria-live="polite">
-                        Choose whether to overwrite or skip conflicting keys when you copy.
+                        {shouldOverwrite
+                          ? "Existing destination keys will be overwritten."
+                          : "Choose whether to overwrite or skip conflicting keys when you copy."}
                       </p>
                     )}
                   </div>
@@ -715,6 +723,30 @@ const CopySecretsSession = ({
                   onChange={setAttributes}
                   isDisabled={isSubmitting}
                 />
+                <div className="flex items-center gap-2">
+                  <Toggle
+                    id="copy-secrets-overwrite"
+                    variant="danger"
+                    checked={shouldOverwrite}
+                    disabled={isSubmitting}
+                    onCheckedChange={setShouldOverwrite}
+                  />
+                  <Label htmlFor="copy-secrets-overwrite">Overwrite existing secrets</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="rounded-sm text-muted focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label="About overwriting existing secrets"
+                      >
+                        <InfoIcon className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Overwrite matching destination keys, including keys hidden by your access.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               <Button
                 type="button"
@@ -751,7 +783,7 @@ const CopySecretsSession = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Resolve Secret Conflicts</AlertDialogTitle>
             <AlertDialogDescription>
-              These secrets already exist at the destination. Override them or copy only secrets
+              These secrets already exist at the destination. Overwrite them or copy only secrets
               without conflicts.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -777,9 +809,9 @@ const CopySecretsSession = ({
             </AlertDialogAction>
             <AlertDialogAction
               variant="danger"
-              onClick={() => handleConflictResolution("override")}
+              onClick={() => handleConflictResolution("overwrite")}
             >
-              Override conflicts
+              Overwrite conflicts
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

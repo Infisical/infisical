@@ -9,6 +9,7 @@ import {
   getCopySecretConflicts,
   getInitialCopyState,
   getInvocationCopySelection,
+  getMissingCopyFolderCreationSteps,
   getOtherCopyEnvironmentSlug,
   getRelativeCopyPath,
   groupCopySecretsRequests,
@@ -136,6 +137,26 @@ describe("copy secrets paths", () => {
     ]);
   });
 
+  it("only creates destination folder segments that are missing", () => {
+    assert.deepEqual(
+      getMissingCopyFolderCreationSteps({
+        paths: ["/services/api", "/services/worker/jobs"],
+        existingFolderPaths: ["/services", "/services/worker"]
+      }),
+      [
+        { parentPath: "/services", name: "api" },
+        { parentPath: "/services/worker", name: "jobs" }
+      ]
+    );
+    assert.deepEqual(
+      getMissingCopyFolderCreationSteps({
+        paths: ["/services/api"],
+        existingFolderPaths: ["/services", "/services/api"]
+      }),
+      []
+    );
+  });
+
   it("groups requests by source and destination folders", () => {
     assert.deepEqual(
       groupCopySecretsRequests({
@@ -213,26 +234,53 @@ describe("copy invocation selection", () => {
     foldersByEnvironment: { dev: [{ path: "/app/empty" }, { path: "/app/nested" }] }
   };
 
-  it("opens a folder copy with that folder as the exact destination", () => {
+  it("defaults a nested toolbar copy to the exact normalized source path", () => {
     assert.deepEqual(
       getInitialCopyState(
-        { origin: "toolbar", sourceEnvironmentSlug: "dev", sourcePath: "/app" },
+        { origin: "toolbar", sourceEnvironmentSlug: "dev", sourcePath: "//services/api//" },
         environments
       ),
       {
         sourceEnvironmentSlug: "dev",
-        sourcePath: "/app",
+        sourcePath: "/services/api",
         destinationEnvironmentSlug: "prod",
-        destinationPath: "/app"
+        destinationPath: "/services/api"
       }
     );
   });
 
-  it("uses the current environment for bulk entry and leaves multi-environment sources to the user", () => {
-    const initialState = getInitialCopyState(invocation, environments);
+  it("defaults a nested row copy to the exact normalized source path", () => {
+    assert.deepEqual(
+      getInitialCopyState(
+        {
+          origin: "row",
+          sourceEnvironmentSlug: "dev",
+          sourcePath: "services/api/",
+          secrets: [{ id: "api-key", name: "API_KEY", path: "/services/api" }]
+        },
+        environments
+      ),
+      {
+        sourceEnvironmentSlug: "dev",
+        sourcePath: "/services/api",
+        destinationEnvironmentSlug: "prod",
+        destinationPath: "/services/api"
+      }
+    );
+  });
+
+  it("defaults a nested bulk copy to the exact normalized source path", () => {
+    const initialState = getInitialCopyState(
+      { ...invocation, sourcePath: "//services/api//" },
+      environments
+    );
 
     assert.equal(initialState.sourceEnvironmentSlug, "");
-    assert.equal(initialState.destinationPath, "/");
+    assert.equal(initialState.sourcePath, "/services/api");
+    assert.equal(initialState.destinationPath, "/services/api");
+  });
+
+  it("uses the current environment for bulk entry and leaves multi-environment sources to the user", () => {
     assert.equal(
       getInitialCopyState({ ...invocation, sourceEnvironmentSlug: "prod" }, environments)
         .sourceEnvironmentSlug,

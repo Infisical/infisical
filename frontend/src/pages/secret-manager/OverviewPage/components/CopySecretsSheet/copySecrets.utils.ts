@@ -23,9 +23,6 @@ export const joinCopyPath = (...paths: string[]) =>
       .join("/")
   );
 
-export const getCopyPathName = (path: string) =>
-  normalizeCopyPath(path).split("/").filter(Boolean).at(-1);
-
 export const getRelativeCopyPath = (path: string, rootPath: string) => {
   const normalizedPath = normalizeCopyPath(path);
   const normalizedRoot = normalizeCopyPath(rootPath);
@@ -103,6 +100,27 @@ export const getCopyFolderCreationSteps = (path: string) => {
       parentPath = joinCopyPath(parentPath, name);
       return step;
     });
+};
+
+export const getMissingCopyFolderCreationSteps = ({
+  paths,
+  existingFolderPaths
+}: {
+  paths: string[];
+  existingFolderPaths: string[];
+}) => {
+  const knownFolderPaths = new Set(existingFolderPaths.map(normalizeCopyPath));
+  const missingSteps = new Map<string, CopyFolderCreationStep>();
+
+  paths.flatMap(getCopyFolderCreationSteps).forEach((step) => {
+    const path = joinCopyPath(step.parentPath, step.name);
+    if (!knownFolderPaths.has(path)) {
+      missingSteps.set(path, step);
+      knownFolderPaths.add(path);
+    }
+  });
+
+  return [...missingSteps.values()];
 };
 
 export type CopySecretsRequestGroup = {
@@ -205,15 +223,14 @@ export const getInitialCopyState = (
       : [];
   const sourceEnvironmentSlug =
     invocation.sourceEnvironmentSlug ?? (availableSlugs.length === 1 ? availableSlugs[0] : "");
-  const sourceFolderName =
-    invocation.origin === "toolbar" ? getCopyPathName(invocation.sourcePath) : undefined;
+  const sourcePath = normalizeCopyPath(invocation.sourcePath);
   return {
     sourceEnvironmentSlug,
-    sourcePath: invocation.sourcePath,
+    sourcePath,
     destinationEnvironmentSlug: sourceEnvironmentSlug
       ? getOtherCopyEnvironmentSlug(environments, sourceEnvironmentSlug) || sourceEnvironmentSlug
       : "",
-    destinationPath: sourceFolderName ? joinCopyPath("/", sourceFolderName) : "/"
+    destinationPath: sourcePath
   };
 };
 

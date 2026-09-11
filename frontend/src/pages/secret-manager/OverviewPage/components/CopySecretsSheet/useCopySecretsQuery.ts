@@ -1,8 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { dashboardKeys, fetchSecretMetadata } from "@app/hooks/api/dashboard/queries";
+import { fetchSecretMetadata } from "@app/hooks/api/dashboard/queries";
 
 import { fetchCopySecrets } from "./copySecrets.data";
+
+export const copySecretsQueryKeys = {
+  preview: ({
+    projectId,
+    environment,
+    secretPath
+  }: {
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  }) => ["copy-secrets-preview", { projectId, environment, secretPath }] as const
+};
 
 export const useCopySecretsQuery = ({
   projectId,
@@ -16,11 +28,7 @@ export const useCopySecretsQuery = ({
   enabled: boolean;
 }) =>
   useQuery({
-    queryKey: [
-      ...dashboardKeys.getDashboardSecrets({ projectId, secretPath }),
-      "copy-secrets",
-      environment
-    ],
+    queryKey: copySecretsQueryKeys.preview({ projectId, environment, secretPath }),
     enabled: enabled && Boolean(projectId && environment),
     staleTime: 0,
     // Retry individual pages so a failed page never restarts the recursive scan.
