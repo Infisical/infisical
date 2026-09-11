@@ -3021,7 +3021,9 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     folderVersionDAL,
-    notificationService
+    notificationService,
+    secretApprovalRequestService,
+    auditLogService
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
@@ -3995,7 +3997,10 @@ export const registerRoutes = async (
     secretService,
     auditLogService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    folderService,
+    folderDAL,
+    projectEnvDAL
   });
 
   // setup the communication with license key server
