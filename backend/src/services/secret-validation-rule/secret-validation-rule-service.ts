@@ -108,8 +108,9 @@ export const secretValidationRuleServiceFactory = ({
     }
   };
 
-  const $getCipher = (projectId: string) =>
-    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+  // Pass `tx` from inside a transaction: without it the key lookup checks out a second connection.
+  const $getCipher = (projectId: string, tx?: Knex) =>
+    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx);
 
   // Listed rather than spread so `encryptedInputs` can never reach a response.
   const $toRecord = (rule: TSecretValidationRuleWithEnv, config: TSecretValidationRuleConfig) =>
@@ -496,10 +497,6 @@ export const secretValidationRuleServiceFactory = ({
     return duplicates;
   };
 
-  /**
-   * Pass `tx` when the caller already holds a transaction, or this checks out a second connection.
-   * `${env.key}` references are expanded first, so constraints see the resolved value.
-   */
   const validateSecrets = async (
     { projectId, environment, envId, secretPath, secrets, canAccessLocation }: TValidateSecretsDTO,
     tx?: Knex
@@ -512,7 +509,7 @@ export const secretValidationRuleServiceFactory = ({
     );
     if (!rules.length) return;
 
-    const { decryptor, generateSecretBlindIndex } = await $getCipher(projectId);
+    const { decryptor, generateSecretBlindIndex } = await $getCipher(projectId, tx);
 
     const coveringRules = findRulesCoveringScope(rules, { envId, secretPath }).map((rule) => ({
       name: rule.name,

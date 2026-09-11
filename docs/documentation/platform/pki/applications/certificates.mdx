@@ -60,6 +60,40 @@ Select **Import** on the Certificates tab to bring in a certificate you already 
 
 A keystore can hold several certificates. Infisical lists what is inside so you can pick which ones to import.
 
+### Managing an imported certificate
+
+An imported certificate is tracked for visibility and expiry alerts. Renewal, reissue and revocation stay wherever it was issued.
+
+To hand the rest of its lifecycle to Infisical, pick a **Certificate Profile** during import. The profile determines which authority signs the replacement when the certificate is renewed.
+
+Renewal also needs [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) turned on for that profile in this Application.
+
+<Note>
+  You can pick a profile when you import into an Application, from either PEM files or a keystore. Importing from the organization-wide Inventory tracks the certificate without one.
+</Note>
+
+### Which profile to attach
+
+Attaching a profile backed by the authority that issued the certificate keeps the whole lifecycle in Infisical.
+
+The certificate has to satisfy the profile's certificate policy, because that policy is what constrains the replacement issued at renewal. Infisical checks it during import and refuses a profile the certificate doesn't meet, naming the attributes that failed, so the problem surfaces then rather than at renewal. Import without a profile if you only need visibility and expiry alerts.
+
+You can also attach one backed by a different authority, including a self-signed profile. The certificate you already hold stays in service, and its replacement is issued by the authority you're moving to. Renewal works in both cases, because a renewal is a new certificate signed by the profile's authority.
+
+Revocation behaves differently. It only takes effect through the issuing authority, because that authority publishes the revocation list clients check. Infisical therefore refuses to revoke an imported certificate whose profile is backed by a different authority. Revoke those certificates with their original issuer instead.
+
+### What each external CA needs
+
+A profile backed by an external certificate authority needs the identifier the certificate already has at that provider, so Infisical can act on it there.
+
+<Tabs>
+  <Tab title="DigiCert">
+  The CertCentral **order ID**. Infisical lists the orders under the authority's DigiCert organization and product, so you can search for the right one instead of typing a number.
+
+  Renewal places a renewal order against it, and revocation revokes it in CertCentral. Infisical checks the order before saving it and rejects one that was issued for a different certificate.
+  </Tab>
+</Tabs>
+
 ## Renewal
 
 | Type | How It Works |

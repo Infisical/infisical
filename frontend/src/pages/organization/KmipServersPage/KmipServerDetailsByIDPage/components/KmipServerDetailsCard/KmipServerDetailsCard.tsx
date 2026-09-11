@@ -19,7 +19,10 @@ import {
   DetailLabel,
   DetailValue,
   IconButton,
-  Separator
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -43,11 +46,7 @@ const AuthMethodBadge = ({ method }: { method: TKmipServerAuthMethodView["method
   return <Badge variant="warning">Machine Identity</Badge>;
 };
 
-export const KmipServerDetailsCard = ({
-  kmipServer
-}: {
-  kmipServer: TKmipServerWithAuthMethod;
-}) => {
+export const KmipServerDetailsCard = ({ kmipServer }: Props) => {
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -72,17 +71,22 @@ export const KmipServerDetailsCard = ({
               <DetailLabel>ID</DetailLabel>
               <DetailValue className="flex items-center gap-x-1">
                 <span className="font-mono text-xs">{kmipServer.id}</span>
-                <IconButton
-                  aria-label="copy kmip server id"
-                  onClick={() => {
-                    navigator.clipboard.writeText(kmipServer.id);
-                    setCopyTextId("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      aria-label="copy kmip server id"
+                      onClick={() => {
+                        navigator.clipboard.writeText(kmipServer.id);
+                        setCopyTextId("Copied");
+                      }}
+                      variant="ghost"
+                      size="xs"
+                    >
+                      {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy KMIP server ID to clipboard</TooltipContent>
+                </Tooltip>
               </DetailValue>
             </Detail>
             <Detail>
@@ -239,4 +243,8 @@ export const KmipServerDetailsCard = ({
       )}
     </>
   );
+};
+
+type Props = {
+  kmipServer: TKmipServerWithAuthMethod;
 };
