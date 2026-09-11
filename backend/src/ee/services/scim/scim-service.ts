@@ -114,6 +114,7 @@ type TScimServiceFactoryDep = {
     | "findAllGroupPossibleUsers"
     | "delete"
     | "findGroups"
+    | "countGroups"
     | "transaction"
     | "updateById"
     | "update"
@@ -130,6 +131,7 @@ type TScimServiceFactoryDep = {
     | "delete"
     | "findGroupMembershipsByUserIdInOrg"
     | "findGroupMembershipsByGroupIdInOrg"
+    | "findGroupMembershipsByGroupIdsInOrg"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -1053,18 +1055,16 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const groups = await groupDAL.findGroups(
-      {
-        ...(filter && parseScimFilter(filter)),
-        orgId
-      },
-      {
-        offset: startIndex - 1,
-        limit
-      }
-    );
+    const groupFilter = {
+      ...(filter && parseScimFilter(filter)),
+      orgId
+    };
 
-    const scimGroups: TScimGroup[] = [];
+    const [groups, totalResults] = await Promise.all([
+      groupDAL.findGroups(groupFilter, { offset: startIndex - 1, limit }),
+      groupDAL.countGroups(groupFilter)
+    ]);
+
     if (isMembersExcluded) {
       return buildScimGroupList({
         scimGroups: groups.map((group) =>
@@ -1077,13 +1077,26 @@ export const scimServiceFactory = ({
           })
         ),
         startIndex,
-        limit
+        limit,
+        totalResults
       });
     }
 
-    for await (const group of groups) {
-      const members = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId);
-      const scimGroup = buildScimGroup({
+    const groupIds = groups.map((g) => g.id);
+    const allMemberships = groupIds.length
+      ? await userGroupMembershipDAL.findGroupMembershipsByGroupIdsInOrg(groupIds, orgId)
+      : [];
+
+    const membersByGroupId = new Map<string, typeof allMemberships>();
+    for (const membership of allMemberships) {
+      const list = membersByGroupId.get(membership.groupId) ?? [];
+      list.push(membership);
+      membersByGroupId.set(membership.groupId, list);
+    }
+
+    const scimGroups: TScimGroup[] = groups.map((group) => {
+      const members = membersByGroupId.get(group.id) ?? [];
+      return buildScimGroup({
         groupId: group.id,
         name: group.name,
         members: members.map((member) => ({
@@ -1093,8 +1106,7 @@ export const scimServiceFactory = ({
         createdAt: group.createdAt,
         updatedAt: group.updatedAt
       });
-      scimGroups.push(scimGroup);
-    }
+    });
 
     await scimEventsDAL.create({
       orgId,
@@ -1108,7 +1120,8 @@ export const scimServiceFactory = ({
     return buildScimGroupList({
       scimGroups,
       startIndex,
-      limit
+      limit,
+      totalResults
     });
   };
 
