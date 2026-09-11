@@ -142,7 +142,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
                       </TooltipContent>
                     </Tooltip>
                     {transport.transport === "direct" && gateway.directAddress ? (
-                      <span className="text-muted text-xs">{gateway.directAddress}</span>
+                      <span className="text-xs text-muted">{gateway.directAddress}</span>
                     ) : null}
                   </span>
                 ))
