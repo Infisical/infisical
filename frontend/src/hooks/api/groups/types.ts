@@ -15,6 +15,7 @@ export type TGroup = {
   updatedAt: string;
   role: string;
   roleId: string;
+  customRoleSlug?: string | null;
 };
 
 export type TGroupMembership = {
