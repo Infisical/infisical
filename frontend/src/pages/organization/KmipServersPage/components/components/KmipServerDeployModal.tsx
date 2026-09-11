@@ -106,7 +106,12 @@ export const KmipServerDeployModal = ({ isOpen, onOpenChange }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="my-kmip-server" />
+                <Input
+                  {...field}
+                  placeholder="my-kmip-server"
+                  autoComplete="off"
+                  name="kmip-server-name"
+                />
               </FormControl>
             )}
           />
