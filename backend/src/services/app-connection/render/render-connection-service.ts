@@ -2,7 +2,7 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listRenderEnvironmentGroups, listRenderServices } from "./render-connection-fns";
+import { listRenderEnvironmentGroups, listRenderServices, listRenderWorkflows } from "./render-connection-fns";
 import { TRenderConnection } from "./render-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -36,8 +36,21 @@ export const renderConnectionService = (getAppConnection: TGetAppConnectionFunc)
     }
   };
 
+  const listWorkflows = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Render, connectionId, actor);
+    try {
+      const workflows = await listRenderWorkflows(appConnection);
+
+      return workflows;
+    } catch (error) {
+      logger.error(error, "Failed to list workflows for Render connection");
+      return [];
+    }
+  };
+
   return {
     listServices,
-    listEnvironmentGroups
+    listEnvironmentGroups,
+    listWorkflows
   };
 };
