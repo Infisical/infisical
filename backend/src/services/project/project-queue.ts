@@ -785,7 +785,7 @@ export const projectQueueFactory = ({
         await releaseSecretBlindIndexMigrationOrgSlot(keyStore, orgId);
       }
     },
-    { limiter: { max: 10, duration: 60_000 } }
+    { concurrency: 2, limiter: { max: 20, duration: 60_000 } }
   );
 
   queueService.listen(QueueName.SecretBlindIndexMigration, "failed", (job, err) => {
