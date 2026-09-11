@@ -278,13 +278,18 @@ export const ShareSecretForm = ({
               </FieldLabel>
               <Input
                 {...field}
+                name="shared-secret-passphrase"
                 placeholder="Password"
-                type="password"
-                autoComplete="new-password"
+                type="text"
+                className="[-webkit-text-security:disc]"
+                autoComplete="off"
                 autoCorrect="off"
+                autoCapitalize="off"
                 spellCheck={false}
                 aria-autocomplete="none"
                 data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore
                 isError={Boolean(error)}
               />
               {error && <FieldError>{error.message}</FieldError>}
