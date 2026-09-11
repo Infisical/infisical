@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -55,6 +55,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -79,7 +80,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import {
+  useDebounce,
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useSlashFocusSearch
+} from "@app/hooks";
 import {
   useGetMyPendingProjectAccessRequests,
   useGetUserProjects,
@@ -987,99 +994,108 @@ const Toolbar = ({
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
-}) => (
-  <div className="flex w-full flex-row flex-wrap items-center gap-2 md:flex-nowrap">
-    {!hideProjectListToggle && (
-      <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
-    )}
-    <InputGroup className="flex-1">
-      <InputGroupAddon align="inline-start">
-        <SearchIcon />
-      </InputGroupAddon>
-      <InputGroupInput
-        placeholder="Search by project name..."
-        value={searchFilter}
-        onChange={(e) => onSearchChange(e.target.value)}
-      />
-    </InputGroup>
-    <Tooltip>
-      <TooltipTrigger asChild>
+}) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
+
+  return (
+    <div className="flex w-full flex-row flex-wrap items-center gap-2 md:flex-nowrap">
+      {!hideProjectListToggle && (
+        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+      )}
+      <InputGroup className="flex-1">
+        <InputGroupAddon align="inline-start">
+          <SearchIcon />
+        </InputGroupAddon>
+        <InputGroupInput
+          ref={searchInputRef}
+          placeholder="Search by project name..."
+          value={searchFilter}
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
+        <InputGroupAddon align="inline-end">
+          <Kbd aria-label="Press / to focus search">/</Kbd>
+        </InputGroupAddon>
+      </InputGroup>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <IconButton
+            variant="outline"
+            size="sm"
+            aria-label={`Sort ${
+              orderDirection === OrderByDirection.ASC ? "descending" : "ascending"
+            }`}
+            onClick={onToggleOrderDirection}
+          >
+            {orderDirection === OrderByDirection.ASC ? <ArrowDownAZIcon /> : <ArrowUpAZIcon />}
+          </IconButton>
+        </TooltipTrigger>
+        <TooltipContent>Toggle Sort Direction</TooltipContent>
+      </Tooltip>
+      <ButtonGroup>
+        {isGridDisabled ? (
+          <Tooltip>
+            <TooltipTrigger tabIndex={-1} asChild>
+              <span className="cursor-not-allowed">
+                <IconButton
+                  variant="outline"
+                  size="sm"
+                  aria-label="Grid view"
+                  className="rounded-r-none"
+                  isDisabled
+                >
+                  <LayoutGridIcon />
+                </IconButton>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Disabled across All Project view.</TooltipContent>
+          </Tooltip>
+        ) : (
+          <IconButton
+            variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
+            size="sm"
+            aria-label="Grid view"
+            className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
+            onClick={() => onViewModeChange(ProjectsViewMode.GRID)}
+          >
+            <LayoutGridIcon />
+          </IconButton>
+        )}
         <IconButton
-          variant="outline"
+          variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
           size="sm"
-          aria-label={`Sort ${
-            orderDirection === OrderByDirection.ASC ? "descending" : "ascending"
-          }`}
-          onClick={onToggleOrderDirection}
+          aria-label="List view"
+          onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
         >
-          {orderDirection === OrderByDirection.ASC ? <ArrowDownAZIcon /> : <ArrowUpAZIcon />}
+          <ListIcon />
         </IconButton>
-      </TooltipTrigger>
-      <TooltipContent>Toggle Sort Direction</TooltipContent>
-    </Tooltip>
-    <ButtonGroup>
-      {isGridDisabled ? (
-        <Tooltip>
-          <TooltipTrigger tabIndex={-1} asChild>
-            <span className="cursor-not-allowed">
-              <IconButton
-                variant="outline"
+      </ButtonGroup>
+      <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+        {(isOldProjectV1Allowed) => (
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+            {(isAllowed) => (
+              <Button
+                isDisabled={!isAllowed && !isOldProjectV1Allowed}
                 size="sm"
-                aria-label="Grid view"
-                className="rounded-r-none"
-                isDisabled
+                variant="project"
+                onClick={() => {
+                  if (isAddingProjectsAllowed) {
+                    onAddNewProject();
+                  } else {
+                    onUpgradePlan();
+                  }
+                }}
               >
-                <LayoutGridIcon />
-              </IconButton>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>Disabled across All Project view.</TooltipContent>
-        </Tooltip>
-      ) : (
-        <IconButton
-          variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
-          size="sm"
-          aria-label="Grid view"
-          className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
-          onClick={() => onViewModeChange(ProjectsViewMode.GRID)}
-        >
-          <LayoutGridIcon />
-        </IconButton>
-      )}
-      <IconButton
-        variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
-        size="sm"
-        aria-label="List view"
-        onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
-      >
-        <ListIcon />
-      </IconButton>
-    </ButtonGroup>
-    <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-      {(isOldProjectV1Allowed) => (
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed && !isOldProjectV1Allowed}
-              size="sm"
-              variant="project"
-              onClick={() => {
-                if (isAddingProjectsAllowed) {
-                  onAddNewProject();
-                } else {
-                  onUpgradePlan();
-                }
-              }}
-            >
-              <PlusIcon />
-              Add New Project
-            </Button>
-          )}
-        </OrgPermissionCan>
-      )}
-    </OrgPermissionCan>
-  </div>
-);
+                <PlusIcon />
+                Add New Project
+              </Button>
+            )}
+          </OrgPermissionCan>
+        )}
+      </OrgPermissionCan>
+    </div>
+  );
+};
 
 const EmptyState = ({
   projectType,

@@ -14,7 +14,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useDebounce } from "@app/hooks";
+import { Kbd } from "@app/components/v3/generic/Kbd";
+import { useDebounce, useSlashFocusSearch } from "@app/hooks";
 
 import { QuickSearchModal, QuickSearchModalProps } from "../SecretSearchInput/components";
 import { getResourceSearchStateTransition } from "./resourceSearchState";
@@ -37,6 +38,7 @@ export const ResourceSearchInput = ({
   const [isOptionHighlighted, setIsOptionHighlighted] = useState(false);
   const deepSearchBtnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(inputRef);
 
   // local input state so typing doesn't re-render the whole table
   const [inputValue, setInputValue] = useState(externalValue);
@@ -128,6 +130,9 @@ export const ResourceSearchInput = ({
                     }
                   }}
                 />
+                <InputGroupAddon align="inline-end">
+                  <Kbd aria-label="Press / to focus search">/</Kbd>
+                </InputGroupAddon>
                 {hasSearch && (
                   <InputGroupAddon align="inline-end">
                     <IconButton

@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -55,6 +55,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
@@ -65,6 +66,7 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
+import { useSlashFocusSearch } from "@app/hooks";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
@@ -185,6 +187,8 @@ export const CertificatesTable = ({
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const [search, setSearch] = useState(externalFilter?.search || "");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
   const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
@@ -734,8 +738,12 @@ export const CertificatesTable = ({
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            ref={searchInputRef}
             placeholder="Search by SAN, CN, ID or Serial Number"
           />
+          <InputGroupAddon align="inline-end">
+            <Kbd aria-label="Press / to focus search">/</Kbd>
+          </InputGroupAddon>
         </InputGroup>
 
         <Popover

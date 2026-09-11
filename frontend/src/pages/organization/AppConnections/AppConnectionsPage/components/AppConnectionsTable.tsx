@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronDownIcon, FilterIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -39,6 +39,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
@@ -48,7 +49,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper, useScopeVariant } from "@app/hooks";
+import {
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useScopeVariant,
+  useSlashFocusSearch
+} from "@app/hooks";
 import {
   TAppConnection,
   useListAppConnections,
@@ -148,6 +155,8 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
   } = usePagination<AppConnectionsOrderBy>(AppConnectionsOrderBy.App, {
     initPerPage: getUserTablePreference("appConnectionsTable", PreferenceKey.PerPage, 20)
   });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -347,10 +356,14 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                 <SearchIcon />
               </InputGroupAddon>
               <InputGroupInput
+                ref={searchInputRef}
                 placeholder="Search connections..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              <InputGroupAddon align="inline-end">
+                <Kbd aria-label="Press / to focus search">/</Kbd>
+              </InputGroupAddon>
             </InputGroup>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

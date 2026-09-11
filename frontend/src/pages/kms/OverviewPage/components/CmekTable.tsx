@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -62,6 +62,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import {
   ProjectPermissionActions,
   ProjectPermissionCmekActions,
@@ -75,7 +76,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
+import {
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useSlashFocusSearch,
+  useTimedReset
+} from "@app/hooks";
 import {
   useBulkExportCmekPrivateKeys,
   useGetCmeksByProjectId,
@@ -133,6 +140,8 @@ export const CmekTable = () => {
   } = usePagination(CmekOrderBy.Name, {
     initPerPage: getUserTablePreference("cmekClientTable", PreferenceKey.PerPage, 20)
   });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -385,8 +394,12 @@ export const CmekTable = () => {
                 onChange={(e) => {
                   setSearch(e.target.value);
                 }}
+                ref={searchInputRef}
                 placeholder="Search keys by name or ID..."
               />
+              <InputGroupAddon align="inline-end">
+                <Kbd aria-label="Press / to focus search">/</Kbd>
+              </InputGroupAddon>
             </InputGroup>
             {isFetching && <Spinner size="xs" />}
           </div>

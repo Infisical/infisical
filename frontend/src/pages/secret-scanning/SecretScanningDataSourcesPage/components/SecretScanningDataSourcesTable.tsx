@@ -1,14 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
   faCheckCircle,
   faCubesStacked,
   faFilter,
-  faMagnifyingGlass,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -22,7 +22,6 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
-  Input,
   Pagination,
   Table,
   TableContainer,
@@ -31,8 +30,10 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useSlashFocusSearch } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretScanningDataSource,
@@ -86,6 +87,8 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
     setOrderDirection,
     setOrderBy
   } = usePagination<DataSourcesOrderBy>(DataSourcesOrderBy.Name, { initPerPage: 20 });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const filteredDataSources = useMemo(
     () =>
@@ -213,13 +216,20 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
   return (
     <div>
       <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search data sources..."
-          className="flex-1"
-        />
+        <InputGroup className="h-10 flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            ref={searchInputRef}
+            placeholder="Search data sources..."
+          />
+          <InputGroupAddon align="inline-end">
+            <Kbd aria-label="Press / to focus search">/</Kbd>
+          </InputGroupAddon>
+        </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
