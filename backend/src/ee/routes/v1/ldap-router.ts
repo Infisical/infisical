@@ -407,7 +407,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     url: "/config/:configId/group-maps/:groupMapId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {

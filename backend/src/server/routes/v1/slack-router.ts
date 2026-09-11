@@ -277,7 +277,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:id",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       operationId: "updateSlackIntegration",
