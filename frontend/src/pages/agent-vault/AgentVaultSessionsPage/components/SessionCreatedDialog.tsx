@@ -30,7 +30,7 @@ const runCommand = (token: string) =>
 
 export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
   <Dialog open={Boolean(session)} onOpenChange={onOpenChange}>
-    <DialogContent onInteractOutside={(event) => event.preventDefault()}>
+    <DialogContent className="max-w-2xl" onInteractOutside={(event) => event.preventDefault()}>
       <DialogHeader>
         <DialogTitle>Session Created</DialogTitle>
         <DialogDescription>
