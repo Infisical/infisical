@@ -92,9 +92,16 @@ export const TriggerDevSyncFields = () => {
       />
 
       <Field>
-        <FieldLabel>Organization</FieldLabel>
+        <FieldLabel
+          id="secret-sync-trigger-dev-organization-label"
+          htmlFor="secret-sync-trigger-dev-organization"
+        >
+          Organization
+        </FieldLabel>
         <FieldContent>
           <Combobox
+            aria-labelledby="secret-sync-trigger-dev-organization-label"
+            id="secret-sync-trigger-dev-organization"
             isLoading={isProjectsLoading && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={selectedOrganization}
@@ -119,9 +126,17 @@ export const TriggerDevSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-trigger-dev-project-ref-label"
+              htmlFor="secret-sync-trigger-dev-project-ref"
+            >
+              Project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-trigger-dev-project-ref-label"
+                aria-describedby={error ? "secret-sync-trigger-dev-project-ref-error" : undefined}
+                id="secret-sync-trigger-dev-project-ref"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!selectedOrgId}
@@ -137,7 +152,7 @@ export const TriggerDevSyncFields = () => {
                 getOptionValue={(option) => option.id}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-trigger-dev-project-ref-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -148,9 +163,17 @@ export const TriggerDevSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Environment</FieldLabel>
+            <FieldLabel
+              id="secret-sync-trigger-dev-environment-label"
+              htmlFor="secret-sync-trigger-dev-environment"
+            >
+              Environment
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-trigger-dev-environment-label"
+                aria-describedby={error ? "secret-sync-trigger-dev-environment-error" : undefined}
+                id="secret-sync-trigger-dev-environment"
                 isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(connectionId && projectRef)}
                 isDisabled={!projectRef}
@@ -166,7 +189,7 @@ export const TriggerDevSyncFields = () => {
                 getOptionKeywords={(option) => [option.slug]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-trigger-dev-environment-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

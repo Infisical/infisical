@@ -146,13 +146,15 @@ export const VenafiConnectionForm = ({ appConnection, onSubmit }: Props) => {
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel>API Key</FieldLabel>
+              <FieldLabel htmlFor="app-connection-venafi-api-key">API Key</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "app-connection-venafi-api-key-error" : undefined}
+                id="app-connection-venafi-api-key"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="app-connection-venafi-api-key-error" errors={[error]} />
             </Field>
           )}
         />

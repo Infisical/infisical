@@ -38,9 +38,19 @@ export const CloudflareWorkersSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Worker Script</FieldLabel>
+            <FieldLabel
+              id="secret-sync-cloudflare-workers-script-id-label"
+              htmlFor="secret-sync-cloudflare-workers-script-id"
+            >
+              Worker Script
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-cloudflare-workers-script-id-label"
+                aria-describedby={
+                  error ? "secret-sync-cloudflare-workers-script-id-error" : undefined
+                }
+                id="secret-sync-cloudflare-workers-script-id"
                 isError={Boolean(error)}
                 isLoading={isScriptsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -54,7 +64,7 @@ export const CloudflareWorkersSyncFields = () => {
                 getOptionValue={(option) => option.id}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-cloudflare-workers-script-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

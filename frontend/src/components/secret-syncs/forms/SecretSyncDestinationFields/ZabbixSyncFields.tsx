@@ -114,9 +114,17 @@ export const ZabbixSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Host</FieldLabel>
+              <FieldLabel
+                id="secret-sync-zabbix-host-id-label"
+                htmlFor="secret-sync-zabbix-host-id"
+              >
+                Host
+              </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-zabbix-host-id-label"
+                  aria-describedby={error ? "secret-sync-zabbix-host-id-error" : undefined}
+                  id="secret-sync-zabbix-host-id"
                   isError={Boolean(error)}
                   isLoading={isHostsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
@@ -138,7 +146,7 @@ export const ZabbixSyncFields = () => {
                   getOptionKeywords={(option) => [option.hostId]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-zabbix-host-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

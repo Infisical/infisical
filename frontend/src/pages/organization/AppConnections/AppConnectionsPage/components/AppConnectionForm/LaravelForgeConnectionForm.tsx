@@ -110,13 +110,17 @@ export const LaravelForgeConnectionForm = ({ appConnection, onSubmit }: Props) =
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel>API Token</FieldLabel>
+              <FieldLabel htmlFor="app-connection-laravel-forge-api-token">API Token</FieldLabel>
               <SecretInput
+                aria-describedby={
+                  error ? "app-connection-laravel-forge-api-token-error" : undefined
+                }
+                id="app-connection-laravel-forge-api-token"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="app-connection-laravel-forge-api-token-error" errors={[error]} />
             </Field>
           )}
         />

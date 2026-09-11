@@ -161,7 +161,10 @@ export const GcpSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>
+              <FieldLabel
+                id="secret-sync-gcp-project-id-label"
+                htmlFor="secret-sync-gcp-project-id"
+              >
                 Project
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -176,6 +179,9 @@ export const GcpSyncFields = () => {
               </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-gcp-project-id-label"
+                  aria-describedby={error ? "secret-sync-gcp-project-id-error" : undefined}
+                  id="secret-sync-gcp-project-id"
                   isError={Boolean(error)}
                   isLoading={isPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
@@ -192,7 +198,7 @@ export const GcpSyncFields = () => {
                   getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-gcp-project-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}
@@ -260,9 +266,17 @@ export const GcpSyncFields = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Region</FieldLabel>
+                <FieldLabel
+                  id="secret-sync-gcp-location-id-label"
+                  htmlFor="secret-sync-gcp-location-id"
+                >
+                  Region
+                </FieldLabel>
                 <FieldContent>
                   <Combobox
+                    aria-labelledby="secret-sync-gcp-location-id-label"
+                    aria-describedby={error ? "secret-sync-gcp-location-id-error" : undefined}
+                    id="secret-sync-gcp-location-id"
                     isError={Boolean(error)}
                     isLoading={areLocationsPending && Boolean(projectId)}
                     isDisabled={!projectId}
@@ -276,7 +290,7 @@ export const GcpSyncFields = () => {
                     renderValue={renderLocationValue}
                     modal
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="secret-sync-gcp-location-id-error" errors={[error]} />
                 </FieldContent>
               </Field>
             )}
@@ -302,7 +316,10 @@ export const GcpSyncFields = () => {
                   control={control}
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel>
+                      <FieldLabel
+                        id="secret-sync-gcp-user-replica-location-ids-label"
+                        htmlFor="secret-sync-gcp-user-replica-location-ids"
+                      >
                         Replica Regions
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -316,6 +333,11 @@ export const GcpSyncFields = () => {
                       </FieldLabel>
                       <FieldContent>
                         <Combobox
+                          aria-labelledby="secret-sync-gcp-user-replica-location-ids-label"
+                          aria-describedby={
+                            error ? "secret-sync-gcp-user-replica-location-ids-error" : undefined
+                          }
+                          id="secret-sync-gcp-user-replica-location-ids"
                           isError={Boolean(error)}
                           multiple
                           isLoading={areLocationsPending && Boolean(projectId)}
@@ -356,7 +378,10 @@ export const GcpSyncFields = () => {
                             </AlertDescription>
                           </Alert>
                         )}
-                        <FieldError errors={[error]} />
+                        <FieldError
+                          id="secret-sync-gcp-user-replica-location-ids-error"
+                          errors={[error]}
+                        />
                       </FieldContent>
                     </Field>
                   )}

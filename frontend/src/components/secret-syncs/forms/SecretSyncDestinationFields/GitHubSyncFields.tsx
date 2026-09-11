@@ -108,9 +108,14 @@ export const GitHubSyncFields = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Organization</FieldLabel>
+                <FieldLabel id="secret-sync-git-hub-org-label" htmlFor="secret-sync-git-hub-org">
+                  Organization
+                </FieldLabel>
                 <FieldContent>
                   <Combobox
+                    aria-labelledby="secret-sync-git-hub-org-label"
+                    aria-describedby={error ? "secret-sync-git-hub-org-error" : undefined}
+                    id="secret-sync-git-hub-org"
                     isError={Boolean(error)}
                     isLoading={isOrganizationsPending && Boolean(connectionId)}
                     isDisabled={!connectionId}
@@ -127,7 +132,7 @@ export const GitHubSyncFields = () => {
                     getOptionValue={(option) => option.login}
                     modal
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="secret-sync-git-hub-org-error" errors={[error]} />
                 </FieldContent>
               </Field>
             )}
@@ -167,9 +172,19 @@ export const GitHubSyncFields = () => {
             <Controller
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel>Selected Repositories</FieldLabel>
+                  <FieldLabel
+                    id="secret-sync-git-hub-selected-repository-ids-label"
+                    htmlFor="secret-sync-git-hub-selected-repository-ids"
+                  >
+                    Selected Repositories
+                  </FieldLabel>
                   <FieldContent>
                     <Combobox
+                      aria-labelledby="secret-sync-git-hub-selected-repository-ids-label"
+                      aria-describedby={
+                        error ? "secret-sync-git-hub-selected-repository-ids-error" : undefined
+                      }
+                      id="secret-sync-git-hub-selected-repository-ids"
                       isError={Boolean(error)}
                       isLoading={isRepositoriesPending && Boolean(currentOrg)}
                       isDisabled={!currentOrg || !connectionId}
@@ -186,7 +201,10 @@ export const GitHubSyncFields = () => {
                       getOptionKeywords={(option) => [option.id.toString()]}
                       modal
                     />
-                    <FieldError errors={[error]} />
+                    <FieldError
+                      id="secret-sync-git-hub-selected-repository-ids-error"
+                      errors={[error]}
+                    />
                   </FieldContent>
                 </Field>
               )}
@@ -200,9 +218,14 @@ export const GitHubSyncFields = () => {
         <Controller
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Repository</FieldLabel>
+              <FieldLabel id="secret-sync-git-hub-repo-label" htmlFor="secret-sync-git-hub-repo">
+                Repository
+              </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-git-hub-repo-label"
+                  aria-describedby={error ? "secret-sync-git-hub-repo-error" : undefined}
+                  id="secret-sync-git-hub-repo"
                   isError={Boolean(error)}
                   isLoading={isRepositoriesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
@@ -225,7 +248,7 @@ export const GitHubSyncFields = () => {
                   getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-git-hub-repo-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}
@@ -239,9 +262,14 @@ export const GitHubSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Environment</FieldLabel>
+              <FieldLabel id="secret-sync-git-hub-env-label" htmlFor="secret-sync-git-hub-env">
+                Environment
+              </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-git-hub-env-label"
+                  aria-describedby={error ? "secret-sync-git-hub-env-error" : undefined}
+                  id="secret-sync-git-hub-env"
                   isError={Boolean(error)}
                   isLoading={isEnvironmentsPending && Boolean(connectionId) && Boolean(currentRepo)}
                   isDisabled={!connectionId || !currentRepo}
@@ -254,7 +282,7 @@ export const GitHubSyncFields = () => {
                   getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-git-hub-env-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

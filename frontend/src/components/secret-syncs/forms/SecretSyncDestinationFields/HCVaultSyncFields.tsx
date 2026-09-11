@@ -47,7 +47,7 @@ export const HCVaultSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel id="secret-sync-hcvault-mount-label" htmlFor="secret-sync-hcvault-mount">
               Secrets Engine Mount
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -63,6 +63,9 @@ export const HCVaultSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-hcvault-mount-label"
+                aria-describedby={error ? "secret-sync-hcvault-mount-error" : undefined}
+                id="secret-sync-hcvault-mount"
                 isError={Boolean(error)}
                 isLoading={isMountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -74,7 +77,7 @@ export const HCVaultSyncFields = () => {
                 getOptionValue={(option) => option.value}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-hcvault-mount-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

@@ -206,13 +206,17 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field className="flex-1">
-                    <FieldLabel>Password</FieldLabel>
+                    <FieldLabel htmlFor="app-connection-mongo-db-password">Password</FieldLabel>
                     <SecretInput
+                      aria-describedby={
+                        error ? "app-connection-mongo-db-password-error" : undefined
+                      }
+                      id="app-connection-mongo-db-password"
                       isError={Boolean(error)}
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
                     />
-                    <FieldError errors={[error]} />
+                    <FieldError id="app-connection-mongo-db-password-error" errors={[error]} />
                   </Field>
                 )}
               />

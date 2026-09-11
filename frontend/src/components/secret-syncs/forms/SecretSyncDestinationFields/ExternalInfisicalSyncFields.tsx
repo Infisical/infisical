@@ -85,7 +85,10 @@ export const ExternalInfisicalSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-external-infisical-project-id-label"
+              htmlFor="secret-sync-external-infisical-project-id"
+            >
               Project
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -99,6 +102,11 @@ export const ExternalInfisicalSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-external-infisical-project-id-label"
+                aria-describedby={
+                  error ? "secret-sync-external-infisical-project-id-error" : undefined
+                }
+                id="secret-sync-external-infisical-project-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -116,7 +124,7 @@ export const ExternalInfisicalSyncFields = () => {
                 getOptionKeywords={(option) => [option.id, option.slug]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-external-infisical-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -126,7 +134,10 @@ export const ExternalInfisicalSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-external-infisical-environment-label"
+              htmlFor="secret-sync-external-infisical-environment"
+            >
               Environment
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -137,6 +148,11 @@ export const ExternalInfisicalSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-external-infisical-environment-label"
+                aria-describedby={
+                  error ? "secret-sync-external-infisical-environment-error" : undefined
+                }
+                id="secret-sync-external-infisical-environment"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !projectId}
@@ -153,7 +169,7 @@ export const ExternalInfisicalSyncFields = () => {
                 getOptionKeywords={(option) => [option.slug]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-external-infisical-environment-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

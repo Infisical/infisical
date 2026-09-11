@@ -133,11 +133,13 @@ export const DNSMadeEasyConnectionForm = ({ appConnection, onSubmit }: Props) =>
             <Field className="mb-4">
               <FieldLabel htmlFor="secret-key">Secret Key</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "secret-key-error" : undefined}
+                id="secret-key"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-key-error" errors={[error]} />
             </Field>
           )}
         />

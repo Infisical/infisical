@@ -66,9 +66,17 @@ export const QoverySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel
+              id="secret-sync-qovery-organization-id-label"
+              htmlFor="secret-sync-qovery-organization-id"
+            >
+              Organization
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-qovery-organization-id-label"
+                aria-describedby={error ? "secret-sync-qovery-organization-id-error" : undefined}
+                id="secret-sync-qovery-organization-id"
                 isError={Boolean(error)}
                 isLoading={isOrganizationsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -89,7 +97,7 @@ export const QoverySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-qovery-organization-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -100,9 +108,17 @@ export const QoverySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-qovery-project-id-label"
+              htmlFor="secret-sync-qovery-project-id"
+            >
+              Project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-qovery-project-id-label"
+                aria-describedby={error ? "secret-sync-qovery-project-id-error" : undefined}
+                id="secret-sync-qovery-project-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId && organizationId)}
                 isDisabled={!organizationId}
@@ -121,7 +137,7 @@ export const QoverySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-qovery-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -132,11 +148,21 @@ export const QoverySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-qovery-environment-id-label"
+              htmlFor="secret-sync-qovery-environment-id"
+            >
               Environment <span className="text-xs text-muted">(optional)</span>
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-qovery-environment-id-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-qovery-environment-id-description secret-sync-qovery-environment-id-error"
+                    : "secret-sync-qovery-environment-id-description"
+                }
+                id="secret-sync-qovery-environment-id"
                 isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(connectionId && projectId)}
                 isDisabled={!projectId}
@@ -157,11 +183,11 @@ export const QoverySyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-qovery-environment-id-description">
                 Leave empty to sync at the project level, or select an environment to sync at the
                 environment level.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-qovery-environment-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

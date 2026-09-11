@@ -296,13 +296,15 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field className="mb-4">
-                    <FieldLabel>Binding Password</FieldLabel>
+                    <FieldLabel htmlFor="app-connection-ldap-password">Binding Password</FieldLabel>
                     <SecretInput
+                      aria-describedby={error ? "app-connection-ldap-password-error" : undefined}
+                      id="app-connection-ldap-password"
                       isError={Boolean(error)}
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
                     />
-                    <FieldError errors={[error]} />
+                    <FieldError id="app-connection-ldap-password-error" errors={[error]} />
                   </Field>
                 )}
               />

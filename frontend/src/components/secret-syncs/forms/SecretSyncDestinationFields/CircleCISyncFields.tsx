@@ -50,9 +50,17 @@ export const CircleCISyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel
+              id="secret-sync-circle-ci-org-name-label"
+              htmlFor="secret-sync-circle-ci-org-name"
+            >
+              Organization
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-circle-ci-org-name-label"
+                aria-describedby={error ? "secret-sync-circle-ci-org-name-error" : undefined}
+                id="secret-sync-circle-ci-org-name"
                 isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -69,7 +77,7 @@ export const CircleCISyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-circle-ci-org-name-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -80,9 +88,17 @@ export const CircleCISyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-circle-ci-project-id-label"
+              htmlFor="secret-sync-circle-ci-project-id"
+            >
+              Project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-circle-ci-project-id-label"
+                aria-describedby={error ? "secret-sync-circle-ci-project-id-error" : undefined}
+                id="secret-sync-circle-ci-project-id"
                 isError={Boolean(error)}
                 emptyMessage={() =>
                   "No projects found. Please create a project in your selected organization."
@@ -102,7 +118,7 @@ export const CircleCISyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-circle-ci-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

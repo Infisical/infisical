@@ -128,9 +128,12 @@ const AzureEntraIdFields = ({
           name="selectedUsers"
           render={({ field, fieldState: { error } }) => (
             <Field data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="azure-entra-users">Users</FieldLabel>
+              <FieldLabel id="azure-entra-users-label" htmlFor="azure-entra-users">
+                Users
+              </FieldLabel>
               <Combobox
                 id="azure-entra-users"
+                aria-labelledby="azure-entra-users-label"
                 multiple
                 isDisabled={!isConfigured || isLoading || isError}
                 isLoading={isLoading}

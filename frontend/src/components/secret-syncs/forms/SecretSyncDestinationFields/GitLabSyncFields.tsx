@@ -219,7 +219,10 @@ export const GitLabSyncFields = () => {
           control={control}
           render={({ field: { onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>
+              <FieldLabel
+                id="secret-sync-git-lab-group-id-label"
+                htmlFor="secret-sync-git-lab-group-id"
+              >
                 Group
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -233,6 +236,9 @@ export const GitLabSyncFields = () => {
               </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-git-lab-group-id-label"
+                  aria-describedby={error ? "secret-sync-git-lab-group-id-error" : undefined}
+                  id="secret-sync-git-lab-group-id"
                   isError={Boolean(error)}
                   isLoading={isGroupSearchPending}
                   loadingMessage="Loading GitLab groups..."
@@ -271,7 +277,7 @@ export const GitLabSyncFields = () => {
                   }
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-git-lab-group-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}
@@ -284,7 +290,10 @@ export const GitLabSyncFields = () => {
           control={control}
           render={({ field: { onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>
+              <FieldLabel
+                id="secret-sync-git-lab-project-id-label"
+                htmlFor="secret-sync-git-lab-project-id"
+              >
                 GitLab Project
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -299,6 +308,9 @@ export const GitLabSyncFields = () => {
               </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-git-lab-project-id-label"
+                  aria-describedby={error ? "secret-sync-git-lab-project-id-error" : undefined}
+                  id="secret-sync-git-lab-project-id"
                   isError={Boolean(error)}
                   isLoading={isProjectSearchPending}
                   loadingMessage="Loading GitLab projects..."
@@ -337,7 +349,7 @@ export const GitLabSyncFields = () => {
                   }
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-git-lab-project-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

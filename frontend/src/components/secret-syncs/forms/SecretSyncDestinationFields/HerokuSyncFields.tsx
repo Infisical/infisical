@@ -43,7 +43,7 @@ export const HerokuSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel id="secret-sync-heroku-app-label" htmlFor="secret-sync-heroku-app">
               App
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -56,6 +56,9 @@ export const HerokuSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-heroku-app-label"
+                aria-describedby={error ? "secret-sync-heroku-app-error" : undefined}
+                id="secret-sync-heroku-app"
                 isError={Boolean(error)}
                 isLoading={isAppsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -71,7 +74,7 @@ export const HerokuSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-heroku-app-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

@@ -40,9 +40,14 @@ export const OnaSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Ona Project</FieldLabel>
+            <FieldLabel id="secret-sync-ona-project-id-label" htmlFor="secret-sync-ona-project-id">
+              Ona Project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-ona-project-id-label"
+                aria-describedby={error ? "secret-sync-ona-project-id-error" : undefined}
+                id="secret-sync-ona-project-id"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -59,7 +64,7 @@ export const OnaSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-ona-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

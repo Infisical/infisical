@@ -162,11 +162,13 @@ export const SpaceliftConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="api-key-secret">API Key Secret</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "api-key-secret-error" : undefined}
+                id="api-key-secret"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="api-key-secret-error" errors={[error]} />
             </Field>
           )}
         />

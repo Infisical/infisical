@@ -4,8 +4,8 @@ import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas
 import {
   TerraformCloudSyncCategory,
   TerraformCloudSyncScope
-} from "@app/hooks/api/appConnections/terraform-cloud";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+} from "@app/hooks/api/appConnections/terraform-cloud/types";
+import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 export const TerraformCloudSyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({

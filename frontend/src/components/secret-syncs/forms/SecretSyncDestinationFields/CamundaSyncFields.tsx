@@ -47,7 +47,10 @@ export const CamundaSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-camunda-cluster-uuid-label"
+              htmlFor="secret-sync-camunda-cluster-uuid"
+            >
               Cluster
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -60,6 +63,9 @@ export const CamundaSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-camunda-cluster-uuid-label"
+                aria-describedby={error ? "secret-sync-camunda-cluster-uuid-error" : undefined}
+                id="secret-sync-camunda-cluster-uuid"
                 isError={Boolean(error)}
                 isLoading={isPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -75,7 +81,7 @@ export const CamundaSyncFields = () => {
                 getOptionKeywords={(option) => [option.uuid]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-camunda-cluster-uuid-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

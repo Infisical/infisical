@@ -155,11 +155,13 @@ export const DbtConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="api-token">API Token</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "api-token-error" : undefined}
+                id="api-token"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="api-token-error" errors={[error]} />
             </Field>
           )}
         />

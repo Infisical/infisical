@@ -55,7 +55,10 @@ export const SnowflakeSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-snowflake-database-label"
+              htmlFor="secret-sync-snowflake-database"
+            >
               Database
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -69,6 +72,9 @@ export const SnowflakeSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-snowflake-database-label"
+                aria-describedby={error ? "secret-sync-snowflake-database-error" : undefined}
+                id="secret-sync-snowflake-database"
                 isError={Boolean(error)}
                 isLoading={isDatabasesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -83,7 +89,7 @@ export const SnowflakeSyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-snowflake-database-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -94,7 +100,10 @@ export const SnowflakeSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-snowflake-schema-label"
+              htmlFor="secret-sync-snowflake-schema"
+            >
               Schema
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -108,6 +117,9 @@ export const SnowflakeSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-snowflake-schema-label"
+                aria-describedby={error ? "secret-sync-snowflake-schema-error" : undefined}
+                id="secret-sync-snowflake-schema"
                 isError={Boolean(error)}
                 isLoading={isSchemasPending && Boolean(connectionId) && Boolean(database)}
                 isDisabled={!connectionId || !database}
@@ -119,7 +131,7 @@ export const SnowflakeSyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-snowflake-schema-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

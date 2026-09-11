@@ -37,7 +37,10 @@ export const AwsSecretsManagerSyncFields = () => {
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-aws-secrets-manager-region-label"
+              htmlFor="secret-sync-aws-secrets-manager-region"
+            >
               Region
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -50,8 +53,17 @@ export const AwsSecretsManagerSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <AwsRegionSelect value={value} onChange={onChange} isError={Boolean(error)} />
-              <FieldError errors={[error]} />
+              <AwsRegionSelect
+                id="secret-sync-aws-secrets-manager-region"
+                value={value}
+                onChange={onChange}
+                isError={Boolean(error)}
+                aria-labelledby="secret-sync-aws-secrets-manager-region-label"
+                aria-describedby={
+                  error ? "secret-sync-aws-secrets-manager-region-error" : undefined
+                }
+              />
+              <FieldError id="secret-sync-aws-secrets-manager-region-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

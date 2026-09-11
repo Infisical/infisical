@@ -38,9 +38,14 @@ export const FlyioSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>App</FieldLabel>
+            <FieldLabel id="secret-sync-flyio-app-id-label" htmlFor="secret-sync-flyio-app-id">
+              App
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-flyio-app-id-label"
+                aria-describedby={error ? "secret-sync-flyio-app-id-error" : undefined}
+                id="secret-sync-flyio-app-id"
                 isError={Boolean(error)}
                 isLoading={isAppsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -56,7 +61,7 @@ export const FlyioSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-flyio-app-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

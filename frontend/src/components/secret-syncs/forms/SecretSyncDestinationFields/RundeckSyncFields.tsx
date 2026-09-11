@@ -45,9 +45,17 @@ export const RundeckSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-rundeck-project-label"
+              htmlFor="secret-sync-rundeck-project"
+            >
+              Project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-rundeck-project-label"
+                aria-describedby={error ? "secret-sync-rundeck-project-error" : undefined}
+                id="secret-sync-rundeck-project"
                 isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -62,7 +70,7 @@ export const RundeckSyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-rundeck-project-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

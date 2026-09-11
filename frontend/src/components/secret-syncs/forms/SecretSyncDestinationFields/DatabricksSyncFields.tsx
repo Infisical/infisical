@@ -42,7 +42,10 @@ export const DatabricksSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-databricks-scope-label"
+              htmlFor="secret-sync-databricks-scope"
+            >
               Secret Scope
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -59,6 +62,9 @@ export const DatabricksSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-databricks-scope-label"
+                aria-describedby={error ? "secret-sync-databricks-scope-error" : undefined}
+                id="secret-sync-databricks-scope"
                 isError={Boolean(error)}
                 isLoading={isSecretScopesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -70,7 +76,7 @@ export const DatabricksSyncFields = () => {
                 getOptionValue={(option) => option.name}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-databricks-scope-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

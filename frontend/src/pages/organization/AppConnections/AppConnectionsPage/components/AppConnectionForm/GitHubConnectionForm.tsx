@@ -622,13 +622,22 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             shouldUnregister
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
-                <FieldLabel>Personal Access Token</FieldLabel>
+                <FieldLabel htmlFor="app-connection-git-hub-personal-access-token">
+                  Personal Access Token
+                </FieldLabel>
                 <SecretInput
+                  aria-describedby={
+                    error ? "app-connection-git-hub-personal-access-token-error" : undefined
+                  }
+                  id="app-connection-git-hub-personal-access-token"
                   isError={Boolean(error)}
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
                 />
-                <FieldError errors={[error]} />
+                <FieldError
+                  id="app-connection-git-hub-personal-access-token-error"
+                  errors={[error]}
+                />
               </Field>
             )}
           />

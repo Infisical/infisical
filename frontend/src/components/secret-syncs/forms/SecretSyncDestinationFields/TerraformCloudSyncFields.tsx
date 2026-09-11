@@ -62,9 +62,17 @@ export const TerraformCloudSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel
+              id="secret-sync-terraform-cloud-org-label"
+              htmlFor="secret-sync-terraform-cloud-org"
+            >
+              Organization
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-terraform-cloud-org-label"
+                aria-describedby={error ? "secret-sync-terraform-cloud-org-error" : undefined}
+                id="secret-sync-terraform-cloud-org"
                 isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -85,7 +93,7 @@ export const TerraformCloudSyncFields = () => {
                 getOptionKeywords={(option) => [option.id.toString()]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-terraform-cloud-org-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -210,9 +218,19 @@ export const TerraformCloudSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Variable Set</FieldLabel>
+              <FieldLabel
+                id="secret-sync-terraform-cloud-variable-set-id-label"
+                htmlFor="secret-sync-terraform-cloud-variable-set-id"
+              >
+                Variable Set
+              </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-terraform-cloud-variable-set-id-label"
+                  aria-describedby={
+                    error ? "secret-sync-terraform-cloud-variable-set-id-error" : undefined
+                  }
+                  id="secret-sync-terraform-cloud-variable-set-id"
                   isError={Boolean(error)}
                   isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                   isDisabled={!connectionId || !currentOrg}
@@ -234,7 +252,10 @@ export const TerraformCloudSyncFields = () => {
                   getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError
+                  id="secret-sync-terraform-cloud-variable-set-id-error"
+                  errors={[error]}
+                />
               </FieldContent>
             </Field>
           )}
@@ -246,9 +267,19 @@ export const TerraformCloudSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Workspace</FieldLabel>
+              <FieldLabel
+                id="secret-sync-terraform-cloud-workspace-id-label"
+                htmlFor="secret-sync-terraform-cloud-workspace-id"
+              >
+                Workspace
+              </FieldLabel>
               <FieldContent>
                 <Combobox
+                  aria-labelledby="secret-sync-terraform-cloud-workspace-id-label"
+                  aria-describedby={
+                    error ? "secret-sync-terraform-cloud-workspace-id-error" : undefined
+                  }
+                  id="secret-sync-terraform-cloud-workspace-id"
                   isError={Boolean(error)}
                   isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                   isDisabled={!connectionId || !currentOrg}
@@ -270,7 +301,7 @@ export const TerraformCloudSyncFields = () => {
                   getOptionKeywords={(option) => [option.id.toString()]}
                   modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-terraform-cloud-workspace-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

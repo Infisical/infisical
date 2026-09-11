@@ -238,11 +238,13 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Tooltip>
               </FieldLabel>
               <SecretInput
+                aria-describedby={error ? "private-key-error" : undefined}
+                id="private-key"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="private-key-error" errors={[error]} />
             </Field>
           )}
         />

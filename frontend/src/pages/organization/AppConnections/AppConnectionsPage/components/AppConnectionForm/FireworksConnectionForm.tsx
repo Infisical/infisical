@@ -148,11 +148,13 @@ export const FireworksConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 </Tooltip>
               </FieldLabel>
               <SecretInput
+                aria-describedby={error ? "api-key-error" : undefined}
+                id="api-key"
                 isError={Boolean(error)}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="api-key-error" errors={[error]} />
             </Field>
           )}
         />

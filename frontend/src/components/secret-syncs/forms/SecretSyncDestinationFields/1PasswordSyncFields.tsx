@@ -47,7 +47,10 @@ export const OnePassSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-1-password-vault-id-label"
+              htmlFor="secret-sync-1-password-vault-id"
+            >
               Vault
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -60,6 +63,9 @@ export const OnePassSyncFields = () => {
             </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-1-password-vault-id-label"
+                aria-describedby={error ? "secret-sync-1-password-vault-id-error" : undefined}
+                id="secret-sync-1-password-vault-id"
                 isError={Boolean(error)}
                 isLoading={isVaultsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -72,7 +78,7 @@ export const OnePassSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-1-password-vault-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

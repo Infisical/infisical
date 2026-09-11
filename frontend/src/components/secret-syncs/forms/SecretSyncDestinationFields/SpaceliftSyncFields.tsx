@@ -68,9 +68,17 @@ export const SpaceliftSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Context</FieldLabel>
+            <FieldLabel
+              id="secret-sync-spacelift-context-id-label"
+              htmlFor="secret-sync-spacelift-context-id"
+            >
+              Context
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-spacelift-context-id-label"
+                aria-describedby={error ? "secret-sync-spacelift-context-id-error" : undefined}
+                id="secret-sync-spacelift-context-id"
                 isError={Boolean(error)}
                 isLoading={isContextsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -87,7 +95,7 @@ export const SpaceliftSyncFields = () => {
                 getOptionKeywords={(option) => [option.id]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-spacelift-context-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

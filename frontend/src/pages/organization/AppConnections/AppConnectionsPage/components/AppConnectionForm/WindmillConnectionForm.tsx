@@ -144,12 +144,13 @@ export const WindmillConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="access-token">Access Token</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "access-token-error" : undefined}
                 isError={Boolean(error)}
                 id="access-token"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="access-token-error" errors={[error]} />
             </Field>
           )}
         />

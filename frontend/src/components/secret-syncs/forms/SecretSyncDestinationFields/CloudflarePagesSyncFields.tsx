@@ -55,9 +55,19 @@ export const CloudflarePagesSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-cloudflare-pages-project-name-label"
+              htmlFor="secret-sync-cloudflare-pages-project-name"
+            >
+              Project
+            </FieldLabel>
             <FieldContent>
               <Combobox
+                aria-labelledby="secret-sync-cloudflare-pages-project-name-label"
+                aria-describedby={
+                  error ? "secret-sync-cloudflare-pages-project-name-error" : undefined
+                }
+                id="secret-sync-cloudflare-pages-project-name"
                 isError={Boolean(error)}
                 isLoading={isProjectsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
@@ -72,7 +82,7 @@ export const CloudflarePagesSyncFields = () => {
                 getOptionKeywords={(option) => [option.id.toString()]}
                 modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-cloudflare-pages-project-name-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

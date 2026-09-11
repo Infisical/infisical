@@ -227,11 +227,13 @@ export const AdcsConnectionForm = ({ appConnection, onSubmit }: Props) => {
               <Field className="mb-4">
                 <FieldLabel htmlFor="password">Password</FieldLabel>
                 <SecretInput
+                  aria-describedby={error ? "password-error" : undefined}
+                  id="password"
                   isError={Boolean(error)}
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="password-error" errors={[error]} />
               </Field>
             )}
           />
