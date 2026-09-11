@@ -48,13 +48,19 @@ const TTL_PRESETS = [
 ];
 const DEFAULT_TTL_PRESET = "7d";
 
-const isValidCustomTtl = (value: string) => {
+const MIN_TTL_MS = 60 * 1000;
+
+const getCustomTtlError = (value: string) => {
+  let parsed: number | undefined;
   try {
-    const parsed = ms(value.trim() as Parameters<typeof ms>[0]);
-    return typeof parsed === "number" && parsed >= 60 * 1000;
+    parsed = ms(value.trim() as Parameters<typeof ms>[0]);
   } catch {
-    return false;
+    parsed = undefined;
   }
+
+  if (typeof parsed !== "number" || Number.isNaN(parsed)) return "Not a valid duration.";
+  if (parsed < MIN_TTL_MS) return "At least 1 minute.";
+  return null;
 };
 
 type Props = {
@@ -75,7 +81,9 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
 
   const isCustomTtl = ttlPreset === CUSTOM_TTL;
   const ttl = isCustomTtl ? customTtl.trim() : ttlPreset;
-  const isTtlValid = !isCustomTtl || isValidCustomTtl(customTtl);
+  const customTtlError = isCustomTtl ? getCustomTtlError(customTtl) : null;
+  const isTtlValid = customTtlError === null;
+  const visibleTtlError = customTtl.length > 0 ? customTtlError : null;
 
   useEffect(() => {
     if (isOpen) {
@@ -176,15 +184,14 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
               {isCustomTtl && (
                 <>
                   <Input
+                    className="mt-2"
                     value={customTtl}
                     onChange={(e) => setCustomTtl(e.target.value)}
                     placeholder="90m"
-                    isError={customTtl.length > 0 && !isTtlValid}
+                    isError={visibleTtlError !== null}
                   />
                   <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
-                  {customTtl.length > 0 && !isTtlValid && (
-                    <FieldError>At least 1 minute.</FieldError>
-                  )}
+                  <FieldError>{visibleTtlError}</FieldError>
                 </>
               )}
               {ttlPreset === NEVER_TTL && (
