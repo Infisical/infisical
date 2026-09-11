@@ -5,7 +5,7 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { SshCertKeyAlgorithm } from "@app/lib/ssh";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
-import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
+import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import {
   ActorIdentityAttributes,
@@ -1063,7 +1063,7 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
 export type TDynamicProviderCreateMetadata = {
   projectId: string;
   passwordValidation?: {
-    constraints: TConstraint[];
+    constraints: TConstraints;
     ruleNames: string[];
   };
 };

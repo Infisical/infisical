@@ -3,14 +3,26 @@ import { BanIcon, CopyIcon, EllipsisIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  PageHeader
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   OrgKmipServerPermissionActions,
   OrgPermissionSubjects
@@ -19,16 +31,11 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteKmipServerById, useRevokeKmipServerAccess } from "@app/hooks/api/kmipServers";
 import { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
-export const KmipServerPageHeader = ({
-  kmipServer,
-  orgId
-}: {
-  kmipServer: TKmipServerWithAuthMethod;
-  orgId: string;
-}) => {
+export const KmipServerPageHeader = ({ kmipServer, orgId }: Props) => {
   const navigate = useNavigate();
-  const { mutateAsync: deleteKmipServer } = useDeleteKmipServerById();
-  const { mutateAsync: revokeKmipServer } = useRevokeKmipServerAccess();
+  const { isSubOrganization } = useOrganization();
+  const { mutateAsync: deleteKmipServer, isPending: isDeleting } = useDeleteKmipServerById();
+  const { mutateAsync: revokeKmipServer, isPending: isRevoking } = useRevokeKmipServerAccess();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "deleteKmipServer",
     "revokeKmipServer"
@@ -49,7 +56,7 @@ export const KmipServerPageHeader = ({
       createNotification({ type: "success", text: "KMIP server access revoked" });
       handlePopUpToggle("revokeKmipServer", false);
     } catch {
-      createNotification({ type: "error", text: "Failed to revoke KMIP server access" });
+      // MutationCache.onError already surfaces the API error.
     }
   };
 
@@ -58,7 +65,7 @@ export const KmipServerPageHeader = ({
   return (
     <>
       <PageHeader
-        scope="org"
+        scope={isSubOrganization ? "namespace" : "org"}
         title={kmipServer.name}
         description="KMIP server configuration and authentication"
       >
@@ -115,22 +122,56 @@ export const KmipServerPageHeader = ({
         </DropdownMenu>
       </PageHeader>
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteKmipServer.isOpen}
-        title={`Delete KMIP server "${kmipServer.name}"?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteKmipServer", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={onDelete}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteKmipServer", isOpen)}
+        title={`Delete KMIP Server ${kmipServer.name}?`}
+        description={
+          <Alert variant="danger" appearance="borderless">
+            <AlertDescription>
+              This permanently removes the KMIP server {kmipServer.name} from your organization.
+              Deployed instances lose access and KMIP clients can no longer reach it. This cannot be
+              undone.
+            </AlertDescription>
+          </Alert>
+        }
+        confirmKey={kmipServer.name}
+        confirmLabel="Delete KMIP Server"
+        isPending={isDeleting}
+        onConfirm={onDelete}
       />
-      <DeleteActionModal
-        isOpen={popUp.revokeKmipServer.isOpen}
-        title={`Revoke access for KMIP server "${kmipServer.name}"?`}
-        subTitle="The KMIP server will be disconnected and any active tokens will be invalidated. The server will need to re-authenticate to reconnect."
-        onChange={(isOpen) => handlePopUpToggle("revokeKmipServer", isOpen)}
-        deleteKey="confirm"
-        buttonText="Revoke access"
-        onDeleteApproved={onRevoke}
-      />
+      <AlertDialog
+        open={popUp.revokeKmipServer.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("revokeKmipServer", open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke Access for KMIP Server {kmipServer.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The KMIP server is disconnected and its active tokens are invalidated. It must
+              re-authenticate to reconnect.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isRevoking}
+              onClick={(event) => {
+                event.preventDefault();
+                onRevoke();
+              }}
+            >
+              Revoke Access
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
+};
+
+type Props = {
+  kmipServer: TKmipServerWithAuthMethod;
+  orgId: string;
 };

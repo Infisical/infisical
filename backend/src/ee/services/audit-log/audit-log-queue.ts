@@ -334,17 +334,15 @@ export const auditLogQueueServiceFactory = async ({
   // "audit-log-clickhouse-batch" so the existing Redis scheduler key isn't orphaned on upgrade.
   queueService.start(QueueName.AuditLogClickHouseBatch, consumeAuditLogStream);
 
-  // A pod with the workers disabled never initializes the queue, and upsertJobScheduler throws on a
-  // missing queue.
-  if (getConfig().QUEUE_WORKERS_ENABLED) {
+  // Only the fleet that consumes this queue arms its scheduler. An api or secret-scanning pod has
+  // no worker on it, so registering from there would re-arm a 5s schedule nobody drains.
+  if (getConfig().isGeneralWorkerRunModeEnabled) {
     await queueService.upsertJobScheduler(
       QueueName.AuditLogClickHouseBatch,
       `${JOB_SCHEDULER_PREFIX}:audit-log-clickhouse-batch`,
       { every: 5000 },
       { name: QueueJobs.AuditLogClickHouseBatch }
     );
-  } else {
-    logger.info("audit-log-queue: Skipped audit log batch scheduler registration, queue workers are disabled");
   }
 
   return {

@@ -1,12 +1,6 @@
 import { z } from "zod";
 
-import {
-  CertificatesSchema,
-  PkiAlertsSchema,
-  PkiCollectionsSchema,
-  ProjectKeysSchema,
-  ProjectType
-} from "@app/db/schemas";
+import { PkiAlertsSchema, PkiCollectionsSchema, ProjectKeysSchema, ProjectType } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
@@ -15,6 +9,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
@@ -392,7 +387,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema.omit({ orderId: true })),
+          certificates: z.array(SanitizedCertificateSchema),
           totalCount: z.number()
         })
       }

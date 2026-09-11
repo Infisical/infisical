@@ -20,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
   SheetFooter,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
 import {
@@ -229,7 +229,7 @@ export const AlertForm = ({
                 className="cursor-pointer justify-between rounded-md border border-border px-3 py-2.5 font-normal"
               >
                 Enabled
-                <Switch
+                <Toggle
                   id="alert-enabled"
                   variant={scopeVariant}
                   checked={field.value}

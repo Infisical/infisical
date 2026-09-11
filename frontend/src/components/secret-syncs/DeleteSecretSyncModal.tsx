@@ -18,7 +18,7 @@ import {
   FieldLabel,
   FieldTitle,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { TSecretSync, useDeleteSecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
@@ -104,7 +104,7 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
                 Also delete the secrets synced to {destinationName}. This cannot be undone.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id="remove-secrets"
               variant="danger"
               checked={removeSecrets}

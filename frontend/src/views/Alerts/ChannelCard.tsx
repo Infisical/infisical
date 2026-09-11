@@ -16,7 +16,7 @@ import {
   InputGroupButton,
   InputGroupInput,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
 import {
@@ -168,7 +168,7 @@ export const ChannelCard = ({
               control={control}
               name={`channels.${index}.enabled`}
               render={({ field }) => (
-                <Switch
+                <Toggle
                   id={`channel-${index}-enabled`}
                   aria-label={`Toggle ${channelLabel} channel`}
                   variant={scopeVariant}

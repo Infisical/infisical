@@ -27,7 +27,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -38,6 +37,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -686,7 +686,7 @@ const ImportSecretsContent = ({
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
-            <Switch
+            <Toggle
               variant="danger"
               checked={shouldOverwrite}
               onCheckedChange={setShouldOverwrite}

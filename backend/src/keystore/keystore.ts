@@ -177,6 +177,12 @@ export const KeyStorePrefixes = {
   // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
   InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
+  // Braces are a Redis Cluster hash tag: the index zset and every member's payload key must land on
+  // one slot for the multi-key upsert/delete scripts.
+  WorkerHeartbeatIndex: (workerType: string) => `worker-heartbeat:{${workerType}}` as const,
+  WorkerHeartbeat: (workerType: string, instanceId: string) =>
+    `worker-heartbeat:{${workerType}}:${instanceId}` as const,
+
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
@@ -191,6 +197,8 @@ export const KeyStorePrefixes = {
   LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
+  PkiCertificateQuotaCount: (orgId: string) => `pki-certificate-quota-count-${orgId}` as const,
+  PkiWildcardCertificateQuotaCount: (orgId: string) => `pki-wildcard-certificate-quota-count-${orgId}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
     `lockout:identity:{${identityId}}:${authMethod}:${slug}` as const,
   // Sorted set of the identity's *locked* auth methods, scored by when each lockout ends.
@@ -258,6 +266,9 @@ export const KeyStoreTtls = {
   // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
   LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
+  // Short: the count drifts high as certificates expire and low when an ungated path such as a
+  // discovery scan inserts rows, and only this expiry corrects either.
+  PkiCertificateQuotaCountInSeconds: 60,
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
@@ -270,7 +281,8 @@ export const KeyStoreTtls = {
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
   SecretReplicationSuccessInSeconds: 10,
-  NativeIntegrationDeprecationNoticeInSeconds: 3888000 // 45 days - outlives one monthly cycle
+  NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
 };
 
 type TDeleteItems = {

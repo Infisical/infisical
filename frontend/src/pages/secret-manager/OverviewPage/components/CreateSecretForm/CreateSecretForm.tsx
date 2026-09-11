@@ -27,8 +27,8 @@ import {
   Input,
   PasswordGenerator,
   SheetFooter,
-  Switch,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -553,7 +553,6 @@ export const CreateSecretForm = ({
                         onUsePassword={field.onChange}
                         projectId={projectId}
                         secretPath={secretPath}
-                        environments={environments}
                       />
                     </div>
                     <FieldContent>
@@ -649,7 +648,7 @@ export const CreateSecretForm = ({
                             >
                               Enable Multiline Encoding
                             </FieldLabel>
-                            <Switch
+                            <Toggle
                               id={`create-secret-${index}-multiline-encoding`}
                               variant="project"
                               checked={field.value}
@@ -738,7 +737,7 @@ export const CreateSecretForm = ({
                                   name={`secrets.${index}.metadata.${metadataIndex}.isEncrypted`}
                                   render={({ field: switchField }) => (
                                     <>
-                                      <Switch
+                                      <Toggle
                                         id={`create-secret-${index}-metadata-${metadataIndex}-encrypted`}
                                         className="mt-2"
                                         variant="project"
