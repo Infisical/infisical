@@ -131,7 +131,7 @@ const VerifyMacForm = ({ cmek }: FormProps) => {
                 <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
                   Data is Base64 encoded{" "}
                   <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
                   </Tooltip>
                 </Switch>
               )}

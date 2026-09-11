@@ -157,7 +157,7 @@ export default function ProductSelectionStep({
     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
       <AuthPagePanel className="gap-6">
         <CardHeader className="gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="bg-linear-to-b from-white to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             What brings you to Infisical?
           </CardTitle>
           <CardDescription className="text-sm text-label">

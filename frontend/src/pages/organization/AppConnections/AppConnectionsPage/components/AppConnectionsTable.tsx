@@ -395,7 +395,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                       </DropdownMenuCheckboxItem>
                     ))
                 ) : (
-                  <DropdownMenuLabel className="font-normal text-mineshaft-400">
+                  <DropdownMenuLabel className="font-normal text-muted">
                     No Connections Configured
                   </DropdownMenuLabel>
                 )}

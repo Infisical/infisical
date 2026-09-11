@@ -257,7 +257,7 @@ export const AppConnectionsTab = () => {
                 aria-label="Filter Connections"
                 variant={isTableFiltered ? "project" : "outline"}
                 size="md"
-                className={twMerge(isTableFiltered && "text-primary")}
+                className={twMerge(isTableFiltered && "text-project")}
               >
                 <FilterIcon className="size-4" />
               </IconButton>
@@ -292,7 +292,7 @@ export const AppConnectionsTab = () => {
                             className="h-4 w-4"
                           />
                           <span className="flex-1">{APP_CONNECTION_MAP[app].name}</span>
-                          {isSelected && <span className="text-primary">✓</span>}
+                          {isSelected && <span className="text-project">✓</span>}
                         </div>
                       </DropdownMenuItem>
                     );

@@ -28,7 +28,7 @@ export const HighlightText = ({
     }
 
     parts.push(
-      <span key={`match-${offset}`} className={highlightClassName || "bg-yellow/30"}>
+      <span key={`match-${offset}`} className={highlightClassName || "bg-warning/30"}>
         {match}
       </span>
     );

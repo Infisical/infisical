@@ -7,6 +7,7 @@ import {
   RootCommandMenu,
   type RootCommandMenuShell
 } from "@app/components/v3/platform/RootCommandMenu";
+import { ThemeProvider } from "@app/components/v3/platform/ThemeProvider";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
 import { authKeys } from "@app/hooks/api/auth/queries";
@@ -42,14 +43,17 @@ const RootCommandMenuMount = () => {
 };
 
 const RootPage = () => {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Outlet />
-        <RootCommandMenuMount />
-        <NotificationContainer />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider pathname={pathname}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Outlet />
+          <RootCommandMenuMount />
+          <NotificationContainer />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

@@ -21,7 +21,7 @@ const syntaxHighlight = (
 ) => {
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
-    return <span className="ph-no-capture text-red/75">Error loading secret value.</span>;
+    return <span className="ph-no-capture text-danger/75">Error loading secret value.</span>;
   if (isImport && !content) return "EMPTY";
   if (placeholder && (content === "" || !content)) return placeholder;
   if (content === "") return "EMPTY";
@@ -39,7 +39,7 @@ const syntaxHighlight = (
       const isCrossProjectRef = parts[0]?.startsWith("@");
 
       return (
-        <span className="ph-no-capture relative z-10 text-yellow" key={`secret-value-${i + 1}`}>
+        <span className="ph-no-capture relative z-10 text-warning" key={`secret-value-${i + 1}`}>
           &#36;&#123;
           {parts.map((segment, segmentIndex) => {
             const segmentKey = `${part}-segment-${segmentIndex}`;
@@ -52,9 +52,9 @@ const syntaxHighlight = (
                 <span
                   role="button"
                   tabIndex={isInteractive ? 0 : -1}
-                  className={`ph-no-capture text-yellow-200/80 ${
+                  className={`ph-no-capture text-warning/80 ${
                     isInteractive ? "pointer-events-auto" : "pointer-events-none"
-                  } ${shouldShowHoverStyle ? "cursor-pointer underline decoration-yellow-400" : ""}`}
+                  } ${shouldShowHoverStyle ? "cursor-pointer underline decoration-warning" : ""}`}
                   onMouseEnter={() => onHoverPart?.(segmentKey)}
                   onMouseLeave={() => onHoverPart?.("")}
                   onMouseDown={(e) => {
@@ -81,7 +81,7 @@ const syntaxHighlight = (
                   {segment}
                 </span>
                 {segmentIndex < parts.length - 1 && (
-                  <span className="ph-no-capture pointer-events-none text-yellow-200/80">.</span>
+                  <span className="ph-no-capture pointer-events-none text-warning/80">.</span>
                 )}
               </span>
             );

@@ -23,13 +23,13 @@ export const EmptyState = ({
 }: Props) => (
   <div
     className={twMerge(
-      "flex w-full flex-col items-center bg-mineshaft-800 px-2 pt-4 text-bunker-300",
+      "flex w-full flex-col items-center bg-surface-raised px-2 pt-4 text-label-secondary",
       className
     )}
   >
     <FontAwesomeIcon icon={icon} size={iconSize} />
     <div className="flex flex-col items-center py-4">
-      <div className={twMerge("text-sm text-bunker-300", titleClassName)}>{title}</div>
+      <div className={twMerge("text-sm text-label-secondary", titleClassName)}>{title}</div>
       <div>{children}</div>
     </div>
   </div>

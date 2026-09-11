@@ -152,12 +152,14 @@ export const PkiSyncRow = ({
               </Tooltip>
             )}
             {!applicationId && (
-              <span className="ml-2 rounded bg-mineshaft-600 px-2 py-0.5 text-[10px] tracking-wide text-mineshaft-200 uppercase">
+              <span className="ml-2 rounded bg-surface-active px-2 py-0.5 text-[10px] tracking-wide text-foreground-secondary uppercase">
                 Legacy
               </span>
             )}
           </div>
-          <p className="truncate text-xs leading-4 text-bunker-300">{destinationDetails.name}</p>
+          <p className="truncate text-xs leading-4 text-label-secondary">
+            {destinationDetails.name}
+          </p>
         </div>
       </TableCell>
       <PkiSyncDestinationCol pkiSync={pkiSync} />
@@ -228,7 +230,7 @@ export const PkiSyncRow = ({
                       <RotateCwIcon />
                       Trigger Sync
                     </span>
-                    <InfoIcon className="size-3.5 text-bunker-300" />
+                    <InfoIcon className="size-3.5 text-label-secondary" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="left" sideOffset={20}>
@@ -251,7 +253,7 @@ export const PkiSyncRow = ({
                         <DownloadIcon />
                         Import Certificates
                       </span>
-                      <InfoIcon className="size-3.5 text-bunker-300" />
+                      <InfoIcon className="size-3.5 text-label-secondary" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent
@@ -276,7 +278,7 @@ export const PkiSyncRow = ({
                         <EraserIcon />
                         Remove Certificates
                       </span>
-                      <InfoIcon className="size-3.5 text-bunker-300" />
+                      <InfoIcon className="size-3.5 text-label-secondary" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent

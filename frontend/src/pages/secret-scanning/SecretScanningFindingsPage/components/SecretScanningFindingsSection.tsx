@@ -18,14 +18,14 @@ export const SecretScanningFindingsSection = () => {
   if (isFindingsPending) return <ContentLoader />;
 
   return (
-    <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Findings</p>
+            <p className="text-xl font-medium text-foreground">Findings</p>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/usage#findings" />
           </div>
-          <p className="text-sm text-bunker-300">
+          <p className="text-sm text-label-secondary">
             Secret leaks discovered across your data sources
           </p>
         </div>

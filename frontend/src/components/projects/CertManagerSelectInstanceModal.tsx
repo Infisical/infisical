@@ -58,7 +58,7 @@ export const CertManagerSelectInstanceModal = ({
               href="https://infisical.com/docs/documentation/platform/pki/migration"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary-500 hover:underline"
+              className="text-project hover:underline"
             >
               View the migration guide.
             </a>

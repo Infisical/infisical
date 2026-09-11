@@ -61,7 +61,7 @@ export const Cloud66AuthorizePage = () => {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
+          colorSchema="secondary"
           className="mt-4"
           isLoading={isLoading}
         >

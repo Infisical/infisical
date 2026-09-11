@@ -24,7 +24,7 @@ export const AdminLayout = () => {
     <>
       <Banner />
       <SidebarProvider
-        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-page transition-all`}
+        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-page`}
       >
         <Navbar />
         <div className="flex min-h-0 flex-1 overflow-hidden">

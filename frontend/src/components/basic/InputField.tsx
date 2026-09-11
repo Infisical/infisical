@@ -40,15 +40,15 @@ const InputField = ({
   if (isStatic === true) {
     return (
       <div className="my-2 flex w-full max-w-md flex-col justify-center md:my-4">
-        <p className="mb-0.5 text-sm font-medium text-gray-400">{label}</p>
-        {text && <p className="mb-2 text-xs text-gray-400">{text}</p>}
+        <p className="mb-0.5 text-sm font-medium text-muted-cool">{label}</p>
+        {text && <p className="mb-2 text-xs text-muted-cool">{text}</p>}
         <input
           onChange={(e) => onChangeHandler(e.target.value)}
           type={type}
           placeholder={placeholder}
           value={value}
           required={isRequired}
-          className="text-md w-full min-w-16 rounded-md border border-gray-600 bg-bunker-800 p-2 text-gray-400 outline-hidden"
+          className="text-md w-full min-w-16 rounded-md border border-border-cool-strong bg-page p-2 text-muted-cool outline-hidden"
           name={name}
           readOnly
           autoComplete={autoComplete}
@@ -59,12 +59,12 @@ const InputField = ({
   }
   return (
     <div className="w-full flex-col">
-      <div className="mb-0.5 flex flex-row items-center text-mineshaft-300">
+      <div className="mb-0.5 flex flex-row items-center text-label">
         <p className="mr-1 text-sm font-medium">{label}</p>
       </div>
       <div
         className={`group relative flex w-full max-w-2xl flex-col justify-center border ${
-          error ? "border-red" : "border-mineshaft-500"
+          error ? "border-danger" : "border-border-strong"
         } rounded-md`}
       >
         <input
@@ -75,11 +75,11 @@ const InputField = ({
           required={isRequired}
           className={`${
             blurred
-              ? "text-bunker-800 group-hover:text-gray-400 focus:text-gray-400 active:text-gray-400"
+              ? "text-page group-hover:text-muted-cool focus:text-muted-cool active:text-muted-cool"
               : ""
           } ${
-            error ? "focus:ring-red/50" : "focus:ring-primary/50"
-          } text-md peer relative w-full min-w-16 rounded-md bg-mineshaft-900 p-2 text-gray-400 outline-hidden duration-200 focus:ring-4`}
+            error ? "focus:ring-danger/50" : "focus:ring-project/50"
+          } text-md peer relative w-full min-w-16 rounded-md bg-surface-base p-2 text-muted-cool outline-hidden duration-200 focus:ring-4`}
           name={name}
           spellCheck="false"
           autoComplete={autoComplete}
@@ -91,7 +91,7 @@ const InputField = ({
             onClick={() => {
               setPasswordVisible(!passwordVisible);
             }}
-            className="absolute mr-3 cursor-pointer self-end text-gray-400"
+            className="absolute mr-3 cursor-pointer self-end text-muted-cool"
           >
             {passwordVisible ? (
               <FontAwesomeIcon icon={faEyeSlash} />
@@ -101,7 +101,7 @@ const InputField = ({
           </button>
         )}
         {blurred && (
-          <div className="peer absolute flex h-10 w-fit max-w-xl items-center overflow-hidden rounded-md text-clip text-gray-400/50 group-hover:!hidden peer-hover:hidden peer-focus:hidden peer-active:invisible">
+          <div className="peer absolute flex h-10 w-fit max-w-xl items-center overflow-hidden rounded-md text-clip text-muted-cool/50 group-hover:!hidden peer-hover:hidden peer-focus:hidden peer-active:invisible">
             <p className="ml-2" />
             {value
               .split("")
@@ -121,7 +121,7 @@ const InputField = ({
 						</div>
 					)} */}
       </div>
-      {error && <p className="mx-0 mt-0.5 mb-2 max-w-xs text-xs text-red">{errorText}</p>}
+      {error && <p className="mx-0 mt-0.5 mb-2 max-w-xs text-xs text-danger">{errorText}</p>}
     </div>
   );
 };

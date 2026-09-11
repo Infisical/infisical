@@ -176,7 +176,7 @@ export const FilterPopover = ({
           <FilterIcon className="size-3" />
           Filter
           {filters.length > 0 && (
-            <span className="rounded-full bg-primary/20 px-1.5 text-[10px] font-medium text-primary">
+            <span className="rounded-full bg-project/20 px-1.5 text-[10px] font-medium text-project">
               {filters.length}
             </span>
           )}

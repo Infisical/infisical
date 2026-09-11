@@ -180,7 +180,7 @@ const LastUsedCell = ({ lastLoginAuthMethod, lastLoginTime }: LastUsedCellProps)
   const label = formatLastUsed(lastLoginTime);
 
   if (!lastLoginAuthMethod || !lastLoginTime) {
-    return <span className="text-sm text-mineshaft-400">{label}</span>;
+    return <span className="text-sm text-muted">{label}</span>;
   }
 
   return (

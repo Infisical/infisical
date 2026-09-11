@@ -42,12 +42,12 @@ export const MenuItem = <T extends ElementType = "button">({
       type="button"
       role="menuitem"
       className={twMerge(
-        "group relative mt-0.5 box-border flex w-full cursor-pointer items-center rounded-[2px] border-l-2 border-transparent px-2 py-2 font-inter text-sm text-bunker-100 transition-all duration-50 hover:bg-mineshaft-700",
-        isSelected && "bg-mineshaft-600 hover:bg-mineshaft-600",
+        "group relative mt-0.5 box-border flex w-full cursor-pointer items-center rounded-[2px] border-l-2 border-transparent px-2 py-2 font-inter text-sm text-foreground-default transition-all duration-50 hover:bg-surface-hover",
+        isSelected && "bg-surface-active hover:bg-surface-active",
         isDisabled && "cursor-not-allowed hover:bg-transparent",
-        isSelected && variant === "org" && "border-org-v1",
-        isSelected && variant === "namespace" && "border-namespace-v1",
-        isSelected && variant === "project" && "border-primary",
+        isSelected && variant === "org" && "border-org",
+        isSelected && variant === "namespace" && "border-sub-org",
+        isSelected && variant === "project" && "border-project",
         className
       )}
       ref={inputRef}
@@ -70,7 +70,7 @@ export type MenuGroupProps = {
 
 export const MenuGroup = ({ children, title, className }: MenuGroupProps): JSX.Element => (
   <>
-    <li className={twMerge("px-2 pt-3 text-xs font-medium text-gray-400 uppercase", className)}>
+    <li className={twMerge("px-2 pt-3 text-xs font-medium text-muted-cool uppercase", className)}>
       {title}
     </li>
     {children}

@@ -40,7 +40,7 @@ type MembersStepProps = {
 const KindIcon = ({ kind }: { kind: MemberKind }) => {
   // eslint-disable-next-line no-nested-ternary
   const Icon = kind === "user" ? UserIcon : kind === "identity" ? HardDriveIcon : UsersIcon;
-  return <Icon className="h-3.5 w-3.5 text-mineshaft-300" />;
+  return <Icon className="h-3.5 w-3.5 text-label" />;
 };
 
 export const MembersStep = ({

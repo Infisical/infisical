@@ -349,7 +349,7 @@ export const CreatePkiAlertV2Modal = ({
           <div className="flex-1 overflow-y-auto">
             <FormProvider {...formMethods}>
               <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-                <Tab.List className="-pb-1 mb-6 flex w-full justify-start border-b-2 border-mineshaft-600">
+                <Tab.List className="-pb-1 mb-6 flex w-full justify-start border-b-2 border-border-control">
                   {formTabs.map((tab, index) => (
                     <Tab
                       onClick={async (e) => {
@@ -360,8 +360,8 @@ export const CreatePkiAlertV2Modal = ({
                       className={({ selected }) =>
                         `-mb-[0.14rem] w-28 whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-2 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                           selected
-                            ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                            : "text-bunker-300"
+                            ? "border-b-2 border-border-bright text-foreground-secondary"
+                            : "text-label-secondary"
                         }`
                       }
                       key={tab.key}

@@ -31,8 +31,8 @@ export const LimitsStep = ({
   showError = false
 }: Props) => (
   <>
-    <h2 className="text-xl font-semibold text-mineshaft-100">What an approval allows</h2>
-    <p className="mt-1 mb-4 text-sm text-mineshaft-300">
+    <h2 className="text-xl font-semibold text-foreground">What an approval allows</h2>
+    <p className="mt-1 mb-4 text-sm text-label">
       Once approval is granted, define how it can be used. At least one limit is required.
     </p>
 

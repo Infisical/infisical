@@ -141,7 +141,9 @@ export const SecretValueRenderer = ({
   const renderContent = () => {
     if (isLoading || !isVisible || value === HIDDEN_SECRET_VALUE_API_MASK) {
       return (
-        <div className="font-mono text-sm break-words text-bunker-300">{HIDDEN_SECRET_VALUE}</div>
+        <div className="font-mono text-sm break-words text-label-secondary">
+          {HIDDEN_SECRET_VALUE}
+        </div>
       );
     }
 

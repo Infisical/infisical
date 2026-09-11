@@ -106,7 +106,7 @@ const DecryptForm = ({ cmek }: FormProps) => {
       >
         Decode Base64{" "}
         <Tooltip content="Toggle this switch on if your data was originally plain text.">
-          <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
+          <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
         </Tooltip>
       </Switch>
       <div className="flex items-center">

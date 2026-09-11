@@ -2647,7 +2647,7 @@ const OverviewPageContent = () => {
 
   if (!isProjectV3)
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-foreground-bright dark:scheme-dark">
         <SecretV2MigrationSection />
       </div>
     );
@@ -2669,17 +2669,17 @@ const OverviewPageContent = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
+      <div className="relative mx-auto mb-18 max-w-8xl text-foreground-bright dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             className="mb-6 md:mb-10"
             scope={ProjectType.SecretManager}
             title="Project Overview"
             description={
-              <p className="text-md text-bunker-300">
+              <p className="text-md text-label-secondary">
                 Inject your secrets using
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-foreground-secondary underline decoration-muted/65 underline-offset-3 duration-200 hover:text-foreground hover:decoration-project"
                   href="https://infisical.com/docs/cli/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2688,7 +2688,7 @@ const OverviewPageContent = () => {
                 </a>
                 ,
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-foreground-secondary underline decoration-muted/65 underline-offset-3 duration-200 hover:text-foreground hover:decoration-project"
                   href="https://infisical.com/docs/api-reference/overview/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2697,7 +2697,7 @@ const OverviewPageContent = () => {
                 </a>
                 ,
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-foreground-secondary underline decoration-muted/65 underline-offset-3 duration-200 hover:text-foreground hover:decoration-project"
                   href="https://infisical.com/docs/sdks/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2706,7 +2706,7 @@ const OverviewPageContent = () => {
                 </a>
                 , and
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-foreground-secondary underline decoration-muted/65 underline-offset-3 duration-200 hover:text-foreground hover:decoration-project"
                   href="https://infisical.com/docs/documentation/getting-started/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2901,7 +2901,7 @@ const OverviewPageContent = () => {
                       to={ROUTE_PATHS.SecretManager.ApprovalPage.path}
                       params={{ orgId, projectId }}
                       search={{ selectedTab: "approval-requests", requestId: "" }}
-                      className="ml-auto flex shrink-0 items-center gap-1 text-xs text-white underline underline-offset-2"
+                      className="ml-auto flex shrink-0 items-center gap-1 text-xs text-foreground-inverse underline underline-offset-2"
                     >
                       Review
                       <ChevronRightIcon className="mt-px size-4" />

@@ -70,7 +70,7 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className="mb-4 gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="bg-linear-to-b from-white to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Name your organization
           </CardTitle>
           <CardDescription className="text-sm text-label">

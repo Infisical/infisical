@@ -10,12 +10,12 @@ export const AuditLogsPage = () => {
   const { currentProject } = useProject();
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       <Helmet>
         <title>{isCertManager ? "Audit Logs" : "Project Audit Logs"}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+      <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope={currentProject.type}

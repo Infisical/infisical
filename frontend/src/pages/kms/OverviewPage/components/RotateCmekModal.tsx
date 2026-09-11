@@ -41,7 +41,7 @@ export const RotateCmekModal = ({ isOpen, onOpenChange, cmek }: Props) => {
       onDeleteApproved={handleRotateCmek}
       formContent={
         <NoticeBannerV2 title="Data encrypted outside Infisical may be affected" className="mb-4">
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-sm text-label">
             Data encrypted through Infisical stays decryptable. However, any system that holds this
             key&apos;s material directly, such as a KMIP client or an exported copy of the key, will
             receive the new material and may be unable to decrypt data it encrypted with the
