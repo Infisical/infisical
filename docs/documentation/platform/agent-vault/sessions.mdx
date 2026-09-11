@@ -1,17 +1,21 @@
 ---
 title: "Sessions"
-description: "Mint the token an agent runs with, choose how long it lives, and revoke it while the agent is running."
+description: "Create the session an agent runs with, choose how long it lives, and revoke it while the agent is running."
 ---
 
 A session is the token an agent runs with. It carries one access bundle and an expiry. On every request the proxy uses it to decide which connections the agent may use right now, and applies their credentials on the way out.
 
-## Minting a session
+## Creating a session
 
-Anyone with a grant on at least one bundle can mint a session. Admins can mint over any bundle.
+Anyone granted at least one access bundle can create a session. Admins can create one with any access bundle.
 
 <Tabs>
   <Tab title="Dashboard">
-    Go to **Sessions** and select **Create Session**. Pick the bundle the agent needs, set how long the session lives, and select **Create Session**. The token is shown once, with the command to run:
+    Go to **Sessions** and select **Create Session**. Pick the access bundle the agent needs, set how long the session lives, and select **Create Session**. The token is shown once, with the command to run:
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session panel with an access bundle picked and a seven day expiry" />
+    </Frame>
 
     ```bash
     infisical av run --session-token <session-token> --proxy <proxy-address> -- claude
@@ -19,18 +23,22 @@ Anyone with a grant on at least one bundle can mint a session. Admins can mint o
 
     Copy it now. The dialog can't be reopened.
 
+    <Frame>
+      <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the run command with the session token shown once" />
+    </Frame>
+
     This is the way to start an agent on a machine that has no Infisical login. The token is the only thing you hand over.
   </Tab>
   <Tab title="CLI">
-    `infisical av run` mints a session for you when you name the bundle:
+    `infisical av run` creates a session for you when you name the access bundle:
 
     ```bash
     infisical av run --access-bundle coding-agent --proxy <proxy-address> -- claude
     ```
 
-    The CLI mints as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables), and as your login otherwise. It revokes the session when the agent exits unless you pass `--keep-session`.
+    The CLI creates the session as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables), and as your login otherwise. It revokes the session when the agent exits unless you pass `--keep-session`.
 
-    For an agent that runs unattended, set the machine identity up first: create it with Universal Auth, add it under **Access Control**, and grant it the bundle.
+    For an agent that runs unattended, set the machine identity up first: create it with Universal Auth, add it under **Access Control**, and grant it the access bundle.
   </Tab>
 </Tabs>
 
@@ -42,12 +50,12 @@ On the CLI this is [`--ttl`](/cli/commands/av#ttl), which takes a duration such 
 
 ## What a running agent can reach
 
-The bundle on a session is fixed at mint. Whether the agent still gets its credentials is re-checked against the current grants on every proxy poll, 60 seconds by default:
+The access bundle on a session is fixed when the session is created. Whether the agent still gets its credentials is re-checked against the current grants on every proxy poll, 60 seconds by default:
 
-- Remove someone from the bundle, and every session they minted over it gets no credentials.
-- Demote an admin to member, and their sessions over bundles they weren't explicitly granted get no credentials.
-- Delete a bundle, and every session that carried it gets no credentials. The session still lists the bundle's name so you can see what it was.
-- Remove them from Agent Vault, and the proxy refuses every request on their sessions. Removal also takes away a member's bundle grants, so adding them back leaves their sessions without credentials until you grant the bundle again. An admin reaches every bundle, so their sessions work as soon as they're back.
+- Remove someone from the access bundle, and every session they created with it gets no credentials.
+- Demote an admin to member, and their sessions over access bundles they weren't explicitly granted get no credentials.
+- Delete an access bundle, and every session that carried it gets no credentials. The session still lists the access bundle's name so you can see what it was.
+- Remove them from Agent Vault, and the proxy refuses every request on their sessions. Removal also takes away a member's access bundle grants, so adding them back leaves their sessions without credentials until you grant the access bundle again. An admin reaches every access bundle, so their sessions work as soon as they're back.
 
 In the first three cases the agent's requests still go out, and what it can reach without a credential is decided by the proxy's [unmatched hosts setting](/documentation/platform/agent-vault/proxies#unmatched-hosts). Nothing on the agent's machine needs to be restarted for any of this.
 
@@ -57,8 +65,12 @@ Select the session's menu on the Sessions page and choose **Revoke Session**. Th
 
 An expired session stops the same way. The Sessions page shows sessions as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can see what an agent could reach.
 
+<Frame>
+  <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing sessions with their access bundle, expiry, and status" />
+</Frame>
+
 Admins can switch the list between **All Sessions** and **My Sessions**. Members see only their own.
 
 ## Audit trail
 
-Minting and revoking each write an audit event, as does every change to a bundle, connection, or proxy. Open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
+Creating and revoking a session each write an audit event, as does every change to an access bundle, connection, or proxy. Open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.

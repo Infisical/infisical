@@ -9,6 +9,10 @@ A proxy is the forward proxy that brokers credentials: it applies the real crede
 
 Go to **Proxies**, select **Create Proxy**, name it, and select **Create**. The dialog shows a one-time enrollment token, valid for an hour, and the same three snippets below with your token and instance filled in. Run one of them where the proxy will live:
 
+<Frame>
+  <img src="/images/platform/agent-vault/proxy-enrollment-token.png" alt="The Enrollment Token dialog with CLI, Docker, and systemd tabs and the one-hour countdown" />
+</Frame>
+
 <Tabs>
   <Tab title="CLI">
     ```bash
@@ -66,9 +70,13 @@ Every setting lives in Infisical and reaches a running proxy on its next poll. S
 What the proxy does with a request to a host no connection in the session covers.
 
 - **Allow**, the default: the request passes through with no credential attached.
-- **Deny**: the request is rejected. The agent reaches the hosts in its bundle, the bypass list, and nothing else.
+- **Deny**: the request is rejected. The agent reaches the hosts in its access bundle, the bypass list, and nothing else.
 
-Use **Deny** when the proxy sits somewhere it could reach more than you intend, such as a network with internal services on it. Under **Deny**, a pass-through connection is how a bundle makes a host reachable without giving it a credential.
+Use **Deny** when the proxy sits somewhere it could reach more than you intend, such as a network with internal services on it. Under **Deny**, a pass-through connection is how an access bundle makes a host reachable without giving it a credential.
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the Allow and Deny unmatched host options and the poll interval" />
+</Frame>
 
 ### Bypass hosts
 
@@ -110,6 +118,10 @@ infisical av run --session-token <session-token> --proxy <proxy-address> --ca-fi
 ```
 
 The CLI aborts before starting the agent if the served certificate doesn't match. Pin when the agent runs on a network you don't fully control.
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing a healthy proxy with its unmatched host policy and certificate authority fingerprint" />
+</Frame>
 
 ### APIs with a private certificate authority
 

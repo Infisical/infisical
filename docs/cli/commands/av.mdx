@@ -119,10 +119,10 @@ export INFISICAL_DOMAIN=https://eu.infisical.com
 Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. On each run, the CLI:
 
 - Fetches the proxy's certificate authority from the proxy, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`.
-- Gets a session: the one you pass with `--session-token`, or one minted now over the bundle named with `--access-bundle`. Exactly one of the two is required.
+- Gets a session: the one you pass with `--session-token`, or one created now with the access bundle named by `--access-bundle`. Exactly one of the two is required.
 - Starts the agent with `HTTPS_PROXY` and `HTTP_PROXY` pointing at the proxy, `NO_PROXY` set to `localhost,127.0.0.1` merged with your own `NO_PROXY` and `--no-proxy`, and the certificate trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
 
-The CLI prints the proxy's name and fingerprint and, for a session it minted, when it expires, then hands the terminal to the agent. When the agent exits, a session minted with `--access-bundle` is revoked unless `--keep-session` was set. A session passed with `--session-token` is left alone.
+The CLI prints the proxy's name and fingerprint and, for a session it created, when it expires, then hands the terminal to the agent. When the agent exits, a session created with `--access-bundle` is revoked unless `--keep-session` was set. A session passed with `--session-token` is left alone.
 
 ```bash
 infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- [agent start command]
@@ -130,7 +130,7 @@ infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- [
 # Pin the certificate authority the proxy serves
 infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
 
-# Mint the session here instead, as your login or a machine identity
+# Create the session here instead, as your login or a machine identity
 infisical av run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -- claude
 ```
 
@@ -138,7 +138,7 @@ infisical av run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -
 
 #### `--session-token`
 
-Run with a session token minted in the dashboard. No login is needed, and the CLI never revokes the session. Can't be combined with `--access-bundle`.
+Run with a session token created in the dashboard. No login is needed, and the CLI never revokes the session. Can't be combined with `--access-bundle`.
 
 ```bash
 # Example
@@ -147,7 +147,7 @@ infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- claud
 
 #### `--access-bundle`
 
-Mint a session over this access bundle, by name. Pass it once. Mints as the machine identity from `--client-id` and `--client-secret`, or as your login. The identity has to be an Agent Vault member with a grant on the bundle. Can't be combined with `--session-token`.
+Create a session with this access bundle, by name. Pass it once. Creates it as the machine identity from `--client-id` and `--client-secret`, or as your login. The identity has to be an Agent Vault member with a grant on the access bundle. Can't be combined with `--session-token`.
 
 ```bash
 # Example
@@ -165,7 +165,7 @@ infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
 
 #### `--ttl`
 
-How long a minted session lives: a duration such as `30m`, `8h`, or `7d`, or `never`. One minute is the shortest. Only applies with `--access-bundle`.
+How long the new session lives: a duration such as `30m`, `8h`, or `7d`, or `never`. One minute is the shortest. Only applies with `--access-bundle`.
 
 ```bash
 # Example
@@ -176,7 +176,7 @@ Default value: `7d`
 
 #### `--keep-session`
 
-Leave a minted session active when the agent exits instead of revoking it. Only applies with `--access-bundle`.
+Leave the session active when the agent exits instead of revoking it. Only applies with `--access-bundle`.
 
 ```bash
 # Example
@@ -227,7 +227,7 @@ infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 --no-proxy 
 
 #### `--client-id / --client-secret`
 
-Universal Auth credentials of the machine identity that mints the session. Alternative to the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables.
+Universal Auth credentials of the machine identity that creates the session. Alternative to the `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` environment variables.
 
 ```bash
 # Example
@@ -247,7 +247,7 @@ export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=10.0.1.5:17323
 
 #### `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID / INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`
 
-Universal Auth credentials of the machine identity that mints the session when you use `--access-bundle`. Alternative to `--client-id` and `--client-secret`. Without them the CLI mints as your logged-in user.
+Universal Auth credentials of the machine identity that creates the session when you use `--access-bundle`. Alternative to `--client-id` and `--client-secret`. Without them the CLI creates it as your logged-in user.
 
 ```bash
 # Example

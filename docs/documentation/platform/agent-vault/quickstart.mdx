@@ -26,7 +26,15 @@ First, get a GitHub personal access token to broker:
 
 Then, in Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**. Select **Create Access Bundle**, name it `coding-agent`, and open it.
 
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with coding-agent entered as the name" />
+</Frame>
+
 Select **Add Connection** and work through the steps:
+
+<Frame>
+  <img src="/images/platform/agent-vault/connection-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
+</Frame>
 
 <Steps>
   <Step title="Pick the GitHub template">
@@ -47,11 +55,15 @@ Select **Add Connection** and work through the steps:
   Not on the template list? Pick **Custom** and set the host, header name, and prefix yourself. See [Access bundles and connections](/documentation/platform/agent-vault/access-bundles).
 </Note>
 
-You're an admin, so you can already mint sessions over this bundle. To let a teammate or a machine identity run agents with it, select **Manage Access** on the bundle and grant it to them. They have to be a member of Agent Vault first, under **Access Control**.
+You're an admin, so you can already create sessions with this access bundle. To let a teammate or a machine identity run agents with it, select **Manage Access** on the access bundle and grant it to them. They have to be a member of Agent Vault first, under **Access Control**.
 
 ## 2. Enroll a proxy
 
 Go to **Proxies**, select **Create Proxy**, name it `egress`, and select **Create**. The dialog shows a one-time enrollment token and the command to run.
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxy-enrollment-token.png" alt="The Enrollment Token dialog with the CLI command, and Docker and systemd tabs alongside it" />
+</Frame>
 
 On the host that will be the proxy:
 
@@ -65,11 +77,19 @@ The proxy enrolls and listens on port `17323`. Leave it running and note this ho
   Fine for trying it out, but this dies with your terminal. The same dialog has Docker and systemd snippets, and [Proxies](/documentation/platform/agent-vault/proxies) covers running it for real.
 </Note>
 
-## 3. Mint a session
+## 3. Create a session
 
 Go to **Sessions**, select **Create Session**, pick `coding-agent`, and select **Create Session**.
 
+<Frame>
+  <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session panel with coding-agent picked and a seven day expiry" />
+</Frame>
+
 The token appears once, with the command to run. Copy it now.
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the infisical av run command with the session token" />
+</Frame>
 
 ## 4. Launch your agent
 
@@ -117,18 +137,18 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 </Tabs>
 
 <Note>
-  Getting a `401`? The credential wasn't applied. Open the `coding-agent` bundle and confirm a connection covers `api.github.com`; if one does, the stored token is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
+  Getting a `401`? The credential wasn't applied. Open the `coding-agent` access bundle and confirm a connection covers `api.github.com`; if one does, the stored token is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
 </Note>
 
 <Note>
-  Working on your own machine and signed in with `infisical login`? Skip the Sessions page: `infisical av run --access-bundle coding-agent --proxy <proxy-host>:17323 -- claude` mints a session for you and revokes it when the agent exits. For an agent that runs unattended, run it as a machine identity instead — see [Sessions](/documentation/platform/agent-vault/sessions#minting-a-session).
+  Working on your own machine and signed in with `infisical login`? Skip the Sessions page: `infisical av run --access-bundle coding-agent --proxy <proxy-host>:17323 -- claude` creates a session for you and revokes it when the agent exits. For an agent that runs unattended, run it as a machine identity instead — see [Sessions](/documentation/platform/agent-vault/sessions#creating-a-session).
 </Note>
 
 ## Next steps
 
 <CardGroup cols={2}>
   <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
-    Add more services, choose credential types, and grant bundles to your team.
+    Add more services, choose credential types, and grant access bundles to your team.
   </Card>
   <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
     Choose how long a session lives and revoke one while an agent is running.

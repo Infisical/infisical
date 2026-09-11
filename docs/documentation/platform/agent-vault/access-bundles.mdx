@@ -1,13 +1,13 @@
 ---
 title: "Access bundles and connections"
-description: "What a connection sends and where, how bundles group connections, and who can run agents with them."
+description: "What a connection sends and where, how access bundles group connections, and who can run agents with them."
 ---
 
-An access bundle is what you hand an agent: everything it needs for a job, granted and revoked as one unit. Today a bundle holds connections, each mapping an external service to the credential the proxy applies to requests bound for it, and names who may run agents with them. You grant bundles and mint sessions over them; the proxy brokers the connections inside.
+An access bundle is what you hand an agent: everything it needs for a job, granted and revoked as one unit. Today an access bundle holds connections, each mapping an external service to the credential the proxy applies to requests bound for it, and names who may run agents with them. You grant access bundles and create sessions with them; the proxy brokers the connections inside.
 
 ## Connections
 
-Each connection has a name, the hosts it covers, and a credential. Open a bundle from **Access Bundles** and select **Add Connection** to add one.
+Each connection has a name, the hosts it covers, and a credential. Open an access bundle from **Access Bundles** and select **Add Connection** to add one.
 
 <Frame>
   <img src="/images/platform/agent-vault/access-bundle-connections.png" alt="An access bundle's Connections table with one GitHub connection, its Bearer credential, and its host" />
@@ -47,18 +47,18 @@ Keep patterns as narrow as the API allows. A wildcard covers every host under it
 
 ### When two connections cover one host
 
-Within one bundle, two connections can't cover the same host with the same pattern. Infisical rejects the save and names the connection that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one connection covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first connection's credential.
+Within one access bundle, two connections can't cover the same host with the same pattern. Infisical rejects the save and names the connection that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one connection covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first connection's credential.
 
-Different bundles can cover the same host with different credentials. An agent gets the credential from the bundle its session carries.
+Different access bundles can cover the same host with different credentials. An agent gets the credential from the access bundle its session carries.
 
 ## Access bundles
 
-A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
+An access bundle has a name, an optional description, its connections, and its members. Granting an access bundle to a user, machine identity, or group lets them create sessions with it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing two bundles with their connections and member counts" />
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing two access bundles with their connections and member counts" />
 </Frame>
 
-Bundles are how you scope access. An agent for on-call work gets a bundle with the incident tooling, an agent for code review gets a bundle with GitHub, and neither reaches the other's hosts.
+Access bundles are how you scope access. An agent for on-call work gets the incident tooling, an agent for code review gets GitHub, and neither reaches the other's hosts.
 
-Removing a member from a bundle, or from Agent Vault, takes effect on their running agents within one poll interval of the proxy. Deleting a bundle removes its connections from every session that carries it. See [Sessions](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach).
+Removing a member from an access bundle, or from Agent Vault, takes effect on their running agents within one poll interval of the proxy. Deleting one removes its connections from every session that carries it. See [Sessions](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach).

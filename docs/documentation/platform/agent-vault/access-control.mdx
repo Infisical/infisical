@@ -6,9 +6,9 @@ description: "Understand how permissions work in Agent Vault."
 Access control in Agent Vault happens at two levels:
 
 1. **Product membership** — being added to Agent Vault itself
-2. **Bundle grants** — being granted an access bundle, which is what lets you mint sessions over it
+2. **Access bundle grants** — being granted an access bundle, which is what lets you create sessions with it
 
-Users, groups, and [machine identities](/documentation/platform/identities/machine-identities) all go through both levels and hold the same roles, so everything below applies to all three unless it says otherwise. An agent holds no access of its own: it runs on a session minted by a person or a machine identity, and reaches only what that session's bundle covers.
+Users, groups, and [machine identities](/documentation/platform/identities/machine-identities) all go through both levels and hold the same roles, so everything below applies to all three unless it says otherwise. An agent holds no access of its own: it runs on a session created by a person or a machine identity, and reaches only what that session's access bundle covers.
 
 ## Product membership
 
@@ -16,10 +16,10 @@ Agent Vault is organization-wide, so there is one membership list for the whole 
 
 | Role | What they can do |
 |------|------------------|
-| **Admin** | Create and manage access bundles, connections, and proxies. Grant bundles. Manage membership. Read audit logs |
-| **Member** | Mint sessions over the bundles granted to them, and revoke their own |
+| **Admin** | Create and manage access bundles, connections, and proxies. Grant access bundles. Manage membership. Read audit logs |
+| **Member** | Create sessions with the access bundles granted to them, and revoke their own |
 
-An admin reaches every bundle without being granted one. A member reaches nothing until an admin grants them a bundle, and sees only the bundles they hold. Members see their own sessions; admins can switch the Sessions page between **All Sessions** and **My Sessions**.
+An admin reaches every access bundle without being granted one. A member reaches nothing until an admin grants them one, and sees only the ones they hold. Members see their own sessions; admins can switch the Sessions page between **All Sessions** and **My Sessions**.
 
 <Note>
   Organization admins can enter Agent Vault as an admin themselves, without being added by someone else. Opening the product from the organization overview is enough.
@@ -36,16 +36,16 @@ Whoever you add has to be an active member of the organization first. Invite the
 
 You can't change your own role or remove your own access. Ask another admin to do either.
 
-## Bundle grants
+## Access bundle grants
 
 Product membership is the entry ticket. Reaching a service still takes a grant on the [access bundle](/documentation/platform/agent-vault/access-bundles) that holds its connection.
 
-Open a bundle and select **Manage Access** to grant it to a user, machine identity, or group. The grantee has to be an Agent Vault member already.
+Open an access bundle and select **Manage Access** to grant it to a user, machine identity, or group. The grantee has to be an Agent Vault member already.
 
-Granting a group grants everyone in it, and each member mints sessions as themselves. Someone who joins the group later picks the grant up, and someone who leaves loses it.
+Granting a group grants everyone in it, and each member creates sessions as themselves. Someone who joins the group later picks the grant up, and someone who leaves loses it.
 
 ## When access changes
 
 A change to membership or a grant reaches a running agent within one proxy poll, 60 seconds by default. Nothing on the agent's machine needs restarting.
 
-Removing someone from Agent Vault also takes away their bundle grants, so adding them back leaves their sessions without credentials until you grant the bundles again. An admin reaches every bundle, so their sessions work as soon as they're back. See [what a running agent can reach](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach) for what happens to each kind of change mid-run.
+Removing someone from Agent Vault also takes away their access bundle grants, so adding them back leaves their sessions without credentials until you grant those again. See [what a running agent can reach](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach) for what happens to each kind of change mid-run.

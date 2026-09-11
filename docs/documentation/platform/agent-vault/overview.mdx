@@ -34,22 +34,22 @@ Enter Infisical Agent Vault, which prevents credential exfiltration by brokering
 
 ## How it works
 
-You describe what an agent may use in an access bundle: the services, and the credentials for them. You grant the bundle to whoever runs agents. They start an access session over the bundle and launch the agent with it. Requests to those services get the right credential on the way out, and everything else is untouched. The agent needs no code changes.
+You describe what an agent may use in an access bundle: the services, and the credentials for them. You grant the access bundle to whoever runs agents, and they create a session with it to launch the agent. Requests to those services get the right credential on the way out, and everything else is untouched. The agent needs no code changes.
 
 ## Get started
 
 <Card title="Quickstart" icon="rocket" href="/documentation/platform/agent-vault/quickstart">
-  Create a bundle with a GitHub connection, enroll a proxy, and launch an agent that makes authenticated calls with a token it never sees.
+  Create an access bundle with a GitHub connection, enroll a proxy, and launch an agent that makes authenticated calls with a token it never sees.
 </Card>
 
 ## Learn more
 
 <CardGroup cols={2}>
   <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
-    Connections, credential types, host patterns, and who can run agents with a bundle.
+    Connections, credential types, host patterns, and who can run agents with an access bundle.
   </Card>
   <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
-    Minting, lifetime, revocation, and what a running agent can reach.
+    Creating one, how long it lives, revoking it, and what a running agent can reach.
   </Card>
   <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
     Where the proxy runs, enrolling it, traffic policy, and certificate trust.
