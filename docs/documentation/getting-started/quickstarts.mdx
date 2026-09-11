@@ -17,7 +17,7 @@ mode: "frame"
     <a href="#secrets-management">Secrets Management</a>
     <a href="#secrets-scanning">Secrets Scanning</a>
     <a href="#certificate-management">Certificates</a>
-    <a href="#kms">KMS</a>
+    <a href="#key-management">Key Management</a>
     <a href="#privileged-access-management">Privileged Access</a>
   </div>
   <div className="qs-index__jump-links">
@@ -28,6 +28,8 @@ mode: "frame"
 </div>
 
 <h2 id="secrets-management">Secrets Management</h2>
+
+Store secrets in Infisical and deliver them to the applications and infrastructure that use them.
 
 | Quickstart | Description |
 | --- | --- |
@@ -41,45 +43,75 @@ mode: "frame"
 
 <h2 id="secrets-scanning">Secrets Scanning</h2>
 
+Detect credentials that have been committed to a source code repository.
+
 | Quickstart | Description |
 | --- | --- |
 | [Scan a GitHub repository for leaked secrets](/documentation/platform/secret-scanning/github) | Connect a GitHub repository to Infisical and detect exposed credentials. |
+| [Scan a GitLab repository for leaked secrets](/documentation/platform/secret-scanning/gitlab) | Connect a GitLab repository to Infisical and detect exposed credentials. |
+| [Scan a Bitbucket repository for leaked secrets](/documentation/platform/secret-scanning/bitbucket) | Connect a Bitbucket repository to Infisical and detect exposed credentials. |
 
 <h2 id="certificate-management">Certificate Management</h2>
+
+Issue and manage X.509 certificates through a private or public certificate authority.
 
 | Quickstart | Description |
 | --- | --- |
 | [Issue your first certificate](/documentation/platform/pki/quick-starts/issue-first-certificate) | Set up a certificate authority and issue an X.509 certificate. |
+| [Enroll certificates with ACME](/documentation/platform/pki/applications/enrollment-methods/acme) | Issue certificates to servers and workloads through the ACME protocol. |
+| [Enroll a device with Microsoft Intune SCEP](/documentation/platform/pki/guides/applications/microsoft-intune-scep) | Push certificates to Intune-managed devices through SCEP. |
 
-<h2 id="kms">KMS</h2>
+<h2 id="key-management">Key Management</h2>
+
+Store cryptographic keys in Infisical and use them to encrypt, decrypt, and sign.
 
 | Quickstart | Description |
 | --- | --- |
 | [Back Infisical KMS with an HSM](/self-hosting/guides/hsm-integration) | Use a hardware security module to protect the root key. |
+| [Encrypt Kubernetes secrets with Infisical KMS](/documentation/platform/kms/kubernetes-encryption) | Use Infisical KMS as the encryption provider for Kubernetes secrets. |
+| [Sign container images with Cosign](/documentation/platform/kms/sigstore-cosign) | Use a key from Infisical KMS to sign and verify container images with Cosign. |
+| [Serve keys through KMIP](/documentation/platform/kms/kmip) | Expose keys from Infisical KMS to KMIP clients. |
 
 <h2 id="privileged-access-management">Privileged Access Management</h2>
+
+Give users time-bound, audited access to databases and servers without sharing the underlying credential.
 
 | Quickstart | Description |
 | --- | --- |
 | [Access a database or server through Infisical](/documentation/platform/pam/quick-starts/launch-first-session) | Open a session to a database or server without exposing the credential. |
+| [Open an SSH session through Infisical](/documentation/platform/pam/accounts/ssh) | Reach a server over SSH without handing out the credential. |
+| [Access a PostgreSQL database through Infisical](/documentation/platform/pam/accounts/postgresql) | Open a session to a PostgreSQL database without exposing the credential. |
 
 <h2 id="identity-and-access">Identity and access</h2>
+
+Authenticate applications and users to Infisical.
 
 | Quickstart | Description |
 | --- | --- |
 | [Authenticate a machine identity with universal auth](/documentation/platform/identities/universal-auth) | Configure universal auth so an application can authenticate with a client ID and secret. |
+| [Authenticate a workload from Kubernetes](/documentation/platform/identities/kubernetes-auth) | Use a Kubernetes service account token to authenticate a workload with Infisical. |
+| [Authenticate a workload with OIDC](/documentation/platform/identities/oidc-auth/general) | Use an OIDC identity token from a supported provider to authenticate a workload. |
 | [Set up single sign-on](/documentation/platform/sso/overview) | Configure SSO through a supported identity provider. |
 
 <h2 id="networking">Networking</h2>
 
+Reach systems that aren't on the public internet through a Gateway.
+
 | Quickstart | Description |
 | --- | --- |
 | [Reach private systems with a Gateway](/documentation/platform/gateways/overview) | Set up a Gateway to reach systems that aren't on the public internet. |
+| [Deploy a Gateway](/documentation/platform/gateways/gateway-deployment) | Install and run a Gateway in your own infrastructure. |
 
 <h2 id="self-hosting">Self-hosting</h2>
+
+Run Infisical on your own infrastructure.
 
 | Quickstart | Description |
 | --- | --- |
 | [Self-host Infisical with Docker Compose](/self-hosting/deployment-options/docker-compose) | Run Infisical on your own infrastructure using Docker Compose. |
+| [Self-host Infisical with the standalone Docker image](/self-hosting/deployment-options/standalone-infisical) | Run the frontend and backend from a single Docker image. |
+| [Self-host Infisical on Kubernetes with Helm](/self-hosting/deployment-options/kubernetes-helm) | Deploy Infisical to a Kubernetes cluster with the Helm chart. |
+| [Install Infisical from the Linux package](/self-hosting/deployment-options/native/linux-package/installation) | Install Infisical directly on a Linux host with the native package. |
+| [Harden a self-hosted Infisical install](/self-hosting/guides/production-hardening) | Apply the recommended settings before running Infisical in production. |
 
 </div>
