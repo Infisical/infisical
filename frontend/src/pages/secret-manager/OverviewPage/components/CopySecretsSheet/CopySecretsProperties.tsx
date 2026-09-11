@@ -36,14 +36,12 @@ export const CopySecretsProperties = ({
   isDisabled: boolean;
 }) => {
   const includedPropertyCount = Object.values(attributes).filter(Boolean).length;
-  const valueSummary = attributes.value ? "" : " · values excluded";
 
   return (
     <Popover modal>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="sm" isDisabled={isDisabled}>
           <SlidersHorizontalIcon /> Properties ({includedPropertyCount}/{properties.length})
-          {valueSummary}
         </Button>
       </PopoverTrigger>
       <PopoverContent
