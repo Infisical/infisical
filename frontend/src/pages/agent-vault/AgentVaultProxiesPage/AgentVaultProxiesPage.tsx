@@ -7,6 +7,7 @@ import {
   ChevronDownIcon,
   MoreHorizontalIcon,
   PencilIcon,
+  PlusIcon,
   RefreshCwIcon,
   RouteIcon,
   TrashIcon,
@@ -233,6 +234,7 @@ export const AgentVaultProxiesPage = () => {
           {isAdmin && (
             <CardAction>
               <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+                <PlusIcon />
                 Create Proxy
               </Button>
             </CardAction>
