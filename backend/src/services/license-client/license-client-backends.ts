@@ -34,7 +34,10 @@ import {
   TSubscriptionResponse,
   TTrialCancelResult,
   TTrialResult,
-  TTrialsResponse
+  TTrialsResponse,
+  TUpgradePayload,
+  TUpgradeResult,
+  upgradeResultSchema
 } from "./license-client-types";
 import { TLicenseTokenProvider } from "./license-token-provider";
 
@@ -80,7 +83,20 @@ const BILLING_ERROR_MESSAGES: Record<string, string> = {
   past_due: "There's an unpaid invoice on your account. Resolve payment before making changes.",
   resubscribe_cooldown: "This product was removed recently. Please wait a bit before resubscribing.",
   not_self_serve: "Billing for this organization is managed by our team. Contact sales to make changes.",
-  product_not_trialing: "Start this product's trial or activate it before setting an annual commitment."
+  product_not_trialing: "Start this product's trial or activate it before setting an annual commitment.",
+  not_an_upgrade: "This plan isn't an upgrade from your current one. Contact support to switch to it.",
+  product_not_held: "You don't have this product yet. Add it before changing its plan.",
+  product_trialing: "You're on a trial of this product. You can change plans once the trial converts.",
+  product_churned: "This product was canceled. Add it again before changing its plan.",
+  trial_already_used: "You've already trialed this plan.",
+  trial_already_open: "A trial for this product is already running.",
+  trial_not_eligible: "You're already on this plan.",
+  version_moved: "Prices changed while you were reviewing. Check the new total and try again.",
+  commitment_not_portable: "Your annual commitment can't move to that plan. Contact sales to switch.",
+  dimension_not_priced: "That plan doesn't price something you're billed for today. Contact support to switch.",
+  no_payment_method: "Add a payment method before making this change.",
+  subscription_syncing: "Your billing details are still syncing. Please try again in a moment.",
+  plan_deprecated: "This plan is being retired and is no longer available."
 };
 
 const throwIfResponseError = async (res: Response): Promise<void> => {
@@ -274,6 +290,21 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
+  // Move a held product onto a higher plan in place. expectedPlanVersionId is the version the preview
+  // priced; prorationDate is a staleness check the server rejects when older than 15 minutes.
+  upgradeProduct: async (orgId: string, payload: TUpgradePayload): Promise<TUpgradeResult> => {
+    const url = new URL(orgScoped(orgId, "/subscription/upgrade"), serverUrl);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "manual"
+    });
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    return upgradeResultSchema.parse(body);
+  },
+
   // Start / change annual commitments across dimensions, all-or-nothing. The license server prices at
   // its current time; no client-supplied proration instant is forwarded.
   changeCommitments: async (orgId: string, payload: TChangeCommitmentsPayload): Promise<TCheckoutResult> => {
@@ -448,6 +479,7 @@ export const licenseServerSelfHostedBackend = (
     previewSubscriptionChange: notSupportedOnSelfHosted("previewSubscriptionChange"),
     buyProduct: notSupportedOnSelfHosted("buyProduct"),
     removeProduct: notSupportedOnSelfHosted("removeProduct"),
+    upgradeProduct: notSupportedOnSelfHosted("upgradeProduct"),
     changeCommitments: notSupportedOnSelfHosted("changeCommitments"),
     startTrial: notSupportedOnSelfHosted("startTrial"),
     cancelTrial: notSupportedOnSelfHosted("cancelTrial"),

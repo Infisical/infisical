@@ -15,6 +15,7 @@ const entitlementProductSchema = z
     product_key: z.string(),
     plan_key: z.string().nullish(),
     status: z.string().nullish(), // active | trialing | grace | churned
+    trial_plan_key: z.string().nullish(),
     trial_ends_at: z.string().nullish(),
     current_period_end: z.string().nullish()
   })
@@ -56,8 +57,11 @@ const catalogPlanSchema = z
     name: z.string(),
     selfServe: z.boolean(),
     salesLed: z.boolean(),
-    // Offers a self-serve trial; a plan is trialable only when selfServe && trialable.
+    // Org-aware: whether THIS org may trial / upgrade to this plan, not a static property of the plan.
     trialable: z.boolean().default(false),
+    upgradeable: z.boolean().default(false),
+    // Server-configured trial length for this plan; 0 when the plan offers no trial.
+    trialDays: z.number().nullish(),
     // true = kept for existing customers, closed to new ones. reason/nextSteps/date shown when true.
     deprecated: z.boolean().default(false),
     deprecationReason: z.string().nullish(),
@@ -163,6 +167,8 @@ const subscriptionItemSchema = z
     status: z.string().optional(),
     isTrialing: z.boolean().default(false),
     trialEndsAt: z.number().nullish(),
+    trialPlan: z.string().nullish(),
+    trialPlanEndsAt: z.number().nullish(),
     // Present only when this item's product OR plan is deprecated (product supersedes plan). The item
     // keeps working; this carries the contract-specific message (the sunset date comes from the catalog).
     deprecation: z.object({ reason: z.string().nullish(), nextSteps: z.string().nullish() }).nullish(),
@@ -261,7 +267,20 @@ export const subscriptionPreviewResponseSchema = z
     nextInvoiceTotal: z.number(),
     nextRecurringTotal: z.number(),
     prorationDate: z.number().nullish(),
+    // Upgrade previews only. Echoed back on apply so a price published between the two calls fails as
+    // version_moved instead of silently charging a different number.
+    toPlanVersionId: z.string().nullish(),
     lines: z.array(subscriptionPreviewLineSchema).default([])
+  })
+  .passthrough();
+
+export const upgradeResultSchema = z
+  .object({
+    outcome: z.literal("upgraded"),
+    subscriptionId: z.string().optional(),
+    fromPlanKey: z.string().optional(),
+    toPlanKey: z.string().optional(),
+    toPlanVersionId: z.string().optional()
   })
   .passthrough();
 
@@ -366,11 +385,26 @@ export type TCommitmentChange = {
   quantity: number;
 };
 
+// An upgrade carries no quantities or declaredUsage: the server moves the lines the org already has,
+// each keeping its live quantity and cadence. Mutually exclusive with add/remove of the same product.
+export type TUpgradeItem = {
+  productId: string;
+  plan: string;
+};
+
 export type TSubscriptionPreviewPayload = {
   add?: TProductLineItem[];
   remove?: string[];
   commitmentChanges?: TCommitmentChange[];
+  upgrade?: TUpgradeItem;
 };
+
+export type TUpgradePayload = TUpgradeItem & {
+  expectedPlanVersionId: string;
+  prorationDate?: number;
+};
+
+export type TUpgradeResult = z.infer<typeof upgradeResultSchema>;
 
 export type TBuyProductPayload = {
   productId: string;
@@ -447,8 +481,10 @@ const trialHistoryItemSchema = z
   .object({
     product_key: z.string(),
     plan_key: z.string().nullish(),
-    // trialing | converted | expired | canceled | completed
+    base_plan_key: z.string().nullish(),
+    // trialing | converted | expired | canceled | completed | reverted
     outcome: z.string(),
+    ended_detail: z.string().nullish(),
     started_at: z.number().nullish(),
     trial_ends_at: z.number().nullish()
   })
@@ -471,6 +507,8 @@ export type TLicenseClientBackend = {
   buyProduct: (orgId: string, payload: TBuyProductPayload) => Promise<TCheckoutResult>;
   // Remove one product; removing the last product cancels the subscription.
   removeProduct: (orgId: string, productId: string) => Promise<TCheckoutResult>;
+  // Move a held product onto a higher plan in place, invoicing only the prorated difference.
+  upgradeProduct: (orgId: string, payload: TUpgradePayload) => Promise<TUpgradeResult>;
   // Start / change annual commitments across dimensions (all-or-nothing).
   changeCommitments: (orgId: string, payload: TChangeCommitmentsPayload) => Promise<TCheckoutResult>;
   // Start a plan-scoped self-serve trial.

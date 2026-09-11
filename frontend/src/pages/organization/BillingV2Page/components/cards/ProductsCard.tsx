@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode } from "react";
-import { DollarSign, Package, RefreshCw } from "lucide-react";
+import { Clock, DollarSign, Package, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -69,6 +69,13 @@ const ActiveProductCard = ({
   const monthlyRecurring = entitlement?.cadence === "annual" ? 0 : (entitlement?.amount ?? 0);
   const hasPrice = annualCommitted > 0 || monthlyRecurring > 0 || onDemand > 0;
   const isTrialing = Boolean(entitlement?.isTrialing);
+  const trialedPlan = entitlement?.trialPlan
+    ? prod.plans.find((plan) => plan.tier === entitlement.trialPlan)
+    : undefined;
+  const trialPlanName = entitlement?.trialPlan
+    ? (entitlement.trialPlanName ?? trialedPlan?.name ?? tierLabel(entitlement.trialPlan))
+    : null;
+  const trialDaysLeft = entitlement?.trialPlanDaysLeft;
 
   // The headline figure steps down a size when a second amount line shares the block.
   const priceLines = [annualCommitted > 0, monthlyRecurring > 0, onDemand > 0].filter(
@@ -156,6 +163,27 @@ const ActiveProductCard = ({
           </Button>
         )}
       </div>
+      {trialPlanName && (
+        <div className="-mx-4 flex flex-col gap-1.5 border-y border-border bg-warning/5 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-xs text-foreground">
+              <Clock className="size-3.5 shrink-0 text-warning" />
+              Trialing {trialPlanName}
+            </span>
+            {trialDaysLeft !== null && trialDaysLeft !== undefined && (
+              <span className="shrink-0 text-xs font-medium text-warning tabular-nums">
+                {trialDaysLeft === 0
+                  ? "Ends today"
+                  : `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left`}
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] text-muted">
+            {entitlement?.trialPlanEndsAt ? `Trial ends ${entitlement.trialPlanEndsAt} · ` : ""}
+            upgrades to {trialPlanName} automatically when it ends
+          </span>
+        </div>
+      )}
       {sortedDims.length > 0 && (
         <div className="flex flex-col gap-3.5">
           {sortedDims.map((dim) => (
@@ -196,8 +224,6 @@ const ActiveProductCard = ({
 type AvailableProductTileProps = {
   prod: BillingV2CatalogProduct;
   readOnly?: boolean;
-  // This product's one-per-product trial is already used up, so it can only be activated, not trialed.
-  trialUsed?: boolean;
   onManage: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
@@ -206,13 +232,12 @@ type AvailableProductTileProps = {
 const AvailableProductTile = ({
   prod,
   readOnly,
-  trialUsed,
   onManage,
   onContact
 }: AvailableProductTileProps) => {
   const selfServe = prod.plans.some((plan) => plan.selfServe);
   const salesLed = prod.plans.some((plan) => plan.salesLed);
-  const offersTrial = !trialUsed && prod.plans.some((plan) => plan.selfServe && plan.trialable);
+  const trialPlan = prod.plans.find((plan) => plan.selfServe && plan.trialable);
 
   let action = null;
   if (!readOnly) {
@@ -224,7 +249,9 @@ const AvailableProductTile = ({
           style={{ "--product-color": prod.color } as CSSProperties}
           onClick={() => onManage(prod.id)}
         >
-          {offersTrial ? "Start a free trial" : "Activate"}
+          {trialPlan
+            ? `Try free${trialPlan.trialDays > 0 ? ` for ${trialPlan.trialDays} days` : ""}`
+            : "Activate"}
         </Button>
       );
     } else if (salesLed) {
@@ -355,7 +382,6 @@ export const ProductsCard = ({
                           key={prod.id}
                           prod={prod}
                           readOnly={readOnly}
-                          trialUsed={overview.trialedProductKeys.includes(prod.id)}
                           onManage={onManage}
                           onContact={onContact}
                         />

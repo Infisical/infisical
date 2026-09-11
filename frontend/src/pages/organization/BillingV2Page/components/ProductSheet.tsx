@@ -57,6 +57,7 @@ import {
 import { ActivateView } from "./ActivateView";
 import { CommitmentView } from "./CommitmentView";
 import { ActiveBadge, DimensionMeter, ProductIcon } from "./shared";
+import { UpgradeView } from "./UpgradeView";
 
 // prefix/metered carry the usage-based framing for metered dims; absent for per_unit and base prices.
 type PriceLine = { amount: string; unit: string; prefix?: string; metered?: boolean };
@@ -187,8 +188,6 @@ type PlanCardProps = {
   cadence: BillingV2Cadence;
   isCurrent: boolean;
   entitled: boolean;
-  // This product's one-per-product trial is already used up (any outcome), so no trial CTA.
-  trialUsed: boolean;
   canChangeCommitment: boolean;
   // Whether a commitment already exists, so the CTA reads "Change" vs "Set" commitment.
   hasCommitment: boolean;
@@ -196,6 +195,8 @@ type PlanCardProps = {
   // sales-led "Contact sales" CTA stays enabled.
   selfServe: boolean;
   onActivate: (planTier: string) => void;
+  onStartTrial: (planTier: string) => void;
+  onUpgrade: (planTier: string) => void;
   onChangeCommitment: () => void;
   onContact: () => void;
 };
@@ -205,18 +206,19 @@ const PlanCard = ({
   cadence,
   isCurrent,
   entitled,
-  trialUsed,
   canChangeCommitment,
   hasCommitment,
   selfServe,
   onActivate,
+  onStartTrial,
+  onUpgrade,
   onChangeCommitment,
   onContact
 }: PlanCardProps) => {
   const isCustom = plan.salesLed && !plan.base && plan.dims.length === 0;
-  // A trial is offered only when the plan supports it, the org isn't already on the product, and it
-  // hasn't used its one-time trial for this product yet.
-  const offersTrial = plan.selfServe && plan.trialable && !entitled && !trialUsed;
+  const offersTrial = plan.selfServe && plan.trialable;
+  const trialLabel =
+    plan.trialDays > 0 ? `Try free for ${plan.trialDays} days` : "Start a free trial";
 
   // Each card carries its own billing-cadence toggle. It defaults to the passed cadence (annual for a
   // new product, so the discounted per-month rate leads), clamped to what the plan actually prices.
@@ -264,7 +266,7 @@ const PlanCard = ({
         isDisabled={!selfServe}
         onClick={() => onActivate(plan.tier)}
       >
-        Start a free trial
+        {trialLabel}
       </Button>
     ) : (
       <Button
@@ -275,6 +277,30 @@ const PlanCard = ({
         onClick={() => onActivate(plan.tier)}
       >
         Activate
+      </Button>
+    );
+  } else if (entitled && !isCurrent && plan.selfServe && (offersTrial || plan.upgradeable)) {
+    // A plan above the one held. Trial wins when offered: it charges nothing, and once it starts
+    // trialable goes false while upgradeable stays true, so the card falls through to Upgrade.
+    cta = offersTrial ? (
+      <Button
+        variant="org"
+        size="sm"
+        className="w-full justify-center"
+        isDisabled={!selfServe}
+        onClick={() => onStartTrial(plan.tier)}
+      >
+        {trialLabel}
+      </Button>
+    ) : (
+      <Button
+        variant="org"
+        size="sm"
+        className="w-full justify-center"
+        isDisabled={!selfServe}
+        onClick={() => onUpgrade(plan.tier)}
+      >
+        Upgrade now
       </Button>
     );
   }
@@ -432,8 +458,6 @@ type ProductSheetProps = {
   initialView?: SheetView;
   returnPath: string;
   renewsOn: string | null;
-  // This product's one-per-product trial is already used up (backend-computed from trial history).
-  trialUsed: boolean;
   // capabilities.selfServe: false for an enterprise-managed org. Self-serve CTAs render disabled and a
   // notice points to sales; the sales-led "Contact sales" path stays available.
   selfServe: boolean;
@@ -442,7 +466,7 @@ type ProductSheetProps = {
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-type SheetView = "plans" | "activate" | "commitment";
+type SheetView = "plans" | "activate" | "commitment" | "upgrade";
 
 export const ProductSheet = ({
   orgId,
@@ -452,7 +476,6 @@ export const ProductSheet = ({
   initialView,
   returnPath,
   renewsOn,
-  trialUsed,
   selfServe,
   onClose,
   onRemove,
@@ -461,6 +484,8 @@ export const ProductSheet = ({
   const [view, setView] = useState<SheetView>(initialView ?? "plans");
   // The plan tier chosen for the activate view.
   const [activatePlan, setActivatePlan] = useState<string | null>(null);
+  // The plan tier chosen for the upgrade view.
+  const [upgradePlan, setUpgradePlan] = useState<string | null>(null);
   // The plan tier awaiting trial confirmation (drives the confirm dialog).
   const [trialConfirmTier, setTrialConfirmTier] = useState<string | null>(null);
   // Whether the cancel-trial confirm dialog is open.
@@ -476,9 +501,17 @@ export const ProductSheet = ({
   const entitled = Boolean(entitlement?.entitled);
   // A trialing product is canceled (trial → free), not removed like a paid product line.
   const isTrialing = Boolean(entitlement?.isTrialing);
+  // An upgrade trial sits on top of a paid plan: ending it reverts to that plan rather than to free.
+  const upgradeTrialPlan = entitlement?.trialPlan
+    ? (entitlement.trialPlanName ??
+      prod.plans.find((plan) => plan.tier === entitlement.trialPlan)?.name ??
+      entitlement.trialPlan)
+    : null;
+  const basePlanName = entitlement?.planTier
+    ? (prod.plans.find((plan) => plan.tier === entitlement.planTier)?.name ?? entitlement.planTier)
+    : "your current plan";
   const selfServePlan = prod.plans.find((plan) => plan.selfServe && !plan.salesLed);
-  const trialAvailable =
-    !entitled && !trialUsed && prod.plans.some((plan) => plan.selfServe && plan.trialable);
+  const trialAvailable = !entitled && prod.plans.some((plan) => plan.selfServe && plan.trialable);
   // The plan-card price always leads with the best (annual) rate shown as a per-month figure (÷12, see
   // PlanPricing) with a "billed annually" note, even for a trialable plan. An entitled product shows
   // its own cadence. PlanPricing falls back to monthly for a monthly-only plan. The trial's
@@ -504,6 +537,11 @@ export const ProductSheet = ({
   const openActivate = (planTier: string) => {
     setActivatePlan(planTier);
     setView("activate");
+  };
+
+  const openUpgrade = (planTier: string) => {
+    setUpgradePlan(planTier);
+    setView("upgrade");
   };
 
   const handleConfirmTrial = async () => {
@@ -546,7 +584,9 @@ export const ProductSheet = ({
       await cancelTrial.mutateAsync({ orgId, productId: prod.id });
       createNotification({
         type: "success",
-        text: `Your ${prod.name} trial has been canceled.`
+        text: upgradeTrialPlan
+          ? `Your ${upgradeTrialPlan} trial has ended. You're still on ${basePlanName}.`
+          : `Your ${prod.name} trial has been canceled.`
       });
       onClose();
     } catch {
@@ -558,6 +598,17 @@ export const ProductSheet = ({
   const activatePlanObj = activatePlan
     ? plans.find((plan) => plan.tier === activatePlan)
     : (selfServePlan ?? undefined);
+
+  const upgradePlanObj = upgradePlan ? plans.find((plan) => plan.tier === upgradePlan) : undefined;
+
+  const trialConfirmPlan = trialConfirmTier
+    ? plans.find((plan) => plan.tier === trialConfirmTier)
+    : undefined;
+  // Trialing a plan above one the org already pays for: it converts to that plan rather than starting
+  // a paid subscription from free, so the confirmation has to promise something different.
+  const trialIsUpgrade = entitled && Boolean(trialConfirmTier) && trialConfirmTier !== currentTier;
+  const trialLengthLabel =
+    trialConfirmPlan && trialConfirmPlan.trialDays > 0 ? `${trialConfirmPlan.trialDays}-day ` : "";
 
   return (
     <>
@@ -585,6 +636,20 @@ export const ProductSheet = ({
                 trialAvailable && activatePlanObj.selfServe && activatePlanObj.trialable
               }
               onStartTrial={() => setTrialConfirmTier(activatePlanObj.tier)}
+              onBack={() => setView("plans")}
+              onDone={onClose}
+            />
+          )}
+
+          {view === "upgrade" && upgradePlanObj && (
+            <UpgradeView
+              orgId={orgId}
+              prod={prod}
+              plan={upgradePlanObj}
+              fromPlanName={basePlanName}
+              renewsOn={renewsOn}
+              selfServe={selfServe}
+              isTrialConversion={entitlement?.trialPlan === upgradePlanObj.tier}
               onBack={() => setView("plans")}
               onDone={onClose}
             />
@@ -639,12 +704,13 @@ export const ProductSheet = ({
                       plan={plan}
                       cadence={displayCadence}
                       entitled={entitled}
-                      trialUsed={trialUsed}
                       isCurrent={entitled && plan.tier === currentTier}
                       canChangeCommitment={showChangeCommitment}
                       hasCommitment={hasCommitment}
                       selfServe={selfServe}
                       onActivate={openActivate}
+                      onStartTrial={setTrialConfirmTier}
+                      onUpgrade={openUpgrade}
                       onChangeCommitment={() => setView("commitment")}
                       onContact={() => onContact(prod)}
                     />
@@ -662,13 +728,13 @@ export const ProductSheet = ({
               <SheetFooter className="flex-row items-center justify-between border-t">
                 {entitled ? (
                   <>
-                    {isTrialing ? (
+                    {isTrialing || upgradeTrialPlan ? (
                       <Button
                         variant="danger"
                         isDisabled={!selfServe}
                         onClick={() => setShowCancelTrial(true)}
                       >
-                        Cancel trial
+                        {upgradeTrialPlan ? "End trial" : "Cancel trial"}
                       </Button>
                     ) : (
                       <Button
@@ -712,11 +778,13 @@ export const ProductSheet = ({
             <AlertDialogMedia>
               <Sparkles />
             </AlertDialogMedia>
-            <AlertDialogTitle>Start your {prod.name} trial</AlertDialogTitle>
+            <AlertDialogTitle>
+              Start your {trialConfirmPlan?.name ?? prod.name} trial
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Your 14-day trial is free. After it ends, your subscription continues automatically
-              and you&apos;ll be billed monthly based on usage. Cancel before the trial ends to
-              avoid charges.
+              {trialIsUpgrade
+                ? `Your ${trialLengthLabel}trial is free and nothing changes about your bill. You'll keep paying for ${basePlanName} until it ends, then move to ${trialConfirmPlan?.name} and be charged the difference. End the trial before then to stay on ${basePlanName}.`
+                : `Your ${trialLengthLabel}trial is free. After it ends, your subscription continues automatically and you'll be billed monthly based on usage. Cancel before the trial ends to avoid charges.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -749,10 +817,15 @@ export const ProductSheet = ({
             <AlertDialogMedia>
               <CalendarX2Icon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Cancel your {prod.name} trial</AlertDialogTitle>
+            <AlertDialogTitle>
+              {upgradeTrialPlan
+                ? `End your ${upgradeTrialPlan} trial`
+                : `Cancel your ${prod.name} trial`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Canceling returns you to the free tier immediately and stops the trial from converting
-              to a paid plan. This trial can&apos;t be restarted later.
+              {upgradeTrialPlan
+                ? `You'll go back to ${basePlanName} right away and won't be charged anything. This trial can't be restarted later.`
+                : "Canceling returns you to the free tier immediately and stops the trial from converting to a paid plan. This trial can't be restarted later."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -766,7 +839,7 @@ export const ProductSheet = ({
                 handleCancelTrial();
               }}
             >
-              Cancel trial
+              {upgradeTrialPlan ? "End trial" : "Cancel trial"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

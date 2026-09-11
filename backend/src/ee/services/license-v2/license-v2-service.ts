@@ -28,6 +28,7 @@ import {
   BillingV2Plan,
   BillingV2Preview,
   BillingV2SubState,
+  BillingV2Trial,
   TAddBillingV2PaymentMethodDTO,
   TBillingV2SubscriptionLifecycleDTO,
   TBuyBillingV2ProductDTO,
@@ -38,7 +39,8 @@ import {
   TGetBillingV2OverviewDTO,
   TPreviewBillingV2ChangeDTO,
   TRemoveBillingV2ProductDTO,
-  TStartBillingV2TrialDTO
+  TStartBillingV2TrialDTO,
+  TUpgradeBillingV2ProductDTO
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
@@ -62,6 +64,7 @@ type TLicenseV2ServiceFactoryDep = {
     | "previewSubscriptionChange"
     | "buyProduct"
     | "removeProduct"
+    | "upgradeProduct"
     | "changeCommitments"
     | "startTrial"
     | "cancelTrial"
@@ -114,6 +117,22 @@ const formatIsoDate = (iso: string | null | undefined): string | null => {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 };
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+const daysUntil = (unixSeconds: number | null | undefined): number | null => {
+  if (!unixSeconds) {
+    return null;
+  }
+  return Math.max(0, Math.ceil((unixSeconds * 1000 - Date.now()) / DAY_IN_MS));
+};
+
+const daysSince = (unixSeconds: number | null | undefined): number | null => {
+  if (!unixSeconds) {
+    return null;
+  }
+  return Math.max(0, Math.floor((Date.now() - unixSeconds * 1000) / DAY_IN_MS));
+};
+
 // Compact date ("Aug 16") for the header's next-charge line, where the year is noise.
 const formatShortDate = (unixSeconds: number | null | undefined): string | null => {
   if (!unixSeconds) {
@@ -162,10 +181,10 @@ const resolveSubState = (subscription: TSubscriptionResponse | null): BillingV2S
   if (status === "past_due") {
     return "past-due";
   }
-  if (status === "unpaid" || status === "canceled" || status === "incomplete") {
+  if (status === "unpaid" || status === "incomplete") {
     return "suspended";
   }
-  if (status === "none" || status === "") {
+  if (status === "canceled" || status === "incomplete_expired" || status === "none" || status === "") {
     return "no-subscription";
   }
   return "active";
@@ -264,6 +283,8 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     selfServe: plan.selfServe,
     salesLed: plan.salesLed,
     trialable: plan.trialable ?? false,
+    upgradeable: plan.upgradeable ?? false,
+    trialDays: plan.trialDays ?? 0,
     deprecated: plan.deprecated ?? false,
     ...(deprecation ? { deprecation } : {}),
     displayOrder: plan.displayOrder ?? undefined,
@@ -596,6 +617,15 @@ export const licenseV2ServiceFactory = ({
           status: item.status,
           isTrialing: item.isTrialing ?? false,
           trialEndsAt: item.trialEndsAt ? formatDate(item.trialEndsAt) : null,
+          ...(item.trialPlan
+            ? {
+                trialPlan: item.trialPlan,
+                trialPlanName:
+                  catalogProduct?.plans.find((candidate) => candidate.tier === item.trialPlan)?.name ?? item.trialPlan,
+                trialPlanEndsAt: formatDate(item.trialPlanEndsAt),
+                trialPlanDaysLeft: daysUntil(item.trialPlanEndsAt)
+              }
+            : {}),
           renewsOn,
           ...(deprecation ? { deprecation } : {}),
           used,
@@ -625,12 +655,14 @@ export const licenseV2ServiceFactory = ({
       if (existing) {
         existing.planTier = existing.planTier ?? product.plan_key ?? undefined;
         existing.status = existing.status ?? product.status ?? undefined;
+        existing.trialPlan = existing.trialPlan ?? product.trial_plan_key ?? undefined;
         return;
       }
       entitlements[product.product_key] = {
         entitled: true,
         planTier: product.plan_key ?? undefined,
         status: product.status ?? undefined,
+        ...(product.trial_plan_key ? { trialPlan: product.trial_plan_key } : {}),
         isTrialing,
         trialEndsAt: formatIsoDate(product.trial_ends_at)
       };
@@ -721,14 +753,19 @@ export const licenseV2ServiceFactory = ({
       0
     );
 
-    // Products whose one-per-product trial is used up (any outcome — trialing/converted/expired/
-    // canceled/completed). The UI gates the trial CTA on this so a canceled trial isn't re-offered.
-    // A failed lookup degrades to empty: the server still blocks a repeat trial with a 409 on start.
-    let trialedProductKeys: string[] = [];
+    let trialHistory: BillingV2Trial[] = [];
     if (!isSelfHostedLicense) {
       try {
         const trials = await licenseClient.getTrials(orgId);
-        trialedProductKeys = [...new Set(trials.trials.map((trial) => trial.product_key))];
+        trialHistory = trials.trials.map((trial) => ({
+          productKey: trial.product_key,
+          planTier: trial.plan_key ?? null,
+          basePlanTier: trial.base_plan_key ?? null,
+          outcome: trial.outcome,
+          endedDetail: trial.ended_detail ?? null,
+          endedAt: formatDate(trial.trial_ends_at),
+          endedDaysAgo: daysSince(trial.trial_ends_at)
+        }));
       } catch (error) {
         logger.error(error, `billing-v2: failed to read trial history [orgId=${orgId}]`);
       }
@@ -775,7 +812,7 @@ export const licenseV2ServiceFactory = ({
       billingDetails,
       invoices,
       entitlements,
-      trialedProductKeys,
+      trials: trialHistory,
       onDemandAmount,
       checkoutFrozen: subscription?.capabilities?.checkoutFrozen ?? false,
       // false for an enterprise-managed org (self-serve mutations 403); default true keeps paygo and
@@ -891,14 +928,36 @@ export const licenseV2ServiceFactory = ({
     cadence,
     quantities,
     removeProductId,
-    commitmentChanges
+    commitmentChanges,
+    upgradeProductId,
+    upgradePlan
   }: TPreviewBillingV2ChangeDTO): Promise<{ preview: BillingV2Preview }> => {
     await ensureManageBilling(orgId, actor);
-    if (!addProductId && !removeProductId && !(commitmentChanges && commitmentChanges.length > 0)) {
-      throw new BadRequestError({ message: "Provide a product to add or remove, or a commitment change" });
+    if (
+      !addProductId &&
+      !removeProductId &&
+      !upgradeProductId &&
+      !(commitmentChanges && commitmentChanges.length > 0)
+    ) {
+      throw new BadRequestError({
+        message: "Provide a product to add, remove or upgrade, or a commitment change"
+      });
+    }
+    if (upgradeProductId && !upgradePlan) {
+      throw new BadRequestError({ message: "Provide the plan to upgrade to" });
+    }
+    // A plan change already is a remove plus an add, so pairing it with either double-counts. The
+    // license server rejects the combination too; failing here keeps the round trip off the wire.
+    if (upgradeProductId && (addProductId === upgradeProductId || removeProductId === upgradeProductId)) {
+      throw new BadRequestError({
+        message: "A plan change cannot be combined with adding or removing the same product"
+      });
     }
 
     const payload: TSubscriptionPreviewPayload = {};
+    if (upgradeProductId && upgradePlan) {
+      payload.upgrade = { productId: upgradeProductId, plan: upgradePlan };
+    }
     if (addProductId) {
       const catalog = await licenseClient.getCatalog(orgId);
       const product = catalog?.products.find((candidate) => candidate.id === addProductId);
@@ -936,12 +995,40 @@ export const licenseV2ServiceFactory = ({
         nextInvoiceTotal: centsToDollars(preview.nextInvoiceTotal),
         nextRecurringTotal: centsToDollars(preview.nextRecurringTotal),
         prorationDate: preview.prorationDate ?? null,
+        toPlanVersionId: preview.toPlanVersionId ?? null,
         lines: preview.lines.map((line) => ({
           description: line.description,
           amount: centsToDollars(line.amount),
           proration: line.proration
         }))
       }
+    };
+  };
+
+  // Move a held product onto a higher plan. No quantities, cadence or declaredUsage: the license
+  // server carries every existing line forward with its live quantity, so the only thing charged is
+  // the prorated difference and the renewal date does not move.
+  const upgradeProduct = async ({
+    orgId,
+    actor,
+    productId,
+    plan,
+    expectedPlanVersionId,
+    prorationDate
+  }: TUpgradeBillingV2ProductDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.upgradeProduct(orgId, {
+      productId,
+      plan,
+      expectedPlanVersionId,
+      prorationDate
+    });
+    await licenseClient.markEntitlementsStale(orgId);
+    return {
+      outcome: result.outcome,
+      subscriptionId: result.subscriptionId,
+      fromPlanKey: result.fromPlanKey,
+      toPlanKey: result.toPlanKey
     };
   };
 
@@ -1037,6 +1124,7 @@ export const licenseV2ServiceFactory = ({
     addPaymentMethod,
     previewChange,
     removeProduct,
+    upgradeProduct,
     changeCommitments,
     startTrial,
     cancelTrial,
