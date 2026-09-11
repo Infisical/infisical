@@ -54,6 +54,47 @@ describe("getAncestorPaths", () => {
     expect(getAncestorPaths("/backend/api/v2")).toEqual(["/", "/backend", "/backend/api"]);
   });
 
+  test("never includes the path itself", () => {
+    for (const path of ["/", "/backend", "/backend/api", "/backend/api/v2"]) {
+      expect(getAncestorPaths(path)).not.toContain(path);
+    }
+  });
+
+  test("returns one fewer entry than the path has segments", () => {
+    expect(getAncestorPaths("/a")).toHaveLength(1);
+    expect(getAncestorPaths("/a/b")).toHaveLength(2);
+    expect(getAncestorPaths("/a/b/c")).toHaveLength(3);
+    expect(getAncestorPaths("/a/b/c/d")).toHaveLength(4);
+  });
+
+  test("treats a trailing slash as the same path", () => {
+    expect(getAncestorPaths("/backend/api/")).toEqual(getAncestorPaths("/backend/api"));
+  });
+
+  test("tolerates repeated separators", () => {
+    expect(getAncestorPaths("/backend//api")).toEqual(getAncestorPaths("/backend/api"));
+  });
+
+  test("returns an empty list for inputs that name no folder", () => {
+    // The queue passes whatever path the write carried. An empty result must mean
+    // "no ancestors to consider", never a lookup for a folder that cannot exist.
+    expect(getAncestorPaths("")).toEqual([]);
+    expect(getAncestorPaths("//")).toEqual([]);
+  });
+
+  test("every returned path is absolute and free of a trailing slash", () => {
+    for (const ancestor of getAncestorPaths("/a/b/c/d")) {
+      expect(ancestor.startsWith("/")).toBe(true);
+      if (ancestor !== "/") expect(ancestor.endsWith("/")).toBe(false);
+    }
+  });
+
+  test("returns the root exactly once, and only as the first entry", () => {
+    const ancestors = getAncestorPaths("/a/b/c");
+    expect(ancestors.filter((entry) => entry === "/")).toHaveLength(1);
+    expect(ancestors[0]).toBe("/");
+  });
+
   test("returns the root for a single-segment path", () => {
     expect(getAncestorPaths("/backend")).toEqual(["/"]);
   });
