@@ -2,7 +2,14 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { ChevronLeftIcon, EllipsisIcon, PackageIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  EllipsisIcon,
+  PackageIcon,
+  PencilIcon,
+  TrashIcon,
+  UsersIcon
+} from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ConnectionSheet } from "@app/components/agent-vault/connection-sheet";
@@ -102,12 +109,15 @@ export const AgentVaultAccessBundleDetailPage = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setIsManageAccessOpen(true)}>
+                <UsersIcon />
                 Manage Access
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
+                <PencilIcon />
                 Edit Access Bundle
               </DropdownMenuItem>
               <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
+                <TrashIcon />
                 Delete Access Bundle
               </DropdownMenuItem>
             </DropdownMenuContent>

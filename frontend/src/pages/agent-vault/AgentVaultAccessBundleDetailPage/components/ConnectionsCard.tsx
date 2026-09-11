@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { ChevronDownIcon, MoreHorizontalIcon, SearchIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -167,6 +174,7 @@ export const ConnectionsCard = ({
         {canManage && (
           <CardAction>
             <Button variant="av" onClick={onAdd}>
+              <PlusIcon />
               Add Connection
             </Button>
           </CardAction>
@@ -274,8 +282,15 @@ export const ConnectionsCard = ({
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent sideOffset={2} align="end">
-                        <DropdownMenuItem onClick={() => onEdit(connection)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setConnectionToDelete(connection)}>
+                        <DropdownMenuItem onClick={() => onEdit(connection)}>
+                          <PencilIcon />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="danger"
+                          onClick={() => setConnectionToDelete(connection)}
+                        >
+                          <TrashIcon />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>

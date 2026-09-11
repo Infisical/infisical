@@ -2,7 +2,16 @@ import { ReactNode, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { ChevronDownIcon, MoreHorizontalIcon, RouteIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  BanIcon,
+  ChevronDownIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  RefreshCwIcon,
+  RouteIcon,
+  TrashIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -352,15 +361,25 @@ export const AgentVaultProxiesPage = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent sideOffset={2} align="end">
                             <DropdownMenuItem onClick={() => setProxyToEdit(proxy)}>
+                              <PencilIcon />
                               Edit Settings
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setProxyToReissue(proxy)}>
+                              <RefreshCwIcon />
                               New Enrollment Token
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setProxyToRevoke(proxy)}>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setProxyToRevoke(proxy)}
+                            >
+                              <BanIcon />
                               Revoke Access
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setProxyToDelete(proxy)}>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setProxyToDelete(proxy)}
+                            >
+                              <TrashIcon />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>

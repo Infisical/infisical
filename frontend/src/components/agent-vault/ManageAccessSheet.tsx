@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { MoreHorizontalIcon, UserPlusIcon } from "lucide-react";
+import { BanIcon, MoreHorizontalIcon, UserPlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -130,6 +130,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
                             variant="danger"
                             onClick={() => setMemberToRemove(member)}
                           >
+                            <BanIcon />
                             Revoke Access
                           </DropdownMenuItem>
                         </DropdownMenuContent>
