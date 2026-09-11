@@ -871,7 +871,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       }
 
       const errorType = classifyError(err);
-      const attemptsExhausted = !!(job?.opts.attempts && job.attemptsMade && job.attemptsMade >= job.opts.attempts);
+      const attemptsExhausted = !!job && job.attemptsMade >= (job.opts.attempts || 1);
       queueJobFailureCounter.add(1, {
         ...baseAttrs,
         "error.type": errorType,
