@@ -35,7 +35,6 @@ import {
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions
 } from "@app/services/secret-sync/secret-sync-fns";
-import { findFlattenConflicts } from "@app/services/secret-sync/secret-sync-payload";
 import { buildSyncPayload, resolveSyncFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
@@ -191,6 +190,88 @@ export const secretSyncServiceFactory = ({
     }
   };
 
+  // A SecretSyncError is written for the end user already (see secret-sync-payload.ts); every
+  // caller that can surface one directly just needs it translated to the house error envelope.
+  const $rethrowSecretSyncErrorsAsBadRequest = async <T>(fn: () => T | Promise<T>): Promise<T> => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
+
+      throw error;
+    }
+  };
+
+  // Shared by $assertSyncableAtDestination and findRecursiveConflicts: both need the same
+  // decrypt-and-expand payload for the full recursive subtree, and differ only in what they do
+  // with it once built (throw on the first conflict vs. report every conflict back).
+  const $buildRecursiveSyncPayload = ({
+    projectId,
+    actorOrgId,
+    environment,
+    sourcePath,
+    sourceFolderId,
+    keySchema
+  }: {
+    projectId: string;
+    actorOrgId: string;
+    environment: string;
+    sourcePath: string;
+    sourceFolderId: string;
+    keySchema?: string;
+  }) =>
+    $rethrowSecretSyncErrorsAsBadRequest(async () => {
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+
+      const decryptSecretValue = (value?: Buffer | null) =>
+        value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
+
+      const { expandSecretReferences } = expandSecretReferencesFactory({
+        decryptSecretValue,
+        secretDAL: secretV2BridgeDAL,
+        folderDAL,
+        projectId,
+        canExpandValue: () => true,
+        actorOrgId,
+        orgDAL,
+        licenseService,
+        projectFolderGrantDAL,
+        projectDAL,
+        kmsService
+      });
+
+      return buildSyncPayload(
+        {
+          folderDAL,
+          projectEnvDAL,
+          secretV2BridgeDAL,
+          secretImportDAL,
+          expandSecretReferences,
+          decryptSecretValue,
+          fnSecretsV2FromImportsDeps: {
+            projectFolderGrantDAL,
+            actorOrgId,
+            orgDAL,
+            licenseService,
+            kmsService
+          }
+        },
+        {
+          projectId,
+          environment,
+          sourcePath,
+          sourceFolderId,
+          recursive: true,
+          keySchema,
+          includeImports: true,
+          dedupeForRemoval: false
+        }
+      );
+    });
+
   // Flattening a subtree onto a destination that holds one flat list can produce two secrets with
   // the same destination key. flatten() is what detects that, and the job runs it on every sync, so
   // calling it here means a user reads the same sentence at save time and when the sync later drifts
@@ -214,63 +295,16 @@ export const secretSyncServiceFactory = ({
   }) => {
     if (!recursive) return;
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const decryptSecretValue = (value?: Buffer | null) =>
-      value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
-
-    const { expandSecretReferences } = expandSecretReferencesFactory({
-      decryptSecretValue,
-      secretDAL: secretV2BridgeDAL,
-      folderDAL,
+    const payload = await $buildRecursiveSyncPayload({
       projectId,
-      canExpandValue: () => true,
       actorOrgId,
-      orgDAL,
-      licenseService,
-      projectFolderGrantDAL,
-      projectDAL,
-      kmsService
+      environment,
+      sourcePath,
+      sourceFolderId,
+      keySchema
     });
 
-    try {
-      const payload = await buildSyncPayload(
-        {
-          folderDAL,
-          projectEnvDAL,
-          secretV2BridgeDAL,
-          secretImportDAL,
-          expandSecretReferences,
-          decryptSecretValue,
-          fnSecretsV2FromImportsDeps: {
-            projectFolderGrantDAL,
-            actorOrgId,
-            orgDAL,
-            licenseService,
-            kmsService
-          }
-        },
-        {
-          projectId,
-          environment,
-          sourcePath,
-          sourceFolderId,
-          recursive,
-          keySchema,
-          includeImports: true,
-          dedupeForRemoval: false
-        }
-      );
-
-      payload.flatten();
-    } catch (error) {
-      if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
-
-      throw error;
-    }
+    await $rethrowSecretSyncErrorsAsBadRequest(() => payload.flatten());
   };
 
   // Lets the frontend check for duplicate-name conflicts while the user is still on the Source
@@ -311,63 +345,16 @@ export const secretSyncServiceFactory = ({
       recursive: true
     });
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const decryptSecretValue = (value?: Buffer | null) =>
-      value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
-
-    const { expandSecretReferences } = expandSecretReferencesFactory({
-      decryptSecretValue,
-      secretDAL: secretV2BridgeDAL,
-      folderDAL,
+    const payload = await $buildRecursiveSyncPayload({
       projectId,
-      canExpandValue: () => true,
       actorOrgId: actor.orgId,
-      orgDAL,
-      licenseService,
-      projectFolderGrantDAL,
-      projectDAL,
-      kmsService
+      environment,
+      sourcePath: secretPath,
+      sourceFolderId: folder.id,
+      keySchema
     });
 
-    try {
-      const payload = await buildSyncPayload(
-        {
-          folderDAL,
-          projectEnvDAL,
-          secretV2BridgeDAL,
-          secretImportDAL,
-          expandSecretReferences,
-          decryptSecretValue,
-          fnSecretsV2FromImportsDeps: {
-            projectFolderGrantDAL,
-            actorOrgId: actor.orgId,
-            orgDAL,
-            licenseService,
-            kmsService
-          }
-        },
-        {
-          projectId,
-          environment,
-          sourcePath: secretPath,
-          sourceFolderId: folder.id,
-          recursive: true,
-          keySchema,
-          includeImports: true,
-          dedupeForRemoval: false
-        }
-      );
-
-      return { conflicts: findFlattenConflicts(payload) };
-    } catch (error) {
-      if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
-
-      throw error;
-    }
+    return { conflicts: payload.findConflicts() };
   };
 
   const listSecretSyncsByProjectId = async (

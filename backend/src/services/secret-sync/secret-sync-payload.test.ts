@@ -87,6 +87,31 @@ describe("createSecretSyncPayload", () => {
 
     expect(() => payload.flatten()).not.toThrow();
   });
+
+  test("findConflicts() reports the same collisions as flatten() throws, without throwing", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
+      environment: "dev"
+    });
+
+    expect(payload.findConflicts()).toEqual([{ key: "DB_URL", paths: ["/backend", "/backend/api"] }]);
+  });
+
+  test("findConflicts() returns an empty array when there are no conflicts", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/")], { environment: "dev" });
+
+    expect(payload.findConflicts()).toEqual([]);
+  });
+
+  test("findConflicts({ applySchema: false }) reports raw-key collisions instead of schema-applied ones", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
+      environment: "dev",
+      keySchema: "{{environment}}_{{secretKey}}"
+    });
+
+    expect(payload.findConflicts({ applySchema: false })).toEqual([
+      { key: "DB_URL", paths: ["/backend", "/backend/api"] }
+    ]);
+  });
 });
 
 describe("findFlattenConflicts", () => {

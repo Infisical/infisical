@@ -17,8 +17,8 @@ export type TSecretPayload = {
 export type TSecretSyncPayload = {
   secrets: TSecretPayload[];
   environment: string;
-  keySchema?: string;
   flatten: (opts?: { applySchema?: boolean }) => TSecretMap;
+  findConflicts: (opts?: { applySchema?: boolean }) => TSecretSyncConflict[];
 };
 
 export type TSecretSyncConflict = {
@@ -61,10 +61,11 @@ const groupByDestinationKey = (
 };
 
 // Returns every destination-key collision, unordered and untruncated: the caller decides how much
-// of this to show. The recursive-conflicts preview endpoint sends the full list so the UI can
-// paginate/truncate it; flatten() below caps what it puts in a thrown error message.
+// of this to show. findConflicts() below is the public way to reach this on a built payload; the
+// recursive-conflicts preview endpoint calls that method, not this function directly, so
+// keySchema never has to be a field the payload object exposes to its own callers.
 export const findFlattenConflicts = (
-  payload: Pick<TSecretSyncPayload, "secrets" | "environment" | "keySchema">,
+  payload: { secrets: TSecretPayload[]; environment: string; keySchema?: string },
   { applySchema = true }: { applySchema?: boolean } = {}
 ): TSecretSyncConflict[] => {
   const schema = applySchema ? payload.keySchema : undefined;
@@ -121,7 +122,6 @@ export const createSecretSyncPayload = (
 ): TSecretSyncPayload => ({
   secrets,
   environment,
-  keySchema,
   // A destination whose sync targets can't carry the configured key schema (eg a many-to-one
   // JSON body whose fields are app-facing variable names, or an Infisical-to-Infisical sync,
   // where a schema-renamed key would look like a new secret and retrigger a sync cycle) calls
@@ -147,5 +147,9 @@ export const createSecretSyncPayload = (
     }
 
     return map;
-  }
+  },
+  // keySchema itself is deliberately not a field on this object: nothing outside this module
+  // needs to read it directly, and findConflicts() is how an external caller (the
+  // recursive-conflicts preview endpoint) reaches the same check flatten() runs, without it.
+  findConflicts: (opts) => findFlattenConflicts({ secrets, environment, keySchema }, opts)
 });
