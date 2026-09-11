@@ -42,6 +42,12 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -824,13 +830,17 @@ export const Navbar = () => {
         onOpenChange={setShowSubOrgForm}
         onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
       />
-      <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
-        <ModalContent title="Server Administrators" subTitle="View all server administrators">
-          <div className="mb-2">
+      <Dialog open={showAdminsModal} onOpenChange={setShowAdminsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Server Administrators</DialogTitle>
+            <DialogDescription>View all server administrators</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="flex flex-col overflow-visible">
             <ServerAdminsPanel />
-          </div>
-        </ModalContent>
-      </Modal>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
