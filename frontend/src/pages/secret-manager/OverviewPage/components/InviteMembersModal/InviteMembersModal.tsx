@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon, SendHorizontalIcon } from "lucide-react";
@@ -31,8 +31,6 @@ import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 
-// PostHog event names for the secrets activation nudge, so we can measure the
-// shown -> invited/dismissed conversion funnel of this modal.
 const ACTIVATION_EVENTS = {
   Viewed: "Secrets Activation Modal Viewed",
   Invited: "Secrets Activation Modal Members Invited",
@@ -54,11 +52,12 @@ const inviteMembersFormSchema = z.object({
 type TInviteMembersForm = z.infer<typeof inviteMembersFormSchema>;
 
 type Props = {
+  experimentVariant: "control" | null;
   popUp: UsePopUpState<["inviteMembers"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["inviteMembers"]>, state?: boolean) => void;
 };
 
-export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission: projectPermission } = useProjectPermission();
@@ -99,13 +98,22 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
   const telemetry = new Telemetry().getInstance();
-  const baseEventProps = { orgId, projectId, projectType: currentProject?.type };
+  const baseEventProps = {
+    orgId,
+    projectId,
+    projectType: currentProject?.type,
+    presentation: "modal",
+    experiment_variant: experimentVariant,
+    "$feature/secrets-activation-presentation": experimentVariant
+  };
+  const hasViewedRef = useRef(false);
 
   const isOpen = popUp?.inviteMembers?.isOpen;
-  // Fire once each time the nudge surfaces. The modal opens at most once per session
-  // (see useSecretsActivationNudge), so guarding on the open state is sufficient.
   useEffect(() => {
-    if (isOpen) telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
+    if (isOpen && !hasViewedRef.current) {
+      hasViewedRef.current = true;
+      telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -121,7 +129,6 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       return;
     }
 
-    // emails is already trimmed + lowercased by the schema; parseEmailList splits the entries.
     const usernames = parseEmailList(emails);
     if (usernames.length) {
       await addUserToProject({

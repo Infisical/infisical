@@ -94,7 +94,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   // When a secret validation rule covers this rotation, its constraints
   // fully replace the user-configured passwordRequirements.
   const generateRotationPassword = () =>
-    passwordValidationContext?.constraints?.length
+    passwordValidationContext
       ? generatePasswordWithConstraints(passwordValidationContext.constraints)
       : generatePassword(passwordRequirement);
 

@@ -2,12 +2,6 @@ import { z } from "zod";
 
 import { TAuditReports } from "@app/db/schemas";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import {
-  CONSTRAINT_LABELS,
-  evaluateConstraint,
-  TStaticSecretConstraintViolation
-} from "@app/services/secret-validation-rule/secret-validation-rule-fns";
-import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import {
   AuditReportResultEntrySchema,
@@ -15,8 +9,7 @@ import {
   AuditReportType,
   OrgAuditReportResultEntrySchema,
   OrgAuditReportType,
-  TGeneratedReport,
-  TSecretToValidate
+  TGeneratedReport
 } from "./audit-report-types";
 
 export const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -131,21 +124,3 @@ export const presentOrgAuditReport = (report: TAuditReports) => ({
 });
 
 export type TPresentedOrgAuditReport = ReturnType<typeof presentOrgAuditReport>;
-
-export const evaluateStaticSecretConstraints = (
-  constraints: TConstraint[],
-  secret: TSecretToValidate
-): TStaticSecretConstraintViolation[] => {
-  const violations: TStaticSecretConstraintViolation[] = [];
-  for (const constraint of constraints) {
-    const error = evaluateConstraint(constraint, secret);
-    if (error) {
-      violations.push({
-        constraintType: constraint.type,
-        constraintLabel: CONSTRAINT_LABELS[constraint.type],
-        message: error
-      });
-    }
-  }
-  return violations;
-};

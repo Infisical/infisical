@@ -1,4 +1,6 @@
-import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { MongoAbility, subject } from "@casl/ability";
+
+import { ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import {
   AuditLogInfo,
   EventType,
@@ -12,9 +14,16 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayVersion } from "@app/lib/gateway/types";
+import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -39,10 +48,16 @@ import {
   TGatewayDetails,
   THCVaultConnection
 } from "../app-connection/hc-vault";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretFolderServiceFactory } from "../secret-folder/secret-folder-service";
 import { TUserDALFactory } from "../user/user-dal";
 import {
+  assertVaultFolderImportSecretCount,
+  assertVaultPathsWithinMount,
+  buildVaultFolderImportPlan,
   decryptEnvKeyDataFn,
   getDopplerSecrets,
   importVaultDataFn,
@@ -50,6 +65,7 @@ import {
   listDopplerEnvironments,
   listDopplerProjects,
   parseEnvKeyDataFn,
+  TVaultFolderImportUnit,
   vaultMigrationTransformMappings
 } from "./external-migration-fns";
 import { TExternalMigrationQueueFactory } from "./external-migration-queue";
@@ -60,8 +76,80 @@ import {
   THasCustomVaultMigrationDTO,
   TImportDopplerSecretsDTO,
   TImportEnvKeyDataDTO,
-  TImportVaultDataDTO
+  TImportVaultDataDTO,
+  TVaultFolderImportResult
 } from "./external-migration-types";
+
+const $findFolderPathsDeniedCreate = ({
+  permission,
+  environment,
+  folderPaths
+}: {
+  permission: MongoAbility<ProjectPermissionSet>;
+  environment: string;
+  folderPaths: string[];
+}) =>
+  folderPaths.filter((folderPath) => {
+    const parentPath = `/${folderPath.split("/").filter(Boolean).slice(0, -1).join("/")}`;
+    return permission.cannot(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.SecretFolders, { environment, secretPath: parentPath })
+    );
+  });
+
+const $findSecretPathsDeniedCreate = ({
+  permission,
+  environment,
+  units
+}: {
+  permission: MongoAbility<ProjectPermissionSet>;
+  environment: string;
+  units: TVaultFolderImportUnit[];
+}) =>
+  units
+    .filter(
+      ({ folderPath, secrets }) =>
+        secrets.length > 0 &&
+        permission.cannot(
+          ProjectPermissionSecretActions.Create,
+          subject(ProjectPermissionSub.Secrets, { environment, secretPath: folderPath })
+        )
+    )
+    .map(({ folderPath }) => folderPath);
+
+const $assertVaultImportCreatePermissions = ({
+  permission,
+  environment,
+  pathsToCreate,
+  units
+}: {
+  permission: MongoAbility<ProjectPermissionSet>;
+  environment: string;
+  pathsToCreate: string[];
+  units: TVaultFolderImportUnit[];
+}) => {
+  // both permissions are collected before anything is written, so a partial permission set fails the whole import
+  const pathsDeniedFolderCreate = $findFolderPathsDeniedCreate({
+    permission,
+    environment,
+    folderPaths: pathsToCreate
+  });
+  const pathsDeniedSecretCreate = $findSecretPathsDeniedCreate({ permission, environment, units });
+
+  if (pathsDeniedFolderCreate.length || pathsDeniedSecretCreate.length) {
+    const reasons: string[] = [];
+    if (pathsDeniedFolderCreate.length) {
+      reasons.push(`create folders at ${pathsDeniedFolderCreate.map((el) => `'${el}'`).join(", ")}`);
+    }
+    if (pathsDeniedSecretCreate.length) {
+      reasons.push(`create secrets at ${pathsDeniedSecretCreate.map((el) => `'${el}'`).join(", ")}`);
+    }
+
+    throw new ForbiddenRequestError({
+      message: `You do not have permission to ${reasons.join(", or to ")} in environment '${environment}'. Nothing was imported.`
+    });
+  }
+};
 
 type TExternalMigrationServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
@@ -81,6 +169,9 @@ type TExternalMigrationServiceFactoryDep = {
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool" | "pickHealthyGateway"
   >;
+  folderService: Pick<TSecretFolderServiceFactory, "createManyFolders">;
+  folderDAL: Pick<TSecretFolderDALFactory, "transaction" | "findByManySecretPath">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
 };
 
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
@@ -96,7 +187,10 @@ export const externalMigrationServiceFactory = ({
   gatewayPoolService,
   secretService,
   auditLogService,
-  appConnectionService
+  appConnectionService,
+  folderService,
+  folderDAL,
+  projectEnvDAL
 }: TExternalMigrationServiceFactoryDep) => {
   const getGatewayDetails = async (connection: THCVaultConnection) => {
     let gatewayDetails: TGatewayDetails | undefined;
@@ -393,14 +487,214 @@ export const externalMigrationServiceFactory = ({
     return listHCVaultSecretPaths(namespace, connection, gatewayService, gatewayV2Service, mountPath, gatewayDetails);
   };
 
+  const $importVaultSecretsPreservingStructure = async ({
+    actor,
+    projectId,
+    environment,
+    secretPath,
+    mountPath,
+    secretsPerPath,
+    auditLogInfo
+  }: {
+    actor: OrgServiceActor;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    mountPath: string;
+    secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[];
+    auditLogInfo: AuditLogInfo;
+  }) => {
+    const units: TVaultFolderImportUnit[] = buildVaultFolderImportPlan({ secretPath, mountPath, secretsPerPath });
+    assertVaultFolderImportSecretCount(units);
+
+    const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+    if (!env) {
+      throw new NotFoundError({
+        message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`
+      });
+    }
+
+    const baseSegments = secretPath.split("/").filter(Boolean);
+    const basePath = `/${baseSegments.join("/")}`;
+
+    // every folder between the destination path and each target folder has to exist before secrets land in it
+    const candidatePaths: string[] = [];
+    const seenCandidatePaths = new Set<string>();
+    for (const { folderPath } of units) {
+      const segments = folderPath.split("/").filter(Boolean);
+      for (let depth = baseSegments.length + 1; depth <= segments.length; depth += 1) {
+        const candidatePath = `/${segments.slice(0, depth).join("/")}`;
+        if (!seenCandidatePaths.has(candidatePath)) {
+          seenCandidatePaths.add(candidatePath);
+          candidatePaths.push(candidatePath);
+        }
+      }
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const unitsWithSecrets = units.filter(({ secrets }) => secrets.length);
+
+    const results = await folderDAL.transaction(async (tx) => {
+      const [baseFolder, ...candidateFolders] = await folderDAL.findByManySecretPath(
+        [basePath, ...candidatePaths].map((candidatePath) => ({ envId: env.id, secretPath: candidatePath })),
+        tx
+      );
+
+      if (!baseFolder) {
+        throw new NotFoundError({
+          message: `Folder with path '${basePath}' in environment with slug '${environment}' not found`
+        });
+      }
+
+      const pathsToCreate = candidatePaths.filter((_, idx) => !candidateFolders[idx]);
+
+      $assertVaultImportCreatePermissions({
+        permission,
+        environment,
+        pathsToCreate,
+        units
+      });
+
+      const foldersToCreate = pathsToCreate
+        .map((pathToCreate) => {
+          const segments = pathToCreate.split("/").filter(Boolean);
+          return {
+            name: segments[segments.length - 1],
+            path: `/${segments.slice(0, -1).join("/")}`,
+            environment
+          };
+        })
+        .sort((a, b) => a.path.split("/").filter(Boolean).length - b.path.split("/").filter(Boolean).length);
+
+      const folderEnvironment = { slug: env.slug, name: env.name };
+      const folderByPath = new Map<string, { id: string; envId: string; environment: typeof folderEnvironment }>();
+      folderByPath.set(basePath, { ...baseFolder, environment: folderEnvironment });
+      candidatePaths.forEach((candidatePath, idx) => {
+        const existing = candidateFolders[idx];
+        if (existing) folderByPath.set(candidatePath, { ...existing, environment: folderEnvironment });
+      });
+
+      if (foldersToCreate.length) {
+        await folderService.createManyFolders({
+          projectId,
+          actor: actor.type,
+          actorId: actor.id,
+          actorAuthMethod: actor.authMethod,
+          actorOrgId: actor.orgId,
+          folders: foldersToCreate,
+          tx
+        });
+
+        const createdFolders = await folderDAL.findByManySecretPath(
+          pathsToCreate.map((pathToCreate) => ({ envId: env.id, secretPath: pathToCreate })),
+          tx
+        );
+        pathsToCreate.forEach((pathToCreate, idx) => {
+          const created = createdFolders[idx];
+          if (created) folderByPath.set(pathToCreate, { ...created, environment: folderEnvironment });
+        });
+      }
+
+      const unitResults: TVaultFolderImportResult[] = [];
+
+      for (const { folderPath, secrets } of unitsWithSecrets) {
+        const folder = folderByPath.get(folderPath);
+        if (!folder) {
+          throw new NotFoundError({
+            message: `Folder with path '${folderPath}' in environment with slug '${environment}' not found`
+          });
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        const secretOperation = await secretService.createManySecretsRaw({
+          actorId: actor.id,
+          actor: actor.type,
+          actorAuthMethod: actor.authMethod,
+          actorOrgId: actor.orgId,
+          projectId,
+          environment,
+          secretPath: folderPath,
+          folder,
+          secrets,
+          tx,
+          skipPostProcessing: true
+        });
+
+        unitResults.push({
+          folderPath,
+          secrets,
+          approval: secretOperation.type === SecretProtectionType.Approval ? secretOperation.approval : undefined
+        });
+      }
+
+      return unitResults;
+    });
+
+    const writtenResults = results.filter(({ approval }) => !approval);
+    const approvedResults = results.flatMap(({ folderPath, secrets, approval }) =>
+      approval ? [{ folderPath, secrets, approval }] : []
+    );
+
+    // the writes have committed; enqueue is the only request-path wait, and a failure here must not
+    // report the import as failed
+    try {
+      await externalMigrationQueue.enqueueVaultImportSideEffects({
+        projectId,
+        environment,
+        environmentName: env.name,
+        actor: actor.type,
+        actorId: actor.id,
+        actorOrgId: actor.orgId,
+        auditLogInfo,
+        writtenFolders: writtenResults.map(({ folderPath, secrets }) => ({
+          folderPath,
+          secretKeys: secrets.map(({ secretKey }) => secretKey)
+        })),
+        approvedFolders: approvedResults.map(({ folderPath, secrets, approval }) => ({
+          folderPath,
+          secretKeys: secrets.map(({ secretKey }) => secretKey),
+          approval: {
+            id: approval.id,
+            policyId: approval.policyId,
+            slug: approval.slug,
+            committerUserId: approval.committerUserId,
+            commits: (approval.commits as { id: string }[]).map((commit) => ({ id: commit.id }))
+          }
+        }))
+      });
+    } catch (error) {
+      logger.error(error, `Failed to enqueue Vault import side effects [projectId=${projectId}]`);
+    }
+
+    return {
+      status: approvedResults.length
+        ? ExternalMigrationImportStatus.ApprovalRequired
+        : ExternalMigrationImportStatus.Imported,
+      importedPaths: writtenResults.map(({ folderPath }) => folderPath),
+      approvalRequiredPaths: approvedResults.map(({ folderPath }) => folderPath),
+      importedSecretCount: writtenResults.reduce((count, { secrets }) => count + secrets.length, 0),
+      approvalRequiredSecretCount: approvedResults.reduce((count, { secrets }) => count + secrets.length, 0)
+    };
+  };
+
   const importVaultSecrets = async ({
     actor,
     projectId,
     environment,
     secretPath,
     vaultNamespace,
+    mountPath,
     vaultSecretPaths,
     connectionId,
+    keepVaultStructure,
     auditLogInfo
   }: {
     actor: OrgServiceActor;
@@ -408,8 +702,10 @@ export const externalMigrationServiceFactory = ({
     environment: string;
     secretPath: string;
     vaultNamespace: string;
+    mountPath: string;
     vaultSecretPaths: string[];
     connectionId: string;
+    keepVaultStructure: boolean;
     auditLogInfo: AuditLogInfo;
   }) => {
     const connection = (await appConnectionService.validateAppConnectionUsageById(
@@ -424,13 +720,28 @@ export const externalMigrationServiceFactory = ({
 
     const uniqueVaultSecretPaths = Array.from(new Set(vaultSecretPaths));
 
+    assertVaultPathsWithinMount({ mountPath, vaultSecretPaths: uniqueVaultSecretPaths });
+
     const secretsPerPath = await getHCVaultSecretsForPaths(
       vaultNamespace,
+      mountPath,
       uniqueVaultSecretPaths,
       connection,
       gatewayService,
       gatewayV2Service
     );
+
+    if (keepVaultStructure) {
+      return $importVaultSecretsPreservingStructure({
+        actor,
+        projectId,
+        environment,
+        secretPath,
+        mountPath,
+        secretsPerPath,
+        auditLogInfo
+      });
+    }
 
     const keyOrigins = new Map<string, string[]>();
 
@@ -496,10 +807,22 @@ export const externalMigrationServiceFactory = ({
           }
         });
 
-        return { status: ExternalMigrationImportStatus.ApprovalRequired };
+        return {
+          status: ExternalMigrationImportStatus.ApprovalRequired,
+          importedPaths: [],
+          approvalRequiredPaths: [secretPath],
+          importedSecretCount: 0,
+          approvalRequiredSecretCount: Object.keys(vaultSecrets).length
+        };
       }
 
-      return { status: ExternalMigrationImportStatus.Imported };
+      return {
+        status: ExternalMigrationImportStatus.Imported,
+        importedPaths: [secretPath],
+        approvalRequiredPaths: [],
+        importedSecretCount: Object.keys(vaultSecrets).length,
+        approvalRequiredSecretCount: 0
+      };
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to import Vault secrets. ${error instanceof Error ? error.message : "Unknown error"}`

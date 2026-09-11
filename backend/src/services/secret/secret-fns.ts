@@ -821,7 +821,7 @@ export const createManySecretsRawFnFactory = ({
       );
       if (secretsStoredInDB.length)
         throw new BadRequestError({
-          message: `Secret already exists: ${secretsStoredInDB.map((el) => el.key).join(",")}`
+          message: `Secret already exists: ${secretsStoredInDB.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
         });
 
       const blindIndexes = await Promise.all(
