@@ -3,11 +3,11 @@ import { useSearch } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { PendingInvitationBadge } from "@app/components/agent-vault/PendingInvitationBadge";
+import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -39,7 +39,6 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   useListAgentVaultProductUserMembers,
   useRemoveAgentVaultProductMember
@@ -50,10 +49,11 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { InviteMembersDialog } from "./InviteMembersDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
-const displayName = (member: TAgentVaultProductUserMember) => {
-  const full = `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim();
-  return full || member.username || member.email || "";
-};
+const fullName = (member: TAgentVaultProductUserMember) =>
+  `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim();
+
+const displayName = (member: TAgentVaultProductUserMember) =>
+  fullName(member) || member.username || member.email || "";
 
 export const MembersTab = () => {
   const { user } = useUser();
@@ -142,8 +142,8 @@ export const MembersTab = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead isTruncatable>Name</TableHead>
+              <TableHead isTruncatable>Email</TableHead>
               <TableHead>Product Role</TableHead>
               <TableHead variant="action" />
             </TableRow>
@@ -164,48 +164,53 @@ export const MembersTab = () => {
             {!isPending &&
               filtered.map((member) => {
                 const isSelf = member.userId === user?.id;
+                const name = fullName(member);
 
                 return (
                   <TableRow key={member.membershipId}>
-                    <TableCell>
-                      <div className="flex items-center gap-x-1.5">
-                        <HighlightText text={displayName(member)} highlight={search} />
-                        <PendingInvitationBadge isPending={member.isOrgMembershipPending} />
-                      </div>
+                    <TableCell isTruncatable className="min-w-32" title={name || undefined}>
+                      {name ? (
+                        <HighlightText text={name} highlight={search} />
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell
+                      isTruncatable
+                      className="min-w-32 text-sm"
+                      title={member.email || member.username}
+                    >
                       <HighlightText text={member.email || member.username} highlight={search} />
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={member.role === ProjectMembershipRole.Admin ? "av" : "neutral"}
-                      >
-                        {formatProjectRoleName(member.role)}
-                      </Badge>
+                      <ProductRoleBadge role={member.role} />
                     </TableCell>
                     <TableCell variant="action">
-                      {!isSelf && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs" aria-label="Open user actions">
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem onClick={() => setMemberToEdit(member)}>
-                              <PencilIcon />
-                              Change Role
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setMemberToRemove(member)}
-                            >
-                              <Trash2Icon />
-                              Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        <PendingInvitationBadge isPending={member.isOrgMembershipPending} />
+                        {!isSelf && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton variant="ghost" size="xs" aria-label="Open user actions">
+                                <MoreHorizontalIcon />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              <DropdownMenuItem onClick={() => setMemberToEdit(member)}>
+                                <PencilIcon />
+                                Change Role
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setMemberToRemove(member)}
+                              >
+                                <Trash2Icon />
+                                Remove
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

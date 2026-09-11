@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
+import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -31,7 +31,6 @@ import {
   TableRow
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   useListAgentVaultProductGroupMembers,
   useRemoveAgentVaultProductMember
@@ -118,7 +117,7 @@ export const GroupsTab = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
+              <TableHead isTruncatable>Name</TableHead>
               <TableHead>Product Role</TableHead>
               <TableHead variant="action" />
             </TableRow>
@@ -139,13 +138,11 @@ export const GroupsTab = () => {
             {!isPending &&
               rows.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell>
+                  <TableCell isTruncatable className="min-w-32" title={row.name}>
                     <HighlightText text={row.name} highlight={search} />
                   </TableCell>
                   <TableCell>
-                    <Badge variant={row.role === ProjectMembershipRole.Admin ? "av" : "neutral"}>
-                      {formatProjectRoleName(row.role)}
-                    </Badge>
+                    <ProductRoleBadge role={row.role} />
                   </TableCell>
                   <TableCell variant="action">
                     <DropdownMenu>

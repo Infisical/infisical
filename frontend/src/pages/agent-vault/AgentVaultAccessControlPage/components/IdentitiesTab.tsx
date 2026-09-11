@@ -10,6 +10,7 @@ import {
   VaultIcon
 } from "lucide-react";
 
+import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/v2/HighlightText";
@@ -47,7 +48,6 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   agentVaultKeys,
   useListAgentVaultProductIdentityMembers,
@@ -183,7 +183,7 @@ export const IdentitiesTab = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
+              <TableHead isTruncatable>Name</TableHead>
               <TableHead>Product Role</TableHead>
               <TableHead>Managed By</TableHead>
               <TableHead variant="action" />
@@ -215,15 +215,11 @@ export const IdentitiesTab = () => {
                     });
                   }}
                 >
-                  <TableCell>
+                  <TableCell isTruncatable className="min-w-32" title={identity.name}>
                     <HighlightText text={identity.name} highlight={search} />
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={identity.role === ProjectMembershipRole.Admin ? "av" : "neutral"}
-                    >
-                      {formatProjectRoleName(identity.role)}
-                    </Badge>
+                    <ProductRoleBadge role={identity.role} />
                   </TableCell>
                   <TableCell>{renderManagedByBadge(identity)}</TableCell>
                   <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
