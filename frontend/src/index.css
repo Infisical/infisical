@@ -3,6 +3,15 @@
 
 @source not "../public";
 
+/*
+  Tailwind v4 wraps hover variants in `@media (hover: hover)`, which never matches on
+  devices/browsers that report no hover support (touchscreens, some VDI/remote desktops,
+  Firefox on Windows with a touchscreen). Hover-revealed controls (e.g. the row action
+  buttons on the secrets overview) become unreachable there. Restore the v3 behavior of
+  applying hover styles whenever `:hover` fires.
+*/
+@custom-variant hover (&:hover);
+
 @font-face {
   font-family: "Alliance No. 2";
   src:
