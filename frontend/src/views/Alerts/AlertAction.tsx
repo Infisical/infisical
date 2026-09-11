@@ -53,7 +53,7 @@ type Props = {
 // stored condition is missing or malformed.
 const formatConditionSummary = (alert: TAlert): string => {
   if (alert.eventType === AlertEventType.IdentityAuthMethodChanged) {
-    return "When an auth method or one of its credentials changes";
+    return "When an auth method changes";
   }
   const days = parseAlertBeforeDays(alert.condition?.alertBefore);
   if (days === null) {
