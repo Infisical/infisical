@@ -22,7 +22,7 @@ import { useTimeRemaining } from "@app/hooks";
 import { TAgentVaultEnrollment } from "@app/hooks/api/agentVault/types";
 
 const cliCommand = (token: string, siteUrl: string) =>
-  `infisical av proxy \\
+  `infisical agent-vault proxy \\
   --enrollment-token ${token} \\
   --domain ${siteUrl}`;
 
@@ -30,7 +30,7 @@ const dockerCommand = (token: string, siteUrl: string) =>
   `docker run -d --name agent-vault-proxy \\
   -p 17323:17323 \\
   -v agent-vault-proxy:/etc/infisical/agent-vault \\
-  infisical/cli av proxy \\
+  infisical/cli agent-vault proxy \\
   --enrollment-token ${token} \\
   --domain ${siteUrl}`;
 
@@ -40,7 +40,7 @@ Description=Infisical Agent Vault proxy
 After=network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/infisical av proxy --enrollment-token ${token} --domain ${siteUrl}
+ExecStart=/usr/local/bin/infisical agent-vault proxy --enrollment-token ${token} --domain ${siteUrl}
 Restart=always
 
 [Install]

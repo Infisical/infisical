@@ -68,7 +68,7 @@ Go to **Proxies**, select **Create Proxy**, name it `egress`, and select **Creat
 On the host that will be the proxy:
 
 ```bash
-infisical av proxy --enrollment-token <enrollment-token>
+infisical agent-vault proxy --enrollment-token <enrollment-token>
 ```
 
 The proxy enrolls and listens on port `17323`. Leave it running and note this host's address; step 4 points the agent at it. Within a minute its status on the Proxies page turns to **Healthy**.
@@ -88,7 +88,7 @@ Go to **Sessions**, select **Create Session**, pick `coding-agent`, and select *
 The token appears once, with the command to run. Copy it now.
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the infisical av run command with the session token" />
+  <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the infisical agent-vault run command with the session token" />
 </Frame>
 
 ## 4. Launch your agent
@@ -96,7 +96,7 @@ The token appears once, with the command to run. Copy it now.
 On the host where the agent runs, pass the token and the proxy's address. Everything after `--` is your agent's own command:
 
 ```bash
-infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
+infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
 ```
 
 The CLI trusts the proxy's certificate for the agent and starts `claude` with its HTTP traffic routed through the proxy. Calls to `api.github.com` leave the proxy with the real token attached; everything else goes out untouched. That host needs no Infisical login: the session token is the only thing on it.
@@ -121,7 +121,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
     Not driving an interactive agent? Run the check in place of the agent command. `gh` insists on having a token, so give it a placeholder; the proxy replaces the header on the way out:
 
     ```bash
-    infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- \
+    infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- \
       sh -c 'GITHUB_TOKEN=placeholder gh api user'
     ```
   </Tab>
@@ -129,7 +129,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
     No `gh`? Any HTTP client works the same way:
 
     ```bash
-    infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.github.com/user
+    infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.github.com/user
     ```
 
     The proxy logs the request as `brokered`.
@@ -141,7 +141,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 </Note>
 
 <Note>
-  Working on your own machine and signed in with `infisical login`? Skip the Sessions page: `infisical av run --access-bundle coding-agent --proxy <proxy-host>:17323 -- claude` creates a session for you and revokes it when the agent exits. For an agent that runs unattended, run it as a machine identity instead — see [Sessions](/documentation/platform/agent-vault/sessions#creating-a-session).
+  Working on your own machine and signed in with `infisical login`? Skip the Sessions page: `infisical agent-vault run --access-bundle coding-agent --proxy <proxy-host>:17323 -- claude` creates a session for you and revokes it when the agent exits. For an agent that runs unattended, run it as a machine identity instead — see [Sessions](/documentation/platform/agent-vault/sessions#creating-a-session).
 </Note>
 
 ## Next steps
@@ -156,7 +156,7 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
   <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
     Run the proxy for real, decide what happens to other hosts, and pin its certificate.
   </Card>
-  <Card title="CLI reference" icon="terminal" href="/cli/commands/av">
-    Every flag of `infisical av proxy` and `infisical av run`.
+  <Card title="CLI reference" icon="terminal" href="/cli/commands/agent-vault">
+    Every flag of `infisical agent-vault proxy` and `infisical agent-vault run`.
   </Card>
 </CardGroup>

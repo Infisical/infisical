@@ -18,7 +18,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     </Frame>
 
     ```bash
-    infisical av run --session-token <session-token> --proxy <proxy-address> -- claude
+    infisical agent-vault run --session-token <session-token> --proxy <proxy-address> -- claude
     ```
 
     Copy it now. The dialog can't be reopened.
@@ -30,10 +30,10 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     This is the way to start an agent on a machine that has no Infisical login. The token is the only thing you hand over.
   </Tab>
   <Tab title="CLI">
-    `infisical av run` creates a session for you when you name the access bundle:
+    `infisical agent-vault run` creates a session for you when you name the access bundle:
 
     ```bash
-    infisical av run --access-bundle coding-agent --proxy <proxy-address> -- claude
+    infisical agent-vault run --access-bundle coding-agent --proxy <proxy-address> -- claude
     ```
 
     The CLI creates the session as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables), and as your login otherwise. It revokes the session when the agent exits unless you pass `--keep-session`.
@@ -46,7 +46,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
 
 Pick how long the session should last. **Never** keeps it working until someone revokes it, so revoke it once the agent that used it has finished.
 
-On the CLI this is [`--ttl`](/cli/commands/av#ttl), which takes a duration such as `30m`, `8h` or `7d`, or `never`.
+On the CLI this is [`--ttl`](/cli/commands/agent-vault#ttl), which takes a duration such as `30m`, `8h` or `7d`, or `never`.
 
 ## What a running agent can reach
 

@@ -272,7 +272,7 @@ export const AgentVaultProxiesPage = () => {
                   </TableHead>
                 )}
                 <TableHead>
-                  <HeadWithHint hint="Pass it to infisical av run --ca-fingerprint so the agent refuses any proxy but this one.">
+                  <HeadWithHint hint="Pass it to infisical agent-vault run --ca-fingerprint so the agent refuses any proxy but this one.">
                     Certificate Authority
                   </HeadWithHint>
                 </TableHead>

@@ -1,15 +1,15 @@
 ---
-title: "infisical av"
+title: "infisical agent-vault"
 description: "Run an Agent Vault proxy, and launch agents through it"
 ---
 
 ```bash
 # Where agent traffic leaves your network
-infisical av proxy --enrollment-token <enrollment-token>
+infisical agent-vault proxy --enrollment-token <enrollment-token>
 
 # Where the agent runs
-infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
-infisical av run --access-bundle <bundle-name> --proxy <proxy-host>:17323 -- claude
+infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
+infisical agent-vault run --access-bundle <bundle-name> --proxy <proxy-host>:17323 -- claude
 ```
 
 ## Description
@@ -18,18 +18,20 @@ These subcommands are the CLI half of [Agent Vault](/documentation/platform/agen
 
 The two usually run on different machines. Traffic policy is set on the Proxies page, not with flags, and reaches a running proxy on its next poll.
 
-## infisical av proxy
+`av` is an alias for `agent-vault`, so `infisical av run` works wherever `infisical agent-vault run` does.
+
+## infisical agent-vault proxy
 
 Run an Agent Vault proxy. Enroll once with the token shown when the proxy was created. Later runs need no token. The proxy keeps its certificate authority, its token, and its last settings in a data directory, and passing the same enrollment token again on a restart is harmless. See [Proxies](/documentation/platform/agent-vault/proxies).
 
 ```bash
-infisical av proxy --enrollment-token <enrollment-token>
+infisical agent-vault proxy --enrollment-token <enrollment-token>
 
 # Once enrolled
-infisical av proxy
+infisical agent-vault proxy
 
 # Example
-infisical av proxy --port 18000 --log-format json --log-file /var/log/infisical/agent-vault.log
+infisical agent-vault proxy --port 18000 --log-format json --log-file /var/log/infisical/agent-vault.log
 ```
 
 ### Flags
@@ -40,7 +42,7 @@ The one-time token shown when the proxy was created, valid for an hour. Needed o
 
 ```bash
 # Example
-infisical av proxy --enrollment-token <enrollment-token>
+infisical agent-vault proxy --enrollment-token <enrollment-token>
 ```
 
 #### `--data-dir`
@@ -49,7 +51,7 @@ Where to keep the certificate authority and proxy token. Must persist across res
 
 ```bash
 # Example
-infisical av proxy --data-dir /var/lib/infisical/agent-vault
+infisical agent-vault proxy --data-dir /var/lib/infisical/agent-vault
 ```
 
 Default value: `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root
@@ -60,7 +62,7 @@ Port to listen on.
 
 ```bash
 # Example
-infisical av proxy --port 18000
+infisical agent-vault proxy --port 18000
 ```
 
 Default value: `17323`
@@ -71,7 +73,7 @@ Default value: `17323`
 
 ```bash
 # Example
-infisical av proxy --log-format json
+infisical agent-vault proxy --log-format json
 ```
 
 Default value: `console`
@@ -82,7 +84,7 @@ Also write logs to this file.
 
 ```bash
 # Example
-infisical av proxy --log-file /var/log/infisical/agent-vault.log
+infisical agent-vault proxy --log-file /var/log/infisical/agent-vault.log
 ```
 
 ### Environment variables
@@ -114,7 +116,7 @@ Point the CLI to your Infisical instance. Alternative to the [`--domain`](#flags
 export INFISICAL_DOMAIN=https://eu.infisical.com
 ```
 
-## infisical av run
+## infisical agent-vault run
 
 Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. On each run, the CLI:
 
@@ -125,13 +127,13 @@ Launch an agent through an Agent Vault proxy. Everything after `--` is the agent
 The CLI prints the proxy's name and fingerprint and, for a session it created, when it expires, then hands the terminal to the agent. When the agent exits, a session created with `--access-bundle` is revoked unless `--keep-session` was set. A session passed with `--session-token` is left alone.
 
 ```bash
-infisical av run --session-token <session-token> --proxy <proxy-host>:17323 -- [agent start command]
+infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- [agent start command]
 
 # Pin the certificate authority the proxy serves
-infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
+infisical agent-vault run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
 
 # Create the session here instead, as your login or a machine identity
-infisical av run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle on-call-infrastructure --proxy 10.0.1.5:17323 -- claude
 ```
 
 ### Flags
@@ -142,7 +144,7 @@ Run with a session token created in the dashboard. No login is needed, and the C
 
 ```bash
 # Example
-infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --session-token <session-token> --proxy 10.0.1.5:17323 -- claude
 ```
 
 #### `--access-bundle`
@@ -151,7 +153,7 @@ Create a session with this access bundle, by name. Pass it once. Creates it as t
 
 ```bash
 # Example
-infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
 ```
 
 #### `--proxy`
@@ -160,7 +162,7 @@ Address of the Agent Vault proxy as `host:port`. Required, unless set through `I
 
 ```bash
 # Example
-infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
 ```
 
 #### `--ttl`
@@ -169,7 +171,7 @@ How long the new session lives: one number and one unit, such as `30m`, `8h`, or
 
 ```bash
 # Example
-infisical av run --access-bundle coding-agent --ttl 8h --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle coding-agent --ttl 8h --proxy 10.0.1.5:17323 -- claude
 ```
 
 Default value: `7d`
@@ -180,7 +182,7 @@ Leave the session active when the agent exits instead of revoking it. Only appli
 
 ```bash
 # Example
-infisical av run --access-bundle coding-agent --keep-session --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle coding-agent --keep-session --proxy 10.0.1.5:17323 -- claude
 ```
 
 Default value: `false`
@@ -191,7 +193,7 @@ Abort unless the certificate authority the proxy serves matches this SHA256 fing
 
 ```bash
 # Example
-infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
+infisical agent-vault run --session-token <session-token> --proxy 10.0.1.5:17323 --ca-fingerprint SHA256:9F:2C:... -- claude
 ```
 
 #### `--ca-file`
@@ -200,7 +202,7 @@ Where to write the certificate authority fetched from the proxy.
 
 ```bash
 # Example
-infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 --ca-file /tmp/agent-vault-ca.pem -- claude
+infisical agent-vault run --access-bundle coding-agent --proxy 10.0.1.5:17323 --ca-file /tmp/agent-vault-ca.pem -- claude
 ```
 
 Default value: `~/.infisical/agent-vault/ca-<proxy-id>.pem`, one file per proxy
@@ -211,7 +213,7 @@ Skip writing the certificate authority and setting the trust variables, for a ma
 
 ```bash
 # Example
-infisical av run --session-token <session-token> --proxy 10.0.1.5:17323 --no-ca-trust -- claude
+infisical agent-vault run --session-token <session-token> --proxy 10.0.1.5:17323 --no-ca-trust -- claude
 ```
 
 Default value: `false`
@@ -222,7 +224,7 @@ Additional comma-separated hosts the agent reaches directly, without the proxy. 
 
 ```bash
 # Example
-infisical av run --access-bundle coding-agent --proxy 10.0.1.5:17323 --no-proxy internal.corp.com -- claude
+infisical agent-vault run --access-bundle coding-agent --proxy 10.0.1.5:17323 --no-proxy internal.corp.com -- claude
 ```
 
 #### `--client-id / --client-secret`
@@ -231,7 +233,7 @@ Universal Auth credentials of the machine identity that creates the session. Alt
 
 ```bash
 # Example
-infisical av run --access-bundle coding-agent --client-id <client-id> --client-secret <client-secret> --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle coding-agent --client-id <client-id> --client-secret <client-secret> --proxy 10.0.1.5:17323 -- claude
 ```
 
 ### Environment variables
@@ -272,7 +274,7 @@ Point the CLI to your Infisical instance, such as `https://eu.infisical.com` for
 
 ```bash
 # Example
-infisical av proxy --domain https://your-instance.com --enrollment-token <enrollment-token>
+infisical agent-vault proxy --domain https://your-instance.com --enrollment-token <enrollment-token>
 ```
 
 Default value: `https://app.infisical.com`

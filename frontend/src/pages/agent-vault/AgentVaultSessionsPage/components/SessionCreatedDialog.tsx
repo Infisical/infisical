@@ -23,7 +23,7 @@ type Props = {
 };
 
 const runCommand = (token: string) =>
-  `infisical av run \\
+  `infisical agent-vault run \\
   --session-token ${token} \\
   --proxy <proxy-host>:17323 \\
   -- <agent-command>`;

@@ -1269,7 +1269,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
-                      "cli/commands/av",
+                      "cli/commands/agent-vault",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",
