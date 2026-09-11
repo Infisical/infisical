@@ -6,10 +6,10 @@ import { format } from "date-fns";
 import {
   BanIcon,
   BotIcon,
+  IdCardIcon,
   MoreHorizontalIcon,
   PackageIcon,
   SearchIcon,
-  TicketIcon,
   UserIcon
 } from "lucide-react";
 
@@ -140,7 +140,7 @@ export const AgentVaultSessionsPage = () => {
       </Helmet>
       <PageHeader
         scope={ProjectType.AgentVault}
-        icon={TicketIcon}
+        icon={IdCardIcon}
         title="Sessions"
         description="What an agent runs with. Each session carries one access bundle."
       />

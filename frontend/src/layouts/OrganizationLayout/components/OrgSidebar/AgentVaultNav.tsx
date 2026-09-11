@@ -1,4 +1,4 @@
-import { FileText, Package, Route, Shield, Ticket } from "lucide-react";
+import { FileText, IdCard, Package, Route, Shield } from "lucide-react";
 
 import { SidebarCollapsibleGroup } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
@@ -12,7 +12,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const accessItems: NavItem[] = [
-    { label: "Sessions", icon: Ticket, pathSuffix: "sessions" },
+    { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
     { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" }
   ];
 
