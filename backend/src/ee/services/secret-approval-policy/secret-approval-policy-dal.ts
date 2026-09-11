@@ -267,11 +267,11 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
   };
 
   const findPolicyByEnvIdAndSecretPath = async (
-    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
     tx?: Knex
   ) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.SecretApprovalPolicy)
+      const query = (tx || db.replicaNode())(TableName.SecretApprovalPolicy)
         .join(
           TableName.SecretApprovalPolicyEnvironment,
           `${TableName.SecretApprovalPolicyEnvironment}.policyId`,
@@ -302,7 +302,11 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
             TableName.SecretApprovalPolicy
           )
         )
-        .whereNull(`${TableName.SecretApprovalPolicy}.deletedAt`)
+        .whereNull(`${TableName.SecretApprovalPolicy}.deletedAt`);
+      if (excludePolicyId) {
+        void query.whereNot(`${TableName.SecretApprovalPolicy}.id`, excludePolicyId);
+      }
+      const docs = await query
         .orderBy("deletedAt", "desc")
         .orderByRaw(`"deletedAt" IS NULL`)
         .select(selectAllTableCols(TableName.SecretApprovalPolicy))
