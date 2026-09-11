@@ -215,6 +215,37 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
     expect(secretSync).toEqual(expect.objectContaining({ name: "non-recursive-allowed" }));
   });
 
+  test("repointing an existing recursive sync at another destination is refused", async () => {
+    // The admin can read the whole subtree, so this sync is legitimate at the moment it is made.
+    // The Manage grant then gives the actor Edit on it, scoped to "/backend", while leaving
+    // "/backend/api" denied. Without a check on this path the actor sends the denied folder to a
+    // destination of their choosing without ever touching the sync's source.
+    const { secretSync } = await createSecretSync({
+      name: "recursive-created-by-admin",
+      projectId,
+      connectionId,
+      environmentSlug: ENV,
+      secretPath: "/backend",
+      region: REGION,
+      destinationPath: "/recursive-created-by-admin/",
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
+      recursive: true,
+      isAutoSyncEnabled: false,
+      authToken: jwtAuthToken
+    });
+    createdSyncIds.push(secretSync!.id);
+
+    const res = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/secret-syncs/aws-parameter-store/${secretSync!.id}`,
+      headers: { authorization: `Bearer ${actorJwt}` },
+      body: { destinationConfig: { region: REGION, path: "/actor-controlled/" } }
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.json().message).toContain("/backend/api");
+  });
+
   test("turning subfolders on for an existing sync is refused", async () => {
     const { secretSync } = await newSync({ name: "recursive-turned-on-later", recursive: false });
 

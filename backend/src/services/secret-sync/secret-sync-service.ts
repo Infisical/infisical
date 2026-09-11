@@ -164,7 +164,9 @@ export const secretSyncServiceFactory = ({
             secretPath: path
           }
         );
-      } catch {
+      } catch (error) {
+        if (!(error instanceof ForbiddenError)) throw error;
+
         throw new ForbiddenRequestError({
           message:
             path === sourcePath
@@ -672,7 +674,11 @@ export const secretSyncServiceFactory = ({
     const wasRecursive = Boolean((secretSync.syncOptions as { recursive?: boolean } | undefined)?.recursive);
     const isRecursive = Boolean((params.syncOptions as { recursive?: boolean } | undefined)?.recursive ?? wasRecursive);
 
-    if (isSourceChanged || (isRecursive && !wasRecursive)) {
+    // Every update to a recursive sync re-authorizes the whole subtree, because an actor holding
+    // Edit on the source folder can otherwise repoint an existing recursive sync at a destination
+    // they control and read descendants they were never granted. A non-recursive sync covers only
+    // its source folder, so it re-authorizes when that source actually changes.
+    if (isSourceChanged || isRecursive) {
       const updatedEnvironment = environment ?? secretSync.environment?.slug;
       const updatedSecretPath = secretPath ?? secretSync.folder?.path;
 
