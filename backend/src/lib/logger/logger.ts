@@ -109,7 +109,10 @@ const extractOrgId = () => {
 export const initLogger = () => {
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
-      level: "info",
+      // Follows the same env var as the logger instance below. A transport target filters
+      // independently of the logger, so pinning this to info silently discarded every debug
+      // record no matter what PINO_LOG_LEVEL said.
+      level: process.env.PINO_LOG_LEVEL || "info",
       target: "pino/file",
       options: {
         destination: 1,
