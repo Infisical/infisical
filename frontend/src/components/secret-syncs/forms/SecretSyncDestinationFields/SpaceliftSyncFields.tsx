@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -20,10 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TSpaceliftContext,
-  useSpaceliftConnectionListContexts
-} from "@app/hooks/api/appConnections/spacelift";
+import { useSpaceliftConnectionListContexts } from "@app/hooks/api/appConnections/spacelift";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import {
   SpaceliftConfigType,
@@ -72,14 +68,23 @@ export const SpaceliftSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Context</FieldLabel>
+            <FieldLabel
+              id="secret-sync-spacelift-context-id-label"
+              htmlFor="secret-sync-spacelift-context-id"
+            >
+              Context
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-spacelift-context-id-label"
+                aria-describedby={error ? "secret-sync-spacelift-context-id-error" : undefined}
+                id="secret-sync-spacelift-context-id"
+                isError={Boolean(error)}
                 isLoading={isContextsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={contexts.find((ctx) => ctx.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TSpaceliftContext>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.contextName", selected?.name ?? "");
                 }}
@@ -87,8 +92,10 @@ export const SpaceliftSyncFields = () => {
                 placeholder="Select a context..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-spacelift-context-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

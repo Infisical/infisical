@@ -242,9 +242,22 @@ export const KempLoadMasterConnectionForm = ({ appConnection, onSubmit }: Props)
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field className="mb-4">
-                    <FieldLabel>Password</FieldLabel>
-                    <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                    <FieldError errors={[error]} />
+                    <FieldLabel htmlFor="app-connection-kemp-load-master-password">
+                      Password
+                    </FieldLabel>
+                    <SecretInput
+                      aria-describedby={
+                        error ? "app-connection-kemp-load-master-password-error" : undefined
+                      }
+                      id="app-connection-kemp-load-master-password"
+                      isError={Boolean(error)}
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                    />
+                    <FieldError
+                      id="app-connection-kemp-load-master-password-error"
+                      errors={[error]}
+                    />
                   </Field>
                 )}
               />
@@ -305,6 +318,7 @@ export const KempLoadMasterConnectionForm = ({ appConnection, onSubmit }: Props)
                       </FieldDescription>
                     </FieldContent>
                     <Toggle
+                      aria-invalid={Boolean(error)}
                       id="ssl-reject-unauthorized"
                       variant={scopeVariant}
                       checked={value}

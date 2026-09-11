@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   AsteriskIcon,
   CheckIcon,
@@ -75,6 +74,8 @@ export const AppConnectionRow = ({
 
   const methodDetails = getAppConnectionMethodDetails(method);
   const connectionDetails = APP_CONNECTION_MAP[app];
+  const MethodIcon = methodDetails.icon;
+  const ConnectionIcon = connectionDetails.icon;
 
   return (
     <TableRow key={`app-connection-${id}`}>
@@ -86,12 +87,8 @@ export const AppConnectionRow = ({
               src={`/images/integrations/${connectionDetails.image}`}
               className="mr-0.5 w-5"
             />
-            {connectionDetails.icon && (
-              <FontAwesomeIcon
-                icon={connectionDetails.icon}
-                size="xs"
-                className="absolute -right-0.5 -bottom-0.5 text-primary-700"
-              />
+            {ConnectionIcon && (
+              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-primary-700" />
             )}
           </div>
           <span>{connectionDetails.name}</span>
@@ -112,7 +109,7 @@ export const AppConnectionRow = ({
       </TableCell>
       <TableCell isTruncatable>
         <div className="flex items-center gap-1.5">
-          <FontAwesomeIcon icon={methodDetails.icon} className="text-accent" />
+          <MethodIcon className="size-3.5 text-accent" />
           <span className="truncate">{methodDetails.name}</span>
         </div>
       </TableCell>

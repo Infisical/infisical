@@ -263,9 +263,15 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
-                <FieldLabel>Password</FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                <FieldError errors={[error]} />
+                <FieldLabel htmlFor="app-connection-ssh-password">Password</FieldLabel>
+                <SecretInput
+                  aria-describedby={error ? "app-connection-ssh-password-error" : undefined}
+                  id="app-connection-ssh-password"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <FieldError id="app-connection-ssh-password-error" errors={[error]} />
               </Field>
             )}
           />
@@ -276,13 +282,16 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
               control={control}
               render={({ field, fieldState: { error } }) => (
                 <Field className="mb-4">
-                  <FieldLabel>Private Key</FieldLabel>
+                  <FieldLabel htmlFor="app-connection-ssh-private-key">Private Key</FieldLabel>
                   <SecretInput
+                    aria-describedby={error ? "app-connection-ssh-private-key-error" : undefined}
+                    id="app-connection-ssh-private-key"
+                    isError={Boolean(error)}
                     value={field.value}
                     onChange={(e) => field.onChange(e.target.value)}
                     placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="app-connection-ssh-private-key-error" errors={[error]} />
                 </Field>
               )}
             />
@@ -291,11 +300,17 @@ export const SshConnectionForm = ({ appConnection, onSubmit }: Props) => {
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="mb-4">
-                  <FieldLabel>
+                  <FieldLabel htmlFor="app-connection-ssh-passphrase">
                     Passphrase <span className="text-muted">(optional)</span>
                   </FieldLabel>
-                  <SecretInput value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
-                  <FieldError errors={[error]} />
+                  <SecretInput
+                    aria-describedby={error ? "app-connection-ssh-passphrase-error" : undefined}
+                    id="app-connection-ssh-passphrase"
+                    isError={Boolean(error)}
+                    value={value ?? ""}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  <FieldError id="app-connection-ssh-passphrase-error" errors={[error]} />
                 </Field>
               )}
             />
