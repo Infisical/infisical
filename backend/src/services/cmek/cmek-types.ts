@@ -45,6 +45,11 @@ export type TCmekDecryptDTO = {
   ciphertext: string;
 };
 
+export type TCmekDeriveSharedSecretDTO = {
+  keyId: string;
+  publicKey: string;
+};
+
 export enum CmekOrderBy {
   Name = "name"
 }

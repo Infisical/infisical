@@ -37,6 +37,7 @@ import {
 import { kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AsymmetricKeyAlgorithm,
+  EccNistKeyAlgorithm,
   HmacAlgorithm,
   KmsKeyUsage,
   SymmetricKeyAlgorithm,
@@ -110,11 +111,13 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
   if (
     e.keyType !== KmsKeyUsage.ENCRYPT_DECRYPT &&
     e.keyType !== KmsKeyUsage.SIGN_VERIFY &&
-    e.keyType !== KmsKeyUsage.GENERATE_VERIFY_MAC
+    e.keyType !== KmsKeyUsage.GENERATE_VERIFY_MAC &&
+    e.keyType !== KmsKeyUsage.KEY_AGREEMENT
   ) {
     return {
       index,
-      message: '"keyType" must be "encrypt-decrypt", "sign-verify" or "generate-verify-mac"'
+      message:
+        '"keyType" must be "encrypt-decrypt", "sign-verify", "generate-verify-mac" or "key-agreement"'
     };
   }
   if (!e.algorithm || typeof e.algorithm !== "string") {
@@ -164,6 +167,24 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
       return {
         index,
         message: '"privateKey" is required for sign-verify keys'
+      };
+    }
+    if (!isBase64(e.privateKey)) {
+      return { index, message: '"privateKey" must be base64 encoded' };
+    }
+  }
+  if (e.keyType === KmsKeyUsage.KEY_AGREEMENT) {
+    const validKeyAgreement = Object.values(EccNistKeyAlgorithm) as string[];
+    if (!validKeyAgreement.includes(e.algorithm)) {
+      return {
+        index,
+        message: `"algorithm" must be one of ${validKeyAgreement.join(", ")} for key-agreement keys`
+      };
+    }
+    if (!e.privateKey || typeof e.privateKey !== "string") {
+      return {
+        index,
+        message: '"privateKey" is required for key-agreement keys'
       };
     }
     if (!isBase64(e.privateKey)) {
@@ -285,7 +306,9 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
           keyUsage: k.keyType,
           algorithm: k.algorithm as never,
           keyMaterial:
-            k.keyType === KmsKeyUsage.SIGN_VERIFY ? (k.privateKey ?? "") : (k.keyMaterial ?? ""),
+            k.keyType === KmsKeyUsage.SIGN_VERIFY || k.keyType === KmsKeyUsage.KEY_AGREEMENT
+              ? (k.privateKey ?? "")
+              : (k.keyMaterial ?? ""),
           isExportable: k.isExportable,
           hasDeleteProtection: k.hasDeleteProtection
         }))
@@ -310,6 +333,8 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   const signCount = parsedKeys?.filter((k) => k?.keyType === KmsKeyUsage.SIGN_VERIFY).length ?? 0;
   const macCount =
     parsedKeys?.filter((k) => k?.keyType === KmsKeyUsage.GENERATE_VERIFY_MAC).length ?? 0;
+  const keyAgreementCount =
+    parsedKeys?.filter((k) => k?.keyType === KmsKeyUsage.KEY_AGREEMENT).length ?? 0;
   const errorByIndex = new Map(validationErrors.map((err) => [err.index, err.message]));
   const hasErrors = validationErrors.length > 0;
 
@@ -425,6 +450,16 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
   "keyType": "generate-verify-mac",
   "algorithm": "HMAC_SHA_256",
   "keyMaterial": "<base64>",
+  "isExportable": true  // optional, default: true
+}
+
+// Key Agreement key
+{
+  "name": "...",
+  "keyType": "key-agreement",
+  "algorithm": "ECC_NIST_P256",
+  "privateKey": "<base64>",
+  "publicKey": "<base64>",
   "isExportable": true  // optional, default: true
 }`}</pre>
                 <p className="mt-2">
@@ -560,7 +595,7 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
     if (parsedKeys) {
       return {
         title: "Review & Import Keys",
-        description: `${parsedKeys.length} key${parsedKeys.length !== 1 ? "s" : ""} found — ${encryptCount} encrypt/decrypt, ${signCount} sign/verify, ${macCount} generate/verify MAC.`
+        description: `${parsedKeys.length} key${parsedKeys.length !== 1 ? "s" : ""} found — ${encryptCount} encrypt/decrypt, ${signCount} sign/verify, ${macCount} generate/verify MAC, ${keyAgreementCount} key agreement.`
       };
     }
     return {

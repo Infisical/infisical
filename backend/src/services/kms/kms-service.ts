@@ -21,6 +21,7 @@ import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/c
 import { deriveCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm, hmacService } from "@app/lib/crypto/hmac";
+import { keyAgreementService } from "@app/lib/crypto/key-agreement";
 import { setLegacyKeyMaterial, TLegacyKeyMaterial, TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
@@ -50,12 +51,14 @@ import { TKmsKeyDALFactory } from "./kms-key-dal";
 import { TKmsLegacyEncryptionKeyDALFactory } from "./kms-legacy-encryption-key-dal";
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
+  EccNistKeyAlgorithm,
   KmsDataKey,
   KmsKeyUsage,
   KmsType,
   RootKeyEncryptionStrategy,
   TDecryptWithKeyDTO,
   TDecryptWithKmsDTO,
+  TDeriveSharedSecretKmsDTO,
   TEncryptionWithKeyDTO,
   TEncryptWithKmsDataKeyDTO,
   TEncryptWithKmsDTO,
@@ -177,7 +180,7 @@ export const kmsServiceFactory = ({
       kmsKeyMaterial = crypto.randomBytes(
         getByteLengthForSymmetricEncryptionAlgorithm(encryptionAlgorithm as SymmetricKeyAlgorithm)
       );
-    } else if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+    } else if (keyUsage === KmsKeyUsage.SIGN_VERIFY || keyUsage === KmsKeyUsage.KEY_AGREEMENT) {
       const { generateAsymmetricPrivateKey, getPublicKeyFromPrivateKey } = signingService(
         encryptionAlgorithm as AsymmetricKeyAlgorithm
       );
@@ -261,7 +264,7 @@ export const kmsServiceFactory = ({
       if ((kmsDoc.keyUsage as KmsKeyUsage) !== KmsKeyUsage.ENCRYPT_DECRYPT) {
         throw new BadRequestError({
           message:
-            "Only encrypt-decrypt keys support rotation. To rotate a sign-verify or MAC key, create a new key and update your applications to use it."
+            "Only encrypt-decrypt keys support rotation. To rotate a sign-verify, MAC, or key-agreement key, create a new key and update your applications to use it."
         });
       }
 
@@ -649,7 +652,7 @@ export const kmsServiceFactory = ({
       }
     }
 
-    if (keyUsage === KmsKeyUsage.SIGN_VERIFY) {
+    if (keyUsage === KmsKeyUsage.SIGN_VERIFY || keyUsage === KmsKeyUsage.KEY_AGREEMENT) {
       const { getPublicKeyFromPrivateKey } = signingService(algorithm as AsymmetricKeyAlgorithm);
       try {
         await getPublicKeyFromPrivateKey(key);
@@ -683,10 +686,20 @@ export const kmsServiceFactory = ({
               message: `Key material does not match the declared algorithm. Expected an RSA 4096-bit key.`
             });
           }
-        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256) {
-          if (keyType !== "ec" || keyDetails?.namedCurve !== "prime256v1") {
+        } else if (
+          algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256 ||
+          algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P384 ||
+          algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P521
+        ) {
+          const expectedCurve = {
+            [AsymmetricKeyAlgorithm.ECC_NIST_P256]: { name: "prime256v1", label: "P-256" },
+            [AsymmetricKeyAlgorithm.ECC_NIST_P384]: { name: "secp384r1", label: "P-384" },
+            [AsymmetricKeyAlgorithm.ECC_NIST_P521]: { name: "secp521r1", label: "P-521" }
+          }[algorithm];
+
+          if (keyType !== "ec" || keyDetails?.namedCurve !== expectedCurve.name) {
             throw new BadRequestError({
-              message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
+              message: `Key material does not match the declared algorithm. Expected an EC ${expectedCurve.label} key.`
             });
           }
         }
@@ -744,9 +757,13 @@ export const kmsServiceFactory = ({
 
     const encryptionAlgorithm = kmsDoc.internalKms?.encryptionAlgorithm as AsymmetricKeyAlgorithm;
 
-    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm, {
-      forceType: KmsKeyUsage.SIGN_VERIFY
-    });
+    if (!(kmsDoc.keyUsage === KmsKeyUsage.SIGN_VERIFY || kmsDoc.keyUsage === KmsKeyUsage.KEY_AGREEMENT)) {
+      throw new BadRequestError({
+        message: `Unsupported key type, expected sign-verify or key-agreement type but got ${kmsDoc.keyUsage}`
+      });
+    }
+
+    verifyKeyTypeAndAlgorithm(kmsDoc.keyUsage as KmsKeyUsage, encryptionAlgorithm);
 
     const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
     const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
@@ -922,6 +939,47 @@ export const kmsServiceFactory = ({
       const encryptedPlainTextBlob = dataCipher.encrypt(plainText, kmsKey);
       const cipherTextBlob = buildKmsCipherTextBlob(encryptedPlainTextBlob, currentKeyVersion);
       return Promise.resolve({ cipherTextBlob });
+    };
+  };
+
+  const deriveSharedSecret = async ({ kmsId }: Omit<TDeriveSharedSecretKmsDTO, "publicKey">, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
+    if (!kmsDoc) {
+      throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
+    }
+    if (kmsDoc.isReserved) {
+      throw new BadRequestError({
+        message: `Cannot use reserved key [kmsId=${kmsDoc.id}] for shared secret derivation`
+      });
+    }
+    if (kmsDoc.externalKms) {
+      throw new BadRequestError({ message: `Cannot derive shared secret for external key [kmsId=${kmsDoc.id}]` });
+    }
+    verifyKeyTypeAndAlgorithm(
+      kmsDoc.keyUsage as KmsKeyUsage,
+      kmsDoc.internalKms?.encryptionAlgorithm as EccNistKeyAlgorithm,
+      {
+        forceType: KmsKeyUsage.KEY_AGREEMENT
+      }
+    );
+
+    const keyCipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const service = keyAgreementService();
+
+    // get service
+    return async ({ publicKey }: Pick<TDeriveSharedSecretKmsDTO, "publicKey">) => {
+      const kmsKey = keyCipher.decrypt(kmsDoc.internalKms?.encryptedKey as Buffer, ROOT_ENCRYPTION_KEY);
+
+      let secret: string;
+      try {
+        secret = service.deriveSharedSecret(publicKey, kmsKey).toString("base64");
+      } catch (err) {
+        throw new BadRequestError({
+          message: `Invalid public key: ${(err as Error).message}. Expected a DER-encoded SubjectPublicKeyInfo (SPKI) public key.`
+        });
+      }
+
+      return Promise.resolve({ secret });
     };
   };
 
@@ -1925,6 +1983,7 @@ export const kmsServiceFactory = ({
     importKeyMaterial,
     signWithKmsKey,
     verifyWithKmsKey,
+    deriveSharedSecret,
     generateMac,
     verifyMac,
     getPublicKey

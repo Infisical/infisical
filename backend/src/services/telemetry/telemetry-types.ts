@@ -221,6 +221,7 @@ export enum PostHogEventTypes {
   CmekCreated = "CMEK Created",
   CmekEncrypt = "CMEK Encrypt",
   CmekDecrypt = "CMEK Decrypt",
+  CmekDeriveSharedSecret = "CMEK Derive Shared Secret",
 
   // Secret Scanning v2
   SecretScanningDataSourceCreated = "Secret Scanning Data Source Created",
@@ -1890,6 +1891,14 @@ export type TCmekDecryptEvent = {
   };
 };
 
+export type TCmekDeriveSharedSecretEvent = {
+  event: PostHogEventTypes.CmekDeriveSharedSecret;
+  properties: {
+    keyId: string;
+    projectId: string;
+  };
+};
+
 // Secret Scanning v2 events
 export type TSecretScanningDataSourceCreatedEvent = {
   event: PostHogEventTypes.SecretScanningDataSourceCreated;
@@ -2515,6 +2524,7 @@ export type TPostHogEvent = {
   | TCmekCreatedEvent
   | TCmekEncryptEvent
   | TCmekDecryptEvent
+  | TCmekDeriveSharedSecretEvent
   | TSecretScanningDataSourceCreatedEvent
   | TSecretScanningScanCompletedEvent
   | TSecretScanningFindingResolvedEvent
