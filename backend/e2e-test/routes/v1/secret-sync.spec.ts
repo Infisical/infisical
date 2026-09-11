@@ -210,7 +210,7 @@ describe("Secret syncs", async () => {
   });
 
   describe("The key schema renames secret keys at the destination", () => {
-    test("A key schema renames every secret key sent to the destination", async () => {
+    test("A key schema renames every secret key sent to the destination and resolves the environment", async () => {
       const destinationPath = pathFor("key-schema");
       await addSecret("/services", "API_KEY", "api-value");
 
@@ -221,7 +221,9 @@ describe("Secret syncs", async () => {
 
       const { secretSync } = await newSync("key-schema", {
         secretPath: "/services",
-        keySchema: "INFISICAL_{{secretKey}}",
+        // Both placeholders, so the assertion below fails if either is left unsubstituted or if
+        // the environment resolves to something other than the sync's own source environment.
+        keySchema: "INFISICAL_{{environment}}_{{secretKey}}",
         initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination
       });
       await triggerSecretSync({
@@ -232,7 +234,7 @@ describe("Secret syncs", async () => {
       });
 
       expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({
-        INFISICAL_API_KEY: "api-value",
+        [`INFISICAL_${ENV}_API_KEY`]: "api-value",
         UNMANAGED_KEY: "not-ours"
       });
 
