@@ -74,7 +74,11 @@ export const useListFolderAccessUsers = ({
     enabled: Boolean(projectId) && Boolean(environmentSlug) && Boolean(secretPath)
   });
 
-export const useListUserFolderAccess = ({ projectId, userId }: TListUserFolderAccessDTO) =>
+export const useListUserFolderAccess = ({
+  projectId,
+  userId,
+  enabled = true
+}: TListUserFolderAccessDTO & { enabled?: boolean }) =>
   useQuery({
     queryKey: folderAccessKeys.listUserGrants({ projectId, userId }),
     queryFn: async () => {
@@ -83,13 +87,14 @@ export const useListUserFolderAccess = ({ projectId, userId }: TListUserFolderAc
       );
       return data.folderAccess;
     },
-    enabled: Boolean(projectId) && Boolean(userId)
+    enabled: enabled && Boolean(projectId) && Boolean(userId)
   });
 
 export const useListIdentityFolderAccess = ({
   projectId,
-  identityId
-}: TListIdentityFolderAccessDTO) =>
+  identityId,
+  enabled = true
+}: TListIdentityFolderAccessDTO & { enabled?: boolean }) =>
   useQuery({
     queryKey: folderAccessKeys.listIdentityGrants({ projectId, identityId }),
     queryFn: async () => {
@@ -98,7 +103,7 @@ export const useListIdentityFolderAccess = ({
       );
       return data.folderAccess;
     },
-    enabled: Boolean(projectId) && Boolean(identityId)
+    enabled: enabled && Boolean(projectId) && Boolean(identityId)
   });
 
 export const useListFolderAccessIdentities = ({
