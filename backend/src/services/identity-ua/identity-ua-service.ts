@@ -318,31 +318,62 @@ export const identityUaServiceFactory = ({
       }
 
       const clientSecretId = validClientSecretInfo.id;
+      const hasFiniteUsageLimit = clientSecretNumUsesLimit > 0;
 
-      const [shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
-        clientSecretNumUsesLimit > 0
-          ? // finite usage limit: count must stay exact, so increment synchronously (low-frequency, no contention)
-            Promise.resolve(true)
-          : // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
-            keyStore
+      // the numUses read above is a stale snapshot, so the claim is what enforces the limit. It
+      // settles before the debounces below so a rejected login cannot consume one of their windows
+      if (hasFiniteUsageLimit && !(await identityUaClientSecretDAL.tryClaimUsage(clientSecretId))) {
+        // no revoke here on purpose: the lookup above skips revoked rows, so revoking mid-burst makes
+        // the rest of the burst miss the secret and take the invalid-credential path, which feeds the
+        // lockout counter and locks every secret under this clientId. The stale-read check above still
+        // revokes on the next attempt, and the daily cleanup reaps numUses >= numUsesLimit
+        throw new UnauthorizedError({
+          message: "Access denied due to client secret usage limit reached",
+          detail: {
+            // distinct from the same rejection above: that one reads a spent counter, this one lost
+            // the claim to a concurrent login, so only this code tracks the behaviour change
+            reasonCode: "client_secret_usage_limit_raced",
+            identityId: identityUa.identityId,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
+
+      // the use is claimed and cannot be given back, so a bookkeeping failure must not reject the
+      // login and strand a single-use secret. Token issuance below can still throw and consume one
+      try {
+        // the claim counted finite-use secrets; for unlimited ones numUses is informational, so one write per window
+        const usageWrite = hasFiniteUsageLimit
+          ? Promise.resolve(false)
+          : keyStore
               .setItemWithExpiryNX(
                 KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(clientSecretId),
                 UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
                 "1"
               )
-              .then(Boolean),
-        shouldRecordIdentityLastLogin(keyStore, identity.id)
-      ]);
+              .then(Boolean);
 
-      if (shouldIncrementUsage || shouldRecordLastLogin) {
-        await identityUaDAL.transaction(async (tx) => {
-          if (shouldIncrementUsage) {
-            await identityUaClientSecretDAL.incrementUsage(clientSecretId, tx);
-          }
-          if (shouldRecordLastLogin) {
-            await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.UNIVERSAL_AUTH, tx);
-          }
-        });
+        const [shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
+          usageWrite,
+          shouldRecordIdentityLastLogin(keyStore, identity.id)
+        ]);
+
+        if (shouldIncrementUsage || shouldRecordLastLogin) {
+          await identityUaDAL.transaction(async (tx) => {
+            if (shouldIncrementUsage) {
+              await identityUaClientSecretDAL.incrementUsage(clientSecretId, tx);
+            }
+            if (shouldRecordLastLogin) {
+              await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.UNIVERSAL_AUTH, tx);
+            }
+          });
+        }
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to record universal auth login bookkeeping [identityId=${identityUa.identityId}] [clientSecretId=${clientSecretId}]`
+        );
       }
 
       const subOrgDetails =
