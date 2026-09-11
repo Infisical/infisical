@@ -78,11 +78,15 @@ spec:
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /api/status
+          startupProbe:
+            tcpSocket:
               port: http
-            initialDelaySeconds: 30
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 36
+          livenessProbe:
+            tcpSocket:
+              port: http
             periodSeconds: 20
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
