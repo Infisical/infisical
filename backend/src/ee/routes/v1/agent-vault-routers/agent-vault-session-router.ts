@@ -16,9 +16,11 @@ import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),
@@ -172,6 +174,15 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultSessionCreated,
+        properties: {
+          sessionId: session.id,
+          accessBundleId: session.accessBundles[0].id,
+          ttlSeconds: req.body.ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : Math.floor(ms(req.body.ttl) / 1000)
+        }
+      });
+
       return { session: { ...session, token } };
     }
   });
@@ -210,6 +221,11 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             type: EventType.AGENT_VAULT_SESSION_REVOKE,
             metadata: { sessionId: session.id }
           }
+        });
+
+        emitAgentVaultTelemetry(server.services.telemetry, req, {
+          event: PostHogEventTypes.AgentVaultSessionRevoked,
+          properties: { sessionId: session.id }
         });
       }
 

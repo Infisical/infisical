@@ -1,4 +1,5 @@
 import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
+import { AgentVaultCredentialType, AgentVaultUnmatchedHost } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -298,7 +299,28 @@ export enum PostHogEventTypes {
   SecretRotationV2Failed = "Secret Rotation V2 Failed",
 
   // Agent Proxy
-  ProxiedServiceCreated = "Proxied Service Created"
+  ProxiedServiceCreated = "Proxied Service Created",
+
+  // Agent Vault
+  AgentVaultAccessBundleCreated = "Agent Vault Access Bundle Created",
+  AgentVaultAccessBundleUpdated = "Agent Vault Access Bundle Updated",
+  AgentVaultAccessBundleDeleted = "Agent Vault Access Bundle Deleted",
+  AgentVaultServiceCreated = "Agent Vault Service Created",
+  AgentVaultServiceUpdated = "Agent Vault Service Updated",
+  AgentVaultServiceDeleted = "Agent Vault Service Deleted",
+  AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
+  AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
+  AgentVaultSessionCreated = "Agent Vault Session Created",
+  AgentVaultSessionRevoked = "Agent Vault Session Revoked",
+  AgentVaultProxyRegistered = "Agent Vault Proxy Registered",
+  AgentVaultProxyUpdated = "Agent Vault Proxy Updated",
+  AgentVaultProxyDeleted = "Agent Vault Proxy Deleted",
+  AgentVaultProxyAccessRevoked = "Agent Vault Proxy Access Revoked",
+  AgentVaultProxyEnrollmentTokenReissued = "Agent Vault Proxy Enrollment Token Reissued",
+  AgentVaultProxyEnrolled = "Agent Vault Proxy Enrolled",
+  AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
+  AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
+  AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed"
 }
 
 export type TSecretModifiedEvent = {
@@ -640,6 +662,10 @@ export type TTelemetryInstanceStatsEvent = {
     honeyTokens: number;
     proxiedServices: number;
     proxiedServicesUsedLast7Days: number;
+    agentVaultProxies: number;
+    activeAgentVaultProxies: number;
+    agentVaultAccessBundles: number;
+    agentVaultServices: number;
     integrationBreakdown: Record<string, number>;
     projectTypeBreakdown: Record<string, number>;
     secretSyncBreakdown: Record<string, number>;
@@ -2339,6 +2365,159 @@ export type TProxiedServiceCreatedEvent = {
   };
 };
 
+type TAgentVaultEventBase = {
+  orgId: string;
+  channel: string;
+  actorType: string;
+};
+
+type TAgentVaultMemberType = "user" | "group" | "identity";
+
+export type TAgentVaultAccessBundleCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleCreated;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleUpdated;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleDeleted;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultServiceCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceCreated;
+  properties: TAgentVaultEventBase & {
+    accessBundleId: string;
+    serviceId: string;
+    credentialType: AgentVaultCredentialType;
+    hostPatternCount: number;
+  };
+};
+
+export type TAgentVaultServiceUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceUpdated;
+  properties: TAgentVaultEventBase & {
+    accessBundleId: string;
+    serviceId: string;
+    credentialType: AgentVaultCredentialType;
+    hostPatternCount: number;
+  };
+};
+
+export type TAgentVaultServiceDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceDeleted;
+  properties: TAgentVaultEventBase & { accessBundleId: string; serviceId: string };
+};
+
+export type TAgentVaultAccessBundleMemberAddedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleMemberAdded;
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: TAgentVaultMemberType };
+};
+
+export type TAgentVaultAccessBundleMemberRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved;
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: TAgentVaultMemberType };
+};
+
+export type TAgentVaultSessionCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionCreated;
+  properties: TAgentVaultEventBase & {
+    sessionId: string;
+    accessBundleId: string;
+    ttlSeconds: number | null;
+  };
+};
+
+export type TAgentVaultSessionRevokedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionRevoked;
+  properties: TAgentVaultEventBase & { sessionId: string };
+};
+
+export type TAgentVaultProxyRegisteredEvent = {
+  event: PostHogEventTypes.AgentVaultProxyRegistered;
+  properties: TAgentVaultEventBase & {
+    proxyId: string;
+    unmatchedHost: AgentVaultUnmatchedHost;
+    bypassHostCount: number;
+  };
+};
+
+export type TAgentVaultProxyUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyUpdated;
+  properties: TAgentVaultEventBase & {
+    proxyId: string;
+    unmatchedHost: AgentVaultUnmatchedHost;
+    bypassHostCount: number;
+  };
+};
+
+export type TAgentVaultProxyDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyDeleted;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+export type TAgentVaultProxyAccessRevokedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyAccessRevoked;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+export type TAgentVaultProxyEnrollmentTokenReissuedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+export type TAgentVaultProxyEnrolledEvent = {
+  event: PostHogEventTypes.AgentVaultProxyEnrolled;
+  properties: {
+    orgId: string;
+    channel: string;
+    proxyId: string;
+    replacedExistingCa: boolean;
+  };
+};
+
+export type TAgentVaultProductMemberAddedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberAdded;
+  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType; role: string };
+};
+
+export type TAgentVaultProductMemberUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberUpdated;
+  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType; role: string };
+};
+
+export type TAgentVaultProductMemberRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberRemoved;
+  properties: TAgentVaultEventBase & { memberType: TAgentVaultMemberType };
+};
+
+export type TAgentVaultPostHogEvent =
+  | TAgentVaultAccessBundleCreatedEvent
+  | TAgentVaultAccessBundleUpdatedEvent
+  | TAgentVaultAccessBundleDeletedEvent
+  | TAgentVaultServiceCreatedEvent
+  | TAgentVaultServiceUpdatedEvent
+  | TAgentVaultServiceDeletedEvent
+  | TAgentVaultAccessBundleMemberAddedEvent
+  | TAgentVaultAccessBundleMemberRemovedEvent
+  | TAgentVaultSessionCreatedEvent
+  | TAgentVaultSessionRevokedEvent
+  | TAgentVaultProxyRegisteredEvent
+  | TAgentVaultProxyUpdatedEvent
+  | TAgentVaultProxyDeletedEvent
+  | TAgentVaultProxyAccessRevokedEvent
+  | TAgentVaultProxyEnrollmentTokenReissuedEvent
+  | TAgentVaultProxyEnrolledEvent
+  | TAgentVaultProductMemberAddedEvent
+  | TAgentVaultProductMemberUpdatedEvent
+  | TAgentVaultProductMemberRemovedEvent;
+
+export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultProxyEnrolledEvent>;
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -2568,4 +2747,5 @@ export type TPostHogEvent = {
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
   | TProxiedServiceCreatedEvent
+  | TAgentVaultPostHogEvent
 );

@@ -8,7 +8,7 @@ import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { sanitizeEmail } from "@app/lib/validator";
 import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
-import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { emitAgentVaultTelemetry, getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -228,6 +228,10 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
                 type: EventType.AGENT_VAULT_MEMBER_ADD,
                 metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
               }
+            });
+            emitAgentVaultTelemetry(server.services.telemetry, req, {
+              event: PostHogEventTypes.AgentVaultProductMemberAdded,
+              properties: { memberType: "user", role: membership.role }
             });
           }
         } catch (err) {

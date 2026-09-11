@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { AgentVaultUnmatchedHost } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -10,6 +10,7 @@ import { logger } from "@app/lib/logger";
 import { agentVaultHeartbeatLimit, agentVaultResolveLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const ProxyConfigSchema = z.object({
   unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
@@ -75,6 +76,21 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
           `agentVaultProxyEnroll: failed to write the enrollment audit log [proxyId=${result.proxyId}]`
         );
       }
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AgentVaultProxyEnrolled,
+          distinctId: `agent-vault-proxy-${result.proxyId}`,
+          organizationId: result.orgId,
+          anonymous: true,
+          properties: {
+            orgId: result.orgId,
+            channel: req.auditLogInfo.userAgentType ?? UserAgentType.OTHER,
+            proxyId: result.proxyId,
+            replacedExistingCa: result.replacedExistingCa
+          }
+        })
+        .catch(() => {});
 
       return {
         proxyId: result.proxyId,

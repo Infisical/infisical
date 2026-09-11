@@ -3,14 +3,16 @@ import { z } from "zod";
 
 import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
 import { AgentVaultUnmatchedHost } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { buildHostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
+import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
+import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
   actorId: req.permission.id,
@@ -101,6 +103,15 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyRegistered,
+        properties: {
+          proxyId: proxy.id,
+          unmatchedHost: proxy.unmatchedHost,
+          bypassHostCount: proxy.bypassHosts ? parseHostPatterns(proxy.bypassHosts, "bypass host").patterns.length : 0
+        }
+      });
+
       return { proxy, ...enrollment };
     }
   });
@@ -150,6 +161,15 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyUpdated,
+        properties: {
+          proxyId: proxy.id,
+          unmatchedHost: proxy.unmatchedHost,
+          bypassHostCount: proxy.bypassHosts ? parseHostPatterns(proxy.bypassHosts, "bypass host").patterns.length : 0
+        }
+      });
+
       return { proxy };
     }
   });
@@ -178,6 +198,11 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: { type: EventType.AGENT_VAULT_PROXY_DELETE, metadata: { proxyId: proxy.id, name: proxy.name } }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyDeleted,
+        properties: { proxyId: proxy.id }
       });
 
       return { proxy };
@@ -213,6 +238,11 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued,
+        properties: { proxyId: proxy.id }
+      });
+
       return enrollment;
     }
   });
@@ -244,6 +274,11 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
           type: EventType.AGENT_VAULT_PROXY_REVOKE,
           metadata: { proxyId: proxy.id, name: proxy.name }
         }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyAccessRevoked,
+        properties: { proxyId: proxy.id }
       });
 
       return { proxy };

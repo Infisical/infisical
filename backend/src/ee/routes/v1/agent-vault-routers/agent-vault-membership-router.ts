@@ -7,8 +7,10 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
   actorId: req.permission.id,
@@ -163,6 +165,13 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         )
       );
 
+      memberships.forEach((membership) =>
+        emitAgentVaultTelemetry(server.services.telemetry, req, {
+          event: PostHogEventTypes.AgentVaultProductMemberAdded,
+          properties: { memberType: "user", role: membership.role }
+        })
+      );
+
       return { members: memberships, skipped };
     }
   });
@@ -202,6 +211,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProductMemberUpdated,
+        properties: { memberType: "user", role: req.body.role }
+      });
+
       return member;
     }
   });
@@ -233,6 +247,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           type: EventType.AGENT_VAULT_MEMBER_REMOVE,
           metadata: { userId: req.params.userId, userName: removed.userName }
         }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProductMemberRemoved,
+        properties: { memberType: "user" }
       });
 
       return { membershipId: removed.membershipId, userId: req.params.userId };
@@ -274,6 +293,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProductMemberAdded,
+        properties: { memberType: "group", role: req.body.role }
+      });
+
       return member;
     }
   });
@@ -313,6 +337,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProductMemberUpdated,
+        properties: { memberType: "group", role: req.body.role }
+      });
+
       return member;
     }
   });
@@ -344,6 +373,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           type: EventType.AGENT_VAULT_MEMBER_REMOVE,
           metadata: { groupId: req.params.groupId, groupName: removed.groupName }
         }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProductMemberRemoved,
+        properties: { memberType: "group" }
       });
 
       return { membershipId: removed.membershipId, groupId: req.params.groupId };
@@ -385,6 +419,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProductMemberAdded,
+        properties: { memberType: "identity", role: req.body.role }
+      });
+
       return member;
     }
   });
@@ -424,6 +463,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         }
       });
 
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProductMemberUpdated,
+        properties: { memberType: "identity", role: req.body.role }
+      });
+
       return member;
     }
   });
@@ -455,6 +499,11 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
           type: EventType.AGENT_VAULT_MEMBER_REMOVE,
           metadata: { identityId: req.params.identityId, identityName: removed.identityName }
         }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProductMemberRemoved,
+        properties: { memberType: "identity" }
       });
 
       return { membershipId: removed.membershipId, identityId: req.params.identityId };
