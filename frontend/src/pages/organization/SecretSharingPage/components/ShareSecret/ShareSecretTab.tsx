@@ -1,4 +1,4 @@
-import { ForwardIcon, Trash2 } from "lucide-react";
+import { MessageSquareShare, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -35,22 +35,20 @@ export const ShareSecretTab = () => {
   ] as const);
 
   const deleteSecretShare = useDeleteSharedSecret();
+  const deleteSecret = popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData | undefined;
 
   const onDeleteApproved = async () => {
-    deleteSecretShare.mutateAsync({
-      sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id
-    });
-    createNotification({
-      text: "Successfully deleted shared secret",
-      type: "success"
-    });
+    if (!deleteSecret?.id) return;
+
+    await deleteSecretShare.mutateAsync({ sharedSecretId: deleteSecret?.id });
+    createNotification({ text: "Shared secret deleted", type: "success" });
 
     handlePopUpClose("deleteSharedSecretConfirmation");
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="gap-0">
+      <CardHeader className="border-b">
         <CardTitle>
           Shared Secrets
           <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-sharing" />
@@ -63,12 +61,12 @@ export const ShareSecretTab = () => {
               handlePopUpOpen("createSharedSecret");
             }}
           >
-            <ForwardIcon />
+            <MessageSquareShare />
             Share Secret
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-5">
         <ShareSecretsTable handlePopUpOpen={handlePopUpOpen} />
       </CardContent>
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
@@ -81,14 +79,20 @@ export const ShareSecretTab = () => {
             <AlertDialogMedia>
               <Trash2 />
             </AlertDialogMedia>
-            <AlertDialogTitle>Delete shared secret?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete {deleteSecret?.name ? `"${deleteSecret.name}"` : "shared secret"}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The shared secret link will no longer be accessible.
+              The shared secret link will no longer be accessible. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={onDeleteApproved}>
+            <AlertDialogAction
+              variant="danger"
+              onClick={onDeleteApproved}
+              isPending={deleteSecretShare.isPending}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
