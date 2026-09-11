@@ -6,7 +6,12 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Combobox,
-  DiscardChangesAlertDialog,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -17,15 +22,8 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
+  SelectValue
 } from "@app/components/v3";
-import { useDiscardChangesGuard } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
   useListAgentVaultAccessBundles
@@ -69,7 +67,7 @@ type Props = {
   onCreated: (session: TAgentVaultMintedSession) => void;
 };
 
-export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) => {
+export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) => {
   const { data: accessBundles } = useListAgentVaultAccessBundles();
   const createSession = useCreateAgentVaultSession();
 
@@ -93,12 +91,6 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
     }
   }, [isOpen]);
 
-  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
-    useDiscardChangesGuard({
-      isDirty: selectedBundle !== null,
-      onDiscard: () => onOpenChange(false)
-    });
-
   const handleCreate = async () => {
     if (!selectedBundle) return;
 
@@ -116,26 +108,17 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
   };
 
   return (
-    <Sheet
-      open={isOpen}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen) {
-          onOpenChange(true);
-          return;
-        }
-        requestDiscard();
-      }}
-    >
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Create Session</SheetTitle>
-          <SheetDescription>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Session</DialogTitle>
+          <DialogDescription>
             An agent running with this session reaches the hosts in this access bundle and nothing
             else.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+        <div className="flex flex-col gap-4">
           <Field>
             <FieldLabel htmlFor="agent-vault-session-bundle">Access Bundle</FieldLabel>
             <FieldContent>
@@ -148,6 +131,7 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
                 placeholder="Pick an access bundle"
                 searchPlaceholder="Search access bundles..."
                 emptyMessage="No access bundle matches."
+                modal
                 renderOption={(bundle) => (
                   <span className="flex min-w-0 items-center gap-2">
                     <PackageIcon className="size-4 shrink-0 text-muted" />
@@ -203,7 +187,10 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
           </Field>
         </div>
 
-        <SheetFooter className="border-t">
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button
             variant="av"
             isDisabled={!selectedBundle || !isTtlValid}
@@ -212,19 +199,8 @@ export const CreateSessionSheet = ({ isOpen, onOpenChange, onCreated }: Props) =
           >
             Create Session
           </Button>
-          <Button variant="outline" onClick={requestDiscard}>
-            Cancel
-          </Button>
-        </SheetFooter>
-
-        <DiscardChangesAlertDialog
-          open={isDiscardDialogOpen}
-          onOpenChange={setIsDiscardDialogOpen}
-          onDiscard={confirmDiscard}
-          title="Discard Changes?"
-          description="No session is minted and the access bundle you picked will be cleared."
-        />
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -72,7 +72,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
-import { CreateSessionSheet } from "./components/CreateSessionSheet";
+import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionExpiry } from "./components/SessionExpiry";
@@ -97,7 +97,7 @@ export const AgentVaultSessionsPage = () => {
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
-  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
 
   const { data, isPending } = useListAgentVaultSessions({
@@ -159,7 +159,7 @@ export const AgentVaultSessionsPage = () => {
             <Button
               variant="av"
               isDisabled={!hasReachableBundles}
-              onClick={() => setIsCreateSheetOpen(true)}
+              onClick={() => setIsCreateDialogOpen(true)}
             >
               <PlusIcon />
               Create Session
@@ -372,9 +372,9 @@ export const AgentVaultSessionsPage = () => {
         )}
       </Card>
 
-      <CreateSessionSheet
-        isOpen={isCreateSheetOpen}
-        onOpenChange={setIsCreateSheetOpen}
+      <CreateSessionDialog
+        isOpen={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
         onCreated={setMintedSession}
       />
 
