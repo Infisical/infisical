@@ -35,12 +35,7 @@ export const SecretsActivationNudge = ({ popUp, handlePopUpToggle, isLifted }: P
 
   if (variant === "card") {
     return (
-      <InviteMembersNudge
-        popUp={popUp}
-        handlePopUpToggle={handlePopUpToggle}
-        isLifted={isLifted}
-        experimentVariant={variant}
-      />
+      <InviteMembersNudge popUp={popUp} handlePopUpToggle={handlePopUpToggle} isLifted={isLifted} />
     );
   }
 

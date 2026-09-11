@@ -53,5 +53,3 @@ export const useFloatingBarClearance = (isActive: boolean) => {
 
   return bottom;
 };
-
-export { DEFAULT_BOTTOM_PX as FLOATING_BAR_DEFAULT_BOTTOM_PX };
