@@ -794,13 +794,17 @@ export const orgServiceFactory = ({
       const projects = await projectDAL.find({ orgId }, { tx });
 
       for await (const project of projects) {
-        await fnDeleteProjectSecretReminders(project.id, {
-          secretDAL,
-          secretV2BridgeDAL,
-          reminderService,
-          projectBotService,
-          folderDAL
-        });
+        await fnDeleteProjectSecretReminders(
+          project.id,
+          {
+            secretDAL,
+            secretV2BridgeDAL,
+            reminderService,
+            projectBotService,
+            folderDAL
+          },
+          tx
+        );
       }
 
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
