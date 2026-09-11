@@ -1,4 +1,5 @@
 import { ProjectVersion, TProjects } from "@app/db/schemas";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -101,4 +102,27 @@ export const getProjectKmsCertificateKeyId = async ({
   });
 
   return keyId;
+};
+
+export const SECRET_BLIND_INDEX_MIGRATION_ORG_IN_FLIGHT_LIMIT = 4;
+export const SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_TTL_SECONDS = 60 * 60;
+export const SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_RETRY_DELAY_MS = 30_000;
+export const SECRET_BLIND_INDEX_MIGRATION_MAX_ATTEMPTS = 5;
+export const SECRET_BLIND_INDEX_MIGRATION_WORKER_CONCURRENCY = 2;
+
+export const SECRET_BLIND_INDEX_MIGRATION_DISPATCH_MAX_STALLED_ITERATIONS = 60;
+
+type TOrgSlotKeyStore = Pick<TKeyStoreFactory, "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
+
+export const tryAdmitSecretBlindIndexMigrationOrgSlot = async (keyStore: TOrgSlotKeyStore, orgId: string) => {
+  const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
+    KeyStorePrefixes.SecretBlindIndexMigrationOrgSlot(orgId),
+    SECRET_BLIND_INDEX_MIGRATION_ORG_IN_FLIGHT_LIMIT,
+    SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_TTL_SECONDS
+  );
+  return count !== -1;
+};
+
+export const releaseSecretBlindIndexMigrationOrgSlot = async (keyStore: TOrgSlotKeyStore, orgId: string) => {
+  await keyStore.decrementByOrDelete(KeyStorePrefixes.SecretBlindIndexMigrationOrgSlot(orgId));
 };

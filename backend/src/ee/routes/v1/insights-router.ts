@@ -312,6 +312,86 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/secrets/enable-blind-index",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "startOrgSecretBlindIndexMigration",
+      description:
+        "Start the secret blind index migration for every one of the organization's secret management projects that still needs it.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          secretBlindIndexMigration: z.object({
+            pendingProjectCount: z
+              .number()
+              .int()
+              .describe(INSIGHTS.START_SECRET_BLIND_INDEX_MIGRATION.pendingProjectCount)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secretBlindIndexMigration = await server.services.insights.startSecretBlindIndexMigration({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.START_ORG_SECRET_BLIND_INDEX_MIGRATION,
+          metadata: { pendingProjectCount: secretBlindIndexMigration.pendingProjectCount }
+        }
+      });
+
+      return { secretBlindIndexMigration };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/blind-index/status",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "getOrgSecretBlindIndexMigrationStatus",
+      description:
+        "Get whether a secret blind index migration is running for the organization, and how many of its secret management projects still need one.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          secretBlindIndexMigration: z.object({
+            pendingProjectCount: z
+              .number()
+              .int()
+              .describe(INSIGHTS.GET_SECRET_BLIND_INDEX_MIGRATION_STATUS.pendingProjectCount),
+            isRunning: z.boolean().describe(INSIGHTS.GET_SECRET_BLIND_INDEX_MIGRATION_STATUS.isRunning)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secretBlindIndexMigration = await server.services.insights.getSecretBlindIndexMigrationStatus({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      return { secretBlindIndexMigration };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/secrets/reports",
     config: { rateLimit: readLimit },

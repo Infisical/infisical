@@ -9,6 +9,7 @@ import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-l
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
+  OrgPermissionActions,
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
@@ -22,7 +23,7 @@ import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
@@ -30,6 +31,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectQueueFactory } from "@app/services/project/project-queue";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -84,10 +86,14 @@ export type TInsightsServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "countByProject">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "countOrgProjectsPendingSecretBlindIndex">;
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
+  projectQueue: Pick<
+    TProjectQueueFactory,
+    "startSecretBlindIndexMigrationForOrg" | "isSecretBlindIndexMigrationRunningForOrg"
+  >;
   orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countSecretManagerProjectIdentities">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
@@ -156,7 +162,8 @@ export const insightsServiceFactory = ({
   orgDAL,
   identityOrgMembershipDAL,
   dynamicSecretLeaseDAL,
-  insightsDAL
+  insightsDAL,
+  projectQueue
 }: TInsightsServiceFactoryDep) => {
   // Gate for every org-wide aggregate: the org-level read permission plus the insights entitlement.
   const assertOrgInsightsRead = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO) => {
@@ -765,6 +772,51 @@ export const insightsServiceFactory = ({
     };
   };
 
+  const getSecretBlindIndexMigrationStatus = async (dto: TOrgInsightsDTO) => {
+    await assertOrgInsightsRead(dto);
+
+    const [pendingProjectCount, isRunning] = await Promise.all([
+      projectDAL.countOrgProjectsPendingSecretBlindIndex(dto.orgId),
+      projectQueue.isSecretBlindIndexMigrationRunningForOrg(dto.orgId)
+    ]);
+
+    return { pendingProjectCount, isRunning };
+  };
+
+  const startSecretBlindIndexMigration = async ({
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  }: TOrgInsightsDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    await assertInsightsPlanEnabled(licenseService, orgId);
+
+    const pendingProjectCount = await projectDAL.countOrgProjectsPendingSecretBlindIndex(orgId);
+    if (!pendingProjectCount) {
+      return { pendingProjectCount: 0 };
+    }
+
+    const dispatched = await projectQueue.startSecretBlindIndexMigrationForOrg(orgId);
+    if (!dispatched) {
+      throw new ConflictError({
+        message:
+          "A secret blind index migration is already running for this organization. Wait for it to finish before starting another."
+      });
+    }
+
+    return { pendingProjectCount };
+  };
+
   return {
     getCalendar,
     getAccessVolume,
@@ -776,6 +828,8 @@ export const insightsServiceFactory = ({
     getCounts,
     getSecretsUsageInsights,
     getSecretsProjects,
-    getStaticSecretsUsage
+    getStaticSecretsUsage,
+    startSecretBlindIndexMigration,
+    getSecretBlindIndexMigrationStatus
   };
 };

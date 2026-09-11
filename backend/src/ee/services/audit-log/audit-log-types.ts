@@ -697,6 +697,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
+  START_ORG_SECRET_BLIND_INDEX_MIGRATION = "start-org-secret-blind-index-migration",
 
   CREATE_AUDIT_REPORT = "create-audit-report",
   GET_AUDIT_REPORTS = "get-audit-reports",
@@ -5726,6 +5727,13 @@ interface ViewSecretManagementInsightsProjectWarningsEvent {
   };
 }
 
+interface StartOrgSecretBlindIndexMigrationEvent {
+  type: EventType.START_ORG_SECRET_BLIND_INDEX_MIGRATION;
+  metadata: {
+    pendingProjectCount: number;
+  };
+}
+
 interface CreateAuditReportEvent {
   type: EventType.CREATE_AUDIT_REPORT;
   metadata: {
@@ -7825,6 +7833,7 @@ export type Event =
   | ViewSecretManagementInsightsCountsEvent
   | ViewSecretManagementInsightsUsageEvent
   | ViewSecretManagementInsightsProjectWarningsEvent
+  | StartOrgSecretBlindIndexMigrationEvent
   | CreateAuditReportEvent
   | GetAuditReportsEvent
   | GetAuditReportEvent

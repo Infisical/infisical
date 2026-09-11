@@ -21,6 +21,7 @@ import {
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
   TOrgAuthMethodUsage,
+  TOrgBlindIndexMigrationStatus,
   TOrgProjectsInsights,
   TOrgSecretAccessVolume,
   TOrgSecretsSummary,
@@ -56,7 +57,9 @@ export const secretInsightsKeys = {
   orgStaticSecretsUsage: (orgId: string) =>
     [...secretInsightsKeys.all(), "org-static-secrets-usage", { orgId }] as const,
   orgAccessVolume: (orgId: string) =>
-    [...secretInsightsKeys.all(), "org-access-volume", { orgId }] as const
+    [...secretInsightsKeys.all(), "org-access-volume", { orgId }] as const,
+  orgBlindIndexMigration: (orgId: string) =>
+    [...secretInsightsKeys.all(), "org-blind-index-migration", { orgId }] as const
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
@@ -324,5 +327,28 @@ export const useGetOrgSecretsAccessVolume = (orgId: string, options?: { enabled?
     },
     enabled: Boolean(orgId) && (options?.enabled ?? true),
     staleTime: INSIGHTS_STALE_TIME
+  });
+};
+
+// Unlike the other org hooks this one drives live progress, so it takes no stale time and lets the
+// caller poll while a migration runs.
+export const useGetOrgBlindIndexMigrationStatus = (
+  orgId: string,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: UseQueryOptions<TOrgBlindIndexMigrationStatus>["refetchInterval"];
+  }
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.orgBlindIndexMigration(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        secretBlindIndexMigration: TOrgBlindIndexMigrationStatus;
+      }>("/api/v1/insights/secrets/blind-index/status");
+      return data.secretBlindIndexMigration;
+    },
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    staleTime: 0,
+    refetchInterval: options?.refetchInterval
   });
 };

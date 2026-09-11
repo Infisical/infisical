@@ -2415,6 +2415,7 @@ export const projectServiceFactory = ({
     searchProjects,
     extractProjectIdFromSlug,
     enableSecretBlindIndex,
-    getSecretBlindIndexMigrationStatus
+    getSecretBlindIndexMigrationStatus,
+    startSecretBlindIndexMigrationPerOrg: projectQueue.startSecretBlindIndexMigrationPerOrg
   };
 };

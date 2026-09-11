@@ -5,6 +5,7 @@ import {
   AccessScope,
   IntegrationAuthsSchema,
   ProjectMembershipRole,
+  ProjectType,
   ProjectUpgradeStatus,
   ProjectVersion,
   SecretApprovalRequestsSecretsSchema,
@@ -50,13 +51,23 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
-import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
+import {
+  assignWorkspaceKeysToMembers,
+  createProjectKey,
+  releaseSecretBlindIndexMigrationOrgSlot,
+  SECRET_BLIND_INDEX_MIGRATION_DISPATCH_MAX_STALLED_ITERATIONS,
+  SECRET_BLIND_INDEX_MIGRATION_MAX_ATTEMPTS,
+  SECRET_BLIND_INDEX_MIGRATION_ORG_IN_FLIGHT_LIMIT,
+  SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_RETRY_DELAY_MS,
+  SECRET_BLIND_INDEX_MIGRATION_WORKER_CONCURRENCY,
+  tryAdmitSecretBlindIndexMigrationOrgSlot
+} from "./project-fns";
 
 export type TProjectQueueFactory = ReturnType<typeof projectQueueFactory>;
 
 type TProjectQueueFactoryDep = {
   queueService: TQueueServiceFactory;
-  keyStore: Pick<TKeyStoreFactory, "deleteItems">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItems" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "find" | "bulkUpdateNoVersionIncrement" | "delete">;
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   secretDAL: Pick<TSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
@@ -665,7 +676,7 @@ export const projectQueueFactory = ({
         await existingJob.remove();
       } else {
         logger.info(`Job for project ${projectId} already exists, skipping`);
-        return;
+        return false;
       }
     }
 
@@ -678,70 +689,208 @@ export const projectQueueFactory = ({
         removeOnComplete: { age: 60 },
         // 1 day, this gives us time to display the error to the customer
         removeOnFail: { age: 24 * 3600 },
+        attempts: SECRET_BLIND_INDEX_MIGRATION_MAX_ATTEMPTS,
+        backoff: { type: "fixed", delay: SECRET_BLIND_INDEX_MIGRATION_ORG_SLOT_RETRY_DELAY_MS },
         jobId
       }
     );
+
+    return true;
   };
 
-  queueService.start(QueueName.SecretBlindIndexMigration, async (job) => {
-    const { projectId } = job.data;
-    const BATCH_SIZE = 1000;
+  const startSecretBlindIndexMigrationPerOrg = async (orgId: string, limit: number) => {
+    const projects = await projectDAL.find(
+      {
+        orgId,
+        secretBlindIndexEnabled: false,
+        type: ProjectType.SecretManager,
+        version: ProjectVersion.V3
+      },
+      { limit, sort: [["id", "asc"]], count: true }
+    );
+    const pendingProjectCount = projects.length ? Number((projects[0] as unknown as { count: string }).count) : 0;
 
-    logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
-
-    const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    let totalProcessed = 0;
-
-    // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
-    while (true) {
-      const secrets = await secretV2BridgeDAL.findProjectSecretsWithNullBlindIndex(projectId, BATCH_SIZE);
-
-      if (secrets.length === 0) break;
-
-      const updates: { id: string; secretValueBlindIndex: string }[] = [];
-      for (const secret of secrets) {
-        if (secret.encryptedValue) {
-          const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
-          const blindIndex = await generateSecretBlindIndex(decryptedValue);
-          updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
-        }
-      }
-
-      if (updates.length > 0) {
-        await secretV2BridgeDAL.batchSetBlindIndexes(updates);
-      }
-
-      totalProcessed += updates.length;
-      logger.info(
-        `SecretBlindIndexMigration: processed batch [projectId=${projectId}] [batchSize=${updates.length}] [totalProcessed=${totalProcessed}]`
-      );
-
-      // Prevents job from being marked as stalled
-      await job.updateProgress(totalProcessed);
-
-      if (secrets.length < BATCH_SIZE) break;
-
-      // pause between batches to avoid saturating the CPU
-      const jitter = 100 + Math.floor(Math.random() * 100);
-      await new Promise((resolve) => {
-        setTimeout(resolve, jitter);
-      });
+    const enqueuedProjectIds: string[] = [];
+    for (const project of projects) {
+      if (await startSecretBlindIndexMigration(project.id)) enqueuedProjectIds.push(project.id);
     }
 
-    await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
+    return { enqueuedProjectIds, pendingProjectCount };
+  };
 
-    await keyStore.deleteItems({
-      pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*`
-    });
+  const getSecretBlindIndexMigrationOrgJobId = (orgId: string) => `enable-blind-index-org-${orgId}`;
 
-    logger.info(
-      `SecretBlindIndexMigration: migration complete [projectId=${projectId}] [totalProcessed=${totalProcessed}]`
+  const startSecretBlindIndexMigrationForOrg = async (orgId: string) => {
+    const jobId = getSecretBlindIndexMigrationOrgJobId(orgId);
+
+    const existingJob = await queueService.getJob(QueueName.SecretBlindIndexMigrationDispatch, jobId);
+    if (existingJob) {
+      const state = await existingJob.getState();
+      if (state === "completed" || state === "failed") {
+        await existingJob.remove();
+      } else {
+        logger.info(`SecretBlindIndexMigrationDispatch: already running, skipping [orgId=${orgId}]`);
+        return false;
+      }
+    }
+
+    await queueService.queue(
+      QueueName.SecretBlindIndexMigrationDispatch,
+      QueueJobs.SecretBlindIndexMigrationDispatch,
+      { orgId },
+      {
+        removeOnComplete: { age: 60 },
+        removeOnFail: { age: 24 * 3600 },
+        attempts: 1,
+        jobId
+      }
     );
+
+    return true;
+  };
+
+  queueService.start(
+    QueueName.SecretBlindIndexMigrationDispatch,
+    async (job) => {
+      const { orgId } = job.data;
+
+      let totalEnqueued = 0;
+      let stalledIterations = 0;
+      let lastPendingProjectCount = Infinity;
+
+      for (;;) {
+        const { enqueuedProjectIds, pendingProjectCount } = await startSecretBlindIndexMigrationPerOrg(
+          orgId,
+          SECRET_BLIND_INDEX_MIGRATION_ORG_IN_FLIGHT_LIMIT
+        );
+
+        if (!pendingProjectCount) {
+          logger.info(`SecretBlindIndexMigrationDispatch: complete [orgId=${orgId}] [totalEnqueued=${totalEnqueued}]`);
+          return;
+        }
+
+        totalEnqueued += enqueuedProjectIds.length;
+        await job.updateProgress(totalEnqueued);
+
+        const backlogDrained = pendingProjectCount < lastPendingProjectCount;
+        if (backlogDrained) {
+          stalledIterations = 0;
+        } else {
+          stalledIterations += 1;
+        }
+        lastPendingProjectCount = pendingProjectCount;
+
+        if (stalledIterations >= SECRET_BLIND_INDEX_MIGRATION_DISPATCH_MAX_STALLED_ITERATIONS) {
+          logger.error(
+            `SecretBlindIndexMigrationDispatch: giving up, backlog is not draining [orgId=${orgId}] [pendingProjectCount=${pendingProjectCount}] [totalEnqueued=${totalEnqueued}]`
+          );
+          return;
+        }
+
+        await new Promise((resolve) => {
+          setTimeout(resolve, 30_000);
+        });
+      }
+    },
+    { concurrency: 5 }
+  );
+
+  queueService.listen(QueueName.SecretBlindIndexMigrationDispatch, "failed", (job, err) => {
+    logger.error(err, `SecretBlindIndexMigrationDispatch: failed [orgId=${job?.data.orgId}]`);
   });
+
+  queueService.start(
+    QueueName.SecretBlindIndexMigration,
+    async (job) => {
+      const { projectId } = job.data;
+      const BATCH_SIZE = 1000;
+
+      const project = await projectDAL.findOne({ id: projectId });
+      if (!project) {
+        logger.info(`SecretBlindIndexMigration: project not found, skipping [projectId=${projectId}]`);
+        return;
+      }
+      if (project.secretBlindIndexEnabled) {
+        logger.info(`SecretBlindIndexMigration: already enabled, skipping [projectId=${projectId}]`);
+        return;
+      }
+
+      const { orgId } = project;
+      const admitted = await tryAdmitSecretBlindIndexMigrationOrgSlot(keyStore, orgId);
+      if (!admitted) {
+        const attempt = (job.attemptsMade ?? 0) + 1;
+        logger.info(
+          `SecretBlindIndexMigration: org at cap [projectId=${projectId}] [orgId=${orgId}] [attempt=${attempt}/5]`
+        );
+        throw new Error(
+          "Secret blind index migration could not start because too many migrations are already running for this organization. Try again later."
+        );
+      }
+
+      try {
+        logger.info(`SecretBlindIndexMigration: starting migration [projectId=${projectId}]`);
+
+        const { decryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+
+        let totalProcessed = 0;
+
+        // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
+        while (true) {
+          const secrets = await secretV2BridgeDAL.findProjectSecretsWithNullBlindIndex(projectId, BATCH_SIZE);
+
+          if (secrets.length === 0) break;
+
+          const updates: { id: string; secretValueBlindIndex: string }[] = [];
+          for (const secret of secrets) {
+            if (secret.encryptedValue) {
+              const decryptedValue = decryptor({ cipherTextBlob: secret.encryptedValue });
+              const blindIndex = await generateSecretBlindIndex(decryptedValue);
+              updates.push({ id: secret.id, secretValueBlindIndex: blindIndex });
+            }
+          }
+
+          if (updates.length > 0) {
+            await secretV2BridgeDAL.batchSetBlindIndexes(updates);
+          }
+
+          totalProcessed += updates.length;
+          logger.info(
+            `SecretBlindIndexMigration: processed batch [projectId=${projectId}] [batchSize=${updates.length}] [totalProcessed=${totalProcessed}]`
+          );
+
+          // Prevents job from being marked as stalled
+          await job.updateProgress(totalProcessed);
+
+          if (secrets.length < BATCH_SIZE) break;
+
+          // pause between batches to avoid saturating the CPU
+          const jitter = 100 + Math.floor(Math.random() * 100);
+          await new Promise((resolve) => {
+            setTimeout(resolve, jitter);
+          });
+        }
+
+        await projectDAL.updateById(projectId, { secretBlindIndexEnabled: true });
+
+        await keyStore.deleteItems({
+          pattern: `${KeyStorePrefixes.InsightsCache(projectId, "secrets-duplication")}*`
+        });
+
+        logger.info(
+          `SecretBlindIndexMigration: migration complete [projectId=${projectId}] [totalProcessed=${totalProcessed}]`
+        );
+      } finally {
+        await releaseSecretBlindIndexMigrationOrgSlot(keyStore, orgId);
+      }
+    },
+    {
+      concurrency: SECRET_BLIND_INDEX_MIGRATION_WORKER_CONCURRENCY,
+      limiter: { max: 20, duration: 60_000 }
+    }
+  );
 
   queueService.listen(QueueName.SecretBlindIndexMigration, "failed", (job, err) => {
     logger.error(err, `SecretBlindIndexMigration: failed [projectId=${job?.data.projectId}]`);
@@ -768,9 +917,23 @@ export const projectQueueFactory = ({
     return { status: JobState.Pending };
   };
 
+  const isSecretBlindIndexMigrationRunningForOrg = async (orgId: string) => {
+    const job = await queueService.getJob(
+      QueueName.SecretBlindIndexMigrationDispatch,
+      getSecretBlindIndexMigrationOrgJobId(orgId)
+    );
+    if (!job) return false;
+
+    const state = await job.getState();
+    return state !== JobState.Completed && state !== JobState.Failed;
+  };
+
   return {
     upgradeProject,
     startSecretBlindIndexMigration,
+    startSecretBlindIndexMigrationForOrg,
+    startSecretBlindIndexMigrationPerOrg,
+    isSecretBlindIndexMigrationRunningForOrg,
     getJobState
   };
 };

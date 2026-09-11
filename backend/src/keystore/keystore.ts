@@ -60,6 +60,7 @@ export const KeyStorePrefixes = {
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
     `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  SecretBlindIndexMigrationOrgSlot: (orgId: string) => `secret-blind-index-migration-org:${orgId}` as const,
   AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
     `app-connection-command-mutex-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
   LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,

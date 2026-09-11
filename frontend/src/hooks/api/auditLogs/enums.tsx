@@ -292,6 +292,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
+  START_ORG_SECRET_BLIND_INDEX_MIGRATION = "start-org-secret-blind-index-migration",
 
   CREATE_ORG_AUDIT_REPORT = "create-org-audit-report",
   GET_ORG_AUDIT_REPORTS = "get-org-audit-reports",
