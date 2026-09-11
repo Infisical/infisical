@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CopyIcon, EyeIcon, EyeOffIcon, MailIcon, SearchIcon, SendIcon, XIcon } from "lucide-react";
 
 import { Button } from "../Button";
+import { Field, FieldError, FieldLabel } from "../Field";
 import {
   InputGroup,
   InputGroupAddon,
@@ -253,7 +254,7 @@ export const Disabled: Story = {
     docs: {
       description: {
         story:
-          'Set `data-disabled="true"` on the group and `disabled` on the control to fade both the input and its addons together — the whole group reads as inactive in one go.'
+          'Set `data-disabled="true"` on the group and `disabled` on the control to soften its border, text, and addons. The disabled control blocks pointer interaction while independently enabled addons can still explain why the field is unavailable.'
       }
     }
   },
@@ -262,7 +263,7 @@ export const Disabled: Story = {
       <InputGroupAddon align="inline-start">
         <SearchIcon />
       </InputGroupAddon>
-      <InputGroupInput defaultValue="Read-only via disabled" disabled />
+      <InputGroupInput defaultValue="Unavailable input" disabled />
       <InputGroupAddon align="inline-end">
         <InputGroupButton size="xs" aria-label="Clear" disabled>
           <XIcon />
@@ -317,6 +318,56 @@ export const WithErrorTextArea: Story = {
       </InputGroupAddon>
     </InputGroup>
   )
+};
+
+export const ErrorAnimation: Story = {
+  name: "Example: Error Animation",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Submit the form to transition the grouped input into its invalid state. Only the outer InputGroup shell shakes; its input and addon move together. Reset the example before submitting again to replay the transition."
+      }
+    }
+  },
+  render: function ErrorAnimationRender() {
+    const [isError, setIsError] = useState(false);
+
+    return (
+      <form
+        noValidate
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setIsError(true);
+        }}
+      >
+        <Field data-invalid={isError}>
+          <FieldLabel htmlFor="input-group-error-animation">Email</FieldLabel>
+          <InputGroup>
+            <InputGroupAddon align="inline-start">
+              <MailIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              id="input-group-error-animation"
+              type="email"
+              defaultValue="not-an-email"
+              isError={isError}
+            />
+          </InputGroup>
+          <FieldError isOpen={isError}>Enter a valid email address.</FieldError>
+        </Field>
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" isDisabled={isError}>
+            Trigger Error
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setIsError(false)}>
+            Reset
+          </Button>
+        </div>
+      </form>
+    );
+  }
 };
 
 export const SearchWithClear: Story = {

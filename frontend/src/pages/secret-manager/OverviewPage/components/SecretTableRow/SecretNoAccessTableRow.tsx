@@ -1,7 +1,13 @@
 import { LockIcon } from "lucide-react";
 
-import { Blur } from "@app/components/v2/Blur";
-import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  Blur,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 
@@ -15,13 +21,15 @@ export const SecretNoAccessTableRow = ({ environments = [], count }: Props) => {
     <>
       {Array.from(Array(count)).map((_, j) => (
         <TableRow key={`no-access-secret-overview-${j + 1}`} className="group">
-          <TableCell className="sticky left-0 z-10 bg-container transition-all duration-75 group-hover:bg-container-hover">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <LockIcon className="text-secret/50" />
-              </TooltipTrigger>
-              <TooltipContent>You do not have permission to view this secret</TooltipContent>
-            </Tooltip>
+          <TableCell className="sticky left-0 z-10 w-10 max-w-10 min-w-10 bg-container p-0 transition-all duration-75 group-hover:bg-container-hover">
+            <div className="flex h-full items-center justify-center [&>svg]:size-4">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <LockIcon className="text-secret/50" />
+                </TooltipTrigger>
+                <TooltipContent>You do not have permission to view this secret</TooltipContent>
+              </Tooltip>
+            </div>
           </TableCell>
           <TableCell className="sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover">
             <Blur className="pl-0" />

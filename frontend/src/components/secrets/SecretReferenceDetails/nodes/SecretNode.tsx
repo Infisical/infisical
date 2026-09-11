@@ -1,14 +1,11 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback, useContext, useRef, useState } from "react";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Handle, NodeProps, Position } from "@xyflow/react";
-import { FolderIcon, KeyIcon, LayersIcon } from "lucide-react";
+import { CircleHelpIcon, FolderIcon, KeyIcon, LayersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 
@@ -97,6 +94,49 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
     </Badge>
   );
 
+  const nodeClassName = twMerge(
+    "flex h-full w-full items-stretch gap-2.5 rounded-md border border-border bg-container p-2 font-inter",
+    isCircular && "border-danger/40",
+    isRoot && "border-project/40",
+    !isRoot && "cursor-pointer transition-colors hover:border-accent"
+  );
+
+  const nodeContent = (
+    <>
+      <Badge
+        variant={isCircular ? "danger" : isRoot ? "project" : "neutral"}
+        className="!aspect-square h-auto !w-auto !min-w-0 shrink-0 self-stretch"
+      >
+        <KeyIcon className="size-4" />
+      </Badge>
+      <div className="flex w-full min-w-0 flex-col text-left">
+        <span className={twMerge("truncate text-xs text-foreground", isRoot && "font-semibold")}>
+          {secretKey}
+        </span>
+        <div className="mt-0.5 flex items-center gap-1.5">
+          {isEnvTruncated ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{envBadge}</TooltipTrigger>
+              <TooltipContent className="max-w-xs text-xs break-all">
+                {capitalizedEnv}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            envBadge
+          )}
+          {isPathTruncated ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{pathBadge}</TooltipTrigger>
+              <TooltipContent className="max-w-xs text-xs break-all">{secretPath}</TooltipContent>
+            </Tooltip>
+          ) : (
+            pathBadge
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <>
       <Handle
@@ -104,73 +144,51 @@ export const SecretNode = ({ data }: NodeProps & { data: SecretNodeData }) => {
         className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Top}
       />
-      <Tooltip
-        className="text-xs"
-        content={isRoot ? "This is the secret whose dependencies are being viewed" : undefined}
-        isDisabled={!isRoot}
-      >
-        <div className="relative">
-          {isCircular && (
-            <Tooltip content="This secret contains circular references. Circular references are not expanded and will lead to errors when you attempt to use them.">
-              <Badge variant="danger" className="absolute -top-6 right-0">
-                Circular
-                <FontAwesomeIcon className="size-2" icon={faQuestionCircle} />
-              </Badge>
-            </Tooltip>
-          )}
-          <div
-            className={twMerge(
-              "flex h-full w-full items-stretch gap-2.5 rounded-md border border-mineshaft bg-mineshaft-800 p-2 font-inter shadow-lg",
-              isCircular && "border-red/40",
-              isRoot && "border-project/40",
-              !isRoot && "cursor-pointer transition-colors hover:border-mineshaft-400"
-            )}
-            onClick={!isRoot ? handleNavigate : undefined}
-            role={!isRoot ? "button" : undefined}
-            tabIndex={!isRoot ? 0 : undefined}
-            onKeyDown={
-              !isRoot
-                ? (e) => {
-                    if (e.key === "Enter") handleNavigate();
-                  }
-                : undefined
-            }
-          >
-            <Badge
-              variant={isCircular ? "danger" : isRoot ? "project" : "neutral"}
-              className="!aspect-square h-auto !w-auto !min-w-0 shrink-0 self-stretch"
-            >
-              <KeyIcon className="size-4" />
-            </Badge>
-            <div className="flex w-full min-w-0 flex-col">
-              <span
-                className={twMerge(
-                  "truncate text-xs text-mineshaft-100",
-                  isRoot && "font-semibold"
-                )}
+      <div className="relative">
+        {isCircular && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label="About this circular reference"
+                className="absolute -top-6 right-0"
               >
-                {secretKey}
-              </span>
-              <div className="mt-0.5 flex items-center gap-1.5">
-                {isEnvTruncated ? (
-                  <Tooltip className="max-w-xs text-xs break-all" content={capitalizedEnv}>
-                    {envBadge}
-                  </Tooltip>
-                ) : (
-                  envBadge
-                )}
-                {isPathTruncated ? (
-                  <Tooltip className="max-w-xs text-xs break-all" content={secretPath}>
-                    {pathBadge}
-                  </Tooltip>
-                ) : (
-                  pathBadge
-                )}
+                <Badge variant="danger">
+                  Circular
+                  <CircleHelpIcon className="size-2" />
+                </Badge>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              This secret contains circular references. Circular references are not expanded and
+              will lead to errors when you attempt to use them.
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {isRoot ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className={nodeClassName}
+                role="group"
+                aria-label="This is the secret whose dependencies are being viewed"
+              >
+                {nodeContent}
               </div>
-            </div>
-          </div>
-        </div>
-      </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent>This is the secret whose dependencies are being viewed</TooltipContent>
+          </Tooltip>
+        ) : (
+          <button
+            type="button"
+            className={nodeClassName}
+            onClick={handleNavigate}
+            aria-label={`Open ${secretKey} in ${capitalizedEnv} at ${secretPath}`}
+          >
+            {nodeContent}
+          </button>
+        )}
+      </div>
       <Handle
         type="source"
         className="pointer-events-none cursor-pointer! opacity-0"

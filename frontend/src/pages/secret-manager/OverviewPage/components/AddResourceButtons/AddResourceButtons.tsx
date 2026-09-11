@@ -6,6 +6,7 @@ import {
   FolderIcon,
   HexagonIcon,
   ImportIcon,
+  KeyIcon,
   PlusIcon,
   RefreshCwIcon,
   UploadIcon
@@ -29,7 +30,7 @@ import {
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 
-type Props = {
+export type AddResourceButtonsProps = {
   onAddSecret: () => void;
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
@@ -49,6 +50,8 @@ type Props = {
   isSingleEnvSelected: boolean;
   hasVaultConnection: boolean;
   hasDopplerConnection: boolean;
+  isDisabled?: boolean;
+  variant?: "toolbar" | "object-type";
   canCreateSecrets: boolean;
   canCreateFolders: boolean;
   canCreateHoneyTokens: boolean;
@@ -74,33 +77,49 @@ export function AddResourceButtons({
   isSingleEnvSelected,
   hasVaultConnection,
   hasDopplerConnection,
+  isDisabled,
+  variant = "toolbar",
   canCreateSecrets,
   canCreateFolders,
   canCreateHoneyTokens
-}: Props) {
+}: AddResourceButtonsProps) {
   return (
     <ButtonGroup>
-      <Tooltip open={!canCreateSecrets ? undefined : false}>
-        <TooltipTrigger>
-          <Button
-            className="rounded-r-none"
-            isDisabled={!canCreateSecrets}
-            variant="project"
-            onClick={onAddSecret}
-          >
-            <PlusIcon />
-            Add Secret
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Access Denied</TooltipContent>
-      </Tooltip>
+      {variant === "toolbar" && (
+        <Tooltip open={!canCreateSecrets ? undefined : false}>
+          <TooltipTrigger>
+            <Button
+              className="rounded-r-none"
+              isDisabled={!canCreateSecrets}
+              variant="project"
+              onClick={onAddSecret}
+            >
+              <PlusIcon />
+              Add Secret
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Access Denied</TooltipContent>
+        </Tooltip>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <IconButton variant="project">
-            <ChevronDown />
-          </IconButton>
+          {variant === "object-type" ? (
+            <IconButton
+              aria-label={isDisabled ? "Secret draft in progress" : "Add another resource type"}
+              className="mx-auto border-0 [&>svg]:!size-4"
+              isDisabled={isDisabled}
+              size="2xs"
+              variant="ghost-muted"
+            >
+              {isDisabled ? <KeyIcon className="text-secret" /> : <PlusIcon />}
+            </IconButton>
+          ) : (
+            <IconButton aria-label="Open add resource menu" variant="project">
+              <ChevronDown />
+            </IconButton>
+          )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align={variant === "object-type" ? "start" : "end"}>
           <DropdownMenuLabel>New</DropdownMenuLabel>
           <Tooltip open={!canCreateFolders ? undefined : false}>
             <TooltipTrigger className="block w-full">

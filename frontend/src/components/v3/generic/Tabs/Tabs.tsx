@@ -91,7 +91,7 @@ const TabsList = React.forwardRef<
       data-scrollable-start={scrollEdges.start}
       data-scrollable-end={scrollEdges.end}
       className={cn(
-        "scroll-edge-fade group/tabs-list no-scrollbar text-muted-foreground inline-flex w-fit max-w-full shrink-0 justify-center rounded-md data-[orientation=horizontal]:h-9 data-[orientation=horizontal]:overflow-x-auto data-[orientation=horizontal]:overflow-y-hidden data-[orientation=horizontal]:overscroll-x-contain data-[orientation=vertical]:h-fit data-[orientation=vertical]:flex-col data-[style=filled]:items-center data-[style=filled]:pb-[3px] data-[style=underline]:w-full data-[style=underline]:items-stretch data-[style=underline]:rounded-none",
+        "scroll-edge-fade group/tabs-list no-scrollbar text-muted-foreground inline-flex w-fit max-w-full shrink-0 justify-center rounded-md data-[orientation=horizontal]:h-9 data-[orientation=horizontal]:overflow-x-auto data-[orientation=horizontal]:overflow-y-hidden data-[orientation=horizontal]:overscroll-x-contain data-[orientation=vertical]:h-fit data-[orientation=vertical]:flex-col data-[style=filled]:items-center data-[style=underline]:w-full data-[style=underline]:items-stretch data-[style=underline]:rounded-none",
         tabsListVariants[tabsListStyleByVariant[variant]],
         className
       )}

@@ -77,7 +77,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
           )}
           <CardBody
             className={twMerge(
-              "grow overflow-x-hidden overflow-y-auto px-4 pt-4 dark:scheme-dark",
+              "grow overflow-x-hidden overflow-y-auto px-4 pt-4",
               cardBodyClassName
             )}
           >

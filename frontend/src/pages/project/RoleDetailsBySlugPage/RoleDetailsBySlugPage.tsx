@@ -99,21 +99,7 @@ const Page = () => {
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-8xl">
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId,
-              orgId
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Roles
-            }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-muted"
-          >
-            <ChevronLeftIcon className="size-4" />
-            {isCertManager ? "Roles" : "Project Roles"}
-          </Link>
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope={currentProject.type}
             title={displayName}
@@ -121,6 +107,21 @@ const Page = () => {
               <>
                 {data.slug} {data.description && `- ${data.description}`}
               </>
+            }
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId,
+                  orgId
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Roles
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {isCertManager ? "Roles" : "Project Roles"}
+              </Link>
             }
           >
             {isCustomRole && (
@@ -209,19 +210,24 @@ const Page = () => {
               </DropdownMenu>
             )}
           </PageHeader>
-          {isCertManager && isCustomRole && (
-            <Alert variant="info" className="mb-4">
-              <InfoIcon />
-              <AlertTitle>Custom roles act as Member in Certificate Manager</AlertTitle>
-              <AlertDescription>
-                In the new Certificate Manager flow, access is granted through Application
-                memberships (Admin or Member). Permissions defined here only apply to legacy
-                endpoints — users with this role are treated as Member at the project level and only
-                see resources inside Applications they are explicitly added to.
-              </AlertDescription>
-            </Alert>
-          )}
-          <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole || !canEditRole} />
+          <div className="flex flex-col gap-4">
+            {isCertManager && isCustomRole && (
+              <Alert variant="info">
+                <InfoIcon />
+                <AlertTitle>Custom roles act as Member in Certificate Manager</AlertTitle>
+                <AlertDescription>
+                  In the new Certificate Manager flow, access is granted through Application
+                  memberships (Admin or Member). Permissions defined here only apply to legacy
+                  endpoints — users with this role are treated as Member at the project level and
+                  only see resources inside Applications they are explicitly added to.
+                </AlertDescription>
+              </Alert>
+            )}
+            <RolePermissionsSection
+              roleSlug={roleSlug}
+              isDisabled={!isCustomRole || !canEditRole}
+            />
+          </div>
         </div>
       )}
       <EditProjectRoleDialog

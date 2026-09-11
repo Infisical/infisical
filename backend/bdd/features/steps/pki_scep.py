@@ -219,7 +219,7 @@ def _create_scep_profile(
         "/api/v1/cert-manager/applications",
         headers=headers,
         params={"projectId": project_id},
-        json={"name": faker.slug()},
+        json={"name": f"bdd-scep-{profile_id}"},
     )
     response.raise_for_status()
     app_id = response.json()["application"]["id"]

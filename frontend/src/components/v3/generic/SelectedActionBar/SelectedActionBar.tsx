@@ -21,6 +21,8 @@ type SelectedActionBarProps = Omit<React.ComponentProps<"div">, "children"> & {
   children: React.ReactNode;
   selectionLabel?: React.ReactNode;
   clearLabel?: string;
+  portalContainer?: Element | DocumentFragment | null;
+  positionerClassName?: string;
 };
 
 function SelectedActionBar({
@@ -29,6 +31,8 @@ function SelectedActionBar({
   children,
   selectionLabel,
   clearLabel = "Unselect All",
+  portalContainer,
+  positionerClassName,
   className,
   "aria-label": ariaLabel = "Selection actions",
   ...props
@@ -77,7 +81,8 @@ function SelectedActionBar({
         "transition-[opacity,translate,filter,scale] ease-out motion-reduce:transition-none",
         isVisible
           ? "translate-y-0 scale-100 opacity-100 blur-none duration-200"
-          : "translate-y-3 scale-98 opacity-0 blur-[4px] duration-100"
+          : "translate-y-3 scale-98 opacity-0 blur-[4px] duration-100",
+        positionerClassName
       )}
       aria-hidden={!isVisible}
       // React 18 does not type the inert attribute yet.
@@ -119,7 +124,7 @@ function SelectedActionBar({
         </div>
       </div>
     </div>,
-    document.body
+    portalContainer ?? document.body
   );
 }
 

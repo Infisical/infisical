@@ -14,6 +14,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
   AlertDialogContent,
@@ -34,9 +35,6 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Field,
-  FieldLabel,
-  Input,
   SheetHeader,
   SheetTitle,
   Tooltip,
@@ -83,7 +81,6 @@ export const CommitDetailsView = ({
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
   const [fullStateIds, setFullStateIds] = useState<Record<string, boolean>>({});
   const [isRevertOpen, setIsRevertOpen] = useState(false);
-  const [revertConfirmation, setRevertConfirmation] = useState("");
 
   const {
     data: commitDetails,
@@ -352,10 +349,8 @@ export const CommitDetailsView = ({
 
       <AlertDialog
         open={isRevertOpen}
-        onOpenChange={(open) => {
-          setIsRevertOpen(open);
-          if (!open) setRevertConfirmation("");
-        }}
+        confirmationValue={REVERT_CONFIRM_KEY}
+        onOpenChange={setIsRevertOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -365,37 +360,20 @@ export const CommitDetailsView = ({
               resources it touched.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogConfirmationField>
-            <Field>
-              <FieldLabel htmlFor="revert-commit-confirmation" size="sm">
-                <span>
-                  Type &quot;<span className="text-foreground">{REVERT_CONFIRM_KEY}</span>&quot; to
-                  confirm.
-                </span>
-              </FieldLabel>
-              <Input
-                id="revert-commit-confirmation"
-                value={revertConfirmation}
-                onChange={(event) => setRevertConfirmation(event.target.value)}
-                placeholder={REVERT_CONFIRM_KEY}
-                autoComplete="off"
-                autoFocus
-              />
-            </Field>
-          </AlertDialogConfirmationField>
+          <AlertDialogConfirmationField inputProps={{ disabled: isReverting }} />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            {/* Plain Button, not AlertDialogAction, so the dialog stays open while the
-                revert runs and on failure */}
-            <Button
+            <AlertDialogCancel isDisabled={isReverting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
               variant="danger"
-              size="sm"
-              isDisabled={revertConfirmation !== REVERT_CONFIRM_KEY || isReverting}
+              isDisabled={isReverting}
               isPending={isReverting}
-              onClick={handleRevert}
+              onClick={(event) => {
+                event.preventDefault();
+                handleRevert();
+              }}
             >
               Revert Changes
-            </Button>
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -14,6 +14,21 @@ type EmptyFrameProps = {
 
 const FRAME = { stroke: 2, dash: "4 2", radius: 6 } as const;
 
+const emptyVariants = cva(
+  "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 text-center text-foreground",
+  {
+    variants: {
+      variant: {
+        default: "rounded-md bg-container p-6 shadow-inner md:p-12",
+        unstyled: "bg-transparent p-0"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  }
+);
+
 function EmptyFrameSvg({ dashed, className }: { dashed: boolean; className?: string }) {
   const inset = FRAME.stroke / 2;
 
@@ -46,17 +61,19 @@ function Empty({
   className,
   frame = "none",
   frameClassName,
+  variant = "default",
   children,
   ...props
-}: React.ComponentProps<"div"> & EmptyFrameProps) {
+}: React.ComponentProps<"div"> & EmptyFrameProps & VariantProps<typeof emptyVariants>) {
   const hasFrame = frame !== "none";
 
   const box = (
     <div
       data-slot="empty"
+      data-variant={variant}
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-md bg-container p-6 text-center text-foreground shadow-inner md:p-12",
-        frame === "none" && "border-dashed border-border",
+        emptyVariants({ variant }),
+        variant === "default" && frame === "none" && "border-dashed border-border",
         hasFrame && "relative transition-colors duration-200 hover:bg-container-hover",
         className
       )}
@@ -116,11 +133,7 @@ function EmptyMedia({
 
 function EmptyTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div
-      data-slot="empty-title"
-      className={cn("text-sm font-medium tracking-tight", className)}
-      {...props}
-    />
+    <div data-slot="empty-title" className={cn("text-sm font-medium", className)} {...props} />
   );
 }
 
