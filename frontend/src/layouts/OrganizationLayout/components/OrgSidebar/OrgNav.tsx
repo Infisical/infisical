@@ -74,7 +74,13 @@ export const OrgNav = () => {
           hidden: !isRootOrganization
         },
         { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-        { label: "Settings", icon: Settings, pathSuffix: "settings", opensSubmenu: true }
+        {
+          label: "Settings",
+          icon: Settings,
+          pathSuffix: "settings",
+          activeMatch: /organizations\/[^/]+\/(sso|oauth-applications|networking)/,
+          opensSubmenu: true
+        }
       ]
     }
   ];
