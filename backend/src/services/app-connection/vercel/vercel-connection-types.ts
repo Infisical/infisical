@@ -56,8 +56,11 @@ export type VercelDeployment = {
 export type VercelApp = {
   name: string;
   id: string;
-  envs?: VercelEnvironment[];
-  previewBranches?: string[];
+};
+
+export type VercelProject = VercelApp & {
+  envs: VercelEnvironment[];
+  previewBranches: string[];
 };
 
 export type VercelOrgWithApps = VercelTeam & {
