@@ -24,6 +24,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -34,7 +35,6 @@ import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
-import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import {
   SecretSync,
@@ -44,6 +44,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { buildSyncPayload, getAncestorPaths } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -94,6 +95,7 @@ type TSecretSyncQueueFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   folderDAL: TSecretFolderDALFactory;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "findByFolderId"
@@ -106,7 +108,7 @@ type TSecretSyncQueueFactoryDep = {
     | "deleteMany"
     | "invalidateSecretCacheByProjectId"
   >;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   secretSyncDAL: Pick<
     TSecretSyncDALFactory,
     "findById" | "find" | "updateById" | "deleteById" | "update" | "updateAndReturnIds"
@@ -162,6 +164,7 @@ export const secretSyncQueueFactory = ({
   gitHubAppDAL,
   keyStore,
   folderDAL,
+  projectEnvDAL,
   secretV2BridgeDAL,
   secretImportDAL,
   secretSyncDAL,
@@ -264,7 +267,8 @@ export const secretSyncQueueFactory = ({
 
   const $getInfisicalSecrets = async (
     secretSync: TSecretSyncRaw | TSecretSyncWithCredentials,
-    includeImports = true
+    includeImports = true,
+    dedupeForRemoval = false
   ) => {
     const { projectId, folderId, environment, folder } = secretSync;
 
@@ -275,13 +279,12 @@ export const secretSyncQueueFactory = ({
         shouldRetry: false
       });
 
-    const secretMap: TSecretMap = {};
-
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
     const actorOrgId = secretSync.connection.orgId;
+    const syncOptions = secretSync.syncOptions as { recursive?: boolean; keySchema?: string } | undefined;
 
     const decryptSecretValue = (value?: Buffer | undefined | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
@@ -300,74 +303,33 @@ export const secretSyncQueueFactory = ({
       kmsService
     });
 
-    const secrets = await secretV2BridgeDAL.findByFolderId({ folderId });
-
-    await Promise.allSettled(
-      secrets.map(async (secret) => {
-        const secretKey = secret.key;
-        const secretValue = decryptSecretValue(secret.encryptedValue);
-        const expandedSecretValue = await expandSecretReferences({
-          environment: environment.slug,
-          secretPath: folder.path,
-          skipMultilineEncoding: secret.skipMultilineEncoding,
-          value: secretValue,
-          secretKey
-        });
-        secretMap[secretKey] = { value: expandedSecretValue || "", id: secret.id };
-
-        if (secret.encryptedComment) {
-          const commentValue = decryptSecretValue(secret.encryptedComment);
-          secretMap[secretKey].comment = commentValue;
-        }
-
-        secretMap[secretKey].skipMultilineEncoding = Boolean(secret.skipMultilineEncoding);
-        secretMap[secretKey].secretMetadata = secret.secretMetadata.map((el) => ({
-          isEncrypted: Boolean(el.encryptedValue),
-          key: el.key,
-          value: el.encryptedValue ? decryptSecretValue(el.encryptedValue) : el.value || ""
-        }));
-      })
-    );
-
-    if (!includeImports) return secretMap;
-
-    const secretImports = await secretImportDAL.find({ folderId, isReplication: false });
-
-    if (secretImports.length) {
-      const importedSecrets = await fnSecretsV2FromImports({
-        decryptor: decryptSecretValue,
+    return buildSyncPayload(
+      {
         folderDAL,
-        secretDAL: secretV2BridgeDAL,
-        expandSecretReferences,
+        projectEnvDAL,
+        secretV2BridgeDAL,
         secretImportDAL,
-        secretImports,
-        hasSecretAccess: () => true,
-        viewSecretValue: true,
-        projectId,
-        projectFolderGrantDAL,
-        actorOrgId,
-        orgDAL,
-        licenseService,
-        kmsService
-      });
-
-      for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
-        for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
-          const importedSecret = importedSecrets[i].secrets[j];
-          if (!secretMap[importedSecret.key]) {
-            secretMap[importedSecret.key] = {
-              skipMultilineEncoding: importedSecret.skipMultilineEncoding,
-              comment: importedSecret.secretComment,
-              value: importedSecret.secretValue || "",
-              id: importedSecret.id,
-              secretMetadata: importedSecret.secretMetadata
-            };
-          }
+        expandSecretReferences,
+        decryptSecretValue,
+        fnSecretsV2FromImportsDeps: {
+          projectFolderGrantDAL,
+          actorOrgId,
+          orgDAL,
+          licenseService,
+          kmsService
         }
+      },
+      {
+        projectId,
+        environment: environment.slug,
+        sourcePath: folder.path,
+        sourceFolderId: folderId,
+        recursive: Boolean(syncOptions?.recursive),
+        keySchema: syncOptions?.keySchema,
+        includeImports,
+        dedupeForRemoval
       }
-    }
-
-    return secretMap;
+    );
   };
 
   const queueSecretSyncSyncSecretsById = async (payload: TQueueSecretSyncSyncSecretsByIdDTO) => {
@@ -475,7 +437,16 @@ export const secretSyncQueueFactory = ({
 
     const importedSecretMap: TSecretMap = {};
 
-    const secretMap = await $getInfisicalSecrets(secretSync, false);
+    // Import behavior is never combined with a recursive sync, so this payload always covers
+    // exactly one folder. Comparison is against raw keys as returned by the destination
+    // (already schema-stripped), so entries come from `secrets` rather than the schema-applying flatten().
+    const payload = await $getInfisicalSecrets(secretSync, false);
+    const secretMap: TSecretMap = Object.fromEntries(
+      payload.secrets.map((entry) => [
+        entry.key,
+        { value: entry.value, id: entry.id, comment: entry.comment, secretMetadata: entry.secretMetadata }
+      ])
+    );
 
     const secretsToCreate: Parameters<typeof $createManySecretsRawFn>[0]["secrets"] = [];
     const secretsToUpdate: Parameters<typeof $updateManySecretsRawFn>[0]["secrets"] = [];
@@ -577,22 +548,22 @@ export const secretSyncQueueFactory = ({
         syncOptions: { initialSyncBehavior }
       } = secretSyncWithCredentials;
 
-      const secretMap = await $getInfisicalSecrets(secretSync);
+      let payload = await $getInfisicalSecrets(secretSync);
 
       if (!lastSyncedAt && initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination) {
-        const importedSecretMap = await $importSecrets(
+        await $importSecrets(
           secretSyncWithCredentials,
           initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource
             ? SecretSyncImportBehavior.PrioritizeSource
             : SecretSyncImportBehavior.PrioritizeDestination
         );
 
-        Object.entries(importedSecretMap).forEach(([key, secretData]) => {
-          secretMap[key] = secretData;
-        });
+        // $importSecrets writes directly to the source folder, so the payload built above is
+        // stale. Re-read rather than merge in memory, since the payload is no longer a plain map.
+        payload = await $getInfisicalSecrets(secretSync);
       }
 
-      const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
+      const result = await SecretSyncFns.syncSecrets(secretSyncWithCredentials, payload, {
         appConnectionDAL,
         gitHubAppDAL,
         kmsService,
@@ -862,7 +833,9 @@ export const secretSyncQueueFactory = ({
         projectId
       });
 
-      const secretMap = await $getInfisicalSecrets(secretSync);
+      // Duplicates across folders are deduped before the payload is built, so flatten() cannot
+      // throw here: a sync that has drifted into a duplicate-name state must still be removable.
+      const payload = await $getInfisicalSecrets(secretSync, true, true);
 
       await SecretSyncFns.removeSecrets(
         {
@@ -872,7 +845,7 @@ export const secretSyncQueueFactory = ({
             credentials
           }
         } as TSecretSyncWithCredentials,
-        secretMap,
+        payload,
         {
           appConnectionDAL,
           gitHubAppDAL,
@@ -1086,7 +1059,23 @@ export const secretSyncQueueFactory = ({
         `Could not find folder at path "${secretPath}" for environment with slug "${environmentSlug}" in project with ID "${projectId}"`
       );
 
-    const secretSyncs = await secretSyncDAL.find({ folderId: folder.id, isAutoSyncEnabled: true });
+    const ancestorPaths = getAncestorPaths(secretPath);
+
+    const ancestorFolders = (
+      await folderDAL.findByManySecretPath(ancestorPaths.map((path) => ({ envId: folder.envId, secretPath: path })))
+    ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    const candidateSyncs = await secretSyncDAL.find({
+      $in: { folderId: [...ancestorFolders.map((entry) => entry.id), folder.id] },
+      isAutoSyncEnabled: true
+    });
+
+    // A sync on the changed folder itself always matches, recursive or not. A sync on an
+    // ancestor folder only matches when it is recursive, so a non-recursive sync rooted above
+    // this path is never triggered by a write it was never configured to cover.
+    const secretSyncs = candidateSyncs.filter(
+      (sync) => sync.folderId === folder.id || Boolean((sync.syncOptions as { recursive?: boolean } | null)?.recursive)
+    );
 
     await secretSyncDAL.update(
       {

@@ -28,7 +28,8 @@ import { crypto } from "@app/lib/crypto";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { getKeyWithSchema, matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { getKeyWithSchema, TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsSecretsManagerSyncWithCredentials } from "./aws-secrets-manager-sync-types";
@@ -355,12 +356,14 @@ const getSingleSecretValue = async (
 };
 
 export const AwsSecretsManagerSyncFns = {
-  syncSecrets: async (
-    secretSync: TAwsSecretsManagerSyncWithCredentials,
-    secretMap: TSecretMap,
-    unmodifiedSecretMap: TSecretMap // ie not schematized
-  ) => {
+  syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
+
+    // The many-to-one mapping combines every secret into one AWS secret's JSON body under its
+    // own (unprefixed) key, so this destination needs both views: the schema-applied map for
+    // the one-to-one path below, and the raw-key map for that JSON body.
+    const secretMap = payload.flatten();
+    const unmodifiedSecretMap = payload.flatten({ applySchema: false });
 
     const client = await getSecretsManagerClient(secretSync);
 
@@ -590,7 +593,8 @@ export const AwsSecretsManagerSyncFns = {
       });
     }
   },
-  removeSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { destinationConfig, syncOptions, environment } = secretSync;
 
     const client = await getSecretsManagerClient(secretSync);

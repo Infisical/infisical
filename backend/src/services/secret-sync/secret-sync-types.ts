@@ -499,6 +499,13 @@ export type TCheckDuplicateDestinationDTO = {
   projectId: string;
 };
 
+export type TFindRecursiveSyncConflictsDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  keySchema?: string;
+};
+
 export enum SecretSyncStatus {
   Pending = "pending",
   Running = "running",

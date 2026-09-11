@@ -84,6 +84,7 @@ import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
+import { TSecretSyncPayload } from "./secret-sync-payload";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
 import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
@@ -189,41 +190,6 @@ type TSyncSecretDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
-export const getKeyWithSchema = ({
-  key,
-  environment,
-  schema
-}: {
-  key: string;
-  environment: string;
-  schema?: string;
-}) => {
-  if (!schema) return key;
-
-  return handlebars.compile(schema)({
-    secretKey: key,
-    environment
-  });
-};
-
-// Add schema to secret keys
-const addSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
-  if (!schema) return unprocessedSecretMap;
-
-  const processedSecretMap: TSecretMap = {};
-
-  for (const [key, value] of Object.entries(unprocessedSecretMap)) {
-    const newKey = handlebars.compile(schema)({
-      secretKey: key,
-      environment
-    });
-
-    processedSecretMap[newKey] = value;
-  }
-
-  return processedSecretMap;
-};
-
 // Strip schema from secret keys
 const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, schema?: string): TSecretMap => {
   if (!schema) return unprocessedSecretMap;
@@ -311,7 +277,7 @@ const filterForSchema = (secretMap: TSecretMap, environment: string, schema?: st
 export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     {
       kmsService,
       appConnectionDAL,
@@ -321,24 +287,18 @@ export const SecretSyncFns = {
       gatewayPoolService
     }: TSyncSecretDeps
   ): Promise<TSyncSecretsResult | void> => {
-    const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
-
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
-        return AwsParameterStoreSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return AwsParameterStoreSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.AWSSecretsManager:
-        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, schemaSecretMap, secretMap);
+        return AwsSecretsManagerSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.GitHub:
-        return GithubSyncFns.syncSecrets(
-          secretSync,
-          schemaSecretMap,
-          gatewayService,
-          gatewayV2Service,
-          gatewayPoolService,
-          { gitHubAppDAL, kmsService }
-        );
+        return GithubSyncFns.syncSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService, {
+          gitHubAppDAL,
+          kmsService
+        });
       case SecretSync.GCPSecretManager:
-        return GcpSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return GcpSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
@@ -346,115 +306,107 @@ export const SecretSyncFns = {
           gatewayService,
           gatewayV2Service,
           gatewayPoolService
-        }).syncSecrets(secretSync, schemaSecretMap);
+        }).syncSecrets(secretSync, payload);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, schemaSecretMap);
+        }).syncSecrets(secretSync, payload);
       case SecretSync.AzureDevOps:
         return azureDevOpsSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, schemaSecretMap);
+        }).syncSecrets(secretSync, payload);
       case SecretSync.Databricks:
         return databricksSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, schemaSecretMap);
+        }).syncSecrets(secretSync, payload);
       case SecretSync.Humanitec:
-        return HumanitecSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return HumanitecSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.TerraformCloud:
-        return TerraformCloudSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return TerraformCloudSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Camunda:
         return camundaSyncFactory({
           appConnectionDAL,
           kmsService
-        }).syncSecrets(secretSync, schemaSecretMap);
+        }).syncSecrets(secretSync, payload);
       case SecretSync.Heroku:
-        return HerokuSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
+        return HerokuSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsService });
       case SecretSync.Vercel:
-        return VercelSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return VercelSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Windmill:
-        return WindmillSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return WindmillSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.syncSecrets(
-          secretSync,
-          schemaSecretMap,
-          gatewayService,
-          gatewayV2Service,
-          gatewayPoolService
-        );
+        return HCVaultSyncFns.syncSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService);
       case SecretSync.TeamCity:
-        return TeamCitySyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return TeamCitySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.OCIVault:
-        return OCIVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return OCIVaultSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.OnePass:
-        return OnePassSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return OnePassSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Render:
-        return RenderSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return RenderSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Flyio:
-        return FlyioSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return FlyioSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.TriggerDev:
-        return TriggerDevSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return TriggerDevSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.GitLab:
-        return GitLabSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
+        return GitLabSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
-        return CloudflarePagesSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return CloudflarePagesSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
-        return CloudflareWorkersSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return CloudflareWorkersSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Zabbix:
-        return ZabbixSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return ZabbixSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Railway:
-        return RailwaySyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return RailwaySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.HasuraCloud:
-        return HasuraCloudSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return HasuraCloudSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Checkly:
-        return ChecklySyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return ChecklySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Supabase:
-        return SupabaseSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return SupabaseSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Rundeck:
-        return RundeckSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return RundeckSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.DigitalOceanAppPlatform:
-        return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Netlify:
-        return NetlifySyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return NetlifySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Northflank:
-        return NorthflankSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return NorthflankSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Bitbucket:
-        return BitbucketSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return BitbucketSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.LaravelForge:
-        return LaravelForgeSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return LaravelForgeSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Chef:
-        return ChefSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayV2Service, gatewayPoolService);
+        return ChefSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.OctopusDeploy:
-        return OctopusDeploySyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return OctopusDeploySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.CircleCI:
-        return CircleCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return CircleCISyncFns.syncSecrets(secretSync, payload);
       case SecretSync.AzureEntraIdScim:
-        return AzureEntraIdScimSyncFns.syncSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
+        return AzureEntraIdScimSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsService });
       case SecretSync.ExternalInfisical:
-        // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
-        // infinite sync loops where the prefixed key triggers another sync cycle.
-        return ExternalInfisicalSyncFns.syncSecrets(secretSync, secretMap);
+        return ExternalInfisicalSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.OVH:
-        return OvhSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return OvhSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Devin:
-        return DevinSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return DevinSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Ona:
-        return OnaSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return OnaSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.TravisCI:
-        return TravisCISyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return TravisCISyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Snowflake:
-        return SnowflakeSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return SnowflakeSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Qovery:
-        return QoverySyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return QoverySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Cloud66:
-        return Cloud66SyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return Cloud66SyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Spacelift:
-        return SpaceliftSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return SpaceliftSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Daytona:
-        return DaytonaSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return DaytonaSyncFns.syncSecrets(secretSync, payload);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -646,7 +598,7 @@ export const SecretSyncFns = {
   },
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     {
       kmsService,
       appConnectionDAL,
@@ -656,24 +608,18 @@ export const SecretSyncFns = {
       gatewayPoolService
     }: TSyncSecretDeps
   ): Promise<void> => {
-    const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
-
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
-        return AwsParameterStoreSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return AwsParameterStoreSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.AWSSecretsManager:
-        return AwsSecretsManagerSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return AwsSecretsManagerSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.GitHub:
-        return GithubSyncFns.removeSecrets(
-          secretSync,
-          schemaSecretMap,
-          gatewayService,
-          gatewayV2Service,
-          gatewayPoolService,
-          { gitHubAppDAL, kmsService }
-        );
+        return GithubSyncFns.removeSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService, {
+          gitHubAppDAL,
+          kmsService
+        });
       case SecretSync.GCPSecretManager:
-        return GcpSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return GcpSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.AzureKeyVault:
         return azureKeyVaultSyncFactory({
           appConnectionDAL,
@@ -681,12 +627,12 @@ export const SecretSyncFns = {
           gatewayService,
           gatewayV2Service,
           gatewayPoolService
-        }).removeSecrets(secretSync, schemaSecretMap);
+        }).removeSecrets(secretSync, payload);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
           kmsService
-        }).removeSecrets(secretSync, schemaSecretMap);
+        }).removeSecrets(secretSync, payload);
       case SecretSync.AzureDevOps:
         return azureDevOpsSyncFactory({
           appConnectionDAL,
@@ -696,100 +642,92 @@ export const SecretSyncFns = {
         return databricksSyncFactory({
           appConnectionDAL,
           kmsService
-        }).removeSecrets(secretSync, schemaSecretMap);
+        }).removeSecrets(secretSync, payload);
       case SecretSync.Humanitec:
-        return HumanitecSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return HumanitecSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.TerraformCloud:
-        return TerraformCloudSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return TerraformCloudSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Camunda:
         return camundaSyncFactory({
           appConnectionDAL,
           kmsService
-        }).removeSecrets(secretSync, schemaSecretMap);
+        }).removeSecrets(secretSync, payload);
       case SecretSync.Vercel:
-        return VercelSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return VercelSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Windmill:
-        return WindmillSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return WindmillSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.removeSecrets(
-          secretSync,
-          schemaSecretMap,
-          gatewayService,
-          gatewayV2Service,
-          gatewayPoolService
-        );
+        return HCVaultSyncFns.removeSecrets(secretSync, payload, gatewayService, gatewayV2Service, gatewayPoolService);
       case SecretSync.TeamCity:
-        return TeamCitySyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return TeamCitySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.OCIVault:
-        return OCIVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return OCIVaultSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.OnePass:
-        return OnePassSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return OnePassSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Heroku:
-        return HerokuSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
+        return HerokuSyncFns.removeSecrets(secretSync, payload, { appConnectionDAL, kmsService });
       case SecretSync.Render:
-        return RenderSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return RenderSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Flyio:
-        return FlyioSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return FlyioSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.TriggerDev:
-        return TriggerDevSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return TriggerDevSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.GitLab:
-        return GitLabSyncFns.removeSecrets(secretSync, schemaSecretMap, { appConnectionDAL, kmsService });
+        return GitLabSyncFns.removeSecrets(secretSync, payload, { appConnectionDAL, kmsService });
       case SecretSync.CloudflarePages:
-        return CloudflarePagesSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return CloudflarePagesSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
-        return CloudflareWorkersSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return CloudflareWorkersSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Zabbix:
-        return ZabbixSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return ZabbixSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Railway:
-        return RailwaySyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return RailwaySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.HasuraCloud:
-        return HasuraCloudSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return HasuraCloudSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Checkly:
-        return ChecklySyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return ChecklySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Supabase:
-        return SupabaseSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return SupabaseSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Rundeck:
-        return RundeckSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return RundeckSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.DigitalOceanAppPlatform:
-        return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Netlify:
-        return NetlifySyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return NetlifySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Northflank:
-        return NorthflankSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return NorthflankSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Bitbucket:
-        return BitbucketSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return BitbucketSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.LaravelForge:
-        return LaravelForgeSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return LaravelForgeSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Chef:
-        return ChefSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayV2Service, gatewayPoolService);
+        return ChefSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.OctopusDeploy:
-        return OctopusDeploySyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return OctopusDeploySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.CircleCI:
-        return CircleCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return CircleCISyncFns.removeSecrets(secretSync, payload);
       case SecretSync.AzureEntraIdScim:
         return AzureEntraIdScimSyncFns.removeSecrets();
       case SecretSync.ExternalInfisical:
-        // Key schema is intentionally not applied for Infisical-to-Infisical syncs to prevent
-        // infinite sync loops where the prefixed key triggers another sync cycle.
-        return ExternalInfisicalSyncFns.removeSecrets(secretSync, secretMap);
+        return ExternalInfisicalSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.OVH:
-        return OvhSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return OvhSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Devin:
-        return DevinSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return DevinSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Ona:
-        return OnaSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return OnaSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.TravisCI:
-        return TravisCISyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return TravisCISyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Snowflake:
-        return SnowflakeSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return SnowflakeSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Qovery:
-        return QoverySyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return QoverySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Cloud66:
-        return Cloud66SyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return Cloud66SyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Spacelift:
-        return SpaceliftSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return SpaceliftSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Daytona:
-        return DaytonaSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return DaytonaSyncFns.removeSecrets(secretSync, payload);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

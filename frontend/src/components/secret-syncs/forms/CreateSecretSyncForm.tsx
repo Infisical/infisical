@@ -34,6 +34,7 @@ import {
   TSecretSync,
   useCreateSecretSync,
   useDuplicateDestinationCheck,
+  useRecursiveConflictsCheck,
   useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
 
@@ -226,18 +227,34 @@ export const CreateSecretSyncForm = ({
     initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination &&
     !disableSecretDeletion &&
     !keySchema;
+  const importsFromDestination =
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource ||
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeDestination;
+
+  const { conflicts: recursiveConflicts } = useRecursiveConflictsCheck({
+    destination,
+    projectId: currentProject?.id || "",
+    environment: watch("environment")?.slug,
+    secretPath: watch("secretPath"),
+    keySchema,
+    recursive: Boolean(watch("syncOptions.recursive")) && !importsFromDestination
+  });
 
   const isStepValid = async (index: number) => trigger(formTabs[index].fields);
 
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
-  const isCreateButtonDisabled =
-    isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations;
+  const isSourceStep = selectedTabIndex === 0;
+  const isNextButtonDisabled =
+    (isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations) ||
+    (isSourceStep && recursiveConflicts.length > 0);
 
   const handleNext = async () => {
     if (isFinalStep) {
       setShowConfirmation(true);
       return;
     }
+
+    if (isSourceStep && recursiveConflicts.length > 0) return;
 
     const isValid = await isStepValid(selectedTabIndex);
 
@@ -266,6 +283,10 @@ export const CreateSecretSyncForm = ({
       setSelectedTabIndex(targetTab);
       return;
     }
+
+    // The Source step (index 0) is always behind a forward jump, since targetTab > selectedTabIndex
+    // here, so a conflict there must block the jump the same way it blocks handleNext.
+    if (recursiveConflicts.length > 0) return;
 
     let canJump = true;
     for (let i = selectedTabIndex; i < targetTab; i += 1) {
@@ -390,7 +411,7 @@ export const CreateSecretSyncForm = ({
             <Button variant="outline" onClick={handlePrev}>
               Back
             </Button>
-            <Button variant="project" onClick={handleNext} isDisabled={isCreateButtonDisabled}>
+            <Button variant="project" onClick={handleNext} isDisabled={isNextButtonDisabled}>
               {isFinalStep ? "Create Sync" : "Continue"}
             </Button>
           </div>

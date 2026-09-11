@@ -5,6 +5,7 @@ import { AzureDevOpsConnectionMethod } from "@app/services/app-connection/azure-
 import { getAzureDevopsConnection } from "@app/services/app-connection/azure-devops/azure-devops-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAzureDevOpsSyncWithCredentials } from "./azure-devops-sync-types";
@@ -79,7 +80,8 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
     return { groupId: "", groupName: "" };
   };
 
-  const syncSecrets = async (secretSync: TAzureDevOpsSyncWithCredentials, secretMap: TSecretMap) => {
+  const syncSecrets = async (secretSync: TAzureDevOpsSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (!secretSync.destinationConfig.devopsProjectId) {
       throw new BadRequestError({
         message: "Azure DevOps: project ID is required"

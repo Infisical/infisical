@@ -16,7 +16,7 @@ import { GitHubSyncScope, GitHubSyncVisibility } from "@app/services/secret-sync
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 import { TGitHubPublicKey, TGitHubSecret, TGitHubSecretPayload, TGitHubSyncWithCredentials } from "./github-sync-types";
 
@@ -233,12 +233,13 @@ const putSecret = async (
 export const GithubSyncFns = {
   syncSecrets: async (
     secretSync: TGitHubSyncWithCredentials,
-    ogSecretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
     gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
     gitHubAppDeps: TGitHubAppCredentialResolverDeps
   ) => {
+    const ogSecretMap = payload.flatten();
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
 
     switch (secretSync.destinationConfig.scope) {
@@ -342,12 +343,13 @@ export const GithubSyncFns = {
   },
   removeSecrets: async (
     secretSync: TGitHubSyncWithCredentials,
-    ogSecretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
     gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
     gitHubAppDeps: TGitHubAppCredentialResolverDeps
   ) => {
+    const ogSecretMap = payload.flatten();
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
 
     const { connection: rawConnection } = secretSync;

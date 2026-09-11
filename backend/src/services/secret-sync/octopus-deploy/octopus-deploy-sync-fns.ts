@@ -2,6 +2,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { getOctopusDeployInstanceUrl } from "@app/services/app-connection/octopus-deploy";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -32,7 +33,8 @@ export const OctopusDeploySyncFns = {
     }
   },
 
-  async syncSecrets(secretSync: TOctopusDeploySyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TOctopusDeploySyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -112,7 +114,8 @@ export const OctopusDeploySyncFns = {
       }
     );
   },
-  async removeSecrets(secretSync: TOctopusDeploySyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TOctopusDeploySyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { spaceId, projectId, scope }

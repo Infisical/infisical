@@ -1,6 +1,7 @@
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import {
   TPreSaveTransformDestinationConfigFn,
   TPreSaveTransformSyncOptionsFn,
@@ -20,9 +21,10 @@ type TAzureEntraIdScimSyncFactoryDeps = {
 export const AzureEntraIdScimSyncFns = {
   syncSecrets: async (
     secretSync: TAzureEntraIdScimSyncWithCredentials,
-    secretMap: TSecretMap,
+    payload: TSecretSyncPayload,
     { appConnectionDAL, kmsService }: TAzureEntraIdScimSyncFactoryDeps
   ): Promise<void> => {
+    const secretMap = payload.flatten();
     const { servicePrincipalId } = secretSync.destinationConfig;
     const { secretId } = secretSync.syncOptions;
 

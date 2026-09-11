@@ -5,6 +5,7 @@ import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -214,7 +215,8 @@ const updateVariable = async (
 };
 
 export const TerraformCloudSyncFns = {
-  syncSecrets: async (secretSync: TTerraformCloudSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  syncSecrets: async (secretSync: TTerraformCloudSyncWithCredentials, payload: TSecretSyncPayload): Promise<void> => {
+    const secretMap = payload.flatten();
     const terraformCloudVariables = await getTerraformCloudVariables(secretSync);
     const terraformCloudVariablesMap = new Map<string, TerraformCloudVariable>(
       terraformCloudVariables.map((v) => [v.key, v])
@@ -250,7 +252,8 @@ export const TerraformCloudSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  removeSecrets: async (secretSync: TTerraformCloudSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  removeSecrets: async (secretSync: TTerraformCloudSyncWithCredentials, payload: TSecretSyncPayload): Promise<void> => {
+    const secretMap = payload.flatten();
     const terraformCloudVariables = await getTerraformCloudVariables(secretSync);
 
     for (const variable of terraformCloudVariables) {
