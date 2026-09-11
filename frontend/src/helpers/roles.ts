@@ -51,3 +51,10 @@ export const formatProjectRoleName = (role: string, customRoleName?: string) => 
       return role;
   }
 };
+
+export const isRoleExpired = (role: {
+  isTemporary?: boolean | null;
+  temporaryAccessEndTime?: string | null;
+}) =>
+  Boolean(role.isTemporary && role.temporaryAccessEndTime) &&
+  new Date() > new Date(role.temporaryAccessEndTime as string);

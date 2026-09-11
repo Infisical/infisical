@@ -769,6 +769,8 @@ export enum EventType {
   PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
+  ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW = "access-approval-request-external-review",
+  ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY = "access-approval-request-external-dispatch-retry",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
   VIEW_AUDIT_LOGS = "view-audit-logs",
@@ -6499,6 +6501,7 @@ interface AccessApprovalRequestCreateEvent {
     temporaryRange?: string;
     permissions: unknown;
     note?: string;
+    externalApprovalProvider?: string;
   };
 }
 
@@ -6510,6 +6513,38 @@ interface AccessApprovalRequestReviewEvent {
     reviewStatus: string;
     isBypass?: boolean;
     bypassReason?: string;
+  };
+}
+
+interface AccessApprovalRequestExternalReviewEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW;
+  metadata: {
+    requestId: string;
+    requesterEmail: string;
+    policyId: string;
+    policyName: string;
+    externalApprovalRequestId: string;
+    externalId?: string;
+    externalApprovalPolicyId: string;
+    connectionName?: string;
+    externalNumber?: string;
+    reviewStatus: string;
+    externalApprovalProvider: string;
+  };
+}
+
+interface AccessApprovalRequestExternalDispatchRetryEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY;
+  metadata: {
+    requestId: string;
+    requesterEmail: string;
+    policyId: string;
+    policyName: string;
+    externalApprovalRequestId: string;
+    externalId?: string;
+    externalApprovalPolicyId: string;
+    connectionName?: string;
+    externalApprovalProvider: string;
   };
 }
 
@@ -7891,6 +7926,8 @@ export type Event =
   | PamAccessPolicyBypassedEvent
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
+  | AccessApprovalRequestExternalReviewEvent
+  | AccessApprovalRequestExternalDispatchRetryEvent
   | AccessApprovalRequestRevokeEvent
   | AccessApprovalRequestUpdateEvent
   | CreateAcmeAccountEvent

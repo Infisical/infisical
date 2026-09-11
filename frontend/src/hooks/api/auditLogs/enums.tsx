@@ -227,6 +227,8 @@ export enum EventType {
   KMIP_OPERATION_LOCATE = "kmip-operation-locate",
   KMIP_OPERATION_REGISTER = "kmip-operation-register",
   SECRET_APPROVAL_REQUEST_REVIEW = "secret-approval-request-review",
+  ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW = "access-approval-request-external-review",
+  ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY = "access-approval-request-external-dispatch-retry",
   GET_SECRET_ROTATIONS = "get-secret-rotations",
   GET_SECRET_ROTATION = "get-secret-rotation",
   GET_SECRET_ROTATION_GENERATED_CREDENTIALS = "get-secret-rotation-generated-credentials",

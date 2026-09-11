@@ -136,6 +136,8 @@ export enum TableName {
   AccessApprovalRequest = "access_approval_requests",
   AccessApprovalRequestReviewer = "access_approval_requests_reviewers",
   AccessApprovalPolicyEnvironment = "access_approval_policies_environments",
+  ExternalApprovalPolicy = "external_approval_policies",
+  ExternalApprovalRequest = "external_approval_requests",
   ProjectAccessRequest = "project_access_requests",
   SecretApprovalPolicy = "secret_approval_policies",
   SecretApprovalPolicyApprover = "secret_approval_policies_approvers",

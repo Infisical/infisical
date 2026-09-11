@@ -2910,6 +2910,11 @@ export const AppConnections = {
       apiToken: "The API Token used to access Zabbix.",
       instanceUrl: "The Zabbix instance URL to connect with."
     },
+    SERVICENOW: {
+      instanceUrl: "The base URL of the ServiceNow instance to connect with, without a path or trailing slash.",
+      username: "The User ID of the ServiceNow integration user.",
+      password: "The password of the ServiceNow integration user."
+    },
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
     },
@@ -4183,3 +4188,42 @@ export const ENCRYPTION_KEY_ROTATION = {
       "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
   }
 };
+
+export const AccessApprovalPolicies = {
+  EXTERNAL_APPROVAL: {
+    type: "The external system that approves access requests created under this policy.",
+    connectionId: "The ID of the app connection used to reach the external approval system.",
+    approverIdentityId: "The ID of the machine identity allowed to report the external decision back to Infisical."
+  }
+} as const;
+
+export const ExternalApprovals = {
+  LIST_OPTIONS: {
+    type: "The external approval type used to configure an access approval policy.",
+    app: "The app connection type that must be selected when configuring this external approval type.",
+    name: "The human readable name of the external approval system."
+  },
+  LIST_APPROVER_IDENTITIES: {
+    projectId: "The ID of the project whose approval policies are being managed. Used to authorize the request.",
+    id: "The ID of the machine identity that can report external approval decisions.",
+    name: "The name of the machine identity that can report external approval decisions.",
+    orgId: "The ID of the organization that owns the machine identity."
+  }
+} as const;
+
+export const AccessApprovalRequests = {
+  EXTERNAL_REVIEW: {
+    requestId: "The ID of the access approval request the external approver decided on.",
+    status: "The decision made by the external approver.",
+    externalId:
+      "The ID of the request in the external approval system. Must match the ID recorded when the request was dispatched.",
+    externalNumber:
+      "The human readable reference of the request in the external approval system, recorded on the audit log entry for this review.",
+    productType: "The Infisical product the access request belongs to. Must be 'secrets_management' for this endpoint."
+  },
+  RETRY_EXTERNAL_DISPATCH: {
+    requestId:
+      "The ID of the access approval request whose delivery to the external approval system failed and should be attempted again.",
+    message: "Confirmation that the request was resent to the external approval system."
+  }
+} as const;

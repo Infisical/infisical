@@ -6,6 +6,7 @@ import {
   FilterIcon,
   HourglassIcon,
   InfoIcon,
+  RefreshCwIcon,
   ShieldAlertIcon,
   SquarePenIcon,
   TimerIcon,
@@ -54,6 +55,7 @@ import {
   PopoverTrigger,
   ProjectIcon,
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -77,16 +79,22 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
+import {
+  PermissionConditionOperators,
+  ProjectPermissionApprovalRequestActions
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
+  useGetExternalApprovalOptions,
   useListWorkspaceGroups,
+  useRetryExternalApprovalDispatch,
   useReviewAccessRequest,
   useRevokeAccessRequest
 } from "@app/hooks/api";
 import {
   Approver,
   ApproverType,
+  ExternalApprovalRequestStatus,
   TAccessApprovalPolicy,
   TAccessApprovalRequest
 } from "@app/hooks/api/accessApproval/types";
@@ -173,6 +181,47 @@ const formatConditions = (conditions: Record<string, unknown>): FormattedConditi
     }));
   });
 
+const EXTERNAL_STATUS_PRESENTATION: Record<
+  ExternalApprovalRequestStatus,
+  {
+    label: string;
+    variant: "warning" | "danger" | "success";
+    icon: React.ReactNode;
+    getMessage: (externalSystem: string) => string;
+  }
+> = {
+  [ExternalApprovalRequestStatus.PendingDispatch]: {
+    label: "Pending",
+    variant: "warning",
+    icon: <HourglassIcon />,
+    getMessage: (externalSystem) => `Sending this request to ${externalSystem}`
+  },
+  [ExternalApprovalRequestStatus.WaitingApproval]: {
+    label: "Pending",
+    variant: "warning",
+    icon: <HourglassIcon />,
+    getMessage: (externalSystem) => `Awaiting review in ${externalSystem}`
+  },
+  [ExternalApprovalRequestStatus.FailedDispatch]: {
+    label: "Not Submitted",
+    variant: "danger",
+    icon: <TriangleAlertIcon />,
+    getMessage: (externalSystem) => `This request never reached ${externalSystem}.`
+  },
+  [ExternalApprovalRequestStatus.Approved]: {
+    label: "Approved",
+    variant: "success",
+    icon: <CheckIcon />,
+    getMessage: (externalSystem) => `Approved in ${externalSystem}`
+  },
+  [ExternalApprovalRequestStatus.Rejected]: {
+    label: "Rejected",
+    variant: "danger",
+    icon: <BanIcon />,
+    getMessage: (externalSystem) => `Rejected in ${externalSystem}`
+  }
+};
+
 export const ReviewAccessRequestModal = ({
   isOpen,
   onOpenChange,
@@ -213,6 +262,29 @@ export const ReviewAccessRequestModal = ({
   ] as const);
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
+
+  const isExternalRequest = Boolean(
+    request.policy.externalApprovalPolicyId || request.externalApproval
+  );
+  const canViewExternalApproval =
+    isExternalRequest &&
+    permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
+  const externalApprovalType = policies.find((el) => el.id === request.policy.id)?.externalApproval
+    ?.type;
+  const { data: externalApprovalOptions = [] } = useGetExternalApprovalOptions();
+  const externalSystemName =
+    externalApprovalOptions.find((option) => option.type === externalApprovalType)?.name ??
+    "the external provider";
+  const externalApprovalStatus = request.externalApproval?.status;
+  const externalStatus = externalApprovalStatus
+    ? EXTERNAL_STATUS_PRESENTATION[externalApprovalStatus]
+    : undefined;
+  const canRetryDispatch =
+    canViewExternalApproval &&
+    externalApprovalStatus === ExternalApprovalRequestStatus.FailedDispatch;
 
   const assignPrivilegesConditions = useMemo(
     () => getMemberAssignPrivilegesConditions(permission),
@@ -308,6 +380,23 @@ export const ReviewAccessRequestModal = ({
 
   const reviewAccessRequest = useReviewAccessRequest();
   const revokeAccessRequest = useRevokeAccessRequest();
+  const retryExternalDispatch = useRetryExternalApprovalDispatch();
+
+  const handleRetryDispatch = useCallback(async () => {
+    try {
+      await retryExternalDispatch.mutateAsync({
+        requestId: request.id,
+        projectSlug
+      });
+      createNotification({
+        title: "Request resent",
+        text: `The request was sent to ${externalSystemName} again.`,
+        type: "success"
+      });
+    } catch {
+      // The global mutation error handler already reports the failure
+    }
+  }, [retryExternalDispatch, request.id, projectSlug, externalSystemName]);
 
   const handleReview = useCallback(
     async (status: "approved" | "rejected") => {
@@ -443,12 +532,17 @@ export const ReviewAccessRequestModal = ({
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
 
   const shouldBlockRequestActions =
+    isExternalRequest ||
     hasRejected ||
     hasApproved ||
     hasRevoked ||
     hasExpired ||
     isReviewedByMe ||
     (!approverSequence?.isMyReviewInThisSequence && !canBypass);
+
+  const isExternalPending =
+    isExternalRequest && request.status === ApprovalStatus.PENDING && !hasExpired;
+  const showExternalStatusOnly = isExternalPending && canViewExternalApproval;
 
   const renderCompletedMessages = () => {
     if (hasExpired) return "This request has expired.";
@@ -460,6 +554,7 @@ export const ReviewAccessRequestModal = ({
     if (hasAccessExpired) return "This request's access has expired.";
     if (hasApproved && request.bypassReason) return "This request was approved via bypass.";
     if (hasApproved) return "This request has been approved.";
+    if (isExternalPending) return "This request is awaiting approval.";
     if (isReviewedByMe) return "You have reviewed this request.";
     return "You are not the reviewer in this step.";
   };
@@ -496,6 +591,8 @@ export const ReviewAccessRequestModal = ({
       );
       return `Approved on ${approvedAt}`;
     }
+    if (isExternalPending)
+      return `Requested on ${format(new Date(request.createdAt), "MMM d, yyyy h:mm aa")}`;
     return null;
   };
 
@@ -521,6 +618,14 @@ export const ReviewAccessRequestModal = ({
     ? false
     : !request.isApprover && !bypassApproval;
 
+  const getSheetDescription = () => {
+    if (canViewExternalApproval)
+      return `Approval for this request is handled in ${externalSystemName}.`;
+    if (isExternalRequest) return "Review the details of this access request.";
+    return "Review the request and approve or deny access.";
+  };
+  const sheetDescription = getSheetDescription();
+
   const requesterFullName = [request.user?.firstName, request.user?.lastName]
     .filter(Boolean)
     .join(" ");
@@ -530,8 +635,10 @@ export const ReviewAccessRequestModal = ({
       : null;
 
   // The status banner moved to the top of the sheet, so the footer only renders when there
-  // are actions to take: Approve/Reject when unblocked, or Revoke on an approved request.
-  const showFooter = !shouldBlockRequestActions || (hasApproved && canRevokeAccess);
+  // is something to do: Approve/Reject when unblocked, Revoke on an approved request, or
+  // Close on an external request, which has no Infisical-side decision to make.
+  const showFooter =
+    !shouldBlockRequestActions || (hasApproved && canRevokeAccess) || isExternalRequest;
 
   type ApproverChain = NonNullable<typeof approverSequence.approvers>[number];
 
@@ -754,10 +861,10 @@ export const ReviewAccessRequestModal = ({
         >
           <SheetHeader className="border-b">
             <SheetTitle>Review Request</SheetTitle>
-            <SheetDescription>Review the request and approve or deny access.</SheetDescription>
+            <SheetDescription>{sheetDescription}</SheetDescription>
           </SheetHeader>
           <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-            {shouldBlockRequestActions && (
+            {shouldBlockRequestActions && !showExternalStatusOnly && (
               <Alert variant={completedMessageVariant}>
                 {renderBannerIcon()}
                 <AlertTitle>{renderCompletedMessages()}</AlertTitle>
@@ -942,59 +1049,118 @@ export const ReviewAccessRequestModal = ({
               </Table>
             </section>
 
-            <section className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-foreground">Approvers</h3>
-              {approvers.length === 1 ? (
-                <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
-                  <Item className="flex-nowrap items-start rounded-none border-0">
-                    <ItemContent className="min-w-0 gap-1.5">
-                      {renderApproverMembers(approvers[0])}
-                    </ItemContent>
-                    <ItemActions className="shrink-0">
-                      {renderReviewerProgress(approvers[0], getStatusBadge(approvers[0]))}
-                      <span className="text-xs whitespace-nowrap text-muted">
-                        {approvers[0].approvals ?? 1} approval
-                        {(approvers[0].approvals ?? 1) === 1 ? "" : "s"} required
-                      </span>
-                    </ItemActions>
-                  </Item>
-                </ItemGroup>
-              ) : (
-                <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
-                  {approvers.map((approver, index) => {
-                    const isInactive =
-                      approverSequence?.currentSequence < (approver.sequence ?? approvers.length);
-                    const badge = getStatusBadge(approver);
-
-                    return (
-                      <Fragment key={`approval-list-${index + 1}`}>
-                        {index > 0 && <ItemSeparator className="m-0" />}
-                        <Item
-                          className={twMerge(
-                            "flex-nowrap items-start rounded-none border-0",
-                            isInactive && "opacity-50"
+            {canViewExternalApproval && (
+              <>
+                <section className="flex flex-col gap-3">
+                  <h3 className="text-sm font-medium text-foreground">Approval</h3>
+                  <Alert variant="info">
+                    <InfoIcon />
+                    <AlertTitle>{externalSystemName} handles approval for this request.</AlertTitle>
+                    <AlertDescription>
+                      You cannot approve or reject it here. Access is granted automatically once{" "}
+                      {externalSystemName} returns an approval.
+                    </AlertDescription>
+                  </Alert>
+                </section>
+                {externalStatus && (
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-medium text-foreground">Status</h3>
+                    <ItemGroup
+                      className={twMerge(
+                        "gap-0 rounded-lg border border-border bg-container",
+                        externalStatus.variant === "danger" && "border-danger/25"
+                      )}
+                    >
+                      <Item className="flex-nowrap items-center rounded-none border-0">
+                        <ItemMedia>
+                          <Badge variant={externalStatus.variant}>
+                            {externalStatus.icon}
+                            {externalStatus.label}
+                          </Badge>
+                        </ItemMedia>
+                        <ItemContent className="min-w-0">
+                          <span className="text-sm text-label">
+                            {externalStatus.getMessage(externalSystemName)}
+                          </span>
+                        </ItemContent>
+                        <ItemActions className="shrink-0 items-center gap-3">
+                          <span className="text-xs whitespace-nowrap text-muted">
+                            Requested {format(new Date(request.createdAt), "MMM d, yyyy h:mm aa")}
+                          </span>
+                          {canRetryDispatch && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              isPending={retryExternalDispatch.isPending}
+                              onClick={handleRetryDispatch}
+                            >
+                              <RefreshCwIcon />
+                              Retry
+                            </Button>
                           )}
-                        >
-                          <ItemMedia>
-                            <Badge variant="neutral">Step {index + 1}</Badge>
-                          </ItemMedia>
-                          <ItemContent className="min-w-0 gap-1.5">
-                            {renderApproverMembers(approver)}
-                          </ItemContent>
-                          <ItemActions className="shrink-0">
-                            {renderReviewerProgress(approver, badge)}
-                            <span className="text-xs whitespace-nowrap text-muted">
-                              {approver.approvals ?? 1} approval
-                              {(approver.approvals ?? 1) === 1 ? "" : "s"} required
-                            </span>
-                          </ItemActions>
-                        </Item>
-                      </Fragment>
-                    );
-                  })}
-                </ItemGroup>
-              )}
-            </section>
+                        </ItemActions>
+                      </Item>
+                    </ItemGroup>
+                  </section>
+                )}
+              </>
+            )}
+            {!isExternalRequest && (
+              <section className="flex flex-col gap-3">
+                <h3 className="text-sm font-medium text-foreground">Approvers</h3>
+                {approvers.length === 1 ? (
+                  <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
+                    <Item className="flex-nowrap items-start rounded-none border-0">
+                      <ItemContent className="min-w-0 gap-1.5">
+                        {renderApproverMembers(approvers[0])}
+                      </ItemContent>
+                      <ItemActions className="shrink-0">
+                        {renderReviewerProgress(approvers[0], getStatusBadge(approvers[0]))}
+                        <span className="text-xs whitespace-nowrap text-muted">
+                          {approvers[0].approvals ?? 1} approval
+                          {(approvers[0].approvals ?? 1) === 1 ? "" : "s"} required
+                        </span>
+                      </ItemActions>
+                    </Item>
+                  </ItemGroup>
+                ) : (
+                  <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
+                    {approvers.map((approver, index) => {
+                      const isInactive =
+                        approverSequence?.currentSequence < (approver.sequence ?? approvers.length);
+                      const badge = getStatusBadge(approver);
+
+                      return (
+                        <Fragment key={`approval-list-${index + 1}`}>
+                          {index > 0 && <ItemSeparator className="m-0" />}
+                          <Item
+                            className={twMerge(
+                              "flex-nowrap items-start rounded-none border-0",
+                              isInactive && "opacity-50"
+                            )}
+                          >
+                            <ItemMedia>
+                              <Badge variant="neutral">Step {index + 1}</Badge>
+                            </ItemMedia>
+                            <ItemContent className="min-w-0 gap-1.5">
+                              {renderApproverMembers(approver)}
+                            </ItemContent>
+                            <ItemActions className="shrink-0">
+                              {renderReviewerProgress(approver, badge)}
+                              <span className="text-xs whitespace-nowrap text-muted">
+                                {approver.approvals ?? 1} approval
+                                {(approver.approvals ?? 1) === 1 ? "" : "s"} required
+                              </span>
+                            </ItemActions>
+                          </Item>
+                        </Fragment>
+                      );
+                    })}
+                  </ItemGroup>
+                )}
+              </section>
+            )}
           </div>
           <SheetFooter className={twMerge("flex-col border-t", !showFooter && "hidden")}>
             {!shouldBlockRequestActions && (
@@ -1065,16 +1231,25 @@ export const ReviewAccessRequestModal = ({
                 </div>
               </>
             )}
-            {hasApproved && canRevokeAccess && (
-              <div>
-                <Button
-                  isDisabled={Boolean(isLoading)}
-                  onClick={() => handlePopUpOpen("revokeConfirm")}
-                  size="sm"
-                  variant="danger"
-                >
-                  Revoke Access
-                </Button>
+            {(isExternalRequest || (hasApproved && canRevokeAccess)) && (
+              <div className="flex gap-2">
+                {isExternalRequest && (
+                  <SheetClose asChild>
+                    <Button type="button" size="sm" variant="outline">
+                      Close
+                    </Button>
+                  </SheetClose>
+                )}
+                {hasApproved && canRevokeAccess && (
+                  <Button
+                    isDisabled={Boolean(isLoading)}
+                    onClick={() => handlePopUpOpen("revokeConfirm")}
+                    size="sm"
+                    variant="danger"
+                  >
+                    Revoke Access
+                  </Button>
+                )}
               </div>
             )}
           </SheetFooter>

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { AccessApprovalRequestsReviewersSchema, AccessApprovalRequestsSchema } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ExternalApprovalProductType } from "@app/ee/services/external-approval/external-approval-enums";
+import { AccessApprovalRequests } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -61,17 +63,18 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { request, projectId } = await server.services.accessApprovalRequest.createAccessApprovalRequest({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        permissions: req.body.permissions,
-        actorOrgId: req.permission.orgId,
-        projectSlug: req.query.projectSlug,
-        temporaryRange: req.body.temporaryRange,
-        isTemporary: req.body.isTemporary,
-        note: req.body.note
-      });
+      const { request, projectId, externalApprovalProvider } =
+        await server.services.accessApprovalRequest.createAccessApprovalRequest({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          permissions: req.body.permissions,
+          actorOrgId: req.permission.orgId,
+          projectSlug: req.query.projectSlug,
+          temporaryRange: req.body.temporaryRange,
+          isTemporary: req.body.isTemporary,
+          note: req.body.note
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -85,7 +88,8 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             isTemporary: req.body.isTemporary,
             ...(req.body.temporaryRange ? { temporaryRange: req.body.temporaryRange } : {}),
             permissions: req.body.permissions,
-            ...(req.body.note ? { note: req.body.note } : {})
+            ...(req.body.note ? { note: req.body.note } : {}),
+            ...(externalApprovalProvider ? { externalApprovalProvider } : {})
           }
         }
       });
@@ -185,8 +189,16 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               deletedAt: z.date().nullish(),
               allowedSelfApprovals: z.boolean(),
               maxTimePeriod: z.string().nullable().optional(),
-              requestExpirationTime: z.string().nullable().optional()
+              requestExpirationTime: z.string().nullable().optional(),
+              externalApprovalPolicyId: z.string().uuid().nullish()
             }),
+            externalApproval: z
+              .object({
+                id: z.string().uuid(),
+                status: z.string().nullish(),
+                externalId: z.string().nullish() // TODO: check if it is better to define this as externalApprovalID
+              })
+              .nullish(),
             reviewers: z
               .object({
                 isOrgMembershipActive: z.boolean().nullable().optional(),
@@ -278,6 +290,152 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         .catch(() => {});
 
       return { review };
+    }
+  });
+
+  server.route({
+    url: "/:requestId/external-review",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        requestId: z.string().uuid().describe(AccessApprovalRequests.EXTERNAL_REVIEW.requestId)
+      }),
+      body: z.object({
+        status: z
+          .enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED])
+          .describe(AccessApprovalRequests.EXTERNAL_REVIEW.status),
+        external_id: z.string().trim().min(1).max(255).describe(AccessApprovalRequests.EXTERNAL_REVIEW.externalId),
+        external_number: z.string().trim().min(1).max(255).optional(),
+        product_type: z
+          .literal(ExternalApprovalProductType.SecretsManagement)
+          .describe(AccessApprovalRequests.EXTERNAL_REVIEW.productType)
+      }),
+      response: {
+        200: z.object({
+          approval: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const {
+        request,
+        projectId,
+        policyId,
+        policyName,
+        requesterEmail,
+        externalApprovalRequestId,
+        externalApprovalPolicyId,
+        externalApprovalProvider,
+        externalId,
+        connectionName
+      } = await server.services.accessApprovalRequest.reviewExternalAccessRequest({
+        requestId: req.params.requestId,
+        externalId: req.body.external_id,
+        status: req.body.status,
+        actor: req.permission
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_REVIEW,
+          metadata: {
+            requestId: request.id,
+            requesterEmail,
+            policyId,
+            policyName,
+            externalApprovalRequestId,
+            ...(externalId ? { externalId } : {}),
+            externalApprovalPolicyId,
+            ...(connectionName ? { connectionName } : {}),
+            externalNumber: req.body.external_number,
+            reviewStatus: req.body.status,
+            externalApprovalProvider
+          }
+        }
+      });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AccessApprovalRequestReviewed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            requestId: request.id,
+            projectId,
+            reviewStatus: req.body.status,
+            ...req.auditLogInfo
+          }
+        })
+        .catch(() => {});
+
+      return { approval: request };
+    }
+  });
+
+  server.route({
+    url: "/:requestId/retry-external-dispatch",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        requestId: z.string().uuid().describe(AccessApprovalRequests.RETRY_EXTERNAL_DISPATCH.requestId)
+      }),
+      response: {
+        200: z.object({
+          message: z.string().describe(AccessApprovalRequests.RETRY_EXTERNAL_DISPATCH.message)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const {
+        projectId,
+        policyId,
+        policyName,
+        requesterEmail,
+        externalApprovalRequestId,
+        externalApprovalPolicyId,
+        externalApprovalProvider,
+        externalId,
+        connectionName
+      } = await server.services.accessApprovalRequest.retryExternalApprovalDispatch({
+        requestId: req.params.requestId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_EXTERNAL_DISPATCH_RETRY,
+          metadata: {
+            requestId: req.params.requestId,
+            requesterEmail,
+            policyId,
+            policyName,
+            externalApprovalRequestId,
+            ...(externalId ? { externalId } : {}),
+            externalApprovalPolicyId,
+            ...(connectionName ? { connectionName } : {}),
+            externalApprovalProvider
+          }
+        }
+      });
+
+      return { message: "The request was resent to the external approval system." };
     }
   });
 

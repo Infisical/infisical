@@ -928,9 +928,9 @@ export const permissionServiceFactory = ({
     const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId, orgId);
     const userPermissions = rawUserProjectPermissions.map((userProjectPermission) => {
       const rolePermissions =
-        userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+        userProjectPermission.roles?.filter(isActiveRole).map(({ role, permissions }) => ({ role, permissions })) || [];
       const additionalPrivileges =
-        userProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+        userProjectPermission.additionalPrivileges?.filter(isActiveRole).map(({ permissions }) => ({
           role: ProjectMembershipRole.Custom,
           permissions
         })) || [];
@@ -967,9 +967,10 @@ export const permissionServiceFactory = ({
     const rawIdentityProjectPermissions = await permissionDAL.getProjectIdentityPermissions(projectId, orgId);
     const identityPermissions = rawIdentityProjectPermissions.map((identityProjectPermission) => {
       const rolePermissions =
-        identityProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+        identityProjectPermission.roles?.filter(isActiveRole).map(({ role, permissions }) => ({ role, permissions })) ||
+        [];
       const additionalPrivileges =
-        identityProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
+        identityProjectPermission.additionalPrivileges?.filter(isActiveRole).map(({ permissions }) => ({
           role: ProjectMembershipRole.Custom,
           permissions
         })) || [];
@@ -1006,7 +1007,8 @@ export const permissionServiceFactory = ({
     const rawGroupProjectPermissions = await permissionDAL.getProjectGroupPermissions(projectId);
     const groupPermissions = rawGroupProjectPermissions.map((groupProjectPermission) => {
       const rolePermissions =
-        groupProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+        groupProjectPermission.roles?.filter(isActiveRole).map(({ role, permissions }) => ({ role, permissions })) ||
+        [];
       const rules = buildProjectPermissionRules(rolePermissions);
       const permission = createMongoAbility<ProjectPermissionSet>(rules, {
         conditionsMatcher

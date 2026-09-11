@@ -50,6 +50,10 @@ import { dynamicSecretLeaseServiceFactory } from "@app/ee/services/dynamic-secre
 import { emailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { emailDomainServiceFactory } from "@app/ee/services/email-domain/email-domain-service";
 import { eventBusServiceFactory } from "@app/ee/services/event-bus/event-bus-service";
+import { externalApprovalPolicyDALFactory } from "@app/ee/services/external-approval/external-approval-policy-dal";
+import { externalApprovalQueueFactory } from "@app/ee/services/external-approval/external-approval-queue";
+import { externalApprovalRequestDALFactory } from "@app/ee/services/external-approval/external-approval-request-dal";
+import { externalApprovalServiceFactory } from "@app/ee/services/external-approval/external-approval-service";
 import { externalKmsDALFactory } from "@app/ee/services/external-kms/external-kms-dal";
 import { externalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -709,6 +713,8 @@ export const registerRoutes = async (
   const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
   const accessApprovalPolicyBypasserDAL = accessApprovalPolicyBypasserDALFactory(db);
   const accessApprovalRequestReviewerDAL = accessApprovalRequestReviewerDALFactory(db);
+  const externalApprovalPolicyDAL = externalApprovalPolicyDALFactory(db);
+  const externalApprovalRequestDAL = externalApprovalRequestDALFactory(db);
   const accessApprovalPolicyEnvironmentDAL = accessApprovalPolicyEnvironmentDALFactory(db);
 
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
@@ -2461,41 +2467,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
-    accessApprovalPolicyDAL,
-    accessApprovalPolicyApproverDAL,
-    accessApprovalPolicyBypasserDAL,
-    accessApprovalPolicyEnvironmentDAL,
-    groupDAL,
-    permissionService,
-    projectEnvDAL,
-    projectDAL,
-    userDAL,
-    accessApprovalRequestDAL,
-    accessApprovalRequestReviewerDAL,
-    additionalPrivilegeDAL
-  });
-
-  const accessApprovalRequestService = accessApprovalRequestServiceFactory({
-    projectDAL,
-    permissionService,
-    accessApprovalRequestReviewerDAL,
-    accessApprovalPolicyDAL,
-    accessApprovalRequestDAL,
-    projectEnvDAL,
-    userDAL,
-    smtpService,
-    accessApprovalPolicyApproverDAL,
-    projectSlackConfigDAL,
-    kmsService,
-    groupDAL,
-    microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL,
-    notificationService,
-    additionalPrivilegeDAL,
-    queueService
-  });
-
   const secretReplicationService = secretReplicationServiceFactory({
     secretTagDAL,
     secretVersionTagDAL,
@@ -3056,6 +3027,67 @@ export const registerRoutes = async (
     identityUaDAL,
     gitHubAppDAL,
     keyStore
+  });
+
+  const externalApprovalService = externalApprovalServiceFactory({
+    appConnectionService,
+    identityDAL,
+    membershipIdentityDAL,
+    permissionService,
+    externalApprovalPolicyDAL,
+    externalApprovalRequestDAL
+  });
+
+  const externalApprovalQueue = externalApprovalQueueFactory({
+    queueService,
+    externalApprovalRequestDAL,
+    externalApprovalPolicyDAL,
+    accessApprovalRequestDAL,
+    appConnectionDAL,
+    projectDAL,
+    kmsService
+  });
+
+  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    accessApprovalPolicyBypasserDAL,
+    accessApprovalPolicyEnvironmentDAL,
+    groupDAL,
+    permissionService,
+    projectEnvDAL,
+    projectDAL,
+    userDAL,
+    accessApprovalRequestDAL,
+    accessApprovalRequestReviewerDAL,
+    additionalPrivilegeDAL,
+    externalApprovalService,
+    externalApprovalPolicyDAL
+  });
+
+  const accessApprovalRequestService = accessApprovalRequestServiceFactory({
+    projectDAL,
+    permissionService,
+    accessApprovalRequestReviewerDAL,
+    accessApprovalPolicyDAL,
+    accessApprovalRequestDAL,
+    projectEnvDAL,
+    userDAL,
+    smtpService,
+    accessApprovalPolicyApproverDAL,
+    projectSlackConfigDAL,
+    kmsService,
+    groupDAL,
+    microsoftTeamsService,
+    projectMicrosoftTeamsConfigDAL,
+    notificationService,
+    additionalPrivilegeDAL,
+    queueService,
+    externalApprovalQueue,
+    externalApprovalRequestDAL,
+    externalApprovalPolicyDAL,
+    externalApprovalService,
+    appConnectionDAL
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({
@@ -4126,6 +4158,7 @@ export const registerRoutes = async (
     identityLdapAuth: identityLdapAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
     accessApprovalRequest: accessApprovalRequestService,
+    externalApproval: externalApprovalService,
     secretApprovalPolicy: secretApprovalPolicyService,
     secretApprovalRequest: secretApprovalRequestService,
     dynamicSecret: dynamicSecretService,

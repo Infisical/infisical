@@ -15,6 +15,7 @@ import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router"
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
 import { registerEmailDomainRouter } from "./email-domain-router";
+import { registerExternalApprovalRouter } from "./external-approval-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
 import { registerGatewayPoolRouter } from "./gateway-pool-router";
@@ -89,6 +90,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerAccessApprovalPolicyRouter, { prefix: "/access-approvals/policies" });
   await server.register(registerAccessApprovalRequestRouter, { prefix: "/access-approvals/requests" });
+  await server.register(registerExternalApprovalRouter, { prefix: "/access-approvals/external-approvals" });
   await server.register(registerRateLimitRouter, { prefix: "/rate-limit" });
 
   await server.register(

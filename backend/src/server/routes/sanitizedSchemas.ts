@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 import {
+  AccessApprovalPoliciesSchema,
   CertificateAuthoritiesSchema,
   DynamicSecretsSchema,
+  ExternalApprovalPoliciesSchema,
   HoneyTokensSchema,
   IdentityProjectAdditionalPrivilegeSchema,
   IntegrationAuthsSchema,
@@ -109,6 +111,32 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
       })
     ),
     projectId: z.string()
+  })
+);
+
+export const externalApprovalPolicyPubSchema = ExternalApprovalPoliciesSchema.pick({
+  id: true,
+  type: true,
+  connectionId: true,
+  approverIdentityId: true
+});
+
+export const aapPubSchema = AccessApprovalPoliciesSchema.merge(
+  z.object({
+    environment: z.object({
+      id: z.string(),
+      name: z.string(),
+      slug: z.string()
+    }),
+    environments: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        slug: z.string()
+      })
+    ),
+    projectId: z.string(),
+    externalApproval: externalApprovalPolicyPubSchema.nullish()
   })
 );
 

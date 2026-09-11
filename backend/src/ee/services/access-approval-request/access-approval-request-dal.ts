@@ -13,7 +13,7 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter, TOrmify } from "@app/lib/knex";
 
-import { ApprovalStatus } from "./access-approval-request-types";
+import { ApprovalStatus, TAccessApprovalRequestExternalApproval } from "./access-approval-request-types";
 
 export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName.AccessApprovalRequest>, "findById"> {
   findById: (
@@ -67,7 +67,9 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
           deletedAt: Date | null | undefined;
           maxTimePeriod?: string | null;
           requestExpirationTime?: string | null;
+          externalApprovalPolicyId?: string | null;
         };
+        externalApproval: TAccessApprovalRequestExternalApproval;
         projectId: string;
         environments: string[];
         requestedByUser: {
@@ -186,7 +188,9 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         deletedAt: Date | null | undefined;
         maxTimePeriod?: string | null;
         requestExpirationTime?: string | null;
+        externalApprovalPolicyId?: string | null;
       };
+      externalApproval: TAccessApprovalRequestExternalApproval;
       projectId: string;
       environment: string;
       environmentName: string;
@@ -267,6 +271,8 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
     finalizedCount: number;
   }>;
   resetReviewByPolicyId: (policyId: string, tx?: Knex) => Promise<void>;
+  findByIdForUpdate: (id: string, tx: Knex) => Promise<TAccessApprovalRequests | undefined>;
+  countPendingExternalRequestsByPolicyId: (policyId: string, tx?: Knex) => Promise<number>;
 }
 
 export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalRequestDALFactory => {
@@ -287,6 +293,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             TableName.AccessApprovalPolicy,
             `${TableName.AccessApprovalRequest}.policyId`,
             `${TableName.AccessApprovalPolicy}.id`
+          )
+          .leftJoin(
+            TableName.ExternalApprovalRequest,
+            `${TableName.AccessApprovalRequest}.externalApprovalRequestId`,
+            `${TableName.ExternalApprovalRequest}.id`
           )
           .leftJoin(
             TableName.AccessApprovalRequestReviewer,
@@ -375,7 +386,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             db.ref("isActive").withSchema("approverGroupOrgMembership").as("approverGroupIsOrgMembershipActive"),
             db.ref("isActive").withSchema("reviewerOrgMembership").as("reviewerIsOrgMembershipActive"),
             db.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod"),
-            db.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime")
+            db
+              .ref("requestExpirationTime")
+              .withSchema(TableName.AccessApprovalPolicy)
+              .as("policyRequestExpirationTime"),
+            db
+              .ref("externalApprovalPolicyId")
+              .withSchema(TableName.AccessApprovalPolicy)
+              .as("policyExternalApprovalPolicyId"),
+            db.ref("status").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalStatus"),
+            db.ref("externalId").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalExternalId")
           )
           .select(db.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover))
           .select(db.ref("sequence").withSchema(TableName.AccessApprovalPolicyApprover).as("approverSequence"))
@@ -454,8 +474,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               envId: doc.policyEnvId,
               deletedAt: doc.policyDeletedAt,
               maxTimePeriod: doc.policyMaxTimePeriod,
-              requestExpirationTime: doc.policyRequestExpirationTime
+              requestExpirationTime: doc.policyRequestExpirationTime,
+              externalApprovalPolicyId: doc.policyExternalApprovalPolicyId
             },
+            externalApproval: doc.externalApprovalRequestId
+              ? {
+                  id: doc.externalApprovalRequestId,
+                  status: doc.externalApprovalStatus,
+                  externalId: doc.externalApprovalExternalId
+                }
+              : null,
             requestedByUser: {
               userId: doc.requestedByUserId,
               email: doc.requestedByUserEmail,
@@ -572,6 +600,11 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         TableName.AccessApprovalPolicy,
         `${TableName.AccessApprovalRequest}.policyId`,
         `${TableName.AccessApprovalPolicy}.id`
+      )
+      .leftJoin(
+        TableName.ExternalApprovalRequest,
+        `${TableName.AccessApprovalRequest}.externalApprovalRequestId`,
+        `${TableName.ExternalApprovalRequest}.id`
       )
 
       .join<TUsers>(
@@ -715,7 +748,13 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         tx.ref("approvals").withSchema(TableName.AccessApprovalPolicy).as("policyApprovals"),
         tx.ref("deletedAt").withSchema(TableName.AccessApprovalPolicy).as("policyDeletedAt"),
         tx.ref("maxTimePeriod").withSchema(TableName.AccessApprovalPolicy).as("policyMaxTimePeriod"),
-        tx.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime")
+        tx.ref("requestExpirationTime").withSchema(TableName.AccessApprovalPolicy).as("policyRequestExpirationTime"),
+        tx
+          .ref("externalApprovalPolicyId")
+          .withSchema(TableName.AccessApprovalPolicy)
+          .as("policyExternalApprovalPolicyId"),
+        tx.ref("status").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalStatus"),
+        tx.ref("externalId").withSchema(TableName.ExternalApprovalRequest).as("externalApprovalExternalId")
       );
 
   const findById: TAccessApprovalRequestDALFactory["findById"] = async (id, tx) => {
@@ -738,8 +777,16 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             allowedSelfApprovals: el.policyAllowedSelfApprovals,
             deletedAt: el.policyDeletedAt,
             maxTimePeriod: el.policyMaxTimePeriod,
-            requestExpirationTime: el.policyRequestExpirationTime
+            requestExpirationTime: el.policyRequestExpirationTime,
+            externalApprovalPolicyId: el.policyExternalApprovalPolicyId
           },
+          externalApproval: el.externalApprovalRequestId
+            ? {
+                id: el.externalApprovalRequestId,
+                status: el.externalApprovalStatus,
+                externalId: el.externalApprovalExternalId
+              }
+            : null,
           requestedByUser: {
             userId: el.requestedByUserId,
             email: el.requestedByUserEmail,
@@ -979,11 +1026,43 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
     }
   };
 
+  const countPendingExternalRequestsByPolicyId: TAccessApprovalRequestDALFactory["countPendingExternalRequestsByPolicyId"] =
+    async (policyId, tx) => {
+      try {
+        const doc = await (tx || db)(TableName.AccessApprovalRequest)
+          .where(`${TableName.AccessApprovalRequest}.policyId` as "policyId", policyId)
+          .where(`${TableName.AccessApprovalRequest}.status` as "status", ApprovalStatus.PENDING)
+          .whereNotNull(`${TableName.AccessApprovalRequest}.externalApprovalRequestId`)
+          .where((qb) => {
+            void qb
+              .whereNull(`${TableName.AccessApprovalRequest}.expiresAt`)
+              .orWhere(`${TableName.AccessApprovalRequest}.expiresAt` as "expiresAt", ">", new Date());
+          })
+          .count("*")
+          .first();
+
+        return parseInt((doc as unknown as { count: string })?.count || "0", 10);
+      } catch (error) {
+        throw new DatabaseError({ error, name: "CountPendingExternalRequestsByPolicyId" });
+      }
+    };
+
+  const findByIdForUpdate: TAccessApprovalRequestDALFactory["findByIdForUpdate"] = async (id, tx) => {
+    try {
+      const doc = await tx(TableName.AccessApprovalRequest).where({ id }).forUpdate().first();
+      return doc ? AccessApprovalRequestsSchema.parse(doc) : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdForUpdateAccessApprovalRequest" });
+    }
+  };
+
   return {
     ...accessApprovalRequestOrm,
     findById,
     findRequestsWithPrivilegeByPolicyIds,
     getCount,
-    resetReviewByPolicyId
+    resetReviewByPolicyId,
+    findByIdForUpdate,
+    countPendingExternalRequestsByPolicyId
   };
 };
