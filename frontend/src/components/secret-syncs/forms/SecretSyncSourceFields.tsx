@@ -5,30 +5,39 @@ import { subject } from "@casl/ability";
 import {
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
   FilterableSelect,
-  SecretPathInput
+  Label,
+  SecretPathInput,
+  Switch
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs";
 
 import { AzureEntraIdScimSyncSourceFields } from "./AzureEntraIdScimSyncSourceFields";
 import { TSecretSyncForm } from "./schemas";
 
 const DefaultSecretSyncSourceFields = () => {
-  const { control, watch, setError, clearErrors } = useFormContext<TSecretSyncForm>();
+  const { control, watch, setValue, setError, clearErrors } = useFormContext<TSecretSyncForm>();
 
   const { permission } = useProjectPermission();
   const { currentProject } = useProject();
 
   const selectedEnvironment = watch("environment");
   const selectedSecretPath = watch("secretPath");
+  const initialSyncBehavior = watch("syncOptions.initialSyncBehavior");
+  const recursive = watch("syncOptions.recursive");
+
+  const importsFromDestination =
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource ||
+    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeDestination;
 
   useEffect(() => {
     if (!selectedEnvironment) {
@@ -52,6 +61,12 @@ const DefaultSecretSyncSourceFields = () => {
       clearErrors("secretPath");
     }
   }, [selectedEnvironment, selectedSecretPath]);
+
+  useEffect(() => {
+    if (importsFromDestination && recursive) {
+      setValue("syncOptions.recursive", false);
+    }
+  }, [importsFromDestination, recursive, setValue]);
 
   return (
     <FieldGroup>
@@ -93,6 +108,32 @@ const DefaultSecretSyncSourceFields = () => {
               />
               <FieldError errors={[error]} />
             </FieldContent>
+          </Field>
+        )}
+      />
+      <Controller
+        control={control}
+        name="syncOptions.recursive"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field>
+            <Field orientation="horizontal">
+              <FieldContent>
+                <Label htmlFor="recursive">Include subfolders</Label>
+                <FieldDescription>
+                  {importsFromDestination
+                    ? "Not available when the initial sync imports secrets from the destination. There is no single folder to import them back into."
+                    : "Also sync secrets from every folder beneath this path. Secret names must be unique across those folders."}
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                id="recursive"
+                variant="project"
+                checked={Boolean(value) && !importsFromDestination}
+                disabled={importsFromDestination}
+                onCheckedChange={onChange}
+              />
+            </Field>
+            <FieldError errors={[error]} />
           </Field>
         )}
       />
