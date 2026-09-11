@@ -626,7 +626,7 @@ echo ""
         apiKey: z.string().min(1).describe("The IBM API Connect API key"),
         clientId: z.string().min(1).describe("The IBM API Connect client ID"),
         clientSecret: z.string().min(1).describe("The IBM API Connect client secret"),
-        projectSlug: slugSchema({ max: 64, field: "Project slug" }).describe(
+        projectSlug: slugSchema({ max: 64, field: "Project slug", allowUnderscore: true }).describe(
           "The slug of the project to configure the dynamic secret in"
         )
       }),
@@ -672,7 +672,7 @@ echo ""
         apiKey: z.string().min(1).describe("The IBM API Connect API key"),
         clientId: z.string().min(1).describe("The IBM API Connect client ID"),
         clientSecret: z.string().min(1).describe("The IBM API Connect client secret"),
-        projectSlug: slugSchema({ max: 64, field: "Project slug" }).describe(
+        projectSlug: slugSchema({ max: 64, field: "Project slug", allowUnderscore: true }).describe(
           "The slug of the project to configure the dynamic secret in"
         )
       }),
@@ -720,7 +720,7 @@ echo ""
         apiKey: z.string().min(1).describe("The IBM API Connect API key"),
         clientId: z.string().min(1).describe("The IBM API Connect client ID"),
         clientSecret: z.string().min(1).describe("The IBM API Connect client secret"),
-        projectSlug: slugSchema({ max: 64, field: "Project slug" }).describe(
+        projectSlug: slugSchema({ max: 64, field: "Project slug", allowUnderscore: true }).describe(
           "The slug of the project to configure the dynamic secret in"
         )
       }),
@@ -765,7 +765,7 @@ echo ""
         tenantId: z.string().min(1).describe("The tenant ID of the Azure Entra ID"),
         applicationId: z.string().min(1).describe("The application ID of the Azure Entra ID App Registration"),
         clientSecret: z.string().min(1).describe("The client secret of the Azure Entra ID App Registration"),
-        projectSlug: slugSchema({ max: 64, field: "Project slug" }).describe(
+        projectSlug: slugSchema({ max: 64, field: "Project slug", allowUnderscore: true }).describe(
           "The slug of the project to configure the dynamic secret in"
         )
       }),
