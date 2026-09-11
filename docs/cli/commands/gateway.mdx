@@ -25,7 +25,9 @@ There are two ways the gateway and Infisical reach each other:
 - **Direct listen.** The gateway listens on the address you set with `--listen-address`, and Infisical connects to it. No relay is needed. Self-hosted Infisical only.
 - **Relay.** The gateway opens an SSH reverse tunnel to a relay server, and Infisical reaches it back through that tunnel. No inbound ports have to be open on the gateway host.
 
-Passing `--listen-address` and `--target-relay-name` together runs both, and Infisical uses the listen address first, keeping the relay as a fallback. See [Network architecture](/documentation/platform/gateways/network-architecture) for the ports and traffic flow of each.
+Passing `--listen-address` and `--target-relay-name` together runs both, and Infisical uses the listen address first, keeping the relay as a fallback.
+
+See [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for choosing a mode and the full deployment walkthrough, and [Network architecture](/documentation/platform/gateways/network-architecture) for the ports and traffic flow of each.
 
 ## Subcommands & flags
 
