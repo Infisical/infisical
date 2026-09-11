@@ -200,6 +200,8 @@ export const AgentVaultAccessBundlesPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead
+                  isTruncatable
+                  className="w-2/5"
                   sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
                   onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
                 >
@@ -248,11 +250,18 @@ export const AgentVaultAccessBundlesPage = () => {
                       })
                     }
                   >
-                    <TableCell>
+                    <TableCell isTruncatable className="min-w-64">
                       <div className="flex items-center gap-2.5">
-                        <span>{bundle.name}</span>
+                        <span className="truncate" title={bundle.name}>
+                          {bundle.name}
+                        </span>
                         {bundle.description && (
-                          <span className="truncate text-sm text-muted">{bundle.description}</span>
+                          <span
+                            className="min-w-0 flex-1 truncate text-sm text-muted"
+                            title={bundle.description}
+                          >
+                            {bundle.description}
+                          </span>
                         )}
                       </div>
                     </TableCell>
