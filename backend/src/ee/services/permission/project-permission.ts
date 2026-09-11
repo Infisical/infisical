@@ -166,6 +166,13 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionSecretValidationRuleActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionPkiSyncActions {
   Read = "read",
   Create = "create",
@@ -371,6 +378,7 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
+  SecretValidationRules = "secret-validation-rules",
   PkiSyncs = "pki-syncs",
   PkiDiscovery = "pki-discovery",
   PkiCertificateInstallations = "pki-certificate-installations",
@@ -599,6 +607,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSecretSyncActions,
       ProjectPermissionSub.SecretSyncs | (ForcedSubject<ProjectPermissionSub.SecretSyncs> & SecretSyncSubjectFields)
     ]
+  | [ProjectPermissionSecretValidationRuleActions, ProjectPermissionSub.SecretValidationRules]
   | [
       ProjectPermissionPkiSyncActions,
       ProjectPermissionSub.PkiSyncs | (ForcedSubject<ProjectPermissionSub.PkiSyncs> & PkiSyncSubjectFields)
@@ -1475,6 +1484,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.Settings).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretValidationRules).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretValidationRuleActions).describe(
       "Describe what action an entity can take."
     )
   }),

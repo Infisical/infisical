@@ -179,6 +179,12 @@ export const KeyStorePrefixes = {
   // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
   InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
 
+  // Braces are a Redis Cluster hash tag: the index zset and every member's payload key must land on
+  // one slot for the multi-key upsert/delete scripts.
+  WorkerHeartbeatIndex: (workerType: string) => `worker-heartbeat:{${workerType}}` as const,
+  WorkerHeartbeat: (workerType: string, instanceId: string) =>
+    `worker-heartbeat:{${workerType}}:${instanceId}` as const,
+
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
@@ -278,7 +284,8 @@ export const KeyStoreTtls = {
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
   SecretReplicationSuccessInSeconds: 10,
-  NativeIntegrationDeprecationNoticeInSeconds: 3888000 // 45 days - outlives one monthly cycle
+  NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
 };
 
 type TDeleteItems = {

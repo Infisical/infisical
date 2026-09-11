@@ -6,9 +6,17 @@ import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lu
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -70,6 +78,7 @@ export const IdentitiesTab = () => {
 
   const removeIdentity = useRemovePamProductIdentityMember();
   const deleteIdentity = useDeleteProjectIdentity();
+  const isRemoving = removeIdentity.isPending || deleteIdentity.isPending;
 
   const filteredIdentities = useMemo(
     () => identities.filter((member) => member.name.toLowerCase().includes(search.toLowerCase())),
@@ -80,6 +89,7 @@ export const IdentitiesTab = () => {
   // orphan them, so they are deleted outright. Org-level identities just lose their membership.
   const isPamManaged = (member: TPamIdentityMember) =>
     member.identityProjectId === currentProject.id;
+  const isRemovingManagedIdentity = identityToRemove ? isPamManaged(identityToRemove) : false;
 
   const renderManagedByBadge = (member: TPamIdentityMember) => {
     if (isPamManaged(member)) {
@@ -106,7 +116,7 @@ export const IdentitiesTab = () => {
     );
   };
 
-  // Rejections propagate to DeleteActionModal, which keeps itself open; the global mutation
+  // Rejections keep the confirm dialog open (callers swallow them); the global mutation
   // error handler owns the toast.
   const handleDeleteIdentity = async () => {
     if (!identityToRemove?.identityId) return;
@@ -301,31 +311,57 @@ export const IdentitiesTab = () => {
         }}
       />
 
-      {identityToRemove && isPamManaged(identityToRemove) ? (
-        <DeleteActionModal
-          isOpen
-          onChange={(isOpen) => {
-            if (!isOpen) setIdentityToRemove(null);
-          }}
-          title={`Delete ${identityToRemove.name}?`}
-          subTitle="This identity is managed by PAM and will be permanently deleted."
-          deleteKey="delete"
-          buttonText="Delete"
-          onDeleteApproved={handleDeleteIdentity}
-        />
-      ) : (
-        <DeleteActionModal
-          isOpen={!!identityToRemove}
-          onChange={(isOpen) => {
-            if (!isOpen) setIdentityToRemove(null);
-          }}
-          title={`Remove ${identityToRemove?.name ?? "identity"} from PAM?`}
-          subTitle="The identity will lose its PAM access but remain available in your organization."
-          deleteKey="remove"
-          buttonText="Remove"
-          onDeleteApproved={handleDeleteIdentity}
-        />
-      )}
+      <AlertDialog
+        open={!!identityToRemove}
+        confirmationValue={isRemovingManagedIdentity ? "delete" : "remove"}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && isRemoving) return;
+          if (!isOpen) setIdentityToRemove(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isRemovingManagedIdentity ? "Delete Identity" : "Remove Identity From PAM"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isRemovingManagedIdentity ? (
+                <>
+                  Permanently delete{" "}
+                  <span className="font-medium text-foreground">{identityToRemove?.name}</span>.
+                  This identity is managed by PAM and cannot be recovered.
+                </>
+              ) : (
+                <>
+                  Remove{" "}
+                  <span className="font-medium text-foreground">
+                    {identityToRemove?.name ?? "this identity"}
+                  </span>{" "}
+                  from PAM. The identity loses its PAM access but remains available in your
+                  organization.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{ disabled: isRemoving }}
+            onConfirm={() => handleDeleteIdentity().catch(() => undefined)}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isRemoving}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeleteIdentity().catch(() => undefined);
+              }}
+            >
+              {isRemovingManagedIdentity ? "Delete Identity" : "Remove From PAM"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

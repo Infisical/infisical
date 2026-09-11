@@ -24,10 +24,11 @@ export const useListSecretValidationRules = (
   return useQuery({
     queryKey: secretValidationRuleKeys.list(projectId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ rules: TSecretValidationRule[] }>(
-        `/api/v1/projects/${projectId}/secret-validation-rules`
+      const { data } = await apiRequest.get<{ secretValidationRules: TSecretValidationRule[] }>(
+        "/api/v1/secret-validation-rules",
+        { params: { projectId } }
       );
-      return data.rules;
+      return data.secretValidationRules;
     },
     enabled: Boolean(projectId) && (options?.enabled ?? true),
     ...options

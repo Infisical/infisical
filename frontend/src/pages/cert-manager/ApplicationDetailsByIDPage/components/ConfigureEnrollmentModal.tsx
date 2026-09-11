@@ -57,8 +57,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -327,7 +327,7 @@ const ApiPanel = ({
                   Automatically renew certificates issued via this profile before they expire.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 variant="project"
                 id="api-auto-renew"
                 checked={field.value}
@@ -533,7 +533,7 @@ const EstPanel = ({
                   Allow EST clients to skip server-certificate validation during enrollment.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 variant="project"
                 id="est-disable-bootstrap"
                 checked={field.value}
@@ -744,7 +744,7 @@ const AcmePanel = ({
                   <TooltipTrigger asChild>
                     {/* span wrapper lets the tooltip listen for hover on a disabled control */}
                     <span className="inline-flex">
-                      <Switch
+                      <Toggle
                         variant="project"
                         id="acme-skip-dns"
                         checked={field.value}
@@ -761,7 +761,7 @@ const AcmePanel = ({
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Switch
+                <Toggle
                   variant="project"
                   id="acme-skip-dns"
                   checked={field.value}
@@ -789,7 +789,7 @@ const AcmePanel = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-flex">
-                      <Switch
+                      <Toggle
                         variant="project"
                         id="acme-skip-eab"
                         checked={field.value}
@@ -807,7 +807,7 @@ const AcmePanel = ({
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Switch
+                <Toggle
                   variant="project"
                   id="acme-skip-eab"
                   checked={field.value}
@@ -1227,7 +1227,7 @@ const ScepPanel = ({
                 </p>
               </div>
               {raCaSigningSupported && !isScepConfigured ? (
-                <Switch
+                <Toggle
                   variant="project"
                   id="scep-sign-ra-with-ca"
                   checked={field.value}
@@ -1237,7 +1237,7 @@ const ScepPanel = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div>
-                      <Switch
+                      <Toggle
                         variant="project"
                         id="scep-sign-ra-with-ca"
                         checked={raCaSigningSupported && field.value}
@@ -1266,7 +1266,7 @@ const ScepPanel = ({
                   Return the issuing CA certificate inline alongside the issued cert.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 variant="project"
                 id="scep-include-ca"
                 checked={field.value}
@@ -1287,7 +1287,7 @@ const ScepPanel = ({
                     Let clients renew using their existing certificate as authentication.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   variant="project"
                   id="scep-cert-renewal"
                   checked={field.value}

@@ -401,7 +401,6 @@ export const secretQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId: dto.orgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -454,7 +453,6 @@ export const secretQueueFactory = ({
       projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
-      licenseService,
       kmsService
     });
 

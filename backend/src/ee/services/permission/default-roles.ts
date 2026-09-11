@@ -41,6 +41,7 @@ import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
+  ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -293,6 +294,16 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionSecretSyncActions.RemoveSecrets
     ],
     ProjectPermissionSub.SecretSyncs
+  );
+
+  can(
+    [
+      ProjectPermissionSecretValidationRuleActions.Create,
+      ProjectPermissionSecretValidationRuleActions.Edit,
+      ProjectPermissionSecretValidationRuleActions.Delete,
+      ProjectPermissionSecretValidationRuleActions.Read
+    ],
+    ProjectPermissionSub.SecretValidationRules
   );
 
   can(
@@ -646,6 +657,8 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.SecretSyncs
   );
 
+  can([ProjectPermissionSecretValidationRuleActions.Read], ProjectPermissionSub.SecretValidationRules);
+
   can(
     [
       ProjectPermissionSecretScanningDataSourceActions.Read,
@@ -722,6 +735,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionCertificatePolicyActions.Read, ProjectPermissionSub.CertificatePolicies);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
+  can(ProjectPermissionSecretValidationRuleActions.Read, ProjectPermissionSub.SecretValidationRules);
   can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
   can(
     [ProjectPermissionApplicationActions.Read, ProjectPermissionApplicationActions.List],

@@ -11,8 +11,8 @@ import {
   FieldLabel,
   FieldTitle,
   Input,
-  Switch,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -158,7 +158,7 @@ export const PkiSyncTargetHostField = ({ applicationId }: Props) => {
                     no server certificate is required.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
                   id="target-ssl-enabled"
                   checked={Boolean(value)}
                   onCheckedChange={onChange}
@@ -206,7 +206,7 @@ export const PkiSyncTargetHostField = ({ applicationId }: Props) => {
                       trusted certificate.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     disabled={!canSetTargetHost}
                     id="target-ssl-reject-unauthorized"
                     checked={value !== false}

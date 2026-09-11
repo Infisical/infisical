@@ -4,9 +4,9 @@ import { cva, VariantProps } from "cva";
 
 import { cn } from "../../utils";
 
-const switchVariants = cva(
+const toggleVariants = cva(
   cn(
-    "peer group/switch relative inline-flex shrink-0 cursor-pointer items-center rounded-full border transition-all",
+    "peer group/toggle relative inline-flex shrink-0 cursor-pointer items-center rounded-full border transition-all",
     "outline-none after:absolute after:-inset-x-3 after:-inset-y-2",
     "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
@@ -45,40 +45,40 @@ const switchVariants = cva(
   }
 );
 
-const switchThumbVariants = cva(
+const toggleThumbVariants = cva(
   cn(
     "pointer-events-none block rounded-full shadow-xs ring-0 transition-all",
-    "ml-0.5 group-data-[size=default]/switch:size-3.5 group-data-[size=sm]/switch:size-2.5",
-    "group-data-[size=default]/switch:data-[state=unchecked]:translate-x-0",
-    "group-data-[size=default]/switch:data-[state=checked]:translate-x-4",
-    "group-data-[size=sm]/switch:data-[state=unchecked]:translate-x-0",
-    "group-data-[size=sm]/switch:data-[state=checked]:translate-x-3",
+    "ml-0.5 group-data-[size=default]/toggle:size-3.5 group-data-[size=sm]/toggle:size-2.5",
+    "group-data-[size=default]/toggle:data-[state=unchecked]:translate-x-0",
+    "group-data-[size=default]/toggle:data-[state=checked]:translate-x-4",
+    "group-data-[size=sm]/toggle:data-[state=unchecked]:translate-x-0",
+    "group-data-[size=sm]/toggle:data-[state=checked]:translate-x-3",
     "data-[state=unchecked]:border-foreground/5 data-[state=unchecked]:bg-foreground/15",
-    "data-[state=unchecked]:group-hover/switch:bg-foreground/35",
+    "data-[state=unchecked]:group-hover/toggle:bg-foreground/35",
     "data-[state=checked]:border-foreground/5 data-[state=checked]:bg-foreground/65",
-    "data-[state=checked]:group-hover/switch:bg-foreground/75"
+    "data-[state=checked]:group-hover/toggle:bg-foreground/75"
   )
 );
 
-type SwitchProps = React.ComponentProps<typeof SwitchPrimitive.Root> &
-  VariantProps<typeof switchVariants> & {
+type ToggleProps = React.ComponentProps<typeof SwitchPrimitive.Root> &
+  VariantProps<typeof toggleVariants> & {
     size?: "sm" | "default";
   };
 
-function Switch({ className, variant, size = "default", ...props }: SwitchProps) {
+function Toggle({ className, variant, size = "default", ...props }: ToggleProps) {
   return (
     <SwitchPrimitive.Root
-      data-slot="switch"
+      data-slot="toggle"
       data-size={size}
-      className={cn(switchVariants({ variant }), className)}
+      className={cn(toggleVariants({ variant }), className)}
       {...props}
     >
       <SwitchPrimitive.Thumb
-        data-slot="switch-thumb"
-        className={cn(switchThumbVariants(), "border")}
+        data-slot="toggle-thumb"
+        className={cn(toggleThumbVariants(), "border")}
       />
     </SwitchPrimitive.Root>
   );
 }
 
-export { Switch };
+export { Toggle };

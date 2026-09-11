@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "../../generic/Select";
-import { Switch } from "../../generic/Switch";
+import { Toggle } from "../../generic/Toggle";
 
 const MAX_RANGE_MONTHS = 3;
 
@@ -523,7 +523,7 @@ export function DateRangeFilter({
                 >
                   Local
                 </span>
-                <Switch
+                <Toggle
                   id="date-range-utc-toggle"
                   checked={pendingIsUtc}
                   onCheckedChange={setPendingIsUtc}
