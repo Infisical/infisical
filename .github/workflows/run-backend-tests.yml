@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   check-be-pr:
-    name: Run integration test
+    name: Backend tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -57,11 +57,9 @@ jobs:
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
         working-directory: backend
-      - name: Start postgres and redis
-        run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
       - name: Start Secret Rotation testing databases
         run: docker compose -f docker-compose.e2e-dbs.yml up -d
-      - name: Run unit test
+      - name: Run unit tests
         run: npm run test:unit
         working-directory: backend
       - name: Log in to GHCR
@@ -71,7 +69,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build FIPS test image
+      - name: Resolve FIPS toolchain image
         run: |
           set -euo pipefail
           # Lowercased: GHCR rejects uppercase repository names and the owner is "Infisical".
@@ -91,34 +89,25 @@ jobs:
               -t "$TOOLCHAIN" \
               backend
           fi
-          docker build \
-            -f backend/Dockerfile.dev.fips \
-            --build-arg "TOOLCHAIN_IMAGE=$TOOLCHAIN" \
-            -t infisical-backend-fips:latest \
-            backend
+          # Carried to the next step, which builds the app image through compose so the build
+          # arguments and image name live in docker-compose.test.yml rather than here.
+          echo "TOOLCHAIN_IMAGE=$TOOLCHAIN" >> "$GITHUB_ENV"
       - name: Report disk space
         if: always()
         run: df -h /
       - name: Wait for Secret Rotation testing databases
         run: docker compose -f docker-compose.e2e-dbs.yml up -d --wait --wait-timeout 300
-      - name: Run integration test
-        run: |
-          docker run --rm --network host \
-            -e DB_CONNECTION_URI="postgres://infisical:infisical@localhost:5432/infisical?sslmode=disable" \
-            -e REDIS_URL="redis://localhost:6379" \
-            -e AUTH_SECRET="something-random" \
-            -e ENCRYPTION_KEY="p5e5k2j3+HIErjm02dzSrlhXc1xhdgoWvC6pox410rE=" \
-            -e NODE_ENV="test" \
-            -e NODE_OPTIONS="--force-fips" \
-            -e TELEMETRY_ENABLED="false" \
-            -e E2E_TEST_ORACLE_DB_19_HOST="${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}" \
-            -e E2E_TEST_ORACLE_DB_19_USERNAME="${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}" \
-            -e E2E_TEST_ORACLE_DB_19_PASSWORD="${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}" \
-            -e E2E_TEST_ORACLE_DB_19_DATABASE="${{ secrets.E2E_TEST_ORACLE_DB_19_DATABASE }}" \
-            infisical-backend-fips:latest \
-            npm run test:e2e
+      # The same command a developer runs. The rotation databases above share the test stack's
+      # compose project, so the suite reaches them by service name and CI needs no networking of
+      # its own. Connection strings, mounts and the image build all live in the compose files.
+      - name: Run end-to-end tests
+        run: make test-api-e2e
+        env:
+          E2E_TEST_ORACLE_DB_19_HOST: ${{ secrets.E2E_TEST_ORACLE_DB_19_HOST }}
+          E2E_TEST_ORACLE_DB_19_USERNAME: ${{ secrets.E2E_TEST_ORACLE_DB_19_USERNAME }}
+          E2E_TEST_ORACLE_DB_19_PASSWORD: ${{ secrets.E2E_TEST_ORACLE_DB_19_PASSWORD }}
+          E2E_TEST_ORACLE_DB_19_DATABASE: ${{ secrets.E2E_TEST_ORACLE_DB_19_DATABASE }}
       - name: cleanup
         if: always()
         run: |
-          docker compose -f "docker-compose.dev.yml" down
-          docker compose -f "docker-compose.e2e-dbs.yml" down
+          make down-test-suite-containers
