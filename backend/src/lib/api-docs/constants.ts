@@ -4097,7 +4097,9 @@ export const SecretValidationRules = {
   REUSE_PREVENTION: {
     reusePrevention:
       "Rejects a value for repeating one already in use. Omit to allow any value the other constraints accept.",
-    previousVersions: `How many of the secret's own previous versions the new value must differ from. Between 1 and ${MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS}.`
+    previousVersions: `How many of the secret's own previous versions the new value must differ from. Between 1 and ${MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS}.`,
+    otherSecrets:
+      "Set to true to reject a value that another secret in the rule's scope already holds. Requires blind indexing on the project."
   },
   STATIC_SECRETS: {
     keyConstraints:

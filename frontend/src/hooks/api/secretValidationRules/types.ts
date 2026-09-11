@@ -48,6 +48,7 @@ export type TConstraints = {
 
 export type TReusePrevention = {
   previousVersions?: number;
+  otherSecrets?: boolean;
 };
 
 export type TValueConstraints = TConstraints & {

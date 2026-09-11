@@ -10,7 +10,8 @@ export const CONSTRAINT_LABELS: Record<ConstraintKind, string> = {
   [ConstraintKind.RegexPattern]: "Regex pattern",
   [ConstraintKind.RequiredPrefix]: "Required prefix",
   [ConstraintKind.RequiredSuffix]: "Required suffix",
-  [ConstraintKind.ReusePreviousVersions]: "Prevent reuse of previous secret values"
+  [ConstraintKind.ReusePreviousVersions]: "Prevent reuse of previous secret values",
+  [ConstraintKind.ReuseOtherSecrets]: "Prevent reuse of a value another secret already holds"
 };
 
 export type TConstraintViolation = {

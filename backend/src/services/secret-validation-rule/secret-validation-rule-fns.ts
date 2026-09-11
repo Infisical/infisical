@@ -141,14 +141,14 @@ export type TRuleToEnforce = {
   config: TStaticSecretsRuleConfig;
 };
 
+/** Whether a rule scoped to `rulePath` reaches a secret sitting at `secretPath`. */
+export const doesRulePathCover = (rulePath: string, secretPath: string) =>
+  picomatch.isMatch(secretPath, rulePath, { strictSlashes: false });
+
 export const findRulesCoveringScope = <T extends { envId?: string | null; secretPath: string }>(
   rules: T[],
   { envId, secretPath }: { envId: string; secretPath: string }
-) =>
-  rules.filter(
-    (rule) =>
-      (!rule.envId || rule.envId === envId) && picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })
-  );
+) => rules.filter((rule) => (!rule.envId || rule.envId === envId) && doesRulePathCover(rule.secretPath, secretPath));
 
 export const enforceSecretValidationRules = ({
   rules,
