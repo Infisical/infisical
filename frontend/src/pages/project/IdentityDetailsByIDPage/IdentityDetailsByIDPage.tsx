@@ -4,7 +4,16 @@ import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { ChevronLeftIcon, EllipsisIcon, InfoIcon, ShieldIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  CopyIcon,
+  EllipsisIcon,
+  InfoIcon,
+  ShieldIcon,
+  TrashIcon,
+  UserRoundXIcon,
+  VenetianMaskIcon
+} from "lucide-react";
 
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
@@ -263,6 +272,7 @@ const Page = () => {
                       });
                     }}
                   >
+                    <CopyIcon />
                     Copy Machine Identity ID
                   </DropdownMenuItem>
                   {canAssumePrivileges && (
@@ -279,6 +289,7 @@ const Page = () => {
                               isDisabled={!isAllowed}
                               onClick={() => handlePopUpOpen("assumePrivileges")}
                             >
+                              <VenetianMaskIcon />
                               Assume Privileges
                               {isAllowed && <InfoIcon className="text-muted" />}
                             </DropdownMenuItem>
@@ -309,6 +320,7 @@ const Page = () => {
                             : handlePopUpOpen("removeIdentity")
                         }
                       >
+                        {isProjectIdentity ? <TrashIcon /> : <UserRoundXIcon />}
                         {removeMenuItemLabel}
                       </DropdownMenuItem>
                     )}
