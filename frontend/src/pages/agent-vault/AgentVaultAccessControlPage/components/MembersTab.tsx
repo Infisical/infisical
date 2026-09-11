@@ -142,8 +142,12 @@ export const MembersTab = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead isTruncatable>Name</TableHead>
-              <TableHead isTruncatable>Email</TableHead>
+              <TableHead isTruncatable className="w-1/3">
+                Name
+              </TableHead>
+              <TableHead isTruncatable className="w-1/3">
+                Email
+              </TableHead>
               <TableHead>Product Role</TableHead>
               <TableHead variant="action" />
             </TableRow>

@@ -117,7 +117,9 @@ export const GroupsTab = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead isTruncatable>Name</TableHead>
+              <TableHead isTruncatable className="w-2/3">
+                Name
+              </TableHead>
               <TableHead>Product Role</TableHead>
               <TableHead variant="action" />
             </TableRow>

@@ -183,7 +183,9 @@ export const IdentitiesTab = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead isTruncatable>Name</TableHead>
+              <TableHead isTruncatable className="w-2/3">
+                Name
+              </TableHead>
               <TableHead>Product Role</TableHead>
               <TableHead>Managed By</TableHead>
               <TableHead variant="action" />
