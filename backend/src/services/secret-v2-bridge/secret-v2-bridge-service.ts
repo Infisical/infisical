@@ -2201,14 +2201,16 @@ export const secretV2BridgeServiceFactory = ({
       );
     }
 
-    await secretValidationRuleService.validateSecrets({
-      projectId,
-      environment,
-      envId: folder.envId,
-      secretPath,
-      secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })),
-      tx: providedTx
-    });
+    await secretValidationRuleService.validateSecrets(
+      {
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
+      },
+      providedTx
+    );
 
     // get all tags
     const sanitizedTagIds = [...new Set(deduplicatedSecrets.flatMap(({ tagIds = [] }) => tagIds))];

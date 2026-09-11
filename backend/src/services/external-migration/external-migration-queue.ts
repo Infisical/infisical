@@ -57,10 +57,7 @@ export type TExternalMigrationQueueFactoryDep = {
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  secretApprovalRequestService: Pick<
-    TSecretApprovalRequestServiceFactory,
-    "dispatchSecretApprovalRequestCreateSideEffects"
-  >;
+  secretApprovalRequestService: Pick<TSecretApprovalRequestServiceFactory, "createSecretApprovalSideEffects">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
@@ -277,7 +274,7 @@ export const externalMigrationQueueFactory = ({
         approvedFolders.map(({ folderPath, secretKeys, approval }) =>
           sideEffectLimit(async () => {
             try {
-              await secretApprovalRequestService.dispatchSecretApprovalRequestCreateSideEffects({
+              await secretApprovalRequestService.createSecretApprovalSideEffects({
                 secretApprovalRequest: {
                   id: approval.id,
                   policyId: approval.policyId,
