@@ -2132,6 +2132,7 @@ export const registerRoutes = async (
     cronJob,
     secretSyncDAL,
     folderDAL,
+    projectEnvDAL,
     secretImportDAL,
     secretV2BridgeDAL,
     kmsService,

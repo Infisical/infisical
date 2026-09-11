@@ -1,11 +1,32 @@
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
+import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { TSecretPayload } from "@app/services/secret-sync/secret-sync-payload";
+import {
+  createSecretSyncPayload,
+  TSecretPayload,
+  TSecretSyncPayload
+} from "@app/services/secret-sync/secret-sync-payload";
+import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 type TImportedSecret = Awaited<ReturnType<typeof fnSecretsV2FromImports>>[number]["secrets"][number];
+
+type TExpandSecretReferences = ReturnType<typeof expandSecretReferencesFactory>["expandSecretReferences"];
+
+export type TFnSecretsV2FromImportsDeps = {
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
+  actorOrgId: string;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
 
 export const SECRET_SYNC_MAX_SECRETS = 10_000;
 
@@ -81,4 +102,109 @@ export const mergeImportedSecrets = (
   }
 
   return merged;
+};
+
+export const buildSyncPayload = async (
+  deps: {
+    folderDAL: Pick<TSecretFolderDALFactory, "find" | "findByManySecretPath">;
+    projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+    secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds" | "find">;
+    secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
+    expandSecretReferences: TExpandSecretReferences;
+    decryptSecretValue: (value?: Buffer | null) => string;
+    fnSecretsV2FromImportsDeps: TFnSecretsV2FromImportsDeps;
+  },
+  args: {
+    projectId: string;
+    environment: string;
+    sourcePath: string;
+    sourceFolderId: string;
+    recursive: boolean;
+    keySchema?: string;
+    includeImports: boolean;
+  }
+): Promise<TSecretSyncPayload> => {
+  const { folderDAL, projectEnvDAL, secretV2BridgeDAL, secretImportDAL, expandSecretReferences, decryptSecretValue } =
+    deps;
+  const { projectId, environment, sourcePath, sourceFolderId, recursive, keySchema, includeImports } = args;
+
+  const folders = await resolveSyncFolders({
+    folderDAL,
+    projectEnvDAL,
+    projectId,
+    environment,
+    sourcePath,
+    sourceFolderId,
+    recursive
+  });
+
+  const pathByFolderId = new Map(folders.map(({ folderId, path }) => [folderId, path]));
+
+  const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: folders.map(({ folderId }) => folderId) });
+
+  assertWithinSecretLimit(secrets.length);
+
+  const entries: TSecretPayload[] = [];
+
+  await Promise.allSettled(
+    secrets.map(async (secret) => {
+      const secretPath = pathByFolderId.get(secret.folderId) ?? sourcePath;
+      const secretValue = decryptSecretValue(secret.encryptedValue);
+      const expandedSecretValue = await expandSecretReferences({
+        environment,
+        secretPath,
+        skipMultilineEncoding: secret.skipMultilineEncoding,
+        value: secretValue,
+        secretKey: secret.key
+      });
+
+      entries.push({
+        key: secret.key,
+        path: secretPath,
+        value: expandedSecretValue || "",
+        id: secret.id,
+        comment: secret.encryptedComment ? decryptSecretValue(secret.encryptedComment) : undefined,
+        secretMetadata: secret.secretMetadata.map((el) => ({
+          isEncrypted: Boolean(el.encryptedValue),
+          key: el.key,
+          value: el.encryptedValue ? decryptSecretValue(el.encryptedValue) : el.value || ""
+        }))
+      });
+    })
+  );
+
+  if (!includeImports) {
+    return createSecretSyncPayload(entries, { environment, keySchema });
+  }
+
+  const secretImports = await secretImportDAL.findByFolderIds(folders.map(({ folderId }) => folderId));
+
+  let allEntries = entries;
+
+  if (secretImports.length) {
+    const importedSecrets = await fnSecretsV2FromImports({
+      decryptor: decryptSecretValue,
+      folderDAL,
+      secretDAL: secretV2BridgeDAL,
+      expandSecretReferences,
+      secretImportDAL,
+      secretImports,
+      hasSecretAccess: () => true,
+      viewSecretValue: true,
+      projectId,
+      ...deps.fnSecretsV2FromImportsDeps
+    });
+
+    allEntries = mergeImportedSecrets(
+      entries,
+      importedSecrets.map((group) => ({
+        path: pathByFolderId.get(group.importFolderId) ?? sourcePath,
+        secrets: group.secrets
+      }))
+    );
+
+    assertWithinSecretLimit(allEntries.length);
+  }
+
+  return createSecretSyncPayload(allEntries, { environment, keySchema });
 };
