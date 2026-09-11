@@ -13,8 +13,8 @@ export type TSecretSharingDALFactory = ReturnType<typeof secretSharingDALFactory
 export const secretSharingDALFactory = (db: TDbClient) => {
   const sharedSecretOrm = ormify(db, TableName.SecretSharing);
 
-  const getSecretRequestById = async (id: string) => {
-    const repDb = db.replicaNode();
+  const getSecretRequestById = async (id: string, tx?: Knex) => {
+    const repDb = tx || db.replicaNode();
 
     const secretRequest = await repDb(TableName.SecretSharing)
       .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.SecretSharing}.orgId`)
