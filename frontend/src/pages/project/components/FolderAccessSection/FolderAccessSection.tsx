@@ -23,6 +23,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -62,6 +63,9 @@ import { RemoveFolderAccessDialog } from "@app/pages/secret-manager/OverviewPage
 
 import { EditFolderAccessSheet } from "./EditFolderAccessSheet";
 import { TFolderAccessSectionActor } from "./types";
+
+const FOLDER_ACCESS_DOCS_URL =
+  "https://infisical.com/docs/documentation/platform/access-controls/folder-rbac";
 
 type Props = {
   actor: TFolderAccessSectionActor;
@@ -160,7 +164,10 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Folder Access</CardTitle>
+          <CardTitle>
+            Folder Access
+            <DocumentationLinkBadge href={FOLDER_ACCESS_DOCS_URL} />
+          </CardTitle>
           <CardDescription>
             Folder-level access for this {actorNoun}. Overrides{" "}
             {actor.type === "user" ? "their" : "its"} project roles within each folder.
