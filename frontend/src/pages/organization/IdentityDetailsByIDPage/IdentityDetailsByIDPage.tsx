@@ -112,7 +112,7 @@ const Page = () => {
             title={data.identity.name}
           >
             {isScopeIdentity && !data.identity.projectId && (
-              <IdentityAlertAction identityId={identityId} identityName={data.identity.name} />
+              <IdentityAlertAction identityId={identityId} />
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

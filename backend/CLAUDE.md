@@ -657,10 +657,23 @@ See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `sr
 
 Adding a new alertable resource type:
 
-1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), `eventTypes`, a `conditionSchema` for the "when", `findDueTargets`, `buildViewUrl` / `buildPayload` / `targetId` / `buildTestTargets`, and the two authorization hooks `assertPermission` + `assertResourceInScope`.
+1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), an `events` list (each event carries its own `conditionSchema` for the "when", so a scheduled expiry and an event-triggered change on the same resource type don't share one shape), `buildViewUrl` / `buildPayload` / `targetId`, one discovery method per trigger type you declare (below), and the two authorization hooks `assertPermission` + `assertResourceInScope`. Test sends need nothing from you: they go through the generic `buildTestAlertPayload` (`alert-test-payload-fns.ts`).
 2. Register it on the singleton registry in `src/server/routes/index.ts` (`alertProviderRegistry.register(...)`).
 
-That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example.
+That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example that declares both trigger types (`identity.authentication.expiry` scheduled, `identity.authentication.auth-method-changed` event-triggered).
+
+**Each event declares how it fires**, and the trigger decides which discovery method the provider owes:
+
+- `AlertTriggerType.Scheduled` → **`findDueTargets`**. The daily cron asks what is currently due, and the engine dedups per `(channel, target)` so a target rediscovered tomorrow is not alerted on twice.
+- `AlertTriggerType.Event` → **`findTargetsByIds`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron. The input carries the outbox row's whole `payload` next to `targetIds`: the module only reads `targetIds`, so an emitter can add the facts the notification needs (which auth method, who changed it) and the provider validates them with its own schema at delivery. Encoding facts into the target id is the wrong tool for that.
+
+**`findEnabledForEvent` with no `projectId` matches every alert bound to the resource, any scope.** A resource that has no project of its own (an org-level identity) can still be watched from a project it is a member of, and `assertResourceInScope` already checked that binding at create. Given a `projectId`, it matches that project's alerts plus org-scoped ones.
+
+`alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findTargetsByIds` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
+
+**Event-path reads go to the primary, `findTargetsByIds` included.** An empty read there is terminal (the event is marked delivered and never asked about again), so a replica that hasn't seen the commit loses the notification. `findEnabledForEvent` and the engine's channel lookup already do this; a provider's `findTargetsByIds` must too, since the target usually commits in the same transaction as the event. The scheduled path keeps the replica because tomorrow's scan asks again.
+
+**The history write is retried, then logged, never thrown.** The channels have already sent by then, so a throw can't undo anything and would re-notify on the event path.
 
 Invariants worth knowing before extending it:
 
@@ -673,6 +686,97 @@ Invariants worth knowing before extending it:
   - **`deleteAlertsForResource({ orgId, projectId?, resourceType, resourceId })`** when the resource merely **left a scope** (removed from a project, removed from an org) but still exists. Narrow on purpose: leaving one project must not drop the org-level alert, and leaving one org must not touch another org's alerts. Omitting `projectId` reaps the whole org, which is what org-membership removal wants since it cascades the project memberships.
 
   Wire it into **every** path that deletes or detaches the resource, not just the obvious one. A resource usually has several (a hard delete, an org-membership removal, a project-membership removal), and each needs its own reap. Call it **inside the delete transaction** and pass `tx`; the reap is pure DB (no KMS or network), so it is safe there. The `(resourceType, resourceId)` index on `alerts` is what keeps the unscoped reap off a seq scan, so a provider whose resource is deleted in bulk depends on it.
+
+### Event Outbox (transactional and generic; alerting is its first consumer)
+
+`src/services/event-outbox/` writes "this happened" as a row inside the caller's own transaction, so
+an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
+whenever the pod dies or Redis is down in that window. It's not alert-specific:
+`alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
+at-least-once delivery of a domain event registers next to it.
+
+**Emitting:** `eventOutboxService.emit(event, tx)`. `tx` is required on purpose.
+
+```ts
+await someDAL.transaction(async (tx) => {
+  const request = await approvalRequestDAL.create({ ... }, tx);
+  await eventOutbox.emit(
+    {
+      eventType: "approval.workflow.request_opened",
+      resourceType: "approval.workflow",
+      resourceId: policyId,
+      orgId,
+      projectId,
+      payload: { targetIds: [request.id] }
+    },
+    tx
+  );
+});
+```
+
+- Only `subscribesTo(eventType)` runs before the insert, in memory. Whether a customer configured
+  anything for this resource is decided in the worker; a row nobody wanted is marked `Delivered` and
+  pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
+  adding a read to the emit path.
+- Nothing is caught. A swallowed insert failure hands the caller a poisoned transaction (`25P02` on its
+  next statement), and a payload that fails the consumer's `payloadSchema` is a bug at the emit site.
+  Both checks run before any DB access.
+
+**How delivery works:**
+
+- **The row owns retry state** (`attempts`, `nextRetryAt`, backoff, terminal `failed`); the consumer
+  owns what "delivered" means and reports `Delivered` / `Retry` / `Failed` plus `progress` per row.
+  Backoff is exponential with jitter from 30s, and `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an
+  hour after the first, because a `failed` row is a notification nobody will receive. To replay failed
+  rows by hand: `status = 'retry', attempts = 0, nextRetryAt = now()`.
+- **A claim is a lease, and the lease is fenced.** The sweeper hands back any `processing` row whose
+  `lockedAt` is older than `STALE_CLAIM_THRESHOLD_MS`, with the same backoff as a normal failure, and counts
+  exhausted rows on the same metric. `drain` refreshes `lockedAt` while `handle` runs so a slow batch isn't
+  delivered twice. Because `handle` has no time bound (unlike the audit log stream outbox, where every
+  provider call has an HTTP timeout and a claim therefore can't outlive the threshold), that heartbeat can
+  fail while the work carries on, so a claim can be recycled under a worker that is still alive. `claimBatch`
+  stamps a `lockToken` and `extendClaims` / `commitResults` both require it, so the recycled worker's late
+  result can't clear the new owner's lock or drop its outcome. `commitResults` returns how many rows it
+  settled and `drain` logs a short settle: that count is the only signal that a batch went out twice, since
+  the fence protects the bookkeeping but delivery stays at-least-once.
+- **Discovery only looks at consumers registered in this process.** Rows for any other name would sort
+  first forever and, past the limit, hide every real key. They wait and show up on the oldest-pending
+  gauge instead.
+- **Don't let one row's failure escape `handle`.** The outbox retries the whole batch when `handle`
+  throws. Catch per row and report `Retry` for that row alone (see `alert-event-consumer.ts`).
+- **BullMQ owns latency, not correctness.** `attempts: 1` on the flush job is intentional; retry lives
+  on the row. A lost job costs one relay interval.
+- **The relay is a `setInterval`, not a cron job.** It doesn't need exactly-once (`FOR UPDATE SKIP
+  LOCKED` plus the flush `jobId` make concurrent pollers safe) and it needs a sub-minute cadence the
+  cron manager can't give.
+- **Ordering is per resource and best-effort.** The flush `jobId` is keyed on
+  `(consumer, resourceType, resourceId)` so one flush per aggregate runs at a time, and `claimBatch`
+  sorts by `id` (re-sorting what `RETURNING` gives back, which is arbitrary). A row inside its backoff
+  window is skipped, so a later row can overtake it. That's deliberate: blocking an aggregate behind its
+  oldest failing row is the wrong trade for notifications. Don't promise strict ordering.
+- **Delivery is at-least-once.** `commitResults` is retried in-process, since by then the consumer has
+  already sent; what's left is narrowed by `progress` and by the emitter's `idempotencyKey`.
+
+**Watch `infisical.event_outbox.oldest_pending_age`.** It catches a dead relay, a wedged consumer and a
+stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, labelled by consumer, so a
+new consumer gets them for free.
+
+**Adding an event-triggered alert** needs no outbox code: declare the event with
+`triggerType: AlertTriggerType.Event`, implement `findTargetsByIds`, and emit with the provider's
+`resourceType` and `payload: { targetIds, ...facts }`. A `resourceType` that doesn't declare the `eventType` fails
+the row terminally with both named, so a bad emit site shows up in the logs on its first event.
+
+**The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
+event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)
+lives in `src/services/identity/identity-auth-method-events.ts`. The 13 auth method services import the
+helper from there and the alert provider imports the schema from there, so neither depends on the other
+and a second consumer of the same event has one place to import from. When several services fire the same
+event, give it one such helper rather than repeating the `emit` literal: the helper owns the payload shape,
+and the provider's test parses what the helper emits with the delivery schema. A bare `updateById` had to
+become a short transaction for this; the cache invalidation that follows it stays outside, after commit.
+
+The DAL is covered by `e2e-test/event-outbox.spec.ts` against real Postgres; the unit tests only check
+query shape.
 
 ### Soft-Delete + Async Cleanup
 

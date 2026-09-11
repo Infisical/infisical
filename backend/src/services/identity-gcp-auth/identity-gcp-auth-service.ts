@@ -29,6 +29,11 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -62,6 +67,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentityGcpAuthServiceFactory = ReturnType<typeof identityGcpAuthServiceFactory>;
@@ -75,7 +81,8 @@ export const identityGcpAuthServiceFactory = ({
   permissionService,
   licenseService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentityGcpAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: gcpJwt, organizationSlug }: TLoginGcpAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -390,6 +397,17 @@ export const identityGcpAuthServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.GCP_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.GCP_AUTH);
@@ -487,17 +505,35 @@ export const identityGcpAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedGcpAuth = await identityGcpAuthDAL.updateById(identityGcpAuth.id, {
-      type,
-      allowedServiceAccounts,
-      allowedProjects,
-      allowedZones,
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+    const updatedGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
+      const doc = await identityGcpAuthDAL.updateById(
+        identityGcpAuth.id,
+        {
+          type,
+          allowedServiceAccounts,
+          allowedProjects,
+          allowedZones,
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.GCP_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.GCP_AUTH);
@@ -642,6 +678,17 @@ export const identityGcpAuthServiceFactory = ({
       const deletedGcpAuth = await identityGcpAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.GCP_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.GCP_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedGcpAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 

@@ -34,6 +34,11 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -68,6 +73,7 @@ type TIdentityAwsAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentityAwsAuthServiceFactory = ReturnType<typeof identityAwsAuthServiceFactory>;
@@ -115,7 +121,8 @@ export const identityAwsAuthServiceFactory = ({
   licenseService,
   permissionService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentityAwsAuthServiceFactoryDep) => {
   const login = async ({
     identityId,
@@ -444,6 +451,17 @@ export const identityAwsAuthServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.AWS_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AWS_AUTH);
@@ -540,16 +558,34 @@ export const identityAwsAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedAwsAuth = await identityAwsAuthDAL.updateById(identityAwsAuth.id, {
-      stsEndpoint,
-      allowedPrincipalArns,
-      allowedAccountIds,
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+    const updatedAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
+      const doc = await identityAwsAuthDAL.updateById(
+        identityAwsAuth.id,
+        {
+          stsEndpoint,
+          allowedPrincipalArns,
+          allowedAccountIds,
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.AWS_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AWS_AUTH);
@@ -693,6 +729,17 @@ export const identityAwsAuthServiceFactory = ({
       const deletedAwsAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.AWS_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.AWS_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 

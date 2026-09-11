@@ -4,7 +4,7 @@ import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
 import { alertServiceFactory, TAlertServiceFactoryDep } from "./alert-service";
-import { AlertPrincipalType, IResourceAlertProvider, TAlertPermissionInput } from "./alert-types";
+import { AlertPrincipalType, AlertTriggerType, IResourceAlertProvider, TAlertPermissionInput } from "./alert-types";
 
 const RESOURCE_TYPE = "test.resource";
 
@@ -31,9 +31,20 @@ const buildService = (opts?: {
   const permissionCalls: TAlertPermissionInput[] = [];
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
-    eventTypes: ["test.resource.expiration"],
-    conditionSchema: z.object({ alertBefore: z.string() }),
+    events: [
+      {
+        key: "test.resource.expiration",
+        triggerType: AlertTriggerType.Scheduled,
+        conditionSchema: z.object({ alertBefore: z.string() })
+      },
+      {
+        key: "test.resource.opened",
+        triggerType: AlertTriggerType.Event,
+        conditionSchema: z.object({}).strict().nullish()
+      }
+    ],
     findDueTargets: async () => [],
+    findTargetsByIds: async () => [],
     buildViewUrl: async () => "https://app.infisical.com/x",
     buildPayload: () => ({}) as TAlertPayload,
     targetId: () => "t",
@@ -263,6 +274,27 @@ describe("alert service", () => {
     );
   });
 
+  // triggerType comes from the provider's event definition, never from the request, so an alert on an
+  // event-triggered key is invisible to the daily scan and reachable only from the outbox.
+  test("stores the trigger type its event declares", async () => {
+    const { service, alerts } = buildService();
+
+    await service.createAlert(validCreate);
+    expect([...alerts.values()][0].triggerType).toBe("scheduled");
+
+    const { service: eventService, alerts: eventAlerts } = buildService();
+    await eventService.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: null });
+    expect([...eventAlerts.values()][0].triggerType).toBe("event");
+  });
+
+  test("returns the trigger type so a client can tell a scheduled alert from an event one", async () => {
+    const { service } = buildService();
+
+    const created = await service.createAlert(validCreate);
+
+    expect(created.triggerType).toBe("scheduled");
+  });
+
   test("rejects a resource-less (scope-wide) alert as unsupported", async () => {
     const { service } = buildService();
     await expect(service.createAlert({ ...validCreate, resourceId: undefined })).rejects.toThrow(/not supported yet/);
@@ -278,6 +310,33 @@ describe("alert service", () => {
     await expect(service.createAlert({ ...validCreate, condition: undefined })).rejects.toThrow(
       /Invalid alert condition/
     );
+  });
+
+  test("validates the condition against the event's own schema, not a provider-wide one", async () => {
+    const { service } = buildService();
+    // The event-triggered event takes no condition, so the expiry shape is rejected for it and
+    // an empty one is accepted.
+    await expect(
+      service.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: { alertBefore: "30d" } })
+    ).rejects.toThrow(/Invalid alert condition/);
+    const created = await service.createAlert({
+      ...validCreate,
+      resourceId: "resource-2",
+      eventType: "test.resource.opened",
+      condition: null
+    });
+    expect(created.condition).toBeNull();
+  });
+
+  test("update validates the condition against the stored event's schema", async () => {
+    const { service } = buildService();
+    await service.createAlert(validCreate);
+    await expect(service.updateAlert({ alertId: "alert-1", condition: { alertBefore: 5 }, ...actor })).rejects.toThrow(
+      /Invalid alert condition/
+    );
+    await expect(
+      service.updateAlert({ alertId: "alert-1", condition: { alertBefore: "5d" }, ...actor })
+    ).resolves.toBeDefined();
   });
 
   test("rejects an event type the provider does not support", async () => {

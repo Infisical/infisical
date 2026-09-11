@@ -14,7 +14,8 @@ const buildDAL = () => {
     existsFrom: [] as unknown[],
     existsJoin: [] as unknown[][],
     existsWhere: [] as unknown[][],
-    existsWhereRaw: [] as unknown[]
+    existsWhereRaw: [] as unknown[],
+    orWhereNull: [] as unknown[]
   };
 
   const existsChain = {
@@ -43,6 +44,10 @@ const buildDAL = () => {
       return chain;
     },
     where: (...args: unknown[]) => {
+      if (typeof args[0] === "function") {
+        (args[0] as (qb: typeof chain) => void)(chain);
+        return chain;
+      }
       calls.where.push(args);
       return chain;
     },
@@ -54,13 +59,24 @@ const buildDAL = () => {
       cb(existsChain);
       return chain;
     },
+    orWhereNull: (col: unknown) => {
+      calls.orWhereNull.push(col);
+      return chain;
+    },
     select: () => chain,
     orderBy: async () => [] as TAlerts[]
   };
   const queryBuilder = () => chain;
-  const db = Object.assign(queryBuilder, { replicaNode: () => queryBuilder, raw: (sql: string) => sql }) as never;
+  let replicaReads = 0;
+  const db = Object.assign(queryBuilder, {
+    replicaNode: () => {
+      replicaReads += 1;
+      return queryBuilder;
+    },
+    raw: (sql: string) => sql
+  }) as never;
 
-  return { dal: alertDALFactory(db), calls };
+  return { dal: alertDALFactory(db), calls, getReplicaReads: () => replicaReads };
 };
 
 describe("alert dal", () => {
@@ -88,5 +104,91 @@ describe("alert dal", () => {
     expect(calls.existsWhereRaw[0]).toBe(`"${TableName.AlertChannelMembership}"."alertId" = "${TableName.Alert}"."id"`);
     // A channel that exists but is switched off must not keep the alert in the sweep.
     expect(calls.existsWhere).toContainEqual([`${TableName.AlertChannel}.enabled`, true]);
+  });
+
+  test("findEnabledForEvent narrows to one resource, event and the event trigger", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+
+    expect(calls.where).toContainEqual([`${TableName.Alert}.orgId`, "org-1"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.resourceType`, "approval.workflow"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.resourceId`, "policy-1"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.eventType`, "approval.workflow.request_opened"]);
+    // Mirrors the cron's filter: the outbox must never pick up a scheduled alert.
+    expect(calls.where).toContainEqual([`${TableName.Alert}.triggerType`, "event"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
+  });
+
+  // An empty result here is terminal for the event, so it must not come from a replica that has yet
+  // to see the alert commit.
+  test("findEnabledForEvent reads the primary while the scheduled and list lookups keep the replica", async () => {
+    const { dal, getReplicaReads } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+    expect(getReplicaReads()).toBe(0);
+
+    await dal.findEnabledByResourceType("approval.workflow");
+    expect(getReplicaReads()).toBe(1);
+
+    await dal.findActiveByScope({ orgId: "org-1", resourceType: "approval.workflow" });
+    expect(getReplicaReads()).toBe(2);
+  });
+
+  test("findEnabledForEvent applies the same soft-deleted-project and enabled-channel filters", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+
+    expect(calls.whereNull).toContainEqual(`${TableName.Project}.deleteAfter`);
+    expect(calls.existsFrom).toContainEqual(TableName.AlertChannelMembership);
+    expect(calls.existsWhere).toContainEqual([`${TableName.AlertChannel}.enabled`, true]);
+  });
+
+  test("findEnabledForEvent matches the project-scoped and org-scoped alert when given a project", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+
+    expect(calls.where).toContainEqual([`${TableName.Alert}.projectId`, "proj-1"]);
+    expect(calls.orWhereNull).toContainEqual(`${TableName.Alert}.projectId`);
+  });
+
+  // An org-level identity can be watched from any project it belongs to, so an event with no project
+  // of its own has to reach those project-scoped alerts as well as the org-scoped one.
+  test("findEnabledForEvent matches every alert bound to the resource when given no project", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      resourceType: "approval.workflow",
+      resourceId: "policy-1",
+      eventType: "approval.workflow.request_opened"
+    });
+
+    expect(calls.whereNull).not.toContainEqual(`${TableName.Alert}.projectId`);
+    expect(calls.where).not.toContainEqual(expect.arrayContaining([`${TableName.Alert}.projectId`]));
+    expect(calls.orWhereNull).toHaveLength(0);
   });
 });

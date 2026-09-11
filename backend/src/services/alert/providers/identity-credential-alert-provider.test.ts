@@ -1,6 +1,14 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { IdentityAuthMethod } from "@app/db/schemas";
+import { ActorType } from "@app/services/auth/auth-type";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange,
+  IdentityAuthMethodChangePayloadSchema
+} from "@app/services/identity/identity-auth-method-events";
+
 import {
   ALERT_HISTORY_RETENTION_DAYS,
   AlertPermissionAction,
@@ -9,6 +17,7 @@ import {
 } from "../alert-types";
 import { TExpiringUaClientSecret } from "./identity-credential-alert-dal";
 import {
+  IDENTITY_AUTH_METHOD_CHANGED_EVENT,
   IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
   IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
   identityCredentialAlertProviderFactory,
@@ -59,8 +68,13 @@ const buildProvider = (opts?: {
   // identity was created in project scope.
   ownerProjectId?: string | null;
   projectType?: string | null;
+  identities?: { id: string; name: string }[];
+  userLabel?: string;
 }) => {
   const dal = {
+    findIdentitiesByIds: async (ids: string[]) =>
+      (opts?.identities ?? [{ id: "ident-1", name: "ci-runner" }]).filter((identity) => ids.includes(identity.id)),
+    findUserLabelById: async () => opts?.userLabel,
     findExpiringUaClientSecrets: async (args: {
       orgId: string;
       projectId?: string | null;
@@ -89,26 +103,280 @@ const buildProvider = (opts?: {
 
 const actor = { actor: "user", actorId: "u1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
 
+const eventSchema = (provider: ReturnType<typeof buildProvider>, key: string) =>
+  provider.events.find((event) => event.key === key)!.conditionSchema;
+
+const changePayload = (overrides: Record<string, unknown> = {}) => ({
+  targetIds: ["ident-1"],
+  authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+  change: IdentityAuthMethodChange.Added,
+  actorType: ActorType.USER,
+  actorId: "u1",
+  changedAt: "2026-09-10T10:00:00.000Z",
+  ...overrides
+});
+
 describe("identity credential alert provider", () => {
-  test("condition schema accepts 1d-90d and rejects everything else", () => {
-    const provider = buildProvider();
-    expect(provider.conditionSchema.safeParse({ alertBefore: "1d" }).success).toBe(true);
-    expect(provider.conditionSchema.safeParse({ alertBefore: "30d" }).success).toBe(true);
-    expect(provider.conditionSchema.safeParse({ alertBefore: "90d" }).success).toBe(true);
+  test("expiry condition schema accepts 1d-90d and rejects everything else", () => {
+    const schema = eventSchema(buildProvider(), IDENTITY_AUTHENTICATION_EXPIRY_EVENT);
+    expect(schema.safeParse({ alertBefore: "1d" }).success).toBe(true);
+    expect(schema.safeParse({ alertBefore: "30d" }).success).toBe(true);
+    expect(schema.safeParse({ alertBefore: "90d" }).success).toBe(true);
 
     // Out of range.
-    expect(provider.conditionSchema.safeParse({ alertBefore: "0d" }).success).toBe(false);
-    expect(provider.conditionSchema.safeParse({ alertBefore: "91d" }).success).toBe(false);
-    expect(provider.conditionSchema.safeParse({ alertBefore: "3650d" }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "0d" }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "91d" }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "3650d" }).success).toBe(false);
 
     // Units other than days are no longer accepted.
-    expect(provider.conditionSchema.safeParse({ alertBefore: "2w" }).success).toBe(false);
-    expect(provider.conditionSchema.safeParse({ alertBefore: "3m" }).success).toBe(false);
-    expect(provider.conditionSchema.safeParse({ alertBefore: "1y" }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "2w" }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "3m" }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "1y" }).success).toBe(false);
 
-    expect(provider.conditionSchema.safeParse({ alertBefore: "30" }).success).toBe(false);
-    expect(provider.conditionSchema.safeParse({ alertBefore: "nope" }).success).toBe(false);
-    expect(provider.conditionSchema.safeParse({}).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "30" }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "nope" }).success).toBe(false);
+    expect(schema.safeParse({}).success).toBe(false);
+  });
+
+  test("auth method change is event-triggered and takes no condition", () => {
+    const provider = buildProvider();
+    const event = provider.events.find((candidate) => candidate.key === IDENTITY_AUTH_METHOD_CHANGED_EVENT);
+    expect(event?.triggerType).toBe("event");
+    const schema = eventSchema(provider, IDENTITY_AUTH_METHOD_CHANGED_EVENT);
+    expect(schema.safeParse(null).success).toBe(true);
+    expect(schema.safeParse(undefined).success).toBe(true);
+    expect(schema.safeParse({}).success).toBe(true);
+  });
+
+  // The auth method services emit through this helper and the provider parses the schema at delivery.
+  // This is the one place the two are checked against each other.
+  test("the emitted payload is accepted by the delivery schema", async () => {
+    const emitted: unknown[] = [];
+    const emitter = { emit: async (event: { payload: unknown }) => void emitted.push(event.payload) };
+    const membership = { identity: { id: "ident-1", projectId: null }, scopeOrgId: "org-1" };
+
+    await emitIdentityAuthMethodChanged(
+      emitter,
+      {
+        membership,
+        authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+        change: IdentityAuthMethodChange.CredentialAdded,
+        actor: ActorType.USER,
+        actorId: "u1",
+        credential: { id: "cs-1", name: null }
+      },
+      {} as never
+    );
+    await emitIdentityAuthMethodChanged(
+      emitter,
+      {
+        membership,
+        authMethod: IdentityAuthMethod.TOKEN_AUTH,
+        change: IdentityAuthMethodChange.Removed,
+        actor: ActorType.PLATFORM
+      },
+      {} as never
+    );
+
+    expect(emitted).toHaveLength(2);
+    for (const payload of emitted) {
+      expect(IdentityAuthMethodChangePayloadSchema.safeParse(payload).success).toBe(true);
+      expect((payload as { targetIds: string[] }).targetIds).toEqual(["ident-1"]);
+    }
+  });
+
+  test("findTargetsByIds rehydrates the identity and the change from the event payload", async () => {
+    const provider = buildProvider({ userLabel: "alice@example.com" });
+
+    const targets = await provider.findTargetsByIds({
+      orgId: "org-1",
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+      condition: null,
+      targetIds: ["ident-1"],
+      payload: changePayload()
+    });
+
+    expect(targets).toHaveLength(1);
+    const [target] = targets;
+    expect(target.kind).toBe("auth-method-change");
+    if (target.kind !== "auth-method-change") throw new Error("unexpected target kind");
+    expect(target.identityName).toBe("ci-runner");
+    expect(target.authMethod).toBe(IdentityAuthMethod.UNIVERSAL_AUTH);
+    expect(target.change).toBe(IdentityAuthMethodChange.Added);
+    expect(target.actorLabel).toBe("alice@example.com (user)");
+    expect(target.changedAt).toEqual(new Date("2026-09-10T10:00:00.000Z"));
+    expect(provider.targetId(target)).toBe("auth-method-change:ident-1:universal-auth:added");
+  });
+
+  test("findTargetsByIds drops an identity deleted between emit and delivery", async () => {
+    const provider = buildProvider({ identities: [] });
+    const targets = await provider.findTargetsByIds({
+      orgId: "org-1",
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+      condition: null,
+      targetIds: ["ident-1"],
+      payload: changePayload()
+    });
+    expect(targets).toEqual([]);
+  });
+
+  test("findTargetsByIds names a machine identity actor and falls back to the actor type", async () => {
+    const provider = buildProvider({
+      identities: [
+        { id: "ident-1", name: "ci-runner" },
+        { id: "ident-admin", name: "terraform" }
+      ]
+    });
+    const byIdentity = await provider.findTargetsByIds({
+      orgId: "org-1",
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+      condition: null,
+      targetIds: ["ident-1"],
+      payload: changePayload({ actorType: ActorType.IDENTITY, actorId: "ident-admin" })
+    });
+    expect(byIdentity[0].kind === "auth-method-change" && byIdentity[0].actorLabel).toBe(
+      "terraform (machine identity)"
+    );
+
+    const byPlatform = await provider.findTargetsByIds({
+      orgId: "org-1",
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+      condition: null,
+      targetIds: ["ident-1"],
+      payload: changePayload({ actorType: ActorType.PLATFORM, actorId: undefined })
+    });
+    expect(byPlatform[0].kind === "auth-method-change" && byPlatform[0].actorLabel).toBe("Infisical");
+  });
+
+  // A drifted emit site must surface in the outbox error, not as a notification with blank fields.
+  test("findTargetsByIds rejects a payload the emitter contract does not describe", async () => {
+    const provider = buildProvider();
+    await expect(
+      provider.findTargetsByIds({
+        orgId: "org-1",
+        resourceId: "ident-1",
+        eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+        condition: null,
+        targetIds: ["ident-1"],
+        payload: { targetIds: ["ident-1"], authMethod: "carrier-pigeon" }
+      })
+    ).rejects.toThrow(/authMethod/);
+  });
+
+  test("a credential change carries the credential through the payload, the target id, and the fields", async () => {
+    const provider = buildProvider({ userLabel: "alice@example.com" });
+    const [target] = await provider.findTargetsByIds({
+      orgId: "org-1",
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+      condition: null,
+      targetIds: ["ident-1"],
+      payload: changePayload({
+        change: IdentityAuthMethodChange.CredentialAdded,
+        credentialId: "sec-9",
+        credentialName: "github-actions"
+      })
+    });
+    if (target.kind !== "auth-method-change") throw new Error("unexpected target kind");
+    expect(target.credentialId).toBe("sec-9");
+    expect(target.credentialName).toBe("github-actions");
+    // Two secrets added to the same method must not collapse into one PagerDuty incident.
+    expect(provider.targetId(target)).toBe("auth-method-change:ident-1:universal-auth:credential-added:sec-9");
+
+    const context = alertContext({
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+      condition: null
+    });
+    const payload = provider.buildPayload(context, [target], "https://app.infisical.com/x");
+    expect(payload.summary).toBe(
+      "Universal Auth client secret 'github-actions' was added to machine identity 'ci-runner'"
+    );
+    const [item] = payload.items;
+    expect(item.fields?.find((f) => f.label === "Change")?.value).toBe("Credential Added");
+    expect(item.fields?.find((f) => f.label === "Credential")?.value).toBe("github-actions");
+  });
+
+  test("a token revocation reads as a Token Auth credential change", async () => {
+    const provider = buildProvider();
+    const context = alertContext({
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+      condition: null
+    });
+    const payload = provider.buildPayload(
+      context,
+      [
+        {
+          kind: "auth-method-change" as const,
+          identityId: "ident-1",
+          identityName: "ci-runner",
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.CredentialRevoked,
+          actorLabel: "Infisical",
+          changedAt: new Date("2026-09-10T10:00:00.000Z"),
+          credentialId: "tok-1",
+          credentialName: "deploy"
+        }
+      ],
+      "https://app.infisical.com/x"
+    );
+    expect(payload.summary).toBe("Token Auth token 'deploy' was revoked from machine identity 'ci-runner'");
+    // No credential field when the change is to the method itself.
+    const methodOnly = provider.buildPayload(
+      context,
+      [
+        {
+          kind: "auth-method-change" as const,
+          identityId: "ident-1",
+          identityName: "ci-runner",
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actorLabel: "Infisical",
+          changedAt: new Date("2026-09-10T10:00:00.000Z")
+        }
+      ],
+      "https://app.infisical.com/x"
+    );
+    expect(methodOnly.items[0].fields?.some((f) => f.label === "Credential")).toBe(false);
+  });
+
+  test("buildPayload for an auth method change names the method, the change, and who made it", async () => {
+    const provider = buildProvider();
+    const context = alertContext({
+      resourceId: "ident-1",
+      eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
+      condition: null
+    });
+    const changedAt = new Date("2026-09-10T10:00:00.000Z");
+    const target = {
+      kind: "auth-method-change" as const,
+      identityId: "ident-1",
+      identityName: "ci-runner",
+      authMethod: IdentityAuthMethod.AWS_AUTH,
+      change: IdentityAuthMethodChange.Removed,
+      actorLabel: "alice@example.com (user)",
+      changedAt
+    };
+    const payload = provider.buildPayload(context, [target], "https://app.infisical.com/x");
+
+    expect(payload.eventKey).toBe(IDENTITY_AUTH_METHOD_CHANGED_EVENT);
+    expect(payload.webhookType).toBe("com.infisical.identity.authentication.auth-method-changed");
+    expect(payload.severity).toBe("warning");
+    expect(payload.summary).toBe("AWS Auth was removed from machine identity 'ci-runner'");
+    expect(payload.alert).not.toHaveProperty("condition");
+
+    const [item] = payload.items;
+    expect(item.id).toBe("auth-method-change:ident-1:aws-auth:removed");
+    expect(item.title).toBe("ci-runner");
+    expect(item.fields?.find((f) => f.label === "Auth Method")?.value).toBe("AWS Auth");
+    expect(item.fields?.find((f) => f.label === "Change")?.value).toBe("Removed");
+    expect(item.fields?.find((f) => f.label === "Changed By")?.value).toBe("alice@example.com (user)");
+    expect(item.fields?.find((f) => f.label === "Changed At")?.value).toContain("2026");
   });
 
   test("findDueTargets converts alertBefore to a postgres interval and tags credential type", async () => {
@@ -168,7 +436,11 @@ describe("identity credential alert provider", () => {
   test("buildPayload produces neutral items and severity", async () => {
     const provider = buildProvider();
     const expiresAt = futureDate(3);
-    const target = { credentialType: "ua-client-secret" as const, ...sampleSecret({ expiresAt }) };
+    const target = {
+      kind: "expiring-credential" as const,
+      credentialType: "ua-client-secret" as const,
+      ...sampleSecret({ expiresAt })
+    };
     const viewUrl = await provider.buildViewUrl(alertContext());
     const payload = provider.buildPayload(alertContext(), [target], viewUrl);
 

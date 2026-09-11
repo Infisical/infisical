@@ -39,6 +39,11 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -83,6 +88,7 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentitySpiffeAuthServiceFactory = ReturnType<typeof identitySpiffeAuthServiceFactory>;
@@ -141,7 +147,8 @@ export const identitySpiffeAuthServiceFactory = ({
   identityAccessTokenDAL,
   kmsService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentitySpiffeAuthServiceFactoryDep) => {
   type TFlattenedTrustBundle = {
     configurationType: string;
@@ -612,6 +619,17 @@ export const identitySpiffeAuthServiceFactory = ({
         tx
       );
 
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.SPIFFE_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
 
@@ -757,7 +775,21 @@ export const identitySpiffeAuthServiceFactory = ({
         : null;
     }
 
-    const updatedSpiffeAuth = await identitySpiffeAuthDAL.updateById(identitySpiffeAuth.id, updateQuery);
+    const updatedSpiffeAuth = await identitySpiffeAuthDAL.transaction(async (tx) => {
+      const doc = await identitySpiffeAuthDAL.updateById(identitySpiffeAuth.id, updateQuery, tx);
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.SPIFFE_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
+    });
 
     const decryptedCaBundleJwks = updatedSpiffeAuth.encryptedCaBundleJwks
       ? orgDataKeyDecryptor({ cipherTextBlob: updatedSpiffeAuth.encryptedCaBundleJwks }).toString()
@@ -937,6 +969,17 @@ export const identitySpiffeAuthServiceFactory = ({
       const deletedSpiffeAuth = await identitySpiffeAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.SPIFFE_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.SPIFFE_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return deletedSpiffeAuth?.[0];
     });
 

@@ -32,6 +32,11 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -185,6 +190,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export const identityTlsCertAuthServiceFactory = ({
@@ -197,7 +203,8 @@ export const identityTlsCertAuthServiceFactory = ({
   permissionService,
   kmsService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentityTlsCertAuthServiceFactoryDep): TIdentityTlsCertAuthServiceFactory => {
   const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({
     identityId,
@@ -583,6 +590,17 @@ export const identityTlsCertAuthServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
@@ -693,19 +711,37 @@ export const identityTlsCertAuthServiceFactory = ({
       validateCaCertificateUsable(caCertificate);
     }
 
-    const updatedTlsCertAuth = await identityTlsCertAuthDAL.updateById(identityTlsCertAuth.id, {
-      allowedCommonNames,
-      allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
-      encryptedCaCertificate: caCertificate
-        ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
-        : undefined,
-      verifyClientCertificateChain: verifyClientCertificateChainOpt,
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+    const updatedTlsCertAuth = await identityTlsCertAuthDAL.transaction(async (tx) => {
+      const doc = await identityTlsCertAuthDAL.updateById(
+        identityTlsCertAuth.id,
+        {
+          allowedCommonNames,
+          allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
+          encryptedCaCertificate: caCertificate
+            ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
+            : undefined,
+          verifyClientCertificateChain: verifyClientCertificateChainOpt,
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
@@ -863,6 +899,17 @@ export const identityTlsCertAuthServiceFactory = ({
       const deletedTlsCertAuth = await identityTlsCertAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.TLS_CERT_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedTlsCertAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 

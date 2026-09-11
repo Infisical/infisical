@@ -724,7 +724,7 @@ export enum AlertDispatchOutcome {
   AlertDisabled = "alert_disabled",
   // No provider registered for the alert's resource type (misconfiguration).
   NoProvider = "no_provider",
-  // Nothing matched the alert condition in this run.
+  // Nothing to alert on: nothing matched the condition, or the targets an event named are gone.
   NoDueTargets = "no_due_targets",
   // The alert has no enabled channels, so the run is skipped before scanning for targets.
   NoChannels = "no_channels",
@@ -733,7 +733,10 @@ export enum AlertDispatchOutcome {
   // is kept out of delivery_failed and must not alarm.
   NoRecipients = "no_recipients",
   // Targets matched, but every one had already been alerted inside the dedup window.
-  AllDeduped = "all_deduped"
+  AllDeduped = "all_deduped",
+  // Event path only: the event reached the worker with no alert configured for it. Expected in steady
+  // state, but a rate of zero everywhere means emits are wired up and alerts are not.
+  NoMatchingAlert = "no_matching_alert"
 }
 
 export const alertDispatchOutcomeCounter = infisicalCoreMeter.createCounter("infisical.alert.dispatch.outcome.count", {
@@ -749,6 +752,37 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
     outcome: params.outcome
   });
 };
+
+// -- Event outbox (InfisicalCore meter) --------------------------------------------------------------
+// The outbox's own health, as opposed to what a consumer does with an event. The canonical canary is
+// the oldest-pending-age gauge, which lives in event-outbox-queue.ts because the relay tick feeds it.
+
+export const eventOutboxLagHistogram = infisicalCoreMeter.createHistogram("infisical.event_outbox.lag", {
+  description:
+    "Seconds from an event occurring to the outbox reaching a terminal result for it. Tracks the relay interval plus delivery time; a p99 far above the interval means delivery, not discovery, is the bottleneck.",
+  unit: "s"
+});
+
+export const recordEventOutboxLagMetric = (params: { consumer: string; status: string; seconds: number }) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    eventOutboxLagHistogram.record(params.seconds, {
+      "event_outbox.consumer": params.consumer,
+      "event_outbox.status": params.status
+    });
+  });
+
+export const eventOutboxExhaustedCounter = infisicalCoreMeter.createCounter("infisical.event_outbox.exhausted.count", {
+  description:
+    "Outbox events abandoned after exhausting their attempts. Every one of these is a notification the customer configured and did not receive, so alarm on any sustained rate.",
+  unit: "{event}"
+});
+
+export const recordEventOutboxExhaustedMetric = (params: { consumer: string; count: number }) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    eventOutboxExhaustedCounter.add(params.count, { "event_outbox.consumer": params.consumer });
+  });
 
 export enum ProductAnalyticsDropReason {
   Retention = "retention",

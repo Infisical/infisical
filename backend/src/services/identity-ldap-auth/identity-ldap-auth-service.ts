@@ -40,6 +40,11 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -96,6 +101,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -111,7 +117,8 @@ export const identityLdapAuthServiceFactory = ({
   identityAuthTemplateDAL,
   keyStore,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentityLdapAuthServiceFactoryDep) => {
   const getLdapConfig = async (identityId: string) => {
     const identity = await identityDAL.findOne({ id: identityId });
@@ -520,6 +527,17 @@ export const identityLdapAuthServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.LDAP_AUTH);
@@ -730,25 +748,43 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const updatedLdapAuth = await identityLdapAuthDAL.updateById(identityLdapAuth.id, {
-      url: config.url,
-      searchBase: config.searchBase,
-      searchFilter,
-      encryptedBindDN,
-      encryptedBindPass,
-      encryptedLdapCaCertificate,
-      allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
-      accessTokenMaxTTL,
-      templateId: template?.id || null,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined,
-      lockoutEnabled,
-      lockoutThreshold,
-      lockoutDurationSeconds,
-      lockoutCounterResetSeconds
+    const updatedLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
+      const doc = await identityLdapAuthDAL.updateById(
+        identityLdapAuth.id,
+        {
+          url: config.url,
+          searchBase: config.searchBase,
+          searchFilter,
+          encryptedBindDN,
+          encryptedBindPass,
+          encryptedLdapCaCertificate,
+          allowedFields: allowedFields ? JSON.stringify(allowedFields) : undefined,
+          accessTokenMaxTTL,
+          templateId: template?.id || null,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.LDAP_AUTH);
@@ -905,6 +941,17 @@ export const identityLdapAuthServiceFactory = ({
       const [deletedLdapAuth] = await identityLdapAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.LDAP_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.LDAP_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
     });
 

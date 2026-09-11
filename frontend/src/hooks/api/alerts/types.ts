@@ -5,7 +5,8 @@ export enum AlertResourceType {
 }
 
 export enum AlertEventType {
-  IdentityAuthenticationExpiry = "identity.authentication.expiry"
+  IdentityAuthenticationExpiry = "identity.authentication.expiry",
+  IdentityAuthMethodChanged = "identity.authentication.auth-method-changed"
 }
 
 export enum AlertChannelType {
@@ -28,7 +29,15 @@ export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
-  [AlertEventType.IdentityAuthenticationExpiry]: "Expiration"
+  [AlertEventType.IdentityAuthenticationExpiry]: "Client Secret Expiration",
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth Method Change"
+};
+
+export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
+  [AlertEventType.IdentityAuthenticationExpiry]:
+    "Notify a set number of days before a Universal Auth client secret expires.",
+  [AlertEventType.IdentityAuthMethodChanged]:
+    "Notify whenever an auth method is added, updated, or removed."
 };
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {
@@ -184,19 +193,32 @@ export const channelFormSchema = z
 
 export type TChannelForm = z.infer<typeof channelFormSchema>;
 
-export const alertFormSchema = z.object({
+const alertFormBaseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
   description: z.string().max(1000).optional(),
   resourceType: z.nativeEnum(AlertResourceType),
   eventType: z.nativeEnum(AlertEventType),
-  alertBeforeDays: z
-    .number({ invalid_type_error: "Enter a number" })
-    .int("Must be a whole number")
-    .min(MIN_ALERT_BEFORE_DAYS, `Must be at least ${MIN_ALERT_BEFORE_DAYS} day`)
-    .max(MAX_ALERT_BEFORE_DAYS, `Must be at most ${MAX_ALERT_BEFORE_DAYS} days`),
+  // Only the expiry event reads these; validated in superRefine so a hidden field can't block submit.
+  alertBeforeDays: z.number().or(z.nan()),
   dailyReminder: z.boolean().default(false),
   enabled: z.boolean().default(true),
   channels: z.array(channelFormSchema).min(1, "At least one channel is required")
+});
+
+const alertBeforeDaysIssue = (days: number): string | null => {
+  if (Number.isNaN(days)) return "Enter a number";
+  if (!Number.isInteger(days)) return "Must be a whole number";
+  if (days < MIN_ALERT_BEFORE_DAYS) return `Must be at least ${MIN_ALERT_BEFORE_DAYS} day`;
+  if (days > MAX_ALERT_BEFORE_DAYS) return `Must be at most ${MAX_ALERT_BEFORE_DAYS} days`;
+  return null;
+};
+
+export const alertFormSchema = alertFormBaseSchema.superRefine((form, ctx) => {
+  if (form.eventType !== AlertEventType.IdentityAuthenticationExpiry) return;
+  const message = alertBeforeDaysIssue(form.alertBeforeDays);
+  if (message) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["alertBeforeDays"], message });
+  }
 });
 
 export type TAlertForm = z.infer<typeof alertFormSchema>;

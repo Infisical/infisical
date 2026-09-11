@@ -34,6 +34,11 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -66,6 +71,7 @@ type TIdentityOciAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventOutboxService: TEventOutboxEmitter;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
@@ -79,7 +85,8 @@ export const identityOciAuthServiceFactory = ({
   licenseService,
   permissionService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventOutboxService
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid, organizationSlug }: TLoginOciAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -358,6 +365,17 @@ export const identityOciAuthServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OCI_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
@@ -454,15 +472,33 @@ export const identityOciAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedOciAuth = await identityOciAuthDAL.updateById(identityOciAuth.id, {
-      tenancyOcid,
-      allowedUsernames,
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+    const updatedOciAuth = await identityOciAuthDAL.transaction(async (tx) => {
+      const doc = await identityOciAuthDAL.updateById(
+        identityOciAuth.id,
+        {
+          tenancyOcid,
+          allowedUsernames,
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OCI_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
@@ -607,6 +643,17 @@ export const identityOciAuthServiceFactory = ({
       const deletedOciAuth = await identityOciAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OCI_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventOutboxService,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OCI_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedOciAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 
