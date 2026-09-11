@@ -36,13 +36,29 @@ class DigitalOceanAppPlatformPublicClient {
   }
 
   async getApps(connection: TDigitalOceanConnectionConfig) {
-    const response = await this.client.get<{ apps: TDigitalOceanApp[] }>(`/apps`, {
-      headers: {
-        Authorization: `Bearer ${connection.credentials.apiToken}`
-      }
-    });
-
-    return response.data.apps;
+    // DigitalOcean's /v2/apps endpoint paginates with a 20-row default and a
+    // 200-row max. Walk every page so accounts with >20 apps don't see the
+    // dropdown silently truncated when creating a Secret Sync. The loop
+    // terminates when the page comes back with fewer than `perPage` results,
+    // which is the standard exhaustion signal for the DO API.
+    // @see https://github.com/Infisical/infisical/issues/6629
+    const perPage = 200;
+    const apps: TDigitalOceanApp[] = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const response = await this.client.get<{ apps?: TDigitalOceanApp[] }>(`/apps`, {
+        params: { page, per_page: perPage },
+        headers: {
+          Authorization: `Bearer ${connection.credentials.apiToken}`
+        }
+      });
+      const pageApps = response.data.apps ?? [];
+      apps.push(...pageApps);
+      hasMore = pageApps.length === perPage;
+      page += 1;
+    }
+    return apps;
   }
 
   async getApp(connection: TDigitalOceanConnectionConfig, appId: string) {
