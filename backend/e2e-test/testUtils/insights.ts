@@ -83,7 +83,8 @@ export const projectScopedInsightsDepStubs: Pick<
     createCipherPairWithDataKey: unreachable("kmsService.createCipherPairWithDataKey")
   },
   projectQueue: {
-    startSecretBlindIndexMigrationForOrg: unreachable("projectQueue.startSecretBlindIndexMigrationForOrg")
+    startSecretBlindIndexMigrationForOrg: unreachable("projectQueue.startSecretBlindIndexMigrationForOrg"),
+    isSecretBlindIndexMigrationRunningForOrg: unreachable("projectQueue.isSecretBlindIndexMigrationRunningForOrg")
   }
 };
 

@@ -718,8 +718,10 @@ export const projectQueueFactory = ({
     return { enqueuedProjectIds, pendingProjectCount };
   };
 
+  const getSecretBlindIndexMigrationOrgJobId = (orgId: string) => `enable-blind-index-org-${orgId}`;
+
   const startSecretBlindIndexMigrationForOrg = async (orgId: string) => {
-    const jobId = `enable-blind-index-org-${orgId}`;
+    const jobId = getSecretBlindIndexMigrationOrgJobId(orgId);
 
     const existingJob = await queueService.getJob(QueueName.SecretBlindIndexMigrationDispatch, jobId);
     if (existingJob) {
@@ -915,11 +917,23 @@ export const projectQueueFactory = ({
     return { status: JobState.Pending };
   };
 
+  const isSecretBlindIndexMigrationRunningForOrg = async (orgId: string) => {
+    const job = await queueService.getJob(
+      QueueName.SecretBlindIndexMigrationDispatch,
+      getSecretBlindIndexMigrationOrgJobId(orgId)
+    );
+    if (!job) return false;
+
+    const state = await job.getState();
+    return state !== JobState.Completed && state !== JobState.Failed;
+  };
+
   return {
     upgradeProject,
     startSecretBlindIndexMigration,
     startSecretBlindIndexMigrationForOrg,
     startSecretBlindIndexMigrationPerOrg,
+    isSecretBlindIndexMigrationRunningForOrg,
     getJobState
   };
 };

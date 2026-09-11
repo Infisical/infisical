@@ -1,9 +1,11 @@
+export { useStartOrgBlindIndexMigration } from "./mutations";
 export {
   secretInsightsKeys,
   useGetAuthMethodDistribution,
   useGetCalendarInsights,
   useGetInsightsSummary,
   useGetOrgAuthMethodDistribution,
+  useGetOrgBlindIndexMigrationStatus,
   useGetOrgSecretsAccessVolume,
   useGetOrgSecretsProjects,
   useGetOrgSecretsSummary,
@@ -32,6 +34,7 @@ export type {
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
   TOrgAuthMethodUsage,
+  TOrgBlindIndexMigrationStatus,
   TOrgProjectInsight,
   TOrgProjectInsightWarnings,
   TOrgProjectsInsights,
@@ -39,5 +42,6 @@ export type {
   TOrgSecretsSummary,
   TOrgStaticSecretUsage,
   TSecretAccessVolumeActor,
-  TSecretAccessVolumeDay
+  TSecretAccessVolumeDay,
+  TStartOrgBlindIndexMigrationResponse
 } from "./types";

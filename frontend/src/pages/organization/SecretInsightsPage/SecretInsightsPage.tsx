@@ -45,6 +45,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   AuthMethodsCard,
+  BlindIndexCard,
   InsightsCard,
   RequestOrgAuditReportModal,
   SecretAccessVolumeCard,
@@ -234,6 +235,7 @@ export const SecretInsightsPage = withPermission(
                   </AlertDescription>
                 </Alert>
               )}
+              {hasInsightsPlan && <BlindIndexCard />}
               {isSummaryLoading && (
                 <div className="grid gap-4 md:grid-cols-3">
                   <Skeleton className="h-[150px]" />

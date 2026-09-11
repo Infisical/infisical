@@ -357,6 +357,42 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/secrets/blind-index/status",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "getOrgSecretBlindIndexMigrationStatus",
+      description:
+        "Get whether a secret blind index migration is running for the organization, and how many of its secret management projects still need one.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          secretBlindIndexMigration: z.object({
+            pendingProjectCount: z
+              .number()
+              .int()
+              .describe(INSIGHTS.GET_SECRET_BLIND_INDEX_MIGRATION_STATUS.pendingProjectCount),
+            isRunning: z.boolean().describe(INSIGHTS.GET_SECRET_BLIND_INDEX_MIGRATION_STATUS.isRunning)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secretBlindIndexMigration = await server.services.insights.getSecretBlindIndexMigrationStatus({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      return { secretBlindIndexMigration };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/secrets/reports",
     config: { rateLimit: readLimit },
     schema: {

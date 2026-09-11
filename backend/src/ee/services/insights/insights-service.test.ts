@@ -123,7 +123,8 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
       ttl: async () => -2
     },
     projectQueue: {
-      startSecretBlindIndexMigrationForOrg: unreachable("projectQueue.startSecretBlindIndexMigrationForOrg")
+      startSecretBlindIndexMigrationForOrg: unreachable("projectQueue.startSecretBlindIndexMigrationForOrg"),
+      isSecretBlindIndexMigrationRunningForOrg: unreachable("projectQueue.isSecretBlindIndexMigrationRunningForOrg")
     },
     orgDAL: { countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers") },
     identityOrgMembershipDAL: {

@@ -90,7 +90,10 @@ export type TInsightsServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
-  projectQueue: Pick<TProjectQueueFactory, "startSecretBlindIndexMigrationForOrg">;
+  projectQueue: Pick<
+    TProjectQueueFactory,
+    "startSecretBlindIndexMigrationForOrg" | "isSecretBlindIndexMigrationRunningForOrg"
+  >;
   orgDAL: Pick<TOrgDALFactory, "countSecretManagerProjectMembers">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countSecretManagerProjectIdentities">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "countLeasesForOrg">;
@@ -769,6 +772,17 @@ export const insightsServiceFactory = ({
     };
   };
 
+  const getSecretBlindIndexMigrationStatus = async (dto: TOrgInsightsDTO) => {
+    await assertOrgInsightsRead(dto);
+
+    const [pendingProjectCount, isRunning] = await Promise.all([
+      projectDAL.countOrgProjectsPendingSecretBlindIndex(dto.orgId),
+      projectQueue.isSecretBlindIndexMigrationRunningForOrg(dto.orgId)
+    ]);
+
+    return { pendingProjectCount, isRunning };
+  };
+
   const startSecretBlindIndexMigration = async ({
     actor,
     actorId,
@@ -815,6 +829,7 @@ export const insightsServiceFactory = ({
     getSecretsUsageInsights,
     getSecretsProjects,
     getStaticSecretsUsage,
-    startSecretBlindIndexMigration
+    startSecretBlindIndexMigration,
+    getSecretBlindIndexMigrationStatus
   };
 };
