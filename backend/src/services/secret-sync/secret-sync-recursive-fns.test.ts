@@ -106,9 +106,19 @@ describe("assertWithinSecretLimit", () => {
   });
 
   test("rejects a count above the limit with a message naming both numbers", () => {
-    expect(() => assertWithinSecretLimit(SECRET_SYNC_MAX_SECRETS + 1)).toThrow(
-      new RegExp(`${SECRET_SYNC_MAX_SECRETS + 1}.*${SECRET_SYNC_MAX_SECRETS}`)
-    );
+    let error: unknown;
+    try {
+      assertWithinSecretLimit(SECRET_SYNC_MAX_SECRETS + 1);
+    } catch (err) {
+      error = err;
+    }
+
+    expect(error).toBeInstanceOf(Error);
+    const message = (error as Error).message;
+    const overIndex = message.indexOf(String(SECRET_SYNC_MAX_SECRETS + 1));
+    const limitIndex = message.indexOf(String(SECRET_SYNC_MAX_SECRETS), overIndex + 1);
+    expect(overIndex).toBeGreaterThanOrEqual(0);
+    expect(limitIndex).toBeGreaterThan(overIndex);
   });
 });
 
