@@ -1,0 +1,16 @@
+---
+title: "Replace .env files in local development"
+sidebarTitle: "Replace .env in local development"
+description: "Run an application locally and fetch its secrets from Infisical instead of a .env file."
+---
+
+`.env` files are stored on individual developer machines. They're often shared between team members through channels such as Slack, and their values can become inconsistent when one developer updates a credential without informing others. There is no record of who holds a copy of the file or which values it contains.
+
+## Solution
+
+The Infisical [CLI](/cli/overview) replaces the local `.env` file. Running `infisical run -- <command>` fetches the current secrets from Infisical and injects them into the command's environment variables, so no file is written to disk. Every developer's machine reads secrets from the same source, and access is controlled by the same rules that apply in production.
+
+## Get started
+
+1. [Install the CLI](/cli/overview) and log in to Infisical.
+2. Follow the [local development guide](/documentation/guides/local-development) to run an application with `infisical run` and inject secrets without a `.env` file.

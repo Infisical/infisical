@@ -1,0 +1,69 @@
+---
+title: "Manage secrets"
+sidebarTitle: "Overview"
+description: "Store credentials centrally in Infisical and deliver them to the applications and infrastructure that use them."
+---
+
+Infisical Secrets Management is a central store for the secrets used by applications and infrastructure. It replaces `.env` files, hardcoded credentials, and secrets that are shared between team members through channels such as Slack. Once secrets are stored in Infisical, they can be delivered to the systems that use them.
+
+<Card title="Secrets Management docs" icon="vault" href="/documentation/platform/secrets-mgmt/overview">
+  Quickstart, project structure, delivery methods, rotation, dynamic secrets, and integrations.
+</Card>
+
+## Delivery patterns
+
+Secrets can be delivered to an application in three ways, depending on how the application runs.
+
+- **Pull at runtime.** The application fetches secrets from Infisical when it starts, or when it needs them. This method uses the [CLI](/cli/overview), the [SDKs](/sdks/overview), or [agents](/integrations/platforms/infisical-agent). It's typically used for local development, containerized applications, and serverless functions.
+- **Sync to a native store.** Infisical stores the secret, and the current value is pushed to a platform's own secret store where the application reads it. This method uses [Secret Syncs](/integrations/secret-syncs/overview) or the [Kubernetes operator](/integrations/platforms/kubernetes/overview). It's typically used with GitHub Actions, AWS Lambda, Vercel deployments, and Kubernetes-native Secrets.
+- **Generate per request.** A credential is generated only when it's requested and revoked shortly after. This method uses [dynamic secrets](/documentation/platform/dynamic-secrets/overview) or [secret rotation](/documentation/platform/secret-rotation/overview). It's typically used for privileged operations, CI/CD jobs that access production systems, and workflows involving AI agents.
+
+These methods can be combined within a single organization. For example, an application in local development can pull secrets at runtime, while a production credential for the same service is generated per request.
+
+## Use cases
+
+<CardGroup cols={2}>
+  <Card title="Deliver secrets to running apps" icon="truck-fast" href="/documentation/getting-started/choose-a-product/secrets-management/deliver-secrets">
+    Fetch secrets from Infisical at runtime through the CLI, SDKs, agents, Kubernetes, or CI/CD.
+  </Card>
+  <Card title="Replace .env in local development" icon="laptop-code" href="/documentation/getting-started/choose-a-product/secrets-management/local-development">
+    Run an application locally and fetch its secrets from Infisical instead of a `.env` file.
+  </Card>
+  <Card title="Rotate a long-lived credential" icon="rotate" href="/documentation/getting-started/choose-a-product/secrets-management/rotate-credentials">
+    Automatically replace a credential on a schedule managed by Infisical.
+  </Card>
+  <Card title="Generate short-lived credentials" icon="bolt" href="/documentation/getting-started/choose-a-product/secrets-management/dynamic-credentials">
+    Generate a credential at the time of the request and revoke it after a short period.
+  </Card>
+  <Card title="Sync secrets to third-party stores" icon="arrows-rotate" href="/documentation/getting-started/choose-a-product/secrets-management/sync-secrets">
+    Forward secrets from Infisical to platforms such as GitHub, GitLab, AWS Secrets Manager, and Vercel.
+  </Card>
+  <Card title="Broker credentials to AI agents" icon="robot" href="/documentation/getting-started/choose-a-product/secrets-management/broker-agent-credentials">
+    Attach credentials to agent requests at a proxy so that the agent never receives the credential.
+  </Card>
+</CardGroup>
+
+## What is a secret?
+
+A secret is a confidential value that an application uses to authenticate with or otherwise access another system. Common examples include database passwords, API keys, signing keys, and access tokens. If a secret is exposed to a party that isn't authorized to use it, the systems it grants access to are also exposed.
+
+## Why manage secrets centrally
+
+As an organization grows, secrets tend to be duplicated across multiple locations. The same credential can be committed to source code, shared in chat messages, copied into CI/CD configuration, and stored in developer `.env` files. When a credential is stored in many places, it becomes difficult to track who has access to it, when it was last rotated, and where its value needs to be updated when it changes.
+
+Storing secrets centrally in Infisical addresses these problems by providing a single location where a secret's value is stored, a single set of access controls that determine who can read the secret, an audit log of accesses and changes, and a single place from which the secret can be rotated.
+
+## How Infisical does it
+
+Infisical stores secrets in a four-level hierarchy:
+
+```
+Project → Environment → Folder → Secret
+```
+
+- **Projects** contain the secrets used by a single application or service, along with the access rules that determine who can read them.
+- **Environments** separate secrets by where they're used. The same secret key can hold different values in `development`, `staging`, and `production`.
+- **Folders** group related secrets within an environment and can be used as boundaries for access control.
+- **Secrets** are key-value pairs. Every change to a secret is versioned, secrets can reference the values of other secrets, and a secret can be restored to a previous value.
+
+In addition to storing secrets, Infisical delivers them to applications and infrastructure through the [CLI](/cli/overview), [SDKs](/sdks/overview), [agents](/integrations/platforms/infisical-agent), [Kubernetes](/integrations/platforms/kubernetes/overview), and CI/CD. Long-lived credentials can be [rotated](/documentation/platform/secret-rotation/overview) on a schedule, short-lived credentials can be [generated on demand](/documentation/platform/dynamic-secrets/overview), and changes to secrets in sensitive folders can require [approval](/documentation/platform/pr-workflows) before they're applied.

@@ -43,22 +43,27 @@
         "pages": [
           "documentation/getting-started/overview",
           "documentation/getting-started/introduction",
+          "documentation/getting-started/set-up-with-ai",
+          "documentation/platform/external-migrations/overview",
+          "documentation/getting-started/concepts/deployment-models",
           {
-            "group": "Concepts",
+            "group": "Quickstarts",
             "pages": [
-              "documentation/getting-started/concepts/deployment-models",
-              "documentation/getting-started/concepts/platform-hierarchy",
-              "documentation/getting-started/concepts/platform-iam",
-              "documentation/getting-started/concepts/client-integrations",
-              "documentation/getting-started/concepts/audit-logs"
-            ]
-          },
-          {
-            "group": "Migrate to Infisical",
-            "pages": [
-              "documentation/platform/external-migrations/overview",
-              "documentation/platform/external-migrations/doppler",
-              "documentation/platform/external-migrations/vault"
+              "documentation/getting-started/quickstarts/deliver-secret",
+              "documentation/getting-started/quickstarts/local-development",
+              "documentation/getting-started/quickstarts/docker-container",
+              "documentation/getting-started/quickstarts/github-actions",
+              "documentation/getting-started/quickstarts/kubernetes-operator",
+              "documentation/getting-started/quickstarts/rotate-postgres",
+              "documentation/getting-started/quickstarts/dynamic-postgres",
+              "documentation/getting-started/quickstarts/universal-auth",
+              "documentation/getting-started/quickstarts/sso",
+              "documentation/getting-started/quickstarts/gateway",
+              "documentation/getting-started/quickstarts/scan-github",
+              "documentation/getting-started/quickstarts/issue-certificate",
+              "documentation/getting-started/quickstarts/hsm",
+              "documentation/getting-started/quickstarts/broker-session",
+              "documentation/getting-started/quickstarts/self-host-docker-compose"
             ]
           }
         ]
@@ -87,7 +92,15 @@
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
-                  "documentation/platform/secret-sharing"
+                  "documentation/platform/secret-sharing",
+                  {
+                    "group": "Migrate to Infisical",
+                    "root": "documentation/platform/secrets-mgmt/quick-starts/migrate",
+                    "pages": [
+                      "documentation/platform/external-migrations/doppler",
+                      "documentation/platform/external-migrations/vault"
+                    ]
+                  }
                 ]
               },
               {
@@ -4653,6 +4666,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/ai/model-context-protocol",
+      "destination": "/documentation/getting-started/set-up-with-ai"
+    },
     {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"
