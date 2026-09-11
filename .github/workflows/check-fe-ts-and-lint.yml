@@ -44,6 +44,9 @@ jobs:
       - name: 🏗️ Run Type check
         run: npm run type:check
         working-directory: frontend
+      - name: 🧪 Run unit tests
+        run: npm test
+        working-directory: frontend
 
   lint:
     name: Lint

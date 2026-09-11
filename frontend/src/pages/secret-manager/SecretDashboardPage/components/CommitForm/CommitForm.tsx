@@ -559,7 +559,10 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     <>
       {/* Floating Bottom Banner */}
       {!isModalOpen && (
-        <div className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2">
+        <div
+          data-slot="batch-commit-bar"
+          className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2"
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key="commit-panel"

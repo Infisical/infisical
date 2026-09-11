@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { getSecretSyncDestinationConfig } from "@app/components/secret-syncs/forms/schemas/secret-sync-schema";
 import { SecretSync, useCheckDuplicateDestination } from "@app/hooks/api/secretSyncs";
 
 type UseDuplicateDestinationCheckProps = {
@@ -19,15 +20,12 @@ export const useDuplicateDestinationCheck = ({
   enabled = true,
   destinationConfig
 }: UseDuplicateDestinationCheckProps) => {
-  const hasValidConfig = useMemo(() => {
-    if (!destinationConfig || typeof destinationConfig !== "object") return false;
+  const normalizedConfig = useMemo(
+    () => getSecretSyncDestinationConfig(destination, destinationConfig),
+    [destination, destinationConfig]
+  );
 
-    const values = Object.values(destinationConfig);
-    return (
-      values.length > 0 &&
-      values.some((value) => value !== null && value !== undefined && value !== "")
-    );
-  }, [destinationConfig]);
+  const hasValidConfig = Boolean(normalizedConfig && Object.keys(normalizedConfig).length > 0);
 
   const shouldCheck = enabled && hasValidConfig;
 
@@ -38,7 +36,7 @@ export const useDuplicateDestinationCheck = ({
     refetch
   } = useCheckDuplicateDestination(
     destination,
-    destinationConfig,
+    normalizedConfig,
     projectId,
     excludeSyncId,
     connectionId,

@@ -1,17 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useOnaConnectionListProjects } from "@app/hooks/api/appConnections/ona";
-import { TOnaProject } from "@app/hooks/api/appConnections/ona/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -42,14 +40,20 @@ export const OnaSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Ona Project</FieldLabel>
+            <FieldLabel id="secret-sync-ona-project-id-label" htmlFor="secret-sync-ona-project-id">
+              Ona Project
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-ona-project-id-label"
+                aria-describedby={error ? "secret-sync-ona-project-id-error" : undefined}
+                id="secret-sync-ona-project-id"
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects?.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TOnaProject>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? "");
                   setValue("destinationConfig.projectName", selected?.name ?? "");
                 }}
@@ -57,8 +61,10 @@ export const OnaSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-ona-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

@@ -119,7 +119,7 @@ const SecretRow = ({ name, fate }: ReconciliationRow) => {
 const ReconciliationLegend = () => (
   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] tracking-wider text-muted uppercase">
     <span className="flex items-center gap-1">
-      <span className="inline-block h-2 w-3 rounded-[2px] border border-border bg-mineshaft-800/80" />
+      <span className="inline-block h-2 w-3 rounded-[2px] border border-border bg-container-hover/80" />
       unchanged
     </span>
     <span className="flex items-center gap-1">
@@ -200,7 +200,7 @@ const ReconciliationSection = ({
   infisicalRows: ReconciliationRow[];
   destinationRows: ReconciliationRow[];
 }) => (
-  <div className="rounded-md border border-border bg-mineshaft-800/30 p-3">
+  <div className="rounded-md border border-border bg-container-hover/30 p-3">
     <div className="mb-3 flex items-baseline gap-2">
       <p className="text-xs font-semibold tracking-wider text-foreground uppercase">{title}</p>
       <p className="text-xs text-muted">{subtitle}</p>

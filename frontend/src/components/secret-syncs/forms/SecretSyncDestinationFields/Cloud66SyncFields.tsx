@@ -1,5 +1,4 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -7,14 +6,13 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import { TCloud66Stack } from "@app/hooks/api/appConnections/cloud-66";
 import { useCloud66ConnectionListStacks } from "@app/hooks/api/appConnections/cloud-66/queries";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -48,14 +46,23 @@ export const Cloud66SyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Stack</FieldLabel>
+            <FieldLabel
+              id="secret-sync-cloud66-stack-id-label"
+              htmlFor="secret-sync-cloud66-stack-id"
+            >
+              Stack
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-cloud66-stack-id-label"
+                aria-describedby={error ? "secret-sync-cloud66-stack-id-error" : undefined}
+                id="secret-sync-cloud66-stack-id"
+                isError={Boolean(error)}
                 isLoading={isStacksLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={stacks?.find((stack) => stack.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedStack = option as SingleValue<TCloud66Stack>;
+                onValueChange={(option) => {
+                  const selectedStack = option;
                   onChange(selectedStack?.id ?? "");
                   setValue("destinationConfig.stackName", selectedStack?.name ?? "");
                 }}
@@ -63,8 +70,10 @@ export const Cloud66SyncFields = () => {
                 placeholder="Select a stack..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-cloud66-stack-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

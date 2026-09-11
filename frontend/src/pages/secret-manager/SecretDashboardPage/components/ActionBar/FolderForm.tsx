@@ -99,7 +99,12 @@ export const FolderForm = ({
           <Field>
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
-              <Input {...field} placeholder="Type your folder name" />
+              <Input
+                {...field}
+                placeholder="Type your folder name"
+                autoComplete="off"
+                name="folder-name"
+              />
             </FieldContent>
             {error && <FieldError>{error.message}</FieldError>}
           </Field>

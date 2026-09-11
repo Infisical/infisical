@@ -928,6 +928,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="my-external-ca"
                       disabled={Boolean(ca)}
                       isError={Boolean(error)}
+                      autoComplete="off"
+                      name="certificate-authority-name"
                     />
                     {!error && (
                       <FieldDescription>

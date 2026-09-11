@@ -416,7 +416,12 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                     errorText={error?.message}
                     isRequired
                   >
-                    <Input {...field} placeholder="web-service" />
+                    <Input
+                      {...field}
+                      placeholder="web-service"
+                      autoComplete="off"
+                      name="pki-subscriber-name"
+                    />
                   </FormControl>
                 )}
               />

@@ -151,6 +151,7 @@ export const EditProjectRoleDialog = ({ isOpen, role, onOpenChange }: Props) => 
                         autoComplete="off"
                         data-1p-ignore
                         isError={Boolean(error)}
+                        name="edit-project-role-name"
                       />
                       <FieldError>{error?.message}</FieldError>
                     </Field>

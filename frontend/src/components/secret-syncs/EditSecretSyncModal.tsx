@@ -1,22 +1,14 @@
 import { useState } from "react";
-import { AlertTriangleIcon } from "lucide-react";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
+  DiscardChangesAlertDialog,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import { EditSecretSyncForm } from "./forms";
 import { SecretSyncModalHeader } from "./SecretSyncModalHeader";
@@ -29,21 +21,23 @@ type Props = {
 
 export const EditSecretSyncModal = ({ isOpen, secretSync, onOpenChange }: Props) => {
   const [isDirty, setIsDirty] = useState(false);
-  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
-
-  if (!secretSync) return null;
 
   const closeSheet = () => {
-    setConfirmDiscardOpen(false);
+    setIsDirty(false);
     onOpenChange(false);
   };
 
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+
+  if (!secretSync) return null;
+
   const handleSheetOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && isDirty) {
-      setConfirmDiscardOpen(true);
+    if (!nextOpen) {
+      requestDiscard();
       return;
     }
-    onOpenChange(nextOpen);
+    onOpenChange(true);
   };
 
   return (
@@ -51,18 +45,17 @@ export const EditSecretSyncModal = ({ isOpen, secretSync, onOpenChange }: Props)
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
         <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
           <SheetHeader className="border-b">
-            <SheetTitle>
-              <SecretSyncModalHeader
-                isConfigured
-                destination={secretSync.destination}
-                showDocLink={false}
-              />
-            </SheetTitle>
+            <SheetTitle className="sr-only">Edit secret sync</SheetTitle>
+            <SecretSyncModalHeader
+              isConfigured
+              destination={secretSync.destination}
+              showDocLink={false}
+            />
           </SheetHeader>
           <div className="flex min-h-0 flex-1 flex-col">
             <EditSecretSyncForm
               secretSync={secretSync}
-              onComplete={() => onOpenChange(false)}
+              onComplete={closeSheet}
               onDirtyChange={setIsDirty}
               onCancel={() => handleSheetOpenChange(false)}
             />
@@ -70,25 +63,13 @@ export const EditSecretSyncModal = ({ isOpen, secretSync, onOpenChange }: Props)
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <AlertTriangleIcon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Discard changes?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your unsaved changes to this sync will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={closeSheet}>
-              Discard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your unsaved changes to this sync will be lost."
+      />
     </>
   );
 };

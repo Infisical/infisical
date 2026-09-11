@@ -712,6 +712,8 @@ const Form = ({
                   value={field.value || ""}
                   placeholder="e.g. Production Approvals"
                   isError={Boolean(error)}
+                  autoComplete="off"
+                  name="policy-name"
                 />
                 <FieldError errors={[error]} />
               </FieldContent>

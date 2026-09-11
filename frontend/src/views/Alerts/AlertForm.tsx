@@ -189,6 +189,7 @@ export const AlertForm = ({
                 placeholder={DEFAULT_ALERT_NAME}
                 isError={Boolean(errors.name)}
                 {...register("name")}
+                autoComplete="off"
               />
               <FieldError errors={[errors.name]} />
             </FieldContent>
