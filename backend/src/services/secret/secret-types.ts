@@ -211,6 +211,13 @@ export type TGetAccessibleSecretsDTO = {
   filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 } & TProjectPermission;
 
+export type TGetSecretMetadataDTO = {
+  secretPath: string;
+  environment: string;
+  cursor?: string;
+  limit: number;
+} & TProjectPermission;
+
 export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
   personalOverridesBehavior: PersonalOverridesBehavior;

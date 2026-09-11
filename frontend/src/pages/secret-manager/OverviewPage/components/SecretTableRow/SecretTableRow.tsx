@@ -100,6 +100,10 @@ type Props = {
   isBatchMode?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
   isSelectionDisabled?: boolean;
+  onCopySecret?: (request: {
+    source: { id: string; name: string; path: string; isValueHidden: boolean };
+    environmentSlug: string;
+  }) => void;
 };
 
 export const SecretTableRow = ({
@@ -119,7 +123,8 @@ export const SecretTableRow = ({
   isSingleEnvSecretsVisible,
   isBatchMode,
   onBatchRevert,
-  isSelectionDisabled
+  isSelectionDisabled,
+  onCopySecret
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
@@ -335,6 +340,20 @@ export const SecretTableRow = ({
             skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
             reminder={singleEnvSecret?.reminder}
             revokedProjectFolderGrant={singleEnvSecret?.revokedProjectFolderGrant}
+            onCopySecret={
+              singleEnvSecret?.id
+                ? () =>
+                    onCopySecret?.({
+                      source: {
+                        id: singleEnvSecret.id,
+                        name: secretKey,
+                        path: singleEnvSecret.path ?? secretPath,
+                        isValueHidden: singleEnvSecret.secretValueHidden
+                      },
+                      environmentSlug: singleEnvSlug
+                    })
+                : undefined
+            }
           />
         ) : (
           <TableCell
@@ -611,6 +630,20 @@ export const SecretTableRow = ({
                               skipMultilineEncoding={secret?.skipMultilineEncoding}
                               reminder={secret?.reminder}
                               revokedProjectFolderGrant={secret?.revokedProjectFolderGrant}
+                              onCopySecret={
+                                secret?.id
+                                  ? () =>
+                                      onCopySecret?.({
+                                        source: {
+                                          id: secret.id,
+                                          name: secretKey,
+                                          path: secret.path ?? secretPath,
+                                          isValueHidden: secret.secretValueHidden
+                                        },
+                                        environmentSlug: slug
+                                      })
+                                  : undefined
+                              }
                             />
                           </TableCell>
                         </TableRow>

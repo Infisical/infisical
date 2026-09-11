@@ -21,9 +21,11 @@ import {
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretMetadataDTO,
   TGetSecretValueDTO,
   TSearchSecretsByMetadataDTO,
-  TSearchSecretsByMetadataResponse
+  TSearchSecretsByMetadataResponse,
+  TSecretMetadataPage
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
@@ -113,6 +115,14 @@ export const dashboardKeys = {
       destinationEnvironment,
       destinationPath
     ] as const
+};
+
+export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?: AbortSignal) => {
+  const { data } = await apiRequest.get<TSecretMetadataPage>(
+    "/api/v1/dashboard/accessible-secrets/metadata",
+    { params, signal }
+  );
+  return data;
 };
 
 export const fetchProjectSecretsOverview = async ({
