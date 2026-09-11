@@ -3169,6 +3169,8 @@ export const registerRoutes = async (
     orgDAL,
     folderDAL,
     projectEnvDAL,
+    projectDAL,
+    projectFolderGrantDAL,
     secretSyncQueue,
     projectBotService,
     keyStore,

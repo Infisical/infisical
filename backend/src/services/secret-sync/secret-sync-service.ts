@@ -20,18 +20,22 @@ import { OrgServiceActor } from "@app/lib/types";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   enterpriseSyncCheck,
   listSecretSyncOptions,
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions
 } from "@app/services/secret-sync/secret-sync-fns";
-import { resolveSyncFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
+import { buildSyncPayload, resolveSyncFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
   TCheckDuplicateDestinationDTO,
@@ -47,6 +51,7 @@ import {
   TTriggerSecretSyncSyncSecretsByIdDTO,
   TUpdateSecretSyncDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -64,15 +69,20 @@ import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
   secretImportDAL: TSecretImportDALFactory;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne" | "find" | "findByFolderId" | "findByFolderIds">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOrgById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId" | "findById" | "findBySecretPath" | "find">;
+  folderDAL: Pick<
+    TSecretFolderDALFactory,
+    "findByProjectId" | "findById" | "findBySecretPath" | "find" | "findByManySecretPath"
+  >;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "find">;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   keyStore: Pick<TKeyStoreFactory, "getItem">;
   secretSyncQueue: Pick<
     TSecretSyncQueueFactory,
@@ -87,6 +97,8 @@ export const secretSyncServiceFactory = ({
   secretSyncDAL,
   folderDAL,
   projectEnvDAL,
+  projectDAL,
+  projectFolderGrantDAL,
   secretImportDAL,
   secretV2BridgeDAL,
   appConnectionDAL,
@@ -174,6 +186,88 @@ export const secretSyncServiceFactory = ({
               : `You do not have permission to read secrets at path "${path}" in environment "${environment}". This sync includes subfolders, so it reads every folder beneath "${sourcePath}".`
         });
       }
+    }
+  };
+
+  // Flattening a subtree onto a destination that holds one flat list can produce two secrets with
+  // the same destination key. flatten() is what detects that, and the job runs it on every sync, so
+  // calling it here means a user reads the same sentence at save time and when the sync later drifts
+  // into the same state.
+  const $assertSyncableAtDestination = async ({
+    projectId,
+    actorOrgId,
+    environment,
+    sourcePath,
+    sourceFolderId,
+    recursive,
+    keySchema
+  }: {
+    projectId: string;
+    actorOrgId: string;
+    environment: string;
+    sourcePath: string;
+    sourceFolderId: string;
+    recursive: boolean;
+    keySchema?: string;
+  }) => {
+    if (!recursive) return;
+
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const decryptSecretValue = (value?: Buffer | null) =>
+      value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
+
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      decryptSecretValue,
+      secretDAL: secretV2BridgeDAL,
+      folderDAL,
+      projectId,
+      canExpandValue: () => true,
+      actorOrgId,
+      orgDAL,
+      licenseService,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
+    });
+
+    try {
+      const payload = await buildSyncPayload(
+        {
+          folderDAL,
+          projectEnvDAL,
+          secretV2BridgeDAL,
+          secretImportDAL,
+          expandSecretReferences,
+          decryptSecretValue,
+          fnSecretsV2FromImportsDeps: {
+            projectFolderGrantDAL,
+            actorOrgId,
+            orgDAL,
+            licenseService,
+            kmsService
+          }
+        },
+        {
+          projectId,
+          environment,
+          sourcePath,
+          sourceFolderId,
+          recursive,
+          keySchema,
+          includeImports: true,
+          dedupeForRemoval: false
+        }
+      );
+
+      payload.flatten();
+    } catch (error) {
+      if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
+
+      throw error;
     }
   };
 
@@ -477,12 +571,27 @@ export const secretSyncServiceFactory = ({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
 
+    const requestedSyncOptions = params.syncOptions as { recursive?: boolean; keySchema?: string } | undefined;
+    const isRecursive = Boolean(requestedSyncOptions?.recursive);
+
     await $assertCanReadSyncedFolders(projectPermission, {
       projectId,
       environment,
       sourcePath: secretPath,
       sourceFolderId: folder.id,
-      recursive: Boolean((params.syncOptions as { recursive?: boolean } | undefined)?.recursive)
+      recursive: isRecursive
+    });
+
+    // Runs after the permission check above: the conflict it raises names every folder beneath the
+    // source, including ones this actor is denied on.
+    await $assertSyncableAtDestination({
+      projectId,
+      actorOrgId: actor.orgId,
+      environment,
+      sourcePath: secretPath,
+      sourceFolderId: folder.id,
+      recursive: isRecursive,
+      keySchema: requestedSyncOptions?.keySchema
     });
 
     // getProjectPermission above throws NotFoundError if the project doesn't exist and
@@ -707,6 +816,18 @@ export const secretSyncServiceFactory = ({
         sourcePath: updatedSecretPath,
         sourceFolderId: folderId,
         recursive: isRecursive
+      });
+
+      await $assertSyncableAtDestination({
+        projectId: secretSync.projectId,
+        actorOrgId: actor.orgId,
+        environment: updatedEnvironment,
+        sourcePath: updatedSecretPath,
+        sourceFolderId: folderId,
+        recursive: isRecursive,
+        keySchema:
+          (params.syncOptions as { keySchema?: string } | undefined)?.keySchema ??
+          (secretSync.syncOptions as { keySchema?: string } | undefined)?.keySchema
       });
     }
 
