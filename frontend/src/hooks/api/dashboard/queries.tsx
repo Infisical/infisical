@@ -125,14 +125,12 @@ export const fetchProjectSecretsOverview = async ({
     {
       params: {
         ...params,
-        environments: encodeURIComponent(environments.join(",")),
-        tags: encodeURIComponent(
-          Object.entries(tags ?? {})
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
+        environments: environments.join(","),
+        tags: Object.entries(tags ?? {})
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          .filter(([_, enabled]) => enabled)
+          .map(([tag]) => tag)
+          .join(",")
       }
     }
   );
@@ -149,13 +147,11 @@ export const fetchProjectSecretsDetails = async ({
     {
       params: {
         ...params,
-        tags: encodeURIComponent(
-          Object.entries(tags)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
+        tags: Object.entries(tags)
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          .filter(([_, enabled]) => enabled)
+          .map(([tag]) => tag)
+          .join(",")
       }
     }
   );
@@ -172,7 +168,7 @@ export const fetchDashboardProjectSecretsByKeys = async ({
     {
       params: {
         ...params,
-        keys: encodeURIComponent(keys.join(","))
+        keys: keys.join(",")
       }
     }
   );
@@ -424,14 +420,12 @@ export const fetchProjectSecretsQuickSearch = async ({
     {
       params: {
         ...params,
-        environments: encodeURIComponent(environments.join(",")),
-        tags: encodeURIComponent(
-          Object.entries(tags)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .filter(([_, enabled]) => enabled)
-            .map(([tag]) => tag)
-            .join(",")
-        )
+        environments: environments.join(","),
+        tags: Object.entries(tags)
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          .filter(([_, enabled]) => enabled)
+          .map(([tag]) => tag)
+          .join(",")
       }
     }
   );
