@@ -38,8 +38,10 @@ const iconsFromHostPatterns = (hostPatterns: string[]): TConnectionIcon[] => {
 const chipClassName =
   "flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-border text-foreground/60";
 
-// The ring paints in the table surface color so each overlapping chip reads as its own layer.
-const stackedChipClassName = "ring-2 ring-container";
+// The ring paints in the table surface color, following the row hover, so each overlapping chip
+// reads as its own layer instead of a dark outline.
+const stackedChipClassName =
+  "ring-2 ring-container transition-shadow duration-75 [tr:hover_&]:ring-container-hover";
 
 type TConnectionChipProps = ComponentPropsWithoutRef<"div"> & { icon: TConnectionIcon };
 
