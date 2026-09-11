@@ -209,6 +209,37 @@ describe("Secret syncs", async () => {
     });
   });
 
+  describe("The key schema renames secret keys at the destination", () => {
+    test("A key schema renames every secret key sent to the destination", async () => {
+      const destinationPath = pathFor("key-schema");
+      await addSecret("/services", "API_KEY", "api-value");
+
+      // Sitting at the destination and outside the schema, so it proves the sync claims only the
+      // keys the schema matches. With overwrite-destination it would otherwise be deleted as a
+      // key Infisical does not have.
+      fakeParameterStore.at(REGION, destinationPath).seed({ UNMANAGED_KEY: "not-ours" });
+
+      const { secretSync } = await newSync("key-schema", {
+        secretPath: "/services",
+        keySchema: "INFISICAL_{{secretKey}}",
+        initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination
+      });
+      await triggerSecretSync({
+        syncId: secretSync!.id,
+        region: REGION,
+        destinationPath,
+        authToken: jwtAuthToken
+      });
+
+      expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({
+        INFISICAL_API_KEY: "api-value",
+        UNMANAGED_KEY: "not-ours"
+      });
+
+      await removeSecret("/services", "API_KEY");
+    });
+  });
+
   describe("The initial sync behavior decides what happens to secrets already at the destination", () => {
     test('Initial sync behavior "overwrite-destination" removes destination secrets Infisical does not have', async () => {
       await addSecret("/services", "API_KEY", "api-value");
