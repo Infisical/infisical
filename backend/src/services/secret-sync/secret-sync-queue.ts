@@ -44,7 +44,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
-import { buildSyncPayload } from "@app/services/secret-sync/secret-sync-recursive-fns";
+import { buildSyncPayload, getAncestorPaths } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncAction,
   SecretSyncStatus,
@@ -1061,7 +1061,23 @@ export const secretSyncQueueFactory = ({
         `Could not find folder at path "${secretPath}" for environment with slug "${environmentSlug}" in project with ID "${projectId}"`
       );
 
-    const secretSyncs = await secretSyncDAL.find({ folderId: folder.id, isAutoSyncEnabled: true });
+    const ancestorPaths = getAncestorPaths(secretPath);
+
+    const ancestorFolders = (
+      await folderDAL.findByManySecretPath(ancestorPaths.map((path) => ({ envId: folder.envId, secretPath: path })))
+    ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    const candidateSyncs = await secretSyncDAL.find({
+      $in: { folderId: [...ancestorFolders.map((entry) => entry.id), folder.id] },
+      isAutoSyncEnabled: true
+    });
+
+    // A sync on the changed folder itself always matches, recursive or not. A sync on an
+    // ancestor folder only matches when it is recursive, so a non-recursive sync rooted above
+    // this path is never triggered by a write it was never configured to cover.
+    const secretSyncs = candidateSyncs.filter(
+      (sync) => sync.folderId === folder.id || Boolean((sync.syncOptions as { recursive?: boolean } | null)?.recursive)
+    );
 
     await secretSyncDAL.update(
       {

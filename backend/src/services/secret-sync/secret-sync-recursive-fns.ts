@@ -30,6 +30,12 @@ export type TFnSecretsV2FromImportsDeps = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
+export const getAncestorPaths = (path: string): string[] => {
+  const segments = path.split("/").filter(Boolean);
+
+  return segments.map((_, index) => (index === 0 ? "/" : `/${segments.slice(0, index).join("/")}`));
+};
+
 export const SECRET_SYNC_MAX_SECRETS = 10_000;
 
 export const assertWithinSecretLimit = (count: number) => {

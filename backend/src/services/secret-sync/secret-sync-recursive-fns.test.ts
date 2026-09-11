@@ -1,6 +1,7 @@
 import {
   assertWithinSecretLimit,
   buildSyncPayload,
+  getAncestorPaths,
   mergeImportedSecrets,
   resolveSyncFolders,
   SECRET_SYNC_MAX_SECRETS
@@ -41,6 +42,20 @@ describe("resolveSyncFolders", () => {
     });
 
     expect(folders.map((folder) => folder.path).sort()).toEqual(["/", "/api"]);
+  });
+});
+
+describe("getAncestorPaths", () => {
+  test("returns the root for a top-level path", () => {
+    expect(getAncestorPaths("/")).toEqual([]);
+  });
+
+  test("returns every ancestor, closest last", () => {
+    expect(getAncestorPaths("/backend/api/v2")).toEqual(["/", "/backend", "/backend/api"]);
+  });
+
+  test("returns the root for a single-segment path", () => {
+    expect(getAncestorPaths("/backend")).toEqual(["/"]);
   });
 });
 
