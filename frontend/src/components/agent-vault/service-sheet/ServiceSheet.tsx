@@ -30,17 +30,17 @@ import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
-import {
-  buildServiceSchema,
-  SERVICE_STEP_FIELDS,
-  ServiceStep,
-  displayHostPattern,
-  TServiceForm,
-  UNCHANGED_SECRET
-} from "./serviceSchema";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { ReviewFields } from "./ReviewFields";
+import {
+  buildServiceSchema,
+  displayHostPattern,
+  SERVICE_STEP_FIELDS,
+  ServiceStep,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 
 const BLANK_SERVICE_FORM: TServiceForm = {

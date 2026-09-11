@@ -16,7 +16,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import {
-  AgentVaultServiceSchema,
   AgentVaultCreatedMemberSchema,
   AgentVaultCredentialInputSchema,
   AgentVaultCredentialUpdateSchema,
@@ -24,7 +23,8 @@ import {
   AgentVaultMemberIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
-  AgentVaultRemovedMemberSchema
+  AgentVaultRemovedMemberSchema,
+  AgentVaultServiceSchema
 } from "./agent-vault-schemas";
 
 const AccessBundleDescriptionSchema = z

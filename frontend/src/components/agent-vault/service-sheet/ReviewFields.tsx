@@ -9,8 +9,8 @@ import {
 } from "@app/components/v3";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
-import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 import { credentialPreview } from "./CredentialFields";
+import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 
 type Props = {
   isUpdate: boolean;

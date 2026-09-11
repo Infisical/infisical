@@ -16,8 +16,8 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
-import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
+import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
   Card,

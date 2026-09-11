@@ -8,12 +8,12 @@ import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
   TAgentVaultAccessBundle,
-  TAgentVaultService,
   TAgentVaultEnrollment,
   TAgentVaultMintedSession,
   TAgentVaultProductMemberActor,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
+  TAgentVaultService,
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
