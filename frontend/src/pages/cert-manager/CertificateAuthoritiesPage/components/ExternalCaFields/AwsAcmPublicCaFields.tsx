@@ -70,11 +70,18 @@ export const AwsAcmPublicCaFields = ({ control, availableConnections, isPending 
       name="configuration.region"
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field className="mb-4">
-          <FieldLabel>
+          <FieldLabel id="aws-acm-public-ca-region-label" htmlFor="aws-acm-public-ca-region">
             Region <span className="text-danger">*</span>
           </FieldLabel>
-          <AwsRegionSelect value={value} onChange={(v) => onChange(v || "")} />
-          <FieldError errors={[error]} />
+          <AwsRegionSelect
+            id="aws-acm-public-ca-region"
+            value={value}
+            onChange={(v) => onChange(v || "")}
+            isError={Boolean(error)}
+            aria-labelledby="aws-acm-public-ca-region-label"
+            aria-describedby={error ? "aws-acm-public-ca-region-error" : undefined}
+          />
+          <FieldError id="aws-acm-public-ca-region-error" errors={[error]} />
         </Field>
       )}
     />

@@ -1,24 +1,20 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TTeamCityProjectWithBuildTypes,
-  useTeamCityConnectionListProjects
-} from "@app/hooks/api/appConnections/teamcity";
+import { useTeamCityConnectionListProjects } from "@app/hooks/api/appConnections/teamcity";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -56,7 +52,10 @@ export const TeamCitySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-team-city-project-label"
+              htmlFor="secret-sync-team-city-project"
+            >
               Project
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -68,20 +67,26 @@ export const TeamCitySyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-team-city-project-label"
+                aria-describedby={error ? "secret-sync-team-city-project-error" : undefined}
+                id="secret-sync-team-city-project"
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects?.find((proj) => proj.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TTeamCityProjectWithBuildTypes>)?.id ?? null);
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.buildConfig", "");
                 }}
                 options={projects}
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-team-city-project-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -92,7 +97,10 @@ export const TeamCitySyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-team-city-build-config-label"
+              htmlFor="secret-sync-team-city-build-config"
+            >
               Build Configuration (Optional)
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -105,24 +113,34 @@ export const TeamCitySyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-team-city-build-config-label"
+                aria-describedby={
+                  error
+                    ? "secret-sync-team-city-build-config-description secret-sync-team-city-build-config-error"
+                    : "secret-sync-team-city-build-config-description"
+                }
+                id="secret-sync-team-city-build-config"
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !selectedProject}
                 value={buildTypes.find((buildType) => buildType.id === value) ?? null}
-                onChange={(option) => {
-                  const selectedOption = option as SingleValue<{ id: string; name: string }>;
+                onValueChange={(option) => {
+                  const selectedOption = option;
                   onChange(selectedOption?.id ?? "");
                 }}
+                onClear={() => onChange("")}
                 options={buildTypes}
-                isClearable
                 placeholder="Select a build configuration..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldDescription>
+              <FieldDescription id="secret-sync-team-city-build-config-description">
                 Not selecting a Build Configuration will sync your secrets to the entire project.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-team-city-build-config-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

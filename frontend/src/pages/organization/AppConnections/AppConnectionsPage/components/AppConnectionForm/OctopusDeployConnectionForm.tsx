@@ -144,8 +144,14 @@ export const OctopusDeployConnectionForm = ({ appConnection, onSubmit }: Props) 
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel htmlFor="api-key">Octopus Deploy API Key</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <SecretInput
+                aria-describedby={error ? "api-key-error" : undefined}
+                id="api-key"
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="api-key-error" errors={[error]} />
             </Field>
           )}
         />
