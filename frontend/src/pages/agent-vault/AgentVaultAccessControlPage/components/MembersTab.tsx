@@ -196,7 +196,10 @@ export const MembersTab = () => {
                               <PencilIcon />
                               Change Role
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setMemberToRemove(member)}>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setMemberToRemove(member)}
+                            >
                               <Trash2Icon />
                               Remove
                             </DropdownMenuItem>

@@ -232,7 +232,7 @@ export const IdentitiesTab = () => {
                           <PencilIcon />
                           Change Role
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setToRemove(identity)}>
+                        <DropdownMenuItem variant="danger" onClick={() => setToRemove(identity)}>
                           <Trash2Icon />
                           {isAgentVaultManaged(identity) ? "Delete" : "Remove"}
                         </DropdownMenuItem>

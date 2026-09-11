@@ -159,7 +159,7 @@ export const GroupsTab = () => {
                           <PencilIcon />
                           Change Role
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setGroupToRemove(row)}>
+                        <DropdownMenuItem variant="danger" onClick={() => setGroupToRemove(row)}>
                           <Trash2Icon />
                           Remove
                         </DropdownMenuItem>
