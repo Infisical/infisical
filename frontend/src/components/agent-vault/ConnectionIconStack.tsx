@@ -1,4 +1,5 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ComponentPropsWithoutRef, forwardRef, ReactNode, useMemo, useState } from "react";
+import { GlobeIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
@@ -34,45 +35,36 @@ const iconsFromHostPatterns = (hostPatterns: string[]): TConnectionIcon[] => {
   return [...byLabel.values()];
 };
 
-const monogramOf = (label: string) =>
-  label
-    .replace(/[^a-z0-9]/gi, "")
-    .charAt(0)
-    .toUpperCase() || "?";
+const chipClassName =
+  "flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-border text-foreground/60";
 
-const hueOf = (label: string) =>
-  Array.from(label).reduce((hash, character) => (hash * 31 + character.charCodeAt(0)) % 360, 7);
+// The ring paints in the table surface color so each overlapping chip reads as its own layer.
+const stackedChipClassName = "ring-2 ring-container";
 
-const tileClassName =
-  "relative flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-container";
+type TConnectionChipProps = ComponentPropsWithoutRef<"div"> & { icon: TConnectionIcon };
 
-const ConnectionTile = ({ icon, className }: { icon: TConnectionIcon; className?: string }) => {
-  const [hasImageError, setHasImageError] = useState(false);
-  const hue = hueOf(icon.label);
+const ConnectionChip = forwardRef<HTMLDivElement, TConnectionChipProps>(
+  ({ icon, className, ...props }, ref) => {
+    const [hasImageError, setHasImageError] = useState(false);
 
-  return (
-    <div className={cn(tileClassName, className)}>
-      {icon.image && !hasImageError ? (
-        <img
-          src={`/images/integrations/${icon.image}`}
-          alt=""
-          className="size-full object-contain p-0.5"
-          onError={() => setHasImageError(true)}
-        />
-      ) : (
-        <span
-          className="flex size-full items-center justify-center text-[10px] font-semibold"
-          style={{
-            backgroundColor: `hsl(${hue} 38% 24%)`,
-            color: `hsl(${hue} 70% 80%)`
-          }}
-        >
-          {monogramOf(icon.label)}
-        </span>
-      )}
-    </div>
-  );
-};
+    return (
+      <div ref={ref} className={cn(chipClassName, className)} {...props}>
+        {icon.image && !hasImageError ? (
+          <img
+            src={`/images/integrations/${icon.image}`}
+            alt=""
+            className="size-full object-contain p-1"
+            onError={() => setHasImageError(true)}
+          />
+        ) : (
+          <GlobeIcon className="size-3.5" />
+        )}
+      </div>
+    );
+  }
+);
+
+ConnectionChip.displayName = "ConnectionChip";
 
 export const ConnectionIcon = ({
   hostPattern,
@@ -82,7 +74,7 @@ export const ConnectionIcon = ({
   className?: string;
 }) => {
   const icon = useMemo(() => iconFromHostPattern(hostPattern), [hostPattern]);
-  return <ConnectionTile icon={icon} className={className} />;
+  return <ConnectionChip icon={icon} className={className} />;
 };
 
 type Props = {
@@ -106,16 +98,11 @@ export const ConnectionIconStack = ({
   const hidden = icons.slice(maxVisible);
 
   return (
-    <div className={cn("flex items-center", className)}>
-      {visible.map((icon, index) => (
+    <div className={cn("flex items-center -space-x-1.5", className)}>
+      {visible.map((icon) => (
         <Tooltip key={icon.label}>
           <TooltipTrigger asChild>
-            <div
-              style={{ zIndex: visible.length - index }}
-              className={cn("relative", index > 0 && "-ml-1.5")}
-            >
-              <ConnectionTile icon={icon} />
-            </div>
+            <ConnectionChip icon={icon} className={stackedChipClassName} />
           </TooltipTrigger>
           <TooltipContent>{icon.label}</TooltipContent>
         </Tooltip>
@@ -123,7 +110,7 @@ export const ConnectionIconStack = ({
       {hidden.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className={cn(tileClassName, "-ml-1.5 text-[10px] font-semibold text-accent")}>
+            <div className={cn(chipClassName, stackedChipClassName, "text-[10px] font-medium")}>
               +{hidden.length}
             </div>
           </TooltipTrigger>

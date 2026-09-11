@@ -32,7 +32,7 @@ export const AGENT_VAULT_TEMPLATES: AgentVaultTemplate[] = [
   {
     key: "openai",
     name: "OpenAI",
-    image: "OpenAI.png",
+    image: "OpenAIWhite.png",
     category: AgentVaultTemplateCategory.Llm,
     description: "Chat and models from OpenAI.",
     hostPattern: "api.openai.com",
