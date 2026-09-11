@@ -237,7 +237,7 @@ import {
 import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
-import { InviteMembersModal } from "./components/InviteMembersModal";
+import { InviteMembersModal } from "./components/InviteMembersModal/InviteMembersModal";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -4188,7 +4188,11 @@ const OverviewPageContent = () => {
         />
       )}
       {invitePopUp.inviteMembers.isOpen && (
-        <InviteMembersModal popUp={invitePopUp} handlePopUpToggle={handleInvitePopUpToggle} />
+        <InviteMembersModal
+          popUp={invitePopUp}
+          handlePopUpToggle={handleInvitePopUpToggle}
+          experimentVariant={null}
+        />
       )}
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm
