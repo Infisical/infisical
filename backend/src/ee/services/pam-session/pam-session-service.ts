@@ -744,6 +744,11 @@ export const pamSessionServiceFactory = ({
       if (rawConnectionDetails.subscriptionId) {
         metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
       }
+    } else if (account.accountType === PamAccountType.Snowflake) {
+      for (const key of ["account", "warehouse", "database", "schema", "role"]) {
+        const value = rawConnectionDetails[key];
+        if (typeof value === "string" && value) metadata[key] = value;
+      }
     } else if (account.accountType === PamAccountType.Kubernetes) {
       metadata.authMethod = rawCredentials.authMethod as string;
       if (rawCredentials.namespace) {

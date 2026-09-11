@@ -6,6 +6,7 @@ export enum PamAccountType {
   OracleDB = "oracledb",
   MongoDB = "mongodb",
   Redis = "redis",
+  Snowflake = "snowflake",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
