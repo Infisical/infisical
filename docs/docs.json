@@ -42,9 +42,9 @@
         "tab": "Get started",
         "pages": [
           "documentation/getting-started/overview",
+          "documentation/getting-started/quickstarts",
           "documentation/getting-started/introduction",
           "documentation/getting-started/set-up-with-ai",
-          "documentation/getting-started/quickstarts",
           "documentation/platform/external-migrations/overview",
           "documentation/getting-started/concepts/deployment-models",
           {

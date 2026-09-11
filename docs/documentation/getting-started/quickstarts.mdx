@@ -5,116 +5,81 @@ mode: "frame"
 ---
 
 <div className="qs-index">
-  <div className="qs-index__hero">
-    <h1 className="qs-index__title">Quickstarts</h1>
-    <p className="qs-index__description">Guides for the most common tasks in Infisical, grouped by product area.</p>
-  </div>
 
-  <div className="qs-index__section">
-    <div className="qs-index__section-title">Secrets Management</div>
-    <div className="qs-index__grid">
-      <a href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret" className="qs-index__item">
-        <div className="qs-index__item-title">Deliver your first secret</div>
-        <div className="qs-index__item-desc">Store a secret in Infisical and inject it into a running application.</div>
-      </a>
-      <a href="/documentation/guides/local-development" className="qs-index__item">
-        <div className="qs-index__item-title">Run an app locally with secrets from Infisical</div>
-        <div className="qs-index__item-desc">Use the Infisical CLI to inject secrets into a locally running application.</div>
-      </a>
-      <a href="/integrations/platforms/docker" className="qs-index__item">
-        <div className="qs-index__item-title">Inject secrets into a Docker container</div>
-        <div className="qs-index__item-desc">Deliver secrets from Infisical to a Docker container at startup.</div>
-      </a>
-      <a href="/integrations/cicd/githubactions" className="qs-index__item">
-        <div className="qs-index__item-title">Inject secrets into a GitHub Actions workflow</div>
-        <div className="qs-index__item-desc">Fetch secrets from Infisical inside a GitHub Actions workflow at runtime.</div>
-      </a>
-      <a href="/documentation/guides/kubernetes-operator" className="qs-index__item">
-        <div className="qs-index__item-title">Sync secrets into Kubernetes</div>
-        <div className="qs-index__item-desc">Use the Infisical Kubernetes Operator to pull secrets into a cluster.</div>
-      </a>
-      <a href="/documentation/platform/secret-rotation/postgres-credentials" className="qs-index__item">
-        <div className="qs-index__item-title">Rotate a PostgreSQL credential</div>
-        <div className="qs-index__item-desc">Automatically replace a PostgreSQL credential on a schedule.</div>
-      </a>
-      <a href="/documentation/platform/dynamic-secrets/postgresql" className="qs-index__item">
-        <div className="qs-index__item-title">Generate a short-lived PostgreSQL credential</div>
-        <div className="qs-index__item-desc">Generate a PostgreSQL credential on demand and revoke it after a short period.</div>
-      </a>
-    </div>
-  </div>
+<div className="qs-index__hero">
+  <h1 className="qs-index__title">Quickstarts</h1>
+  <p className="qs-index__description">Guides for the most common tasks in Infisical, grouped by product area.</p>
+</div>
 
-  <div className="qs-index__section">
-    <div className="qs-index__section-title">Secrets Scanning</div>
-    <div className="qs-index__grid">
-      <a href="/documentation/platform/secret-scanning/github" className="qs-index__item">
-        <div className="qs-index__item-title">Scan a GitHub repository for leaked secrets</div>
-        <div className="qs-index__item-desc">Connect a GitHub repository to Infisical and detect exposed credentials.</div>
-      </a>
-    </div>
+<div className="qs-index__jump" role="navigation" aria-label="Quickstart sections">
+  <span className="qs-index__jump-label">Jump to</span>
+  <div className="qs-index__jump-links">
+    <a href="#secrets-management">Secrets Management</a>
+    <a href="#secrets-scanning">Secrets Scanning</a>
+    <a href="#certificate-management">Certificates</a>
+    <a href="#kms">KMS</a>
+    <a href="#privileged-access-management">Privileged Access</a>
   </div>
+  <div className="qs-index__jump-links">
+    <a href="#identity-and-access">Identity</a>
+    <a href="#networking">Networking</a>
+    <a href="#self-hosting">Self-hosting</a>
+  </div>
+</div>
 
-  <div className="qs-index__section">
-    <div className="qs-index__section-title">Certificate Management</div>
-    <div className="qs-index__grid">
-      <a href="/documentation/platform/pki/quick-starts/issue-first-certificate" className="qs-index__item">
-        <div className="qs-index__item-title">Issue your first certificate</div>
-        <div className="qs-index__item-desc">Set up a certificate authority and issue an X.509 certificate.</div>
-      </a>
-    </div>
-  </div>
+<h2 id="secrets-management">Secrets Management</h2>
 
-  <div className="qs-index__section">
-    <div className="qs-index__section-title">KMS</div>
-    <div className="qs-index__grid">
-      <a href="/self-hosting/guides/hsm-integration" className="qs-index__item">
-        <div className="qs-index__item-title">Back Infisical KMS with an HSM</div>
-        <div className="qs-index__item-desc">Use a hardware security module to protect the root key.</div>
-      </a>
-    </div>
-  </div>
+| Quickstart | Description |
+| --- | --- |
+| [Add your secrets to Infisical](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret) | Store your secrets in Infisical and inject them into a running application. |
+| [Run an app locally with secrets from Infisical](/documentation/guides/local-development) | Use the Infisical CLI to inject secrets into a locally running application. |
+| [Inject secrets into a Docker container](/integrations/platforms/docker) | Deliver secrets from Infisical to a Docker container at startup. |
+| [Inject secrets into a GitHub Actions workflow](/integrations/cicd/githubactions) | Fetch secrets from Infisical inside a GitHub Actions workflow at runtime. |
+| [Sync secrets into Kubernetes](/documentation/guides/kubernetes-operator) | Use the Infisical Kubernetes Operator to pull secrets into a cluster. |
+| [Rotate a PostgreSQL credential](/documentation/platform/secret-rotation/postgres-credentials) | Automatically replace a PostgreSQL credential on a schedule. |
+| [Generate a short-lived PostgreSQL credential](/documentation/platform/dynamic-secrets/postgresql) | Generate a PostgreSQL credential on demand and revoke it after a short period. |
 
-  <div className="qs-index__section">
-    <div className="qs-index__section-title">Privileged Access Management</div>
-    <div className="qs-index__grid">
-      <a href="/documentation/platform/pam/quick-starts/launch-first-session" className="qs-index__item">
-        <div className="qs-index__item-title">Access a database or server through Infisical</div>
-        <div className="qs-index__item-desc">Open a session to a database or server without exposing the credential.</div>
-      </a>
-    </div>
-  </div>
+<h2 id="secrets-scanning">Secrets Scanning</h2>
 
-  <div className="qs-index__section">
-    <div className="qs-index__section-title">Identity and access</div>
-    <div className="qs-index__grid">
-      <a href="/documentation/platform/identities/universal-auth" className="qs-index__item">
-        <div className="qs-index__item-title">Authenticate a machine identity with universal auth</div>
-        <div className="qs-index__item-desc">Configure universal auth so an application can authenticate with a client ID and secret.</div>
-      </a>
-      <a href="/documentation/platform/sso/overview" className="qs-index__item">
-        <div className="qs-index__item-title">Set up single sign-on</div>
-        <div className="qs-index__item-desc">Configure SSO through a supported identity provider.</div>
-      </a>
-    </div>
-  </div>
+| Quickstart | Description |
+| --- | --- |
+| [Scan a GitHub repository for leaked secrets](/documentation/platform/secret-scanning/github) | Connect a GitHub repository to Infisical and detect exposed credentials. |
 
-  <div className="qs-index__section">
-    <div className="qs-index__section-title">Networking</div>
-    <div className="qs-index__grid">
-      <a href="/documentation/platform/gateways/overview" className="qs-index__item">
-        <div className="qs-index__item-title">Reach private systems with a Gateway</div>
-        <div className="qs-index__item-desc">Set up a Gateway to reach systems that aren't on the public internet.</div>
-      </a>
-    </div>
-  </div>
+<h2 id="certificate-management">Certificate Management</h2>
 
-  <div className="qs-index__section">
-    <div className="qs-index__section-title">Self-hosting</div>
-    <div className="qs-index__grid">
-      <a href="/self-hosting/deployment-options/docker-compose" className="qs-index__item">
-        <div className="qs-index__item-title">Self-host Infisical with Docker Compose</div>
-        <div className="qs-index__item-desc">Run Infisical on your own infrastructure using Docker Compose.</div>
-      </a>
-    </div>
-  </div>
+| Quickstart | Description |
+| --- | --- |
+| [Issue your first certificate](/documentation/platform/pki/quick-starts/issue-first-certificate) | Set up a certificate authority and issue an X.509 certificate. |
+
+<h2 id="kms">KMS</h2>
+
+| Quickstart | Description |
+| --- | --- |
+| [Back Infisical KMS with an HSM](/self-hosting/guides/hsm-integration) | Use a hardware security module to protect the root key. |
+
+<h2 id="privileged-access-management">Privileged Access Management</h2>
+
+| Quickstart | Description |
+| --- | --- |
+| [Access a database or server through Infisical](/documentation/platform/pam/quick-starts/launch-first-session) | Open a session to a database or server without exposing the credential. |
+
+<h2 id="identity-and-access">Identity and access</h2>
+
+| Quickstart | Description |
+| --- | --- |
+| [Authenticate a machine identity with universal auth](/documentation/platform/identities/universal-auth) | Configure universal auth so an application can authenticate with a client ID and secret. |
+| [Set up single sign-on](/documentation/platform/sso/overview) | Configure SSO through a supported identity provider. |
+
+<h2 id="networking">Networking</h2>
+
+| Quickstart | Description |
+| --- | --- |
+| [Reach private systems with a Gateway](/documentation/platform/gateways/overview) | Set up a Gateway to reach systems that aren't on the public internet. |
+
+<h2 id="self-hosting">Self-hosting</h2>
+
+| Quickstart | Description |
+| --- | --- |
+| [Self-host Infisical with Docker Compose](/self-hosting/deployment-options/docker-compose) | Run Infisical on your own infrastructure using Docker Compose. |
+
 </div>
