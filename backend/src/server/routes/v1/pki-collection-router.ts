@@ -18,6 +18,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
+      operationId: "createPkiCollection",
       tags: [ApiDocsTags.PkiCertificateCollections],
       description: "Create PKI collection",
       body: z.object({
