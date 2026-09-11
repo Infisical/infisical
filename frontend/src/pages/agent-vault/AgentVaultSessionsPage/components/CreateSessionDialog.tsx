@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PackageIcon } from "lucide-react";
 import ms from "ms";
 
@@ -76,6 +76,8 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   );
   const [ttlPreset, setTtlPreset] = useState(DEFAULT_TTL_PRESET);
   const [customTtl, setCustomTtl] = useState("");
+  const customTtlInputRef = useRef<HTMLInputElement>(null);
+  const shouldFocusCustomTtlRef = useRef(false);
 
   const isCustomTtl = ttlPreset === CUSTOM_TTL;
   const ttl = isCustomTtl ? customTtl.trim() : ttlPreset;
@@ -153,11 +155,25 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
           <Field>
             <FieldLabel>Expires</FieldLabel>
             <FieldContent>
-              <Select value={ttlPreset} onValueChange={setTtlPreset}>
+              <Select
+                value={ttlPreset}
+                onValueChange={(value) => {
+                  shouldFocusCustomTtlRef.current = value === CUSTOM_TTL;
+                  setTtlPreset(value);
+                }}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent position="popper">
+                <SelectContent
+                  position="popper"
+                  onCloseAutoFocus={(e) => {
+                    if (!shouldFocusCustomTtlRef.current) return;
+                    shouldFocusCustomTtlRef.current = false;
+                    e.preventDefault();
+                    customTtlInputRef.current?.focus();
+                  }}
+                >
                   {TTL_PRESETS.map((preset) => (
                     <SelectItem key={preset.value} value={preset.value}>
                       {preset.label}
@@ -168,6 +184,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
               {isCustomTtl && (
                 <>
                   <Input
+                    ref={customTtlInputRef}
                     className="mt-2"
                     value={customTtl}
                     onChange={(e) => setCustomTtl(e.target.value)}
