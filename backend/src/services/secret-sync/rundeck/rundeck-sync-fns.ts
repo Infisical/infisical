@@ -9,6 +9,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSecretMap } from "../secret-sync-types";
 import { TRundeckSyncWithCredentials } from "./rundeck-sync-types";
 
@@ -77,7 +78,8 @@ export const RundeckSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  async syncSecrets(secretSync: TRundeckSyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TRundeckSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
@@ -117,7 +119,8 @@ export const RundeckSyncFns = {
     }
   },
 
-  async removeSecrets(secretSync: TRundeckSyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TRundeckSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const { baseUrl, headers } = getRundeckClientDetails(secretSync);
 
     const existingSecretKeys = await listRundeckSecretKeys(baseUrl, headers);

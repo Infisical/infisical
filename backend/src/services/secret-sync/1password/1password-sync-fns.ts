@@ -11,7 +11,7 @@ import {
 } from "@app/services/secret-sync/1password/1password-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 // This should not be changed or it may break existing logic
 const VALUE_LABEL_DEFAULT = "value";
@@ -142,7 +142,8 @@ const deleteOnePassItem = async ({ instanceUrl, apiToken, vaultId, itemId }: TDe
 };
 
 export const OnePassSyncFns = {
-  syncSecrets: async (secretSync: TOnePassSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TOnePassSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -237,7 +238,8 @@ export const OnePassSyncFns = {
       }
     }
   },
-  removeSecrets: async (secretSync: TOnePassSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TOnePassSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { vaultId, valueLabel }

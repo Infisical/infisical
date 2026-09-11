@@ -2,7 +2,7 @@ import { request } from "@app/lib/config/request";
 import { getTeamCityInstanceUrl } from "@app/services/app-connection/teamcity";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import {
   TDeleteTeamCityVariable,
   TPostTeamCityVariable,
@@ -88,7 +88,8 @@ const deleteTeamCityVariable = async ({
 };
 
 export const TeamCitySyncFns = {
-  syncSecrets: async (secretSync: TTeamCitySyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TTeamCitySyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { project, buildConfig }
@@ -100,7 +101,7 @@ export const TeamCitySyncFns = {
     for await (const entry of Object.entries(secretMap)) {
       const [key, { value }] = entry;
 
-      const payload = {
+      const requestPayload = {
         instanceUrl,
         accessToken,
         project,
@@ -112,7 +113,7 @@ export const TeamCitySyncFns = {
       try {
         // Replace every secret since TeamCity does not return secret values that we can cross-check
         // No need to differenciate create / update because TeamCity uses the same method for both
-        await updateTeamCityVariable(payload);
+        await updateTeamCityVariable(requestPayload);
       } catch (error) {
         throw new SecretSyncError({
           error,
@@ -147,7 +148,8 @@ export const TeamCitySyncFns = {
       }
     }
   },
-  removeSecrets: async (secretSync: TTeamCitySyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TTeamCitySyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { project, buildConfig }

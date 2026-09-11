@@ -3,6 +3,7 @@ import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { VercelEnvironmentType, VercelSyncScope } from "./vercel-sync-enums";
@@ -870,7 +871,8 @@ const detachTeamSharedEnvVar = async (
 };
 
 export const VercelSyncFns = {
-  syncSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TVercelSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
       const teamDestinationConfig = secretSync.destinationConfig;
       const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
@@ -1031,7 +1033,8 @@ export const VercelSyncFns = {
     return Object.fromEntries(vercelSecrets.map((s) => [s.key, { value: s.value ?? "" }]));
   },
 
-  removeSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TVercelSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
       const sharedEnvVars = await getOwnedTeamSharedEnvVars(secretSync);
 

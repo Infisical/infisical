@@ -14,7 +14,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
-import { TSecretMap } from "../secret-sync-types";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 
 type TCamundaSecretSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
@@ -73,7 +73,8 @@ const updateCamundaSecret = async ({ accessToken, clusterUUID, key, value }: TCa
   );
 
 export const camundaSyncFactory = ({ kmsService, appConnectionDAL }: TCamundaSecretSyncFactoryDeps) => {
-  const syncSecrets = async (secretSync: TCamundaSyncWithCredentials, secretMap: TSecretMap) => {
+  const syncSecrets = async (secretSync: TCamundaSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       destinationConfig: { clusterUUID },
       connection
@@ -137,7 +138,8 @@ export const camundaSyncFactory = ({ kmsService, appConnectionDAL }: TCamundaSec
     }
   };
 
-  const removeSecrets = async (secretSync: TCamundaSyncWithCredentials, secretMap: TSecretMap) => {
+  const removeSecrets = async (secretSync: TCamundaSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       destinationConfig: { clusterUUID },
       connection

@@ -11,6 +11,7 @@ import {
 } from "@app/services/app-connection/azure-key-vault/azure-key-vault-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
@@ -128,7 +129,8 @@ export const azureKeyVaultSyncFactory = ({
     };
   };
 
-  const syncSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, secretMap: TSecretMap) => {
+  const syncSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { connection } = secretSync;
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -258,7 +260,8 @@ export const azureKeyVaultSyncFactory = ({
     }
   };
 
-  const removeSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, secretMap: TSecretMap) => {
+  const removeSecrets = async (secretSync: TAzureKeyVaultSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { connection } = secretSync;
 
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
