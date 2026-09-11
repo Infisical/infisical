@@ -4,8 +4,7 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ClipboardCopyIcon,
-  InfoIcon,
-  LockIcon
+  InfoIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -706,18 +705,6 @@ const CopySecretsSession = ({
 
             <SheetFooter className="flex-wrap items-center border-t">
               <div className="mr-auto flex min-w-0 flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Toggle
-                    id="copy-secrets-values"
-                    variant="project"
-                    checked={includeValues}
-                    disabled={isSubmitting}
-                    onCheckedChange={(value) => setAttributes((current) => ({ ...current, value }))}
-                  />
-                  <Label htmlFor="copy-secrets-values">
-                    <LockIcon className="size-4" aria-hidden /> Include secret values
-                  </Label>
-                </div>
                 <CopySecretsProperties
                   attributes={attributes}
                   onChange={setAttributes}
