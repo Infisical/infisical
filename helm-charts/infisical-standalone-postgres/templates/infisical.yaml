@@ -76,7 +76,7 @@ spec:
               name: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.name }}
               key: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.key }}
         {{- end }}
-        {{- if .Values.postgresql.enabled }}
+        {{- if and .Values.postgresql.enabled (not .Values.postgresql.useExistingPostgresSecret.enabled) }}
         - name: DB_CONNECTION_URI
           value: {{ include "infisical.postgresDBConnectionString" . }}
         {{- end }}
