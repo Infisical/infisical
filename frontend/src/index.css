@@ -46,6 +46,12 @@
     box-shadow: 0 0 0 1000px var(--autofill-background, var(--color-background)) inset !important;
   }
 
+  input[data-slot="input-group-control"]:-webkit-autofill {
+    background-clip: text;
+    -webkit-text-fill-color: currentColor;
+    box-shadow: none !important;
+  }
+
   [data-slot="dialog-content"],
   [data-slot="sheet-content"] {
     --autofill-background: var(--color-popover);
