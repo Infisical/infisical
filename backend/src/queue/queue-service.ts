@@ -842,6 +842,8 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       const baseAttrs = { "queue.name": name, "job.name": job.name } as Record<string, string>;
       queueJobCounter.add(1, { ...baseAttrs, outcome: "completed" });
 
+      logger.debug({ queue: name, job: job.name, jobId: job.id }, "Queue job completed");
+
       if (typeof job.processedOn === "number" && typeof job.timestamp === "number") {
         const durationMs = Date.now() - job.processedOn;
         queueJobDurationHistogram.record(durationMs / 1000, { ...baseAttrs, outcome: "completed" });
@@ -875,10 +877,26 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
         "error.type": errorType,
         "attempts.exhausted": attemptsExhausted ? "true" : "false"
       });
+
+      // A handler that throws without catching leaves no other trace: the metrics above carry no
+      // message and no stack, so without this the only evidence is a counter moving.
+      logger.error(
+        err,
+        `Queue job failed [queue=${name}] [job=${job?.name ?? "unknown"}] [jobId=${job?.id ?? "unknown"}] [attempt=${
+          job?.attemptsMade ?? 0
+        }] [attemptsExhausted=${attemptsExhausted}]`
+      );
     });
 
-    worker.on("stalled", () => {
+    // Stalling means the worker stopped heartbeating and BullMQ handed the job to someone else, so
+    // it is both rare and always worth seeing. It stays at warn rather than debug for that reason.
+    worker.on("stalled", (jobId) => {
       queueStalledCounter.add(1, { "queue.name": name });
+      logger.warn({ queue: name, jobId }, `Queue job stalled and was requeued [queue=${name}] [jobId=${jobId}]`);
+    });
+
+    worker.on("active", (job) => {
+      logger.debug({ queue: name, job: job.name, jobId: job.id }, "Queue job picked up by a worker");
     });
 
     workerContainer[name] = worker;
@@ -907,6 +925,11 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     };
 
     await q?.add(job, data, finalOptions);
+
+    // Only when the job really exists. `q` is undefined only where QUEUE_WORKERS_ENABLED is false,
+    // and a pod in that mode neither produces nor consumes, so a no-op there is expected rather
+    // than a dropped job worth reporting.
+    if (q) logger.debug({ queue: name, job, jobId }, "Queue job enqueued");
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {
