@@ -162,7 +162,7 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
 
 4. Pick the **App Connection**, then the **Namespace**, then the **Secrets Engine** that holds the paths you want, and finally one or more entries under **Vault Secret Path**. Keys are copied using their names from Vault.
 
-5. (Optional) Select **"Preserve folder structure"** to recreate each Vault path as a folder in Infisical. Leave it unchecked to copy every key from every selected path into the folder you are currently viewing.
+5. (Optional) Select **Preserve folder structure** to recreate each Vault path as a folder in Infisical. Leave it unchecked to copy every key from every selected path into the folder you're currently viewing.
 
    <Note>
      Importing without preserving the structure aborts if the same key name
@@ -171,9 +171,9 @@ KV secrets are imported into a specific **environment** (e.g., Development, Stag
      folder.
    </Note>
 
-6. Check the **Preview** to confirm where every secret will land, then click **"Import Secrets"**
+6. Check the **Preview** to confirm where every secret will land, then select **"Import Secrets"**
 
-The secrets are imported into the environment and folder path you are currently viewing. You can select up to 25 Vault paths per import.
+The secrets are imported into the environment and folder path you're currently viewing. You can select up to 25 Vault paths per import.
 
 #### Preserving your Vault folder structure
 
@@ -183,7 +183,7 @@ The preview reflects the choice, so you can compare both before importing:
 
 <Tabs>
   <Tab title="Flattened">
-    Every key lands directly in the folder you are viewing. This import runs from
+    Every key lands directly in the folder you're viewing. This import runs from
     the project root, so all six secrets collapse into `/` and the Vault path each
     one came from is shown only for reference.
 
@@ -320,14 +320,14 @@ Becomes an Infisical role with **read** permission on secrets in the correspondi
 
 ## One-time bulk import from Vault
 
-If you want to move an entire Vault organization into Infisical in a single shot (rather than importing resources piecemeal from inside each project) use the **Bulk Data Import** flow. It does not require an App Connection and is intended for initial migrations only. KV Secret Engine is the only supported resource type for bulk import; other resource types (Kubernetes auth, dynamic secrets, policies) must use the per-resource flows described above.
+If you want to move an entire Vault organization into Infisical in a single shot (rather than importing resources piecemeal from inside each project) use the **Bulk Data Import** flow. It doesn't require an App Connection and is intended for initial migrations only. KV Secret Engine is the only supported resource type for bulk import; other resource types (Kubernetes auth, dynamic secrets, policies) must use the per-resource flows described above.
 
 <Warning>Bulk Data Import is restricted to **organization admins**.</Warning>
 
 **To run a bulk import:**
 
 1. Navigate to **Integrations** and select the tab **External Migrations**
-2. Click **Import** and choose **HCP Vault**
+2. Select **Import** and choose **HCP Vault**
 3. Fill in the import form:
    - **Gateway** (optional) — route the import through a [gateway](/documentation/platform/gateways/overview) if your Vault instance is private
    - **Vault URL** — your Vault address (e.g. `https://vault.example.com`)
