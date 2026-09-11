@@ -225,7 +225,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
               orgId: req.permission.orgId,
               projectId: agentVaultProjectId,
               event: {
-                type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD,
+                type: EventType.AGENT_VAULT_MEMBER_ADD,
                 metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
               }
             });

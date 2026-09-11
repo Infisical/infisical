@@ -156,7 +156,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
             orgId: req.permission.orgId,
             projectId: req.internalAgentVaultProjectId,
             event: {
-              type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD,
+              type: EventType.AGENT_VAULT_MEMBER_ADD,
               metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
             }
           })
@@ -193,7 +193,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_PRODUCT_MEMBER_UPDATE,
+          type: EventType.AGENT_VAULT_MEMBER_UPDATE,
           metadata: {
             userId: req.params.userId,
             userName: member.userName,
@@ -230,7 +230,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_PRODUCT_MEMBER_REMOVE,
+          type: EventType.AGENT_VAULT_MEMBER_REMOVE,
           metadata: { userId: req.params.userId, userName: removed.userName }
         }
       });
@@ -265,7 +265,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD,
+          type: EventType.AGENT_VAULT_MEMBER_ADD,
           metadata: {
             groupId: req.params.groupId,
             groupName: member.groupName,
@@ -304,7 +304,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_PRODUCT_MEMBER_UPDATE,
+          type: EventType.AGENT_VAULT_MEMBER_UPDATE,
           metadata: {
             groupId: req.params.groupId,
             groupName: member.groupName,
@@ -341,7 +341,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_PRODUCT_MEMBER_REMOVE,
+          type: EventType.AGENT_VAULT_MEMBER_REMOVE,
           metadata: { groupId: req.params.groupId, groupName: removed.groupName }
         }
       });
@@ -376,7 +376,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD,
+          type: EventType.AGENT_VAULT_MEMBER_ADD,
           metadata: {
             identityId: req.params.identityId,
             identityName: member.identityName,
@@ -415,7 +415,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_PRODUCT_MEMBER_UPDATE,
+          type: EventType.AGENT_VAULT_MEMBER_UPDATE,
           metadata: {
             identityId: req.params.identityId,
             identityName: member.identityName,
@@ -452,7 +452,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_PRODUCT_MEMBER_REMOVE,
+          type: EventType.AGENT_VAULT_MEMBER_REMOVE,
           metadata: { identityId: req.params.identityId, identityName: removed.identityName }
         }
       });

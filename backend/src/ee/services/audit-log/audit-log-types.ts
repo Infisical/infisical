@@ -759,9 +759,9 @@ export enum EventType {
   AGENT_VAULT_CONNECTION_CREATE = "agent-vault-connection-create",
   AGENT_VAULT_CONNECTION_UPDATE = "agent-vault-connection-update",
   AGENT_VAULT_CONNECTION_DELETE = "agent-vault-connection-delete",
-  AGENT_VAULT_PRODUCT_MEMBER_ADD = "agent-vault-product-member-add",
-  AGENT_VAULT_PRODUCT_MEMBER_UPDATE = "agent-vault-product-member-update",
-  AGENT_VAULT_PRODUCT_MEMBER_REMOVE = "agent-vault-product-member-remove",
+  AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
+  AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
+  AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
   AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD = "agent-vault-access-bundle-member-add",
   AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE = "agent-vault-access-bundle-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
@@ -6218,7 +6218,7 @@ interface AgentVaultConnectionDeleteEvent {
 }
 
 interface AgentVaultProductMemberAddEvent {
-  type: EventType.AGENT_VAULT_PRODUCT_MEMBER_ADD;
+  type: EventType.AGENT_VAULT_MEMBER_ADD;
   metadata: {
     userId?: string;
     userName?: string;
@@ -6231,7 +6231,7 @@ interface AgentVaultProductMemberAddEvent {
 }
 
 interface AgentVaultProductMemberUpdateEvent {
-  type: EventType.AGENT_VAULT_PRODUCT_MEMBER_UPDATE;
+  type: EventType.AGENT_VAULT_MEMBER_UPDATE;
   metadata: {
     userId?: string;
     userName?: string;
@@ -6244,7 +6244,7 @@ interface AgentVaultProductMemberUpdateEvent {
 }
 
 interface AgentVaultProductMemberRemoveEvent {
-  type: EventType.AGENT_VAULT_PRODUCT_MEMBER_REMOVE;
+  type: EventType.AGENT_VAULT_MEMBER_REMOVE;
   metadata: {
     userId?: string;
     userName?: string;
