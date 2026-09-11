@@ -50,8 +50,6 @@ describe("OIDC/JWT claim validators", () => {
   });
 
   test("formatOidcAudiences leaves glob braces unchanged", () => {
-    expect(formatOidcAudiences("{https://a.example,https://b.example}")).toBe(
-      "{https://a.example,https://b.example}"
-    );
+    expect(formatOidcAudiences("{https://a.example,https://b.example}")).toBe("{https://a.example,https://b.example}");
   });
 });

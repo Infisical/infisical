@@ -17,10 +17,9 @@ export const splitCommaSeparatedPolicyValues = (value: string): string[] => {
       const trimmed = current.trim();
       if (trimmed) parts.push(trimmed);
       current = "";
-      continue;
+    } else {
+      current += char;
     }
-
-    current += char;
   }
 
   const trimmed = current.trim();
