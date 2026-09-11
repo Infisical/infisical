@@ -55,6 +55,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -1012,6 +1013,9 @@ const Toolbar = ({
           value={searchFilter}
           onChange={(e) => onSearchChange(e.target.value)}
         />
+        <InputGroupAddon align="inline-end">
+          <Kbd aria-label="Press / to focus search">/</Kbd>
+        </InputGroupAddon>
       </InputGroup>
       <Tooltip>
         <TooltipTrigger asChild>

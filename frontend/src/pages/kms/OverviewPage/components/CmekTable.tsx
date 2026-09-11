@@ -62,6 +62,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import {
   ProjectPermissionActions,
   ProjectPermissionCmekActions,
@@ -396,6 +397,9 @@ export const CmekTable = () => {
                 ref={searchInputRef}
                 placeholder="Search keys by name or ID..."
               />
+              <InputGroupAddon align="inline-end">
+                <Kbd aria-label="Press / to focus search">/</Kbd>
+              </InputGroupAddon>
             </InputGroup>
             {isFetching && <Spinner size="xs" />}
           </div>

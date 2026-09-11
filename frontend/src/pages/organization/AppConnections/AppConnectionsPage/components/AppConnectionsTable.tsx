@@ -39,6 +39,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
@@ -360,6 +361,9 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              <InputGroupAddon align="inline-end">
+                <Kbd aria-label="Press / to focus search">/</Kbd>
+              </InputGroupAddon>
             </InputGroup>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

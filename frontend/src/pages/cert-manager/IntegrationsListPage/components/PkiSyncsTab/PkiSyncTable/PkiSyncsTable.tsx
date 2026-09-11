@@ -36,6 +36,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import {
   getUserTablePreference,
@@ -265,6 +266,9 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
             ref={searchInputRef}
             placeholder="Search certificate syncs..."
           />
+          <InputGroupAddon align="inline-end">
+            <Kbd aria-label="Press / to focus search">/</Kbd>
+          </InputGroupAddon>
         </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

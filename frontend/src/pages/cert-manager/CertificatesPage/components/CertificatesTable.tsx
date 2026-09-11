@@ -55,6 +55,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
@@ -740,6 +741,9 @@ export const CertificatesTable = ({
             ref={searchInputRef}
             placeholder="Search by SAN, CN, ID or Serial Number"
           />
+          <InputGroupAddon align="inline-end">
+            <Kbd aria-label="Press / to focus search">/</Kbd>
+          </InputGroupAddon>
         </InputGroup>
 
         <Popover

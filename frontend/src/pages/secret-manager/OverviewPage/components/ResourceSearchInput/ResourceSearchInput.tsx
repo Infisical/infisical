@@ -14,6 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { Kbd } from "@app/components/v3/generic/Kbd";
 import { useDebounce, useSlashFocusSearch } from "@app/hooks";
 
 import { QuickSearchModal, QuickSearchModalProps } from "../SecretSearchInput/components";
@@ -129,6 +130,9 @@ export const ResourceSearchInput = ({
                     }
                   }}
                 />
+                <InputGroupAddon align="inline-end">
+                  <Kbd aria-label="Press / to focus search">/</Kbd>
+                </InputGroupAddon>
                 {hasSearch && (
                   <InputGroupAddon align="inline-end">
                     <IconButton
