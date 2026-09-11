@@ -34,7 +34,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { ActiveCerts } from "@app/services/license-client";
+import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
@@ -84,6 +84,7 @@ import {
   validateImportedCertificate
 } from "../certificate-authority-fns";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority-queue";
+import { assertCertificateAuthorityQuota } from "../certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
 import { validateAndMapAltNameType } from "../certificate-authority-validators";
 import { TInternalCertificateAuthorityDALFactory } from "./internal-certificate-authority-dal";
@@ -117,6 +118,8 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     | "findOne"
     | "findByIdWithAssociatedCa"
     | "findWithAssociatedCa"
+    | "countCasByOrgId"
+    | "countInternalCasByOrgId"
   >;
   internalCertificateAuthorityDAL: Pick<
     TInternalCertificateAuthorityDALFactory,
@@ -171,6 +174,15 @@ export const internalCertificateAuthorityServiceFactory = ({
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
+
+  // Gates only Infisical's own distribution point. Custom URLs are gated where the CA is configured.
+  const $isManagedCrlDistributionAllowed = async (projectId: string) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const plan = await licenseService.getPlan(project.orgId);
+    return plan.caCrl;
+  };
 
   // Root CAs: only keyCertSign + cRLSign (they don't perform end-entity operations)
   const ROOT_CA_KEY_USAGES = x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign;
@@ -343,6 +355,23 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     await $validatePqcLicense(keyAlgorithm, projectId);
+
+    // Enforced here rather than only in certificateAuthorityService.createCertificateAuthority: the
+    // POST /cert-manager/ca route calls this method directly, so a check that only sat there was
+    // bypassable.
+    await assertCertificateAuthorityQuota({
+      projectId,
+      isInternal: true,
+      deps: { projectDAL, licenseService, certificateAuthorityDAL }
+    });
+
+    // Refused rather than silently dropped, since the caller asked for it explicitly.
+    if (crlDistributionPointUrls?.length && !(await $isManagedCrlDistributionAllowed(projectId))) {
+      throw new BadRequestError({
+        message:
+          "Failed to create certificate authority with CRL distribution points due to plan restriction. Upgrade plan to use certificate revocation lists."
+      });
+    }
 
     const dn = createDistinguishedName({
       commonName,
@@ -662,6 +691,17 @@ export const internalCertificateAuthorityServiceFactory = ({
         ProjectPermissionCertificateAuthorityActions.Edit,
         subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
       );
+    }
+
+    // Gating creation alone would let an org create a CA with no distribution points and patch them in.
+    // Keyed on newly added URLs, so keeping, reordering, or clearing the existing set stays open, as does
+    // toggling the managed distribution point.
+    const storedCrlUrls = new Set(ca.internalCa.crlDistributionPointUrls ?? []);
+    const addedCrlUrl = (crlDistributionPointUrls ?? []).find((url) => !storedCrlUrls.has(url));
+    if (addedCrlUrl && !(await $isManagedCrlDistributionAllowed(ca.projectId))) {
+      throw new BadRequestError({
+        message: `Failed to add the CRL distribution point '${addedCrlUrl}' due to plan restriction. Upgrade plan to use certificate revocation lists.`
+      });
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
@@ -1546,6 +1586,21 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
+    // No internal parent means the certificate was signed outside Infisical. createCa cannot tell the
+    // two apart, because parentCaId is written here rather than at creation.
+    if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE && !parentCaId) {
+      const caProject = await projectDAL.findById(ca.projectId);
+      if (!caProject) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
+
+      const plan = await licenseService.getPlan(caProject.orgId);
+      if (!plan.pkiExternalIntermediateCa) {
+        throw new BadRequestError({
+          message:
+            "Failed to import an externally signed certificate for this intermediate CA due to plan restriction. Upgrade plan to use externally signed intermediate CAs."
+        });
+      }
+    }
+
     const caCert = ca.internalCa.activeCaCertId
       ? await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId)
       : undefined;
@@ -2012,7 +2067,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const cdpUrls = buildCrlDistributionPointUrls(
       managedCdpUrl,
       ca.internalCa.crlDistributionPointUrls,
-      ca.internalCa.disableManagedCrlDistributionPointUrl
+      ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
     );
 
     const basicConstraintsExtension = $createBasicConstraintsExtension({
@@ -2241,6 +2296,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2427,7 +2483,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const cdpUrls = buildCrlDistributionPointUrls(
       managedCdpUrl,
       ca.internalCa.crlDistributionPointUrls,
-      ca.internalCa.disableManagedCrlDistributionPointUrl
+      ca.internalCa.disableManagedCrlDistributionPointUrl || !(await $isManagedCrlDistributionAllowed(ca.projectId))
     );
 
     const basicConstraintsExtension = $createBasicConstraintsExtension({
@@ -2594,7 +2650,22 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
-    const finalSubject = subjectOverride || csrObj.subject;
+    const finalSubject = subjectOverride ?? csrObj.subject;
+
+    if (finalSubject.trim().length === 0) {
+      if (basicConstraintsExtension.ca) {
+        throw new BadRequestError({
+          message:
+            "A CA certificate must have a subject. Add a subject attribute to the CSR (common name, organization, organizational unit, country, state, locality or domain component)."
+        });
+      }
+      if (altNamesArray.length === 0) {
+        throw new BadRequestError({
+          message:
+            "Certificate must have a subject or at least one subject alternative name. Add a subject attribute to the CSR (common name, organization, organizational unit, country, state, locality or domain component), or request a subject alternative name."
+        });
+      }
+    }
 
     if (altNamesArray.length) {
       // RFC 5280 4.1.2.6: subjectAltName must be marked critical when the subject is an empty sequence.
@@ -2717,6 +2788,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, WildcardCerts.key);
 
     return {
       certificate: leafCert,

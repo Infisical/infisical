@@ -1,6 +1,6 @@
 import { Controller, useFormContext } from "react-hook-form";
 
-import { Field, FieldContent, FieldFeedback, FieldTitle, Switch } from "@app/components/v3";
+import { Field, FieldContent, FieldFeedback, FieldTitle, Toggle } from "@app/components/v3";
 import {
   DynamicSecretProviders,
   TailscaleAuthMethod,
@@ -166,7 +166,7 @@ const TailscaleFields = () => {
                     error={error?.message}
                   />
                 </FieldContent>
-                <Switch
+                <Toggle
                   ref={field.ref}
                   checked={field.value}
                   onBlur={field.onBlur}

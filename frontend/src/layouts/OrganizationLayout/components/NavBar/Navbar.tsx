@@ -58,7 +58,7 @@ import {
 import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { envConfig } from "@app/config/env";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useServerConfig,
@@ -607,7 +607,7 @@ export const Navbar = () => {
         </Button>
       )}
       {!location.pathname.startsWith("/admin") && !user.superAdmin && (
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+        <OrgPermissionCan I={OrgPermissionMemberActions.Create} a={OrgPermissionSubjects.Member}>
           {(isAllowed) =>
             isAllowed ? (
               <Button variant="outline" size="sm" className="mr-2" asChild>
@@ -709,7 +709,10 @@ export const Navbar = () => {
                 Personal Settings
               </Link>
             </DropdownMenuItem>
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan
+              I={OrgPermissionMemberActions.Create}
+              a={OrgPermissionSubjects.Member}
+            >
               {(isAllowed) =>
                 isAllowed ? (
                   <DropdownMenuItem asChild>

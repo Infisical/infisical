@@ -133,6 +133,7 @@ export enum PostHogEventTypes {
   PamAccountRotated = "PAM Account Rotated",
   PamAccessRequestCreated = "PAM Access Request Created",
   PamAccessRequestReviewed = "PAM Access Request Reviewed",
+  PamAccessRequestBrokeGlass = "PAM Access Request Broke Glass",
   PamAccessGrantRevoked = "PAM Access Grant Revoked",
 
   ResourceAuthMethodLogin = "Resource Auth Method Login",
@@ -1226,6 +1227,14 @@ export type TPamAccessRequestReviewedEvent = {
   };
 };
 
+export type TPamAccessRequestBrokeGlassEvent = {
+  event: PostHogEventTypes.PamAccessRequestBrokeGlass;
+  properties: {
+    orgId: string;
+    accountType: string;
+  };
+};
+
 export type TPamAccessGrantRevokedEvent = {
   event: PostHogEventTypes.PamAccessGrantRevoked;
   properties: {
@@ -2162,6 +2171,7 @@ export type TSecretValidationRuleCreatedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -2170,6 +2180,7 @@ export type TSecretValidationRuleUpdatedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -2178,6 +2189,7 @@ export type TSecretValidationRuleDeletedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -2430,6 +2442,7 @@ export type TPostHogEvent = {
   | TPamAccountRotatedEvent
   | TPamAccessRequestCreatedEvent
   | TPamAccessRequestReviewedEvent
+  | TPamAccessRequestBrokeGlassEvent
   | TPamAccessGrantRevokedEvent
   | TResourceAuthMethodEvent
   | THoneyTokenCreatedEvent

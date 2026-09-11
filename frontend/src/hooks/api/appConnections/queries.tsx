@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -97,6 +97,31 @@ export const useListAppConnections = (
   });
 };
 
+const fetchAvailableAppConnections = async (app: AppConnection, projectId: string) => {
+  const { data } = await apiRequest.get<TAvailableAppConnectionsResponse>(
+    `/api/v1/app-connections/${app}/available`,
+    { params: { projectId } }
+  );
+
+  return data.appConnections;
+};
+
+export const useListAvailableAppConnectionsForApps = (apps: AppConnection[], projectId: string) => {
+  const results = useQueries({
+    queries: apps.map((app) => ({
+      queryKey: appConnectionKeys.listAvailable(app, projectId),
+      queryFn: () => fetchAvailableAppConnections(app, projectId)
+    }))
+  });
+
+  return {
+    connections: apps.flatMap((app, index) =>
+      (results[index].data ?? []).map((connection) => ({ ...connection, app }))
+    ),
+    isPending: results.some((result) => result.isPending)
+  };
+};
+
 export const useListAvailableAppConnections = (
   app: AppConnection,
   projectId: string,
@@ -112,14 +137,7 @@ export const useListAvailableAppConnections = (
 ) => {
   return useQuery({
     queryKey: appConnectionKeys.listAvailable(app, projectId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TAvailableAppConnectionsResponse>(
-        `/api/v1/app-connections/${app}/available`,
-        { params: { projectId } }
-      );
-
-      return data.appConnections;
-    },
+    queryFn: () => fetchAvailableAppConnections(app, projectId),
     ...options
   });
 };

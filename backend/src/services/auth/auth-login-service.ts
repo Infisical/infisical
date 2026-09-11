@@ -170,7 +170,9 @@ export const authLoginServiceFactory = ({
         subjectLine: "Infisical MFA code",
         recipients: [email],
         substitutions: {
-          code
+          code,
+          challengeFor: "sign-in",
+          preview: "Sign-in attempt requires further verification."
         }
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send MFA code email"));

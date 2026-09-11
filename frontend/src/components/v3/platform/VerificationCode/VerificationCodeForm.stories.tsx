@@ -15,7 +15,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="w-full max-w-md">
+      <div className="w-[min(28rem,calc(100vw-2rem))]">
         <Story />
       </div>
     )
@@ -74,6 +74,14 @@ const VerificationExample = ({
 
 export const EmailCode: Story = {
   render: () => <VerificationExample />
+};
+
+export const PartialCode: Story = {
+  args: { value: "123" }
+};
+
+export const Verifying: Story = {
+  args: { value: "123456", isPending: true }
 };
 
 export const InvalidCode: Story = {

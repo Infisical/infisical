@@ -60,6 +60,8 @@ const PolicyOptionRow = ({ children, ...props }: OptionProps<PolicyOption>) => (
 );
 
 /**
+ * > Deprecated: Use [Combobox](?path=/docs/generic-combobox--docs) instead.
+ *
  * `FilterableSelect` is the v3 react-select-based dropdown for searchable
  * single or multi selection over a known set of options. Reach for it when the
  * option list is too long for the Radix-based `Select` (which has no search)
@@ -80,7 +82,7 @@ const meta = {
   parameters: {
     layout: "centered"
   },
-  tags: ["autodocs"],
+  tags: ["autodocs", "deprecated"],
   decorators: [
     (Story) => (
       <div className="h-52 w-96">

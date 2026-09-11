@@ -38,14 +38,14 @@ The short video below walks through how the Infisical Operator syncs secrets int
 </Info>
 
 <Note>
-  If you are already using the External Secrets operator, you can view the
+  If you're already using the External Secrets operator, you can view the
   integration documentation for it
   [here](https://external-secrets.io/latest/provider/infisical/).
 </Note>
 
 <Tabs>
   <Tab title="Supported Kubernetes versions">
-    The following [Kubernetes minor releases](https://kubernetes.io/releases/) are currently supported. The latest operator version is tested against each Kubernetes version. It may work with other versions of Kubernetes, but those are not officially supported.
+    The following [Kubernetes minor releases](https://kubernetes.io/releases/) are currently supported. The latest operator version is tested against each Kubernetes version. It may work with other versions of Kubernetes, but those aren't officially supported.
 
     - 1.33
     - 1.32
@@ -272,7 +272,7 @@ to point to a CA certificate stored in a Kubernetes secret resource.
 ## Migrating from v1alpha1 to v1beta1
 
 <Info>
-  This migration guide applies to `InfisicalSecret` only. `InfisicalPushSecret` and `InfisicalDynamicSecret` do not have v1beta1 replacements yet and should continue to be used as-is.
+  This migration guide applies to `InfisicalSecret` only. `InfisicalPushSecret` and `InfisicalDynamicSecret` don't have v1beta1 replacements yet and should continue to be used as-is.
 </Info>
 
 The v1beta1 API introduces a cleaner separation of concerns. Instead of defining authentication and connection details inline in each secret CRD, you now create dedicated `InfisicalConnection` and `InfisicalAuth` resources that can be shared across multiple secret resources.
@@ -315,7 +315,7 @@ The v1beta1 API introduces a cleaner separation of concerns. Instead of defining
 
 ## Uninstall operator
 
-The managed secret created by the operator will not be deleted when the operator is uninstalled.
+The managed secret created by the operator won't be deleted when the operator is uninstalled.
 
 Uninstall Infisical Helm repository 
 ```bash

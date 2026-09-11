@@ -14,9 +14,7 @@ export const PoliciesTab = () => {
     <div>
       <PreferencesSection />
       <SecretValidationRulesSection />
-      {config.isCrossProjectSecretSharingEnabled && currentOrg.allowCrossProjectSecretSharing && (
-        <CrossProjectSharingSection />
-      )}
+      {currentOrg.allowCrossProjectSecretSharing && <CrossProjectSharingSection />}
       <PointInTimeVersionLimitSection />
       {config.paramsFolderSecretDetectionEnabled && <SecretDetectionIgnoreValuesSection />}
     </div>

@@ -24,6 +24,20 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
+// There is no DLQ: once a row is dropped this counter is the only record that audit events were
+// lost, and the provider attribute is what lets an operator route that loss to a team. Spying on
+// the instrument is the only way to assert the attributes, since the real one is a no-op unless a
+// MeterProvider is installed.
+const { exhaustedCounterAdd, deliveryDurationRecord } = vi.hoisted(() => ({
+  exhaustedCounterAdd: vi.fn<(value: number, attrs: Record<string, string>) => void>(),
+  deliveryDurationRecord: vi.fn<(value: number, attrs: Record<string, string>) => void>()
+}));
+
+vi.mock("@app/lib/telemetry/metrics", () => ({
+  auditLogStreamDeliveryExhaustedCounter: { add: exhaustedCounterAdd },
+  auditLogStreamDeliveryDurationHistogram: { record: deliveryDurationRecord }
+}));
+
 // Keep the real product-filter helpers (auditLogMatchesStreamFilter, resolveAuditLogProduct) so
 // the fanout filtering tests exercise actual behavior; only credential decryption is stubbed.
 vi.mock("@app/ee/services/audit-log-stream/audit-log-stream-fns", async (importOriginal) => ({
@@ -514,5 +528,69 @@ describe("audit-log-stream-outbox-service pruneDeliveredRows", () => {
     // delivered rows still serve their dedup-guard purpose — guards against accidental
     // tightening down toward that window.
     expect(retentionMs).toBeGreaterThanOrEqual(5 * 60_000);
+  });
+});
+
+describe("audit-log-stream-outbox-service sweepStaleClaims", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const sweepWith = async (dropped: { streamId: string; orgId: string; provider: string | null }[], retried = 0) => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    auditLogStreamOutboxDAL.recoverStaleClaims = vi.fn(async () => ({ retried, dropped })) as never;
+    await service.sweepStaleClaims();
+    return auditLogStreamOutboxDAL;
+  };
+
+  test("labels a drop with the stream's provider so sum by(provider) accounts for it", async () => {
+    await sweepWith([{ streamId: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Datadog }]);
+
+    expect(exhaustedCounterAdd).toHaveBeenCalledTimes(1);
+    expect(exhaustedCounterAdd).toHaveBeenCalledWith(1, {
+      "audit_log_stream.id": STREAM_ID,
+      "audit_log_stream.provider": LogProvider.Datadog
+    });
+  });
+
+  // A stream deleted mid-flight is one of the reasons a claim goes stale, so the DAL can genuinely
+  // fail to resolve a provider. The attribute has to be absent rather than a stringified "null",
+  // which would otherwise show up as a provider of its own on every dashboard.
+  test("omits the provider attribute when the stream is already gone", async () => {
+    await sweepWith([{ streamId: STREAM_ID, orgId: ORG_ID, provider: null }]);
+
+    expect(exhaustedCounterAdd).toHaveBeenCalledTimes(1);
+    const [count, attrs] = exhaustedCounterAdd.mock.calls[0];
+    expect(count).toBe(1);
+    expect(attrs).toEqual({ "audit_log_stream.id": STREAM_ID });
+    expect(Object.keys(attrs)).not.toContain("audit_log_stream.provider");
+  });
+
+  test("counts per stream, keeping each provider's losses separate", async () => {
+    await sweepWith([
+      { streamId: "stream-a", orgId: ORG_ID, provider: LogProvider.Datadog },
+      { streamId: "stream-a", orgId: ORG_ID, provider: LogProvider.Datadog },
+      { streamId: "stream-b", orgId: ORG_ID, provider: LogProvider.Splunk },
+      { streamId: "stream-c", orgId: ORG_ID, provider: null }
+    ]);
+
+    expect(exhaustedCounterAdd).toHaveBeenCalledTimes(3);
+    expect(exhaustedCounterAdd).toHaveBeenCalledWith(2, {
+      "audit_log_stream.id": "stream-a",
+      "audit_log_stream.provider": LogProvider.Datadog
+    });
+    expect(exhaustedCounterAdd).toHaveBeenCalledWith(1, {
+      "audit_log_stream.id": "stream-b",
+      "audit_log_stream.provider": LogProvider.Splunk
+    });
+    expect(exhaustedCounterAdd).toHaveBeenCalledWith(1, { "audit_log_stream.id": "stream-c" });
+  });
+
+  // Recovering a claim is not a loss: those rows go back to 'retry' with an attempt spent and are
+  // still deliverable, so counting them would inflate the one signal that means events are gone.
+  test("records nothing when stale claims were recovered rather than dropped", async () => {
+    await sweepWith([], 5);
+
+    expect(exhaustedCounterAdd).not.toHaveBeenCalled();
   });
 });

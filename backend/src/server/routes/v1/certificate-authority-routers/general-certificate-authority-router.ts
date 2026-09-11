@@ -32,6 +32,37 @@ const CertificateAuthoritySchema = z.discriminatedUnion("type", [
 export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/quota",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      operationId: "getCertificateAuthorityQuotaV1",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Get certificate authority usage against the plan's limits",
+      response: {
+        200: z.object({
+          certificateAuthorities: z.object({
+            used: z.number().int().describe("Certificate authorities of every type currently in use."),
+            limit: z.number().int().nullable().describe("The plan's cap, or null when uncapped.")
+          }),
+          internalCertificateAuthorities: z.object({
+            used: z.number().int().describe("Internal certificate authorities currently in use."),
+            limit: z.number().int().nullable().describe("The plan's cap, or null when uncapped.")
+          })
+        })
+      }
+    },
+    handler: async (req) =>
+      server.services.certificateAuthority.getCertificateAuthorityQuota(
+        { projectId: req.internalCertManagerProjectId },
+        req.permission
+      )
+  });
+
+  server.route({
+    method: "GET",
     url: "/",
     config: {
       rateLimit: readLimit

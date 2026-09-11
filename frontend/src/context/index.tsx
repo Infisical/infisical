@@ -8,6 +8,7 @@ export {
   OrgPermissionGroupActions,
   OrgPermissionHoneyTokenActions,
   OrgPermissionIdentityActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSsoActions,
   OrgPermissionSubjects,

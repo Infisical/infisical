@@ -1,0 +1,51 @@
+version: v0.165.3
+releasedAt: 2026-09-03T15:40:56-04:00
+sourceTag: v0.165.3
+previousTag: v0.165.2
+impactLevel: low
+summary: Adds startup-run database migrations for PAM heartbeat metadata and
+  OIDC auth templates. Existing PAM templates are automatically opted into
+  credential health checks.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PAM heartbeat schema
+    description: Adds PAM account heartbeat columns and an index for scheduled
+      health checks. Existing PAM templates are also backfilled to enable
+      heartbeat checks and schedule accounts with jitter.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260825130000_pam-account-heartbeat.ts
+        path: backend/src/db/migrations/20260825130000_pam-account-heartbeat.ts
+        description: Adds heartbeat columns and partial index
+      - type: file
+        ref: backend/src/db/migrations/20260827222654_enable-pam-heartbeat-on-existing-templates.ts
+        path: backend/src/db/migrations/20260827222654_enable-pam-heartbeat-on-existing-templates.ts
+        description: Backfills template heartbeat settings
+  - title: OIDC auth template schema
+    description: Adds a nullable templateId foreign key and index to identity OIDC
+      auth records for machine identity auth templates.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260831000000_identity-oidc-auth-template.ts
+        path: backend/src/db/migrations/20260831000000_identity-oidc-auth-template.ts
+        description: Adds nullable templateId foreign key
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-09-03T20:15:24.787Z
+  sourceRange:
+    from: v0.165.2
+    to: v0.165.3

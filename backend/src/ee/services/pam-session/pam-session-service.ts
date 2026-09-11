@@ -89,6 +89,7 @@ type TPamSessionServiceFactoryDep = {
     | "endSessionById"
     | "terminateSessionById"
     | "updateById"
+    | "claimRecordingSecrets"
     | "activateSession"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
@@ -312,32 +313,46 @@ export const pamSessionServiceFactory = ({
       sessionId: string;
     } | null = null;
 
-    if (!session.encryptedSessionKey) {
+    let storedSessionKey = session.encryptedSessionKey ?? null;
+
+    if (!storedSessionKey) {
       const secrets = await generateSessionRecordingSecrets({
         projectId: session.projectId,
         sessionId,
         kmsService
       });
 
-      await pamSessionDAL.updateById(sessionId, {
-        encryptedSessionKey: secrets.encryptedSessionKey,
-        gatewayUploadTokenHash: secrets.uploadTokenHash
-      });
+      // A gateway fetches credentials per connection, so two can mint at once; without a single
+      // claim the loser keeps a key the row no longer holds and its uploads fail forever.
+      const claimed = await pamSessionDAL.claimRecordingSecrets(
+        sessionId,
+        secrets.encryptedSessionKey,
+        secrets.uploadTokenHash
+      );
+      if (!claimed?.encryptedSessionKey) {
+        throw new NotFoundError({ message: `Session with ID '${sessionId}' was not found` });
+      }
 
-      recording = {
-        sessionKey: secrets.sessionKey.toString("base64"),
-        uploadToken: secrets.uploadToken.toString("base64"),
-        storageBackend: resolvedBackend,
-        projectId: session.projectId,
-        sessionId
-      };
-    } else {
+      if (claimed.encryptedSessionKey.equals(secrets.encryptedSessionKey)) {
+        recording = {
+          sessionKey: secrets.sessionKey.toString("base64"),
+          uploadToken: secrets.uploadToken.toString("base64"),
+          storageBackend: resolvedBackend,
+          projectId: session.projectId,
+          sessionId
+        };
+      } else {
+        storedSessionKey = claimed.encryptedSessionKey;
+      }
+    }
+
+    if (!recording && storedSessionKey) {
       // On re-fetch (e.g. gateway restart) return the existing key; empty token since the gateway
       // restores its own from disk and the server only keeps the token hash.
       const sessionKey = await decryptSessionKey({
         projectId: session.projectId,
         sessionId,
-        encryptedSessionKey: session.encryptedSessionKey,
+        encryptedSessionKey: storedSessionKey,
         kmsService
       });
 
@@ -439,6 +454,7 @@ export const pamSessionServiceFactory = ({
     reason,
     duration,
     mfaSessionId,
+    tokenVersionId,
     accessMethod = PamAccessMethod.Cli,
     targetHost
   }: {
@@ -452,6 +468,7 @@ export const pamSessionServiceFactory = ({
     reason?: string;
     duration?: string;
     mfaSessionId?: string;
+    tokenVersionId?: string;
     accessMethod?: PamAccessMethod;
     targetHost?: string;
   }) => {
@@ -485,7 +502,14 @@ export const pamSessionServiceFactory = ({
       }
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
-        { userId: actor.actorId, orgId: actor.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
+        {
+          userId: actor.actorId,
+          orgId: actor.actorOrgId,
+          actorEmail,
+          accountId: account.id,
+          mfaSessionId,
+          tokenVersionId
+        }
       );
     }
 

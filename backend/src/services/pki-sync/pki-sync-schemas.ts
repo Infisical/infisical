@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { HOSTNAME_MAX_LENGTH, isValidHostname } from "@app/lib/validator/validate-hostname";
+
 import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { HOST_COMMAND_MAX_LENGTH } from "./pki-sync-host-command-fns";
@@ -10,6 +12,24 @@ export const HostCommandSchema = z
   .trim()
   .max(HOST_COMMAND_MAX_LENGTH, `Command must be at most ${HOST_COMMAND_MAX_LENGTH} characters`)
   .nullable()
+  .optional();
+
+export const PkiSyncTargetPortSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(65535)
+  .optional()
+  .describe("The port to reach the target host on. Defaults to the protocol's standard port.");
+
+export const PkiSyncTargetHostSchema = z
+  .string()
+  .trim()
+  .min(1, "Target host is required")
+  .max(HOSTNAME_MAX_LENGTH, "Target host is too long")
+  .refine(isValidHostname, {
+    message: "Target host must be a hostname or IP address (for example server01.corp.example.com or 10.0.0.5)"
+  })
   .optional();
 
 // Sync options shared by every destination. Destinations extend this with their own

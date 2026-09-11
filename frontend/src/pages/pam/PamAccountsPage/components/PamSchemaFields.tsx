@@ -24,8 +24,8 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3/generic/Select";
-import { Switch } from "@app/components/v3/generic/Switch";
 import { TextArea } from "@app/components/v3/generic/TextArea";
+import { Toggle } from "@app/components/v3/generic/Toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
 import { useOrganization } from "@app/context";
 import { PamFieldWidget, TPamFieldDescriptor } from "@app/hooks/api/pam";
@@ -214,7 +214,7 @@ export const PamSchemaFields = ({ control, setValue, namePrefix, fields, smartPa
                     )}
                     <FieldTooltip text={forcedRule?.reason ?? descriptor.tooltip} />
                   </FieldLabel>
-                  <Switch
+                  <Toggle
                     variant="pam"
                     checked={Boolean(field.value)}
                     onCheckedChange={field.onChange}

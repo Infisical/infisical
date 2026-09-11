@@ -16,7 +16,7 @@ import {
   FieldTitle,
   IconButton,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
@@ -215,7 +215,7 @@ const CouchbaseBucketFields = () => {
                 Limit access by bucket, scope, and collection instead of using a bucket pattern.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               ref={field.ref}
               id="couchbase-advanced-buckets"
               variant="project"

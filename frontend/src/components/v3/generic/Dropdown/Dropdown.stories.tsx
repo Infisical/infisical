@@ -37,7 +37,8 @@ import {
  * DropdownMenu renders a contextual menu that opens from a trigger — use it for
  * row / card actions, segmented triggers, and any grouped list of actions that
  * don't warrant a dedicated panel. Composable subcomponents cover labels,
- * separators, shortcuts, checkbox / radio items, and nested submenus.
+ * separators, shortcuts, checkbox / radio items, and nested submenus. Menu
+ * content and nested submenus preserve an 8px viewport gutter by default.
  */
 const meta = {
   title: "Generic/Dropdown",

@@ -35,7 +35,7 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
@@ -43,13 +43,8 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faEyeSlash,
-  faKey,
-  faRotate,
-  faShieldHalved,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
+import { faEyeSlash, faKey, faRotate, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { HexagonIcon } from "lucide-react";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { format } from "date-fns";
 import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
@@ -449,14 +444,15 @@ export const SecretItem = memo(
               {isManagedSecret ? (
                 <div className="relative">
                   <FontAwesomeIcon icon={faKey} size="xs" className={twMerge("ml-3 h-3.5 w-3.5")} />
-                  <FontAwesomeIcon
-                    icon={isHoneyTokenSecret ? faShieldHalved : faRotate}
-                    size="xs"
-                    className={twMerge(
-                      "absolute -right-[0.2rem] -bottom-[0.05rem]",
-                      isHoneyTokenSecret ? "text-yellow" : "text-mineshaft-400"
-                    )}
-                  />
+                  {isHoneyTokenSecret ? (
+                    <HexagonIcon className="absolute -right-[0.2rem] -bottom-[0.05rem] size-3 text-warning" />
+                  ) : (
+                    <FontAwesomeIcon
+                      icon={faRotate}
+                      size="xs"
+                      className="absolute -right-[0.2rem] -bottom-[0.05rem] text-mineshaft-400"
+                    />
+                  )}
                 </div>
               ) : (
                 <>

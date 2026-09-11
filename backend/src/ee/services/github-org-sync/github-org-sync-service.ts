@@ -4,9 +4,9 @@ import { ForbiddenError } from "@casl/ability";
 import { Octokit } from "@octokit/core";
 import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
-import RE2 from "re2";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -19,6 +19,8 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TGroupDALFactory } from "../group/group-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
@@ -31,11 +33,271 @@ import {
   TDeleteGithubOrgSyncDTO,
   TSyncAllTeamsDTO,
   TSyncResult,
+  TSyncUserGroupsDTO,
   TUpdateGithubOrgSyncDTO,
   TValidateGithubTokenDTO
 } from "./github-org-sync-types";
 
 const OctokitWithPlugin = Octokit.plugin(paginateGraphql);
+
+// The sync only reads from GitHub, so read:org is the whole requirement.
+const githubTeamAccessDeniedMessage = (githubOrgName: string) =>
+  `GitHub denied access to the teams in organization '${githubOrgName}'. A classic access token needs the 'read:org' scope. A fine-grained token needs Organization permissions > Members set to read, with the organization as its resource owner. GitHub also hides secret teams from anyone who is not an organization owner or a member of the team.`;
+
+// GitHub 502s when one page resolves too many nodes, and nesting members under teams multiplies it.
+const GITHUB_TEAMS_PAGE_SIZE = 20;
+const GITHUB_TEAM_MEMBERS_PAGE_SIZE = 100;
+const GITHUB_MAX_PAGES = 500;
+const GITHUB_REQUEST_TIMEOUT_MS = 30_000;
+const GITHUB_AUDIT_LOG_CONCURRENCY = 25;
+
+type TGithubPageInfo = { hasNextPage: boolean; endCursor: string | null };
+
+export type TGithubTeamMember = {
+  login: string;
+  databaseId: number | null;
+};
+
+type TGithubTeamMembersConnection = {
+  edges: { node: TGithubTeamMember }[];
+  pageInfo: TGithubPageInfo;
+};
+
+type TGithubOrgTeamsResponse = {
+  organization: {
+    teams: {
+      edges: {
+        node: {
+          slug: string;
+          name: string;
+          description: string | null;
+          members: TGithubTeamMembersConnection;
+        };
+      }[];
+      pageInfo: TGithubPageInfo;
+    };
+  };
+};
+
+type TGithubTeamMembersResponse = {
+  organization: {
+    team: { members: TGithubTeamMembersConnection } | null;
+  };
+};
+
+export type TGithubTeam = {
+  slug: string;
+  name: string;
+  description: string | null;
+  members: TGithubTeamMember[];
+};
+
+const ORG_TEAMS_QUERY = `
+  query orgTeams($org: String!, $cursor: String, $teamsPageSize: Int!, $membersPageSize: Int!) {
+    organization(login: $org) {
+      teams(first: $teamsPageSize, after: $cursor) {
+        edges {
+          node {
+            slug
+            name
+            description
+            members(first: $membersPageSize) {
+              edges {
+                node {
+                  login
+                  databaseId
+                }
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`;
+
+const TEAM_MEMBERS_QUERY = `
+  query teamMembers($org: String!, $slug: String!, $cursor: String, $membersPageSize: Int!) {
+    organization(login: $org) {
+      team(slug: $slug) {
+        members(first: $membersPageSize, after: $cursor) {
+          edges {
+            node {
+              login
+              databaseId
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+`;
+
+const nextCursor = (pageInfo: TGithubPageInfo) => (pageInfo.hasNextPage ? pageInfo.endCursor : null);
+
+export const fetchGithubOrgTeams = async (octokit: Pick<Octokit, "graphql">, org: string): Promise<TGithubTeam[]> => {
+  const graphql = <T>(query: string, variables: Record<string, string | number | null>) =>
+    retryWithBackoff(() =>
+      octokit.graphql<T>(query, {
+        ...variables,
+        request: { signal: AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS) }
+      })
+    );
+
+  const teams: (TGithubTeam & { membersCursor: string | null })[] = [];
+
+  let teamsCursor: string | null = null;
+  let teamsPage = 0;
+  do {
+    const data: TGithubOrgTeamsResponse = await graphql<TGithubOrgTeamsResponse>(ORG_TEAMS_QUERY, {
+      org,
+      cursor: teamsCursor,
+      teamsPageSize: GITHUB_TEAMS_PAGE_SIZE,
+      membersPageSize: GITHUB_TEAM_MEMBERS_PAGE_SIZE
+    });
+    const connection = data.organization.teams;
+    connection.edges.forEach(({ node }) => {
+      teams.push({
+        slug: node.slug,
+        name: node.name,
+        description: node.description,
+        members: node.members.edges.map((edge) => edge.node),
+        membersCursor: nextCursor(node.members.pageInfo)
+      });
+    });
+    teamsCursor = nextCursor(connection.pageInfo);
+    teamsPage += 1;
+  } while (teamsCursor && teamsPage < GITHUB_MAX_PAGES);
+
+  if (teamsCursor) {
+    logger.warn({ org, fetchedTeams: teams.length }, "GitHub org team sync hit the page cap; team list truncated");
+  }
+
+  for (const team of teams) {
+    let membersPage = 1;
+    while (team.membersCursor && membersPage < GITHUB_MAX_PAGES) {
+      const data: TGithubTeamMembersResponse = await graphql<TGithubTeamMembersResponse>(TEAM_MEMBERS_QUERY, {
+        org,
+        slug: team.slug,
+        cursor: team.membersCursor,
+        membersPageSize: GITHUB_TEAM_MEMBERS_PAGE_SIZE
+      });
+      const connection = data.organization.team?.members;
+      if (!connection) {
+        throw new BadRequestError({
+          message: `GitHub team '${team.slug}' was renamed or deleted while its members were being listed. Please run the sync again.`
+        });
+      }
+      team.members.push(...connection.edges.map((edge) => edge.node));
+      team.membersCursor = nextCursor(connection.pageInfo);
+      membersPage += 1;
+    }
+
+    if (team.membersCursor) {
+      throw new BadRequestError({
+        message: `GitHub team '${team.slug}' has more members than can be synced (${GITHUB_MAX_PAGES * GITHUB_TEAM_MEMBERS_PAGE_SIZE} member limit).`
+      });
+    }
+  }
+
+  return teams.map(({ slug, name, description, members }) => ({ slug, name, description, members }));
+};
+
+type TGithubAlias = {
+  externalId: string;
+  userId: string;
+  isEmailVerified?: boolean | null;
+};
+
+export const buildGithubMemberMatcher = (aliases: TGithubAlias[], activeUserIds: Set<string>) => {
+  const userIdByGithubId = new Map(
+    aliases.flatMap((alias) =>
+      alias.isEmailVerified === true && activeUserIds.has(alias.userId)
+        ? ([[alias.externalId, alias.userId]] as const)
+        : []
+    )
+  );
+
+  return (member: TGithubTeamMember) =>
+    member.databaseId === null ? undefined : userIdByGithubId.get(String(member.databaseId));
+};
+
+export const mapGithubTeamsByName = <T extends { name: string }>(teams: T[]) => {
+  const teamsByName = new Map<string, T>();
+
+  teams.forEach((team) => {
+    const normalizedName = team.name.toLowerCase();
+    const existingTeam = teamsByName.get(normalizedName);
+    if (existingTeam) {
+      throw new BadRequestError({
+        message: `GitHub teams '${existingTeam.name}' and '${team.name}' both map to the Infisical group '${normalizedName}'. Rename one of the GitHub teams, then run the sync again. No group changes were applied.`
+      });
+    }
+    teamsByName.set(normalizedName, team);
+  });
+
+  return teamsByName;
+};
+
+type TGithubOrgSyncAuditChange = {
+  action: "add" | "remove";
+  groupId: string;
+  groupName: string;
+  userId: string;
+  username: string;
+};
+
+export const createGithubOrgSyncAuditLogs = async ({
+  auditLogService,
+  auditLogInfo,
+  orgId,
+  githubOrgName,
+  syncTrigger,
+  changes
+}: {
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  auditLogInfo: AuditLogInfo;
+  orgId: string;
+  githubOrgName: string;
+  syncTrigger: "login" | "manual";
+  changes: TGithubOrgSyncAuditChange[];
+}) => {
+  for (let offset = 0; offset < changes.length; offset += GITHUB_AUDIT_LOG_CONCURRENCY) {
+    const batch = changes.slice(offset, offset + GITHUB_AUDIT_LOG_CONCURRENCY);
+    await Promise.all(
+      batch.map((change) =>
+        auditLogService.createAuditLog({
+          ...auditLogInfo,
+          orgId,
+          event: {
+            type: change.action === "add" ? EventType.ADD_USER_TO_GROUP : EventType.REMOVE_USER_FROM_GROUP,
+            metadata: {
+              groupId: change.groupId,
+              groupName: change.groupName,
+              userId: change.userId,
+              username: change.username,
+              source: "github-org-sync",
+              githubOrgName,
+              syncTrigger
+            }
+          }
+        })
+      )
+    );
+  }
+};
 
 // Type definitions for GitHub API errors
 interface GitHubApiError extends Error {
@@ -73,21 +335,49 @@ interface GroupMembership {
   lastName: string | null;
 }
 
+export const assertGithubGroupMembersLinked = ({
+  currentUserIds,
+  linkedUserIds,
+  activeUsers,
+  noChangesApplied = false
+}: {
+  currentUserIds: Set<string>;
+  linkedUserIds: Set<string>;
+  activeUsers: { id: string; email: string }[];
+  noChangesApplied?: boolean;
+}) => {
+  const unlinkedUserIds = [...currentUserIds].filter((userId) => !linkedUserIds.has(userId));
+  if (!unlinkedUserIds.length) return;
+
+  const emailsByUserId = new Map(activeUsers.map((user) => [user.id, user.email]));
+  const reportLimit = 10;
+  const listedMembers = unlinkedUserIds.slice(0, reportLimit).map((userId) => emailsByUserId.get(userId) ?? userId);
+  const remainingCount = unlinkedUserIds.length - listedMembers.length;
+  const remainingMessage = remainingCount > 0 ? ` and ${remainingCount} more` : "";
+  const completionMessage = noChangesApplied ? " No changes were applied." : "";
+
+  throw new BadRequestError({
+    message: `GitHub team sync cannot safely reconcile ${unlinkedUserIds.length} existing group member${unlinkedUserIds.length === 1 ? "" : "s"} without a verified GitHub sign-in (${listedMembers.join(", ")}${remainingMessage}). Ask them to sign in with GitHub, or remove them from the corresponding Infisical groups, then run the sync again.${completionMessage}`
+  });
+};
+
 type TGithubOrgSyncServiceFactoryDep = {
   githubOrgSyncDAL: TGithubOrgSyncDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
-    "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
+    "find" | "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
   >;
   groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "find">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServiceFactory>;
@@ -100,10 +390,12 @@ export const githubOrgSyncServiceFactory = ({
   groupDAL,
   licenseService,
   orgMembershipDAL,
+  userAliasDAL,
   membershipRoleDAL,
   membershipGroupDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  auditLogService
 }: TGithubOrgSyncServiceFactoryDep) => {
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -286,7 +578,13 @@ export const githubOrgSyncServiceFactory = ({
     return existingConfig;
   };
 
-  const syncUserGroups = async (orgId: string, userId: string, accessToken: string) => {
+  const syncUserGroups = async ({
+    orgId,
+    userId,
+    username: infisicalUsername,
+    accessToken,
+    auditLogInfo
+  }: TSyncUserGroupsDTO) => {
     const config = await githubOrgSyncDAL.findOne({ orgId });
     if (!config || !config?.isActive) return;
 
@@ -357,7 +655,8 @@ export const githubOrgSyncServiceFactory = ({
     const {
       organization: { teams }
     } = data;
-    const githubUserTeams = teams?.edges?.map((el) => el.node.name.toLowerCase()) || [];
+    const githubUserTeamsByName = mapGithubTeamsByName(teams?.edges?.map((el) => el.node) ?? []);
+    const githubUserTeams = [...githubUserTeamsByName.keys()];
     const githubUserTeamSet = new Set(githubUserTeams);
     const githubUserTeamOnInfisical = await groupDAL.find({ orgId, $in: { name: githubUserTeams } });
     const githubUserTeamOnInfisicalGroupByName = groupBy(githubUserTeamOnInfisical, (i) => i.name);
@@ -372,18 +671,17 @@ export const githubOrgSyncServiceFactory = ({
 
     if (newTeams.length || updateTeams.length || removeFromTeams.length) {
       if (newTeams.length) {
-        await groupDAL.transaction(async (tx) => {
-          const newGroups = await groupDAL.insertMany(
+        const newGroups = await groupDAL.transaction(async (tx) => {
+          const insertedGroups = await groupDAL.insertMany(
             newTeams.map((newGroupName) => ({
               name: newGroupName,
-              role: OrgMembershipRole.Member,
               slug: newGroupName,
               orgId
             })),
             tx
           );
           const memberships = await membershipGroupDAL.insertMany(
-            newGroups.map((el) => ({
+            insertedGroups.map((el) => ({
               actorGroupId: el.id,
               scope: AccessScope.Organization,
               scopeOrgId: orgId
@@ -400,24 +698,57 @@ export const githubOrgSyncServiceFactory = ({
           );
 
           await userGroupMembershipDAL.insertMany(
-            newGroups.map((el) => ({
+            insertedGroups.map((el) => ({
               groupId: el.id,
               userId
             })),
             tx
           );
+
+          return insertedGroups;
+        });
+
+        await createGithubOrgSyncAuditLogs({
+          auditLogService,
+          auditLogInfo,
+          orgId,
+          githubOrgName: config.githubOrgName,
+          syncTrigger: "login",
+          changes: newGroups.map((group) => ({
+            action: "add",
+            groupId: group.id,
+            groupName: group.name,
+            userId,
+            username: infisicalUsername
+          }))
         });
       }
 
       if (updateTeams.length) {
+        const groupsToUpdate = updateTeams.map((teamName) => githubUserTeamOnInfisicalGroupByName[teamName][0]);
         await groupDAL.transaction(async (tx) => {
           await userGroupMembershipDAL.insertMany(
-            updateTeams.map((el) => ({
-              groupId: githubUserTeamOnInfisicalGroupByName[el][0].id,
+            groupsToUpdate.map((group) => ({
+              groupId: group.id,
               userId
             })),
             tx
           );
+        });
+
+        await createGithubOrgSyncAuditLogs({
+          auditLogService,
+          auditLogInfo,
+          orgId,
+          githubOrgName: config.githubOrgName,
+          syncTrigger: "login",
+          changes: groupsToUpdate.map((group) => ({
+            action: "add",
+            groupId: group.id,
+            groupName: group.name,
+            userId,
+            username: infisicalUsername
+          }))
         });
       }
 
@@ -429,6 +760,21 @@ export const githubOrgSyncServiceFactory = ({
           );
 
           await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [userId] }, tx);
+        });
+
+        await createGithubOrgSyncAuditLogs({
+          auditLogService,
+          auditLogInfo,
+          orgId,
+          githubOrgName: config.githubOrgName,
+          syncTrigger: "login",
+          changes: removeFromTeams.map((group) => ({
+            action: "remove",
+            groupId: group.groupId,
+            groupName: group.groupName,
+            userId,
+            username: infisicalUsername
+          }))
         });
       }
 
@@ -509,8 +855,7 @@ export const githubOrgSyncServiceFactory = ({
         }
         if (statusCode === 403) {
           throw new BadRequestError({
-            message:
-              "GitHub access token lacks required permissions. Required: 1) 'read:org' scope for organization teams, 2) Token owner must be an organization member with team visibility access, 3) Organization settings must allow team visibility. Check GitHub token scopes and organization member permissions."
+            message: githubTeamAccessDeniedMessage(config.githubOrgName)
           });
         }
         if (statusCode === 404) {
@@ -526,7 +871,7 @@ export const githubOrgSyncServiceFactory = ({
     }
   };
 
-  const syncAllTeams = async ({ orgPermission }: TSyncAllTeamsDTO): Promise<TSyncResult> => {
+  const syncAllTeams = async ({ orgPermission, auditLogInfo }: TSyncAllTeamsDTO): Promise<TSyncResult> => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
       actor: orgPermission.type,
@@ -591,124 +936,68 @@ export const githubOrgSyncServiceFactory = ({
       (member) => member.status === "accepted" && member.isActive
     ) as OrgMembershipWithUser[];
 
+    const activeMembersById = new Map(activeMembers.map((member) => [member.id, member]));
+    const activeUserIds = new Set(activeMembers.flatMap((member) => (member.user ? [member.user.id] : [])));
+    const githubAliases = activeUserIds.size
+      ? await userAliasDAL.find({
+          aliasType: UserAliasType.GITHUB,
+          isEmailVerified: true,
+          $in: { userId: [...activeUserIds] }
+        })
+      : [];
+    const matchGithubMember = buildGithubMemberMatcher(githubAliases, activeUserIds);
+    const linkedActiveUserIds = new Set(githubAliases.map((alias) => alias.userId));
+    const activeUsers = activeMembers.flatMap((member) => (member.user ? [member.user] : []));
+    const activeUsersById = new Map(activeUsers.map((user) => [user.id, user]));
+
     const startTime = Date.now();
     const syncErrors: string[] = [];
+    const unmatchedGithubUsers = new Set<string>();
 
-    const octokit = new OctokitWithPlugin({
-      auth: orgAccessToken,
-      request: {
-        signal: AbortSignal.timeout(30000)
+    const octokit = new Octokit({ auth: orgAccessToken });
+
+    const githubTeams = await fetchGithubOrgTeams(octokit, config.githubOrgName).catch((err) => {
+      if (err instanceof BadRequestError) throw err;
+      logger.error(err, "GitHub GraphQL error for batched team sync");
+
+      const gitHubError = err as GitHubApiError;
+      const statusCode = gitHubError.status || gitHubError.response?.status;
+      if (statusCode) {
+        if (statusCode === 401) {
+          throw new BadRequestError({
+            message: "GitHub access token is invalid or expired. Please provide a new token."
+          });
+        }
+        if (statusCode === 403) {
+          throw new BadRequestError({
+            message: githubTeamAccessDeniedMessage(config.githubOrgName)
+          });
+        }
+        if (statusCode === 404) {
+          throw new BadRequestError({
+            message: `Organization ${config.githubOrgName} not found or access token does not have sufficient permissions to read it.`
+          });
+        }
+        if (statusCode >= 500) {
+          throw new BadRequestError({
+            message: `GitHub did not respond in time while listing teams for organization ${config.githubOrgName}. Please try again later.`
+          });
+        }
       }
-    });
 
-    const data = await retryWithBackoff(async () => {
-      return octokit.graphql
-        .paginate<{
-          organization: {
-            teams: {
-              totalCount: number;
-              edges: {
-                node: {
-                  name: string;
-                  description: string;
-                  members: {
-                    edges: {
-                      node: {
-                        login: string;
-                      };
-                    }[];
-                  };
-                };
-              }[];
-            };
-          };
-        }>(
-          `
-        query orgTeams($cursor: String, $org: String!) {
-          organization(login: $org) {
-            teams(first: 100, after: $cursor) {
-              totalCount
-              edges {
-                node {
-                  name
-                  description
-                  members(first: 100) {
-                    edges {
-                      node {
-                        login
-                      }
-                    }
-                  }
-                }
-              }
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-            }
-          }
-        }
-        `,
-          {
-            org: config.githubOrgName
-          }
-        )
-        .catch((err) => {
-          logger.error(err, "GitHub GraphQL error for batched team sync");
-
-          const gitHubError = err as GitHubApiError;
-          const statusCode = gitHubError.status || gitHubError.response?.status;
-          if (statusCode) {
-            if (statusCode === 401) {
-              throw new BadRequestError({
-                message: "GitHub access token is invalid or expired. Please provide a new token."
-              });
-            }
-            if (statusCode === 403) {
-              throw new BadRequestError({
-                message:
-                  "GitHub access token lacks required permissions for organization team sync. Required: 1) 'admin:org' scope, 2) Token owner must be organization owner or have team read permissions, 3) Organization settings must allow team visibility. Check token scopes and user role."
-              });
-            }
-            if (statusCode === 404) {
-              throw new BadRequestError({
-                message: `Organization ${config.githubOrgName} not found or access token does not have sufficient permissions to read it.`
-              });
-            }
-          }
-
-          if ((err as Error)?.message?.includes("Although you appear to have the correct authorization credential")) {
-            throw new BadRequestError({
-              message:
-                "Organization has restricted OAuth app access. Please check that: 1) Your organization has approved the Infisical OAuth application, 2) The token owner has sufficient organization permissions."
-            });
-          }
-          throw new BadRequestError({ message: `GitHub GraphQL query failed: ${(err as Error)?.message}` });
+      if ((err as Error)?.message?.includes("Although you appear to have the correct authorization credential")) {
+        throw new BadRequestError({
+          message:
+            "Organization has restricted OAuth app access. Please check that: 1) Your organization has approved the Infisical OAuth application, 2) The token owner has sufficient organization permissions."
         });
+      }
+      throw new BadRequestError({ message: `GitHub GraphQL query failed: ${(err as Error)?.message}` });
     });
 
-    const {
-      organization: { teams }
-    } = data;
+    const githubTeamsByName = mapGithubTeamsByName(githubTeams);
+    const githubTeamMembersByName = new Map([...githubTeamsByName].map(([teamName, team]) => [teamName, team.members]));
 
-    const userTeamMap = new Map<string, string[]>();
-    const allGithubUsernamesInTeams = new Set<string>();
-
-    teams?.edges?.forEach((teamEdge) => {
-      const teamName = teamEdge.node.name.toLowerCase();
-
-      teamEdge.node.members.edges.forEach((memberEdge) => {
-        const username = memberEdge.node.login.toLowerCase();
-        allGithubUsernamesInTeams.add(username);
-
-        if (!userTeamMap.has(username)) {
-          userTeamMap.set(username, []);
-        }
-        userTeamMap.get(username)!.push(teamName);
-      });
-    });
-
-    const allGithubTeamNames = Array.from(new Set(teams?.edges?.map((edge) => edge.node.name.toLowerCase()) || []));
+    const allGithubTeamNames = Array.from(githubTeamMembersByName.keys());
 
     const existingTeamsOnInfisical = await groupDAL.find({
       orgId: orgPermission.orgId,
@@ -716,17 +1005,30 @@ export const githubOrgSyncServiceFactory = ({
     });
     const existingTeamsMap = groupBy(existingTeamsOnInfisical, (i) => i.name);
 
+    if (existingTeamsOnInfisical.length) {
+      const existingGroupMemberships = await userGroupMembershipDAL.find({
+        $in: { groupId: existingTeamsOnInfisical.map((team) => team.id) }
+      });
+      assertGithubGroupMembersLinked({
+        currentUserIds: new Set(
+          existingGroupMemberships.map((membership) => membership.userId).filter((userId) => activeUserIds.has(userId))
+        ),
+        linkedUserIds: linkedActiveUserIds,
+        activeUsers,
+        noChangesApplied: true
+      });
+    }
+
     const teamsToCreate = allGithubTeamNames.filter((teamName) => !(teamName in existingTeamsMap));
     const createdTeams = new Set<string>();
     const updatedTeams = new Set<string>();
-    const totalRemovedMemberships = 0;
+    let totalRemovedMemberships = 0;
 
-    await groupDAL.transaction(async (tx) => {
-      if (teamsToCreate.length > 0) {
+    if (teamsToCreate.length > 0) {
+      await groupDAL.transaction(async (tx) => {
         const newGroups = await groupDAL.insertMany(
           teamsToCreate.map((teamName) => ({
             name: teamName,
-            role: OrgMembershipRole.Member,
             slug: teamName,
             orgId: orgPermission.orgId
           })),
@@ -757,110 +1059,163 @@ export const githubOrgSyncServiceFactory = ({
           existingTeamsMap[group.name].push(group);
           createdTeams.add(group.name);
         });
-      }
+      });
+    }
 
-      const allTeams = [...Object.values(existingTeamsMap).flat()];
+    const allTeams = [...Object.values(existingTeamsMap).flat()];
 
-      for (const team of allTeams) {
-        const teamName = team.name.toLowerCase();
+    for (const team of allTeams) {
+      const teamName = team.name.toLowerCase();
+      const expectedUserIds = new Set<string>();
+      (githubTeamMembersByName.get(teamName) ?? []).forEach((githubMember) => {
+        const userId = matchGithubMember(githubMember);
 
-        const currentMemberships = (await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(
-          team.id,
-          orgPermission.orgId
-        )) as GroupMembership[];
+        if (userId) {
+          expectedUserIds.add(userId);
+          logger.info(
+            { githubLogin: githubMember.login, githubUserId: githubMember.databaseId, userId },
+            "Matched GitHub team member through a verified GitHub login"
+          );
+        } else {
+          unmatchedGithubUsers.add(githubMember.login);
+        }
+      });
 
-        const expectedUserIds = new Set<string>();
-        teams?.edges?.forEach((teamEdge) => {
-          if (teamEdge.node.name.toLowerCase() === teamName) {
-            teamEdge.node.members.edges.forEach((memberEdge) => {
-              const githubUsername = memberEdge.node.login.toLowerCase();
-
-              const matchingMember = activeMembers.find((member) => {
-                const email = member.user?.email || member.inviteEmail;
-                if (!email) return false;
-
-                const emailPrefix = email.split("@")[0].toLowerCase();
-                const emailDomain = email.split("@")[1].toLowerCase();
-
-                if (emailPrefix === githubUsername) {
-                  return true;
-                }
-                const domainName = emailDomain.split(".")[0];
-                if (githubUsername.endsWith(domainName) && githubUsername.length > domainName.length) {
-                  const baseUsername = githubUsername.slice(0, -domainName.length);
-                  if (emailPrefix === baseUsername) {
-                    return true;
-                  }
-                }
-                const emailSplitRegex = new RE2(/[._-]/);
-                const emailParts = emailPrefix.split(emailSplitRegex);
-                const longestEmailPart = emailParts.reduce((a, b) => (a.length > b.length ? a : b), "");
-                if (longestEmailPart.length >= 4 && githubUsername.includes(longestEmailPart)) {
-                  return true;
-                }
-                return false;
-              });
-
-              if (matchingMember?.user?.id) {
-                expectedUserIds.add(matchingMember.user.id);
-                logger.info(
-                  `Matched GitHub user ${githubUsername} to email ${matchingMember.user?.email || matchingMember.inviteEmail}`
-                );
-              }
-            });
-          }
-        });
-
+      const resolveMembershipChanges = (currentMemberships: GroupMembership[]) => {
         const currentUserIds = new Set<string>();
         currentMemberships.forEach((membership) => {
-          const activeMember = activeMembers.find((am) => am.id === membership.orgMembershipId);
+          const activeMember = activeMembersById.get(membership.orgMembershipId);
           if (activeMember?.user?.id) {
             currentUserIds.add(activeMember.user.id);
           }
         });
-
-        const usersToAdd = Array.from(expectedUserIds).filter((userId) => !currentUserIds.has(userId));
-
-        const membershipsToRemove = currentMemberships.filter((membership) => {
-          const activeMember = activeMembers.find((am) => am.id === membership.orgMembershipId);
-          return activeMember?.user?.id && !expectedUserIds.has(activeMember.user.id);
+        assertGithubGroupMembersLinked({
+          currentUserIds,
+          linkedUserIds: linkedActiveUserIds,
+          activeUsers
         });
 
-        if (usersToAdd.length > 0) {
-          await userGroupMembershipDAL.insertMany(
-            usersToAdd.map((userId) => ({
-              userId,
-              groupId: team.id
-            })),
+        return {
+          usersToAdd: Array.from(expectedUserIds).filter((userId) => !currentUserIds.has(userId)),
+          membershipsToRemove: currentMemberships.filter((membership) => {
+            const userId = activeMembersById.get(membership.orgMembershipId)?.user?.id;
+            return Boolean(userId && !expectedUserIds.has(userId));
+          })
+        };
+      };
+
+      const currentMemberships = (await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(
+        team.id,
+        orgPermission.orgId
+      )) as GroupMembership[];
+      const pendingChanges = resolveMembershipChanges(currentMemberships);
+      if (pendingChanges.usersToAdd.length || pendingChanges.membershipsToRemove.length) {
+        const membershipChanges = await groupDAL.transaction(async (tx) => {
+          const latestMemberships = (await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(
+            team.id,
+            orgPermission.orgId,
             tx
-          );
-          updatedTeams.add(teamName);
-        }
+          )) as GroupMembership[];
+          const { usersToAdd, membershipsToRemove } = resolveMembershipChanges(latestMemberships);
 
-        if (membershipsToRemove.length > 0) {
-          await userGroupMembershipDAL.delete(
-            {
-              $in: {
-                id: membershipsToRemove.map((m) => m.id)
-              }
-            },
-            tx
-          );
+          if (usersToAdd.length > 0) {
+            await userGroupMembershipDAL.insertMany(
+              usersToAdd.map((userId) => ({
+                userId,
+                groupId: team.id
+              })),
+              tx
+            );
+            updatedTeams.add(teamName);
+          }
 
-          const removedUserIds = membershipsToRemove
-            .map((membership) => activeMembers.find((am) => am.id === membership.orgMembershipId)?.user?.id)
-            .filter(Boolean) as string[];
-          await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: removedUserIds }, tx);
+          if (membershipsToRemove.length > 0) {
+            await userGroupMembershipDAL.delete(
+              {
+                $in: {
+                  id: membershipsToRemove.map((m) => m.id)
+                }
+              },
+              tx
+            );
 
-          updatedTeams.add(teamName);
-        }
+            const removedUserIds = membershipsToRemove
+              .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
+              .filter(Boolean) as string[];
+            await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: removedUserIds }, tx);
+
+            updatedTeams.add(teamName);
+          }
+
+          return {
+            usersToAdd,
+            removedUserIds: membershipsToRemove
+              .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
+              .filter(Boolean) as string[],
+            removedMembershipCount: membershipsToRemove.length
+          };
+        });
+        totalRemovedMemberships += membershipChanges.removedMembershipCount;
+
+        await createGithubOrgSyncAuditLogs({
+          auditLogService,
+          auditLogInfo,
+          orgId: orgPermission.orgId,
+          githubOrgName: config.githubOrgName,
+          syncTrigger: "manual",
+          changes: [
+            ...membershipChanges.usersToAdd.flatMap((userId) => {
+              const user = activeUsersById.get(userId);
+              return user
+                ? [
+                    {
+                      action: "add" as const,
+                      groupId: team.id,
+                      groupName: team.name,
+                      userId,
+                      username: user.username ?? user.email
+                    }
+                  ]
+                : [];
+            }),
+            ...membershipChanges.removedUserIds.flatMap((userId) => {
+              const user = activeUsersById.get(userId);
+              return user
+                ? [
+                    {
+                      action: "remove" as const,
+                      groupId: team.id,
+                      groupName: team.name,
+                      userId,
+                      username: user.username ?? user.email
+                    }
+                  ]
+                : [];
+            })
+          ]
+        });
       }
-    });
+    }
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
       usageMeteringService.emit(orgPermission.orgId, SecretIdentities.key);
       usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
+    }
+
+    if (unmatchedGithubUsers.size) {
+      const unmatchedLogins = [...unmatchedGithubUsers].sort();
+      const reportLimit = 10;
+      const listedLogins = unmatchedLogins.slice(0, reportLimit);
+      const remainingCount = unmatchedLogins.length - listedLogins.length;
+      const remainingMessage = remainingCount > 0 ? ` and ${remainingCount} more` : "";
+      syncErrors.push(
+        `Skipped ${unmatchedLogins.length} GitHub team member${unmatchedLogins.length === 1 ? "" : "s"} without a verified Infisical GitHub link (${listedLogins.join(", ")}${remainingMessage}). Ask them to sign in with GitHub, then run the sync again.`
+      );
+      logger.info(
+        { orgId: orgPermission.orgId, count: unmatchedGithubUsers.size },
+        "GitHub org sync skipped team members without a verified GitHub login"
+      );
     }
 
     const syncDuration = Date.now() - startTime;

@@ -6,7 +6,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -30,7 +30,7 @@ export const AzureKeyVaultSyncOptionsFields = () => {
                 objects that Azure Key Vault exposes through the secrets API.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id="disable-certificate-import"
               variant="project"
               checked={value}

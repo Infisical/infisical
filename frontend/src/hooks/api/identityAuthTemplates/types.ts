@@ -2,7 +2,8 @@ import { IdentityKubernetesAuthTokenReviewMode } from "../identities/types";
 
 export enum MachineIdentityAuthMethod {
   LDAP = "ldap",
-  KUBERNETES = "kubernetes"
+  KUBERNETES = "kubernetes",
+  OIDC = "oidc"
 }
 
 export interface LdapTemplateFields {
@@ -28,9 +29,17 @@ export interface KubernetesTemplateFields {
   hasTokenReviewerJwt?: boolean;
 }
 
+export interface OidcTemplateFields {
+  oidcDiscoveryUrl: string;
+  boundIssuer: string;
+  boundAudiences?: string;
+  caCert?: string;
+}
+
 export type TemplateFieldsByMethod = {
   [MachineIdentityAuthMethod.LDAP]: LdapTemplateFields;
   [MachineIdentityAuthMethod.KUBERNETES]: KubernetesTemplateFields;
+  [MachineIdentityAuthMethod.OIDC]: OidcTemplateFields;
 };
 
 export interface IdentityAuthTemplateForMethod<
@@ -47,20 +56,24 @@ export interface IdentityAuthTemplateForMethod<
 
 export type IdentityAuthTemplate =
   | IdentityAuthTemplateForMethod<MachineIdentityAuthMethod.LDAP>
-  | IdentityAuthTemplateForMethod<MachineIdentityAuthMethod.KUBERNETES>;
+  | IdentityAuthTemplateForMethod<MachineIdentityAuthMethod.KUBERNETES>
+  | IdentityAuthTemplateForMethod<MachineIdentityAuthMethod.OIDC>;
 
 export interface CreateIdentityAuthTemplateDTO {
   organizationId: string;
   name: string;
   authMethod: MachineIdentityAuthMethod;
-  templateFields: LdapTemplateFields | KubernetesTemplateFields;
+  templateFields: LdapTemplateFields | KubernetesTemplateFields | OidcTemplateFields;
 }
 
 export interface UpdateIdentityAuthTemplateDTO {
   templateId: string;
   organizationId: string;
   name?: string;
-  templateFields?: Partial<LdapTemplateFields> | Partial<KubernetesTemplateFields>;
+  templateFields?:
+    | Partial<LdapTemplateFields>
+    | Partial<KubernetesTemplateFields>
+    | Partial<OidcTemplateFields>;
 }
 
 export interface DeleteIdentityAuthTemplateDTO {

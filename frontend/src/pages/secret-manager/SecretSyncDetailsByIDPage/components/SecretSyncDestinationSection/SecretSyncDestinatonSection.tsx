@@ -206,6 +206,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
     case SecretSync.Qovery:
       DestinationComponents = <QoverySyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.Daytona:
+      // The connection is the whole destination; it is already shown above.
+      break;
     case SecretSync.Cloud66:
       DestinationComponents = <Cloud66SyncDestinationSection secretSync={secretSync} />;
       break;

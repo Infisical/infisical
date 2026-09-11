@@ -30,7 +30,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -260,7 +260,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-saml-auth"
                     variant="org"
                     checked={currentOrg?.authEnforced ?? false}
@@ -286,7 +286,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-oidc-auth"
                     variant="org"
                     checked={currentOrg?.authEnforced ?? false}
@@ -313,7 +313,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-google-sso"
                     variant="org"
                     checked={currentOrg?.googleSsoAuthEnforced ?? false}
@@ -369,7 +369,7 @@ export const OrgGeneralAuthSection = ({
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="allow-admin-bypass"
                     variant="org"
                     checked={currentOrg?.bypassOrgAuthEnabled ?? false}
@@ -437,7 +437,7 @@ export const OrgGeneralAuthSection = ({
                   issues with their {enforcementLabel} provider.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="bypass-enabled-modal"
                 variant="org"
                 checked={bypassEnabledInModal}

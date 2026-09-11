@@ -170,6 +170,7 @@ const PkiSyncPolicyActionSchema = z.object({
   [ProjectPermissionPkiSyncActions.ImportCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.SetTargetHost]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: z.boolean().optional()
 });
 
@@ -710,6 +711,7 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.SecretValidationRules]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Insights]: InsightsPolicyActionSchema.array().default([]),
@@ -1033,6 +1035,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SecretRotation,
         ProjectPermissionSub.Kms,
         ProjectPermissionSub.SecretSyncs,
+        ProjectPermissionSub.SecretValidationRules,
         ProjectPermissionSub.PkiSyncs,
         ProjectPermissionSub.SecretEventSubscriptions,
         ProjectPermissionSub.AppConnections,
@@ -1119,6 +1122,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canSetHealthCheckCommand = action.includes(
             ProjectPermissionPkiSyncActions.SetHealthCheckCommand
           );
+          const canSetTargetHost = action.includes(ProjectPermissionPkiSyncActions.SetTargetHost);
 
           if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
 
@@ -1133,6 +1137,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionPkiSyncActions.RemoveCertificates]: canRemoveCertificates,
             [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: canSetPostSyncCommand,
             [ProjectPermissionPkiSyncActions.SetHealthCheckCommand]: canSetHealthCheckCommand,
+            [ProjectPermissionPkiSyncActions.SetTargetHost]: canSetTargetHost,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -2482,6 +2487,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Modify", value: "edit", description: "Change project settings and configuration" }
     ]
   },
+  [ProjectPermissionSub.SecretValidationRules]: {
+    title: "Secret Validation Rules",
+    description: "Define the constraints secrets and generated credentials must satisfy",
+    actions: [
+      { label: "Read", value: "read", description: "View validation rules" },
+      { label: "Create", value: "create", description: "Add validation rules" },
+      { label: "Modify", value: "edit", description: "Change validation rules" },
+      { label: "Remove", value: "delete", description: "Delete validation rules" }
+    ]
+  },
   [ProjectPermissionSub.Environments]: {
     title: "Environment Management",
     description: "Create and manage project environments",
@@ -2940,6 +2955,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Set Post-Sync Command",
         value: ProjectPermissionPkiSyncActions.SetPostSyncCommand,
         description: "Set the command a sync runs on the destination host after delivering"
+      },
+      {
+        label: "Set Target Host",
+        value: ProjectPermissionPkiSyncActions.SetTargetHost,
+        description:
+          "Choose which host a sync delivers to when using an LDAP connection. The sync authenticates to that host with the connection's credential"
       }
     ]
   },
@@ -3267,6 +3288,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretApproval]: enabled,
   [ProjectPermissionSub.Integrations]: enabled,
   [ProjectPermissionSub.SecretSyncs]: enabled,
+  [ProjectPermissionSub.SecretValidationRules]: enabled,
   [ProjectPermissionSub.Kms]: enabled,
   [ProjectPermissionSub.Environments]: enabled,
   [ProjectPermissionSub.Tags]: enabled,

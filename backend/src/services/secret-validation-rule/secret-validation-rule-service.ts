@@ -2,10 +2,14 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import picomatch from "picomatch";
 
-import { ActionProjectType, TSecretValidationRules } from "@app/db/schemas";
+import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import {
+  ProjectPermissionSecretValidationRuleActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -14,45 +18,36 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { expandSecretReferencesFactory } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "./secret-validation-rule-constants";
+import { mergeConstraints } from "./secret-validation-rule-constraint-fns";
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
-import { checkForOverlappingRules, enforceSecretValidationRules } from "./secret-validation-rule-fns";
-import { assertConstraintsProduceSafePasswords } from "./secret-validation-rule-password-generator";
-import { MAX_PREVENT_VALUE_REUSE_VERSIONS, parseSecretValidationRuleInputs } from "./secret-validation-rule-schemas";
+import { ConstraintTarget, SecretValidationRuleType } from "./secret-validation-rule-enums";
 import {
-  ConstraintTarget,
-  ConstraintType,
-  DynamicSecretRuleProvider,
-  SecretRotationRuleProvider,
-  SecretValidationRuleType,
-  TConstraint,
+  checkForOverlappingRules,
+  enforceSecretValidationRules,
+  findRulesCoveringScope,
+  getConstraintsByTarget,
+  getRuleProviders,
+  parseSecretValidationRuleConfig,
+  secretValidationRuleName
+} from "./secret-validation-rule-fns";
+import { assertConstraintsProduceSafePasswords } from "./secret-validation-rule-password-generator";
+import { hasAnyConstraint } from "./secret-validation-rule-schemas";
+import {
+  TConstraints,
   TCreateSecretValidationRuleDTO,
   TDeleteSecretValidationRuleDTO,
-  TDynamicSecretsInputs,
+  TFindConstraintsForGeneratedSecretDTO,
+  TFindSecretValidationRuleByIdDTO,
+  TGeneratedPasswordValidation,
   TListSecretValidationRulesDTO,
-  TSecretRotationsInputs,
-  TSecretValidationRuleInputs,
-  TSecretValidationRuleRecord,
-  TUpdateSecretValidationRuleDTO
+  TSecretValidationRule,
+  TSecretValidationRuleConfig,
+  TSecretValidationRuleWithEnv,
+  TUpdateSecretValidationRuleDTO,
+  TValidateSecretsDTO
 } from "./secret-validation-rule-types";
-
-// Builds the API-facing rule record: the selected row fields plus the rule's
-// type-specific fields flattened alongside `type`. Selecting explicitly keeps
-// `encryptedInputs` (and any column added later) out of responses rather than
-// relying on the response schema to strip it.
-const $toRuleRecord = (rule: TSecretValidationRules, inputs: TSecretValidationRuleInputs) =>
-  ({
-    id: rule.id,
-    name: rule.name,
-    description: rule.description,
-    projectId: rule.projectId,
-    envId: rule.envId,
-    secretPath: rule.secretPath,
-    isActive: rule.isActive,
-    createdAt: rule.createdAt,
-    updatedAt: rule.updatedAt,
-    type: rule.type,
-    ...inputs
-  }) as TSecretValidationRuleRecord;
+import { TStaticSecretsRuleConfig } from "./static-secrets";
 
 type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;
@@ -75,389 +70,391 @@ export const secretValidationRuleServiceFactory = ({
   permissionService,
   kmsService
 }: TSecretValidationRuleServiceFactoryDep) => {
-  const listByProjectId = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId
-  }: TListSecretValidationRulesDTO) => {
+  const $getPermission = async (projectId: string, actor: OrgServiceActor) => {
     const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
+      actor: actor.type,
+      actorId: actor.id,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
-
-    const rules = await secretValidationRuleDAL.find({ projectId });
-
-    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const finalRules = (rules || []).map((rule) =>
-      $toRuleRecord(
-        rule,
-        parseSecretValidationRuleInputs(
-          rule.type,
-          JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
-        )
-      )
-    );
-
-    return finalRules;
+    return permission;
   };
 
-  const createRule = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId,
-    name,
-    description,
-    environmentSlug,
-    secretPath,
-    rule: { type, ...inputs }
-  }: TCreateSecretValidationRuleDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+  const $ruleNotFound = (type: SecretValidationRuleType, label: string) =>
+    new NotFoundError({
+      message: `${secretValidationRuleName(type)} validation rule with ${label} not found`
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    let envId: string | null = null;
-    if (environmentSlug) {
-      const env = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
-      if (!env) {
-        throw new NotFoundError({ message: `Environment with slug '${environmentSlug}' not found in project` });
-      }
-      envId = env.id;
+  /**
+   * A rule is addressed by ID alone, so refusing one in an unreachable project would confirm it
+   * exists. Reads as missing instead. A member lacking the action still gets a refusal.
+   */
+  const $getPermissionForRule = async (projectId: string, actor: OrgServiceActor, notFound: Error) => {
+    try {
+      return await $getPermission(projectId, actor);
+    } catch (error) {
+      if (error instanceof ForbiddenRequestError || error instanceof NotFoundError) throw notFound;
+      throw error;
     }
+  };
 
-    const parsedInputs = parseSecretValidationRuleInputs(type, inputs);
+  const $getCipher = (projectId: string) =>
+    kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
-    // For generated-credential rules, do a dry run before storing the rule so
-    // infeasible constraints (impossible length window, bad regex, etc.) fail
-    // at save time rather than silently breaking lease/rotation creation later.
-    if (type === SecretValidationRuleType.DynamicSecrets || type === SecretValidationRuleType.SecretRotations) {
-      assertConstraintsProduceSafePasswords(
-        (parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints
-      );
-    }
+  // Listed rather than spread so `encryptedInputs` can never reach a response.
+  const $toRecord = (rule: TSecretValidationRuleWithEnv, config: TSecretValidationRuleConfig) =>
+    ({
+      id: rule.id,
+      name: rule.name,
+      description: rule.description,
+      projectId: rule.projectId,
+      secretPath: rule.secretPath,
+      environment: rule.environment,
+      isActive: rule.isActive,
+      type: rule.type,
+      createdAt: rule.createdAt,
+      updatedAt: rule.updatedAt,
+      ...config
+    }) as TSecretValidationRule;
 
-    const { encryptor: ruleInputsEncryptor, decryptor: ruleInputsDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
+  const $resolveEnvId = async (projectId: string, environmentSlug: string) => {
+    const env = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
+    if (!env) {
+      throw new NotFoundError({
+        message: `Environment '${environmentSlug}' not found in project with ID '${projectId}'`
       });
+    }
+    return env.id;
+  };
 
-    const existingRules = await secretValidationRuleDAL.find({ projectId });
+  const $assertRuleType = (rule: TSecretValidationRuleWithEnv, type: SecretValidationRuleType) => {
+    if (rule.type !== type) {
+      throw new BadRequestError({
+        message: `Secret validation rule with ID '${rule.id}' is a ${secretValidationRuleName(
+          rule.type as SecretValidationRuleType
+        )} rule, not a ${secretValidationRuleName(type)} rule`
+      });
+    }
+  };
+
+  const $assertNoOverlap = async ({
+    projectId,
+    type,
+    envId,
+    secretPath,
+    config,
+    excludeRuleId
+  }: {
+    projectId: string;
+    type: SecretValidationRuleType;
+    envId: string | null;
+    secretPath: string;
+    config: TSecretValidationRuleConfig;
+    excludeRuleId?: string;
+  }) => {
+    const existingRules = await secretValidationRuleDAL.find({ projectId, type });
+    if (!existingRules.length) return;
+
+    const { decryptor } = await $getCipher(projectId);
     checkForOverlappingRules({
-      ruleType: type,
+      type,
       envId,
       secretPath,
-      inputs: parsedInputs,
-      existingRules: existingRules.map((r) => ({
-        id: r.id,
-        name: r.name,
-        envId: r.envId,
-        secretPath: r.secretPath,
-        type: r.type,
-        inputs: parseSecretValidationRuleInputs(
-          r.type,
-          JSON.parse(ruleInputsDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
+      config,
+      excludeRuleId,
+      existingRules: existingRules.map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        envId: rule.envId,
+        secretPath: rule.secretPath,
+        type: rule.type,
+        config: parseSecretValidationRuleConfig(
+          rule.type,
+          JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
         )
       }))
     });
+  };
 
-    const { cipherTextBlob: encryptedRuleInputs } = ruleInputsEncryptor({
-      plainText: Buffer.from(JSON.stringify(parsedInputs))
-    });
+  const $assertConstrainsSomething = (type: SecretValidationRuleType, config: TSecretValidationRuleConfig) => {
+    if (!hasAnyConstraint(Object.values(getConstraintsByTarget(type, config)))) {
+      throw new BadRequestError({ message: "A secret validation rule must set at least one constraint" });
+    }
+  };
 
-    const rule = await secretValidationRuleDAL.create({
+  // Dry run at save time, so infeasible constraints fail here rather than on the next lease.
+  const $assertGeneratorCanSatisfy = (type: SecretValidationRuleType, config: TSecretValidationRuleConfig) => {
+    if (type === SecretValidationRuleType.StaticSecrets) return;
+    assertConstraintsProduceSafePasswords(
+      getConstraintsByTarget(type, config)[ConstraintTarget.GeneratedPassword] ?? {}
+    );
+  };
+
+  const listSecretValidationRules = async (
+    { projectId, type }: TListSecretValidationRulesDTO,
+    actor: OrgServiceActor
+  ) => {
+    const permission = await $getPermission(projectId, actor);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretValidationRuleActions.Read,
+      ProjectPermissionSub.SecretValidationRules
+    );
+
+    const rules = await secretValidationRuleDAL.findWithEnv({ projectId, ...(type && { type }) });
+    if (!rules.length) return [];
+
+    const { decryptor } = await $getCipher(projectId);
+    return rules.map((rule) =>
+      $toRecord(
+        rule,
+        parseSecretValidationRuleConfig(
+          rule.type,
+          JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+        )
+      )
+    );
+  };
+
+  const $findRuleOrThrow = async (ruleId: string, type: SecretValidationRuleType, actor: OrgServiceActor) => {
+    const notFound = $ruleNotFound(type, `ID '${ruleId}'`);
+    const rule = await secretValidationRuleDAL.findOneWithEnv({ id: ruleId });
+    if (!rule) throw notFound;
+
+    const permission = await $getPermissionForRule(rule.projectId, actor, notFound);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretValidationRuleActions.Read,
+      ProjectPermissionSub.SecretValidationRules
+    );
+    $assertRuleType(rule, type);
+
+    const { decryptor } = await $getCipher(rule.projectId);
+    const config = parseSecretValidationRuleConfig(
+      rule.type,
+      JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+    );
+
+    return { rule, config };
+  };
+
+  const findSecretValidationRuleById = async (
+    { ruleId, type }: TFindSecretValidationRuleByIdDTO,
+    actor: OrgServiceActor
+  ) => {
+    const { rule, config } = await $findRuleOrThrow(ruleId, type, actor);
+    return $toRecord(rule, config);
+  };
+
+  const createSecretValidationRule = async (
+    {
+      type,
+      name,
+      projectId,
+      description,
+      environment,
+      secretPath,
+      isActive,
+      ...configInput
+    }: TCreateSecretValidationRuleDTO,
+    actor: OrgServiceActor
+  ) => {
+    const permission = await $getPermission(projectId, actor);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretValidationRuleActions.Create,
+      ProjectPermissionSub.SecretValidationRules
+    );
+
+    const envId = environment ? await $resolveEnvId(projectId, environment) : null;
+    const config = parseSecretValidationRuleConfig(type, configInput);
+
+    $assertConstrainsSomething(type, config);
+    $assertGeneratorCanSatisfy(type, config);
+    await $assertNoOverlap({ projectId, type, envId, secretPath, config });
+
+    const { encryptor } = await $getCipher(projectId);
+    const { cipherTextBlob: encryptedInputs } = encryptor({ plainText: Buffer.from(JSON.stringify(config)) });
+
+    const rule = await secretValidationRuleDAL.createWithEnv({
       name,
       description,
       projectId,
       envId,
       secretPath,
       type,
-      encryptedInputs: encryptedRuleInputs
+      isActive,
+      encryptedInputs
     });
-
-    return $toRuleRecord(rule, parsedInputs);
+    return $toRecord(rule, config);
   };
 
-  const updateRule = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId,
-    ruleId,
-    environmentSlug,
-    rule,
-    ...dto
-  }: TUpdateSecretValidationRuleDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+  const updateSecretValidationRule = async (
+    {
+      ruleId,
+      type,
+      name,
+      description,
+      environment,
+      secretPath,
+      isActive,
+      ...configPatch
+    }: TUpdateSecretValidationRuleDTO,
+    actor: OrgServiceActor
+  ) => {
+    const notFound = $ruleNotFound(type, `ID '${ruleId}'`);
+    const existingRule = await secretValidationRuleDAL.findOneWithEnv({ id: ruleId });
+    if (!existingRule) throw notFound;
 
-    const existingRule = await secretValidationRuleDAL.findOne({ id: ruleId, projectId });
-    if (!existingRule) {
-      throw new NotFoundError({ message: `Secret validation rule with ID ${ruleId} not found` });
-    }
-
-    let envId: string | null | undefined;
-    if (environmentSlug !== undefined) {
-      if (environmentSlug) {
-        const env = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
-        if (!env) {
-          throw new NotFoundError({ message: `Environment with slug '${environmentSlug}' not found in project` });
-        }
-        envId = env.id;
-      } else {
-        envId = null;
-      }
-    }
-
-    const { encryptor: ruleInputsEncryptor, decryptor: ruleInputsDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-
-    // An update either replaces the whole config or leaves the stored one
-    // untouched. `type` has its own column and the per-type input schemas strip
-    // it, so the incoming config can go straight in — only the per-type input
-    // fields reach the blob.
-    const ruleType = rule?.type ?? existingRule.type;
-    const parsedInputs = parseSecretValidationRuleInputs(
-      ruleType,
-      rule ?? (JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown)
+    const { projectId } = existingRule;
+    const permission = await $getPermissionForRule(existingRule.projectId, actor, notFound);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretValidationRuleActions.Edit,
+      ProjectPermissionSub.SecretValidationRules
     );
+    $assertRuleType(existingRule, type);
 
-    if (ruleType === SecretValidationRuleType.DynamicSecrets || ruleType === SecretValidationRuleType.SecretRotations) {
-      assertConstraintsProduceSafePasswords(
-        (parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints
-      );
-    }
+    let envId = existingRule.envId ?? null;
+    if (environment !== undefined) envId = environment ? await $resolveEnvId(projectId, environment) : null;
 
-    const finalEnvId = envId !== undefined ? envId : (existingRule.envId as string | null);
-    const finalSecretPath = dto.secretPath ?? existingRule.secretPath;
+    const { encryptor, decryptor } = await $getCipher(projectId);
+    const storedConfig = JSON.parse(decryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as Record<
+      string,
+      unknown
+    >;
 
-    const existingRules = await secretValidationRuleDAL.find({ projectId });
-    checkForOverlappingRules({
-      ruleType: ruleType as SecretValidationRuleType,
-      envId: finalEnvId,
-      secretPath: finalSecretPath,
-      inputs: parsedInputs,
-      existingRules: existingRules.map((r) => ({
-        id: r.id,
-        name: r.name,
-        envId: r.envId,
-        secretPath: r.secretPath,
-        type: r.type,
-        inputs: parseSecretValidationRuleInputs(
-          r.type,
-          JSON.parse(ruleInputsDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
-        )
-      })),
-      excludeRuleId: ruleId
+    // Each constraint target is replaced when supplied, cleared when null, and left alone otherwise.
+    const mergedConfig = { ...storedConfig };
+    Object.entries(configPatch).forEach(([field, value]) => {
+      if (value === undefined) return;
+      if (value === null) delete mergedConfig[field];
+      else mergedConfig[field] = value;
     });
 
-    // The rule config moves as a unit: `type` and the re-encrypted inputs are
-    // written together, or neither is.
-    const encryptedInputs = rule
-      ? ruleInputsEncryptor({ plainText: Buffer.from(JSON.stringify(parsedInputs)) }).cipherTextBlob
-      : undefined;
+    const config = parseSecretValidationRuleConfig(type, mergedConfig);
+    const finalSecretPath = secretPath ?? existingRule.secretPath;
 
-    const updatedRule = await secretValidationRuleDAL.updateById(ruleId, {
-      ...dto,
-      ...(envId !== undefined && { envId }),
-      ...(rule && { type: rule.type, encryptedInputs })
+    $assertConstrainsSomething(type, config);
+    $assertGeneratorCanSatisfy(type, config);
+    await $assertNoOverlap({ projectId, type, envId, secretPath: finalSecretPath, config, excludeRuleId: ruleId });
+
+    const rule = await secretValidationRuleDAL.updateByIdWithEnv(ruleId, {
+      ...(name !== undefined && { name }),
+      ...(description !== undefined && { description }),
+      ...(environment !== undefined && { envId }),
+      ...(secretPath !== undefined && { secretPath }),
+      ...(isActive !== undefined && { isActive }),
+      encryptedInputs: encryptor({ plainText: Buffer.from(JSON.stringify(config)) }).cipherTextBlob
     });
-
-    return $toRuleRecord(updatedRule, parsedInputs);
+    return $toRecord(rule, config);
   };
 
-  const deleteRule = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId,
-    ruleId
-  }: TDeleteSecretValidationRuleDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+  const deleteSecretValidationRule = async (
+    { ruleId, type }: TDeleteSecretValidationRuleDTO,
+    actor: OrgServiceActor
+  ) => {
+    const notFound = $ruleNotFound(type, `ID '${ruleId}'`);
+    const rule = await secretValidationRuleDAL.findOneWithEnv({ id: ruleId });
+    if (!rule) throw notFound;
 
-    const existingRule = await secretValidationRuleDAL.findOne({ id: ruleId, projectId });
-    if (!existingRule) {
-      throw new NotFoundError({ message: `Secret validation rule with ID ${ruleId} not found` });
-    }
+    const permission = await $getPermissionForRule(rule.projectId, actor, notFound);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretValidationRuleActions.Delete,
+      ProjectPermissionSub.SecretValidationRules
+    );
+    $assertRuleType(rule, type);
 
-    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { decryptor } = await $getCipher(rule.projectId);
+    const config = parseSecretValidationRuleConfig(
+      rule.type,
+      JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+    );
 
     await secretValidationRuleDAL.deleteById(ruleId);
-    return $toRuleRecord(
-      existingRule,
-      parseSecretValidationRuleInputs(
-        existingRule.type,
-        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown
-      )
-    );
+    return $toRecord(rule, config);
   };
 
   /**
-   * Fetch all rules for a project and enforce them against the given secrets.
-   * Called by secret write paths before the DB transaction starts.
-   *
-   * When `expandSecretReferences` is provided, secret values containing
-   * interpolation references (e.g. `${env.key}`) will be expanded to their
-   * resolved values before validation so that constraints apply to the true
-   * secret value rather than the raw reference string.
+   * Pass `tx` when the caller already holds a transaction, or this checks out a second connection.
+   * `${env.key}` references are expanded first, so constraints see the resolved value.
    */
-  const validateSecrets = async ({
-    projectId,
-    environment,
-    envId,
-    secretPath,
-    secrets,
-    tx
-  }: {
-    projectId: string;
-    environment: string;
-    envId: string;
-    secretPath: string;
-    secrets: { key: string; value?: string; secretId?: string }[];
-    tx?: Knex;
-  }) => {
+  const validateSecrets = async (
+    { projectId, environment, envId, secretPath, secrets }: TValidateSecretsDTO,
+    tx?: Knex
+  ) => {
     if (!secrets.length) return;
 
-    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true }, { tx });
+    const rules = await secretValidationRuleDAL.find(
+      { projectId, isActive: true, type: SecretValidationRuleType.StaticSecrets },
+      { tx }
+    );
     if (!rules.length) return;
 
-    // Secret values and rule inputs share the SecretManager data key, so one
-    // cipher pair serves both — this runs on every secret write.
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey(
-      {
-        type: KmsDataKey.SecretManager,
-        projectId
-      },
-      tx
+    const { decryptor } = await $getCipher(projectId);
+
+    const coveringRules = findRulesCoveringScope(rules, { envId, secretPath }).map((rule) => ({
+      name: rule.name,
+      config: parseSecretValidationRuleConfig(
+        rule.type,
+        JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+      ) as TStaticSecretsRuleConfig
+    }));
+    if (!coveringRules.length) return;
+
+    // reading version history is only worth it when a covering rule actually forbids reuse
+    const versionsToCheck = Math.max(
+      0,
+      ...coveringRules.map((rule) => rule.config.valueConstraints?.reusePrevention?.previousVersions ?? 0)
     );
+
+    const previousValuesBySecretId: Record<string, string[]> = {};
+    if (versionsToCheck > 0) {
+      const secretIds = secrets.map((secret) => secret.secretId).filter(Boolean) as string[];
+      const versionsPerSecret = await Promise.all(
+        secretIds.map((secretId) =>
+          secretVersionV2BridgeDAL.find(
+            { secretId },
+            { sort: [["version", "desc"]], limit: MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS, tx }
+          )
+        )
+      );
+
+      versionsPerSecret.flat().forEach((version) => {
+        if (!version.encryptedValue) return;
+        previousValuesBySecretId[version.secretId] ??= [];
+        previousValuesBySecretId[version.secretId].push(
+          decryptor({ cipherTextBlob: version.encryptedValue }).toString()
+        );
+      });
+    }
 
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
       secretDAL,
-      decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
+      decryptSecretValue: (value) => (value ? decryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: () => true
     });
 
-    const parsedRules = rules.map((r) => ({
-      ...r,
-      inputs: parseSecretValidationRuleInputs(
-        r.type,
-        JSON.parse(secretManagerDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
-      )
-    }));
-
-    // filter to rules that actually match this environment + path so we don't trigger expensive version-history lookups for unrelated PreventValueReuse rules.
-    const matchingRules = parsedRules.filter((r) => {
-      if (r.envId && r.envId !== envId) return false;
-      return picomatch.isMatch(secretPath, r.secretPath, { strictSlashes: false });
-    });
-
-    const hasPreventValueReuseConstraint = matchingRules.some((r) =>
-      r.inputs.constraints?.some(
-        (c) => c.type === ConstraintType.PreventValueReuse && c.appliesTo === ConstraintTarget.SecretValue
-      )
-    );
-
-    const previousValuesMap: Record<string, string[]> = {};
-    if (hasPreventValueReuseConstraint) {
-      const secretIdsToCheck = secrets.filter((s) => s.secretId).map((s) => s.secretId!);
-      if (secretIdsToCheck.length) {
-        const allVersions = await Promise.all(
-          secretIdsToCheck.map((sId) =>
-            secretVersionV2BridgeDAL.find(
-              { secretId: sId },
-              { sort: [["version", "desc"]], limit: MAX_PREVENT_VALUE_REUSE_VERSIONS, tx }
-            )
-          )
-        );
-
-        for (const versions of allVersions) {
-          for (const version of versions) {
-            if (!version.encryptedValue) {
-              // eslint-disable-next-line no-continue
-              continue;
-            }
-            const decryptedValue = secretManagerDecryptor({ cipherTextBlob: version.encryptedValue }).toString();
-            if (!previousValuesMap[version.secretId]) {
-              previousValuesMap[version.secretId] = [];
-            }
-            previousValuesMap[version.secretId].push(decryptedValue);
-          }
-        }
-      }
-    }
-
     const resolvedSecrets = await Promise.all(
-      secrets.map(async (s) => ({
-        key: s.key,
+      secrets.map(async (secret) => ({
+        key: secret.key,
         value: await expandSecretReferences({
-          value: s.value,
+          value: secret.value,
           secretPath,
           environment,
-          secretKey: s.key
+          secretKey: secret.key
         }),
-        ...(s.secretId && previousValuesMap[s.secretId] ? { previousValues: previousValuesMap[s.secretId] } : {})
+        ...(secret.secretId && { previousValues: previousValuesBySecretId[secret.secretId] })
       }))
     );
 
-    enforceSecretValidationRules({
-      projectRules: parsedRules,
-      envId,
-      secretPath,
-      secrets: resolvedSecrets
-    });
+    enforceSecretValidationRules({ rules: coveringRules, secrets: resolvedSecrets });
   };
 
   /**
-   * Finds active validation rules that match a generated-credential flow
-   * (dynamic secret lease or secret rotation) and returns the union of
-   * their constraints for the password target.
-   *
-   * Multiple matching rules contribute their constraints additively — the
-   * generator must satisfy all of them. Overlap is prevented at rule
-   * creation time, so contradictions across rules are not expected here.
+   * The constraints a dynamic secret lease or a secret rotation has to generate within. Rules that
+   * cover the same credential contribute together, and overlap is rejected when a rule is saved, so
+   * the merged set can never contradict itself.
    */
   const findConstraintsForGeneratedSecret = async ({
     projectId,
@@ -465,57 +462,37 @@ export const secretValidationRuleServiceFactory = ({
     secretPath,
     type,
     provider
-  }: {
-    projectId: string;
-    envId: string;
-    secretPath: string;
-    type: SecretValidationRuleType.DynamicSecrets | SecretValidationRuleType.SecretRotations;
-    provider: DynamicSecretRuleProvider | SecretRotationRuleProvider;
-  }): Promise<{ constraints: TConstraint[]; ruleNames: string[] }> => {
+  }: TFindConstraintsForGeneratedSecretDTO): Promise<TGeneratedPasswordValidation> => {
     const rules = await secretValidationRuleDAL.find({ projectId, isActive: true, type });
-    if (!rules.length) return { constraints: [], ruleNames: [] };
+    if (!rules.length) return { constraints: {}, ruleNames: [] };
 
-    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { decryptor } = await $getCipher(projectId);
 
-    const constraints: TConstraint[] = [];
+    const constraintSets: TConstraints[] = [];
     const ruleNames: string[] = [];
 
-    for (const rule of rules) {
-      // Scope: rule envId null = applies to all environments
-      if (rule.envId && rule.envId !== envId) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-      if (!picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-
-      const parsed = parseSecretValidationRuleInputs(
+    findRulesCoveringScope(rules, { envId, secretPath }).forEach((rule) => {
+      const config = parseSecretValidationRuleConfig(
         rule.type,
-        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
-      ) as TDynamicSecretsInputs | TSecretRotationsInputs;
+        JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+      );
 
-      if (!parsed.providers?.includes(provider as never)) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
+      if (!getRuleProviders(type, config)?.includes(provider)) return;
 
-      constraints.push(...parsed.constraints);
+      const passwordConstraints = getConstraintsByTarget(type, config)[ConstraintTarget.GeneratedPassword];
+      if (passwordConstraints) constraintSets.push(passwordConstraints);
       ruleNames.push(rule.name);
-    }
+    });
 
-    return { constraints, ruleNames };
+    return { constraints: mergeConstraints(constraintSets), ruleNames };
   };
 
   return {
-    listByProjectId,
-    createRule,
-    updateRule,
-    deleteRule,
+    listSecretValidationRules,
+    findSecretValidationRuleById,
+    createSecretValidationRule,
+    updateSecretValidationRule,
+    deleteSecretValidationRule,
     validateSecrets,
     findConstraintsForGeneratedSecret
   };
