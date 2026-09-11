@@ -1,4 +1,5 @@
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { groupBy } from "@app/lib/fn";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -108,7 +109,7 @@ export const buildSyncPayload = async (
   deps: {
     folderDAL: Pick<TSecretFolderDALFactory, "find" | "findByManySecretPath">;
     projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-    secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds" | "find">;
+    secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId" | "findByFolderIds" | "find">;
     secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
     expandSecretReferences: TExpandSecretReferences;
     decryptSecretValue: (value?: Buffer | null) => string;
@@ -140,7 +141,14 @@ export const buildSyncPayload = async (
 
   const pathByFolderId = new Map(folders.map(({ folderId, path }) => [folderId, path]));
 
-  const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: folders.map(({ folderId }) => folderId) });
+  // findByFolderIds joins tags, metadata, rotation, honey token, reminder, recipients and users
+  // plus a DENSE_RANK window, so it costs far more than the three narrow queries findByFolderId
+  // runs. Every non-recursive sync (the vast majority today) hits this path, so it keeps using
+  // the cheaper single-folder read; only a genuinely multi-folder subtree pays for the join.
+  const secrets =
+    folders.length === 1
+      ? await secretV2BridgeDAL.findByFolderId({ folderId: folders[0].folderId })
+      : await secretV2BridgeDAL.findByFolderIds({ folderIds: folders.map(({ folderId }) => folderId) });
 
   assertWithinSecretLimit(secrets.length);
 
@@ -182,18 +190,31 @@ export const buildSyncPayload = async (
   let allEntries = entries;
 
   if (secretImports.length) {
-    const importedSecrets = await fnSecretsV2FromImports({
-      decryptor: decryptSecretValue,
-      folderDAL,
-      secretDAL: secretV2BridgeDAL,
-      expandSecretReferences,
-      secretImportDAL,
-      secretImports,
-      hasSecretAccess: () => true,
-      viewSecretValue: true,
-      projectId,
-      ...deps.fnSecretsV2FromImportsDeps
-    });
+    // fnSecretsV2FromImports dedupes by (importEnv, importPath) across the whole batch it is
+    // given, keeping one result row per source. Two folders importing the same source in one
+    // batched call would collapse to a single importFolderId, silently dropping the other
+    // folder's copy from the payload. Calling it once per declaring folder keeps each call's
+    // dedup scoped to that folder's own imports, so every declaring folder gets its own result.
+    const importsByDeclaringFolder = groupBy(secretImports, (secretImport) => secretImport.folderId);
+
+    const importedSecrets = (
+      await Promise.all(
+        Object.values(importsByDeclaringFolder).map((declaringFolderImports) =>
+          fnSecretsV2FromImports({
+            decryptor: decryptSecretValue,
+            folderDAL,
+            secretDAL: secretV2BridgeDAL,
+            expandSecretReferences,
+            secretImportDAL,
+            secretImports: declaringFolderImports,
+            hasSecretAccess: () => true,
+            viewSecretValue: true,
+            projectId,
+            ...deps.fnSecretsV2FromImportsDeps
+          })
+        )
+      )
+    ).flat();
 
     allEntries = mergeImportedSecrets(
       entries,

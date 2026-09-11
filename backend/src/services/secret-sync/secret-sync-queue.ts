@@ -435,8 +435,8 @@ export const secretSyncQueueFactory = ({
 
     const importedSecretMap: TSecretMap = {};
 
-    // Task 5 blocks combining import behavior with a recursive sync, so this payload always
-    // covers exactly one folder. Comparison is against raw keys as returned by the destination
+    // Import behavior is never combined with a recursive sync, so this payload always covers
+    // exactly one folder. Comparison is against raw keys as returned by the destination
     // (already schema-stripped), so entries come from all() rather than the schema-applying flatten().
     const payload = await $getInfisicalSecrets(secretSync, false);
     const secretMap: TSecretMap = Object.fromEntries(

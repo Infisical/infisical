@@ -1,4 +1,10 @@
-import { assertWithinSecretLimit, mergeImportedSecrets, resolveSyncFolders, SECRET_SYNC_MAX_SECRETS } from "./secret-sync-recursive-fns";
+import {
+  assertWithinSecretLimit,
+  buildSyncPayload,
+  mergeImportedSecrets,
+  resolveSyncFolders,
+  SECRET_SYNC_MAX_SECRETS
+} from "./secret-sync-recursive-fns";
 
 const deps = {
   folderDAL: {
@@ -86,5 +92,98 @@ describe("mergeImportedSecrets", () => {
 
     expect(merged).toHaveLength(1);
     expect(merged[0].value).toBe("second");
+  });
+});
+
+describe("buildSyncPayload", () => {
+  test("two folders importing the same source both receive its secrets", async () => {
+    const sharedSecret = {
+      id: "secret-1",
+      key: "DB_URL",
+      folderId: "shared-folder",
+      encryptedValue: Buffer.from("shared-value"),
+      encryptedComment: null,
+      skipMultilineEncoding: false,
+      tags: [],
+      secretMetadata: []
+    };
+
+    const rootImport = {
+      id: "import-root",
+      folderId: "root",
+      importPath: "/shared",
+      importEnv: { id: "env-1", slug: "dev", name: "dev", projectId: "proj-1" },
+      isReplication: false,
+      isReserved: false,
+      position: 1
+    };
+
+    const apiImport = {
+      id: "import-api",
+      folderId: "api",
+      importPath: "/shared",
+      importEnv: { id: "env-1", slug: "dev", name: "dev", projectId: "proj-1" },
+      isReplication: false,
+      isReserved: false,
+      position: 1
+    };
+
+    const buildDeps = {
+      folderDAL: {
+        find: async () => [
+          { id: "root", name: "root", parentId: null, envId: "env-1", isReserved: false },
+          { id: "api", name: "api", parentId: "root", envId: "env-1", isReserved: false }
+        ],
+        findByManySecretPath: async (query: { envId: string; secretPath: string }[]) =>
+          query.map(() => ({
+            id: "shared-folder",
+            envId: "env-1",
+            path: "/shared",
+            name: "shared",
+            parentId: null,
+            isReserved: false
+          }))
+      },
+      projectEnvDAL: { findOne: async () => ({ id: "env-1", slug: "dev", projectId: "proj-1" }) },
+      secretV2BridgeDAL: {
+        findByFolderIds: async () => [],
+        find: async () => [sharedSecret]
+      },
+      secretImportDAL: {
+        findByFolderIds: async (folderIds: string[]) =>
+          [rootImport, apiImport].filter((row) => folderIds.includes(row.folderId)),
+        findByIds: async () => []
+      },
+      expandSecretReferences: async ({ value }: { value?: string }) => value,
+      decryptSecretValue: (value?: Buffer | null) => (value ? value.toString() : ""),
+      fnSecretsV2FromImportsDeps: {
+        projectFolderGrantDAL: { find: async () => [] },
+        actorOrgId: "org-1",
+        orgDAL: { findOrgById: async () => ({ allowCrossProjectSecretSharing: false }) },
+        licenseService: { getPlan: async () => ({ crossProjectSecretSharing: false }) },
+        kmsService: {
+          createCipherPairWithDataKey: async () => ({
+            decryptor: () => "",
+            encryptor: () => ({ cipherTextBlob: Buffer.from("") })
+          })
+        }
+      }
+    } as unknown as Parameters<typeof buildSyncPayload>[0];
+
+    const payload = await buildSyncPayload(buildDeps, {
+      projectId: "proj-1",
+      environment: "dev",
+      sourcePath: "/",
+      sourceFolderId: "root",
+      recursive: true,
+      includeImports: true
+    });
+
+    const paths = payload
+      .all()
+      .map((entry) => entry.path)
+      .sort();
+
+    expect(paths).toEqual(["/", "/api"]);
   });
 });
