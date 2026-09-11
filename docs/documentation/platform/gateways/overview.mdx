@@ -16,7 +16,7 @@ Some of the systems Infisical connects to aren't reachable from the internet: a 
   </Card>
 </CardGroup>
 
-If the target is already reachable and you would rather not run a gateway, you can instead allow [Infisical's IP addresses](/documentation/setup/networking) through your firewall.
+If a target is reachable from the internet, app connections and dynamic secrets can reach it without a gateway by allowing [Infisical Cloud's IP addresses](/documentation/setup/networking) through your firewall. PAM always requires a gateway, as do HSM, ADCS, and discovery.
 
 <Info>
   Gateway is a paid feature available under the Enterprise Tier for Infisical
@@ -50,7 +50,11 @@ Infisical connects to the gateway, so there's no relay in the path. Available on
 
 ## Health checks
 
-Gateways send a heartbeat every 3 minutes, each carrying a TTL that says how long the gateway should be treated as healthy. If no heartbeat arrives before the TTL expires, the gateway is marked unhealthy. Relays send hourly heartbeats and are marked unhealthy if one is missed.
+Gateways send a heartbeat every 3 minutes, each carrying a TTL that says how long the gateway should be treated as healthy. If no heartbeat arrives before the TTL expires, the gateway is marked unhealthy.
+
+A gateway running both modes is probed on each transport separately, so it stays healthy while either one works. Its detail page shows the two transports individually, which is how you tell a relay outage from a direct listen one.
+
+Relays send a heartbeat every 30 minutes and are marked unhealthy after an hour without one.
 
 Infisical notifies all organization admins of unhealthy gateways and relays by email and in-app notification.
 
