@@ -159,7 +159,7 @@ In direct listen mode it also:
     infisical gateway start my-gateway --listen-address=gateway.internal:8443 --enroll-method=token --token=<token> --domain=<domain>
     ```
 
-    Pass it alongside `--target-relay-name` to run both modes, so Infisical uses the listen address first and falls back to the relay. This is how you switch an existing gateway between modes without an outage, and [Switching modes without an outage](/documentation/platform/gateways/gateway-deployment#switching-modes-without-an-outage) covers when to keep both:
+    Pass it alongside `--target-relay-name` to run both modes, so Infisical uses the listen address first and falls back to the relay. [Running both modes](/documentation/platform/gateways/gateway-deployment#running-both-modes) covers when to keep both, and how to use it to switch modes without an outage:
 
     ```bash
     infisical gateway start my-gateway --listen-address=gateway.internal:8443 --target-relay-name=my-relay --enroll-method=token --token=<token> --domain=<domain>
