@@ -100,11 +100,18 @@ export const ConnectionIconStack = ({
   const hidden = icons.slice(maxVisible);
 
   return (
-    <div className={cn("flex items-center -space-x-1.5", className)}>
-      {visible.map((icon) => (
+    // The leftmost chip has to paint on top, and flex-row-reverse cannot do it: reversing the
+    // direction moves a chip visually and its paint order follows, so the right edge wins either
+    // way. `isolate` confines these depths to the stack.
+    <div className={cn("isolate flex items-center -space-x-1.5", className)}>
+      {visible.map((icon, index) => (
         <Tooltip key={icon.label}>
           <TooltipTrigger asChild>
-            <ConnectionChip icon={icon} className={stackedChipClassName} />
+            <ConnectionChip
+              icon={icon}
+              className={cn(stackedChipClassName, "relative")}
+              style={{ zIndex: visible.length - index }}
+            />
           </TooltipTrigger>
           <TooltipContent>{icon.label}</TooltipContent>
         </Tooltip>
