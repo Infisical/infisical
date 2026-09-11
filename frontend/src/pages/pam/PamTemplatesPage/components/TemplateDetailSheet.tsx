@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -36,6 +36,7 @@ import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/ap
 import {
   accountTypeRequiresRecording,
   isRotatablePamAccountType,
+  maxGeneratedPasswordLength,
   PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
   PamPolicyType,
@@ -59,89 +60,90 @@ const configSchema = z.object({
 
 type ConfigForm = z.infer<typeof configSchema>;
 
-const settingsSchema = z
-  .object({
-    gatewayId: z.string().nullable(),
-    gatewayPoolId: z.string().nullable(),
-    recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
-    recordingConnectionId: z.string().nullable(),
-    s3Bucket: z.string().optional(),
-    s3Region: z.string().optional(),
-    s3KeyPrefix: z.string().optional(),
-    policies: z.record(z.unknown()),
-    settings: z.object({
-      sessionLogMaskingPatterns: z.string().optional(),
-      rotationEnabled: z.boolean().optional(),
-      heartbeatEnabled: z.boolean().optional(),
-      heartbeatIntervalSeconds: z.number().optional(),
-      rotationIntervalSeconds: z.number().nullable().optional(),
-      pwLength: z.coerce.number().optional(),
-      pwUppercase: z.coerce.number().optional(),
-      pwLowercase: z.coerce.number().optional(),
-      pwDigits: z.coerce.number().optional(),
-      pwSymbols: z.coerce.number().optional(),
-      pwAllowedSymbols: z.string().optional()
+const buildSettingsSchema = (maxPwLength: number) =>
+  z
+    .object({
+      gatewayId: z.string().nullable(),
+      gatewayPoolId: z.string().nullable(),
+      recordingStorageBackend: z.enum(["postgres", "aws-s3"]),
+      recordingConnectionId: z.string().nullable(),
+      s3Bucket: z.string().optional(),
+      s3Region: z.string().optional(),
+      s3KeyPrefix: z.string().optional(),
+      policies: z.record(z.unknown()),
+      settings: z.object({
+        sessionLogMaskingPatterns: z.string().optional(),
+        rotationEnabled: z.boolean().optional(),
+        heartbeatEnabled: z.boolean().optional(),
+        heartbeatIntervalSeconds: z.number().optional(),
+        rotationIntervalSeconds: z.number().nullable().optional(),
+        pwLength: z.coerce.number().optional(),
+        pwUppercase: z.coerce.number().optional(),
+        pwLowercase: z.coerce.number().optional(),
+        pwDigits: z.coerce.number().optional(),
+        pwSymbols: z.coerce.number().optional(),
+        pwAllowedSymbols: z.string().optional()
+      })
     })
-  })
-  .superRefine((data, ctx) => {
-    if (data.recordingStorageBackend === "aws-s3") {
-      if (!data.recordingConnectionId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["recordingConnectionId"],
-          message: "Select an AWS connection"
-        });
+    .superRefine((data, ctx) => {
+      if (data.recordingStorageBackend === "aws-s3") {
+        if (!data.recordingConnectionId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["recordingConnectionId"],
+            message: "Select an AWS connection"
+          });
+        }
+        if (!data.s3Bucket?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["s3Bucket"],
+            message: "Bucket is required"
+          });
+        }
       }
-      if (!data.s3Bucket?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["s3Bucket"],
-          message: "Bucket is required"
-        });
-      }
-    }
 
-    const length = data.settings.pwLength ?? 32;
-    const mins = {
-      uppercase: data.settings.pwUppercase ?? 0,
-      lowercase: data.settings.pwLowercase ?? 0,
-      digits: data.settings.pwDigits ?? 0,
-      symbols: data.settings.pwSymbols ?? 0
-    };
-    if (length < 1 || length > 250) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Length must be between 1 and 250"
-      });
-    }
-    (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
-      const value = data.settings[key];
-      if (value !== undefined && value < 0) {
+      const length = data.settings.pwLength ?? Math.min(32, maxPwLength);
+      const mins = {
+        uppercase: data.settings.pwUppercase ?? 0,
+        lowercase: data.settings.pwLowercase ?? 0,
+        digits: data.settings.pwDigits ?? 0,
+        symbols: data.settings.pwSymbols ?? 0
+      };
+      if (length < 1 || length > maxPwLength) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["settings", key],
-          message: "Cannot be negative"
+          path: ["settings", "pwLength"],
+          message: `Length must be between 1 and ${maxPwLength}`
+        });
+      }
+      (["pwUppercase", "pwLowercase", "pwDigits", "pwSymbols"] as const).forEach((key) => {
+        const value = data.settings[key];
+        if (value !== undefined && value < 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["settings", key],
+            message: "Cannot be negative"
+          });
+        }
+      });
+      const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
+      if (totalRequired === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Require at least one character type"
+        });
+      } else if (totalRequired > length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settings", "pwLength"],
+          message: "Length must be at least the sum of the minimums"
         });
       }
     });
-    const totalRequired = mins.uppercase + mins.lowercase + mins.digits + mins.symbols;
-    if (totalRequired === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Require at least one character type"
-      });
-    } else if (totalRequired > length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["settings", "pwLength"],
-        message: "Length must be at least the sum of the minimums"
-      });
-    }
-  });
 
-type SettingsForm = z.infer<typeof settingsSchema>;
+type SettingsForm = z.infer<ReturnType<typeof buildSettingsSchema>>;
 
 type Props = {
   isOpen: boolean;
@@ -270,6 +272,10 @@ const SettingsTab = ({
   );
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
+  const maxPwLength = maxGeneratedPasswordLength(template?.type);
+  const defaultPwLength = Math.min(32, maxPwLength);
+  const settingsSchema = useMemo(() => buildSettingsSchema(maxPwLength), [maxPwLength]);
+
   const {
     control,
     handleSubmit,
@@ -295,7 +301,7 @@ const SettingsTab = ({
         heartbeatEnabled: false,
         heartbeatIntervalSeconds: 86400,
         rotationIntervalSeconds: 86400,
-        pwLength: 32,
+        pwLength: defaultPwLength,
         pwUppercase: 1,
         pwLowercase: 1,
         pwDigits: 1,
@@ -351,7 +357,7 @@ const SettingsTab = ({
               heartbeatIntervalSeconds: heartbeat.intervalSeconds ?? 86400,
               rotationIntervalSeconds:
                 rotation.intervalSeconds !== undefined ? rotation.intervalSeconds : 86400,
-              pwLength: pw.length ?? 32,
+              pwLength: pw.length ?? defaultPwLength,
               pwUppercase: pw.required?.uppercase ?? 1,
               pwLowercase: pw.required?.lowercase ?? 1,
               pwDigits: pw.required?.digits ?? 1,
@@ -427,7 +433,7 @@ const SettingsTab = ({
         intervalSeconds: isRotationOn ? (data.settings.rotationIntervalSeconds ?? 86400) : null
       };
       settings.passwordRequirements = {
-        length: data.settings.pwLength ?? 32,
+        length: data.settings.pwLength ?? defaultPwLength,
         required: {
           uppercase: data.settings.pwUppercase ?? 0,
           lowercase: data.settings.pwLowercase ?? 0,
@@ -587,10 +593,14 @@ const SettingsTab = ({
                       <FieldLabel>{label}</FieldLabel>
                       <Input
                         type="number"
+                        max={name === "settings.pwLength" ? maxPwLength : undefined}
                         value={field.value ?? 0}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                         onWheel={(e) => e.currentTarget.blur()}
                       />
+                      {name === "settings.pwLength" && !fieldState.error && (
+                        <FieldDescription>1 to {maxPwLength} characters</FieldDescription>
+                      )}
                       {fieldState.error && <FieldError>{fieldState.error.message}</FieldError>}
                     </Field>
                   )}

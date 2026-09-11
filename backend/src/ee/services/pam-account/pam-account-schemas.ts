@@ -82,6 +82,10 @@ type TFieldConditionHint = { field: string; equals: string | boolean };
 type TFieldForcedRuleHint = { when: TFieldConditionHint; value: string | number | boolean; reason: string };
 
 // Source of truth for account types: per-type schemas + sparse UI hints
+export const ORACLE_MAX_PASSWORD_LENGTH = 30;
+
+export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.131";
+
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
@@ -300,6 +304,55 @@ export const ACCOUNT_TYPE_CONFIGS = {
       realm: { label: "Realm" },
       kdcAddress: { label: "KDC Address" },
       spn: { label: "SPN" },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.OracleDB]: {
+    name: "Oracle Database",
+    icon: "Oracle.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number().int().min(1).max(65535),
+      database: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .regex(
+          new RE2(/^[A-Za-z0-9][A-Za-z0-9_.\-#$]*$/),
+          "Must start with a letter or digit and contain only letters, digits, underscores, dots, hyphens, # or $"
+        ),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: optionalTrimmedString
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(128),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: { defaultValue: 1521 },
+      database: {
+        label: "Service Name",
+        tooltip: "The Oracle service name. For example FREEPDB1 or ORCL."
+      },
       sslEnabled: { label: "SSL Enabled" },
       sslRejectUnauthorized: {
         label: "Reject Unauthorized",
@@ -788,7 +841,8 @@ export type TWindowsAdConnectionDetails = z.infer<
 export const SQL_ROTATABLE_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
   PamAccountType.MySQL,
-  PamAccountType.MsSQL
+  PamAccountType.MsSQL,
+  PamAccountType.OracleDB
 ] as const;
 
 // Windows accounts rotate over WinRM through the gateway: local accounts on their host, domain accounts
@@ -850,6 +904,7 @@ export const extractGatewayTarget = async (
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
+    case PamAccountType.OracleDB:
     case PamAccountType.Redis:
     case PamAccountType.Windows:
       return {
@@ -899,7 +954,7 @@ export const extractGatewayTarget = async (
     case PamAccountType.AzureCli:
       return { host: "management.azure.com", port: 443 };
     default:
-      throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
+      throw new Error(`No gateway target extraction defined for account type '${accountType as PamAccountType}'`);
   }
 };
 

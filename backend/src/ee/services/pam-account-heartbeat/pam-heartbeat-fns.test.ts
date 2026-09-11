@@ -8,6 +8,7 @@ import {
 import {
   classifyCloudProbeError,
   describeFailure,
+  gatewayIsMissingCheckSupport,
   isHeartbeatScheduled,
   pausesHeartbeatForRoutingChange,
   UNCLASSIFIED_FAILURE_NOTE
@@ -93,5 +94,17 @@ describe("pausesHeartbeatForRoutingChange", () => {
 
   test("leaves the schedule alone when nothing about the routing changed", () => {
     expect(pausesHeartbeatForRoutingChange({ ...base, routingChanged: false })).toBe(false);
+  });
+});
+
+describe("gatewayIsMissingCheckSupport", () => {
+  test("recognises a gateway that has never heard of the account type's dialect", () => {
+    expect(gatewayIsMissingCheckSupport('unsupported SQL dialect: "oracle"')).toBe(true);
+    expect(gatewayIsMissingCheckSupport('unsupported test-connection mode: "sql"')).toBe(true);
+  });
+
+  test("leaves a real answer from the target alone", () => {
+    expect(gatewayIsMissingCheckSupport("ORA-01017: invalid username/password; logon denied")).toBe(false);
+    expect(gatewayIsMissingCheckSupport(undefined)).toBe(false);
   });
 });

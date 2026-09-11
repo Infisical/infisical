@@ -130,6 +130,21 @@ Based on the account's template, the CLI connects you directly or starts the app
     Connection string format: `redis://127.0.0.1:<port>`
   </Accordion>
 
+  <Accordion title="Oracle">
+    Starts a local Oracle proxy on `127.0.0.1`.
+
+    ```bash
+    # Example
+    infisical pam access production/billing-db --duration 2h
+    ```
+
+    Oracle's login protocol requires the client to send a password, so type `password` literally. The Gateway swaps in the real credential during login.
+
+    ```bash
+    sqlplus <username>/password@127.0.0.1:<port>/<service-name>
+    ```
+  </Accordion>
+
   <Accordion title="SSH">
     Connects you straight to a shell on the target.
 

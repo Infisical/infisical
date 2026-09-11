@@ -60,6 +60,7 @@ const buildService = (
     [PamAccountType.Postgres]: handler,
     [PamAccountType.MySQL]: handler,
     [PamAccountType.MsSQL]: handler,
+    [PamAccountType.OracleDB]: handler,
     [PamAccountType.Windows]: handler,
     [PamAccountType.WindowsAd]: handler
   };
@@ -314,5 +315,180 @@ describe("rotateScheduledAccount recovery probe", () => {
     // Nothing may leave: no probe (testCredential) and no apply against the redirected target.
     expect(testCredential).not.toHaveBeenCalled();
     expect(applyPasswordChange).not.toHaveBeenCalled();
+  });
+
+  test("caps the generated Oracle password so the credential stays verifiable", async () => {
+    const account = { ...buildAccount(), accountType: PamAccountType.OracleDB };
+    const { service, applyPasswordChange } = buildService((pw) => pw === CURRENT_PASSWORD, { account });
+
+    await service.rotateScheduledAccount("acc-1");
+
+    expect(applyPasswordChange).toHaveBeenCalled();
+    const { newPassword } = applyPasswordChange.mock.calls[0][0] as { newPassword: string };
+    expect(newPassword.length).toBe(30);
+  });
+
+  test("refuses to rotate when the template's minimums cannot fit Oracle's ceiling", async () => {
+    const account = {
+      ...buildAccount(),
+      accountType: PamAccountType.OracleDB,
+      templateSettings: {
+        rotation: { enabled: true, intervalSeconds: 3600 as number | null },
+        passwordRequirements: {
+          length: 100,
+          required: { lowercase: 0, uppercase: 40, digits: 40, symbols: 20 },
+          allowedSymbols: "-_.~!*"
+        }
+      }
+    };
+    const { service, applyPasswordChange } = buildService((pw) => pw === CURRENT_PASSWORD, { account });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Failed);
+    expect(applyPasswordChange).not.toHaveBeenCalled();
+  });
+
+  test("caps only the length when the template's character mix still fits", async () => {
+    const account = {
+      ...buildAccount(),
+      accountType: PamAccountType.OracleDB,
+      templateSettings: {
+        rotation: { enabled: true, intervalSeconds: 3600 as number | null },
+        passwordRequirements: {
+          length: 80,
+          required: { lowercase: 5, uppercase: 5, digits: 5, symbols: 5 },
+          allowedSymbols: "-_.~!*"
+        }
+      }
+    };
+    const { service, applyPasswordChange } = buildService((pw) => pw === CURRENT_PASSWORD, { account });
+
+    await service.rotateScheduledAccount("acc-1");
+
+    const { newPassword } = applyPasswordChange.mock.calls[0][0] as { newPassword: string };
+    expect(newPassword.length).toBe(30);
+    expect(newPassword).toMatch(/[a-z]/);
+    expect(newPassword).toMatch(/[A-Z]/);
+    expect(newPassword).toMatch(/[0-9]/);
+    expect(newPassword).toMatch(/[-_.~!*]/);
+  });
+
+  test("leaves the generated password length alone for the other SQL dialects", async () => {
+    const { service, applyPasswordChange } = buildService((pw) => pw === CURRENT_PASSWORD);
+
+    await service.rotateScheduledAccount("acc-1");
+
+    const { newPassword } = applyPasswordChange.mock.calls[0][0] as { newPassword: string };
+    expect(newPassword.length).toBe(48);
+  });
+
+  const buildOracleDelegatedPair = (rotatorService: string, rotatorHost = "oracle.internal") => {
+    const account = {
+      ...buildAccount(),
+      accountType: PamAccountType.OracleDB,
+      rotationAccountId: "rot-1",
+      encryptedConnectionDetails: blobOf({
+        host: "oracle.internal",
+        port: 1521,
+        database: "PDB1",
+        sslEnabled: false,
+        sslRejectUnauthorized: false
+      })
+    };
+    const rotator = {
+      id: "rot-1",
+      projectId: "proj-1",
+      accountType: PamAccountType.OracleDB,
+      encryptedCredentials: blobOf({ username: "rotuser", password: "rot-pw" }),
+      encryptedConnectionDetails: blobOf({
+        host: rotatorHost,
+        port: 1521,
+        database: rotatorService,
+        sslEnabled: false,
+        sslRejectUnauthorized: false
+      }),
+      gatewayId: null,
+      gatewayPoolId: null,
+      templateGatewayId: null,
+      templateGatewayPoolId: null
+    };
+    return { account, rotator };
+  };
+
+  test("aborts an Oracle delegated rotation when the rotator reaches a different service name", async () => {
+    const { account, rotator } = buildOracleDelegatedPair("PDB2");
+    const { service, applyPasswordChange } = buildService(() => true, { account, rotator });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Failed);
+    expect(result?.message).toContain("service name");
+    expect(applyPasswordChange).not.toHaveBeenCalled();
+  });
+
+  test("treats a service name that differs only in case as the same resource", async () => {
+    const { account, rotator } = buildOracleDelegatedPair("pdb1");
+    const { service } = buildService((pw) => pw === CURRENT_PASSWORD, { account, rotator });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.message ?? "").not.toContain("service name");
+  });
+
+  test("treats a host that differs only in case as the same resource", async () => {
+    const { account, rotator } = buildOracleDelegatedPair("PDB1", "ORACLE.INTERNAL");
+    const { service } = buildService((pw) => pw === CURRENT_PASSWORD, { account, rotator });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.message ?? "").not.toContain("same resource");
+  });
+
+  test("allows an Oracle delegated rotation within the same service name", async () => {
+    const { account, rotator } = buildOracleDelegatedPair("PDB1");
+    const { service } = buildService(() => true, { account, rotator });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).not.toBe(ROTATION_STATUS.Failed);
+    expect(result?.message ?? "").not.toContain("same resource");
+  });
+
+  test("keeps Postgres delegated rotation working across different databases on one server", async () => {
+    const account = {
+      ...buildAccount(),
+      rotationAccountId: "rot-1",
+      encryptedConnectionDetails: blobOf({ ...connectionDetails, database: "app" })
+    };
+    const rotator = {
+      id: "rot-1",
+      projectId: "proj-1",
+      accountType: PamAccountType.Postgres,
+      encryptedCredentials: blobOf({ username: "rotuser", password: "rot-pw" }),
+      encryptedConnectionDetails: blobOf({ ...connectionDetails, database: "rotdb" }),
+      gatewayId: null,
+      gatewayPoolId: null,
+      templateGatewayId: null,
+      templateGatewayPoolId: null
+    };
+    const { service } = buildService(() => true, { account, rotator });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).not.toBe(ROTATION_STATUS.Failed);
+    expect(result?.message ?? "").not.toContain("same resource");
+  });
+});
+
+describe("sqlRotationHandler.validateTarget", () => {
+  test("allows an Oracle account, whose SSL settings are handled by the gateway", () => {
+    const validate = PAM_ROTATION_FACTORY_MAP[PamAccountType.OracleDB].validateTarget;
+    expect(() => validate({ accountType: PamAccountType.OracleDB })).not.toThrow();
+  });
+
+  test("still refuses MSSQL Windows authentication", () => {
+    const validate = PAM_ROTATION_FACTORY_MAP[PamAccountType.MsSQL].validateTarget;
+    expect(() => validate({ accountType: PamAccountType.MsSQL, authMethod: "ntlm" })).toThrow(/SQL Server/);
   });
 });

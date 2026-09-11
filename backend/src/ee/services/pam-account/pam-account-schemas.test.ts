@@ -140,6 +140,30 @@ describe("buildPamAccountTypeMetadata", () => {
     });
   });
 
+  test("derives Oracle connection and credential fields, labelling the service name", () => {
+    const oracle = byType.get(PamAccountType.OracleDB);
+    expect(oracle).toBeDefined();
+    expect(oracle?.name).toBe("Oracle Database");
+    expect(oracle?.supportsWebAccess).toBe(false);
+
+    expect(oracle?.connectionFields.map((f) => f.key)).toEqual([
+      "host",
+      "port",
+      "database",
+      "sslEnabled",
+      "sslRejectUnauthorized",
+      "sslCertificate"
+    ]);
+    expect(fieldByKey(oracle!.connectionFields, "database")).toMatchObject({
+      label: "Service Name",
+      required: true
+    });
+    expect(fieldByKey(oracle!.connectionFields, "port")).toMatchObject({ widget: "number", defaultValue: 1521 });
+
+    expect(fieldByKey(oracle!.credentialFields, "username")).toMatchObject({ required: true, secret: false });
+    expect(fieldByKey(oracle!.credentialFields, "password")).toMatchObject({ widget: "password", secret: true });
+  });
+
   test("derives Redis connection and credential fields from the schema", () => {
     const redis = byType.get(PamAccountType.Redis);
     expect(redis).toBeDefined();
