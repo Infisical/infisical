@@ -9,6 +9,15 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+const RECURSIVE_SYNC_REFINEMENT = {
+  path: ["recursive"],
+  message:
+    "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
+};
+
+const isRecursiveCombinationAllowed = (options: { recursive?: unknown; initialSyncBehavior?: unknown }) =>
+  !options.recursive || options.initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination;
+
 const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
   destination,
   syncOptionsConfig: { canImportSecrets, supportsKeySchema = true, supportsDisableSecretDeletion = true },
@@ -67,25 +76,24 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
     recursive: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).recursive)
   });
 
-  const schema = merge ? baseSchema.merge(merge) : baseSchema;
+  type TRefinedSchema = z.ZodEffects<
+    T extends AnyZodObject
+      ? z.ZodObject<z.objectUtil.MergeShapes<typeof baseSchema.shape, T["shape"]>>
+      : typeof baseSchema
+  >;
 
-  const refinedSchema = (schema as AnyZodObject).refine(
-    (options) =>
-      !options.recursive || options.initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination,
-    {
-      path: ["recursive"],
-      message:
-        "A sync that includes subfolders cannot also import existing secrets from the destination, because there is no single folder to import them into. Turn off subfolders, or set the first sync to overwrite the destination."
-    }
+  // `merge` is supplied exactly when `T` is a ZodObject, which is the condition this type branches
+  // on, and the compiler cannot correlate a runtime ternary with a type parameter. Passing an
+  // explicit type argument that disagrees with the `merge` argument would make the assertion false.
+  const refinedSchema = (
+    merge
+      ? baseSchema.merge(merge).refine(isRecursiveCombinationAllowed, RECURSIVE_SYNC_REFINEMENT)
+      : baseSchema.refine(isRecursiveCombinationAllowed, RECURSIVE_SYNC_REFINEMENT)
+  ) as TRefinedSchema;
+
+  return refinedSchema.describe(
+    isUpdateSchema ? SecretSyncs.UPDATE(destination).syncOptions : SecretSyncs.CREATE(destination).syncOptions
   );
-
-  return (
-    isUpdateSchema
-      ? refinedSchema.describe(SecretSyncs.UPDATE(destination).syncOptions).optional()
-      : refinedSchema.describe(SecretSyncs.CREATE(destination).syncOptions)
-  ) as unknown as T extends AnyZodObject
-    ? z.ZodObject<z.objectUtil.MergeShapes<typeof schema.shape, T["shape"]>>
-    : typeof schema;
 };
 
 export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefined>(
@@ -162,5 +170,5 @@ export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .optional()
       .describe(SecretSyncs.UPDATE(destination).secretPath),
     isAutoSyncEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isAutoSyncEnabled),
-    syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge, isUpdateSchema: true })
+    syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge, isUpdateSchema: true }).optional()
   });
