@@ -3,7 +3,16 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ChevronDownIcon, MoreHorizontalIcon, PackageIcon, SearchIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  MoreHorizontalIcon,
+  PackageIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon,
+  UsersIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
@@ -158,6 +167,7 @@ export const AgentVaultAccessBundlesPage = () => {
           {isAdmin && (
             <CardAction>
               <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+                <PlusIcon />
                 Create Access Bundle
               </Button>
             </CardAction>
@@ -299,6 +309,7 @@ export const AgentVaultAccessBundlesPage = () => {
                                 setBundleToManage(bundle);
                               }}
                             >
+                              <UsersIcon />
                               Manage Access
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -307,14 +318,17 @@ export const AgentVaultAccessBundlesPage = () => {
                                 setBundleToEdit(bundle);
                               }}
                             >
+                              <PencilIcon />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              variant="danger"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setBundleToDelete(bundle);
                               }}
                             >
+                              <TrashIcon />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
