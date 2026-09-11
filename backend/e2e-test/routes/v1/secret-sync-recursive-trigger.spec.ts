@@ -7,7 +7,6 @@ import {
   createSecretSync,
   deleteAppConnection,
   deleteSecretSync,
-  expectDestinationUnchanged,
   setAutoSync,
   waitForDestinationSecrets,
   waitForSyncRun
@@ -18,11 +17,6 @@ import { initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
 import { SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 
-// A write inside a recursive sync's subtree must still queue that sync, and a write inside a
-// non-recursive sync's subtree must not queue it. Both halves matter equally: the first is the
-// bug (auto-sync silently stops covering subfolders), the second guards against over-triggering
-// (syncing secrets the sync was never configured to cover).
-//
 // Each test waits for the auto-sync-enable run to finish (via waitForSyncRun) before writing the
 // subfolder secret. Skipping that wait would let the enable-time run, which always resolves the
 // full recursive subtree at whatever the DB holds when it executes, pick up the later write by
@@ -73,6 +67,13 @@ describe("A write in a subfolder triggers only the recursive sync above it", asy
       environmentSlug: ENV,
       secretPath: "/backend",
       name: "api"
+    });
+    await createFolder({
+      authToken: jwtAuthToken,
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/backend",
+      name: "web"
     });
   });
 
@@ -138,6 +139,7 @@ describe("A write in a subfolder triggers only the recursive sync above it", asy
 
   test("a write at a subfolder does not reach a non-recursive sync rooted above it", async () => {
     const destinationPath = "/non-recursive-trigger-target/";
+    const controlDestinationPath = "/non-recursive-trigger-control/";
 
     const { secretSync } = await createSecretSync({
       name: "non-recursive-trigger",
@@ -154,6 +156,27 @@ describe("A write in a subfolder triggers only the recursive sync above it", asy
     });
     createdSyncIds.push(secretSync!.id);
 
+    // A control sync rooted exactly on the folder that is about to change. Its own trigger is
+    // the ordinary exact-match path, unaffected by the change under test, so waiting for it to
+    // pick up the write below gives a real signal that the queue has processed that write and
+    // made its trigger decisions for every sync watching the project, including the
+    // non-recursive one. Asserting against that signal, rather than a fixed delay, means a
+    // reintroduced over-trigger bug cannot hide behind a slow CI runner.
+    const { secretSync: controlSync } = await createSecretSync({
+      name: "non-recursive-trigger-control",
+      projectId,
+      connectionId,
+      environmentSlug: ENV,
+      secretPath: "/backend/web",
+      region: REGION,
+      destinationPath: controlDestinationPath,
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
+      recursive: false,
+      isAutoSyncEnabled: false,
+      authToken: jwtAuthToken
+    });
+    createdSyncIds.push(controlSync!.id);
+
     const runCountBeforeEnable = fakeParameterStore.at(REGION, destinationPath).runCount();
     await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken: jwtAuthToken });
     await waitForSyncRun({
@@ -166,19 +189,33 @@ describe("A write in a subfolder triggers only the recursive sync above it", asy
 
     expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({});
 
+    const controlRunCountBeforeEnable = fakeParameterStore.at(REGION, controlDestinationPath).runCount();
+    await setAutoSync({ syncId: controlSync!.id, isAutoSyncEnabled: true, authToken: jwtAuthToken });
+    await waitForSyncRun({
+      syncId: controlSync!.id,
+      region: REGION,
+      destinationPath: controlDestinationPath,
+      runCountBefore: controlRunCountBeforeEnable,
+      authToken: jwtAuthToken
+    });
+
+    expect(fakeParameterStore.at(REGION, controlDestinationPath).read()).toEqual({});
+
     await createSecretV2({
       authToken: jwtAuthToken,
       workspaceId: projectId,
       environmentSlug: ENV,
-      secretPath: "/backend/api",
-      key: "API_KEY",
-      value: "api-value"
+      secretPath: "/backend/web",
+      key: "WEB_KEY",
+      value: "web-value"
     });
 
-    await expectDestinationUnchanged({
+    await waitForDestinationSecrets({
       region: REGION,
-      destinationPath,
-      expected: {}
+      destinationPath: controlDestinationPath,
+      expected: { WEB_KEY: "web-value" }
     });
+
+    expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({});
   });
 });
