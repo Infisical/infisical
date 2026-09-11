@@ -9,6 +9,10 @@ An access bundle is what you hand an agent: everything it needs for a job, grant
 
 Each connection has a name, the hosts it covers, and a credential. Open a bundle from **Access Bundles** and select **Add Connection** to add one.
 
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundle-connections.png" alt="An access bundle's Connections table with one GitHub connection, its Bearer credential, and its host" />
+</Frame>
+
 ### Credential types
 
 | Type             | What the proxy sends                                                                                 | When to use it                                                                              |
@@ -18,6 +22,10 @@ Each connection has a name, the hosts it covers, and a credential. Open a bundle
 | **Pass-through** | Nothing. The request is forwarded unchanged.                                                         | To make a host reachable on a proxy that denies unmatched hosts. See [Unmatched hosts](/documentation/platform/agent-vault/proxies#unmatched-hosts). |
 
 The first step offers a **Template** for common services, which fills in the hosts and the header. Choose **Custom** to set them yourself.
+
+<Frame>
+  <img src="/images/platform/agent-vault/connection-template-picker.png" alt="The Choose a template panel with Custom, OpenAI, Anthropic, Slack, GitHub, and Google Workspace" />
+</Frame>
 
 If the agent's request already carries a header with the same name, the proxy replaces it with the connection's credential.
 
@@ -45,7 +53,11 @@ Different bundles can cover the same host with different credentials. An agent g
 
 ## Access bundles
 
-A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be a member of Agent Vault first: Agent Vault is organization-wide, and its **Access Control** page decides who is an admin, who is a member, and which machine identities and groups belong. A group that's in Agent Vault is granted as a group, and each of its members mints sessions as themselves.
+A bundle has a name, an optional description, its connections, and its members. Granting a bundle to a user, machine identity, or group lets them mint sessions over it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
+
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing two bundles with their connections and member counts" />
+</Frame>
 
 Bundles are how you scope access. An agent for on-call work gets a bundle with the incident tooling, an agent for code review gets a bundle with GitHub, and neither reaches the other's hosts.
 

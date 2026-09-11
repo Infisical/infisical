@@ -762,7 +762,8 @@
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
                   "documentation/platform/agent-vault/sessions",
-                  "documentation/platform/agent-vault/proxies"
+                  "documentation/platform/agent-vault/proxies",
+                  "documentation/platform/agent-vault/access-control"
                 ]
               }
             ]
