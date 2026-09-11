@@ -67,6 +67,10 @@ import {
 } from "./secret-sync-maps";
 import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 
+// secretSyncDAL rows carry syncOptions as an untyped jsonb column, not the destination-specific
+// shape TSecretSync narrows it to elsewhere, so reading a field back out needs a cast.
+type TRawSyncOptions = { recursive?: boolean; keySchema?: string };
+
 type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
   secretImportDAL: TSecretImportDALFactory;
@@ -140,7 +144,8 @@ export const secretSyncServiceFactory = ({
 
   // The sync worker reads its folders with every access check disabled, so this is the only place
   // the actor's read access to them is established. A recursive sync reads the whole subtree, and
-  // folder grants let an actor hold read on a parent while being denied on a child.
+  // folder grants are per-folder rather than inherited, so checking only the root wouldn't catch a
+  // child folder the actor is denied on.
   const $assertCanReadSyncedFolders = async (
     projectPermission: Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>["permission"],
     {
@@ -202,7 +207,7 @@ export const secretSyncServiceFactory = ({
     }
   };
 
-  // Shared by $assertSyncableAtDestination and findRecursiveConflicts: both need the same
+  // Shared by $assertSyncedSecretsAreFlattenable and findRecursiveConflicts: both need the same
   // decrypt-and-expand payload for the full recursive subtree, and differ only in what they do
   // with it once built (throw on the first conflict vs. report every conflict back).
   const $buildRecursiveSyncPayload = ({
@@ -275,14 +280,14 @@ export const secretSyncServiceFactory = ({
   // Flattening a subtree onto a destination that holds one flat list can produce two secrets with
   // the same destination key. flatten() is what detects that, and the job runs it on every sync, so
   // calling it here means a user reads the same sentence at save time and when the sync later drifts
-  // into the same state.
-  const $assertSyncableAtDestination = async ({
+  // into the same state. Callers only call this for a recursive sync — a non-recursive one covers a
+  // single folder, where flatten() can never find a conflict.
+  const $assertSyncedSecretsAreFlattenable = async ({
     projectId,
     actorOrgId,
     environment,
     sourcePath,
     sourceFolderId,
-    recursive,
     keySchema
   }: {
     projectId: string;
@@ -290,11 +295,8 @@ export const secretSyncServiceFactory = ({
     environment: string;
     sourcePath: string;
     sourceFolderId: string;
-    recursive: boolean;
     keySchema?: string;
   }) => {
-    if (!recursive) return;
-
     const payload = await $buildRecursiveSyncPayload({
       projectId,
       actorOrgId,
@@ -311,7 +313,7 @@ export const secretSyncServiceFactory = ({
   // step, before a provider or destination is even chosen: the check is destination-agnostic
   // (flatten() never uses the destination or the source folder path to build a key), so nothing
   // downstream can change the answer. Returns every conflict, untruncated, unlike the
-  // BadRequestError $assertSyncableAtDestination throws at create/update time.
+  // BadRequestError $assertSyncedSecretsAreFlattenable throws at create/update time.
   const findRecursiveConflicts = async (
     { projectId, environment, secretPath, keySchema }: TFindRecursiveSyncConflictsDTO,
     actor: OrgServiceActor
@@ -657,7 +659,7 @@ export const secretSyncServiceFactory = ({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
 
-    const requestedSyncOptions = params.syncOptions as { recursive?: boolean; keySchema?: string } | undefined;
+    const requestedSyncOptions = params.syncOptions as TRawSyncOptions | undefined;
     const isRecursive = Boolean(requestedSyncOptions?.recursive);
 
     await $assertCanReadSyncedFolders(projectPermission, {
@@ -668,17 +670,19 @@ export const secretSyncServiceFactory = ({
       recursive: isRecursive
     });
 
-    // Runs after the permission check above: the conflict it raises names every folder beneath the
-    // source, including ones this actor is denied on.
-    await $assertSyncableAtDestination({
-      projectId,
-      actorOrgId: actor.orgId,
-      environment,
-      sourcePath: secretPath,
-      sourceFolderId: folder.id,
-      recursive: isRecursive,
-      keySchema: requestedSyncOptions?.keySchema
-    });
+    // Some destinations store secrets in a single flat list rather than a folder hierarchy, so a
+    // recursive sync must flatten its whole subtree to one namespace. Check that it can here, so
+    // the sync doesn't get created only to fail immediately on its first run.
+    if (isRecursive) {
+      await $assertSyncedSecretsAreFlattenable({
+        projectId,
+        actorOrgId: actor.orgId,
+        environment,
+        sourcePath: secretPath,
+        sourceFolderId: folder.id,
+        keySchema: requestedSyncOptions?.keySchema
+      });
+    }
 
     // getProjectPermission above throws NotFoundError if the project doesn't exist and
     // guarantees actor.orgId === project.orgId — no separate project lookup needed.
@@ -866,8 +870,11 @@ export const secretSyncServiceFactory = ({
       (Boolean(secretPath) && secretPath !== secretSync.folder?.path) ||
       (Boolean(environment) && environment !== secretSync.environment?.slug);
 
-    const wasRecursive = Boolean((secretSync.syncOptions as { recursive?: boolean } | undefined)?.recursive);
-    const isRecursive = Boolean((params.syncOptions as { recursive?: boolean } | undefined)?.recursive ?? wasRecursive);
+    const existingSyncOptions = secretSync.syncOptions as TRawSyncOptions | undefined;
+    const requestedSyncOptions = params.syncOptions as TRawSyncOptions | undefined;
+
+    const wasRecursive = Boolean(existingSyncOptions?.recursive);
+    const isRecursive = Boolean(requestedSyncOptions?.recursive ?? wasRecursive);
 
     // Every update to a recursive sync re-authorizes the whole subtree, because an actor holding
     // Edit on the source folder can otherwise repoint an existing recursive sync at a destination
@@ -904,17 +911,16 @@ export const secretSyncServiceFactory = ({
         recursive: isRecursive
       });
 
-      await $assertSyncableAtDestination({
-        projectId: secretSync.projectId,
-        actorOrgId: actor.orgId,
-        environment: updatedEnvironment,
-        sourcePath: updatedSecretPath,
-        sourceFolderId: folderId,
-        recursive: isRecursive,
-        keySchema:
-          (params.syncOptions as { keySchema?: string } | undefined)?.keySchema ??
-          (secretSync.syncOptions as { keySchema?: string } | undefined)?.keySchema
-      });
+      if (isRecursive) {
+        await $assertSyncedSecretsAreFlattenable({
+          projectId: secretSync.projectId,
+          actorOrgId: actor.orgId,
+          environment: updatedEnvironment,
+          sourcePath: updatedSecretPath,
+          sourceFolderId: folderId,
+          keySchema: requestedSyncOptions?.keySchema ?? existingSyncOptions?.keySchema
+        });
+      }
     }
 
     const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
