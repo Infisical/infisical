@@ -8,6 +8,18 @@ import { CertStatus } from "@app/services/certificate/certificate-types";
 
 export type TUsageCounterDALFactory = ReturnType<typeof usageCounterDALFactory>;
 
+// One metered machine identity resolved to where it was created: the project that owns it, or the org
+// itself (projectId null) when it is org-owned.
+export type TIdentityOwnershipRow = { orgId: string; projectId: string | null; count: number };
+
+// A metered PKI unit count for one org in the tree. Certificates carry no per-project attribution here
+// because the meter dedupes by quotaKey across the whole tree (see getActiveCertificateOrgBreakdown).
+export type TOrgUnitCountRow = { orgId: string; count: number };
+
+// Active certificates for one org, with the wildcard subset that active_certs and wildcard_certs both
+// read, so the two meters can never disagree about which certificates are live.
+export type TCertificateOrgUnitRow = TOrgUnitCountRow & { wildcard: number };
+
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
 // Live counts for the project-scoped metered features, summed across the whole org tree and excluding
@@ -134,7 +146,10 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countProjectIdentities = async (projectType: ProjectType, orgId?: string): Promise<number> => {
+  // The distinct actor set behind the project-scoped identity meters, as ('u' | 'i', entityId) rows.
+  // Shared by the meter and the usage breakdown so a breakdown can never disagree with the number the
+  // customer is billed on.
+  const $projectIdentityEntities = (projectType: ProjectType, orgId?: string) => {
     const scopedOrgIds = () => {
       const qb = db.replicaNode()(TableName.Organization).select(`${TableName.Organization}.id`);
       if (orgId) {
@@ -229,11 +244,59 @@ export const usageCounterDALFactory = (db: TDbClient) => {
       ],
       true
     );
+    return distinctEntities;
+  };
+
+  const countProjectIdentities = async (projectType: ProjectType, orgId?: string): Promise<number> => {
     // .as() on a union builder is typed as any, so cast the awaited row before counting.
-    const row = (await db.replicaNode().count("* as count").from(distinctEntities.as("project_identities")).first()) as
-      | { count?: string | number }
-      | undefined;
+    const row = (await db
+      .replicaNode()
+      .count("* as count")
+      .from($projectIdentityEntities(projectType, orgId).as("project_identities"))
+      .first()) as { count?: string | number } | undefined;
     return toCount(row);
+  };
+
+  // The same actors countProjectIdentities meters, split by actor type. The meter bills one number for
+  // both; the breakdown sheet shows the human/machine split behind it.
+  const countProjectIdentitiesByKind = async (
+    projectType: ProjectType,
+    orgId?: string
+  ): Promise<{ users: number; identities: number }> => {
+    const rows = (await db
+      .replicaNode()
+      .select("kind")
+      .count("* as count")
+      .from($projectIdentityEntities(projectType, orgId).as("project_identities"))
+      .groupBy("kind")) as { kind: string; count: string | number }[];
+
+    const byKind = (kind: string) => Number(rows.find((row) => row.kind === kind)?.count ?? 0);
+    return { users: byKind("u"), identities: byKind("i") };
+  };
+
+  // Machine identities from the same metered set, attributed to where each was created: the project
+  // that owns it, or the org itself when org-owned. Seats are held by membership, which is
+  // many-to-many, so grouping on membership would count one identity once per project it sits in;
+  // identities.projectId is a single column and partitions the metered total exactly once.
+  const getProjectIdentityOwnershipBreakdown = async (
+    projectType: ProjectType,
+    orgId: string
+  ): Promise<TIdentityOwnershipRow[]> => {
+    const rows = (await db
+      .replicaNode()({ i: TableName.Identity })
+      .whereIn(
+        "i.id",
+        db
+          .replicaNode()
+          .select("entityId")
+          .from($projectIdentityEntities(projectType, orgId).as("project_identities"))
+          .where("kind", "i")
+      )
+      .groupBy("i.orgId", "i.projectId")
+      .select({ orgId: "i.orgId", projectId: "i.projectId" })
+      .count("i.id as count")) as { orgId: string; projectId: string | null; count: string | number }[];
+
+    return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: Number(row.count) }));
   };
 
   const countSecretManagementIdentities = async (orgId?: string): Promise<number> => {
@@ -252,6 +315,92 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countProjectIdentitiesByKindFor = async (projectType: ProjectType, orgId: string) => {
+    try {
+      return await countProjectIdentitiesByKind(projectType, orgId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count project identities by kind for usage breakdown" });
+    }
+  };
+
+  const getProjectIdentityBreakdown = async (projectType: ProjectType, orgId: string) => {
+    try {
+      return await getProjectIdentityOwnershipBreakdown(projectType, orgId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get project identity breakdown for usage" });
+    }
+  };
+
+  // Mirrors countInternalCas exactly, including its lack of a status filter: a disabled or
+  // pending-certificate CA is metered, so the breakdown counts it too or it would not add up to the
+  // number the customer is billed on.
+  const getInternalCaOrgBreakdown = async (orgId: string): Promise<TOrgUnitCountRow[]> => {
+    try {
+      const rows = (await db
+        .replicaNode()(TableName.CertificateAuthority)
+        .join(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.caId`
+        )
+        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId))
+        .groupBy(`${TableName.Project}.orgId`)
+        .select({ orgId: `${TableName.Project}.orgId` })
+        .count(`${TableName.CertificateAuthority}.id as count`)) as {
+        orgId: string;
+        count: string | number;
+      }[];
+
+      return rows.map((row) => ({ orgId: row.orgId, count: Number(row.count) }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get internal CA breakdown for usage" });
+    }
+  };
+
+  // The meter counts DISTINCT quotaKey across the whole org tree, so one certificate name issued in two
+  // orgs is a single billable unit. Splitting that by org therefore needs each quotaKey attributed to
+  // exactly one of them, else the parts sum past the billed total. The earliest issuance wins (org id
+  // breaks a tie) so the attribution is stable between reads rather than shifting with row order.
+  const getActiveCertificateOrgBreakdown = async (orgId: string): Promise<TCertificateOrgUnitRow[]> => {
+    try {
+      const attributed = $activeQuotaCertificates(orgId)
+        .whereNotNull(`${TableName.Certificate}.quotaKey`)
+        .distinctOn(`${TableName.Certificate}.quotaKey`)
+        .orderBy([
+          { column: `${TableName.Certificate}.quotaKey` },
+          { column: `${TableName.Certificate}.notBefore`, order: "asc" },
+          { column: `${TableName.Project}.orgId`, order: "asc" }
+        ])
+        .select({
+          quotaKey: `${TableName.Certificate}.quotaKey`,
+          orgId: `${TableName.Project}.orgId`,
+          hasWildcard: `${TableName.Certificate}.hasWildcard`
+        });
+
+      const rows = (await db
+        .replicaNode()
+        .from(attributed.as("attributed"))
+        .groupBy("attributed.orgId")
+        .select({ orgId: "attributed.orgId" })
+        .count("* as total")
+        .select(db.raw(`COUNT(*) FILTER (WHERE attributed."hasWildcard") as "wildcard"`))) as {
+        orgId: string;
+        total: string | number;
+        wildcard: string | number;
+      }[];
+
+      return rows.map((row) => ({
+        orgId: row.orgId,
+        count: Number(row.total),
+        wildcard: Number(row.wildcard)
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get active certificate breakdown for usage" });
+    }
+  };
+
   return {
     countInternalCas,
     resolveRootOrgId,
@@ -259,6 +408,10 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     isCertificateQuotaKeyActiveInOrg,
     countPamResources,
     countSecretManagementIdentities,
-    countPamIdentities
+    countPamIdentities,
+    countProjectIdentitiesByKindFor,
+    getProjectIdentityBreakdown,
+    getInternalCaOrgBreakdown,
+    getActiveCertificateOrgBreakdown
   };
 };

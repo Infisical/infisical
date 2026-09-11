@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode } from "react";
-import { DollarSign, Package, RefreshCw } from "lucide-react";
+import { ChevronRight, DollarSign, Package, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -34,6 +34,7 @@ import {
 } from "../../billing-v2-format";
 import { asPlanDeprecation, deprecationSubline } from "../deprecation/deprecation-data";
 import { ActiveBadge, CardEmpty, DimensionMeter, ProductIcon } from "../shared";
+import { breakdownableDimensions } from "../UsageBreakdownSheet";
 
 type ActiveProductCardProps = {
   prod: BillingV2CatalogProduct;
@@ -42,6 +43,7 @@ type ActiveProductCardProps = {
   selfServe: boolean;
   onManage: (id: string) => void;
   onSetCommitment: (id: string) => void;
+  onViewBreakdown: (id: string) => void;
 };
 
 // Full-width card for an active product: identity and status, price, Manage action, usage meters.
@@ -51,7 +53,8 @@ const ActiveProductCard = ({
   readOnly,
   selfServe,
   onManage,
-  onSetCommitment
+  onSetCommitment,
+  onViewBreakdown
 }: ActiveProductCardProps) => {
   // "Commit annually and save" nudge: shown when the org holds this product monthly but hasn't set the
   // available commitment. Clicking opens the set-commitment flow. Hidden for enterprise-managed orgs.
@@ -81,6 +84,9 @@ const ActiveProductCard = ({
 
   // Bar-bearing dims first so the block reads bars, then bare cost lines, then the shared legend.
   const sortedDims = [...dims].sort((a, b) => Number(dimHasCeiling(b)) - Number(dimHasCeiling(a)));
+
+  // Only offer the breakdown for dimensions we can attribute to an org and project.
+  const hasBreakdown = breakdownableDimensions(entitlement).length > 0;
 
   // Cadence and renewal (or trial / deprecation) as one muted subline under the product name.
   let subline: ReactNode = null;
@@ -162,6 +168,27 @@ const ActiveProductCard = ({
             <DimensionMeter key={dim.key} dim={dim} color={prod.color} />
           ))}
         </div>
+      )}
+      {hasBreakdown && (
+        // Full-bleed strip on the card's bottom edge. Sits above the commit nudge so the card ends on
+        // the action that costs money rather than on a read.
+        <button
+          type="button"
+          onClick={() => onViewBreakdown(prod.id)}
+          className={cn(
+            "group -mx-4 -mb-4 flex cursor-pointer items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-left transition-colors hover:bg-container-hover",
+            commitNudge && "mb-0"
+          )}
+        >
+          {/* No counts here. A truthful "across N sub-orgs" means counting which orgs actually
+              contribute to this dimension, which costs a full usage breakdown per product on every page
+              load. The sheet says it instead, where that data is already loaded. */}
+          <span className="text-xs text-muted">Break this down by organization usage</span>
+          <span className="flex shrink-0 items-center gap-1 text-xs text-accent transition-colors group-hover:text-foreground">
+            View breakdown
+            <ChevronRight className="size-3.5" />
+          </span>
+        </button>
       )}
       {commitNudge && (
         // Full-bleed strip at the card's bottom edge nudging the monthly subscriber to commit annually.
@@ -255,6 +282,7 @@ type ProductsCardProps = {
   readOnly?: boolean;
   onManage: (id: string) => void;
   onSetCommitment: (id: string) => void;
+  onViewBreakdown: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
@@ -264,6 +292,7 @@ export const ProductsCard = ({
   readOnly,
   onManage,
   onSetCommitment,
+  onViewBreakdown,
   onContact
 }: ProductsCardProps) => {
   // A deprecated product stays visible to existing subscribers but is closed to new ones, so hide it
@@ -339,6 +368,7 @@ export const ProductsCard = ({
                   selfServe={overview.selfServe}
                   onManage={onManage}
                   onSetCommitment={onSetCommitment}
+                  onViewBreakdown={onViewBreakdown}
                 />
               ))}
               {available.length > 0 && (
