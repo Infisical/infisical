@@ -92,7 +92,7 @@ export function DataGrid<TData>({
       data-slot="grid-wrapper"
       dir={dir}
       {...props}
-      className={cn("relative flex w-full flex-col", className)}
+      className={cn("relative flex w-full min-w-0 flex-col", className)}
     >
       {searchState && <DataGridSearch {...searchState} />}
       <DataGridContextMenu tableMeta={tableMeta} columns={columns} contextMenu={contextMenu} />
@@ -105,7 +105,7 @@ export function DataGrid<TData>({
         data-slot="grid"
         tabIndex={0}
         ref={dataGridRef}
-        className="relative grid thin-scrollbar flex-1 grid-rows-[auto_1fr_auto] overflow-auto rounded-md border border-border bg-container select-none focus:outline-none"
+        className="relative grid thin-scrollbar min-w-0 flex-1 grid-rows-[auto_1fr_auto] overflow-auto rounded-md border border-border bg-container select-none focus:outline-none"
         style={{
           ...columnSizeVars,
           ...(height ? { maxHeight: `${height}px` } : {})
@@ -117,6 +117,7 @@ export function DataGrid<TData>({
           data-slot="grid-header"
           ref={headerRef}
           className="sticky top-0 z-10 grid border-b border-border bg-container"
+          style={{ minWidth: `max(100%, ${table.getTotalSize()}px)` }}
         >
           {table.getHeaderGroups().map((headerGroup, rowIndex) => (
             <div
@@ -125,7 +126,7 @@ export function DataGrid<TData>({
               aria-rowindex={rowIndex + 1}
               data-slot="grid-header-row"
               tabIndex={-1}
-              className="flex w-full"
+              className="flex w-max min-w-full justify-start"
             >
               {headerGroup.headers.map((header, colIndex) => {
                 const { sorting } = table.getState();
@@ -158,7 +159,7 @@ export function DataGrid<TData>({
                     }
                     data-slot="grid-header-cell"
                     tabIndex={-1}
-                    className={cn("relative overflow-hidden", {
+                    className={cn("relative shrink-0 overflow-hidden", {
                       grow: stretchColumns && header.column.id !== "select",
                       "border-e": showEndBorder && header.column.id !== "select",
                       "border-s": showStartBorder && header.column.id !== "select"
@@ -189,6 +190,7 @@ export function DataGrid<TData>({
           className="relative grid"
           style={{
             height: `${virtualTotalSize}px`,
+            minWidth: `max(100%, ${table.getTotalSize()}px)`,
             contain: adjustLayout ? "layout paint" : "strict"
           }}
         >
@@ -238,7 +240,7 @@ export function DataGrid<TData>({
               aria-rowindex={rows.length + 2}
               data-slot="grid-add-row"
               tabIndex={-1}
-              className="flex w-full"
+              className="flex w-max min-w-full justify-start"
             >
               <div
                 role="gridcell"
