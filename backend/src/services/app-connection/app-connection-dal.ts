@@ -91,6 +91,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     const secretSyncs = await (tx || db.replicaNode())(TableName.SecretSync)
       .where(`${TableName.SecretSync}.connectionId`, connectionId)
       .join(TableName.Project, `${TableName.SecretSync}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(
         db.ref("name").withSchema(TableName.SecretSync),
         db.ref("id").withSchema(TableName.SecretSync),
@@ -106,6 +107,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(
         db.ref("name").withSchema(TableName.SecretRotationV2),
         db.ref("id").withSchema(TableName.SecretRotationV2),
@@ -124,6 +126,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
         `${TableName.CertificateAuthority}.id`
       )
       .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(
         db.ref("name").withSchema(TableName.CertificateAuthority),
         db.ref("id").withSchema(TableName.ExternalCertificateAuthority),
@@ -138,6 +141,7 @@ export const appConnectionDALFactory = (db: TDbClient) => {
     const dataSources = await (tx || db.replicaNode())(TableName.SecretScanningDataSource)
       .where(`${TableName.SecretScanningDataSource}.connectionId`, connectionId)
       .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(
         db.ref("name").withSchema(TableName.SecretScanningDataSource),
         db.ref("id").withSchema(TableName.SecretScanningDataSource),
