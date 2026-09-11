@@ -192,7 +192,12 @@ export const InviteMembersNudgeCard = ({
 // Non-modal replacement for the secrets activation invite modal: same trigger schedule and
 // dismissal semantics (see useSecretsActivationNudge), but rendered as a dismissible card in the
 // bottom-right corner so the user can invite teammates without leaving what they were doing.
-export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false }: Props) => {
+export const InviteMembersNudge = ({
+  popUp,
+  handlePopUpToggle,
+  isLifted = false,
+  experimentVariant
+}: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission: projectPermission } = useProjectPermission();
@@ -203,6 +208,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
   const [isSuccess, setIsSuccess] = useState(false);
   const autoDismissTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const isMountedRef = useRef(true);
+  const hasViewedRef = useRef(false);
 
   const isOpen = Boolean(popUp?.inviteMembers?.isOpen);
   const bottomOffset = useFloatingBarClearance(isOpen && isLifted);
@@ -244,23 +250,28 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
     orgId,
     projectId,
     projectType: currentProject?.type,
-    presentation: PRESENTATION
+    presentation: PRESENTATION,
+    experiment_variant: experimentVariant,
+    "$feature/secrets-activation-presentation": experimentVariant
   };
 
   // Fire once each time the nudge surfaces. It opens at most once per session (see
   // useSecretsActivationNudge), so guarding on the open state is sufficient.
   useEffect(() => {
-    if (isOpen) telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
+    if (isOpen && !hasViewedRef.current) {
+      hasViewedRef.current = true;
+      telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
       isMountedRef.current = false;
       if (autoDismissTimeoutRef.current) clearTimeout(autoDismissTimeoutRef.current);
-    },
-    []
-  );
+    };
+  }, []);
 
   const close = () => {
     if (autoDismissTimeoutRef.current) clearTimeout(autoDismissTimeoutRef.current);
@@ -337,6 +348,7 @@ export const InviteMembersNudge = ({ popUp, handlePopUpToggle, isLifted = false 
 export type TInviteMembersNudgeForm = z.infer<typeof inviteMembersNudgeFormSchema>;
 
 type Props = {
+  experimentVariant: "card";
   popUp: UsePopUpState<["inviteMembers"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["inviteMembers"]>, state?: boolean) => void;
   // True while a floating bar (selection actions or batch commit) shares the bottom edge of the

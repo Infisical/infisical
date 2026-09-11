@@ -228,7 +228,7 @@ import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceB
 import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
-import { InviteMembersNudge } from "./components/InviteMembersNudge";
+import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -4134,7 +4134,7 @@ const OverviewPageContent = () => {
           environment={singleEnvSlug}
         />
       )}
-      <InviteMembersNudge
+      <SecretsActivationNudge
         popUp={invitePopUp}
         handlePopUpToggle={handleInvitePopUpToggle}
         isLifted={hasPendingBatchChanges || hasSelectedEntries}
