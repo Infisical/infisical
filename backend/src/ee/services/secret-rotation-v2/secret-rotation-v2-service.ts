@@ -96,9 +96,9 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
 import { convertSecretRotationToValidationRuleProvider } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
-import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
@@ -267,7 +267,7 @@ export const secretRotationV2ServiceFactory = ({
       type: SecretValidationRuleType.SecretRotations,
       provider
     });
-    if (!matched.constraints.length) return undefined;
+    if (!matched.ruleNames.length) return undefined;
     return matched;
   };
 

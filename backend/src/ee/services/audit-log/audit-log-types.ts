@@ -3095,6 +3095,10 @@ interface ImportCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    certificateProfileId?: string;
+    profileName?: string;
+    caId?: string;
+    caName?: string;
   };
 }
 
@@ -6852,8 +6856,9 @@ interface SecretValidationRuleCreateEvent {
     ruleId: string;
     name: string;
     type: string;
-    environmentSlug?: string;
+    environment?: string;
     secretPath: string;
+    isActive: boolean;
   };
 }
 
@@ -6874,6 +6879,7 @@ interface SecretValidationRuleDeleteEvent {
   metadata: {
     ruleId: string;
     name: string;
+    type: string;
   };
 }
 
