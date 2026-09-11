@@ -267,7 +267,8 @@ export const secretSyncQueueFactory = ({
 
   const $getInfisicalSecrets = async (
     secretSync: TSecretSyncRaw | TSecretSyncWithCredentials,
-    includeImports = true
+    includeImports = true,
+    dedupeForRemoval = false
   ) => {
     const { projectId, folderId, environment, folder } = secretSync;
 
@@ -325,7 +326,8 @@ export const secretSyncQueueFactory = ({
         sourceFolderId: folderId,
         recursive: Boolean(syncOptions?.recursive),
         keySchema: syncOptions?.keySchema,
-        includeImports
+        includeImports,
+        dedupeForRemoval
       }
     );
   };
@@ -833,7 +835,9 @@ export const secretSyncQueueFactory = ({
         projectId
       });
 
-      const payload = await $getInfisicalSecrets(secretSync);
+      // Duplicates across folders are deduped before the payload is built, so flatten() cannot
+      // throw here: a sync that has drifted into a duplicate-name state must still be removable.
+      const payload = await $getInfisicalSecrets(secretSync, true, true);
 
       await SecretSyncFns.removeSecrets(
         {

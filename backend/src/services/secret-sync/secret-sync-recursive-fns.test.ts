@@ -187,3 +187,73 @@ describe("buildSyncPayload", () => {
     expect(paths).toEqual(["/", "/api"]);
   });
 });
+
+describe("buildSyncPayload dedupeForRemoval", () => {
+  const duplicateNameSecret = (folderId: string, value: string) => ({
+    id: `secret-${folderId}`,
+    key: "DB_URL",
+    folderId,
+    encryptedValue: Buffer.from(value),
+    encryptedComment: null,
+    skipMultilineEncoding: false,
+    tags: [],
+    secretMetadata: []
+  });
+
+  const dedupeDeps = {
+    folderDAL: {
+      find: async () => [
+        { id: "root", name: "root", parentId: null, envId: "env-1", isReserved: false },
+        { id: "api", name: "api", parentId: "root", envId: "env-1", isReserved: false }
+      ]
+    },
+    projectEnvDAL: { findOne: async () => ({ id: "env-1", slug: "dev", projectId: "proj-1" }) },
+    secretV2BridgeDAL: {
+      findByFolderIds: async () => [duplicateNameSecret("root", "root-value"), duplicateNameSecret("api", "api-value")]
+    },
+    secretImportDAL: {
+      findByFolderIds: async () => [],
+      findByIds: async () => []
+    },
+    expandSecretReferences: async ({ value }: { value?: string }) => value,
+    decryptSecretValue: (value?: Buffer | null) => (value ? value.toString() : ""),
+    fnSecretsV2FromImportsDeps: {
+      projectFolderGrantDAL: { find: async () => [] },
+      actorOrgId: "org-1",
+      orgDAL: { findOrgById: async () => ({ allowCrossProjectSecretSharing: false }) },
+      licenseService: { getPlan: async () => ({ crossProjectSecretSharing: false }) },
+      kmsService: {
+        createCipherPairWithDataKey: async () => ({
+          decryptor: () => "",
+          encryptor: () => ({ cipherTextBlob: Buffer.from("") })
+        })
+      }
+    }
+  } as unknown as Parameters<typeof buildSyncPayload>[0];
+
+  const args = {
+    projectId: "proj-1",
+    environment: "dev",
+    sourcePath: "/",
+    sourceFolderId: "root",
+    recursive: true,
+    includeImports: true
+  };
+
+  // Pins the sync-path requirement from the same bug: a name used in two folders must still
+  // fail loudly on this path, since only the remove path may look past it.
+  test("a cross-folder duplicate name still throws when dedupeForRemoval is not set", async () => {
+    const payload = await buildSyncPayload(dedupeDeps, args);
+
+    expect(() => payload.flatten()).toThrow(/DB_URL/);
+  });
+
+  // A sync whose secrets collide across folders would otherwise be stuck: it fails to sync,
+  // and until this test, it also failed to remove, which is the only way to delete it.
+  test("dedupeForRemoval lets the remove path complete despite the same duplicate", async () => {
+    const payload = await buildSyncPayload(dedupeDeps, { ...args, dedupeForRemoval: true });
+
+    expect(() => payload.flatten()).not.toThrow();
+    expect(Object.keys(payload.flatten())).toEqual(["DB_URL"]);
+  });
+});

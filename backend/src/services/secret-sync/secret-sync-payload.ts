@@ -58,6 +58,32 @@ const buildConflictError = (conflicts: [string, TSecretPayload[]][]) => {
   });
 };
 
+// The remove path deletes by destination key and does not care which duplicate wins, so it
+// dedupes before the payload is built. That keeps flatten() itself unconditional: a sync that
+// has drifted into a duplicate-name state must still be removable, since deleteSyncOnComplete
+// only drops the sync row after a successful remove.
+export const dedupeEntriesByDestinationKey = (
+  entries: TSecretPayload[],
+  { environment, keySchema }: { environment: string; keySchema?: string }
+): TSecretPayload[] => {
+  const seenDestinationKeys = new Set<string>();
+  const deduped: TSecretPayload[] = [];
+
+  for (const entry of entries) {
+    const destinationKey = getKeyWithSchema({ key: entry.key, environment, schema: keySchema });
+
+    if (seenDestinationKeys.has(destinationKey)) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    seenDestinationKeys.add(destinationKey);
+    deduped.push(entry);
+  }
+
+  return deduped;
+};
+
 export const createSecretSyncPayload = (
   secrets: TSecretPayload[],
   { environment, keySchema }: { environment: string; keySchema?: string }

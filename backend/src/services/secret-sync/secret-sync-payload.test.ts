@@ -1,4 +1,4 @@
-import { createSecretSyncPayload, TSecretPayload } from "./secret-sync-payload";
+import { createSecretSyncPayload, dedupeEntriesByDestinationKey, TSecretPayload } from "./secret-sync-payload";
 
 const secret = (key: string, path: string, value = "v"): TSecretPayload => ({ key, path, value });
 
@@ -61,6 +61,41 @@ describe("createSecretSyncPayload", () => {
       environment: "dev",
       keySchema: "{{secretKey}}"
     });
+
+    expect(() => payload.flatten()).not.toThrow();
+  });
+});
+
+describe("dedupeEntriesByDestinationKey", () => {
+  test("keeps one entry per destination key when two folders share a name", () => {
+    const deduped = dedupeEntriesByDestinationKey([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
+      environment: "dev"
+    });
+
+    expect(deduped).toHaveLength(1);
+  });
+
+  test("leaves distinct names untouched", () => {
+    const deduped = dedupeEntriesByDestinationKey([secret("DB_URL", "/"), secret("API_KEY", "/api")], {
+      environment: "dev"
+    });
+
+    expect(deduped.map((entry) => entry.key).sort()).toEqual(["API_KEY", "DB_URL"]);
+  });
+
+  test("dedupes by the schema-applied destination key, not the raw name", () => {
+    const deduped = dedupeEntriesByDestinationKey([secret("DB_URL", "/"), secret("dev_DB_URL", "/api")], {
+      environment: "dev",
+      keySchema: "{{secretKey}}"
+    });
+
+    expect(deduped).toHaveLength(2);
+  });
+
+  test("the deduped result never conflicts when flattened", () => {
+    const entries = [secret("DB_URL", "/backend", "one"), secret("DB_URL", "/backend/api", "two")];
+    const deduped = dedupeEntriesByDestinationKey(entries, { environment: "dev" });
+    const payload = createSecretSyncPayload(deduped, { environment: "dev" });
 
     expect(() => payload.flatten()).not.toThrow();
   });

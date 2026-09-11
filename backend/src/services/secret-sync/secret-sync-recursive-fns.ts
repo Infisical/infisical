@@ -10,6 +10,7 @@ import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-impor
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
   createSecretSyncPayload,
+  dedupeEntriesByDestinationKey,
   TSecretPayload,
   TSecretSyncPayload
 } from "@app/services/secret-sync/secret-sync-payload";
@@ -123,11 +124,15 @@ export const buildSyncPayload = async (
     recursive: boolean;
     keySchema?: string;
     includeImports: boolean;
+    // The remove path passes true so a duplicate name across folders cannot leave the sync
+    // undeletable; every other caller must keep the duplicate-name check intact.
+    dedupeForRemoval?: boolean;
   }
 ): Promise<TSecretSyncPayload> => {
   const { folderDAL, projectEnvDAL, secretV2BridgeDAL, secretImportDAL, expandSecretReferences, decryptSecretValue } =
     deps;
-  const { projectId, environment, sourcePath, sourceFolderId, recursive, keySchema, includeImports } = args;
+  const { projectId, environment, sourcePath, sourceFolderId, recursive, keySchema, includeImports, dedupeForRemoval } =
+    args;
 
   const folders = await resolveSyncFolders({
     folderDAL,
@@ -182,7 +187,10 @@ export const buildSyncPayload = async (
   );
 
   if (!includeImports) {
-    return createSecretSyncPayload(entries, { environment, keySchema });
+    return createSecretSyncPayload(
+      dedupeForRemoval ? dedupeEntriesByDestinationKey(entries, { environment, keySchema }) : entries,
+      { environment, keySchema }
+    );
   }
 
   const secretImports = await secretImportDAL.findByFolderIds(folders.map(({ folderId }) => folderId));
@@ -227,5 +235,8 @@ export const buildSyncPayload = async (
     assertWithinSecretLimit(allEntries.length);
   }
 
-  return createSecretSyncPayload(allEntries, { environment, keySchema });
+  return createSecretSyncPayload(
+    dedupeForRemoval ? dedupeEntriesByDestinationKey(allEntries, { environment, keySchema }) : allEntries,
+    { environment, keySchema }
+  );
 };
