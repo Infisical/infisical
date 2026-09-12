@@ -15,12 +15,12 @@ export const AgentVaultProxiesSchema = z.object({
   rootCaFingerprint: z.string().nullable().optional(),
   rootCaExpiresAt: z.date().nullable().optional(),
   heartbeat: z.date().nullable().optional(),
+  heartbeatTTL: z.number().nullable().optional(),
   trafficPolicy: z.string().default("any-host"),
   allowedHosts: z.string().nullable().optional(),
   pollInterval: z.number().default(60),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  heartbeatTTL: z.number().nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TAgentVaultProxies = z.infer<typeof AgentVaultProxiesSchema>;

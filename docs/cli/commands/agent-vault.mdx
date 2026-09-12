@@ -16,7 +16,7 @@ infisical agent-vault run --access-bundle <bundle-name> --proxy <proxy-host>:173
 
 These subcommands are the CLI half of [Agent Vault](/documentation/platform/agent-vault/overview). `proxy` runs the process that attaches credentials to agent traffic. `run` launches an agent with its HTTP traffic routed through a proxy and a session token to identify it.
 
-The two usually run on different machines. Traffic policy is set on the Proxies page, not with flags, and reaches a running proxy on its next poll.
+The two usually run on different machines. A proxy's settings are set on the Proxies page, not with flags, and reach a running proxy on its next poll.
 
 `av` is an alias for `agent-vault`, so `infisical av run` works wherever `infisical agent-vault run` does.
 
