@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import {
   AsteriskIcon,
@@ -98,8 +97,9 @@ export const AppConnectionRow = ({
   }, [isIdCopied]);
 
   const methodDetails = getAppConnectionMethodDetails(method);
-
   const connectionDetails = APP_CONNECTION_MAP[app];
+  const MethodIcon = methodDetails.icon;
+  const ConnectionIcon = connectionDetails.icon;
 
   const isGitHubAppConnection =
     app === AppConnection.GitHub && method === GitHubConnectionMethod.App;
@@ -139,12 +139,8 @@ export const AppConnectionRow = ({
               src={`/images/integrations/${connectionDetails.image}`}
               className="mr-0.5 w-5"
             />
-            {connectionDetails.icon && (
-              <FontAwesomeIcon
-                icon={connectionDetails.icon}
-                size="xs"
-                className="absolute -right-0.5 -bottom-0.5 text-primary-700"
-              />
+            {ConnectionIcon && (
+              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-primary-700" />
             )}
           </div>
           <span className="hidden lg:inline">{connectionDetails.name}</span>
@@ -174,11 +170,7 @@ export const AppConnectionRow = ({
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1.5 text-mineshaft-100 underline-offset-2 hover:text-primary hover:underline"
               >
-                <FontAwesomeIcon
-                  size="sm"
-                  className="text-mineshaft-300/75"
-                  icon={methodDetails.icon}
-                />
+                <MethodIcon className="size-3.5 text-mineshaft-300/75" />
                 <span className="truncate underline">{methodDetails.name}</span>
               </a>
             </TooltipTrigger>
@@ -193,11 +185,7 @@ export const AppConnectionRow = ({
           </Tooltip>
         ) : (
           <p className="truncate">
-            <FontAwesomeIcon
-              size="sm"
-              className="mr-1.5 text-mineshaft-300/75"
-              icon={methodDetails.icon}
-            />
+            <MethodIcon className="mr-1.5 inline size-3.5 text-mineshaft-300/75" />
             {methodDetails.name}
           </p>
         )}

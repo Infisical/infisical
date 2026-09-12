@@ -51,7 +51,12 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
               isError={Boolean(error)}
               errorText={error?.message}
             >
-              <Input {...field} placeholder="Enter policy name" />
+              <Input
+                {...field}
+                placeholder="Enter policy name"
+                autoComplete="off"
+                name="policy-name"
+              />
             </FormControl>
           )}
         />

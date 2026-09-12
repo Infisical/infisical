@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -35,6 +36,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
+import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
@@ -870,6 +872,7 @@ export enum EventType {
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
   EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+  IMPORT_VAULT_SECRETS = "import-vault-secrets",
 
   // OAuth 2.0 authorization server clients
   CREATE_OAUTH_CLIENT = "create-oauth-client",
@@ -888,6 +891,7 @@ export enum EventType {
   GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
+  GATEWAY_CONNECT = "gateway-connect",
 
   // Resource Auth Methods
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
@@ -7130,6 +7134,24 @@ interface ExternalMigrationDeleteEvent {
     provider: string;
   };
 }
+
+interface ImportVaultSecretsEvent {
+  type: EventType.IMPORT_VAULT_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    vaultNamespace: string;
+    mountPath: string;
+    vaultSecretPaths: string[];
+    connectionId: string;
+    keepVaultStructure: boolean;
+    status: ExternalMigrationImportStatus;
+    importedSecretCount: number;
+    approvalRequiredSecretCount: number;
+    importedPaths?: string[];
+    approvalRequiredPaths?: string[];
+  };
+}
 interface CreateOauthClientEvent {
   type: EventType.CREATE_OAUTH_CLIENT;
   metadata: {
@@ -7239,6 +7261,17 @@ interface GatewayEnrollEvent {
   metadata: {
     gatewayId: string;
     name: string;
+  };
+}
+
+interface GatewayConnectEvent {
+  type: EventType.GATEWAY_CONNECT;
+  metadata: {
+    gatewayId: string;
+    name: string;
+    transports: GatewayTransport[];
+    directAddress?: string;
+    relayName?: string;
   };
 }
 
@@ -8168,6 +8201,7 @@ export type Event =
   | ExternalMigrationCreateEvent
   | ExternalMigrationUpdateEvent
   | ExternalMigrationDeleteEvent
+  | ImportVaultSecretsEvent
   | CreateOauthClientEvent
   | UpdateOauthClientEvent
   | DeleteOauthClientEvent
@@ -8180,6 +8214,7 @@ export type Event =
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
+  | GatewayConnectEvent
   | ResourceAuthMethodLoginEvent
   | ResourceAuthMethodLoginFailedEvent
   | ResourceAuthMethodUpdateEvent

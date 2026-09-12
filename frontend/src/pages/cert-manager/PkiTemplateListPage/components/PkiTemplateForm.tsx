@@ -195,7 +195,12 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
             errorText={error?.message}
             isRequired
           >
-            <Input {...field} placeholder="my-template" />
+            <Input
+              {...field}
+              placeholder="my-template"
+              autoComplete="off"
+              name="pki-template-name"
+            />
           </FormControl>
         )}
       />

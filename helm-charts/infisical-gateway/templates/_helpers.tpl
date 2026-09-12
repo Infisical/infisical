@@ -60,3 +60,30 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Port the gateway listens on for direct connections, from gateway.listenAddress.
+*/}}
+{{- define "infisical-gateway.listenPort" -}}
+{{- $addr := .Values.gateway.listenAddress -}}
+{{- $port := splitList ":" $addr | last -}}
+{{- if or (eq $port $addr) (not (regexMatch "^[0-9]+$" $port)) -}}
+{{- fail (printf "gateway.listenAddress must be host:port, got %q" $addr) -}}
+{{- end -}}
+{{- if or (lt (int $port) 1) (gt (int $port) 65535) -}}
+{{- fail (printf "gateway.listenAddress port must be between 1 and 65535, got %q" $port) -}}
+{{- end -}}
+{{- $port -}}
+{{- end }}
+
+{{/*
+Port the Service exposes. Defaults to the port in gateway.listenAddress, which is what the
+platform dials.
+*/}}
+{{- define "infisical-gateway.servicePort" -}}
+{{- if .Values.service.port -}}
+{{- .Values.service.port -}}
+{{- else -}}
+{{- include "infisical-gateway.listenPort" . -}}
+{{- end -}}
+{{- end }}

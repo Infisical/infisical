@@ -1,6 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { CheckIcon, ClipboardListIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CircleCheckIcon,
+  CircleXIcon,
+  ClipboardListIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -32,7 +38,11 @@ import {
 import { useTimedReset } from "@app/hooks";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2, TGatewayV2WithAuthMethod } from "@app/hooks/api/gateways-v2/types";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+import {
+  getGatewayTransportHealth,
+  getLastSeenHeartbeat,
+  isGatewayHealthy
+} from "@app/hooks/api/gateways-v2/utils";
 
 import {
   NetworkingAuthMethodForm,
@@ -40,7 +50,13 @@ import {
 } from "../../../components/NetworkingAuthMethodForm";
 
 const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
-  if (!gateway.heartbeat && !gateway.heartbeatTTL) {
+  const heartbeat = getLastSeenHeartbeat(gateway);
+  if (
+    !heartbeat &&
+    gateway.heartbeatTTL === null &&
+    gateway.directAddress === null &&
+    gateway.relayId === null
+  ) {
     return <Badge variant="warning">Unregistered</Badge>;
   }
   if (isGatewayHealthy(gateway)) {
@@ -59,6 +75,8 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
 
   const { authMethod } = gateway;
   const isIdentityGateway = authMethod.method === "identity";
+  const effectiveHeartbeat = getLastSeenHeartbeat(gateway);
+  const transportHealth = getGatewayTransportHealth(gateway);
 
   return (
     <Card className="w-full">
@@ -97,16 +115,53 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
             </DetailValue>
           </Detail>
           <Detail>
+            <DetailLabel>Connection</DetailLabel>
+            <DetailValue className="flex flex-col items-start gap-1">
+              {transportHealth.length ? (
+                transportHealth.map((transport) => (
+                  <span key={transport.transport} className="flex items-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          variant={transport.isHealthy ? "success" : "danger"}
+                          iconPosition="left"
+                          className="cursor-default"
+                        >
+                          {transport.isHealthy ? (
+                            <CircleCheckIcon className="size-3" />
+                          ) : (
+                            <CircleXIcon className="size-3" />
+                          )}
+                          {transport.label}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {transport.probedAt
+                          ? `Last seen ${format(new Date(transport.probedAt), "PPpp")}`
+                          : "Never reached"}
+                      </TooltipContent>
+                    </Tooltip>
+                    {transport.transport === "direct" && gateway.directAddress ? (
+                      <span className="text-xs text-muted">{gateway.directAddress}</span>
+                    ) : null}
+                  </span>
+                ))
+              ) : (
+                <span className="text-muted">Not configured</span>
+              )}
+            </DetailValue>
+          </Detail>
+          <Detail>
             <DetailLabel>Last Seen</DetailLabel>
             <DetailValue>
-              {gateway.heartbeat ? (
+              {effectiveHeartbeat ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="cursor-default">
-                      {format(new Date(gateway.heartbeat), "PPpp")}
+                      {format(new Date(effectiveHeartbeat), "PPpp")}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>{new Date(gateway.heartbeat).toUTCString()}</TooltipContent>
+                  <TooltipContent>{new Date(effectiveHeartbeat).toUTCString()}</TooltipContent>
                 </Tooltip>
               ) : (
                 <span className="text-muted">—</span>

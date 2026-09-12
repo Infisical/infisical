@@ -191,6 +191,7 @@ export const AlertForm = ({
                 placeholder={isAgentVault ? ALERT_NAME_PLACEHOLDER : DEFAULT_ALERT_NAME}
                 isError={Boolean(errors.name)}
                 {...register("name")}
+                autoComplete="off"
               />
               <FieldError errors={[errors.name]} />
             </FieldContent>

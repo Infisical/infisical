@@ -47,11 +47,18 @@ export const AwsPcaFields = ({ control, availableConnections, isPending }: Props
       name="configuration.region"
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field className="mb-4">
-          <FieldLabel>
+          <FieldLabel id="aws-private-ca-region-label" htmlFor="aws-private-ca-region">
             Region <span className="text-danger">*</span>
           </FieldLabel>
-          <AwsRegionSelect value={value} onChange={(v) => onChange(v || "")} />
-          <FieldError errors={[error]} />
+          <AwsRegionSelect
+            id="aws-private-ca-region"
+            value={value}
+            onChange={(v) => onChange(v || "")}
+            isError={Boolean(error)}
+            aria-labelledby="aws-private-ca-region-label"
+            aria-describedby={error ? "aws-private-ca-region-error" : undefined}
+          />
+          <FieldError id="aws-private-ca-region-error" errors={[error]} />
         </Field>
       )}
     />

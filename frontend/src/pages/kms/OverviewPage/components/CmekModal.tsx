@@ -128,7 +128,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
         isError={Boolean(errors.name?.message)}
         label="Name"
       >
-        <Input autoFocus placeholder="my-secret-key" {...register("name")} />
+        <Input autoFocus placeholder="my-secret-key" {...register("name")} autoComplete="off" />
       </FormControl>
       <div className="flex w-full items-center gap-2">
         {!isUpdate && (

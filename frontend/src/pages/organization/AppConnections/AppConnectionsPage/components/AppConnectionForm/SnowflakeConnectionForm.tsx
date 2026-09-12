@@ -143,8 +143,14 @@ export const SnowflakeConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <SecretInput id="password" value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <SecretInput
+                aria-describedby={error ? "password-error" : undefined}
+                isError={Boolean(error)}
+                id="password"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="password-error" errors={[error]} />
             </Field>
           )}
         />

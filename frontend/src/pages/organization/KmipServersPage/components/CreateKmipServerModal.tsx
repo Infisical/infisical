@@ -119,6 +119,8 @@ export const CreateKmipServerModal = ({ isOpen, onOpenChange }: Props) => {
                   aria-required
                   isError={Boolean(error)}
                   autoFocus
+                  autoComplete="off"
+                  name="kmip-server-name"
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>

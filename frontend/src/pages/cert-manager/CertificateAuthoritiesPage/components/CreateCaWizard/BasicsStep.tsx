@@ -34,7 +34,13 @@ export const BasicsStep = ({ form }: Props) => {
               Name <span className="text-danger">*</span>
             </FieldLabel>
             <FieldContent>
-              <Input {...field} placeholder="my-internal-ca" isError={Boolean(error)} />
+              <Input
+                {...field}
+                placeholder="my-internal-ca"
+                isError={Boolean(error)}
+                autoComplete="off"
+                name="certificate-authority-name"
+              />
               <FieldDescription>A unique slug used to reference this CA.</FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>

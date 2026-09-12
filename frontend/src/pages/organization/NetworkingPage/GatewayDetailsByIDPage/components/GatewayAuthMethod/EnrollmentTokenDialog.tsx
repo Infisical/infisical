@@ -19,16 +19,22 @@ type Props = {
   gatewayName: string;
   enrollmentToken: string;
   expiresAt: string;
+  isDirect: boolean;
+  listenAddress: string;
   onCommandDirtyChange: (isDirty: boolean) => void;
 };
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
+
+const PLACEHOLDER_ADDRESS = "<gateway-address>:8443";
 
 // Renders a freshly minted token as inline deployment instructions.
 export const EnrollmentTokenContent = ({
   gatewayName,
   enrollmentToken,
   expiresAt,
+  isDirect,
+  listenAddress,
   onCommandDirtyChange
 }: Props) => {
   const { protocol, hostname, port } = window.location;
@@ -46,23 +52,25 @@ export const EnrollmentTokenContent = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentToken]);
 
-  const isCommandDirty = relay.id !== commandRelay.id;
+  const isCommandDirty = !isDirect && relay.id !== commandRelay.id;
 
   useEffect(() => {
     onCommandDirtyChange(isCommandDirty);
   }, [isCommandDirty, onCommandDirtyChange]);
 
-  const resolvedRelayName = commandRelay.id === "_auto" ? "" : commandRelay.name;
+  const resolvedRelayName = isDirect || commandRelay.id === "_auto" ? "" : commandRelay.name;
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
-    return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
-  }, [gatewayName, enrollmentToken, resolvedRelayName, siteURL]);
+    const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
+    return `infisical gateway start ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart}${directPart} --domain=${siteURL}`;
+  }, [gatewayName, enrollmentToken, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const systemdInstallCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
-    return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart} --domain=${siteURL}`;
-  }, [gatewayName, enrollmentToken, resolvedRelayName, siteURL]);
+    const directPart = isDirect ? ` --listen-address=${listenAddress || PLACEHOLDER_ADDRESS}` : "";
+    return `sudo infisical gateway systemd install ${gatewayName} --enroll-method=token --token=${enrollmentToken}${relayPart}${directPart} --domain=${siteURL}`;
+  }, [gatewayName, enrollmentToken, isDirect, listenAddress, resolvedRelayName, siteURL]);
 
   const startServiceCommand = `sudo systemctl start ${gatewayName}`;
   const commandLabel = (
@@ -94,34 +102,36 @@ export const EnrollmentTokenContent = ({
         />
         <CodeBlock value={startServiceCommand} label="Start service" />
       </TabsContent>
-      <Field>
-        <Select
-          value={relay.id}
-          onValueChange={(id) =>
-            setRelay(
-              [AUTO_RELAY_OPTION, ...(relays || [])].find((item) => item.id === id) ||
-                AUTO_RELAY_OPTION
-            )
-          }
-          disabled={isRelaysLoading}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select relay" />
-          </SelectTrigger>
-          <SelectContent>
-            {[AUTO_RELAY_OPTION, ...(relays || [])].map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {relay.id !== "_auto" && (
-          <FieldDescription>
-            * Auto Select chooses a healthy relay and fails over if needed.
-          </FieldDescription>
-        )}
-      </Field>
+      {!isDirect && (
+        <Field>
+          <Select
+            value={relay.id}
+            onValueChange={(id: string) =>
+              setRelay(
+                [AUTO_RELAY_OPTION, ...(relays || [])].find((item) => item.id === id) ||
+                  AUTO_RELAY_OPTION
+              )
+            }
+            disabled={isRelaysLoading}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select relay" />
+            </SelectTrigger>
+            <SelectContent>
+              {[AUTO_RELAY_OPTION, ...(relays || [])].map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {relay.id !== "_auto" && (
+            <FieldDescription>
+              * Auto Select chooses a healthy relay and fails over if needed.
+            </FieldDescription>
+          )}
+        </Field>
+      )}
     </div>
   );
 };

@@ -1,7 +1,14 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { SecretType, TSecretBlindIndexes, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
+import {
+  SecretType,
+  TSecretBlindIndexes,
+  TSecretFolders,
+  TSecrets,
+  TSecretsInsert,
+  TSecretsUpdate
+} from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -301,6 +308,7 @@ export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   projectId?: string;
   projectSlug?: string;
   environment: string;
+  folder?: Pick<TSecretFolders, "id" | "envId"> & { environment: { slug: string; name: string } };
   secrets: {
     secretKey: string;
     secretValue: string;

@@ -263,6 +263,8 @@ const RuleFormContent = ({
                     {...field}
                     placeholder="e.g. Production key naming"
                     isError={Boolean(errors.name)}
+                    autoComplete="off"
+                    name="validation-rule-name"
                   />
                 )}
               />

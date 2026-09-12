@@ -1086,10 +1086,10 @@
             "icon": "network-wired",
             "pages": [
               "documentation/platform/gateways/overview",
+              "documentation/setup/networking",
               {
                 "group": "Gateways",
                 "pages": [
-                  "documentation/setup/networking",
                   "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-deployment",
                   "documentation/platform/gateways/gateway-pools",

@@ -27,6 +27,8 @@ export const PkiSyncDetailsFields = () => {
               onChange={onChange}
               placeholder="my-certificate-sync"
               isError={Boolean(error)}
+              autoComplete="off"
+              name="pki-sync-name"
             />
             {!error?.message && <FieldDescription>Must be slug-friendly.</FieldDescription>}
             <FieldError errors={[error]} />
