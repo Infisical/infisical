@@ -310,10 +310,8 @@ export const membershipIdentityServiceFactory = ({
     let shouldRestoreOrgTokens = false;
 
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
-      const currentMembership = await membershipIdentityDAL.findByIdForUpdate(existingMembership.id, tx);
-      if (!currentMembership) {
-        throw new BadRequestError({ message: "Identity doesn't have membership" });
-      }
+      // The project advisory lock before the row lock, the order every other caller takes: a product-route
+      // change holding the advisory lock needs KEY SHARE on this row, so the reverse order deadlocks.
       const newRolesHavePermanentAdmin = data.roles.some(
         (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
       );
@@ -323,6 +321,10 @@ export const membershipIdentityServiceFactory = ({
           excludeMembershipIds: [existingMembership.id],
           tx
         });
+      }
+      const currentMembership = await membershipIdentityDAL.findByIdForUpdate(existingMembership.id, tx);
+      if (!currentMembership) {
+        throw new BadRequestError({ message: "Identity doesn't have membership" });
       }
       shouldRevokeOrgTokens =
         scopeData.scope === AccessScope.Organization && data.isActive === false && currentMembership.isActive !== false;

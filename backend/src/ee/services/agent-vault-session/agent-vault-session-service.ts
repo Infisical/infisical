@@ -24,6 +24,9 @@ import { TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-va
 export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
 export const AGENT_VAULT_SESSION_DEFAULT_TTL = "7d";
 export const AGENT_VAULT_SESSION_TTL_NEVER = "never";
+// Past roughly 1e8 days the expiry overflows Date and Postgres rejects the row as a 500. A century is
+// far beyond any real lifetime and keeps the message honest; "never" exists for no expiry at all.
+export const AGENT_VAULT_SESSION_MAX_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;

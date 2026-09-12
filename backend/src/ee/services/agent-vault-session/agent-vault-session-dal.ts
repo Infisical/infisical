@@ -23,23 +23,37 @@ export type TAgentVaultSessionListRow = {
   accessBundles: { id: string | null; name: string; position: number }[];
 };
 
+// Mirrors deriveSessionStatus: a session with neither actor id counts as revoked.
+const ownerless = (qb: Knex.QueryBuilder) =>
+  void qb.whereNull(`${TableName.AgentVaultSession}.userId`).whereNull(`${TableName.AgentVaultSession}.identityId`);
+const owned = (qb: Knex.QueryBuilder) =>
+  void qb
+    .whereNotNull(`${TableName.AgentVaultSession}.userId`)
+    .orWhereNotNull(`${TableName.AgentVaultSession}.identityId`);
+
 const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus, now: Date) => {
   if (status === AgentVaultSessionStatus.Revoked) {
-    void query.whereNotNull(`${TableName.AgentVaultSession}.revokedAt`);
+    void query.where((qb) => {
+      void qb.whereNotNull(`${TableName.AgentVaultSession}.revokedAt`).orWhere(ownerless);
+    });
     return;
   }
   if (status === AgentVaultSessionStatus.Expired) {
     void query
       .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
+      .where(owned)
       .whereNotNull(`${TableName.AgentVaultSession}.expiresAt`)
       .where(`${TableName.AgentVaultSession}.expiresAt`, "<=", now);
     return;
   }
-  void query.whereNull(`${TableName.AgentVaultSession}.revokedAt`).where((qb) => {
-    void qb
-      .whereNull(`${TableName.AgentVaultSession}.expiresAt`)
-      .orWhere(`${TableName.AgentVaultSession}.expiresAt`, ">", now);
-  });
+  void query
+    .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
+    .where(owned)
+    .where((qb) => {
+      void qb
+        .whereNull(`${TableName.AgentVaultSession}.expiresAt`)
+        .orWhere(`${TableName.AgentVaultSession}.expiresAt`, ">", now);
+    });
 };
 
 const userDisplayName = ({
@@ -254,9 +268,16 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     try {
       return await (tx || db)(TableName.AgentVaultSession)
         .where((qb) => {
-          void qb.where("revokedAt", "<", cutoff).orWhere((inner) => {
-            void inner.whereNull("revokedAt").where("expiresAt", "<", cutoff);
-          });
+          void qb
+            .where("revokedAt", "<", cutoff)
+            .orWhere((inner) => {
+              void inner.whereNull("revokedAt").where("expiresAt", "<", cutoff);
+            })
+            // An ownerless session stopped working the moment its actor was deleted, and nothing stamps
+            // that moment, so it goes by age: a never session would otherwise outlive the 30 days for good.
+            .orWhere((inner) => {
+              void inner.whereNull("userId").whereNull("identityId").where("createdAt", "<", cutoff);
+            });
         })
         .del();
     } catch (error) {

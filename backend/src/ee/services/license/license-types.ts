@@ -55,8 +55,8 @@ export type TFeatureSet = {
   rbac: false;
   customRateLimits: false;
   customAlerts: false;
-  auditLogs: false;
-  auditLogsRetentionDays: 0;
+  auditLogs: boolean;
+  auditLogsRetentionDays: number;
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   githubOrgSync: false;
@@ -67,7 +67,7 @@ export type TFeatureSet = {
   secretAccessInsights: false;
   scim: false;
   ldap: false;
-  groups: false;
+  groups: boolean;
   status: null;
   trial_end: null;
   has_used_trial: true;

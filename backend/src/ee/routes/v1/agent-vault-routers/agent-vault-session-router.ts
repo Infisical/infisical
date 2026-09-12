@@ -8,6 +8,7 @@ import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/service
 import {
   AGENT_VAULT_MAX_SESSION_BUNDLES,
   AGENT_VAULT_SESSION_DEFAULT_TTL,
+  AGENT_VAULT_SESSION_MAX_TTL_MS,
   AGENT_VAULT_SESSION_TTL_NEVER
 } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -116,6 +117,13 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "TTL must be a duration of at least 1 minute, such as 30m, 8h or 7d, or never"
+              });
+              return;
+            }
+            if (parsed > AGENT_VAULT_SESSION_MAX_TTL_MS) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "TTL must be at most 100 years. Use never for a session that does not expire"
               });
             }
           })

@@ -38,6 +38,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   admins join through `grant-admin-access`, from the product tile or the layout's `beforeLoad` when they arrive
   by link, and that route is where the `agent_vault_identities` meter moves for them. Only org creation seeds
   the creator.
+- The traffic policy defaults to any-host (formerly Allow), in the DB default, the service and the dialog.
+  Deliberate: the product brokers credentials, it is not an egress firewall, and under bundle-hosts the
+  quickstart's agent could reach neither Anthropic nor npm until a bypass list exists. Settled with the
+  product owner; bundle-hosts is documented as the hardening step.
 - Wherever code branches on `ProjectType.PAM`, add the Agent Vault arm: `AgentVaultIdentities` metering emits,
   the admin-or-member predefined roles filter, `AuditLogStreamProduct`, `grantAgentVaultAccess` on the org
   invite. See the root `CLAUDE.md`.
@@ -86,8 +90,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   the actor is out and work again if the actor is added back. Settled with the product owner.
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
-- Status is derived from `revokedAt` and `expiresAt`, never stored, and expiry is enforced against the clock
-  on every resolve. `sweepRetiredSessions` exists only for the 30 day hard delete; there is no expiry audit
+- Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
+  actor id reads as revoked in the list, the status filter and the sweep, so they agree with resolve refusing
+  it. Expiry is enforced against the clock on every resolve. `sweepRetiredSessions` exists only for the 30 day hard delete; there is no expiry audit
   event, matching every other product.
 
 ## Proxies
@@ -134,7 +139,7 @@ the matching at runtime and reimplements the same rules, so a change here needs 
 
 ## The CLI
 
-- Trust is stateless: `av run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
+- Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
   pin checked before anything is written. Re-enrolling a proxy replaces its CA, so pins, mounted copies,
   keychain entries and any agent already running through it break until updated or restarted.
 - No sandbox, nothing stripped. The agent gets the parent's whole environment plus the proxy URL (session

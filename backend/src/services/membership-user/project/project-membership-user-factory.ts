@@ -113,6 +113,12 @@ export const newProjectMembershipUserFactory = ({
           message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
         });
       }
+      // One role per membership: the product routes write exactly one, and their member lists read one.
+      if (dto.data.roles.length > 1) {
+        throw new BadRequestError({
+          message: `${adminMemberOnlyLabel} memberships hold a single role.`
+        });
+      }
     }
 
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(
@@ -224,6 +230,12 @@ export const newProjectMembershipUserFactory = ({
       if (invalidRoles.length > 0) {
         throw new BadRequestError({
           message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
+        });
+      }
+      // One role per membership: the product routes write exactly one, and their member lists read one.
+      if (dto.data.roles.length > 1) {
+        throw new BadRequestError({
+          message: `${adminMemberOnlyLabel} memberships hold a single role.`
         });
       }
     }

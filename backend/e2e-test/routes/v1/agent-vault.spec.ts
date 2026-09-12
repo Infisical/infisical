@@ -952,6 +952,68 @@ describe("Agent Vault V1 Router", async () => {
       const after = await resolve();
       expect(after.services).toHaveLength(1);
     });
+    // The actor columns are SET NULL so the row outlives its owner. A null id must never reach the
+    // membership lookups: there it compiles to IS NULL, matches every user row, and once resolved as admin.
+    test("a session whose user was deleted is refused before any lookup", async () => {
+      const bundle = await createAccessBundle("resolve-deleted-user");
+      await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        name: "echo",
+        hostPattern: "echo.example.com",
+        credential: { type: "passthrough" }
+      });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+      const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
+      const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-deleted-user" });
+      const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
+      const resolve = () =>
+        buildResolver().resolveSession({
+          proxyId: proxy.id,
+          orgId: seedData1.organization.id,
+          sessionToken: session.token
+        });
+
+      const [doomed] = (await testDb("users")
+        .insert({ username: `doomed-${crypto.randomUUID()}`, isAccepted: true })
+        .returning("*")) as { id: string }[];
+      await testDb("agent_vault_sessions").where({ id: session.id }).update({ userId: doomed.id });
+      await testDb("users").where({ id: doomed.id }).del();
+
+      const row = await testDb("agent_vault_sessions").where({ id: session.id }).first();
+      expect(row.userId).toBeNull();
+      expect(row.identityId).toBeNull();
+      await expect(resolve()).rejects.toThrow("The identity this session belonged to has been deleted");
+    });
+
+    test("a session whose machine identity was deleted is refused before any lookup", async () => {
+      const bundle = await createAccessBundle("resolve-deleted-identity");
+      await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        name: "echo",
+        hostPattern: "echo.example.com",
+        credential: { type: "passthrough" }
+      });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+      const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
+      const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-deleted-identity" });
+      const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
+      const resolve = () =>
+        buildResolver().resolveSession({
+          proxyId: proxy.id,
+          orgId: seedData1.organization.id,
+          sessionToken: session.token
+        });
+
+      const identity = await createOrgIdentity(`doomed-${crypto.randomUUID()}`);
+      await testDb("agent_vault_sessions").where({ id: session.id }).update({ userId: null, identityId: identity.id });
+      await deleteOrgIdentity(identity.id);
+
+      await expect(resolve()).rejects.toThrow("The identity this session belonged to has been deleted");
+
+      // The list agrees with resolve: an ownerless session is shown as revoked, not active.
+      const list = await inject("GET", "/api/v1/agent-vault/sessions?scope=all&limit=100");
+      const { sessions } = JSON.parse(list.payload) as { sessions: { id: string; status: string }[] };
+      expect(sessions.find((row) => row.id === session.id)?.status).toBe("revoked");
+    });
+
     test("an expired time-limited role stops resolving even though its membership row remains", async () => {
       const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
         projectId: string;
@@ -1103,8 +1165,15 @@ describe("Agent Vault V1 Router", async () => {
       const recentlyExpired = await mintOne("1h");
       const live = await mintOne("7d");
       const neverEnding = await mintOne("never");
+      const oldOrphan = await mintOne("never");
+      const recentOrphan = await mintOne("never");
 
       const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      // Ownerless sessions go by age, since nothing records when their actor was deleted.
+      await testDb("agent_vault_sessions")
+        .where({ id: oldOrphan })
+        .update({ userId: null, identityId: null, createdAt: daysAgo(31) });
+      await testDb("agent_vault_sessions").where({ id: recentOrphan }).update({ userId: null, identityId: null });
       await testDb("agent_vault_sessions")
         .where({ id: longExpired })
         .update({ expiresAt: daysAgo(31) });
@@ -1124,13 +1193,14 @@ describe("Agent Vault V1 Router", async () => {
       await sweeper.sweepRetiredSessions();
 
       const remaining = (await testDb("agent_vault_sessions")
-        .whereIn("id", [longExpired, longRevoked, recentlyExpired, live, neverEnding])
+        .whereIn("id", [longExpired, longRevoked, recentlyExpired, live, neverEnding, oldOrphan, recentOrphan])
         .select("id")) as { id: string }[];
-      expect(remaining.map((row) => row.id).sort()).toEqual([recentlyExpired, live, neverEnding].sort());
+      expect(remaining.map((row) => row.id).sort()).toEqual([recentlyExpired, live, neverEnding, recentOrphan].sort());
 
       const orphans = await testDb("agent_vault_session_access_bundles").whereIn("sessionId", [
         longExpired,
-        longRevoked
+        longRevoked,
+        oldOrphan
       ]);
       expect(orphans).toHaveLength(0);
     });

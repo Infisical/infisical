@@ -82,6 +82,12 @@ export const newProjectMembershipGroupFactory = ({
           message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
         });
       }
+      // One role per membership: the product routes write exactly one, and their member lists read one.
+      if (dto.data.roles.length > 1) {
+        throw new BadRequestError({
+          message: `${adminMemberOnlyLabel} memberships hold a single role.`
+        });
+      }
     }
 
     const orgMembership = await membershipGroupDAL.findOne({
@@ -151,6 +157,12 @@ export const newProjectMembershipGroupFactory = ({
       if (invalidRoles.length > 0) {
         throw new BadRequestError({
           message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
+        });
+      }
+      // One role per membership: the product routes write exactly one, and their member lists read one.
+      if (dto.data.roles.length > 1) {
+        throw new BadRequestError({
+          message: `${adminMemberOnlyLabel} memberships hold a single role.`
         });
       }
     }
