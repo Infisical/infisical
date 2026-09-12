@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { BanIcon, ChevronLeftIcon } from "lucide-react";
@@ -5,7 +6,8 @@ import { BanIcon, ChevronLeftIcon } from "lucide-react";
 import {
   EditPkiSyncModal,
   PkiSyncImportStatusBadge,
-  PkiSyncRemoveStatusBadge
+  PkiSyncRemoveStatusBadge,
+  TPkiSyncEditStepKey
 } from "@app/components/pki-syncs";
 import {
   Card,
@@ -48,6 +50,7 @@ const PageContent = () => {
   });
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["editSync"] as const);
+  const [editStepKey, setEditStepKey] = useState<TPkiSyncEditStepKey | undefined>(undefined);
 
   const { data: pkiSync, isPending } = useGetPkiSync(
     { syncId, projectId },
@@ -93,7 +96,14 @@ const PageContent = () => {
     });
   };
 
-  const handleEdit = () => handlePopUpOpen("editSync");
+  const handleEdit = () => {
+    setEditStepKey(undefined);
+    handlePopUpOpen("editSync");
+  };
+  const handleEditCertificates = () => {
+    setEditStepKey("certificates");
+    handlePopUpOpen("editSync");
+  };
 
   return (
     <>
@@ -145,7 +155,10 @@ const PageContent = () => {
               </Card>
             </div>
             <div className="flex flex-1 flex-col gap-4">
-              <PkiSyncCertificatesSection pkiSync={pkiSync} />
+              <PkiSyncCertificatesSection
+                pkiSync={pkiSync}
+                onEditCertificates={handleEditCertificates}
+              />
               <PkiSyncAuditLogsSection pkiSync={pkiSync} />
             </div>
           </div>
@@ -155,6 +168,7 @@ const PageContent = () => {
         isOpen={popUp.editSync.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editSync", isOpen)}
         pkiSync={pkiSync}
+        initialStepKey={editStepKey}
       />
     </>
   );

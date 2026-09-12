@@ -49,6 +49,7 @@ import {
 } from "./aws-certificate-manager-pki-sync-types";
 
 const INFISICAL_CERTIFICATE_TAG = "InfisicalCertificate";
+const INFISICAL_PKI_SYNC_TAG = "InfisicalPkiSyncId";
 const AWS_CERTIFICATE_ARN_PATTERN = new RE2("^arn:aws:acm:[a-z0-9-]+:\\d{12}:certificate/[a-f0-9-]{36}$");
 
 type TAwsAssumeRoleCredentials = z.infer<typeof AwsConnectionAssumeRoleCredentialsSchema>;
@@ -475,11 +476,18 @@ export const awsCertificateManagerPkiSyncFactory = ({
 
           if (currentSyncRecord?.externalIdentifier) {
             const existingAcmCert = acmCertificatesByArn.get(currentSyncRecord.externalIdentifier);
+            const alreadyDelivered =
+              currentSyncRecord.syncStatus === CertificateSyncStatus.Succeeded &&
+              Boolean(currentSyncRecord.lastSyncedAt);
 
             if (existingAcmCert) {
-              if (!preserveArn && oldSyncRecord?.externalIdentifier === currentSyncRecord.externalIdentifier) {
+              if (alreadyDelivered) {
+                targetArn = currentSyncRecord.externalIdentifier;
+                activeExternalIdentifiers.add(targetArn);
+                shouldCreateNew = false;
+              } else if (!preserveArn) {
                 shouldCreateNew = true;
-              } else if (preserveArn && oldSyncRecord?.externalIdentifier === currentSyncRecord.externalIdentifier) {
+              } else {
                 targetArn = currentSyncRecord.externalIdentifier;
                 shouldCreateNew = true;
                 activeExternalIdentifiers.add(targetArn);
@@ -487,10 +495,6 @@ export const awsCertificateManagerPkiSyncFactory = ({
                 if (oldCertificateId && oldSyncRecord) {
                   await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateId]);
                 }
-              } else {
-                targetArn = currentSyncRecord.externalIdentifier;
-                activeExternalIdentifiers.add(targetArn);
-                shouldCreateNew = false;
               }
             } else {
               shouldCreateNew = true;
@@ -559,9 +563,11 @@ export const awsCertificateManagerPkiSyncFactory = ({
 
       Object.values(acmCertificates).forEach((acmCert) => {
         if (acmCert.arn && acmCert.Tags) {
-          const hasInfisicalTag = acmCert.Tags.some((tag) => tag.Key === INFISICAL_CERTIFICATE_TAG && tag.Value);
+          const belongsToThisSync = acmCert.Tags.some(
+            (tag) => tag.Key === INFISICAL_PKI_SYNC_TAG && tag.Value === pkiSync.id
+          );
 
-          if (hasInfisicalTag) {
+          if (belongsToThisSync) {
             const isTrackedInSyncRecords = existingSyncRecords.some(
               (record) => record.externalIdentifier === acmCert.arn
             );
@@ -588,6 +594,10 @@ export const awsCertificateManagerPkiSyncFactory = ({
               {
                 Key: INFISICAL_CERTIFICATE_TAG,
                 Value: key
+              },
+              {
+                Key: INFISICAL_PKI_SYNC_TAG,
+                Value: pkiSync.id
               }
             ];
           }
@@ -620,6 +630,10 @@ export const awsCertificateManagerPkiSyncFactory = ({
                         {
                           Key: INFISICAL_CERTIFICATE_TAG,
                           Value: key
+                        },
+                        {
+                          Key: INFISICAL_PKI_SYNC_TAG,
+                          Value: pkiSync.id
                         }
                       ]
                     })

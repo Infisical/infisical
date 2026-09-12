@@ -1,186 +1,229 @@
 import { useMemo, useState } from "react";
-import { Controller, useFormContext } from "react-hook-form";
-import { Pencil, ScrollText, Trash2 } from "lucide-react";
+import { useFormContext } from "react-hook-form";
+import { FilterIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Empty,
+  EmptyDescription,
   EmptyMedia,
-  EmptyTitle,
-  Field,
-  FieldError,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { getCertificateDisplayName, truncateCertificateSerialNumber } from "@app/helpers/pkiSyncs";
-import { CertStatus } from "@app/hooks/api";
-import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
+import { PkiSync, usePkiSyncOption, usePkiSyncPreviewCertificates } from "@app/hooks/api/pkiSyncs";
+import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { CertificateManagementModal } from "../CertificateManagementModal";
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
+import {
+  buildOrderNameMap,
+  getPkiSyncCertificateCap,
+  hasAnyFilter,
+  hasUnfinishedFilter
+} from "./pki-sync-filter-fns";
+import { PkiSyncCertificateAddMenu } from "./PkiSyncCertificateAddMenu";
+import { PkiSyncFilterFields } from "./PkiSyncFilterFields";
+import {
+  PkiSyncMatchedCertificatesTable,
+  TMatchedCertificateRow
+} from "./PkiSyncMatchedCertificatesTable";
 
 type Props = {
   applicationId?: string;
+  pkiSyncId?: string;
 };
 
-export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
-  const { control, watch, setValue } = useFormContext<TPkiSyncForm>();
+export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) => {
+  const { watch, setValue } = useFormContext<TPkiSyncForm>();
   const { currentProject } = useProject();
-  const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
 
-  const certificateIds = watch("certificateIds") || [];
+  const filters = watch("filters") as TPkiSyncFilters | null | undefined;
+  const filtersKey = JSON.stringify(filters ?? null);
 
-  const { data, isLoading } = useListWorkspaceCertificates({
-    projectId: currentProject?.id || "",
-    offset: 0,
-    limit: 100,
-    forPkiSync: true,
-    applicationId
+  const { syncOption } = usePkiSyncOption(watch("destination") as PkiSync);
+  const certificateCap = getPkiSyncCertificateCap({
+    destinationMaxCertificates: syncOption?.maxCertificates,
+    syncOptions: watch("syncOptions") as Record<string, unknown> | undefined,
+    destinationConfig: watch("destinationConfig") as Record<string, unknown> | undefined
   });
 
-  const certificates = data?.certificates || [];
+  const growableFilterKinds = [
+    filters?.profileIds === undefined ? null : "certificate profile",
+    filters?.metadata === undefined ? null : "metadata"
+  ].filter((kind): kind is string => Boolean(kind));
 
-  const activeCertificates = useMemo(
-    () => certificates.filter((cert) => cert.status === CertStatus.ACTIVE),
-    [certificates]
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [previewFilters, setPreviewFilters] = useState<TPkiSyncFilters | null>(filters ?? null);
+  const previewKey = JSON.stringify(previewFilters ?? null);
+
+  const isStale = filtersKey !== previewKey;
+  const isUnfinished = hasUnfinishedFilter(filters);
+
+  const {
+    data: preview,
+    refetch: refetchPreview,
+    isFetching: isPreviewing
+  } = usePkiSyncPreviewCertificates({
+    projectId: currentProject?.id || "",
+    applicationId,
+    pkiSyncId,
+    filters: previewFilters,
+    enabled: Boolean(applicationId) && hasAnyFilter(previewFilters)
+  });
+
+  const reloadPreview = () => {
+    if (isStale) setPreviewFilters(filters ?? null);
+    else refetchPreview().catch(() => {});
+  };
+
+  const [pickedOrderNames, setPickedOrderNames] = useState<[string, string][]>([]);
+
+  const orderNameById = useMemo(
+    () => new Map([...buildOrderNameMap(preview?.certificates), ...pickedOrderNames]),
+    [preview, pickedOrderNames]
   );
 
-  const selectedCertificates = useMemo(
-    () => activeCertificates.filter((cert) => certificateIds.includes(cert.id)),
-    [activeCertificates, certificateIds]
+  const matchedRows: TMatchedCertificateRow[] = preview?.certificates ?? [];
+
+  const matchedDescription = () => {
+    if (!preview) return "Loading the certificates these filters match.";
+    if (preview.hasMoreMatches) {
+      return `More than ${matchedRows.length} certificates match. Narrow the filters before saving.`;
+    }
+    return `Showing ${matchedRows.length} certificate${matchedRows.length === 1 ? "" : "s"} matched by these filters.`;
+  };
+
+  const reloadButton = (
+    <Button
+      type="button"
+      size="xs"
+      variant={isStale ? "warning" : "outline"}
+      isDisabled={isPreviewing || isUnfinished}
+      onClick={reloadPreview}
+    >
+      <RefreshCwIcon className="size-3" />
+      Reload Preview
+      {isStale && <TriangleAlertIcon className="size-3" />}
+    </Button>
   );
 
-  if (isLoading) {
+  if (!applicationId) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-sm text-muted">Loading certificates...</div>
-      </div>
+      <Empty className="flex-none border py-8">
+        <EmptyMedia variant="icon">
+          <FilterIcon />
+        </EmptyMedia>
+        <EmptyDescription>
+          This sync is not attached to an Application, so its certificates cannot be changed. Create
+          a sync inside an Application to select certificates by filter.
+        </EmptyDescription>
+      </Empty>
     );
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <Controller
-        control={control}
-        name="certificateIds"
-        render={({ field: { value = [], onChange }, fieldState: { error } }) => (
-          <Field className="min-h-0 flex-1">
-            <div className="flex min-h-0 flex-1 flex-col gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="self-end"
-                onClick={() => setIsSelectionModalOpen(true)}
-              >
-                <Pencil className="size-3.5" />
-                Add Certificates
-              </Button>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {selectedCertificates.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>SAN / CN</TableHead>
-                        <TableHead className="w-1/5">Serial Number</TableHead>
-                        <TableHead className="w-1/6">Issued At</TableHead>
-                        <TableHead className="w-1/6">Expires At</TableHead>
-                        <TableHead variant="action" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedCertificates.map((cert) => {
-                        const { originalDisplayName, displayName, isTruncated } =
-                          getCertificateDisplayName(cert);
-                        const truncatedSerial = truncateCertificateSerialNumber(cert.serialNumber);
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-foreground">Filters</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {certificateCap === undefined
+              ? "A certificate is synced only when it matches every filter below."
+              : `Holds at most ${certificateCap} certificate${
+                  certificateCap === 1 ? "" : "s"
+                }, so it only accepts a certificate order filter.`}
+          </p>
+        </div>
+        <PkiSyncCertificateAddMenu
+          applicationId={applicationId}
+          onOpenPicker={() => setIsPickerOpen(true)}
+        />
+      </div>
 
-                        const isExpired = new Date(cert.notAfter) < new Date();
+      {certificateCap !== undefined && growableFilterKinds.length > 0 && (
+        <Alert variant="warning" className="mt-3">
+          <AlertTitle>
+            {growableFilterKinds.length === 1
+              ? `Remove the ${growableFilterKinds[0]} filter`
+              : "Remove the filters below"}
+          </AlertTitle>
+          <AlertDescription>
+            {`This sync holds at most ${certificateCap} certificate${
+              certificateCap === 1 ? "" : "s"
+            }, so it only accepts a certificate order filter.`}
+          </AlertDescription>
+        </Alert>
+      )}
 
-                        return (
-                          <TableRow key={cert.id}>
-                            <TableCell className="max-w-0">
-                              {isTruncated ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="truncate">{displayName}</div>
-                                  </TooltipTrigger>
-                                  <TooltipContent className="max-w-lg">
-                                    {originalDisplayName}
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : (
-                                <div className="truncate">{displayName}</div>
-                              )}
-                            </TableCell>
-                            <TableCell className="max-w-0">
-                              <div className="font-mono text-xs" title={cert.serialNumber}>
-                                {truncatedSerial}
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-0">
-                              <span className="text-sm">
-                                {new Date(cert.notBefore).toLocaleDateString()}
-                              </span>
-                            </TableCell>
-                            <TableCell className="max-w-0">
-                              <span className={isExpired ? "text-sm text-danger" : "text-sm"}>
-                                {new Date(cert.notAfter).toLocaleDateString()}
-                              </span>
-                            </TableCell>
-                            <TableCell variant="action">
-                              <IconButton
-                                type="button"
-                                size="xs"
-                                variant="ghost"
-                                aria-label="Remove certificate"
-                                onClick={() => {
-                                  const newIds = value.filter((id: string) => id !== cert.id);
-                                  onChange(newIds);
-                                }}
-                              >
-                                <Trash2 />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <Empty className="border py-8">
-                    <EmptyMedia variant="icon">
-                      <ScrollText />
-                    </EmptyMedia>
-                    <EmptyTitle>No certificates selected</EmptyTitle>
-                  </Empty>
-                )}
-              </div>
+      {hasAnyFilter(filters) ? (
+        <PkiSyncFilterFields
+          applicationId={applicationId}
+          orderNameById={orderNameById}
+          onOpenPicker={() => setIsPickerOpen(true)}
+        />
+      ) : (
+        <Empty className="mt-3 flex-none border py-8">
+          <EmptyMedia variant="icon">
+            <FilterIcon />
+          </EmptyMedia>
+          <EmptyDescription>
+            No filters, so this sync holds nothing. Add one to select certificates.
+          </EmptyDescription>
+        </Empty>
+      )}
+
+      {hasAnyFilter(filters) && (
+        <>
+          <div className="mt-8 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">Matched Certificates</p>
+              <p className="mt-0.5 text-xs text-muted">{matchedDescription()}</p>
             </div>
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
+            {isStale ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>{reloadButton}</span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isUnfinished
+                    ? "A filter is unfinished. Complete it, then reload the preview."
+                    : "Filters changed. Reload the preview to see what they match now."}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              reloadButton
+            )}
+          </div>
+
+          <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
+            <PkiSyncMatchedCertificatesTable
+              rows={matchedRows}
+              isLoading={isPreviewing}
+              emptyTitle="No certificates match"
+              emptyDescription="Nothing in this Application matches these filters yet."
+            />
+          </div>
+        </>
+      )}
 
       <CertificateManagementModal
-        isOpen={isSelectionModalOpen}
-        onClose={() => setIsSelectionModalOpen(false)}
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
         destination={watch("destination")}
         applicationId={applicationId}
-        selectedCertificateIds={certificateIds}
-        onCertificateSelectionChange={(newCertificateIds) => {
-          setValue("certificateIds", newCertificateIds);
+        maxSelectable={certificateCap}
+        selectedOrderIds={filters?.certificateOrderIds ?? []}
+        onOrderSelectionChange={(certificateOrderIds, orderNames) => {
+          setPickedOrderNames((prev) => [...prev, ...orderNames]);
+          setValue("filters", { ...(filters ?? {}), certificateOrderIds }, { shouldDirty: true });
         }}
-        title="Select Certificates for Sync"
-        subtitle="Choose which certificates you want to include in this sync. You can modify this selection after creating the sync."
+        title="Select Certificate Orders for Sync"
+        subtitle="Selecting a certificate selects its order, which follows every renewal."
         saveButtonText="Update Selection"
       />
     </div>

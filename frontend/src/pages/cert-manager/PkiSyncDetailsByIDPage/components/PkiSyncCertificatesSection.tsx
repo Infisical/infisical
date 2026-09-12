@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CheckCircle2Icon,
   CircleHelpIcon,
@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { CertificateManagementModal } from "@app/components/pki-syncs/CertificateManagementModal";
+import { isCertificateOrderTheOnlyFilter } from "@app/components/pki-syncs/forms/pki-sync-filter-fns";
+import { buildPkiSyncFilterSummary } from "@app/components/pki-syncs/PkiSyncFilterBadges";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
   Badge,
@@ -48,6 +49,7 @@ import {
   useRemoveCertificatesFromPkiSync,
   useSetCertificateAsDefault
 } from "@app/hooks/api";
+import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
   CertificateSyncStatus,
   PkiSync,
@@ -56,6 +58,7 @@ import {
 } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
+  onEditCertificates: () => void;
   pkiSync: TPkiSync;
 };
 
@@ -97,8 +100,7 @@ const truncateSerialNumber = (serial?: string | null) => {
   return `${serial.substring(0, 4)}...${serial.substring(serial.length - 4)}`;
 };
 
-export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+export const PkiSyncCertificatesSection = ({ pkiSync, onEditCertificates }: Props) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [certificateToDelete, setCertificateToDelete] = useState<{
     id: string;
@@ -119,7 +121,53 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
 
   const supportsDefaultCertificate = pkiSync.destination === PkiSync.AwsElasticLoadBalancer;
 
-  const { canEdit } = usePkiSyncPermissions(pkiSync);
+  const { canEdit: hasEditPermission } = usePkiSyncPermissions(pkiSync);
+  const canEdit = hasEditPermission && Boolean(pkiSync.applicationId);
+
+  const { data: profileData } = useListCertificateProfiles({
+    limit: 100,
+    offset: 0,
+    applicationId: pkiSync.applicationId ?? undefined
+  });
+
+  const { orderIdByCertificateId, orderNameById } = useMemo(() => {
+    const byCertificate = new Map<string, string>();
+    const nameByOrder = new Map<string, string>();
+
+    syncCertificates.forEach(({ certificateId, certificateOrderId, certificateCommonName }) => {
+      if (!certificateOrderId) return;
+      byCertificate.set(certificateId, certificateOrderId);
+      if (certificateCommonName) nameByOrder.set(certificateOrderId, certificateCommonName);
+    });
+
+    return { orderIdByCertificateId: byCertificate, orderNameById: nameByOrder };
+  }, [syncCertificates]);
+
+  const explicitOrderIds = useMemo(
+    () => new Set(pkiSync.filters?.certificateOrderIds ?? []),
+    [pkiSync.filters]
+  );
+
+  const canDetachOneCertificate = isCertificateOrderTheOnlyFilter(pkiSync.filters);
+
+  const isExplicitlyNamed = (certificateId: string) => {
+    if (!canDetachOneCertificate) return false;
+
+    const orderId = orderIdByCertificateId.get(certificateId);
+    return Boolean(orderId && explicitOrderIds.has(orderId));
+  };
+
+  const filterFields = useMemo(
+    () =>
+      buildPkiSyncFilterSummary({
+        filters: pkiSync.filters,
+        profileNameById: new Map(
+          (profileData?.certificateProfiles ?? []).map(({ id, slug }) => [id, slug])
+        ),
+        orderNameById
+      }),
+    [pkiSync.filters, profileData, orderNameById]
+  );
 
   const handleRemoveCertificate = async (certificateId: string) => {
     try {
@@ -138,10 +186,8 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
       setIsDeleteModalOpen(false);
       setCertificateToDelete(null);
     } catch {
-      createNotification({
-        text: "Failed to remove certificate from sync",
-        type: "error"
-      });
+      setIsDeleteModalOpen(false);
+      setCertificateToDelete(null);
     }
   };
 
@@ -202,15 +248,32 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
             <IconButton
               variant="ghost"
               size="xs"
-              aria-label="Manage certificates"
+              aria-label="Manage certificates and filters"
               isDisabled={!canEdit}
-              onClick={() => setIsManageModalOpen(true)}
+              onClick={onEditCertificates}
             >
               <PencilIcon />
             </IconButton>
           </CardAction>
         </CardHeader>
         <CardContent>
+          <p className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">Filters</p>
+          {filterFields ? (
+            <div className="mb-4 grid grid-cols-3 gap-x-8">
+              {filterFields.map(({ label, value }) => (
+                <div key={label} className="min-w-0">
+                  <p className="mb-1 text-xs font-medium text-muted">{label}</p>
+                  {value}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mb-4 text-sm text-muted">
+              {pkiSync.applicationId
+                ? "No filters, so this sync holds nothing. Edit it to select certificates."
+                : "This sync is not attached to an Application, so its certificates cannot be changed."}
+            </p>
+          )}
           {syncCertificates.length === 0 ? (
             <Empty className="border py-8">
               <EmptyMedia variant="icon">
@@ -385,15 +448,22 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                                     Unset Default
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  onClick={() =>
-                                    handleDeleteClick(syncCert.certificateId, originalDisplayName)
-                                  }
-                                >
-                                  <Trash2Icon />
-                                  Remove from Sync
-                                </DropdownMenuItem>
+                                {isExplicitlyNamed(syncCert.certificateId) ? (
+                                  <DropdownMenuItem
+                                    variant="danger"
+                                    onClick={() =>
+                                      handleDeleteClick(syncCert.certificateId, originalDisplayName)
+                                    }
+                                  >
+                                    <Trash2Icon />
+                                    Remove from Sync
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem onClick={onEditCertificates}>
+                                    <Trash2Icon />
+                                    Edit Filters to Remove
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -417,15 +487,6 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
           )}
         </CardContent>
       </Card>
-
-      <CertificateManagementModal
-        pkiSync={pkiSync}
-        isOpen={isManageModalOpen}
-        onClose={() => setIsManageModalOpen(false)}
-        onCertificatesUpdated={() => {
-          refetchSyncCertificates();
-        }}
-      />
 
       <DeleteConfirmDialog
         isOpen={isDeleteModalOpen}

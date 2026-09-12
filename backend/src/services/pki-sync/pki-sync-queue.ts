@@ -34,6 +34,7 @@ import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
+import { withPkiSyncFilterLock } from "./pki-sync-filter-reconcile-fns";
 import {
   getPkiSyncProviderCapabilities,
   parsePkiSyncErrorMessage,
@@ -59,9 +60,11 @@ import {
   TPkiSyncRemoveCertificatesDTO,
   TPkiSyncSyncCertificatesDTO,
   TQueuePkiSyncImportCertificatesByIdDTO,
+  TQueuePkiSyncLinkMatchingCertificatesDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "./pki-sync-types";
+import { reconcileCertificateAgainstMatchingSyncs } from "./pki-sync-utils";
 
 export type TPkiSyncQueueFactory = ReturnType<typeof pkiSyncQueueFactory>;
 
@@ -78,7 +81,7 @@ type TPkiSyncQueueFactoryDep = {
   >;
   pkiSyncDAL: Pick<
     TPkiSyncDALFactory,
-    "findById" | "find" | "updateById" | "deleteById" | "update" | "findFailureNotificationRecipients"
+    "findById" | "find" | "updateById" | "deleteById" | "update" | "findFailureNotificationRecipients" | "primaryNode"
   >;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -174,6 +177,18 @@ export const pkiSyncQueueFactory = ({
         delay: 3000
       },
       jobId: randomUUID(),
+      removeOnComplete: true,
+      removeOnFail: true
+    });
+
+  const queuePkiSyncLinkMatchingCertificates = async (payload: TQueuePkiSyncLinkMatchingCertificatesDTO) =>
+    queueService.queue(QueueName.PkiSync, QueueJobs.PkiSyncLinkMatchingCertificates, payload, {
+      attempts: 5,
+      backoff: {
+        type: "exponential",
+        delay: 3000
+      },
+      jobId: `pki-sync-link-${payload.certificateId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       removeOnComplete: true,
       removeOnFail: true
     });
@@ -365,9 +380,7 @@ export const pkiSyncQueueFactory = ({
         .map((record) => record.certificateId)
         .filter((id): id is string => typeof id === "string");
       if (strandedCertificateIds.length > 0) {
-        const stillEligible = (await certificateDAL.findActiveCertificatesByIds(strandedCertificateIds)).filter(
-          (cert) => !cert.renewedByCertificateId
-        );
+        const stillEligible = await certificateDAL.findActiveCertificatesByIds(strandedCertificateIds);
         if (stillEligible.length > 0) {
           await certificateSyncDAL.bulkUpdateSyncStatus(
             stillEligible.map((cert) => ({
@@ -750,7 +763,28 @@ export const pkiSyncQueueFactory = ({
   };
 
   queueService.start(QueueName.PkiSync, async (job) => {
-    const { syncId } = job.data;
+    if (job.name === QueueJobs.PkiSyncLinkMatchingCertificates) {
+      const { certificateId, applicationId } = job.data as TQueuePkiSyncLinkMatchingCertificatesDTO;
+      try {
+        await reconcileCertificateAgainstMatchingSyncs(certificateId, applicationId, {
+          certificateDAL,
+          certificateSyncDAL,
+          pkiSyncDAL,
+          pkiSyncQueue: { queuePkiSyncSyncCertificatesById, queuePkiSyncRemoveCertificatesById },
+          auditLogService,
+          withSyncFilterLock: (syncId, run) => withPkiSyncFilterLock(keyStore, syncId, run)
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to reconcile certificate against matching PKI syncs [certificateId=${certificateId}] [applicationId=${applicationId}]`
+        );
+        throw error;
+      }
+      return;
+    }
+
+    const { syncId } = job.data as PkiSyncActionJob["data"];
 
     const pkiSync = await pkiSyncDAL.findById(syncId);
 
@@ -828,6 +862,7 @@ export const pkiSyncQueueFactory = ({
   });
 
   return {
+    queuePkiSyncLinkMatchingCertificates,
     queuePkiSyncSyncCertificatesById,
     queuePkiSyncImportCertificatesById,
     queuePkiSyncRemoveCertificatesById

@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName, TCertificateSyncs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { CertificateSyncStatus } from "./certificate-sync-enums";
 
@@ -45,6 +46,33 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByPkiSyncAndCertificate" });
+    }
+  };
+
+  const findIneligibleFilteredLinks = async (
+    limit: number
+  ): Promise<Array<{ certificateId: string; applicationId: string }>> => {
+    try {
+      const docs = (await db
+        .replicaNode()(TableName.CertificateSync)
+        .join(TableName.Certificate, `${TableName.Certificate}.id`, `${TableName.CertificateSync}.certificateId`)
+        .join(TableName.PkiSync, `${TableName.PkiSync}.id`, `${TableName.CertificateSync}.pkiSyncId`)
+        .whereNotNull(`${TableName.PkiSync}.applicationId`)
+        .whereNotNull(`${TableName.PkiSync}.filters`)
+        .where((qb) => {
+          void qb
+            .whereNot(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
+            .orWhere(`${TableName.Certificate}.notAfter`, "<=", new Date())
+            .orWhereNotNull(`${TableName.Certificate}.renewedByCertificateId`);
+        })
+        .select(`${TableName.CertificateSync}.certificateId`, `${TableName.PkiSync}.applicationId`)
+        .groupBy(`${TableName.CertificateSync}.certificateId`, `${TableName.PkiSync}.applicationId`)
+        .orderByRaw(`min(??) asc`, [`${TableName.CertificateSync}.updatedAt`])
+        .limit(limit)) as Array<{ certificateId: string; applicationId: string }>;
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindIneligibleFilteredLinks" });
     }
   };
 
@@ -236,6 +264,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     certificateDetails: (TCertificateSyncs & {
       certificateSerialNumber?: string;
       certificateCommonName?: string;
+      certificateOrderId?: string;
       certificateAltNames?: string;
       certificateStatus?: string;
       certificateNotBefore?: Date;
@@ -271,6 +300,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
         .select(
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
+          db.ref("orderId").withSchema(TableName.Certificate).as("certificateOrderId"),
           db.ref("altNames").withSchema(TableName.Certificate).as("certificateAltNames"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("notBefore").withSchema(TableName.Certificate).as("certificateNotBefore"),
@@ -294,6 +324,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
       }
 
       const certificateDetails = (await query) as (TCertificateSyncs & {
+        certificateOrderId?: string;
         certificateSerialNumber?: string;
         certificateCommonName?: string;
         certificateAltNames?: string;
@@ -313,12 +344,16 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     ...certificateSyncOrm,
     findByPkiSyncId,
     findByCertificateId,
     findByPkiSyncAndCertificate,
     findCertificateIdsByPkiSyncId,
+    findIneligibleFilteredLinks,
     findPkiSyncIdsByCertificateId,
     findExternalIdentifiersInUse,
     addCertificates,

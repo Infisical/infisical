@@ -4183,3 +4183,19 @@ export const ENCRYPTION_KEY_ROTATION = {
       "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
   }
 };
+
+export const PKI_SYNC_FILTERS = {
+  filters:
+    "Which of the Application's certificates this sync holds. A certificate must match every field that is set, and a sync with no filters holds nothing.",
+  updateFilters:
+    "Replaces which of the Application's certificates this sync holds. Omit to leave them unchanged, or set to null to empty the sync.",
+  profileIds: "Match certificates issued from any one of these certificate profiles.",
+  certificateOrderIds:
+    "Match any certificate belonging to any one of these certificate orders. An order groups a certificate with every renewal of it, so this keeps matching as the certificate is renewed.",
+  metadata:
+    "Match certificates carrying every one of these metadata pairs. Give a key on its own to match any value for that key.",
+  metadataKey: "Metadata key the certificate must carry.",
+  metadataValue: "Metadata value the key must have. Omit it to match any value.",
+  previewPkiSyncId: "Preview the filters against this existing PKI Sync.",
+  previewApplicationId: "Preview the filters against this Application, for a PKI Sync that does not exist yet."
+};

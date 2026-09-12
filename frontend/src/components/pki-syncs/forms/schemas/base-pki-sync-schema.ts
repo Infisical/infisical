@@ -101,7 +101,21 @@ export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined
     description: z.string().optional(),
     isAutoSyncEnabled: z.boolean().default(true),
     subscriberId: z.string().nullable().optional(),
-    certificateIds: z.array(z.string()).optional(),
+    filters: z
+      .object({
+        profileIds: z.array(z.string().uuid()).max(20).optional(),
+        certificateOrderIds: z.string().uuid().array().max(500).optional(),
+        metadata: z
+          .array(
+            z.object({
+              key: z.string().trim().min(1, "Enter a metadata key or remove the pair").max(255),
+              value: z.string().trim().max(1020).optional()
+            })
+          )
+          .max(20, "A filter can use at most 20 metadata pairs")
+          .optional()
+      })
+      .nullish(),
     connection: PkiSyncConnectionSchema,
     syncOptions: syncOptionsSchema
   });

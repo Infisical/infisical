@@ -46,6 +46,7 @@ import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
 import { TPostSyncCommandResult } from "@app/services/pki-sync/pki-sync-post-sync-command-fns";
+import { TPkiSyncFilters } from "@app/services/pki-sync/pki-sync-types";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TCreateSecretSyncDTO,
@@ -586,6 +587,9 @@ export enum EventType {
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
   PKI_SYNC_HEALTH_CHECK = "pki-sync-health-check",
   PKI_SYNC_TEST_HEALTH_CHECK = "pki-sync-test-health-check",
+  PKI_SYNC_LINK_CERTIFICATES = "pki-sync-link-certificates",
+  PKI_SYNC_UNLINK_CERTIFICATES = "pki-sync-unlink-certificates",
+  PKI_SYNC_SKIP_CERTIFICATE = "pki-sync-skip-certificate",
   PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
   PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
@@ -4579,6 +4583,7 @@ interface CreatePkiSyncEvent {
     hasCredentials?: boolean;
     hasPostSyncCommand?: boolean;
     hasHealthCheckCommand?: boolean;
+    hasFilters?: boolean;
   };
 }
 
@@ -4594,6 +4599,7 @@ interface UpdatePkiSyncEvent {
     targetHost?: string;
     hasPostSyncCommand?: boolean;
     hasHealthCheckCommand?: boolean;
+    hasFilters?: boolean;
   };
 }
 
@@ -4658,6 +4664,42 @@ interface PkiSyncRemoveCertificatesEvent {
     removeMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+  };
+}
+
+interface PkiSyncLinkCertificatesEvent {
+  type: EventType.PKI_SYNC_LINK_CERTIFICATES;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    count: number;
+    certificates: { id: string; commonName: string }[];
+    filters?: TPkiSyncFilters;
+    applicationId?: string;
+  };
+}
+
+interface PkiSyncUnlinkCertificatesEvent {
+  type: EventType.PKI_SYNC_UNLINK_CERTIFICATES;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    count: number;
+    certificates: { id: string; commonName: string }[];
+    removedFromDestination?: boolean;
+    applicationId?: string;
+  };
+}
+
+interface PkiSyncSkipCertificateEvent {
+  type: EventType.PKI_SYNC_SKIP_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    certificateId: string;
+    commonName: string;
+    reason: string;
+    applicationId?: string;
   };
 }
 
@@ -7685,6 +7727,9 @@ export type Event =
   | PkiSyncHealthCheckEvent
   | PkiSyncTestHealthCheckEvent
   | PkiSyncRemoveCertificatesEvent
+  | PkiSyncLinkCertificatesEvent
+  | PkiSyncUnlinkCertificatesEvent
+  | PkiSyncSkipCertificateEvent
   | PkiSyncSetDefaultCertificateEvent
   | PkiSyncClearDefaultCertificateEvent
   | CreatePkiDiscoveryEvent

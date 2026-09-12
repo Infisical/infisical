@@ -23,6 +23,12 @@ export type RootPkiSyncOptions = {
   postSyncCommand?: string | null;
 };
 
+export type TPkiSyncFilters = {
+  profileIds?: string[];
+  certificateOrderIds?: string[];
+  metadata?: { key: string; value?: string }[];
+};
+
 export type TRootPkiSync = {
   id: string;
   name: string;
@@ -62,6 +68,7 @@ export type TRootPkiSync = {
   appConnectionName?: string;
   appConnectionApp?: string;
   hasCertificate?: boolean;
+  filters?: TPkiSyncFilters | null;
 };
 
 export type TPkiSyncCertificate = {
@@ -75,6 +82,7 @@ export type TPkiSyncCertificate = {
   updatedAt: string;
   certificateSerialNumber?: string;
   certificateCommonName?: string;
+  certificateOrderId?: string;
   certificateAltNames?: string;
   certificateStatus?: string;
   certificateNotBefore?: Date;
@@ -98,4 +106,21 @@ export type TPkiSyncHealthCheckResult = {
   output?: string;
   failureDetail?: string;
   message?: string;
+};
+
+export type TPkiSyncPreviewCertificate = {
+  id: string;
+  commonName: string;
+  serialNumber?: string;
+  notAfter?: string;
+  orderId?: string;
+  profileName?: string | null;
+};
+
+export type TPkiSyncFilterPreview = {
+  matchedCount: number;
+  hasMoreMatches: boolean;
+  certificates: TPkiSyncPreviewCertificate[];
+  toUnlink: { id: string; commonName: string }[];
+  willRemoveFromDestination: boolean;
 };

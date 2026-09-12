@@ -2,13 +2,17 @@ import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
+import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
+
+const INELIGIBLE_LINK_BATCH = 500;
 
 type TPkiSyncCleanupQueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "findPkiSyncsWithExpiredCertificates">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findIneligibleFilteredLinks">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
 };
 
 export type TPkiSyncCleanupQueueServiceFactory = ReturnType<typeof pkiSyncCleanupQueueServiceFactory>;
@@ -16,6 +20,7 @@ export type TPkiSyncCleanupQueueServiceFactory = ReturnType<typeof pkiSyncCleanu
 export const pkiSyncCleanupQueueServiceFactory = ({
   cronJob,
   pkiSyncDAL,
+  certificateSyncDAL,
   pkiSyncQueue
 }: TPkiSyncCleanupQueueServiceFactoryDep) => {
   const appCfg = getConfig();
@@ -53,6 +58,27 @@ export const pkiSyncCleanupQueueServiceFactory = ({
     }
   };
 
+  const reconcileIneligibleFilteredLinks = async () => {
+    try {
+      const stale = await certificateSyncDAL.findIneligibleFilteredLinks(INELIGIBLE_LINK_BATCH);
+
+      if (stale.length === 0) return;
+
+      logger.info(`cron[pki-sync-cleanup]: re-evaluating ${stale.length} certificate(s) held by a filtered sync`);
+
+      for (const { certificateId, applicationId } of stale) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await pkiSyncQueue.queuePkiSyncLinkMatchingCertificates({ certificateId, applicationId });
+        } catch (error) {
+          logger.error(error, `Failed to queue a filter reconcile [certificateId=${certificateId}]`);
+        }
+      }
+    } catch (error) {
+      logger.error(error, "Failed to re-evaluate certificates held by a filtered sync");
+    }
+  };
+
   const init = () => {
     cronJob.register({
       name: CronJobName.PkiSyncCleanup,
@@ -61,13 +87,20 @@ export const pkiSyncCleanupQueueServiceFactory = ({
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         logger.info("cron[pki-sync-cleanup]: task started");
-        await syncExpiredCertificatesForPkiSyncs();
+
+        const [expiredCertificateSweep] = await Promise.allSettled([
+          syncExpiredCertificatesForPkiSyncs(),
+          reconcileIneligibleFilteredLinks()
+        ]);
+
+        if (expiredCertificateSweep.status === "rejected") throw expiredCertificateSweep.reason;
       }
     });
   };
 
   return {
     init,
-    syncExpiredCertificatesForPkiSyncs
+    syncExpiredCertificatesForPkiSyncs,
+    reconcileIneligibleFilteredLinks
   };
 };

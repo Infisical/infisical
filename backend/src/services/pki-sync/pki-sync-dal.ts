@@ -293,11 +293,13 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     return expandPkiSync(pkiSync);
   };
 
-  const updateById = async (syncId: string, data: Parameters<(typeof pkiSyncOrm)["updateById"]>[1]) => {
-    const pkiSync = (await pkiSyncOrm.transaction(async (tx) => {
+  const updateById = async (syncId: string, data: Parameters<(typeof pkiSyncOrm)["updateById"]>[1], outerTx?: Knex) => {
+    const run = async (tx: Knex) => {
       const sync = await pkiSyncOrm.updateById(syncId, data, tx);
       return basePkiSyncQuery({ filter: { id: sync.id }, db, tx }).first();
-    }))!;
+    };
+
+    const pkiSync = (outerTx ? await run(outerTx) : await pkiSyncOrm.transaction(run))!;
 
     return expandPkiSync(pkiSync);
   };
@@ -418,7 +420,10 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
+  const primaryNode = () => db.primaryNode();
+
   return {
+    primaryNode,
     ...pkiSyncOrm,
     recordHealthCheckOutcome,
     findFailureNotificationRecipients,

@@ -1449,8 +1449,10 @@ export const projectServiceFactory = ({
     const validatedSortBy = sortBy && ALLOWED_SORT_COLUMNS.has(sortBy) ? sortBy : "notAfter";
     const validatedSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
+    const { status: ignoredSyncStatus, ...syncEligibilityFilters } = regularFilters;
+
     const certificates = forPkiSync
-      ? await certificateDAL.findActiveCertificatesForSync(regularFilters, { offset, limit }, permissionFilters)
+      ? await certificateDAL.findActiveCertificatesForSync(syncEligibilityFilters, { offset, limit }, permissionFilters)
       : await certificateDAL.findWithPrivateKeyInfo(
           regularFilters,
           {
@@ -1461,34 +1463,9 @@ export const projectServiceFactory = ({
           permissionFilters
         );
 
-    const countFilter = {
-      projectId,
-      ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
-      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) }),
-      ...(regularFilters.search && { search: String(regularFilters.search) }),
-      ...(regularFilters.status && { status: regularFilters.status }),
-      ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
-      ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
-      ...(regularFilters.toDate && { toDate: regularFilters.toDate }),
-      ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter }),
-      ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) }),
-      ...(regularFilters.keyAlgorithm && { keyAlgorithm: regularFilters.keyAlgorithm }),
-      ...(regularFilters.signatureAlgorithm && { signatureAlgorithm: String(regularFilters.signatureAlgorithm) }),
-      ...(regularFilters.keySizes && { keySizes: regularFilters.keySizes }),
-      ...(regularFilters.caIds && { caIds: regularFilters.caIds }),
-      ...(regularFilters.enrollmentTypes && { enrollmentTypes: regularFilters.enrollmentTypes }),
-      ...(regularFilters.source && { source: regularFilters.source }),
-      ...(regularFilters.notAfterFrom && { notAfterFrom: regularFilters.notAfterFrom }),
-      ...(regularFilters.notAfterTo && { notAfterTo: regularFilters.notAfterTo }),
-      ...(regularFilters.notBeforeFrom && { notBeforeFrom: regularFilters.notBeforeFrom }),
-      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo }),
-      ...(regularFilters.applicationId && { applicationId: regularFilters.applicationId }),
-      ...(regularFilters.applicationIds && { applicationIds: regularFilters.applicationIds })
-    };
-
     const count = forPkiSync
-      ? await certificateDAL.countActiveCertificatesForSync(countFilter)
-      : await certificateDAL.countCertificatesInProject(countFilter, permissionFilters);
+      ? await certificateDAL.countActiveCertificatesForSync(syncEligibilityFilters, permissionFilters)
+      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters);
 
     return {
       certificates,
