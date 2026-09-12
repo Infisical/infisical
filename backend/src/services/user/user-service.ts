@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TUsers } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -215,7 +215,8 @@ export const userServiceFactory = ({
   const hasMfaEnforcingOrg = async (userId: string) => {
     const userOrgMemberships = await membershipUserDAL.find({
       actorUserId: userId,
-      scope: AccessScope.Organization
+      scope: AccessScope.Organization,
+      status: OrgMembershipStatus.Accepted
     });
     if (!userOrgMemberships.length) return false;
 
