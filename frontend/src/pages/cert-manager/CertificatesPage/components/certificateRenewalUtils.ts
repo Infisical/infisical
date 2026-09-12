@@ -125,7 +125,10 @@ export const buildRenewalFormDefaults = (
     ? (cert.keyAlgorithm as string)
     : "",
   keyUsages: toUsageFormKeys(cert.keyUsages, KEY_USAGE_BY_NAME),
-  extendedKeyUsages: toUsageFormKeys(cert.extendedKeyUsages, EXTENDED_KEY_USAGE_BY_NAME)
+  extendedKeyUsages: toUsageFormKeys(cert.extendedKeyUsages, EXTENDED_KEY_USAGE_BY_NAME),
+  customExtensions: (cert.customExtensions ?? [])
+    .filter((extension) => extension.displayValue !== undefined)
+    .map((extension) => ({ oid: extension.oid, value: extension.displayValue as string }))
 });
 
 const buildBasicConstraints = (
@@ -149,10 +152,16 @@ export const buildRenewalRequestAttributes = ({
   constraints: TemplateConstraints;
   isExternalTemplateProfile?: boolean;
 }): TRenewCertificateAttributes => {
-  // The CSR carries its own basic constraints and the CSR step offers no control over them, so
-  // sending the previous certificate's would silently override what the caller actually signed.
+  const customExtensions = (formData.customExtensions ?? [])
+    .filter((extension) => extension.oid.trim())
+    .map((extension) => ({
+      oid: extension.oid.trim(),
+      value: extension.value,
+      ...(extension.critical !== undefined && { critical: extension.critical })
+    }));
+
   if (formData.keySource === CertificateRenewalKeySource.Csr) {
-    return { ttl: formData.ttl };
+    return { ttl: formData.ttl, customExtensions };
   }
 
   const basicConstraints = buildBasicConstraints(formData, constraints);
@@ -171,6 +180,8 @@ export const buildRenewalRequestAttributes = ({
           formData.keyAlgorithm && { keyAlgorithm: formData.keyAlgorithm }),
         ...(basicConstraints && { basicConstraints })
       };
+
+  attributes.customExtensions = customExtensions;
 
   if (constraints.shouldShowSubjectSection) {
     SUBJECT_ATTR_MAP.forEach(({ attrType, requestKey }) => {

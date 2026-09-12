@@ -24,6 +24,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { CreatePolicyModal } from "../PoliciesPage/components/CertificatePoliciesTab/CreatePolicyModal";
 import {
   PolicyAlgorithmsSection,
+  PolicyCustomExtensionsSection,
   PolicyDetailsSection,
   PolicyKeyUsagesSection,
   PolicyNoRulesSection,
@@ -71,7 +72,8 @@ const Page = () => {
       policy?.algorithms?.signature?.length ||
       policy?.algorithms?.keyAlgorithm?.length ||
       policy?.validity?.max ||
-      policy?.basicConstraints?.isCA
+      policy?.basicConstraints?.isCA ||
+      policy?.customExtensions
   );
 
   const handleDeleteConfirm = async () => {
@@ -163,6 +165,7 @@ const Page = () => {
                         <PolicySansRulesSection policy={policy} />
                         <PolicyKeyUsagesSection policy={policy} />
                         <PolicyAlgorithmsSection policy={policy} />
+                        <PolicyCustomExtensionsSection policy={policy} />
                       </>
                     ) : (
                       <PolicyNoRulesSection />

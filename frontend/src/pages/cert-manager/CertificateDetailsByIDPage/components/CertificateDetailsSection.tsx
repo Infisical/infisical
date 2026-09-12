@@ -18,6 +18,7 @@ import {
   certSignatureAlgorithmToNameMap
 } from "@app/hooks/api/certificates";
 import { camelCaseToSpaces, toTitleCase } from "@app/lib/fn/string";
+import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
 
 type Props = {
   certificateId: string;
@@ -220,6 +221,14 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
                 )}
               </DetailValue>
             </Detail>
+            {Boolean(certificate.customExtensions?.length) && (
+              <Detail>
+                <DetailLabel>Custom Extensions</DetailLabel>
+                <DetailValue>
+                  <CustomExtensionList extensions={certificate.customExtensions ?? []} />
+                </DetailValue>
+              </Detail>
+            )}
           </DetailGroup>
         </CardContent>
       </Card>

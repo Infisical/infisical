@@ -5,15 +5,23 @@ import { TCertificatePolicy } from "@app/hooks/api/certificatePolicies";
 
 import {
   buildPolicyRules,
+  CustomExtensionsGuidance,
+  evaluateCustomExtensions,
   evaluateSubjectStep,
   getValidityHint,
   PolicySectionGuidance,
+  TCustomExtensionDeclaration,
   validateTtlAgainstPolicy
 } from "./certificatePolicyGuidance";
 import { SubjectAltName, SubjectAttribute } from "./certificateUtils";
 
 /** The form fields this hook evaluates. Each wizard step declares the ones it owns. */
-export const POLICY_FIELDS = ["subjectAttributes", "subjectAltNames", "ttl"] as const;
+export const POLICY_FIELDS = [
+  "subjectAttributes",
+  "subjectAltNames",
+  "ttl",
+  "customExtensions"
+] as const;
 
 export type PolicyField = (typeof POLICY_FIELDS)[number];
 
@@ -21,6 +29,8 @@ const SUBJECT_FIELDS: PolicyField[] = ["subjectAttributes", "subjectAltNames"];
 
 const EMPTY_SUBJECT_ATTRIBUTES: SubjectAttribute[] = [];
 const EMPTY_SUBJECT_ALT_NAMES: SubjectAltName[] = [];
+const EMPTY_CUSTOM_EXTENSION_DECLARATIONS: TCustomExtensionDeclaration[] = [];
+const EMPTY_CUSTOM_EXTENSION_ROWS: { oid: string; value: string }[] = [];
 
 type UsePolicyGuidanceParams = {
   policy?: TCertificatePolicy | null;
@@ -30,6 +40,8 @@ type UsePolicyGuidanceParams = {
   clearErrors: UseFormClearErrors<any>;
   isSubjectSectionShown: boolean;
   isSanSectionShown: boolean;
+  /** The profile's default values, so a declared row is checked even when the request leaves it alone. */
+  customExtensionDeclarations?: TCustomExtensionDeclaration[];
   /** False for request methods that take the subject from a CSR instead of these fields. */
   isSubjectEvaluated?: boolean;
   /** False when an external CA's template owns validity, so the TTL field is not shown. */
@@ -41,6 +53,7 @@ type UsePolicyGuidanceParams = {
 export type PolicyGuidance = {
   subject: PolicySectionGuidance;
   sans: PolicySectionGuidance;
+  customExtensions: CustomExtensionsGuidance;
   ttlHint?: string[];
   ttlError?: string;
   /** True once the requester has tried to leave the step that owns this field. */
@@ -63,6 +76,7 @@ export const usePolicyGuidance = ({
   clearErrors,
   isSubjectSectionShown,
   isSanSectionShown,
+  customExtensionDeclarations = EMPTY_CUSTOM_EXTENSION_DECLARATIONS,
   isSubjectEvaluated = true,
   isValidityEvaluated = true,
   resetKey
@@ -71,6 +85,8 @@ export const usePolicyGuidance = ({
     watch("subjectAttributes") ?? EMPTY_SUBJECT_ATTRIBUTES;
   const subjectAltNames: SubjectAltName[] = watch("subjectAltNames") ?? EMPTY_SUBJECT_ALT_NAMES;
   const ttl: string = watch("ttl") ?? "";
+  const customExtensionRows: { oid: string; value: string }[] =
+    watch("customExtensions") ?? EMPTY_CUSTOM_EXTENSION_ROWS;
 
   const rules = useMemo(
     () => buildPolicyRules(isSubjectEvaluated ? policy : undefined),
@@ -87,6 +103,16 @@ export const usePolicyGuidance = ({
         isSanSectionShown
       }),
     [rules, subjectAttributes, subjectAltNames, isSubjectSectionShown, isSanSectionShown]
+  );
+
+  const customExtensions = useMemo(
+    () =>
+      evaluateCustomExtensions({
+        declarations: customExtensionDeclarations,
+        rows: customExtensionRows,
+        rules: policy?.customExtensions
+      }),
+    [customExtensionDeclarations, customExtensionRows, policy?.customExtensions]
   );
 
   const maxTtl = policy?.validity?.max;
@@ -131,12 +157,18 @@ export const usePolicyGuidance = ({
     clearErrors("ttl");
   }, [ttl, clearErrors, hide]);
 
+  useEffect(() => {
+    hide(["customExtensions"]);
+    clearErrors("customExtensions");
+  }, [customExtensionRows, clearErrors, hide]);
+
   // Read through a ref so the wizard's validateStep callback does not have to be rebuilt per render.
   const blockedFields = useRef<ReadonlySet<PolicyField>>(new Set());
   blockedFields.current = new Set<PolicyField>([
     ...(subject.isBlocking ? (["subjectAttributes"] as const) : []),
     ...(sans.isBlocking ? (["subjectAltNames"] as const) : []),
-    ...(ttlError ? (["ttl"] as const) : [])
+    ...(ttlError ? (["ttl"] as const) : []),
+    ...(customExtensions.isBlocking ? (["customExtensions"] as const) : [])
   ]);
 
   const findBlockedFields = useCallback(
@@ -150,5 +182,14 @@ export const usePolicyGuidance = ({
     [revealedFields]
   );
 
-  return { subject, sans, ttlHint, ttlError, isRevealed, reveal, findBlockedFields };
+  return {
+    subject,
+    sans,
+    customExtensions,
+    ttlHint,
+    ttlError,
+    isRevealed,
+    reveal,
+    findBlockedFields
+  };
 };

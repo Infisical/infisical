@@ -1,4 +1,5 @@
 export { PolicyAlgorithmsSection } from "./PolicyAlgorithmsSection";
+export { PolicyCustomExtensionsSection } from "./PolicyCustomExtensionsSection";
 export { PolicyDetailsSection } from "./PolicyDetailsSection";
 export { PolicyKeyUsagesSection } from "./PolicyKeyUsagesSection";
 export { PolicyNoRulesSection } from "./PolicyNoRulesSection";

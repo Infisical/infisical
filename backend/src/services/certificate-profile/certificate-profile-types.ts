@@ -11,6 +11,7 @@ import {
   CertSignatureAlgorithm,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { TProfileCustomExtension } from "../certificate-common/certificate-extension-fns";
 
 export enum EnrollmentType {
   API = "api",
@@ -39,6 +40,7 @@ export type TCertificateProfileDefaults = {
   locality?: string;
   subjectAltNames?: { type: CertSubjectAlternativeNameType; value: string }[];
   domainComponents?: string[];
+  customExtensions?: TProfileCustomExtension[];
 };
 
 export type TCertificateProfile = Omit<

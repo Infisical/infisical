@@ -32,6 +32,13 @@ import {
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import { generateLeafKeypairAndCsr } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  findCsrCustomExtensionMismatch,
+  findUnsatisfiedCustomExtensionOids,
+  parseIssuedCustomExtensions,
+  TCsrCustomExtensionMismatch,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 import { calculateFinalRenewBeforeDays } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -408,7 +415,8 @@ export const ADCSCertificateAuthorityFns = ({
     csr,
     isRenewal,
     originalCertificateId,
-    isCancelled
+    isCancelled,
+    customExtensions
   }: {
     caId: string;
     profileId?: string;
@@ -424,6 +432,7 @@ export const ADCSCertificateAuthorityFns = ({
     isRenewal?: boolean;
     originalCertificateId?: string;
     isCancelled?: () => Promise<boolean>;
+    customExtensions?: TResolvedCustomExtension[];
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.ADCS) {
@@ -497,12 +506,26 @@ export const ADCSCertificateAuthorityFns = ({
     let skLeaf: string | undefined;
     let csrDerBase64: string;
     if (csr) {
-      csrDerBase64 = Buffer.from(new Uint8Array(new x509.Pkcs10CertificateRequest(csr).rawData)).toString("base64");
+      const parsedCsr = new x509.Pkcs10CertificateRequest(csr);
+      const mismatch = findCsrCustomExtensionMismatch(parsedCsr, customExtensions);
+      if (mismatch) {
+        const resolvedCritical = customExtensions?.find((extension) => extension.oid === mismatch.oid)?.critical;
+        const reasons: Record<TCsrCustomExtensionMismatch["reason"], string> = {
+          missing: `Custom extension '${mismatch.oid}' must be present in the certificate signing request you supply`,
+          value: `Custom extension '${mismatch.oid}' in the certificate signing request does not carry the value this policy resolved`,
+          criticality: `Custom extension '${mismatch.oid}' in the certificate signing request must be marked ${resolvedCritical ? "critical" : "non-critical"} to match this policy`
+        };
+        throw new BadRequestError({
+          message: `${reasons[mismatch.reason]}, because Active Directory Certificate Services is given that request unchanged. Correct the request, or let Infisical generate the key.`
+        });
+      }
+      csrDerBase64 = Buffer.from(new Uint8Array(parsedCsr.rawData)).toString("base64");
     } else {
       const generated = await generateLeafKeypairAndCsr({
         subjectName: buildSubjectDN(commonName),
         algorithm: alg,
-        altNames
+        altNames,
+        customExtensions
       });
       skLeaf = generated.privateKeyPem;
       csrDerBase64 = generated.csrDerBase64;
@@ -561,6 +584,8 @@ export const ADCSCertificateAuthorityFns = ({
 
     let certificateId: string;
 
+    const unsatisfiedOids = findUnsatisfiedCustomExtensionOids(Buffer.from(cleanedCertificatePem), customExtensions);
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
@@ -578,6 +603,9 @@ export const ADCSCertificateAuthorityFns = ({
           keyAlgorithm,
           signatureAlgorithm: extractIssuedSignatureAlgorithm(certObj) ?? signatureAlgorithm,
           projectId: ca.projectId,
+          customExtensions: JSON.stringify(
+            parseIssuedCustomExtensions(Buffer.from(cleanedCertificatePem), customExtensions)
+          ),
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx
@@ -625,6 +653,15 @@ export const ADCSCertificateAuthorityFns = ({
         }
       }
     });
+
+    if (unsatisfiedOids.length) {
+      logger.warn(
+        `Active Directory Certificate Services did not honor custom extensions this profile declared [caId=${ca.id}] [profileId=${profileId}] [certificateId=${certificateId!}] [oids=${unsatisfiedOids.join(",")}]`
+      );
+      throw new BadRequestError({
+        message: `Active Directory Certificate Services issued a certificate that does not carry ${unsatisfiedOids.join(", ")} as this profile declared it. The certificate is recorded so you can revoke it. Add each object identifier to the certificate authority's EnableRequestExtensionList and restart certsvc, then request again.`
+      });
+    }
 
     return {
       certificate: cleanedCertificatePem,

@@ -28,6 +28,7 @@ import {
   assertCaInProfileProject,
   getCaCertChain
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { assertCaSupportsCustomExtensions } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import {
   extractAlgorithmsFromCSR,
@@ -918,13 +919,15 @@ export const pkiScepServiceFactory = ({
           validity: { ttl }
         },
         profile.defaults
-      )
+      ),
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
       throw new BadRequestError({
         message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
       });
     }
+    assertCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
     await validateCertificateRequestLicense({
       request: { ...certRequest, keyAlgorithm, signatureAlgorithm },
@@ -953,6 +956,7 @@ export const pkiScepServiceFactory = ({
       csr: csrPem,
       ttl,
       status: CertificateRequestStatus.PENDING,
+      customExtensions: validationResult.resolvedCustomExtensions,
       enrollmentType: EnrollmentType.SCEP,
       organization: certRequest.organization,
       organizationalUnit: certRequest.organizationalUnit,
@@ -966,6 +970,7 @@ export const pkiScepServiceFactory = ({
       certificateId: newCertRequest.id,
       profileId: profile.id,
       caId: profile.caId!,
+      customExtensions: validationResult.resolvedCustomExtensions,
       ttl,
       signatureAlgorithm: signatureAlgorithm || "",
       keyAlgorithm: keyAlgorithm || "",
