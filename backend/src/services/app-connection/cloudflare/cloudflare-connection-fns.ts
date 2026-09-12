@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -66,6 +66,12 @@ const $paginateCloudflare = async <T>(
     page += 1;
   }
 
+  if (page <= totalPages) {
+    logger.warn(
+      `$paginateCloudflare: page cap reached, returning a partial list [url=${sanitizeUrlForLog(url)}] [pagesRead=${CLOUDFLARE_MAX_PAGES}] [totalPages=${totalPages}]`
+    );
+  }
+
   return results;
 };
 
@@ -84,17 +90,21 @@ export const listCloudflarePagesProjects = async (
     credentials: { apiToken, accountId }
   } = appConnection;
 
-  const { data } = await safeRequest.get<{ result: { name: string; id: string }[] }>(
+  const projects = await $paginateCloudflare<{ id: string; name: string }>(
     `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
-    { headers: getCloudflareAuthHeaders(apiToken) }
+    { apiToken }
   );
 
-  return data.result.map((a) => ({
+  return projects.map((a) => ({
     name: a.name,
     id: a.id
   }));
 };
 
+/**
+ * `workers/scripts` takes no page parameters and reports no `result_info` — Cloudflare's own SDKs type it
+ * as a single page — so the account's full script list arrives in one response.
+ */
 export const listCloudflareWorkersScripts = async (
   appConnection: TCloudflareConnection
 ): Promise<TCloudflareWorkersScript[]> => {
