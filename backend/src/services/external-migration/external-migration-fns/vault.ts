@@ -9,8 +9,9 @@ import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, isValidFolderName } from "@app/lib/validator";
 
+import { convertVaultValueToString, JsonValue } from "../../app-connection/hc-vault";
 import { InfisicalImportData, KvVersion, VaultMappingType } from "../external-migration-types";
 
 type VaultData = {
@@ -601,4 +602,138 @@ export const importVaultDataFn = async (
   });
 
   return transformFn(vaultData, mappingType);
+};
+
+export type TVaultFolderImportUnit = {
+  folderPath: string;
+  vaultSecretPath: string;
+  secrets: { secretKey: string; secretValue: string }[];
+};
+
+export const MAX_VAULT_IMPORT_PATHS = 25;
+
+export const MAX_VAULT_FOLDER_IMPORT_SECRETS = 1024;
+
+export const assertVaultFolderImportSecretCount = (units: TVaultFolderImportUnit[]) => {
+  const secretCount = units.reduce((count, { secrets }) => count + secrets.length, 0);
+  if (secretCount > MAX_VAULT_FOLDER_IMPORT_SECRETS) {
+    throw new BadRequestError({
+      message: `Cannot import ${secretCount} secrets while preserving Vault structure. Import at most ${MAX_VAULT_FOLDER_IMPORT_SECRETS} secrets at a time, or import without preserving the Vault structure.`
+    });
+  }
+};
+
+type TVaultMappedPath = {
+  vaultSecretPath: string;
+  secrets: Record<string, JsonValue>;
+  relativeSegments: string[];
+};
+
+export const toVaultPathSegments = (path: string) => path.split("/").filter(Boolean);
+
+export const assertVaultPathsWithinMount = ({
+  mountPath,
+  vaultSecretPaths
+}: {
+  mountPath: string;
+  vaultSecretPaths: string[];
+}): string[] => {
+  const mountSegments = toVaultPathSegments(mountPath);
+
+  if (!mountSegments.length) {
+    throw new BadRequestError({
+      message: "Cannot import: no Vault secrets engine was selected. Select the secrets engine the paths belong to."
+    });
+  }
+
+  const pathsOutsideMount = vaultSecretPaths.filter((vaultSecretPath) => {
+    const segments = toVaultPathSegments(vaultSecretPath);
+    return !mountSegments.every((mountSegment, idx) => segments[idx] === mountSegment);
+  });
+
+  if (pathsOutsideMount.length) {
+    throw new BadRequestError({
+      message: `Cannot import: the following Vault paths are not inside the '${mountSegments.join(
+        "/"
+      )}' secrets engine: ${pathsOutsideMount
+        .map((vaultSecretPath) => `'${vaultSecretPath}'`)
+        .join(", ")}. Select paths from the secrets engine you are importing, or import one secrets engine at a time.`
+    });
+  }
+
+  return mountSegments;
+};
+
+const validateVaultFolderImportPaths = (
+  mountPath: string,
+  secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[]
+): TVaultMappedPath[] => {
+  const mountSegments = assertVaultPathsWithinMount({
+    mountPath,
+    vaultSecretPaths: secretsPerPath.map(({ vaultSecretPath }) => vaultSecretPath)
+  });
+
+  const mountOnlyPaths: string[] = [];
+  const pathsWithInvalidFolderNames: string[] = [];
+  const mappedPaths: TVaultMappedPath[] = [];
+
+  for (const { vaultSecretPath, secrets } of secretsPerPath) {
+    // the mount can itself be nested, so every one of its segments is dropped and the folder tree
+    // mirrors only the path inside the secrets engine
+    const relativeSegments = toVaultPathSegments(vaultSecretPath).slice(mountSegments.length);
+
+    if (!relativeSegments.length) {
+      mountOnlyPaths.push(vaultSecretPath);
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    if (relativeSegments.some((segment) => !isValidFolderName(segment))) {
+      pathsWithInvalidFolderNames.push(vaultSecretPath);
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    mappedPaths.push({ vaultSecretPath, secrets, relativeSegments });
+  }
+
+  if (mountOnlyPaths.length) {
+    throw new BadRequestError({
+      message: `Cannot import: the following Vault paths contain only a mount and no path to turn into a folder: ${mountOnlyPaths
+        .map((vaultSecretPath) => `'${vaultSecretPath}'`)
+        .join(", ")}. Select the secret paths inside the mount instead.`
+    });
+  }
+
+  if (pathsWithInvalidFolderNames.length) {
+    throw new BadRequestError({
+      message: `Cannot import: the following Vault paths cannot be recreated as Infisical folders because they contain characters other than letters, numbers, dashes and underscores: ${pathsWithInvalidFolderNames
+        .map((vaultSecretPath) => `'${vaultSecretPath}'`)
+        .join(", ")}. Rename them in Vault, or import without preserving the Vault structure.`
+    });
+  }
+
+  return mappedPaths;
+};
+
+export const buildVaultFolderImportPlan = ({
+  secretPath,
+  mountPath,
+  secretsPerPath
+}: {
+  secretPath: string;
+  mountPath: string;
+  secretsPerPath: { vaultSecretPath: string; secrets: Record<string, JsonValue> }[];
+}): TVaultFolderImportUnit[] => {
+  const infisicalBasePath = toVaultPathSegments(secretPath);
+  const mappedPaths = validateVaultFolderImportPaths(mountPath, secretsPerPath);
+
+  return mappedPaths.map(({ vaultSecretPath, secrets, relativeSegments }) => ({
+    folderPath: `/${[...infisicalBasePath, ...relativeSegments].join("/")}`,
+    vaultSecretPath,
+    secrets: Object.entries(secrets).map(([secretKey, secretValue]) => ({
+      secretKey,
+      secretValue: convertVaultValueToString(secretValue)
+    }))
+  }));
 };

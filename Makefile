@@ -44,6 +44,41 @@ reviewable-api:
 
 reviewable: reviewable-ui reviewable-api
 
+# The API suites run against the throwaway stack in docker-compose.test.yml, never the dev one.
+# That is not a preference: the e2e harness runs `DROP SCHEMA public CASCADE` on whatever
+# database it is pointed at, so aiming it at the dev database takes your data with it.
+# Everything else (image, environment, mounts, service dependencies) is declared there.
+TEST_SUITE_COMPOSE = docker compose -f docker-compose.test.yml --profile runner
+# The secret rotation specs reach these by service name on the shared test network, which is why
+# docker-compose.e2e-dbs.yml pins the same compose project. A full suite run needs them up; the
+# rest of the specs do not, and the Oracle image is large, so they are a separate target.
+ROTATION_DB_COMPOSE = docker compose -f docker-compose.e2e-dbs.yml
+
+build-test-suite-image:
+	$(TEST_SUITE_COMPOSE) build api-tests
+
+# Only needed to run a suite from the host, against the published ports in .env.test.
+# `make test-api-e2e` starts them itself and waits for them to report healthy.
+up-test-suite-containers:
+	$(TEST_SUITE_COMPOSE) up -d --wait db redis
+
+# Needed only for a full suite run, and only for the secret rotation specs.
+up-rotation-databases:
+	$(ROTATION_DB_COMPOSE) up -d --wait --wait-timeout 300
+
+# Shares a compose project with the test stack, so this removes the rotation databases too.
+down-test-suite-containers:
+	$(TEST_SUITE_COMPOSE) down -v
+
+# Narrow a run with SPEC=<pattern>, e.g. `make test-api-e2e SPEC=secret-sync`.
+test-api-unit: build-test-suite-image
+	$(TEST_SUITE_COMPOSE) run --rm api-tests npm run test:unit -- $(SPEC)
+
+test-api-e2e: build-test-suite-image
+	$(TEST_SUITE_COMPOSE) run --rm api-tests npm run test:e2e -- $(SPEC)
+
+test-api: test-api-unit test-api-e2e
+
 lint-docs:
 	@./docs/scripts/lint-docs.sh --all
 

@@ -209,7 +209,10 @@ import {
   getDestinationSecretPath,
   getSecretLocation
 } from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/replicateSecrets";
-import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
+import {
+  TVaultSecretImportArgs,
+  VaultSecretImportModal
+} from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
 import { CommitForm } from "../SecretDashboardPage/components/CommitForm";
 import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
 import { DynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/DynamicSecretLease";
@@ -228,7 +231,7 @@ import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceB
 import { CreateDynamicSecretForm } from "./components/CreateDynamicSecretForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
-import { InviteMembersModal } from "./components/InviteMembersModal";
+import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
@@ -770,7 +773,7 @@ const OverviewPageContent = () => {
   } = overview ?? {};
 
   // Growth nudge: when the user creates a secret, ask the backend whether to surface the
-  // "Invite your team" modal. The check runs at most once per session, opens the modal only if
+  // "Invite your team" card. The check runs at most once per session, opens the card only if
   // the backend says so, and is a no-op on failure.
   const {
     popUp: invitePopUp,
@@ -900,6 +903,10 @@ const OverviewPageContent = () => {
   const isBatchModeActive = isOverviewBatchMode && isSingleEnvView;
   const hasPendingBatchChanges =
     isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
+  // Mirrors SelectionPanel's selectedCount > 0, which is when its SelectedActionBar is visible.
+  const hasSelectedEntries = Object.values(selectedEntries).some(
+    (entries) => Object.keys(entries).length > 0
+  );
 
   useEffect(() => {
     if (hasPendingBatchChanges) {
@@ -1071,35 +1078,45 @@ const OverviewPageContent = () => {
     handlePopUpOpen("addSecretImport");
   };
 
-  const handleVaultImport = async (
-    vaultPaths: string[],
-    namespace: string,
-    connectionId: string
-  ) => {
-    const { status } = await importVaultSecrets({
+  const handleVaultImport = async ({
+    vaultPaths,
+    namespace,
+    mountPath,
+    connectionId,
+    keepVaultStructure
+  }: TVaultSecretImportArgs) => {
+    const { status, importedPaths, approvalRequiredPaths } = await importVaultSecrets({
       projectId,
       environment: singleEnvSlug,
       secretPath,
       vaultNamespace: namespace,
+      mountPath,
       vaultSecretPaths: vaultPaths,
-      connectionId
+      connectionId,
+      keepVaultStructure
     });
 
     if (status === ExternalMigrationImportStatus.ApprovalRequired) {
+      const pendingCount = approvalRequiredPaths?.length ?? vaultPaths.length;
+
       createNotification({
         type: "info",
         text:
-          vaultPaths.length > 1
-            ? `Secret change request created for ${vaultPaths.length} Vault paths. Awaiting approval.`
+          pendingCount > 1
+            ? `Secret change request created for ${pendingCount} Vault paths. Awaiting approval.`
             : "Secret change request created successfully. Awaiting approval."
       });
     } else {
+      const folderCount = importedPaths?.length ?? 0;
+      const source =
+        vaultPaths.length > 1 ? `${vaultPaths.length} HashiCorp Vault paths` : "HashiCorp Vault";
+
       createNotification({
         type: "success",
         text:
-          vaultPaths.length > 1
-            ? `Successfully imported secrets from ${vaultPaths.length} HashiCorp Vault paths`
-            : "Successfully imported secrets from HashiCorp Vault"
+          folderCount > 1
+            ? `Imported secrets from ${source} into ${folderCount} folders`
+            : `Imported secrets from ${source}`
       });
     }
   };
@@ -4018,6 +4035,7 @@ const OverviewPageContent = () => {
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
         appConnections={vaultAppConnections}
+        destinationPath={secretPath}
         onImport={handleVaultImport}
       />
       {hasDopplerConnection && (
@@ -4130,9 +4148,11 @@ const OverviewPageContent = () => {
           environment={singleEnvSlug}
         />
       )}
-      {invitePopUp.inviteMembers.isOpen && (
-        <InviteMembersModal popUp={invitePopUp} handlePopUpToggle={handleInvitePopUpToggle} />
-      )}
+      <SecretsActivationNudge
+        popUp={invitePopUp}
+        handlePopUpToggle={handleInvitePopUpToggle}
+        isLifted={hasPendingBatchChanges || hasSelectedEntries}
+      />
       {isBatchModeActive && singleVisibleEnv && (
         <CommitForm
           onCommit={handleCreateCommit}

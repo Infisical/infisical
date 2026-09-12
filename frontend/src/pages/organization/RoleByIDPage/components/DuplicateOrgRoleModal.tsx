@@ -109,7 +109,14 @@ const Content = ({ role, onClose }: ContentProps) => {
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="name">Name</FieldLabel>
-                <Input id="name" placeholder="Billing Team" isError={Boolean(error)} {...field} />
+                <Input
+                  id="name"
+                  placeholder="Billing Team"
+                  isError={Boolean(error)}
+                  {...field}
+                  autoComplete="off"
+                  name="org-role-name"
+                />
                 <FieldError>{error?.message}</FieldError>
               </Field>
             )}

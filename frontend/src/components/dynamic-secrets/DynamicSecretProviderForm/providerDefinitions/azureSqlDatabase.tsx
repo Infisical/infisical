@@ -334,6 +334,7 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                 value={field.value ?? ""}
                 id="azure-sql-password"
                 placeholder="Enter database password"
+                isError={Boolean(error)}
                 aria-describedby={error ? "azure-sql-password-error" : undefined}
               />
               <FieldError id="azure-sql-password-error">{error?.message}</FieldError>

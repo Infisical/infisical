@@ -410,8 +410,7 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  },
-                  "documentation/platform/agent-proxy/agent-vault"
+                  }
                 ]
               }
             ]
@@ -746,6 +745,28 @@
                 ]
               }
             ]
+          },
+          {
+            "item": "Agent Vault",
+            "icon": "sparkles",
+            "pages": [
+              "documentation/platform/agent-vault/overview",
+              {
+                "group": "Get started",
+                "pages": [
+                  "documentation/platform/agent-vault/quickstart"
+                ]
+              },
+              {
+                "group": "Product reference",
+                "pages": [
+                  "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/sessions",
+                  "documentation/platform/agent-vault/proxies",
+                  "documentation/platform/agent-vault/access-control"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -1065,10 +1086,10 @@
             "icon": "network-wired",
             "pages": [
               "documentation/platform/gateways/overview",
+              "documentation/setup/networking",
               {
                 "group": "Gateways",
                 "pages": [
-                  "documentation/setup/networking",
                   "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-deployment",
                   "documentation/platform/gateways/gateway-pools",
@@ -1248,6 +1269,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/agent-vault",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",
