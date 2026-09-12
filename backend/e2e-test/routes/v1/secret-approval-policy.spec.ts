@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { Knex } from "knex";
 
-import { AccessScope, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 
@@ -174,52 +174,110 @@ describe("Secret approval policy router", async () => {
     }
   });
 
-  test("Create policy succeeds when user approver is a project member only via a group", async () => {
-    const db = getDb();
-    const group = await seedGroup(db, { slug: "sap-group-user-approver", addToProject: true });
-
-    // A user that is NOT a direct project member, but belongs to a group that is in the project.
+  // A user that is NOT a direct project member, but belongs to a group that is in the project. Group
+  // membership always sits on top of an org membership, whose status decides whether the user counts.
+  const seedGroupOnlyUser = async (db: Knex, dto: { groupId: string; orgMembershipStatus: OrgMembershipStatus }) => {
+    const username = `sap-group-user-${crypto.randomUUID()}@localhost.local`;
     const [user] = await db(TableName.Users)
       .insert({
-        email: `sap-group-user-${crypto.randomUUID()}@localhost.local`,
-        username: `sap-group-user-${crypto.randomUUID()}@localhost.local`,
+        email: username,
+        username,
         isGhost: false,
         isEmailVerified: true,
+        isAccepted: dto.orgMembershipStatus === OrgMembershipStatus.Accepted,
         authMethods: ["email"]
       })
       .returning("*");
 
+    const [orgMembership] = await db(TableName.Membership)
+      .insert({
+        scope: AccessScope.Organization,
+        scopeOrgId: seedData1.organization.id,
+        actorUserId: user.id,
+        status: dto.orgMembershipStatus,
+        isActive: true
+      })
+      .returning("*");
+    await db(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
+
     await db(TableName.UserGroupMembership).insert({
       userId: user.id,
+      groupId: dto.groupId,
+      isPending: dto.orgMembershipStatus !== OrgMembershipStatus.Accepted
+    });
+
+    return user;
+  };
+
+  const cleanupGroupOnlyUser = async (db: Knex, userId: string) => {
+    await db(TableName.SecretApprovalPolicyApprover).where({ approverUserId: userId }).del();
+    await db(TableName.UserGroupMembership).where({ userId }).del();
+    const memberships = await db(TableName.Membership).where({ actorUserId: userId }).select("id");
+    if (memberships.length) {
+      await db(TableName.MembershipRole)
+        .whereIn(
+          "membershipId",
+          memberships.map((m) => m.id)
+        )
+        .del();
+      await db(TableName.Membership).where({ actorUserId: userId }).del();
+    }
+    await db(TableName.Users).where({ id: userId }).del();
+  };
+
+  const createPolicyWithUserApprover = async (userId: string, secretPath: string) =>
+    testServer.inject({
+      method: "POST",
+      url: `/api/v1/secret-approvals`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      body: {
+        workspaceId: seedData1.project.id,
+        environment: seedData1.environment.slug,
+        name: `test-policy${secretPath.replaceAll("/", "-")}`,
+        secretPath,
+        approvers: [{ id: userId, type: ApproverType.User }],
+        approvals: 1
+      }
+    });
+
+  test("Create policy succeeds when user approver is a project member only via a group", async () => {
+    const db = getDb();
+    const group = await seedGroup(db, { slug: "sap-group-user-approver", addToProject: true });
+    const user = await seedGroupOnlyUser(db, {
       groupId: group.id,
-      isPending: false
+      orgMembershipStatus: OrgMembershipStatus.Accepted
     });
 
     let policyId: string | undefined;
     try {
-      const res = await testServer.inject({
-        method: "POST",
-        url: `/api/v1/secret-approvals`,
-        headers: {
-          authorization: `Bearer ${jwtAuthToken}`
-        },
-        body: {
-          workspaceId: seedData1.project.id,
-          environment: seedData1.environment.slug,
-          name: "test-policy-group-user-approver",
-          secretPath: "/group-user-approver",
-          approvers: [{ id: user.id, type: ApproverType.User }],
-          approvals: 1
-        }
-      });
+      const res = await createPolicyWithUserApprover(user.id, "/group-user-approver");
 
       expect(res.statusCode).toBe(200);
       policyId = res.json().approval.id;
     } finally {
-      await db(TableName.SecretApprovalPolicyApprover).where({ approverUserId: user.id }).del();
       if (policyId) await db(TableName.SecretApprovalPolicy).where({ id: policyId }).del();
-      await db(TableName.UserGroupMembership).where({ userId: user.id }).del();
-      await db(TableName.Users).where({ id: user.id }).del();
+      await cleanupGroupOnlyUser(db, user.id);
+      await cleanupGroup(db, group.id);
+    }
+  });
+
+  test("Create policy fails when user approver is in a project group but has not accepted the org invite", async () => {
+    const db = getDb();
+    const group = await seedGroup(db, { slug: "sap-group-invited-user-approver", addToProject: true });
+    const user = await seedGroupOnlyUser(db, {
+      groupId: group.id,
+      orgMembershipStatus: OrgMembershipStatus.Invited
+    });
+
+    try {
+      const res = await createPolicyWithUserApprover(user.id, "/group-invited-user-approver");
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toContain("not members of the project");
+    } finally {
+      await cleanupGroupOnlyUser(db, user.id);
       await cleanupGroup(db, group.id);
     }
   });
