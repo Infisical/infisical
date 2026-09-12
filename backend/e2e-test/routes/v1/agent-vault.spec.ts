@@ -818,13 +818,21 @@ describe("Agent Vault V1 Router", async () => {
           }
         },
         {
-          why: "search and status narrow together",
+          why: "search and status narrow together; the ownerless row reads as revoked, not active",
           query: "search=matrix-&status=active&limit=100",
-          expect: (r) => expect(r.totalCount).toBe(7)
+          expect: (r) => expect(r.totalCount).toBe(6)
+        },
+        {
+          why: "the ownerless row is the only revoked one inside the match",
+          query: "search=matrix-&status=revoked&limit=100",
+          expect: (r) => {
+            expect(r.totalCount).toBe(1);
+            expect(r.sessions[0].id).toBe(orphaned);
+          }
         },
         {
           why: "a status with no members inside the match is empty",
-          query: "search=matrix-&status=revoked&limit=100",
+          query: "search=matrix-&status=expired&limit=100",
           expect: (r) => expect(r.totalCount).toBe(0)
         }
       ];
