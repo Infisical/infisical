@@ -21,10 +21,13 @@ export const ProxyStatusBadge = ({ proxy }: { proxy: TAgentVaultProxy }) => {
       <TooltipTrigger asChild>
         <Badge variant={proxy.isHealthy ? "success" : "warning"}>
           {proxy.isHealthy ? <CircleCheckIcon /> : <CircleSlashIcon />}
-          {proxy.isHealthy ? "Healthy" : "Unreachable"} · {formatDistanceToNowStrict(heartbeat)} ago
+          {proxy.isHealthy ? "Healthy" : "Unreachable"}
         </Badge>
       </TooltipTrigger>
-      <TooltipContent>Last seen {format(heartbeat, "MMM d, yyyy h:mm a")}</TooltipContent>
+      <TooltipContent>
+        Last seen {formatDistanceToNowStrict(heartbeat)} ago,{" "}
+        {format(heartbeat, "MMM d, yyyy h:mm a")}
+      </TooltipContent>
     </Tooltip>
   );
 };
