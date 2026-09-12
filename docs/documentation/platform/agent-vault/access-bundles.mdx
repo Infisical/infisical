@@ -1,9 +1,21 @@
 ---
 title: "Access bundles and services"
-description: "What a service sends and where, how access bundles group services, and who can run agents with them."
+description: "How access bundles group services and who can run agents with them, and what a service sends and where."
 ---
 
 An access bundle is what you hand an agent: everything it needs for a job, granted and revoked as one unit. A bundle holds services, and names who may run agents with it. A service is one external API the agent may reach, with the hosts that API answers on and the credential the proxy attaches to requests bound for it. You grant access bundles and create sessions with them; the proxy brokers the services inside.
+
+## Access bundles
+
+An access bundle has a name, an optional description, its services, and its members. Granting an access bundle to a user, machine identity, or group lets them create sessions with it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
+
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing four access bundles with their services and member counts" />
+</Frame>
+
+Access bundles are how you scope access. An agent for on-call work gets the incident tooling, an agent for code review gets GitHub, and neither reaches the other's hosts.
+
+Removing a member from an access bundle, or from Agent Vault, takes effect on their running agents within one poll interval of the proxy. Deleting one removes its services from every session that carries it. See [Sessions](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach).
 
 ## Services
 
@@ -50,15 +62,3 @@ Keep patterns as narrow as the API allows. A wildcard covers every host under it
 Within one access bundle, two services can't cover the same host with the same pattern. Infisical rejects the save and names the service that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one service covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first service's credential.
 
 Different access bundles can cover the same host with different credentials. An agent gets the credential from the access bundle its session carries.
-
-## Access bundles
-
-An access bundle has a name, an optional description, its services, and its members. Granting an access bundle to a user, machine identity, or group lets them create sessions with it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
-
-<Frame>
-  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing four access bundles with their services and member counts" />
-</Frame>
-
-Access bundles are how you scope access. An agent for on-call work gets the incident tooling, an agent for code review gets GitHub, and neither reaches the other's hosts.
-
-Removing a member from an access bundle, or from Agent Vault, takes effect on their running agents within one poll interval of the proxy. Deleting one removes its services from every session that carries it. See [Sessions](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach).
