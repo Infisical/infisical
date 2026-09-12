@@ -1199,6 +1199,32 @@ export const permissionServiceFactory = ({
     return sources;
   };
 
+  const $folderScopedGrantAbilities = async (
+    projectId: string,
+    actorType: ActorType.USER | ActorType.IDENTITY,
+    actorId: string,
+    memberships: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>
+  ) => {
+    if (hasActiveProjectAdminRole(memberships)) return [];
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.SecretManager) return [];
+
+    const { privileges } = await fetchFolderScopedPrivileges(projectId, actorType, actorId, {
+      additionalPrivilegeDAL,
+      secretFolderDAL
+    });
+
+    return privileges.filter(isActiveRole).map((privilege) =>
+      createMongoAbility<ProjectPermissionSet>(
+        buildFolderScopedPrivilegeRules([privilege]).filter((rule) => !rule.inverted),
+        { conditionsMatcher }
+      )
+    );
+  };
+
   const $interpolateGrantsForActor = async (
     grants: MongoAbility[],
     memberships: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>,
@@ -1261,11 +1287,16 @@ export const permissionServiceFactory = ({
 
     const grants: MongoAbility[] = [...rolePermissions.map(({ permission }) => permission), ...privilegePermissions];
 
-    const isTemplated = grants.some((grant) => JSON.stringify(grant.rules).includes("{{"));
-    if (!isTemplated) return grants.map((permission) => ({ permission }));
+    const folderGrants = isProjectScope
+      ? await $folderScopedGrantAbilities(scopeData.projectId, actorType, actorId, memberships)
+      : [];
 
-    const interpolatedGrants = await $interpolateGrantsForActor(grants, memberships, actorId, actorType);
-    return interpolatedGrants.map((permission) => ({ permission }));
+    const isTemplated = grants.some((grant) => JSON.stringify(grant.rules).includes("{{"));
+    const resolvedGrants = isTemplated
+      ? await $interpolateGrantsForActor(grants, memberships, actorId, actorType)
+      : grants;
+
+    return [...resolvedGrants, ...folderGrants].map((permission) => ({ permission }));
   };
 
   const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({

@@ -1,12 +1,13 @@
+import { subject } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { vi } from "vitest";
 
-import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "./org-permission";
 import { permissionServiceFactory } from "./permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "./project-permission";
+import { ProjectPermissionActions, ProjectPermissionSecretActions, ProjectPermissionSub } from "./project-permission";
 
 // Privilege boundaries compare the actor against every grant the target holds. An additional
 // privilege carries a raw permission blob and no role slug, so a resolver that walked only
@@ -17,23 +18,35 @@ const ELEVATED_PRIVILEGE = packRules([
   { subject: OrgPermissionSubjects.Identity, action: [OrgPermissionIdentityActions.EditAuth] }
 ]);
 
-const createService = (memberships: unknown[], customRoles: unknown[] = []) => {
+const createService = (
+  memberships: unknown[],
+  customRoles: unknown[] = [],
+  opts: { folderPrivileges?: unknown[]; projectType?: ProjectType } = {}
+) => {
   const permissionDAL = { getPermission: vi.fn().mockResolvedValue(memberships) };
+  const folderPrivileges = opts.folderPrivileges ?? [];
+  const additionalPrivilegeDAL = { findFolderScopedPrivileges: vi.fn().mockResolvedValue(folderPrivileges) };
 
   const service = permissionServiceFactory({
     permissionDAL,
     roleDAL: { find: vi.fn().mockResolvedValue(customRoles) },
-    projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", type: ProjectType.SecretManager }) },
+    projectDAL: {
+      findById: vi.fn().mockResolvedValue({ id: "project-1", type: opts.projectType ?? ProjectType.SecretManager })
+    },
     serviceTokenDAL: {} as never,
     keyStore: {} as never,
     userDAL: {} as never,
     identityDAL: { findById: vi.fn().mockResolvedValue({ id: "identity-1", name: "target-identity" }) },
-    additionalPrivilegeDAL: {} as never,
+    additionalPrivilegeDAL,
     groupDAL: {} as never,
-    secretFolderDAL: {} as never
+    secretFolderDAL: {
+      findSecretPathByFolderIds: vi
+        .fn()
+        .mockResolvedValue(folderPrivileges.map(() => ({ environmentSlug: "dev", path: "/app" })))
+    }
   } as never);
 
-  return { service, permissionDAL };
+  return { service, permissionDAL, additionalPrivilegeDAL };
 };
 
 const orgScope = { scope: AccessScope.Organization, orgId: "org-1" } as const;
@@ -224,5 +237,124 @@ describe("getActorGrantAbilities identity templates", () => {
     expect(secretReadConditions(grants)).toContainEqual({
       secretPath: { $glob: "/{{identity.auth.kubernetes.namespace}}/**" }
     });
+  });
+});
+
+// A folder grant is the one form of reach permissionDAL.getPermission cannot report: it drops rows
+// carrying a folderId. A no-access identity holding one still reads secrets at that path, so leaving
+// it out of the grants let any actor with the identity actions mint a token and inherit that access.
+
+const folderPrivilege = (overrides: object = {}) => ({
+  id: "fsp-1",
+  name: "folder read",
+  folderId: "folder-1",
+  role: SecretFolderRole.Read,
+  isTemporary: false,
+  ...overrides
+});
+
+describe("getActorGrantAbilities folder grants", () => {
+  test("a folder-scoped grant is returned even though the membership query drops it", async () => {
+    const { service } = createService(
+      [{ roles: [{ role: ProjectMembershipRole.NoAccess }], additionalPrivileges: [] }],
+      [],
+      { folderPrivileges: [folderPrivilege()] }
+    );
+
+    const grants = await service.getActorGrantAbilities({
+      scopeData: projectScope,
+      actorId: "identity-1",
+      actorType: ActorType.IDENTITY
+    });
+
+    expect(grants).toHaveLength(1);
+    expect(
+      grants[0].permission.can(
+        ProjectPermissionSecretActions.DescribeSecret,
+        subject(ProjectPermissionSub.Secrets, { environment: "dev", secretPath: "/app" })
+      )
+    ).toBe(true);
+  });
+
+  test("only the allow half reaches the boundary", async () => {
+    const { service } = createService(
+      [{ roles: [{ role: ProjectMembershipRole.NoAccess }], additionalPrivileges: [] }],
+      [],
+      { folderPrivileges: [folderPrivilege()] }
+    );
+
+    const grants = await service.getActorGrantAbilities({
+      scopeData: projectScope,
+      actorId: "identity-1",
+      actorType: ActorType.IDENTITY
+    });
+
+    expect(grants[0].permission.rules.every((rule) => !rule.inverted)).toBe(true);
+  });
+
+  test("an expired folder-scoped grant is left out", async () => {
+    const { service } = createService(
+      [{ roles: [{ role: ProjectMembershipRole.NoAccess }], additionalPrivileges: [] }],
+      [],
+      {
+        folderPrivileges: [folderPrivilege({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 1000) })]
+      }
+    );
+
+    const grants = await service.getActorGrantAbilities({
+      scopeData: projectScope,
+      actorId: "identity-1",
+      actorType: ActorType.IDENTITY
+    });
+
+    expect(grants).toHaveLength(0);
+  });
+
+  test("a target holding project admin skips the folder lookup", async () => {
+    const { service, additionalPrivilegeDAL } = createService(
+      [{ roles: [{ role: ProjectMembershipRole.Admin }], additionalPrivileges: [] }],
+      [],
+      { folderPrivileges: [folderPrivilege()] }
+    );
+
+    await service.getActorGrantAbilities({
+      scopeData: projectScope,
+      actorId: "identity-1",
+      actorType: ActorType.IDENTITY
+    });
+
+    expect(additionalPrivilegeDAL.findFolderScopedPrivileges).not.toHaveBeenCalled();
+  });
+
+  test("a project that is not a secret manager skips the folder lookup", async () => {
+    const { service, additionalPrivilegeDAL } = createService(
+      [{ roles: [{ role: ProjectMembershipRole.NoAccess }], additionalPrivileges: [] }],
+      [],
+      { folderPrivileges: [folderPrivilege()], projectType: ProjectType.KMS }
+    );
+
+    await service.getActorGrantAbilities({
+      scopeData: projectScope,
+      actorId: "identity-1",
+      actorType: ActorType.IDENTITY
+    });
+
+    expect(additionalPrivilegeDAL.findFolderScopedPrivileges).not.toHaveBeenCalled();
+  });
+
+  test("organization scope never looks for folder grants", async () => {
+    const { service, additionalPrivilegeDAL } = createService(
+      [{ roles: [{ role: OrgMembershipRole.Member }], additionalPrivileges: [] }],
+      [],
+      { folderPrivileges: [folderPrivilege()] }
+    );
+
+    await service.getActorGrantAbilities({
+      scopeData: orgScope,
+      actorId: "identity-1",
+      actorType: ActorType.IDENTITY
+    });
+
+    expect(additionalPrivilegeDAL.findFolderScopedPrivileges).not.toHaveBeenCalled();
   });
 });
