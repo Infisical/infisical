@@ -752,7 +752,7 @@
             "pages": [
               "documentation/platform/agent-vault/overview",
               {
-                "group": "Agent vault",
+                "group": "Get started",
                 "pages": [
                   "documentation/platform/agent-vault/quickstart"
                 ]

@@ -100,7 +100,7 @@ An exception isn't exempt from interception. Every HTTPS host is TLS-terminated 
 
 How often, in seconds, the proxy re-checks each active session with Infisical and picks up settings changes. The default is 60 and the range is 10 to 300. Every "within one poll interval" on these pages means this number.
 
-If the proxy can't reach Infisical, it keeps serving what it last knew for five poll intervals, then refuses the affected requests with a 502 until it can check again. It never forwards a request without the credential it was supposed to attach. The Proxies page marks a proxy **Unhealthy** after three missed check-ins.
+If the proxy can't reach Infisical, it keeps serving what it last knew for five poll intervals, then refuses the affected requests with a 502 until it can check again. It never forwards a request without the credential it was supposed to attach. The Proxies page marks a proxy **Unreachable** after three missed check-ins.
 
 ## Certificate trust
 
