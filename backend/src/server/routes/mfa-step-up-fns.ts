@@ -36,6 +36,8 @@ export const getStepUpSessionId = (req: FastifyRequest): string => {
  * enforced method, or the user's preference otherwise). Pass `mfaMethod` to override
  * this when the action dictates the method independently of org enforcement — e.g.
  * enabling MFA challenges the factor being enabled, not a stronger org-enforced one.
+ * Pass `excludeMfaMethod` when the action removes a factor, so the challenge never
+ * demands the factor being removed (which is usually the one the user has lost).
  */
 export const ensureStepUpMfa = async (
   server: FastifyZodProvider,
@@ -46,7 +48,8 @@ export const ensureStepUpMfa = async (
     resourceId,
     mfaSessionId,
     message,
-    mfaMethod: mfaMethodOverride
+    mfaMethod: mfaMethodOverride,
+    excludeMfaMethod
   }: {
     userId: string;
     orgId: string;
@@ -55,6 +58,7 @@ export const ensureStepUpMfa = async (
     mfaSessionId?: string;
     message: string;
     mfaMethod?: MfaMethod;
+    excludeMfaMethod?: MfaMethod;
   }
 ) => {
   if (
@@ -69,18 +73,17 @@ export const ensureStepUpMfa = async (
     return;
   }
 
-  if (
-    resourceId === MfaStepUpResource.MfaManagement &&
-    (await server.services.mfaSession.hasRecentMfaAuth(userId, tokenVersionId))
-  ) {
-    return;
+  if (resourceId === MfaStepUpResource.MfaManagement) {
+    if (await server.services.mfaSession.hasRecentMfaAuth(userId, tokenVersionId)) return;
+    if (!(await server.services.user.isStepUpMfaRequired(userId))) return;
   }
 
   await server.services.mfaSession.enforceStepUpMfaLockout(userId);
 
   const user = await server.services.user.getMe(userId);
 
-  const mfaMethod = mfaMethodOverride ?? (await server.services.user.getStepUpMfaMethod(userId, orgId));
+  const mfaMethod =
+    mfaMethodOverride ?? (await server.services.user.getStepUpMfaMethod(userId, orgId, excludeMfaMethod));
 
   const newMfaSessionId = await server.services.mfaSession.createMfaSession(
     userId,

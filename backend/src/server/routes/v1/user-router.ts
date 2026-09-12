@@ -6,7 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 
 import { ensureStepUpMfa, getStepUpSessionId, MfaStepUpResource } from "../mfa-step-up-fns";
 
@@ -240,7 +240,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
-        message: "MFA verification is required to remove your authenticator app"
+        message: "MFA verification is required to remove your authenticator app",
+        excludeMfaMethod: MfaMethod.TOTP
       });
       return server.services.totp.deleteUserTotpConfig({
         userId: req.permission.id
@@ -591,7 +592,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
-        message: "MFA verification is required to remove a passkey"
+        message: "MFA verification is required to remove a passkey",
+        excludeMfaMethod: MfaMethod.WEBAUTHN
       });
       await server.services.webAuthn.deleteWebAuthnCredential({
         userId: req.permission.id,
