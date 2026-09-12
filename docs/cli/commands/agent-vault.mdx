@@ -153,7 +153,7 @@ Create a session with this access bundle, by name. Pass it once. Creates it as t
 
 ```bash
 # Example
-infisical agent-vault run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle code-review --proxy 10.0.1.5:17323 -- claude
 ```
 
 #### `--proxy`
@@ -162,7 +162,7 @@ Address of the Agent Vault proxy as `host:port`. Required, unless set through `I
 
 ```bash
 # Example
-infisical agent-vault run --access-bundle coding-agent --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle code-review --proxy 10.0.1.5:17323 -- claude
 ```
 
 #### `--ttl`
@@ -171,7 +171,7 @@ How long the new session lives: one number and one unit, such as `30m`, `8h`, or
 
 ```bash
 # Example
-infisical agent-vault run --access-bundle coding-agent --ttl 8h --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle code-review --ttl 8h --proxy 10.0.1.5:17323 -- claude
 ```
 
 Default value: `7d`
@@ -182,7 +182,7 @@ Leave the session active when the agent exits instead of revoking it. Only appli
 
 ```bash
 # Example
-infisical agent-vault run --access-bundle coding-agent --keep-session --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle code-review --keep-session --proxy 10.0.1.5:17323 -- claude
 ```
 
 Default value: `false`
@@ -202,7 +202,7 @@ Where to write the certificate authority fetched from the proxy.
 
 ```bash
 # Example
-infisical agent-vault run --access-bundle coding-agent --proxy 10.0.1.5:17323 --ca-file /tmp/agent-vault-ca.pem -- claude
+infisical agent-vault run --access-bundle code-review --proxy 10.0.1.5:17323 --ca-file /tmp/agent-vault-ca.pem -- claude
 ```
 
 Default value: `~/.infisical/agent-vault/ca-<proxy-id>.pem`, one file per proxy
@@ -224,7 +224,7 @@ Additional comma-separated hosts the agent reaches directly, without the proxy. 
 
 ```bash
 # Example
-infisical agent-vault run --access-bundle coding-agent --proxy 10.0.1.5:17323 --no-proxy internal.corp.com -- claude
+infisical agent-vault run --access-bundle code-review --proxy 10.0.1.5:17323 --no-proxy internal.corp.com -- claude
 ```
 
 #### `--client-id / --client-secret`
@@ -233,7 +233,7 @@ Universal Auth credentials of the machine identity that creates the session. Alt
 
 ```bash
 # Example
-infisical agent-vault run --access-bundle coding-agent --client-id <client-id> --client-secret <client-secret> --proxy 10.0.1.5:17323 -- claude
+infisical agent-vault run --access-bundle code-review --client-id <client-id> --client-secret <client-secret> --proxy 10.0.1.5:17323 -- claude
 ```
 
 ### Environment variables

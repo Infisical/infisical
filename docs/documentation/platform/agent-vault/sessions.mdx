@@ -14,7 +14,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     Go to **Sessions** and select **Create Session**. Pick the access bundle the agent needs, set how long the session lives, and select **Create Session**. The token is shown once, with the command to run:
 
     <Frame>
-      <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session panel with an access bundle picked and a seven day expiry" />
+      <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session dialog with an access bundle picked and a seven day expiry" />
     </Frame>
 
     ```bash
@@ -33,7 +33,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     `infisical agent-vault run` creates a session for you when you name the access bundle:
 
     ```bash
-    infisical agent-vault run --access-bundle coding-agent --proxy <proxy-address> -- claude
+    infisical agent-vault run --access-bundle code-review --proxy <proxy-address> -- claude
     ```
 
     The CLI creates the session as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables), and as your login otherwise. It revokes the session when the agent exits unless you pass `--keep-session`.
@@ -57,7 +57,7 @@ The access bundle on a session is fixed when the session is created. Whether the
 - Delete an access bundle, and every session that carried it gets no credentials. The session still lists the access bundle's name so you can see what it was.
 - Remove them from Agent Vault, and the proxy refuses every request on their sessions. Removal also takes away a member's access bundle grants, so adding them back leaves their sessions without credentials until you grant the access bundle again. An admin reaches every access bundle, so their sessions work as soon as they're back.
 
-In the first three cases the agent's requests still go out, and what it can reach without a credential is decided by the proxy's [unmatched hosts setting](/documentation/platform/agent-vault/proxies#unmatched-hosts). Nothing on the agent's machine needs to be restarted for any of this.
+In the first three cases the agent's requests still go out, and what it can reach without a credential is decided by the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). Nothing on the agent's machine needs to be restarted for any of this.
 
 ## Revoking and expiry
 
@@ -66,7 +66,7 @@ Select the session's menu on the Sessions page and choose **Revoke Session**. Th
 An expired session stops the same way. The Sessions page shows sessions as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can see what an agent could reach.
 
 <Frame>
-  <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing sessions with their access bundle, expiry, and status" />
+  <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their access bundle and expiry" />
 </Frame>
 
 Admins can switch the list between **All Sessions** and **My Sessions**. Members see only their own.

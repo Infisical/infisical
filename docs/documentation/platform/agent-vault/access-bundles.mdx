@@ -10,7 +10,7 @@ An access bundle is what you hand an agent: everything it needs for a job, grant
 Each service has a name, the hosts it covers, and a credential. Open an access bundle from **Access Bundles** and select **Add Service** to add one.
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundle-services.png" alt="An access bundle's Services table with one GitHub service, its Bearer credential, and its host" />
+  <img src="/images/platform/agent-vault/access-bundle-services.png" alt="The code-review access bundle's Services table listing its GitHub, Slack, and Anthropic services with their credentials and hosts" />
 </Frame>
 
 ### Credential types
@@ -19,7 +19,7 @@ Each service has a name, the hosts it covers, and a credential. Open an access b
 | ---------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | **Bearer**       | One header, `<header name>: <prefix> <value>`. Defaults to `Authorization: Bearer <value>`.          | Most APIs. Set the header name to `X-API-Key` and clear the prefix for APIs that take a bare key. |
 | **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be blank.                      | APIs behind HTTP basic auth, including ones that put the whole key in the username.         |
-| **Pass-through** | Nothing. The request is forwarded unchanged.                                                         | To make a host reachable on a proxy that denies unmatched hosts. See [Unmatched hosts](/documentation/platform/agent-vault/proxies#unmatched-hosts). |
+| **Pass-through** | Nothing. The request is forwarded unchanged.                                                         | To make a host reachable on a proxy that allows only access bundle hosts. See [Traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). |
 
 The first step offers a **Template** for common services, which fills in the hosts and the header. Choose **Custom** to set them yourself.
 
@@ -56,7 +56,7 @@ Different access bundles can cover the same host with different credentials. An 
 An access bundle has a name, an optional description, its services, and its members. Granting an access bundle to a user, machine identity, or group lets them create sessions with it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing two access bundles with their services and member counts" />
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing four access bundles with their services and member counts" />
 </Frame>
 
 Access bundles are how you scope access. An agent for on-call work gets the incident tooling, an agent for code review gets GitHub, and neither reaches the other's hosts.

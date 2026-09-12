@@ -65,22 +65,36 @@ Run `infisical agent-vault proxy --port 18000` to listen on a different port.
 
 Every setting lives in Infisical and reaches a running proxy on its next poll. Select **Edit Settings** on the proxy's menu.
 
-### Unmatched hosts
+### Traffic policy
 
-What the proxy does with a request to a host no service in the session covers.
+Which hosts an agent may reach through this proxy.
 
-- **Allow**, the default: the request passes through with no credential attached.
-- **Deny**: the request is rejected. The agent reaches the hosts in its access bundle, the bypass list, and nothing else.
+- **Allow requests to reach any host**, the default: every request goes out. Hosts an access bundle covers get its credential, and the rest go out with none.
+- **Only allow requests to reach hosts specified in access bundles**: a request to any host outside them is refused, unless the host is an exception.
 
-Use **Deny** when the proxy sits somewhere it could reach more than you intend, such as a network with internal systems on it. Under **Deny**, a pass-through service is how an access bundle makes a host reachable without giving it a credential.
+Use the second when the proxy sits somewhere it could reach more than you intend, such as a network with internal systems on it. Under it, a pass-through service is how one access bundle makes a host reachable without giving it a credential.
+
+A refusal isn't a refused connection. The proxy answers `CONNECT` with `200 Connection Established` and completes the TLS handshake first, then refuses the request itself:
+
+```text
+HTTP/1.1 403 Forbidden
+
+no service covers host "internal.example.com": host blocked by policy
+```
+
+Ports are part of the match. A [service's host pattern](/documentation/platform/agent-vault/access-bundles#host-patterns) that names no port covers port 443 only, so a service on `example.com` doesn't cover `example.com:8443`, and under this policy a request to the second is refused. Name the port in the pattern to cover it.
 
 <Frame>
-  <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the Allow and Deny unmatched host options and the poll interval" />
+  <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the two traffic policy options and the poll interval" />
 </Frame>
 
-### Bypass hosts
+### Exceptions
 
-A comma-separated list of hosts that stay reachable under **Deny**, with no credential attached. Use it for hosts every agent needs, such as a package registry or a documentation site. Under **Allow** the list changes nothing.
+A comma-separated list of hosts that stay reachable under **Only allow requests to reach hosts specified in access bundles**, with no credential attached. Use it for hosts every agent needs, such as a package registry or a documentation site. Under **Allow requests to reach any host** the list changes nothing.
+
+An exception written without a port matches that host on every port, unlike a service pattern, which means port 443 when it names none.
+
+An exception isn't exempt from interception. Every HTTPS host is TLS-terminated by the proxy before any policy applies, so an exception is a host the proxy doesn't block, not a host it leaves alone. To open a host for one access bundle rather than for every agent on the proxy, add a pass-through service to that bundle instead.
 
 ### Poll interval
 
@@ -120,7 +134,7 @@ infisical agent-vault run --session-token <session-token> --proxy <proxy-address
 The CLI aborts before starting the agent if the served certificate doesn't match. Pin when the agent runs on a network you don't fully control.
 
 <Frame>
-  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing a healthy proxy with its unmatched host policy and certificate authority fingerprint" />
+  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing two healthy proxies with their traffic policy and certificate authority fingerprints" />
 </Frame>
 
 ### APIs with a private certificate authority

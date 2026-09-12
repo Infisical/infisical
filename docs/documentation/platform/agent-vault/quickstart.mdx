@@ -24,10 +24,10 @@ First, get a GitHub personal access token to broker:
 3. Leave the permissions at their defaults. The check at the end of this guide calls `GET /user`, which any valid token can reach; later, grant only what your agent actually does.
 4. Select **Generate token** and copy the `github_pat_…` value. GitHub only shows it once.
 
-Then, in Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**. Select **Create Access Bundle**, name it `coding-agent`, and open it.
+Then, in Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**. Select **Create Access Bundle**, name it `code-review`, and open it.
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with coding-agent entered as the name" />
+  <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with code-review entered as the name" />
 </Frame>
 
 Select **Add Service** and work through the steps:
@@ -59,7 +59,7 @@ You're an admin, so you can already create sessions with this access bundle. To 
 
 ## 2. Enroll a proxy
 
-Go to **Proxies**, select **Create Proxy**, name it `egress`, and select **Create**. The dialog shows a one-time enrollment token and the command to run.
+Go to **Proxies**, select **Create Proxy**, name it, and select **Create**. The dialog shows a one-time enrollment token and the command to run.
 
 <Frame>
   <img src="/images/platform/agent-vault/proxy-enrollment-token.png" alt="The Enrollment Token dialog with the CLI command, and Docker and systemd tabs alongside it" />
@@ -79,10 +79,10 @@ The proxy enrolls and listens on port `17323`. Leave it running and note this ho
 
 ## 3. Create a session
 
-Go to **Sessions**, select **Create Session**, pick `coding-agent`, and select **Create Session**.
+Go to **Sessions**, select **Create Session**, pick `code-review`, and select **Create Session**.
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session panel with coding-agent picked and a seven day expiry" />
+  <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session dialog with code-review picked and a seven day expiry" />
 </Frame>
 
 The token appears once, with the command to run. Copy it now.
@@ -137,11 +137,11 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 </Tabs>
 
 <Note>
-  Getting a `401`? The credential wasn't applied. Open the `coding-agent` access bundle and confirm a service covers `api.github.com`; if one does, the stored token is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
+  Getting a `401`? The credential wasn't applied. Open the `code-review` access bundle and confirm a service covers `api.github.com`; if one does, the stored token is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
 </Note>
 
 <Note>
-  Working on your own machine and signed in with `infisical login`? Skip the Sessions page: `infisical agent-vault run --access-bundle coding-agent --proxy <proxy-host>:17323 -- claude` creates a session for you and revokes it when the agent exits. For an agent that runs unattended, run it as a machine identity instead — see [Sessions](/documentation/platform/agent-vault/sessions#creating-a-session).
+  Working on your own machine and signed in with `infisical login`? Skip the Sessions page: `infisical agent-vault run --access-bundle code-review --proxy <proxy-host>:17323 -- claude` creates a session for you and revokes it when the agent exits. For an agent that runs unattended, run it as a machine identity instead — see [Sessions](/documentation/platform/agent-vault/sessions#creating-a-session).
 </Note>
 
 ## Next steps
