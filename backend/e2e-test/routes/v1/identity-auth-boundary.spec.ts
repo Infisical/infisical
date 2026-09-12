@@ -149,7 +149,7 @@ describe("Privilege boundary on organization-scoped identity auth", () => {
   let peerTarget: string;
   let adminTarget: string;
   let groupTarget: string;
-  let privilegeTarget: string;
+  let dominatedTarget: string;
   let groupId: string;
 
   beforeAll(async () => {
@@ -165,9 +165,11 @@ describe("Privilege boundary on organization-scoped identity auth", () => {
     peerTarget = await createOrgIdentity("e2e-iab-peer-target", OrgMembershipRole.Member);
     adminTarget = await createOrgIdentity("e2e-iab-admin-target", OrgMembershipRole.Admin);
 
-    // Member role directly, Admin only by group inheritance. The boundary has to resolve the
-    // group-derived membership or this target looks like a peer.
-    groupTarget = await createOrgIdentity("e2e-iab-group-target", OrgMembershipRole.Member);
+    // No-access directly, Admin only by group inheritance. The direct role has to be one the actor
+    // out-ranks, or the boundary trips on it and the assertion below passes whether or not the
+    // group-derived membership was ever resolved. `resolveMembershipRoleSlugs` drops no-access, so
+    // the inherited Admin is the only grant this target contributes.
+    groupTarget = await createOrgIdentity("e2e-iab-group-target", OrgMembershipRole.NoAccess);
     const [group] = await testDb(TableName.Groups)
       .insert({ orgId: ORG_ID, name: "e2e-iab-admin-group", slug: "e2e-iab-admin-group" })
       .returning("id");
@@ -181,22 +183,16 @@ describe("Privilege boundary on organization-scoped identity auth", () => {
       role: OrgMembershipRole.Admin
     });
 
-    // Member role plus a standalone additional privilege. Roles alone do not dominate this target.
-    privilegeTarget = await createOrgIdentity("e2e-iab-privilege-target", OrgMembershipRole.Member);
-    await testDb(TableName.AdditionalPrivilege).insert({
-      name: "e2e-iab-broad-privilege",
-      actorIdentityId: privilegeTarget,
-      orgId: ORG_ID,
-      permissions: JSON.stringify(
-        packRules([{ subject: "sso", action: ["read", "create", "edit", "delete"] }] as never)
-      )
-    });
+    // The control for every 403 below: same no-access starting point, nothing added. If this one
+    // stops returning 200 the other targets are being refused for their base role and the fixtures
+    // above have stopped proving anything.
+    dominatedTarget = await createOrgIdentity("e2e-iab-dominated-target", OrgMembershipRole.NoAccess);
   });
 
   afterAll(async () => {
     await testDb(TableName.Groups).where({ id: groupId }).delete();
     await Promise.all(
-      [actor.identityId, peerTarget, adminTarget, groupTarget, privilegeTarget].map((id) => deleteIdentity(id))
+      [actor.identityId, peerTarget, adminTarget, groupTarget, dominatedTarget].map((id) => deleteIdentity(id))
     );
     await testDb(TableName.Role).where({ slug: "e2e-iab-auth-editor", orgId: ORG_ID }).delete();
   });
@@ -255,10 +251,11 @@ describe("Privilege boundary on organization-scoped identity auth", () => {
       expect(res.json().message).toContain("more privileged role");
     });
 
-    test("a target whose extra reach comes from an additional privilege is still out of reach", async () => {
-      const res = await attachTokenAuth(privilegeTarget, asIdentity(actor.token));
-      expect(res.statusCode).toBe(403);
-      expect(res.json().message).toContain("more privileged role");
+    test("a target the actor does out-rank stays reachable", async () => {
+      const res = await attachTokenAuth(dominatedTarget, asIdentity(actor.token));
+      expect(res.statusCode).toBe(200);
+
+      await resetTokenAuth(dominatedTarget);
     });
 
     test("an admin can still drive every guarded operation", async () => {
@@ -288,12 +285,10 @@ describe("Privilege boundary on organization-scoped identity auth", () => {
       expect((await revokeTokenAuth(adminTarget, asIdentity(actor.token))).statusCode).toBe(200);
     });
 
-    test("group inheritance and additional privileges on the target change nothing", async () => {
+    test("group inheritance on the target changes nothing", async () => {
       expect((await attachTokenAuth(groupTarget, asIdentity(actor.token))).statusCode).toBe(200);
-      expect((await attachTokenAuth(privilegeTarget, asIdentity(actor.token))).statusCode).toBe(200);
 
       await resetTokenAuth(groupTarget);
-      await resetTokenAuth(privilegeTarget);
     });
   });
 });
@@ -305,6 +300,8 @@ describe("Privilege boundary on project-scoped identity auth", () => {
   let actor: { identityId: string; token: string };
   let peerTarget: string;
   let adminTarget: string;
+  let privilegeTarget: string;
+  let dominatedTarget: string;
 
   const createProjectIdentity = async (name: string, role: ProjectMembershipRole) => {
     const res = await testServer.inject({
@@ -338,10 +335,29 @@ describe("Privilege boundary on project-scoped identity auth", () => {
 
     peerTarget = await createProjectIdentity("e2e-iab-proj-peer", ProjectMembershipRole.Member);
     adminTarget = await createProjectIdentity("e2e-iab-proj-admin", ProjectMembershipRole.Admin);
+
+    // Project scope is where an identity additional privilege is actually reachable: the org factory
+    // refuses every operation, while every project created before the legacy-privileges migration
+    // carries `isLegacyAdditionalPrivilegesEnabled`. Written straight to the table because a project
+    // created here defaults the flag off, the same reason the roles above bypass their routes.
+    //
+    // No-access base role, so the privilege is the only grant the target contributes and the 403 can
+    // only be the privilege. `delete` is the action closest to what the actor holds that it lacks.
+    privilegeTarget = await createProjectIdentity("e2e-iab-proj-privilege", ProjectMembershipRole.NoAccess);
+    await testDb(TableName.AdditionalPrivilege).insert({
+      name: "e2e-iab-proj-broad-privilege",
+      actorIdentityId: privilegeTarget,
+      projectId: project.id,
+      permissions: JSON.stringify(packRules([{ subject: "identity", action: ["delete"] }] as never))
+    });
+
+    dominatedTarget = await createProjectIdentity("e2e-iab-proj-dominated", ProjectMembershipRole.NoAccess);
   });
 
   afterAll(async () => {
-    await Promise.all([actor.identityId, peerTarget, adminTarget].map((id) => deleteIdentity(id)));
+    await Promise.all(
+      [actor.identityId, peerTarget, adminTarget, privilegeTarget, dominatedTarget].map((id) => deleteIdentity(id))
+    );
     await testServer.inject({
       method: "DELETE",
       url: `/api/v1/projects/${project.id}`,
@@ -380,6 +396,19 @@ describe("Privilege boundary on project-scoped identity auth", () => {
 
       await resetTokenAuth(adminTarget);
     });
+
+    test("a target whose extra reach comes from an additional privilege is still out of reach", async () => {
+      const res = await attachTokenAuth(privilegeTarget, asIdentity(actor.token));
+      expect(res.statusCode).toBe(403);
+      expect(res.json().message).toContain("more privileged role");
+    });
+
+    test("the same target without that privilege stays reachable", async () => {
+      const res = await attachTokenAuth(dominatedTarget, asIdentity(actor.token));
+      expect(res.statusCode).toBe(200);
+
+      await resetTokenAuth(dominatedTarget);
+    });
   });
 
   describe("on the new privilege system", () => {
@@ -388,6 +417,12 @@ describe("Privilege boundary on project-scoped identity auth", () => {
       expect((await updateTokenAuth(adminTarget, asIdentity(actor.token))).statusCode).toBe(200);
       expect((await createTokenAuthToken(adminTarget, asIdentity(actor.token))).statusCode).toBe(200);
       expect((await revokeTokenAuth(adminTarget, asIdentity(actor.token))).statusCode).toBe(200);
+    });
+
+    test("an additional privilege on the target changes nothing", async () => {
+      expect((await attachTokenAuth(privilegeTarget, asIdentity(actor.token))).statusCode).toBe(200);
+
+      await resetTokenAuth(privilegeTarget);
     });
   });
 });
