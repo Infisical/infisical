@@ -13,8 +13,8 @@ const toggleVariants = cva(
     "data-[size=default]:h-5 data-[size=default]:w-9",
     "data-[size=sm]:h-4 data-[size=sm]:w-7",
     "border-border bg-transparent hover:border-foreground/25",
-    "aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20",
-    "dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+    "aria-invalid:border-danger aria-invalid:ring-[3px] aria-invalid:ring-danger/20",
+    "dark:aria-invalid:border-danger/50 dark:aria-invalid:ring-danger/40"
   ),
   {
     variants: {
@@ -35,7 +35,8 @@ const toggleVariants = cva(
           "data-[state=checked]:border-warning/10 data-[state=checked]:bg-warning/25 data-[state=checked]:hover:border-warning/15 data-[state=checked]:hover:bg-warning/30",
         danger:
           "data-[state=checked]:border-danger/10 data-[state=checked]:bg-danger/25 data-[state=checked]:hover:border-danger/15 data-[state=checked]:hover:bg-danger/30",
-        pam: "data-[state=checked]:border-product-pam/10 data-[state=checked]:bg-product-pam/25 data-[state=checked]:hover:border-product-pam/15 data-[state=checked]:hover:bg-product-pam/30"
+        pam: "data-[state=checked]:border-product-pam/10 data-[state=checked]:bg-product-pam/25 data-[state=checked]:hover:border-product-pam/15 data-[state=checked]:hover:bg-product-pam/30",
+        av: "data-[state=checked]:border-product-av/10 data-[state=checked]:bg-product-av/25 data-[state=checked]:hover:border-product-av/15 data-[state=checked]:hover:bg-product-av/30"
       }
     },
     defaultVariants: {

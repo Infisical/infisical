@@ -21,7 +21,7 @@ export const SecretSyncModalHeader = ({ destination, isConfigured, showDocLink =
         />
       </div>
       <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
+        <div className="flex items-center gap-x-2 font-semibold text-label">
           {destinationDetails.name} Sync
           {showDocLink && (
             <DocumentationLinkBadge
@@ -29,7 +29,7 @@ export const SecretSyncModalHeader = ({ destination, isConfigured, showDocLink =
             />
           )}
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-sm leading-4 text-muted">
           {isConfigured
             ? `Edit ${destinationDetails.name} Sync`
             : `Sync secrets to ${destinationDetails.name}`}

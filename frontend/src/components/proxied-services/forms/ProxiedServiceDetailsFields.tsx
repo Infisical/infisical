@@ -37,6 +37,7 @@ export const ProxiedServiceDetailsFields = ({ isDuplicateName }: Props) => {
             placeholder="stripe-api"
             isError={Boolean(errors.name) || isDuplicateName}
             {...register("name")}
+            autoComplete="off"
           />
           <FieldDescription>Lowercase letters, numbers, and hyphens only.</FieldDescription>
           <FieldError errors={[errors.name]} />

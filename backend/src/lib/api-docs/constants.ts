@@ -15,6 +15,9 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "@app/services/secret-validation-rule/secret-validation-rule-constants";
+import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
+import { SECRET_VALIDATION_RULE_NAME_MAP } from "@app/services/secret-validation-rule/secret-validation-rule-maps";
 
 const IDENTITY_AUTH_SUB_ORGANIZATION_NAME =
   "When set, this will scope the login session to the specified organization the machine identity has access to. If omitted, the session defaults to the organization where the machine identity was created in.";
@@ -98,6 +101,11 @@ export enum ApiDocsTags {
   PamMemberships = "PAM Memberships",
   PamRoles = "PAM Roles",
   PamDiscovery = "PAM Discovery",
+  AgentVault = "Agent Vault",
+  AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultSessions = "Agent Vault Sessions",
+  AgentVaultProxies = "Agent Vault Proxies",
+  AgentVaultMemberships = "Agent Vault Memberships",
   KmipServers = "KMIP Servers"
 }
 
@@ -2236,6 +2244,8 @@ export const CERTIFICATES = {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    externalMetadata:
+      "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
       "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
   },
@@ -2275,7 +2285,12 @@ export const CERTIFICATES = {
     chainPem: "Optional PEM-encoded chain of intermediate certificates.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+    profileId:
+      "The certificate profile that will manage this certificate's lifecycle. The certificate must satisfy the profile's certificate policy, or the request is rejected with a 400 naming the attributes that failed. Omit to track the certificate without renewal, reissue or revocation.",
+    externalMetadata:
+      'Identifies this certificate at the provider that issued it. Required when the chosen profile issues from an external certificate authority. For DigiCert, pass the CertCentral order ID as { type: "digicert", orderId: 2081714 }.',
 
+    certificateId: "The ID of the imported certificate.",
     certificate: "The imported certificate.",
     certificateChain:
       "The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.",
@@ -4051,50 +4066,71 @@ export const RELAYS = {
   }
 } as const;
 
-export const SECRET_VALIDATION_RULES = {
-  RULE: {
-    type: "The kind of secret the rule applies to. Determines which fields the rule accepts and where the constraints are enforced: `static-secrets` constraints run on write, while `dynamic-secrets` and `secret-rotations` constraints shape the generated credential.",
-    constraints:
-      "The constraints enforced by this rule. Each constraint names what it checks (`type`), what it applies to (`appliesTo`), and its `value`, e.g. the minimum character count for `min-length` or the pattern for `regex-pattern`.",
-    dynamicSecretProviders:
-      "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here.",
-    secretRotationProviders:
-      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here.",
-    appliesToStatic: "What the constraint checks: the secret key or the secret value.",
-    appliesToGenerated: "What the constraint checks: the generated credential.",
-    constraintTypeStatic:
-      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, `required-prefix`, or `prevent-value-reuse`.",
-    constraintTypeGenerated:
-      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, or `required-prefix`.",
-    constraintValue:
-      "The value the constraint is checked against, e.g. the minimum length, the regex pattern, or the required prefix/suffix string."
+export const SecretValidationRules = {
+  LIST: (type?: SecretValidationRuleType) => ({
+    projectId: `The ID of the project to list ${
+      type ? SECRET_VALIDATION_RULE_NAME_MAP[type] : "Secret"
+    } Validation Rules from.`
+  }),
+  GET_BY_ID: (type: SecretValidationRuleType) => ({
+    ruleId: `The ID of the ${SECRET_VALIDATION_RULE_NAME_MAP[type]} Validation Rule to retrieve.`
+  }),
+  CREATE: (type: SecretValidationRuleType) => {
+    const name = SECRET_VALIDATION_RULE_NAME_MAP[type];
+    return {
+      name: `The name of the ${name} Validation Rule to create.`,
+      projectId: `The ID of the project to create the ${name} Validation Rule in.`,
+      description: `An optional description of the ${name} Validation Rule.`,
+      environment: `The slug of the environment to scope this rule to. Omit to enforce the rule in every environment of the project.`,
+      secretPath: `The secret path to scope this rule to. Supports glob patterns such as \`/apps/**\`.`,
+      isActive: `Whether the rule is enforced. An inactive rule is kept but ignored.`
+    };
   },
-  LIST: {
-    projectId: "The ID of the project to list secret validation rules for."
+  UPDATE: (type: SecretValidationRuleType) => {
+    const name = SECRET_VALIDATION_RULE_NAME_MAP[type];
+    return {
+      ruleId: `The ID of the ${name} Validation Rule to update.`,
+      name: `The updated name of the ${name} Validation Rule.`,
+      description: `The updated description of the ${name} Validation Rule.`,
+      environment: `The slug of the environment to scope this rule to. Pass null to enforce the rule in every environment of the project.`,
+      secretPath: `The secret path to scope this rule to. Supports glob patterns such as \`/apps/**\`.`,
+      isActive: `Whether the rule is enforced. An inactive rule is kept but ignored.`
+    };
   },
-  CREATE: {
-    projectId: "The ID of the project to create the secret validation rule in.",
-    name: "The name of the secret validation rule.",
-    description: "An optional description of the secret validation rule.",
-    environmentSlug:
-      "The slug of the environment this rule is scoped to. Omit to apply the rule to every environment in the project.",
-    secretPath: "The secret path this rule is scoped to.",
-    rule: "The rule configuration: which secret type it targets and the constraints to enforce."
+  DELETE: (type: SecretValidationRuleType) => ({
+    ruleId: `The ID of the ${SECRET_VALIDATION_RULE_NAME_MAP[type]} Validation Rule to delete.`
+  }),
+  // Each constraint field reads the same way whichever target it sits on, so one template covers
+  // the secret key, the secret value and a generated password.
+  CONSTRAINTS: (target: string) => ({
+    minLength: `The minimum number of characters the ${target} must contain.`,
+    maxLength: `The maximum number of characters the ${target} may contain.`,
+    regexPattern: `A regular expression the ${target} must match.`,
+    requiredPrefix: `A string the ${target} must start with.`,
+    requiredSuffix: `A string the ${target} must end with.`
+  }),
+  REUSE_PREVENTION: {
+    reusePrevention:
+      "Rejects a value for repeating one already in use. Omit to allow any value the other constraints accept.",
+    previousVersions: `How many of the secret's own previous versions the new value must differ from. Between 1 and ${MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS}.`
   },
-  UPDATE: {
-    projectId: "The ID of the project the secret validation rule belongs to.",
-    ruleId: "The ID of the secret validation rule to update.",
-    name: "The name of the secret validation rule.",
-    description: "An optional description of the secret validation rule.",
-    environmentSlug:
-      "The slug of the environment this rule is scoped to. Omit to leave the current scope unchanged; pass `null` to make the rule apply to every environment in the project.",
-    secretPath: "The secret path this rule is scoped to.",
-    rule: "The rule configuration: which secret type it targets and the constraints to enforce. Replaces the existing configuration as a whole, or omits to leave it untouched.",
-    isActive: "Whether the secret validation rule is active."
+  STATIC_SECRETS: {
+    keyConstraints:
+      "Constraints enforced on the secret key when a secret is created or renamed. Omit to leave keys unconstrained.",
+    valueConstraints:
+      "Constraints enforced on the secret value when a secret is created or updated. Omit to leave values unconstrained."
   },
-  DELETE: {
-    projectId: "The ID of the project the secret validation rule belongs to.",
-    ruleId: "The ID of the secret validation rule to delete."
+  GENERATED_CREDENTIALS: {
+    passwordConstraints:
+      "Constraints the generated password must satisfy. These replace any password requirements configured on the resource itself."
+  },
+  DYNAMIC_SECRETS: {
+    providers:
+      "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here."
+  },
+  SECRET_ROTATIONS: {
+    providers:
+      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here."
   }
 } as const;
 
@@ -4160,5 +4196,80 @@ export const ENCRYPTION_KEY_ROTATION = {
       "Label of the previous key, which must match the key currently held. It is a precondition, not an identifier: it fails the request rather than removing a key you have not seen.",
     force:
       "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
+  }
+};
+
+export const AGENT_VAULT = {
+  ACCESS_BUNDLE: {
+    accessBundleId: "The ID of the access bundle.",
+    name: "The name of the access bundle.",
+    description: "A description of what this access bundle is for.",
+    serviceCount: "How many services the access bundle holds.",
+    memberCount: "How many users, machine identities and groups can reach the access bundle.",
+    hostPatterns: "Every host pattern the access bundle's services cover."
+  },
+  SERVICE: {
+    serviceId: "The ID of the service.",
+    name: "The name of the service.",
+    hostPattern:
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
+    credentialType: "How the credential is attached to the request: bearer, basic or passthrough.",
+    headerName: "The header the credential is written to. Defaults to Authorization.",
+    headerPrefix:
+      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
+    username:
+      "The username half of the basic credential. May be empty if a password is set. Never returned once saved, since some APIs put the whole key here.",
+    updateUsername:
+      "The username half of the basic credential. Omit to keep the stored username; send an empty string to remove it, which requires a password.",
+    updateValue: "The secret. Omit to keep the stored secret.",
+    updatePassword:
+      "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
+    createdAt: "When the service was added to the access bundle.",
+    value: "The secret. Never returned once saved.",
+    password:
+      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved."
+  },
+  MEMBER: {
+    memberId: "The ID of the access bundle membership.",
+    userId: "The ID of the user to grant the access bundle to.",
+    identityId: "The ID of the machine identity to grant the access bundle to.",
+    groupId: "The ID of the group to grant the access bundle to.",
+    userIds: "The IDs of the users to grant the access bundle to.",
+    identityIds: "The IDs of the machine identities to grant the access bundle to.",
+    groupIds: "The IDs of the groups to grant the access bundle to.",
+    skipped: "The IDs of the requested grantees who already had the access bundle and were left as they were."
+  },
+  MEMBERSHIP: {
+    role: "The Agent Vault role: admin or member."
+  },
+  PROXY: {
+    proxyId: "The ID of the proxy.",
+    name: "The name of the proxy.",
+    heartbeat: "When the proxy last checked in, or null if it never has.",
+    isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
+    enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
+    rootCaCertificate:
+      "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",
+    rootCaFingerprint:
+      "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
+    rootCaExpiresAt: "When the proxy's certificate authority expires.",
+    trafficPolicy:
+      "Which hosts an agent may reach through this proxy. 'any-host' lets every request out; 'bundle-hosts' allows only hosts an access bundle covers, plus anything in allowedHosts, and refuses the rest with a 403.",
+    allowedHosts:
+      "Hosts that stay reachable under the 'bundle-hosts' traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
+    pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
+    sessionToken: "The session an agent is running with. A selector, not a second credential."
+  },
+  SESSION: {
+    sessionId: "The ID of the session.",
+    accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
+    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
+    token: "The session token. Returned once, at mint, and never again.",
+    expiresAt: "When the session expires, or null when it never does.",
+    scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
+    status: "Filter by session status: active, revoked or expired.",
+    search: "Match sessions by actor name, actor email or access bundle name.",
+    limit: "The maximum number of sessions to return.",
+    offset: "How many sessions to skip."
   }
 };

@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, getAdminMemberOnlyProductLabel, ProjectMembershipRole } from "@app/db/schemas";
 import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,
@@ -79,13 +79,20 @@ export const newProjectMembershipIdentityFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
     );
-    if (project?.type === ProjectType.CertificateManager) {
+    const adminMemberOnlyLabel = getAdminMemberOnlyProductLabel(project?.type);
+    if (adminMemberOnlyLabel) {
       const invalidRoles = dto.data.roles.filter(
         (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
       );
       if (invalidRoles.length > 0) {
         throw new BadRequestError({
-          message: "Certificate Manager only supports Admin and Member roles."
+          message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
+        });
+      }
+      // One role per membership: the product routes write exactly one, and their member lists read one.
+      if (dto.data.roles.length > 1) {
+        throw new BadRequestError({
+          message: `${adminMemberOnlyLabel} memberships hold a single role.`
         });
       }
     }
@@ -160,13 +167,20 @@ export const newProjectMembershipIdentityFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
     );
-    if (project?.type === ProjectType.CertificateManager) {
+    const adminMemberOnlyLabel = getAdminMemberOnlyProductLabel(project?.type);
+    if (adminMemberOnlyLabel) {
       const invalidRoles = dto.data.roles.filter(
         (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
       );
       if (invalidRoles.length > 0) {
         throw new BadRequestError({
-          message: "Certificate Manager only supports Admin and Member roles."
+          message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
+        });
+      }
+      // One role per membership: the product routes write exactly one, and their member lists read one.
+      if (dto.data.roles.length > 1) {
+        throw new BadRequestError({
+          message: `${adminMemberOnlyLabel} memberships hold a single role.`
         });
       }
     }

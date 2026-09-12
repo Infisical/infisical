@@ -8,7 +8,7 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { gatewaysQueryKeys, isListedGatewayV2 } from "@app/hooks/api/gateways/queries";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
 
@@ -88,7 +88,8 @@ export const GatewayPicker = ({
     }
   };
 
-  const v2Gateways = gateways?.filter((g) => !g.isV1 && g.id !== excludeGatewayId) ?? [];
+  const v2Gateways =
+    gateways?.filter(isListedGatewayV2).filter((g) => g.id !== excludeGatewayId) ?? [];
 
   const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 

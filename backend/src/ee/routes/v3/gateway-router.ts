@@ -2,6 +2,7 @@ import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { gatewayTransports } from "@app/ee/services/gateway-v2/gateway-v2-transport-fns";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import {
   validateAllowedNames,
@@ -28,11 +29,14 @@ const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
 const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   id: true,
   identityId: true,
+  relayId: true,
   name: true,
   createdAt: true,
   updatedAt: true,
   heartbeat: true,
-  heartbeatTTL: true
+  heartbeatTTL: true,
+  directAddress: true,
+  directHeartbeat: true
 }).extend({
   canRevoke: z.boolean()
 });
@@ -717,33 +721,55 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "connectGateway",
       body: z.object({
-        relayName: z.string().trim().min(1).max(32).optional()
+        relayName: z.string().trim().min(1).max(32).optional(),
+        directAddress: z.string().trim().min(3).max(255).optional()
       }),
       response: {
         200: z.object({
           gatewayId: z.string(),
-          relayHost: z.string(),
+          directAddress: z.string().optional(),
+          relayHost: z.string().optional(),
           pki: z.object({
             serverCertificate: z.string(),
             serverPrivateKey: z.string(),
             clientCertificateChain: z.string()
           }),
-          ssh: z.object({
-            clientCertificate: z.string(),
-            clientPrivateKey: z.string(),
-            serverCAPublicKey: z.string()
-          })
+          ssh: z
+            .object({
+              clientCertificate: z.string(),
+              clientPrivateKey: z.string(),
+              serverCAPublicKey: z.string()
+            })
+            .optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.gatewayV2.connectGateway({
+      const connected = await server.services.gatewayV2.connectGateway({
         orgId: req.permission.orgId,
         actorId: req.permission.id,
         actorType: req.permission.type,
-        relayName: req.body.relayName
+        relayName: req.body.relayName,
+        directAddress: req.body.directAddress
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_CONNECT,
+          metadata: {
+            gatewayId: connected.gatewayId,
+            name: connected.gatewayName,
+            transports: gatewayTransports(connected),
+            directAddress: connected.directAddress,
+            relayName: req.body.relayName
+          }
+        }
+      });
+
+      return connected;
     }
   });
 };

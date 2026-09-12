@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -28,11 +27,6 @@ import {
   useOctopusDeployConnectionListProjects,
   useOctopusDeployConnectionListSpaces
 } from "@app/hooks/api/appConnections/octopus-deploy/queries";
-import {
-  TOctopusDeployProject,
-  TOctopusDeploySpace,
-  TScopeValueOption
-} from "@app/hooks/api/appConnections/octopus-deploy/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus-deploy-sync";
 
@@ -98,7 +92,10 @@ export const OctopusDeploySyncFields = () => {
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel>
+                  <FieldLabel
+                    id="secret-sync-octopus-deploy-space-id-label"
+                    htmlFor="secret-sync-octopus-deploy-space-id"
+                  >
                     Space
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -110,12 +107,18 @@ export const OctopusDeploySyncFields = () => {
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
+                    <Combobox
+                      aria-labelledby="secret-sync-octopus-deploy-space-id-label"
+                      aria-describedby={
+                        error ? "secret-sync-octopus-deploy-space-id-error" : undefined
+                      }
+                      id="secret-sync-octopus-deploy-space-id"
+                      isError={Boolean(error)}
                       isLoading={isSpacesLoading && Boolean(connectionId)}
                       isDisabled={!connectionId}
                       value={spaces?.find((space) => space.id === value) ?? null}
-                      onChange={(option) => {
-                        const selectedSpace = option as SingleValue<TOctopusDeploySpace>;
+                      onValueChange={(option) => {
+                        const selectedSpace = option;
                         onChange(selectedSpace?.id ?? null);
                         setValue("destinationConfig.spaceName", selectedSpace?.name ?? "");
                         setValue("destinationConfig.projectId", "");
@@ -126,8 +129,10 @@ export const OctopusDeploySyncFields = () => {
                       placeholder={spaces?.length ? "Select a space..." : "No spaces found..."}
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
+                      getOptionKeywords={(option) => [option.id, option.slug]}
+                      modal
                     />
-                    <FieldError errors={[error]} />
+                    <FieldError id="secret-sync-octopus-deploy-space-id-error" errors={[error]} />
                   </FieldContent>
                 </Field>
               )}
@@ -173,7 +178,10 @@ export const OctopusDeploySyncFields = () => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel>
+                    <FieldLabel
+                      id="secret-sync-octopus-deploy-project-id-label"
+                      htmlFor="secret-sync-octopus-deploy-project-id"
+                    >
                       Project
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -185,12 +193,18 @@ export const OctopusDeploySyncFields = () => {
                       </Tooltip>
                     </FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
+                      <Combobox
+                        aria-labelledby="secret-sync-octopus-deploy-project-id-label"
+                        aria-describedby={
+                          error ? "secret-sync-octopus-deploy-project-id-error" : undefined
+                        }
+                        id="secret-sync-octopus-deploy-project-id"
+                        isError={Boolean(error)}
                         isLoading={isProjectsLoading && Boolean(connectionId && spaceId)}
                         isDisabled={Boolean(!connectionId || !spaceId)}
                         value={projects?.find((project) => project.id === value) ?? null}
-                        onChange={(option) => {
-                          const selectedProject = option as SingleValue<TOctopusDeployProject>;
+                        onValueChange={(option) => {
+                          const selectedProject = option;
                           onChange(selectedProject?.id ?? null);
                           setValue("destinationConfig.projectName", selectedProject?.name ?? "");
                           setValue("destinationConfig.scopeValues", EMPTY_SCOPE_VALUES);
@@ -203,8 +217,13 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id, option.slug]}
+                        modal
                       />
-                      <FieldError errors={[error]} />
+                      <FieldError
+                        id="secret-sync-octopus-deploy-project-id-error"
+                        errors={[error]}
+                      />
                     </FieldContent>
                   </Field>
                 )}
@@ -222,20 +241,31 @@ export const OctopusDeploySyncFields = () => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel>Environments</FieldLabel>
+                    <FieldLabel
+                      id="secret-sync-octopus-deploy-scope-values-environments-label"
+                      htmlFor="secret-sync-octopus-deploy-scope-values-environments"
+                    >
+                      Environments
+                    </FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        aria-labelledby="secret-sync-octopus-deploy-scope-values-environments-label"
+                        aria-describedby={
+                          error
+                            ? "secret-sync-octopus-deploy-scope-values-environments-error"
+                            : undefined
+                        }
+                        id="secret-sync-octopus-deploy-scope-values-environments"
+                        isError={Boolean(error)}
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.environments?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.environments || []}
@@ -246,8 +276,13 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
+                        modal
                       />
-                      <FieldError errors={[error]} />
+                      <FieldError
+                        id="secret-sync-octopus-deploy-scope-values-environments-error"
+                        errors={[error]}
+                      />
                     </FieldContent>
                   </Field>
                 )}
@@ -259,19 +294,28 @@ export const OctopusDeploySyncFields = () => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel>Target Tags</FieldLabel>
+                    <FieldLabel
+                      id="secret-sync-octopus-deploy-scope-values-roles-label"
+                      htmlFor="secret-sync-octopus-deploy-scope-values-roles"
+                    >
+                      Target Tags
+                    </FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        aria-labelledby="secret-sync-octopus-deploy-scope-values-roles-label"
+                        aria-describedby={
+                          error ? "secret-sync-octopus-deploy-scope-values-roles-error" : undefined
+                        }
+                        id="secret-sync-octopus-deploy-scope-values-roles"
+                        isError={Boolean(error)}
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.roles?.filter((opt) => (value || []).includes(opt.id)) ||
                           []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.roles || []}
@@ -282,8 +326,13 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
+                        modal
                       />
-                      <FieldError errors={[error]} />
+                      <FieldError
+                        id="secret-sync-octopus-deploy-scope-values-roles-error"
+                        errors={[error]}
+                      />
                     </FieldContent>
                   </Field>
                 )}
@@ -295,20 +344,31 @@ export const OctopusDeploySyncFields = () => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel>Targets</FieldLabel>
+                    <FieldLabel
+                      id="secret-sync-octopus-deploy-scope-values-machines-label"
+                      htmlFor="secret-sync-octopus-deploy-scope-values-machines"
+                    >
+                      Targets
+                    </FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        aria-labelledby="secret-sync-octopus-deploy-scope-values-machines-label"
+                        aria-describedby={
+                          error
+                            ? "secret-sync-octopus-deploy-scope-values-machines-error"
+                            : undefined
+                        }
+                        id="secret-sync-octopus-deploy-scope-values-machines"
+                        isError={Boolean(error)}
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.machines?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.machines || []}
@@ -319,8 +379,13 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
+                        modal
                       />
-                      <FieldError errors={[error]} />
+                      <FieldError
+                        id="secret-sync-octopus-deploy-scope-values-machines-error"
+                        errors={[error]}
+                      />
                     </FieldContent>
                   </Field>
                 )}
@@ -332,20 +397,31 @@ export const OctopusDeploySyncFields = () => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel>Processes</FieldLabel>
+                    <FieldLabel
+                      id="secret-sync-octopus-deploy-scope-values-processes-label"
+                      htmlFor="secret-sync-octopus-deploy-scope-values-processes"
+                    >
+                      Processes
+                    </FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        aria-labelledby="secret-sync-octopus-deploy-scope-values-processes-label"
+                        aria-describedby={
+                          error
+                            ? "secret-sync-octopus-deploy-scope-values-processes-error"
+                            : undefined
+                        }
+                        id="secret-sync-octopus-deploy-scope-values-processes"
+                        isError={Boolean(error)}
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.processes?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.processes || []}
@@ -356,8 +432,13 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
+                        modal
                       />
-                      <FieldError errors={[error]} />
+                      <FieldError
+                        id="secret-sync-octopus-deploy-scope-values-processes-error"
+                        errors={[error]}
+                      />
                     </FieldContent>
                   </Field>
                 )}
@@ -369,20 +450,31 @@ export const OctopusDeploySyncFields = () => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel>Deployment Steps</FieldLabel>
+                    <FieldLabel
+                      id="secret-sync-octopus-deploy-scope-values-actions-label"
+                      htmlFor="secret-sync-octopus-deploy-scope-values-actions"
+                    >
+                      Deployment Steps
+                    </FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        aria-labelledby="secret-sync-octopus-deploy-scope-values-actions-label"
+                        aria-describedby={
+                          error
+                            ? "secret-sync-octopus-deploy-scope-values-actions-error"
+                            : undefined
+                        }
+                        id="secret-sync-octopus-deploy-scope-values-actions"
+                        isError={Boolean(error)}
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.actions?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.actions || []}
@@ -393,8 +485,13 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
+                        modal
                       />
-                      <FieldError errors={[error]} />
+                      <FieldError
+                        id="secret-sync-octopus-deploy-scope-values-actions-error"
+                        errors={[error]}
+                      />
                     </FieldContent>
                   </Field>
                 )}
@@ -406,20 +503,31 @@ export const OctopusDeploySyncFields = () => {
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel>Channels</FieldLabel>
+                    <FieldLabel
+                      id="secret-sync-octopus-deploy-scope-values-channels-label"
+                      htmlFor="secret-sync-octopus-deploy-scope-values-channels"
+                    >
+                      Channels
+                    </FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        aria-labelledby="secret-sync-octopus-deploy-scope-values-channels-label"
+                        aria-describedby={
+                          error
+                            ? "secret-sync-octopus-deploy-scope-values-channels-error"
+                            : undefined
+                        }
+                        id="secret-sync-octopus-deploy-scope-values-channels"
+                        isError={Boolean(error)}
+                        multiple
                         isLoading={isScopeValuesLoading}
                         value={
                           scopeValuesData?.channels?.filter((opt) =>
                             (value || []).includes(opt.id)
                           ) || []
                         }
-                        onChange={(options) => {
-                          const selectedIds = (options as MultiValue<TScopeValueOption>).map(
-                            (opt) => opt.id
-                          );
+                        onValueChange={(options) => {
+                          const selectedIds = options.map((opt) => opt.id);
                           onChange(selectedIds);
                         }}
                         options={scopeValuesData?.channels || []}
@@ -430,8 +538,13 @@ export const OctopusDeploySyncFields = () => {
                         }
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
+                        modal
                       />
-                      <FieldError errors={[error]} />
+                      <FieldError
+                        id="secret-sync-octopus-deploy-scope-values-channels-error"
+                        errors={[error]}
+                      />
                     </FieldContent>
                   </Field>
                 )}

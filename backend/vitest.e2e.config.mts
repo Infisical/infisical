@@ -36,8 +36,8 @@ export default defineConfig({
     },
     environment: "./e2e-test/vitest-environment-knex.ts",
     include: ["./e2e-test/**/*.spec.ts"],
-    // Runs per test file, after the environment is up — see the file for why.
-    setupFiles: ["./e2e-test/setup/reset-shared-org-flags.ts"],
+    // Runs per test file, after the environment is up — see each file for why.
+    setupFiles: ["./e2e-test/setup/reset-shared-org-flags.ts", "./e2e-test/setup/reset-fakes.ts"],
     sequence: { sequencer: PathSequencer },
     pool: "forks",
     poolOptions: {
@@ -49,9 +49,37 @@ export default defineConfig({
     },
     fileParallelism: false,
 
-    alias: {
-      "./license-fns": path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
-    }
+    // AWS Parameter Store and the AWS app connection are replaced by fakes for the whole e2e
+    // run, so the secret sync specs can assert what Infisical hands a destination without
+    // reaching AWS. Nothing under src/ knows the fakes exist — see e2e-test/fakes/.
+    //
+    // Entries match the *import specifier*, which is what keeps this surgical rather than
+    // sweeping: "./aws-parameter-store-sync-fns" is imported only by its own barrel, and
+    // "./aws-connection-fns" only by aws/index.ts. The full-path entry covers the twelve
+    // modules that import the connection functions directly, of which secret-sync-maps.ts
+    // matters here: it calls getAwsAccountId on every sync creation, which would otherwise be
+    // a real STS request that fails slowly and silently.
+    //
+    // An ordered array rather than an object so the exact @app/… entry is matched before the
+    // generic "@app" prefix alias in resolve.alias below.
+    alias: [
+      {
+        find: "./license-fns",
+        replacement: path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
+      },
+      {
+        find: "./aws-parameter-store-sync-fns",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-parameter-store-sync-fns")
+      },
+      {
+        find: /^@app\/services\/app-connection\/aws\/aws-connection-fns$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
+      },
+      {
+        find: "./aws-connection-fns",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
+      }
+    ]
   },
   resolve: {
     alias: {

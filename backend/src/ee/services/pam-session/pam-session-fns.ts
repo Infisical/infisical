@@ -3,14 +3,20 @@ import net from "net";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { createGatewayConnection, createRelayConnection, destroyGatewayTunnel } from "@app/lib/gateway-v2/gateway-v2";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamAccountType, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
+import {
+  PAM_CANCELLATION_FLUSH_TIMEOUT_MS,
+  PamAccessMethod,
+  PamAccountType,
+  PamSessionEndReason,
+  PamSessionStatus
+} from "../pam/pam-enums";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 
 export const LIVE_PAM_SESSION_STATUSES = [PamSessionStatus.Active, PamSessionStatus.Starting];
@@ -103,9 +109,6 @@ export const sendPamSessionCancellationSignal = ({
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 }) => {
   void (async () => {
-    let relayConn: net.Socket | null = null;
-    let cancelConn: net.Socket | null = null;
-    const tunnelId = sessionId;
     try {
       const certs = await gatewayV2Service.getPAMConnectionDetails({
         gatewayId,
@@ -113,7 +116,8 @@ export const sendPamSessionCancellationSignal = ({
         accountType: accountType as PamAccountType,
         host: "0.0.0.0",
         port: 0,
-        actorMetadata: { id: actorId, type: actorType, name: actorEmail }
+        actorMetadata: { id: actorId, type: actorType, name: actorEmail },
+        clientSupportsDirect: true
       });
       if (!certs) {
         logger.error(
@@ -122,26 +126,24 @@ export const sendPamSessionCancellationSignal = ({
         );
         return;
       }
-      relayConn = await createRelayConnection({
-        relayHost: certs.relayHost,
-        clientCertificate: certs.relay.clientCertificate,
-        clientPrivateKey: certs.relay.clientPrivateKey,
-        serverCertificateChain: certs.relay.serverCertificateChain,
-        tunnelId
-      });
-      cancelConn = await createGatewayConnection(
-        relayConn,
-        certs.gateway,
-        GatewayProxyProtocol.PamSessionCancellation,
-        tunnelId
+      await withGatewayV2Proxy(
+        (port) =>
+          new Promise<void>((resolve, reject) => {
+            // The ALPN signal is the connection itself, so the tunnel must outlive the forward.
+            const socket = net.connect(port, "127.0.0.1", () => {
+              socket.end();
+            });
+            socket.setTimeout(PAM_CANCELLATION_FLUSH_TIMEOUT_MS, () => {
+              socket.destroy();
+              resolve();
+            });
+            socket.on("close", () => resolve());
+            socket.on("error", reject);
+          }),
+        { ...certs, protocol: GatewayProxyProtocol.PamSessionCancellation }
       );
-      cancelConn.end();
     } catch (err) {
       logger.error({ sessionId, err }, `Session [sessionId=${sessionId}] termination ALPN signal failed (best-effort)`);
-    } finally {
-      // end() leaves the inner TLS session reading the gateway's close_notify through relayConn, so
-      // the transport must not be destroyed first.
-      destroyGatewayTunnel({ relayConn, gatewayConn: cancelConn });
     }
   })();
 };

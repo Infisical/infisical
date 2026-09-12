@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, linkOptions, useLocation, useParams } from "@tanstack/react-router";
+import { Link, linkOptions, useParams } from "@tanstack/react-router";
 import { Check, Plus, Star } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -24,8 +24,8 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { getProjectHomePage, isOrgScopedProduct } from "@app/helpers/project";
+import { useImplicitProduct, usePopUp } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
@@ -126,7 +126,7 @@ const ProjectSelectInner = () => {
 
   if (
     currentWorkspace.type === ProjectType.CertificateManager ||
-    currentWorkspace.type === ProjectType.PAM
+    isOrgScopedProduct(currentWorkspace.type)
   ) {
     return null;
   }
@@ -272,11 +272,9 @@ const ProjectSelectInner = () => {
 
 export const ProjectSelect = () => {
   const params = useParams({ strict: false });
-  const { pathname } = useLocation();
+  const orgScopedProduct = useImplicitProduct();
 
-  const isPamRoute = pathname.includes("/pam/");
-
-  if (!params.projectId && !isPamRoute) {
+  if (!params.projectId && !orgScopedProduct) {
     return null;
   }
 

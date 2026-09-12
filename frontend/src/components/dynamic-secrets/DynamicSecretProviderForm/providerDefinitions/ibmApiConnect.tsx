@@ -171,9 +171,15 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                 data-invalid={Boolean(error)}
                 data-disabled={!credentialsComplete || orgsQuery.isError}
               >
-                <FieldLabel htmlFor="ibm-api-connect-organization">Organization</FieldLabel>
+                <FieldLabel
+                  id="ibm-api-connect-organization-label"
+                  htmlFor="ibm-api-connect-organization"
+                >
+                  Organization
+                </FieldLabel>
                 <Combobox
                   id="ibm-api-connect-organization"
+                  aria-labelledby="ibm-api-connect-organization-label"
                   isDisabled={!credentialsComplete || orgsQuery.isFetching || orgsQuery.isError}
                   isLoading={orgsQuery.isFetching}
                   options={orgsQuery.data ?? []}
@@ -190,6 +196,7 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                   searchAriaLabel="Search IBM API Connect organizations"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
+                  getOptionKeywords={(option) => [option.id, option.name]}
                   isError={Boolean(error)}
                   modal
                   aria-describedby={
@@ -222,9 +229,12 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                 data-invalid={Boolean(error)}
                 data-disabled={!orgSelected || catalogsQuery.isError}
               >
-                <FieldLabel htmlFor="ibm-api-connect-catalog">Catalog</FieldLabel>
+                <FieldLabel id="ibm-api-connect-catalog-label" htmlFor="ibm-api-connect-catalog">
+                  Catalog
+                </FieldLabel>
                 <Combobox
                   id="ibm-api-connect-catalog"
+                  aria-labelledby="ibm-api-connect-catalog-label"
                   isDisabled={!orgSelected || catalogsQuery.isFetching || catalogsQuery.isError}
                   isLoading={catalogsQuery.isFetching}
                   options={catalogsQuery.data ?? []}
@@ -240,6 +250,7 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                   searchAriaLabel="Search IBM API Connect catalogs"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
+                  getOptionKeywords={(option) => [option.id, option.name]}
                   isError={Boolean(error)}
                   modal
                   aria-describedby={
@@ -270,9 +281,15 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                 data-invalid={Boolean(error)}
                 data-disabled={!catalogSelected || appsQuery.isError}
               >
-                <FieldLabel htmlFor="ibm-api-connect-application">Application</FieldLabel>
+                <FieldLabel
+                  id="ibm-api-connect-application-label"
+                  htmlFor="ibm-api-connect-application"
+                >
+                  Application
+                </FieldLabel>
                 <Combobox
                   id="ibm-api-connect-application"
+                  aria-labelledby="ibm-api-connect-application-label"
                   isDisabled={!catalogSelected || appsQuery.isFetching || appsQuery.isError}
                   isLoading={appsQuery.isFetching}
                   options={appsQuery.data ?? []}
@@ -287,6 +304,7 @@ const IbmApiConnectFields = ({ context, mode }: TDynamicSecretProviderRendererPr
                   searchAriaLabel="Search IBM API Connect applications"
                   getOptionLabel={(option) => option.title || option.name}
                   getOptionValue={(option) => option.id}
+                  getOptionKeywords={(option) => [option.id, option.name]}
                   isError={Boolean(error)}
                   modal
                   aria-describedby={

@@ -68,6 +68,14 @@
 }
 
 @theme {
+  --z-index-sticky: 10;
+  --z-index-backdrop: 20;
+  --z-index-modal: 30;
+  --z-index-dropdown: 40;
+  --z-index-popover: 50;
+  --z-index-tooltip: 60;
+  --z-index-toast: 70;
+
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
@@ -99,6 +107,7 @@
   --color-product-kms: #34edbf;
   --color-product-ss: #b056f0;
   --color-product-pam: #ff3568;
+  --color-product-av: #a1d434;
   --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;

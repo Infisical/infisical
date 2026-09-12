@@ -124,10 +124,19 @@ spec:
             {{- if .Values.gateway.relayName }}
             - --target-relay-name={{ .Values.gateway.relayName }}
             {{- end }}
+            {{- if .Values.gateway.listenAddress }}
+            - --listen-address={{ .Values.gateway.listenAddress }}
+            {{- end }}
             - --pam-session-recording-path={{ $sessionPath }}
             {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- if .Values.gateway.listenAddress }}
+          ports:
+            - name: http
+              containerPort: {{ include "infisical-gateway.listenPort" . }}
+              protocol: TCP
+          {{- end }}
           volumeMounts:
             {{- if $usePVC }}
             - name: gateway-data
@@ -154,6 +163,9 @@ spec:
             {{- if .Values.gateway.name }}
             - {{ .Values.gateway.name | quote }}
             {{- end }}
+            {{- if .Values.gateway.listenAddress }}
+            - --listen-address={{ .Values.gateway.listenAddress }}
+            {{- end }}
             - --pam-session-recording-path={{ $sessionPath }}
             {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
@@ -168,10 +180,12 @@ spec:
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- if .Values.gateway.listenAddress }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: {{ include "infisical-gateway.listenPort" . }}
               protocol: TCP
+          {{- end }}
           volumeMounts:
             - name: infisical-cache
               mountPath: /var/lib/infisical

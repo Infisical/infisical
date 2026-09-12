@@ -1,6 +1,5 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 
-import { AnimatedCollapse } from "../../generic/AnimatedCollapse";
 import { Button } from "../../generic/Button";
 import { CardDescription, CardHeader, CardTitle } from "../../generic/Card";
 import { FieldError } from "../../generic/Field";
@@ -105,6 +104,7 @@ export const VerificationCodeForm = ({
       onSubmit={(event) => {
         event.preventDefault();
         if (!isComplete || isDisabled || isPending) return;
+        setHasAttemptedVerification(true);
         onSubmit();
       }}
     >
@@ -117,22 +117,19 @@ export const VerificationCodeForm = ({
           value={value}
           isError={hasError && !hasChangedSinceError}
         />
-        <div className="min-h-4.5">
-          {error && <FieldError className="mt-0">{error}</FieldError>}
-        </div>
+        {error && <FieldError className="mt-0">{error}</FieldError>}
       </div>
-      <AnimatedCollapse isOpen={hasFailedVerification}>
-        <Button
-          type="submit"
-          variant={submitVariant}
-          size="lg"
-          isFullWidth
-          isPending={isPending}
-          isDisabled={!isComplete || isDisabled || isPending}
-        >
-          Retry
-        </Button>
-      </AnimatedCollapse>
+      <Button
+        type="submit"
+        variant={submitVariant}
+        size="lg"
+        isFullWidth
+        isPending={isPending}
+        isDisabled={!isComplete || isDisabled || isPending}
+        aria-label={isPending ? "Verifying code" : undefined}
+      >
+        {hasFailedVerification ? "Try again" : "Continue"}
+      </Button>
       {children}
     </form>
   );

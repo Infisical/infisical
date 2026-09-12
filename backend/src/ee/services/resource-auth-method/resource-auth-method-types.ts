@@ -62,7 +62,9 @@ export type TGetAuthMethodDTO = {
   actor: OrgServiceActor;
 };
 
-export type TMintTokenDTO = TGetAuthMethodDTO;
+// Minting happens both when a resource is created and when its token is replaced later. Those are
+// different permissions on a product that separates them, so the caller says which one it is.
+export type TMintTokenDTO = TGetAuthMethodDTO & { intent?: "create" | "issue" };
 export type TRevokeTokenDTO = TGetAuthMethodDTO;
 
 export type TLoginWithAwsDTO = {
@@ -79,7 +81,7 @@ export type TLoginWithKubernetesDTO = {
 
 export type TLoginWithTokenDTO = {
   token: string;
-  expectedResourceType: "gateway" | "relay" | "kmip";
+  expectedResourceType: "gateway" | "relay" | "kmip" | "agentVaultProxy";
 };
 
 export type TAuthMethodView =

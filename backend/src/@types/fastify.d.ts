@@ -6,6 +6,11 @@ import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
+import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
+import { TAgentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
+import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
+import { TAgentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -278,6 +283,7 @@ declare module "fastify" {
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
     internalCertManagerProjectId: string;
     internalPamProjectId: string;
+    internalAgentVaultProjectId: string;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
       allowedFields?: TAllowedFields[];
@@ -361,6 +367,11 @@ declare module "fastify" {
       pkiApplicationEnrollment: TPkiApplicationEnrollmentServiceFactory;
       certManagerProjectResolver: TCertManagerProjectResolverFactory;
       pamProjectResolver: TPamProjectResolverFactory;
+      agentVaultProjectResolver: TAgentVaultProjectResolverFactory;
+      agentVaultAccessBundle: TAgentVaultAccessBundleServiceFactory;
+      agentVaultProxy: TAgentVaultProxyServiceFactory;
+      agentVaultSession: TAgentVaultSessionServiceFactory;
+      agentVaultMembership: TAgentVaultMembershipServiceFactory;
       certManagerInstance: TCertManagerInstanceServiceFactory;
       certManagerExport: TCertManagerExportServiceFactory;
       certificateAuthority: TCertificateAuthorityServiceFactory;

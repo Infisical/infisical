@@ -8,16 +8,15 @@ import {
   ShieldCheckIcon,
   TriangleAlertIcon
 } from "lucide-react";
-import picomatch from "picomatch";
 import RandExp from "randexp";
 import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
 import {
-  ConstraintTarget,
-  ConstraintType,
-  TConstraint,
+  doesRuleCoverScope,
+  SecretValidationRuleType,
   TSecretValidationRule,
+  TValueConstraints,
   useListSecretValidationRules
 } from "@app/hooks/api/secretValidationRules";
 
@@ -50,43 +49,20 @@ const NONE_RULE_OPTION: RuleOption = {
   matchesCurrentScope: false
 };
 
-const getValueConstraints = (rule: TSecretValidationRule): TConstraint[] =>
-  rule.constraints.filter((c) => c.appliesTo === ConstraintTarget.SecretValue);
+// Only a static-secret rule constrains a value a person types; the other two shape a credential the
+// platform generates for itself.
+const getValueConstraints = (rule: TSecretValidationRule): TValueConstraints | undefined =>
+  rule.type === SecretValidationRuleType.StaticSecrets ? rule.valueConstraints : undefined;
 
 const hasValueConstraints = (rule: TSecretValidationRule): boolean =>
-  getValueConstraints(rule).length > 0;
+  Object.values(getValueConstraints(rule) ?? {}).some((value) => value !== undefined);
 
-const doesRuleMatchScope = (
-  rule: TSecretValidationRule,
-  secretPath?: string,
-  selectedEnvironments?: { slug: string }[],
-  environments?: { id: string; slug: string }[]
-): boolean => {
-  if (!secretPath) return false;
-
-  if (!picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })) {
-    return false;
-  }
-
-  if (rule.envId && environments && selectedEnvironments?.length) {
-    const ruleEnvSlug = environments.find((e) => e.id === rule.envId)?.slug;
-    if (!ruleEnvSlug) return false;
-    return selectedEnvironments.some((se) => se.slug === ruleEnvSlug);
-  }
-
-  // Rule applies to all environments (envId is null) and path matches
-  return true;
-};
-
-const generateFromConstraints = (constraints: TConstraint[]): string => {
-  const prefix = constraints.find((c) => c.type === ConstraintType.RequiredPrefix)?.value || "";
-  const suffix = constraints.find((c) => c.type === ConstraintType.RequiredSuffix)?.value || "";
-  const regexValue = constraints.find((c) => c.type === ConstraintType.RegexPattern)?.value;
-  const minLengthStr = constraints.find((c) => c.type === ConstraintType.MinLength)?.value;
-  const maxLengthStr = constraints.find((c) => c.type === ConstraintType.MaxLength)?.value;
-
-  const minLength = minLengthStr ? parseInt(minLengthStr, 10) : 16;
-  const maxLength = maxLengthStr ? parseInt(maxLengthStr, 10) : 64;
+const generateFromConstraints = (constraints: TValueConstraints): string => {
+  const prefix = constraints.requiredPrefix ?? "";
+  const suffix = constraints.requiredSuffix ?? "";
+  const regexValue = constraints.regexPattern;
+  const minLength = constraints.minLength ?? 16;
+  const maxLength = constraints.maxLength ?? 64;
 
   let middle: string | undefined;
 
@@ -122,13 +98,25 @@ const generateFromConstraints = (constraints: TConstraint[]): string => {
   return prefix + middle + suffix;
 };
 
-const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
-  [ConstraintType.RequiredPrefix]: "Prefix",
-  [ConstraintType.RequiredSuffix]: "Suffix",
-  [ConstraintType.RegexPattern]: "Pattern",
-  [ConstraintType.MinLength]: "Min length",
-  [ConstraintType.MaxLength]: "Max length",
-  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous values"
+// The rule's constraints as chips. Reuse prevention carries no value of its own to show, so it
+// reads as a statement rather than a "label: value" pair.
+const describeConstraints = (constraints: TValueConstraints) => {
+  const chips: { key: string; label: string; value?: string }[] = [];
+  const add = (key: string, label: string, value?: string | number) => {
+    if (value !== undefined) chips.push({ key, label, value: String(value) });
+  };
+
+  add("requiredPrefix", "Prefix", constraints.requiredPrefix);
+  add("requiredSuffix", "Suffix", constraints.requiredSuffix);
+  add("regexPattern", "Pattern", constraints.regexPattern);
+  add("minLength", "Min length", constraints.minLength);
+  add("maxLength", "Max length", constraints.maxLength);
+
+  if (constraints.reusePrevention?.previousVersions !== undefined) {
+    chips.push({ key: "reusePrevention", label: "Prevent reuse of previous secret values" });
+  }
+
+  return chips;
 };
 
 const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (
@@ -162,7 +150,6 @@ export type PasswordGeneratorProps = {
   maxLength?: number;
   projectId?: string;
   secretPath?: string;
-  environments?: { id: string; slug: string }[];
   selectedEnvironments?: { slug: string }[];
 };
 
@@ -173,7 +160,6 @@ export const PasswordGenerator = ({
   maxLength = 64,
   projectId,
   secretPath,
-  environments,
   selectedEnvironments
 }: PasswordGeneratorProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -208,10 +194,13 @@ export const PasswordGenerator = ({
         value: r.id,
         matchesCurrentScope:
           selectedEnvironments?.length === 1 &&
-          doesRuleMatchScope(r, secretPath, selectedEnvironments, environments)
+          doesRuleCoverScope(r, {
+            secretPath,
+            environmentSlugs: selectedEnvironments?.map((e) => e.slug)
+          })
       }))
     ],
-    [applicableRules, secretPath, selectedEnvironments, environments]
+    [applicableRules, secretPath, selectedEnvironments]
   );
 
   const selectedRule = useMemo(
@@ -225,17 +214,14 @@ export const PasswordGenerator = ({
   );
 
   const valueConstraints = useMemo(
-    () => (selectedRule ? getValueConstraints(selectedRule) : []),
+    () => (selectedRule ? getValueConstraints(selectedRule) : undefined),
     [selectedRule]
   );
 
-  const hasRegexLengthConflict = useMemo(() => {
-    const hasRegex = valueConstraints.some((c) => c.type === ConstraintType.RegexPattern);
-    const hasLength = valueConstraints.some(
-      (c) => c.type === ConstraintType.MinLength || c.type === ConstraintType.MaxLength
-    );
-    return hasRegex && hasLength;
-  }, [valueConstraints]);
+  const hasRegexLengthConflict = Boolean(
+    valueConstraints?.regexPattern &&
+      (valueConstraints.minLength !== undefined || valueConstraints.maxLength !== undefined)
+  );
 
   // Auto-select matching rule only when exactly one environment is selected
   useEffect(() => {
@@ -251,13 +237,16 @@ export const PasswordGenerator = ({
     }
 
     const match = applicableRules.find((rule) =>
-      doesRuleMatchScope(rule, secretPath, selectedEnvironments, environments)
+      doesRuleCoverScope(rule, {
+        secretPath,
+        environmentSlugs: selectedEnvironments?.map((e) => e.slug)
+      })
     );
     setSelectedRuleId(match?.id || "");
-  }, [applicableRules, selectedEnvironments, secretPath, environments]);
+  }, [applicableRules, selectedEnvironments, secretPath]);
 
   const password = useMemo(() => {
-    if (selectedRule && valueConstraints.length > 0) {
+    if (selectedRule && valueConstraints) {
       return generateFromConstraints(valueConstraints);
     }
 
@@ -374,19 +363,19 @@ export const PasswordGenerator = ({
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {valueConstraints.map((constraint) => (
-                  <span key={constraint.type} className="text-xs">
+                {describeConstraints(valueConstraints ?? {}).map(({ key, label, value }) => (
+                  <span key={key} className="text-xs">
                     <span
                       className={twMerge(
                         "font-medium text-muted",
-                        constraint.type === ConstraintType.PreventValueReuse && "text-label"
+                        value === undefined && "text-label"
                       )}
                     >
-                      {CONSTRAINT_LABELS[constraint.type]}
+                      {label}
                     </span>
-                    {constraint.type !== ConstraintType.PreventValueReuse && (
+                    {value !== undefined && (
                       <>
-                        : <span className="font-mono text-label">{constraint.value}</span>
+                        : <span className="font-mono text-label">{value}</span>
                       </>
                     )}
                   </span>

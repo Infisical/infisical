@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -21,8 +20,6 @@ import {
 } from "@app/components/v3";
 import { RENDER_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
-  TRenderEnvironmentGroup,
-  TRenderService,
   useRenderConnectionListEnvironmentGroups,
   useRenderConnectionListServices
 } from "@app/hooks/api/appConnections/render";
@@ -82,8 +79,8 @@ export const RenderSyncFields = () => {
                     <ul className="flex list-disc flex-col gap-3 pl-4">
                       {Object.values(RENDER_SYNC_SCOPES).map(({ name, description }) => (
                         <li key={name}>
-                          <p className="text-mineshaft-300">
-                            <span className="font-medium text-bunker-200">{name}</span>:{" "}
+                          <p className="text-label">
+                            <span className="font-medium text-foreground">{name}</span>:{" "}
                             {description}
                           </p>
                         </li>
@@ -117,25 +114,33 @@ export const RenderSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Service</FieldLabel>
+              <FieldLabel
+                id="secret-sync-render-service-id-label"
+                htmlFor="secret-sync-render-service-id"
+              >
+                Service
+              </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  aria-labelledby="secret-sync-render-service-id-label"
+                  aria-describedby={error ? "secret-sync-render-service-id-error" : undefined}
+                  id="secret-sync-render-service-id"
+                  isError={Boolean(error)}
                   isLoading={isServicesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={services ? (services.find((service) => service.id === value) ?? []) : []}
-                  onChange={(option) => {
-                    onChange((option as SingleValue<TRenderService>)?.id ?? null);
-                    setValue(
-                      "destinationConfig.serviceName",
-                      (option as SingleValue<TRenderService>)?.name ?? ""
-                    );
+                  value={services?.find((service) => service.id === value) ?? null}
+                  onValueChange={(option) => {
+                    onChange(option.id ?? null);
+                    setValue("destinationConfig.serviceName", option.name ?? "");
                   }}
                   options={services}
                   placeholder="Select a service..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
+                  modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-render-service-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}
@@ -148,25 +153,35 @@ export const RenderSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Environment Group</FieldLabel>
+              <FieldLabel
+                id="secret-sync-render-environment-group-id-label"
+                htmlFor="secret-sync-render-environment-group-id"
+              >
+                Environment Group
+              </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  aria-labelledby="secret-sync-render-environment-group-id-label"
+                  aria-describedby={
+                    error ? "secret-sync-render-environment-group-id-error" : undefined
+                  }
+                  id="secret-sync-render-environment-group-id"
+                  isError={Boolean(error)}
                   isLoading={isGroupsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={groups ? (groups.find((g) => g.id === value) ?? []) : []}
-                  onChange={(option) => {
-                    onChange((option as SingleValue<TRenderEnvironmentGroup>)?.id ?? null);
-                    setValue(
-                      "destinationConfig.environmentGroupName",
-                      (option as SingleValue<TRenderEnvironmentGroup>)?.name ?? ""
-                    );
+                  value={groups?.find((group) => group.id === value) ?? null}
+                  onValueChange={(option) => {
+                    onChange(option.id ?? null);
+                    setValue("destinationConfig.environmentGroupName", option.name ?? "");
                   }}
                   options={groups}
                   placeholder="Select an environment group..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
+                  modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-render-environment-group-id-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

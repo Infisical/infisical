@@ -1,13 +1,15 @@
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamProductRole } from "@app/ee/services/pam/pam-enums";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { sanitizeEmail } from "@app/lib/validator";
 import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
-import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { emitAgentVaultTelemetry, getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -34,7 +36,8 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         // Signup-created projects the invitees get member access to.
         projectIds: z.string().trim().array().max(5).optional(),
         // Grants membership on the org's consolidated PAM project (PAM has no signup-created project).
-        grantPamAccess: z.boolean().optional()
+        grantPamAccess: z.boolean().optional(),
+        grantAgentVaultAccess: z.boolean().optional()
       }),
       response: {
         200: z.object({
@@ -51,7 +54,8 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           grantFailures: z
             .object({
               projectIds: z.string().array(),
-              pamAccess: z.boolean()
+              pamAccess: z.boolean(),
+              agentVaultAccess: z.boolean()
             })
             .optional()
         })
@@ -77,6 +81,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       // the request. Failures are still reported back so the client can tell the inviter.
       const failedProjectIds: string[] = [];
       let pamAccessFailed = false;
+      let agentVaultAccessFailed = false;
 
       if (req.body.projectIds?.length) {
         for await (const projectId of req.body.projectIds) {
@@ -157,6 +162,84 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       }
 
+      if (req.body.grantAgentVaultAccess) {
+        try {
+          const agentVaultProjectId = await server.services.agentVaultProjectResolver.resolve(req.permission.orgId);
+
+          // Agent Vault seeds no members, so an org admin who has never opened it is not a member and the
+          // grant below would refuse them. Opening the product joins them (layout.tsx); inviting with access
+          // is the same intent, so join them the same way. Only a missing membership qualifies: an existing
+          // member keeps whatever role they were given, and grantProjectAdminAccess refuses anyone without
+          // AccessAllProjects, which lands in the catch as a grant failure like before.
+          try {
+            await server.services.permission.getProjectPermission({
+              actor: req.permission.type,
+              actorId: req.permission.id,
+              projectId: agentVaultProjectId,
+              actorAuthMethod: req.permission.authMethod,
+              actorOrgId: req.permission.orgId,
+              actionProjectType: ActionProjectType.AgentVault
+            });
+          } catch (err) {
+            if (!(err instanceof ForbiddenRequestError) || err.name !== "ProjectMembershipNotFound") throw err;
+            await server.services.orgAdmin.grantProjectAdminAccess({
+              actorOrgId: req.permission.orgId,
+              actorAuthMethod: req.permission.authMethod,
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              projectId: agentVaultProjectId
+            });
+            if (isUserSessionAuth(req.auth)) {
+              await server.services.auditLog.createAuditLog({
+                ...req.auditLogInfo,
+                projectId: agentVaultProjectId,
+                event: {
+                  type: EventType.ORG_ADMIN_ACCESS_PROJECT,
+                  metadata: {
+                    projectId: agentVaultProjectId,
+                    username: req.auth.user.username,
+                    email: req.auth.user.email || "",
+                    userId: req.auth.userId
+                  }
+                }
+              });
+            }
+          }
+
+          const { memberships } = await server.services.agentVaultMembership.addProductUserMembers({
+            projectId: agentVaultProjectId,
+            ctx: {
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              actorOrgId: req.permission.orgId,
+              actorAuthMethod: req.permission.authMethod
+            },
+            userIds: [],
+            emails: req.body.inviteeEmails,
+            role: ProjectMembershipRole.Member
+          });
+
+          for await (const membership of memberships) {
+            await server.services.auditLog.createAuditLog({
+              ...req.auditLogInfo,
+              orgId: req.permission.orgId,
+              projectId: agentVaultProjectId,
+              event: {
+                type: EventType.AGENT_VAULT_MEMBER_ADD,
+                metadata: { userId: membership.userId, userName: membership.userName, role: membership.role }
+              }
+            });
+            emitAgentVaultTelemetry(server.services.telemetry, req, {
+              event: PostHogEventTypes.AgentVaultProductMemberAdded,
+              properties: { memberType: "user", role: membership.role }
+            });
+          }
+        } catch (err) {
+          logger.error(err, "Failed to grant invitees Agent Vault access");
+          agentVaultAccessFailed = true;
+        }
+      }
+
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserOrgInvitation,
         distinctId: getTelemetryDistinctId(req),
@@ -168,11 +251,19 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      const hasGrantFailures = failedProjectIds.length > 0 || pamAccessFailed;
+      const hasGrantFailures = failedProjectIds.length > 0 || pamAccessFailed || agentVaultAccessFailed;
       return {
         completeInviteLinks,
         message: `Send an invite link to ${req.body.inviteeEmails.join(", ")}`,
-        ...(hasGrantFailures ? { grantFailures: { projectIds: failedProjectIds, pamAccess: pamAccessFailed } } : {})
+        ...(hasGrantFailures
+          ? {
+              grantFailures: {
+                projectIds: failedProjectIds,
+                pamAccess: pamAccessFailed,
+                agentVaultAccess: agentVaultAccessFailed
+              }
+            }
+          : {})
       };
     }
   });

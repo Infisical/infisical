@@ -53,6 +53,7 @@ export const GenericAppConnectionsFields = () => {
           placeholder="my-app-connection"
           isError={Boolean(errors.name?.message)}
           {...register("name")}
+          autoComplete="off"
         />
         {!errors.name?.message && <FieldDescription>Must be slug-friendly.</FieldDescription>}
         <FieldError errors={[errors.name]} />

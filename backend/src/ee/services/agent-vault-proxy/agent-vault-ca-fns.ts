@@ -1,0 +1,56 @@
+import * as x509 from "@peculiar/x509";
+
+import { crypto } from "@app/lib/crypto";
+import { BadRequestError } from "@app/lib/errors";
+
+export type TParsedRootCa = {
+  fingerprint: string;
+  expiresAt: Date;
+};
+
+const MAX_ROOT_CA_PEM_LENGTH = 16384;
+
+/** Derives the fingerprint and expiry once, at enrollment; the certificate itself is never stored. */
+export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
+  if (pem.length > MAX_ROOT_CA_PEM_LENGTH) {
+    throw new BadRequestError({ message: "The certificate authority is too large to be a valid CA certificate" });
+  }
+
+  let certificate: x509.X509Certificate;
+  try {
+    certificate = new x509.X509Certificate(pem);
+  } catch {
+    throw new BadRequestError({
+      message: "The certificate authority is not a valid PEM certificate. Send the proxy's ca.crt exactly as written."
+    });
+  }
+
+  const basicConstraints = certificate.getExtension(x509.BasicConstraintsExtension);
+  if (!basicConstraints?.ca) {
+    throw new BadRequestError({
+      message:
+        "The certificate is not a certificate authority. A proxy enrolls with its own CA, not a leaf certificate."
+    });
+  }
+
+  if (certificate.notAfter <= new Date()) {
+    throw new BadRequestError({
+      message: `The certificate authority expired on ${certificate.notAfter.toISOString()}. Generate a new one and enroll again.`
+    });
+  }
+
+  if (certificate.notBefore > new Date()) {
+    throw new BadRequestError({
+      message: `The certificate authority is not valid until ${certificate.notBefore.toISOString()}. Nothing will accept the certificates it signs before then.`
+    });
+  }
+
+  const digest = crypto.nativeCrypto
+    .createHash("sha256")
+    .update(Buffer.from(certificate.rawData))
+    .digest("hex")
+    .toUpperCase();
+  const fingerprint = `SHA256:${digest.match(/.{2}/g)!.join(":")}`;
+
+  return { fingerprint, expiresAt: certificate.notAfter };
+};

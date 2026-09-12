@@ -91,6 +91,8 @@ const Content = ({ onClose }: { onClose: () => void }) => {
               placeholder="Enter gateway name"
               isError={Boolean(error)}
               autoFocus
+              autoComplete="off"
+              name="gateway-name"
             />
             <FieldError>{error?.message}</FieldError>
           </Field>

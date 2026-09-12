@@ -1,6 +1,6 @@
 import { AnyZodObject, z } from "zod";
 
-import { SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs";
+import { SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs/enums";
 import { slugSchema } from "@app/lib/schemas";
 
 export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefined>(

@@ -389,6 +389,9 @@ export const GatewayTab = withPermission(
                           <TableCell className="whitespace-nowrap">
                             <GatewayHealthStatus
                               heartbeat={"heartbeat" in el ? el.heartbeat : null}
+                              relayId={"relayId" in el ? el.relayId : null}
+                              directAddress={"directAddress" in el ? el.directAddress : null}
+                              directHeartbeat={"directHeartbeat" in el ? el.directHeartbeat : null}
                               heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                             />
                           </TableCell>
@@ -406,12 +409,18 @@ export const GatewayTab = withPermission(
                                   <CopyIcon />
                                   Copy ID
                                 </DropdownMenuItem>
-                                {!el.isV1 && (!!el.heartbeat || !!el.heartbeatTTL) && (
-                                  <DropdownMenuItem onClick={() => handleTriggerHealthCheck(el.id)}>
-                                    <HeartPulseIcon />
-                                    Trigger Health Check
-                                  </DropdownMenuItem>
-                                )}
+                                {!el.isV1 &&
+                                  (!!el.directAddress ||
+                                    !!el.relayId ||
+                                    !!el.heartbeat ||
+                                    el.heartbeatTTL !== null) && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleTriggerHealthCheck(el.id)}
+                                    >
+                                      <HeartPulseIcon />
+                                      Trigger Health Check
+                                    </DropdownMenuItem>
+                                  )}
                                 {el.isV1 && (
                                   <OrgPermissionCan
                                     I={OrgGatewayPermissionActions.EditGateways}

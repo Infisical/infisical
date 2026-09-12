@@ -1,17 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useDigitalOceanConnectionListApps } from "@app/hooks/api/appConnections/digital-ocean";
-import { TDigitalOceanApp } from "@app/hooks/api/appConnections/digital-ocean/types";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -43,14 +41,25 @@ export const DigitalOceanAppPlatformSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select an app</FieldLabel>
+            <FieldLabel
+              id="secret-sync-digital-ocean-app-platform-app-id-label"
+              htmlFor="secret-sync-digital-ocean-app-platform-app-id"
+            >
+              Select an app
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-digital-ocean-app-platform-app-id-label"
+                aria-describedby={
+                  error ? "secret-sync-digital-ocean-app-platform-app-id-error" : undefined
+                }
+                id="secret-sync-digital-ocean-app-platform-app-id"
+                isError={Boolean(error)}
                 isLoading={isAccountsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={apps.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<TDigitalOceanApp>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.appName", v?.spec.name ?? "");
                 }}
@@ -58,8 +67,13 @@ export const DigitalOceanAppPlatformSyncFields = () => {
                 placeholder="Select an app..."
                 getOptionLabel={(option) => option.spec.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError
+                id="secret-sync-digital-ocean-app-platform-app-id-error"
+                errors={[error]}
+              />
             </FieldContent>
           </Field>
         )}

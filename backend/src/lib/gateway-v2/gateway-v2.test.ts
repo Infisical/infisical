@@ -5,7 +5,7 @@ import forge from "node-forge";
 
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 
-import { setupRelayServer } from "./gateway-v2";
+import { setupGatewayProxy } from "./gateway-v2";
 
 const tracker = vi.hoisted(() => ({
   channelOpened: vi.fn(),
@@ -195,7 +195,7 @@ const waitFor = async (predicate: () => boolean) => {
 // can leak a release into the next test's counters.
 const drainChannels = (count: number) => waitFor(() => tracker.channelClosed.mock.calls.length === count);
 
-describe("setupRelayServer", () => {
+describe("setupGatewayProxy", () => {
   beforeEach(() => {
     tracker.channelOpened.mockClear();
     tracker.channelClosed.mockClear();
@@ -213,25 +213,25 @@ describe("setupRelayServer", () => {
     };
 
     test("resolves when not eager, because the dial is deferred to the first client", async () => {
-      const server = await setupRelayServer(args);
+      const server = await setupGatewayProxy(args);
       expect(server.port).toBeGreaterThan(0);
       expect(server.hasEstablishedChannel()).toBe(false);
       await server.cleanup();
     });
 
     test("rejects when eager, which is what gives pool failover something to catch", async () => {
-      await expect(setupRelayServer({ ...args, eager: true })).rejects.toThrow();
+      await expect(setupGatewayProxy({ ...args, eager: true })).rejects.toThrow();
     });
 
     test("reports the failure as a transport error, so it is safe to retry elsewhere", async () => {
-      await expect(setupRelayServer({ ...args, eager: true })).rejects.toMatchObject({
+      await expect(setupGatewayProxy({ ...args, eager: true })).rejects.toMatchObject({
         name: "BadRequest",
         gatewayId: GATEWAY_ID
       });
     });
 
     test("counts no channel for a tunnel that never opened", async () => {
-      await expect(setupRelayServer({ ...args, eager: true })).rejects.toThrow();
+      await expect(setupGatewayProxy({ ...args, eager: true })).rejects.toThrow();
       expect(tracker.channelOpened).not.toHaveBeenCalled();
       expect(tracker.markSuspect).toHaveBeenCalledWith(GATEWAY_ID);
     });
@@ -249,14 +249,14 @@ describe("setupRelayServer", () => {
     });
 
     test("does not touch the gateway until a client connects when not eager", async () => {
-      const server = await setupRelayServer(argsFor(relay.relayHost));
+      const server = await setupGatewayProxy(argsFor(relay.relayHost));
       expect(relay.tunnelsOpened()).toBe(0);
       expect(server.hasEstablishedChannel()).toBe(false);
       await server.cleanup();
     });
 
     test("opens the tunnel during setup when eager", async () => {
-      const server = await setupRelayServer({ ...argsFor(relay.relayHost), eager: true, longLived: true });
+      const server = await setupGatewayProxy({ ...argsFor(relay.relayHost), eager: true, longLived: true });
       await waitFor(() => relay.tunnelsOpened() === 1);
       expect(server.hasEstablishedChannel()).toBe(true);
       expect(tracker.channelOpened).toHaveBeenCalledTimes(1);
@@ -266,7 +266,7 @@ describe("setupRelayServer", () => {
     });
 
     test("hands the tunnel it already opened to the first client instead of dialing again", async () => {
-      const server = await setupRelayServer({ ...argsFor(relay.relayHost), eager: true, longLived: true });
+      const server = await setupGatewayProxy({ ...argsFor(relay.relayHost), eager: true, longLived: true });
       await waitFor(() => relay.tunnelsOpened() === 1);
 
       // The reused tunnel has to still carry traffic; a probe-and-drop would fail here.
@@ -279,7 +279,7 @@ describe("setupRelayServer", () => {
     });
 
     test("dials a fresh tunnel for the second client", async () => {
-      const server = await setupRelayServer({ ...argsFor(relay.relayHost), eager: true, longLived: true });
+      const server = await setupGatewayProxy({ ...argsFor(relay.relayHost), eager: true, longLived: true });
 
       await expect(connectAndEcho(server.port)).resolves.toBe("ping");
       await expect(connectAndEcho(server.port)).resolves.toBe("ping");
@@ -292,7 +292,7 @@ describe("setupRelayServer", () => {
     });
 
     test("releases the tunnel and its channel count when no client ever claims it", async () => {
-      const server = await setupRelayServer({ ...argsFor(relay.relayHost), eager: true, longLived: true });
+      const server = await setupGatewayProxy({ ...argsFor(relay.relayHost), eager: true, longLived: true });
       await waitFor(() => relay.tunnelsOpened() === 1);
 
       await server.cleanup();
@@ -302,7 +302,7 @@ describe("setupRelayServer", () => {
     });
 
     test("releases the channel count once when a claimed tunnel closes", async () => {
-      const server = await setupRelayServer({ ...argsFor(relay.relayHost), eager: true, longLived: true });
+      const server = await setupGatewayProxy({ ...argsFor(relay.relayHost), eager: true, longLived: true });
       await expect(connectAndEcho(server.port)).resolves.toBe("ping");
       await server.cleanup();
 

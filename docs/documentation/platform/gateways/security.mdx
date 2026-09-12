@@ -9,7 +9,11 @@ The Infisical Gateway enables secure access to private resources using SSH rever
 
 ### Certificate architecture
 
-The gateway system uses multiple certificate authorities depending on deployment configuration:
+The gateway system uses multiple certificate authorities depending on the connection mode and, in relay mode, on who runs the relay. Every configuration uses the Organization Gateway CA for platform to gateway authentication. The relay CAs exist only to authenticate the relay hop, so direct listen needs none of them.
+
+**For Organizations Using Direct Listen:**
+
+- **Organization Gateway Client CA & Server CA** - Platform ↔ Gateway authentication, with the gateway's server certificate issued for its registered listen address
 
 **For Organizations Using Infisical-Managed Relays:**
 
@@ -23,33 +27,29 @@ The gateway system uses multiple certificate authorities depending on deployment
 - **Organization relay PKI Client CA & Server CA** - Platform ↔ Customer Relay Server authentication
 - **Organization Gateway Client CA & Server CA** - Platform ↔ Gateway authentication
 
-### Certificate hierarchy
-
-```
-Instance Level (Shared Relays):
-├── Instance Relay SSH CA (Gateway ↔ Relay)
-├── Instance Relay PKI CA (Platform ↔ Relay)
-
-Organization Level:
-├── Organization Relay SSH CA (Gateway ↔ Org Relay)
-├── Organization Relay PKI CA (Platform ↔ Org Relay)
-└── Organization Gateway CA (Platform ↔ Gateway)
-```
-
 ## Communication security
 
 ### 1. Gateway registration
 
-When a gateway is first deployed:
+When a gateway is first deployed, it authenticates with Infisical using its machine identity token and receives the certificates for its connection mode.
 
-1. Authenticates with Infisical using machine identity token
-2. Receives SSH certificates for relay server authentication
-3. Establishes SSH reverse tunnel to assigned relay server
-4. Certificate issuance varies by relay configuration:
+**Relay mode:**
+
+1. Receives SSH certificates for relay server authentication
+2. Establishes SSH reverse tunnel to assigned relay server
+3. Certificate issuance varies by relay configuration:
    - **Infisical-managed relay**: Receives Instance relay SSH client certificate + Instance relay SSH Server CA
    - **Customer-deployed relay**: Receives Organization relay SSH client certificate + Organization relay SSH Server CA
 
-### 2. SSH tunnel authentication
+**Direct listen mode:**
+
+1. Registers the listen address the platform will dial
+2. Receives a server certificate carrying that address in its subject alternative name, issued by the Organization Gateway CA
+3. Listens on that address for inbound mTLS connections from the platform
+
+Both modes receive the Organization Gateway certificates used for mutual TLS with the platform. The relay, where one is used, only routes bytes.
+
+### 2. SSH tunnel authentication (relay mode)
 
 Gateway ↔ Relay Server communication uses SSH certificate authentication:
 
@@ -64,35 +64,38 @@ Gateway ↔ Relay Server communication uses SSH certificate authentication:
   - Gateway validates certificate against appropriate SSH Server CA
   - Ensures gateway connects to legitimate relay infrastructure
 
-### 3. Platform-to-Gateway direct connection
+### 3. Platform-to-Gateway mTLS
 
-The platform establishes secure direct connections with gateways through a **TLS-pinned tunnel** mechanism:
+Whichever mode carries it, the platform and the gateway authenticate each other with Organization Gateway certificates, and certificate pinning binds the connection to that specific gateway identity. The two modes differ only in who opens the socket underneath.
 
-1. **TLS-Pinned Tunnel Establishment**:
+**Relay mode:**
 
-   - Gateway initiates outbound connection to platform through SSH reverse tunnel
-   - Platform establishes direct mTLS connection with gateway using Organization Gateway certificates
-   - TLS certificate pinning ensures the connection is bound to the specific gateway identity
-   - No inbound connections required - all communication flows through the outbound tunnel
+```
+Platform ←→ [TCP with TLS] ←→ Relay ←→ [SSH Reverse Tunnel] ←→ Gateway
+```
 
-2. **Connection Flow**:
+- Gateway maintains a persistent outbound SSH tunnel to the relay server
+- Platform connects to the relay server using TCP with TLS
+- Relay routes encrypted traffic between platform and gateway without decrypting it
+- The TLS handshake happens end to end, between platform and gateway, through the relay
+- The gateway accepts no inbound connections
 
-   ```
-   Platform ←→ [TCP with TLS] ←→ Relay ←→ [SSH Reverse Tunnel] ←→ Gateway
-   ```
+**Direct listen mode:**
 
-   - Gateway maintains persistent outbound SSH tunnel to relay server
-   - Platform connects to relay server using TCP with TLS
-   - Relay routes encrypted traffic between platform and gateway
-   - TLS handshake occurs between platform and gateway through the relay
-   - Application traffic flows through the TLS-pinned tunnel via relay routing
+```
+Platform ←→ [TCP with mTLS] ←→ Gateway
+```
 
-3. **Security Benefits**:
-   - **No inbound connections**: Gateway never needs to accept incoming connections
-   - **Certificate-based authentication**: Uses Organization Gateway certificates for mutual TLS
-   - **Double encryption**: TLS traffic within SSH tunnel provides layered security
-   - **Relay server isolation**: Relay can't decrypt either TLS or application data
-   - **Tenant isolation**: Each organization's traffic flows through separate authenticated channels
+- Platform connects to the gateway's registered listen address
+- The gateway presents the server certificate issued for that address, and the platform validates it
+- The platform presents an Organization Gateway client certificate, which the gateway validates against the Organization Gateway Client CA
+- The gateway accepts inbound connections on that address, so the port must be open to the Infisical host
+
+**Security properties of both:**
+
+- **Certificate-based authentication**: Organization Gateway certificates on both ends
+- **Tenant isolation**: Each organization's traffic flows through separate authenticated channels
+- **No credential exposure to the relay**: in relay mode, the relay can decrypt neither the TLS session nor the application data
 
 ## Tenant isolation
 
@@ -117,6 +120,12 @@ The architecture provides tenant isolation through multiple certificate authorit
 
 - Gateway authenticates with relay using Organization relay SSH certificates
 - Platform authenticates with relay using Organization relay PKI certificates
+- Platform authenticates with gateway using Organization Gateway certificates
+
+**Direct Listen Deployments:**
+
+- No relay is involved, so no relay certificates are issued
+- Gateway authenticates with the platform using the server certificate issued for its listen address
 - Platform authenticates with gateway using Organization Gateway certificates
 
 ### Resource access control

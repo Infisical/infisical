@@ -22,7 +22,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -30,7 +30,7 @@ import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-da
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
+import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
@@ -412,6 +412,7 @@ export const membershipUserServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
     return { memberships: membershipDoc, signUpTokens };
   };
@@ -496,6 +497,13 @@ export const membershipUserServiceFactory = ({
           scopeOrgId: scopeData.orgId,
           excludeMembershipIds: [existingMembership.id],
           dal: membershipUserDAL,
+          tx
+        });
+      }
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
           tx
         });
       }
@@ -598,6 +606,12 @@ export const membershipUserServiceFactory = ({
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(dto.scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+
         await additionalPrivilegeDAL.delete(
           {
             actorUserId: dto.selector.userId,
@@ -635,9 +649,11 @@ export const membershipUserServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
       usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
     return { membership: membershipDoc };
   };

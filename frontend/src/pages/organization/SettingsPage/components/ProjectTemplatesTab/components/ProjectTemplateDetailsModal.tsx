@@ -103,7 +103,12 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
         isError={Boolean(errors.name?.message)}
         label="Name"
       >
-        <Input autoFocus placeholder="my-project-template" {...register("name")} />
+        <Input
+          autoFocus
+          placeholder="my-project-template"
+          {...register("name")}
+          autoComplete="off"
+        />
       </FormControl>
       {!projectTemplate && (
         <Controller

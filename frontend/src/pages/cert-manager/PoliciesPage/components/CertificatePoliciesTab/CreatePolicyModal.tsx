@@ -1206,7 +1206,13 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                     Policy Name <span className="text-danger">*</span>
                   </FieldLabel>
                   <FieldContent>
-                    <Input {...field} placeholder="e.g. tls-server" isError={Boolean(error)} />
+                    <Input
+                      {...field}
+                      placeholder="e.g. tls-server"
+                      isError={Boolean(error)}
+                      autoComplete="off"
+                      name="policy-name"
+                    />
                     {nameDescription ? (
                       <FieldDescription>{nameDescription}</FieldDescription>
                     ) : null}

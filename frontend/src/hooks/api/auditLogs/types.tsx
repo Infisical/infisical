@@ -100,6 +100,11 @@ export interface EstAccountActor {
   metadata: EstAccountActorMetadata;
 }
 
+export interface AgentVaultProxyActor {
+  type: ActorType.AGENT_VAULT_PROXY;
+  metadata: { agentVaultProxyId: string };
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -109,7 +114,8 @@ export type Actor =
   | KmipClientActor
   | AcmeProfileActor
   | AcmeAccountActor
-  | EstAccountActor;
+  | EstAccountActor
+  | AgentVaultProxyActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

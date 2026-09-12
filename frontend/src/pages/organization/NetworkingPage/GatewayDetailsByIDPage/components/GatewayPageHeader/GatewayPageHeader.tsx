@@ -74,7 +74,9 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
     }
   };
 
-  const isRegistered = Boolean(gateway.heartbeat || gateway.heartbeatTTL);
+  const isRegistered = Boolean(
+    gateway.directAddress || gateway.relayId || gateway.heartbeat || gateway.heartbeatTTL !== null
+  );
   const { canRevoke } = gateway;
 
   return (
@@ -176,6 +178,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
       </AlertDialog>
       <AlertDialog
         open={popUp.revokeGateway.isOpen}
+        confirmationValue={gateway.name}
         onOpenChange={(open) => handlePopUpToggle("revokeGateway", open)}
       >
         <AlertDialogContent>
@@ -186,6 +189,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
               re-authenticate to reconnect.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <AlertDialogConfirmationField inputProps={{ placeholder: gateway.name }} />
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
             <AlertDialogAction

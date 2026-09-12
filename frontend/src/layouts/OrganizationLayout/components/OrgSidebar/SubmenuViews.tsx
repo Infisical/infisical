@@ -11,7 +11,7 @@ import {
   useSidebarScope
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { ProjectType } from "@app/hooks/api/projects/types";
+import { isOrgScopedProduct } from "@app/helpers/project";
 
 import type { Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
@@ -32,9 +32,9 @@ export const ProjectSubmenuView = ({
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
   const sidebarScope = useSidebarScope();
-  const isPam = currentProject.type === ProjectType.PAM;
-  const basePath = isPam
-    ? `/organizations/${currentOrg.id}/pam`
+  const isOrgScoped = isOrgScopedProduct(currentProject.type);
+  const basePath = isOrgScoped
+    ? `/organizations/${currentOrg.id}/${typePath}`
     : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const isOnExactPage = pathname.startsWith(`${basePath}/${submenu.pathSuffix}`);
   const currentTab = searchParams?.selectedTab;
@@ -74,8 +74,8 @@ export const ProjectSubmenuView = ({
                 <Link
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   to={
-                    isPam
-                      ? (`/organizations/$orgId/pam/${submenu.pathSuffix}` as any)
+                    isOrgScoped
+                      ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
                       : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any)
                   }
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any

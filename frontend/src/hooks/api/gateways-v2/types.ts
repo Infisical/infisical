@@ -1,11 +1,14 @@
 export type TGatewayV2 = {
   id: string;
   identityId: string | null;
+  relayId: string | null;
   name: string;
   createdAt: string;
   updatedAt: string;
   heartbeat: string | null;
   heartbeatTTL: number | null;
+  directAddress: string | null;
+  directHeartbeat: string | null;
   canRevoke: boolean;
   connectedResourcesCount: number;
   identity: {
