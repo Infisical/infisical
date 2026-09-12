@@ -2,7 +2,7 @@ import {
   AgentVaultCredentialType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
-  AgentVaultUnmatchedHost
+  AgentVaultTrafficPolicy
 } from "./enums";
 
 export type TAgentVaultCredentialSummary =
@@ -107,8 +107,8 @@ export type TAgentVaultProxy = {
   isHealthy: boolean;
   rootCaFingerprint: string | null;
   rootCaExpiresAt: string | null;
-  unmatchedHost?: AgentVaultUnmatchedHost;
-  bypassHosts?: string | null;
+  trafficPolicy?: AgentVaultTrafficPolicy;
+  allowedHosts?: string | null;
   pollInterval?: number;
   createdAt?: string;
 };
@@ -166,8 +166,8 @@ export type TCreateAgentVaultSessionDTO = {
 
 export type TAgentVaultProxySettingsDTO = {
   name: string;
-  unmatchedHost?: AgentVaultUnmatchedHost;
-  bypassHosts?: string | null;
+  trafficPolicy?: AgentVaultTrafficPolicy;
+  allowedHosts?: string | null;
   pollInterval?: number;
 };
 

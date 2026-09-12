@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AgentVaultUnmatchedHost } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
@@ -13,8 +13,8 @@ import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const ProxyConfigSchema = z.object({
-  unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
-  bypassHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.bypassHosts),
+  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval)
 });
 

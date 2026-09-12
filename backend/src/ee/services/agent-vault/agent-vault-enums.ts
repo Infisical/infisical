@@ -8,9 +8,9 @@ export enum AgentVaultResourceRole {
   Consumer = "consumer"
 }
 
-export enum AgentVaultUnmatchedHost {
-  Allow = "allow",
-  Deny = "deny"
+export enum AgentVaultTrafficPolicy {
+  AnyHost = "any-host",
+  BundleHosts = "bundle-hosts"
 }
 
 export enum AgentVaultSessionStatus {

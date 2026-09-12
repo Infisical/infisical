@@ -1,5 +1,5 @@
 import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
-import { AgentVaultCredentialType, AgentVaultUnmatchedHost } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -2441,8 +2441,8 @@ export type TAgentVaultProxyRegisteredEvent = {
   event: PostHogEventTypes.AgentVaultProxyRegistered;
   properties: TAgentVaultEventBase & {
     proxyId: string;
-    unmatchedHost: AgentVaultUnmatchedHost;
-    bypassHostCount: number;
+    trafficPolicy: AgentVaultTrafficPolicy;
+    allowedHostCount: number;
   };
 };
 
@@ -2450,8 +2450,8 @@ export type TAgentVaultProxyUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultProxyUpdated;
   properties: TAgentVaultEventBase & {
     proxyId: string;
-    unmatchedHost: AgentVaultUnmatchedHost;
-    bypassHostCount: number;
+    trafficPolicy: AgentVaultTrafficPolicy;
+    allowedHostCount: number;
   };
 };
 

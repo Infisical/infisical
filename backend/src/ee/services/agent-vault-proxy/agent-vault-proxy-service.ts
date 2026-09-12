@@ -22,7 +22,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
-import { AgentVaultCredentialType, AgentVaultUnmatchedHost } from "../agent-vault/agent-vault-enums";
+import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
@@ -82,8 +82,8 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const toConfig = (proxy: TAgentVaultProxies): TAgentVaultProxyConfig => ({
-    unmatchedHost: proxy.unmatchedHost as AgentVaultUnmatchedHost,
-    bypassHosts: proxy.bypassHosts ?? null,
+    trafficPolicy: proxy.trafficPolicy as AgentVaultTrafficPolicy,
+    allowedHosts: proxy.allowedHosts ?? null,
     pollInterval: proxy.pollInterval
   });
 
@@ -161,8 +161,8 @@ export const agentVaultProxyServiceFactory = ({
           {
             projectId,
             name,
-            unmatchedHost: settings.unmatchedHost ?? AgentVaultUnmatchedHost.Allow,
-            bypassHosts: settings.bypassHosts ?? null,
+            trafficPolicy: settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
+            allowedHosts: settings.allowedHosts ?? null,
             pollInterval: settings.pollInterval ?? 60
           },
           tx

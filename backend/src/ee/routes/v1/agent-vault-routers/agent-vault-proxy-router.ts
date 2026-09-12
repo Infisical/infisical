@@ -2,7 +2,7 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
-import { AgentVaultUnmatchedHost } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -31,8 +31,8 @@ const ProxyMemberViewSchema = z.object({
 });
 
 const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
-  unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
-  bypassHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.bypassHosts),
+  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval),
   createdAt: z.date()
 });
@@ -43,8 +43,8 @@ const EnrollmentSchema = z.object({
 });
 
 const ProxySettingsSchema = {
-  unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost).describe(AGENT_VAULT.PROXY.unmatchedHost),
-  bypassHosts: buildHostPatternSchema("bypass host").nullable().describe(AGENT_VAULT.PROXY.bypassHosts),
+  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  allowedHosts: buildHostPatternSchema("host exception").nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().int().min(10).max(300).describe(AGENT_VAULT.PROXY.pollInterval)
 };
 
@@ -79,8 +79,8 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       tags: [ApiDocsTags.AgentVaultProxies],
       body: z.object({
         name: slugSchema({ max: 64, field: "Name" }).describe(AGENT_VAULT.PROXY.name),
-        unmatchedHost: ProxySettingsSchema.unmatchedHost.optional(),
-        bypassHosts: ProxySettingsSchema.bypassHosts.optional(),
+        trafficPolicy: ProxySettingsSchema.trafficPolicy.optional(),
+        allowedHosts: ProxySettingsSchema.allowedHosts.optional(),
         pollInterval: ProxySettingsSchema.pollInterval.optional()
       }),
       response: { 200: z.object({ proxy: ProxyAdminViewSchema, ...EnrollmentSchema.shape }) }
@@ -107,8 +107,10 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         event: PostHogEventTypes.AgentVaultProxyRegistered,
         properties: {
           proxyId: proxy.id,
-          unmatchedHost: proxy.unmatchedHost,
-          bypassHostCount: proxy.bypassHosts ? parseHostPatterns(proxy.bypassHosts, "bypass host").patterns.length : 0
+          trafficPolicy: proxy.trafficPolicy,
+          allowedHostCount: proxy.allowedHosts
+            ? parseHostPatterns(proxy.allowedHosts, "host exception").patterns.length
+            : 0
         }
       });
 
@@ -128,15 +130,15 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       body: z
         .object({
           name: slugSchema({ max: 64, field: "Name" }).optional().describe(AGENT_VAULT.PROXY.name),
-          unmatchedHost: ProxySettingsSchema.unmatchedHost.optional(),
-          bypassHosts: ProxySettingsSchema.bypassHosts.optional(),
+          trafficPolicy: ProxySettingsSchema.trafficPolicy.optional(),
+          allowedHosts: ProxySettingsSchema.allowedHosts.optional(),
           pollInterval: ProxySettingsSchema.pollInterval.optional()
         })
         .refine(
           (body) =>
             body.name !== undefined ||
-            body.unmatchedHost !== undefined ||
-            body.bypassHosts !== undefined ||
+            body.trafficPolicy !== undefined ||
+            body.allowedHosts !== undefined ||
             body.pollInterval !== undefined,
           "Provide at least one setting to update"
         ),
@@ -165,8 +167,10 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         event: PostHogEventTypes.AgentVaultProxyUpdated,
         properties: {
           proxyId: proxy.id,
-          unmatchedHost: proxy.unmatchedHost,
-          bypassHostCount: proxy.bypassHosts ? parseHostPatterns(proxy.bypassHosts, "bypass host").patterns.length : 0
+          trafficPolicy: proxy.trafficPolicy,
+          allowedHostCount: proxy.allowedHosts
+            ? parseHostPatterns(proxy.allowedHosts, "host exception").patterns.length
+            : 0
         }
       });
 

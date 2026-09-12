@@ -1,11 +1,11 @@
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
-import { AgentVaultUnmatchedHost } from "../agent-vault/agent-vault-enums";
+import { AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TAgentVaultActorContext };
 
 export type TAgentVaultProxyConfig = {
-  unmatchedHost: AgentVaultUnmatchedHost;
-  bypassHosts: string | null;
+  trafficPolicy: AgentVaultTrafficPolicy;
+  allowedHosts: string | null;
   pollInterval: number;
 };
 
@@ -13,16 +13,16 @@ export type TListProxiesDTO = TAgentVaultProxyScoped;
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
-  unmatchedHost?: AgentVaultUnmatchedHost;
-  bypassHosts?: string | null;
+  trafficPolicy?: AgentVaultTrafficPolicy;
+  allowedHosts?: string | null;
   pollInterval?: number;
 };
 
 export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
   proxyId: string;
   name?: string;
-  unmatchedHost?: AgentVaultUnmatchedHost;
-  bypassHosts?: string | null;
+  trafficPolicy?: AgentVaultTrafficPolicy;
+  allowedHosts?: string | null;
   pollInterval?: number;
 };
 

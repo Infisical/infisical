@@ -6137,8 +6137,8 @@ interface AgentVaultProxyUpdateEvent {
   metadata: {
     proxyId: string;
     name?: string;
-    unmatchedHost?: string;
-    bypassHosts?: string | null;
+    trafficPolicy?: string;
+    allowedHosts?: string | null;
     pollInterval?: number;
   };
 }

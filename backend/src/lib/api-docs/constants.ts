@@ -4243,9 +4243,10 @@ export const AGENT_VAULT = {
     rootCaFingerprint:
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
-    unmatchedHost: "What the proxy does with a host no service covers: allow it through untouched, or deny it.",
-    bypassHosts:
-      "Hosts that stay reachable when unmatchedHost is deny, handled like any other host and given no credential.",
+    trafficPolicy:
+      "Which hosts an agent may reach through this proxy. 'any-host' lets every request out; 'bundle-hosts' allows only hosts an access bundle covers and refuses the rest with a 403.",
+    allowedHosts:
+      "Hosts that stay reachable under the 'bundle-hosts' traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
     pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
     sessionToken: "The session an agent is running with. A selector, not a second credential."
   },

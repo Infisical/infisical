@@ -30,31 +30,26 @@ import {
 } from "@app/components/v3";
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import {
-  AgentVaultUnmatchedHost,
+  AgentVaultTrafficPolicy,
   useCreateAgentVaultProxy,
   useUpdateAgentVaultProxy
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
-const UNMATCHED_HOST_CHOICES = [
+const TRAFFIC_POLICY_CHOICES = [
+  { value: AgentVaultTrafficPolicy.AnyHost, title: "Allow requests to reach any host" },
   {
-    value: AgentVaultUnmatchedHost.Allow,
-    title: "Allow",
-    description: "The agent reaches them, with no credential attached."
-  },
-  {
-    value: AgentVaultUnmatchedHost.Deny,
-    title: "Deny",
-    description: "The agent reaches only the hosts in its access bundle."
+    value: AgentVaultTrafficPolicy.BundleHosts,
+    title: "Only allow requests to reach hosts specified in access bundles"
   }
 ];
 
 const schema = z
   .object({
     name: slugSchema({ max: 64, field: "Name" }),
-    unmatchedHost: z.nativeEnum(AgentVaultUnmatchedHost),
-    bypassHosts: z.string().trim().max(1024).optional(),
+    trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy),
+    allowedHosts: z.string().trim().max(1024).optional(),
     // Guarded before coercion: z.coerce turns "" into 0, which would report the range error instead.
     pollInterval: z
       .string()
@@ -68,11 +63,11 @@ const schema = z
           .max(300, "Poll interval must be at most 300 seconds")
       )
   })
-  // Only under Deny, where the field is on screen: an Allow proxy ignores the list, and a stale
-  // value in a hidden field would block Save with an error nothing shows.
+  // Only under the bundle-hosts policy, where the field is on screen: an any-host proxy ignores the
+  // list, and a stale value in a hidden field would block Save with an error nothing shows.
   .superRefine((data, ctx) => {
-    if (data.unmatchedHost !== AgentVaultUnmatchedHost.Deny) return;
-    addHostListIssues(data.bypassHosts, ctx, ["bypassHosts"]);
+    if (data.trafficPolicy !== AgentVaultTrafficPolicy.BundleHosts) return;
+    addHostListIssues(data.allowedHosts, ctx, ["allowedHosts"]);
   });
 
 type FormData = z.infer<typeof schema>;
@@ -97,7 +92,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
     formState: { isSubmitting }
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  const isDenying = watch("unmatchedHost") === AgentVaultUnmatchedHost.Deny;
+  const isBundleOnly = watch("trafficPolicy") === AgentVaultTrafficPolicy.BundleHosts;
 
   const saveDelayNote = (() => {
     if (!proxy?.heartbeat) return null;
@@ -111,8 +106,8 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
 
     reset({
       name: proxy?.name ?? "",
-      unmatchedHost: proxy?.unmatchedHost ?? AgentVaultUnmatchedHost.Allow,
-      bypassHosts: proxy?.bypassHosts ?? "",
+      trafficPolicy: proxy?.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
+      allowedHosts: proxy?.allowedHosts ?? "",
       pollInterval: proxy?.pollInterval ?? 60
     });
   }, [isOpen, proxy, reset]);
@@ -121,8 +116,8 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
     try {
       const payload = {
         name: data.name,
-        unmatchedHost: data.unmatchedHost,
-        bypassHosts: data.bypassHosts ? data.bypassHosts : null,
+        trafficPolicy: data.trafficPolicy,
+        allowedHosts: data.allowedHosts ? data.allowedHosts : null,
         pollInterval: data.pollInterval
       };
 
@@ -149,7 +144,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
           <DialogHeader>
             <DialogTitle>{isUpdate ? "Edit Settings" : "Create Proxy"}</DialogTitle>
             <DialogDescription>
-              Set how this proxy handles your agents&apos; traffic.
+              Set how this proxy handles your agents&apos; requests.
             </DialogDescription>
           </DialogHeader>
 
@@ -169,21 +164,20 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
             />
             <Controller
               control={control}
-              name="unmatchedHost"
+              name="trafficPolicy"
               render={({ field }) => (
                 <Field>
-                  <FieldLabel>Unmatched Hosts</FieldLabel>
+                  <FieldLabel>Traffic Policy</FieldLabel>
                   <FieldContent>
                     <RadioGroup value={field.value} onValueChange={field.onChange}>
-                      {UNMATCHED_HOST_CHOICES.map((choice) => {
-                        const id = `unmatched-${choice.value}`;
+                      {TRAFFIC_POLICY_CHOICES.map((choice) => {
+                        const id = `traffic-policy-${choice.value}`;
 
                         return (
                           <FieldLabel key={choice.value} htmlFor={id} variant="av">
                             <Field orientation="horizontal">
                               <FieldContent>
                                 <FieldTitle>{choice.title}</FieldTitle>
-                                <FieldDescription>{choice.description}</FieldDescription>
                               </FieldContent>
                               <RadioGroupItem id={id} value={choice.value} />
                             </Field>
@@ -195,23 +189,23 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 </Field>
               )}
             />
-            {isDenying && (
+            {isBundleOnly && (
               <Controller
                 control={control}
-                name="bypassHosts"
+                name="allowedHosts"
                 render={({ field, fieldState }) => (
                   <Field>
                     <FieldLabel>
-                      Bypass Hosts
+                      Exceptions
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <InfoIcon />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
                           Hosts listed here are reached even though no access bundle covers them,
-                          with nothing added to the request. If a bundle does cover the same host,
-                          its credential still applies. To open a host for one bundle only, add a
-                          Pass-through service to that bundle instead.
+                          with nothing added to the request. They are still intercepted. If a bundle
+                          does cover the same host, its credential still applies. To open a host for
+                          one bundle only, add a Pass-through service to that bundle instead.
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>
@@ -222,7 +216,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                         isError={Boolean(fieldState.error)}
                       />
                       <FieldDescription>
-                        Reachable under Deny without naming them in an access bundle.
+                        Reachable without being named in an access bundle.
                       </FieldDescription>
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </FieldContent>

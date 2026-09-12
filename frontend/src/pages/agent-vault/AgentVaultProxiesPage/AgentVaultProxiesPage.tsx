@@ -59,7 +59,7 @@ import {
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import {
-  AgentVaultUnmatchedHost,
+  AgentVaultTrafficPolicy,
   useDeleteAgentVaultProxy,
   useListAgentVaultProxies,
   useReissueAgentVaultProxyEnrollmentToken,
@@ -74,27 +74,27 @@ import { ProxyEnrollmentDialog } from "./components/ProxyEnrollmentDialog";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
 import { ProxyStatusBadge } from "./components/ProxyStatusBadge";
 
-const bypassHostsOf = (proxy: TAgentVaultProxy) =>
-  proxy.bypassHosts
-    ? proxy.bypassHosts
+const allowedHostsOf = (proxy: TAgentVaultProxy) =>
+  proxy.allowedHosts
+    ? proxy.allowedHosts
         .split(",")
         .map((host) => host.trim())
         .filter(Boolean)
     : [];
 
-const UnmatchedHostCell = ({ proxy }: { proxy: TAgentVaultProxy }) => {
-  const isDenying = proxy.unmatchedHost === AgentVaultUnmatchedHost.Deny;
-  const bypassHosts = isDenying ? bypassHostsOf(proxy) : [];
+const TrafficPolicyCell = ({ proxy }: { proxy: TAgentVaultProxy }) => {
+  const isBundleOnly = proxy.trafficPolicy === AgentVaultTrafficPolicy.BundleHosts;
+  const allowedHosts = isBundleOnly ? allowedHostsOf(proxy) : [];
 
   const cell = (
     <span>
-      {isDenying ? "Deny" : "Allow"}
-      {bypassHosts.length > 0 &&
-        ` · ${bypassHosts.length} ${bypassHosts.length === 1 ? "exception" : "exceptions"}`}
+      {isBundleOnly ? "Bundle hosts only" : "Any host"}
+      {allowedHosts.length > 0 &&
+        ` · ${allowedHosts.length} ${allowedHosts.length === 1 ? "exception" : "exceptions"}`}
     </span>
   );
 
-  if (bypassHosts.length === 0) return cell;
+  if (allowedHosts.length === 0) return cell;
 
   return (
     <Tooltip>
@@ -102,7 +102,7 @@ const UnmatchedHostCell = ({ proxy }: { proxy: TAgentVaultProxy }) => {
       <TooltipContent className="max-w-sm">
         <p className="mb-1">Reachable without a credential:</p>
         <ul className="font-mono text-xs">
-          {bypassHosts.map((host) => (
+          {allowedHosts.map((host) => (
             <li key={host}>{host}</li>
           ))}
         </ul>
@@ -266,8 +266,8 @@ export const AgentVaultProxiesPage = () => {
                 <TableHead>Status</TableHead>
                 {isAdmin && (
                   <TableHead>
-                    <HeadWithHint hint="What the agent may reach beyond the hosts its access bundle covers.">
-                      Unmatched Hosts
+                    <HeadWithHint hint="Which hosts an agent may reach through this proxy.">
+                      Traffic Policy
                     </HeadWithHint>
                   </TableHead>
                 )}
@@ -310,7 +310,7 @@ export const AgentVaultProxiesPage = () => {
                     </TableCell>
                     {isAdmin && (
                       <TableCell>
-                        <UnmatchedHostCell proxy={proxy} />
+                        <TrafficPolicyCell proxy={proxy} />
                       </TableCell>
                     )}
                     <TableCell>

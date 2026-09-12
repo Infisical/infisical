@@ -149,8 +149,8 @@ export async function up(knex: Knex): Promise<void> {
       // its next poll, which is still scheduled at the old one. Gateways keep heartbeatTTL for this.
       t.integer("heartbeatTTL");
 
-      t.string("unmatchedHost", 16).notNullable().defaultTo("allow");
-      t.string("bypassHosts", 1024);
+      t.string("trafficPolicy", 32).notNullable().defaultTo("any-host");
+      t.string("allowedHosts", 1024);
       t.integer("pollInterval").notNullable().defaultTo(60);
 
       t.timestamps(true, true, true);
@@ -159,7 +159,7 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await knex.raw(
-      `ALTER TABLE "${TableName.AgentVaultProxy}" ADD CONSTRAINT "agent_vault_proxies_unmatched_host_check" CHECK ("unmatchedHost" IN ('allow', 'deny'))`
+      `ALTER TABLE "${TableName.AgentVaultProxy}" ADD CONSTRAINT "agent_vault_proxies_traffic_policy_check" CHECK ("trafficPolicy" IN ('any-host', 'bundle-hosts'))`
     );
     await knex.raw(
       `ALTER TABLE "${TableName.AgentVaultProxy}" ADD CONSTRAINT "agent_vault_proxies_poll_interval_check" CHECK ("pollInterval" BETWEEN 10 AND 300)`
