@@ -586,6 +586,13 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      // Other passkeys can still answer the challenge, so only removing the last one
+      // needs to fall back to a different factor.
+      const { credentials } = await server.services.webAuthn.getUserWebAuthnCredentials({
+        userId: req.permission.id
+      });
+      const isRemovingLastPasskey = credentials.every((credential) => credential.id === req.params.id);
+
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
@@ -593,7 +600,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
         message: "MFA verification is required to remove a passkey",
-        excludeMfaMethod: MfaMethod.WEBAUTHN
+        excludeMfaMethod: isRemovingLastPasskey ? MfaMethod.WEBAUTHN : undefined
       });
       await server.services.webAuthn.deleteWebAuthnCredential({
         userId: req.permission.id,
