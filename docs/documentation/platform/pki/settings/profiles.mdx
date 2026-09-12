@@ -68,6 +68,8 @@ Set default values for custom X.509 extensions. The [certificate policy](/docume
 
 Set a value and Infisical uses it whenever the request doesn't supply one. Leave the value empty and the request supplies it, which suits a per-principal value such as an Active Directory security identifier. Either way, Infisical checks the value against the policy's rule for that OID.
 
+Mark an extension **Critical** when a client that can't process it must reject the certificate rather than ignore it. Leave it clear otherwise, which is the usual choice. Where an extension's own specification fixes criticality, or the certificate policy pins it for that OID, the checkbox is read only.
+
 Enter the value as you want it read and Infisical encodes it. A few well-known extensions have a shape their specification fixes, so Infisical checks those as you type:
 
 | Extension | Value to enter |
