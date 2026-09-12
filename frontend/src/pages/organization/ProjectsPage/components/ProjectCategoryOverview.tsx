@@ -32,6 +32,7 @@ import {
   projectTypeToUrlSlug
 } from "@app/helpers/project";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
+import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
@@ -44,7 +45,8 @@ const PRODUCT_TYPES: ActiveProducts[] = [
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AgentVault
 ];
 
 const PRODUCT_STYLES: Record<
@@ -90,6 +92,13 @@ const PRODUCT_STYLES: Record<
       "border-product-pam/30 bg-gradient-to-br from-product-pam/20 to-product-pam/5 group-hover:border-product-pam/50 group-hover:from-product-pam/25 group-hover:to-product-pam/10",
     cardClassName: "hover:bg-gradient-to-br hover:from-product-pam/[0.04] hover:to-transparent",
     titleUnderlineClassName: "decoration-product-pam/60"
+  },
+  [ProjectType.AgentVault]: {
+    iconClassName: "h-4.5 w-4.5 text-product-av",
+    containerClassName:
+      "border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5 group-hover:border-product-av/50 group-hover:from-product-av/25 group-hover:to-product-av/10",
+    cardClassName: "hover:bg-gradient-to-br hover:from-product-av/[0.04] hover:to-transparent",
+    titleUnderlineClassName: "decoration-product-av/60"
   }
 };
 
@@ -101,6 +110,9 @@ type ProductStat = {
   label: string;
   value: number;
 };
+
+// Derived so the placeholder count cannot drift from the products again.
+const PRODUCT_TILE_COUNT = Object.keys(ProjectType).length;
 
 export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
@@ -123,6 +135,8 @@ export const ProjectCategoryOverview = () => {
   );
   const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
   const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
+  const [isAgentVaultRequestAccessOpen, setIsAgentVaultRequestAccessOpen] = useState(false);
+  const [pendingAgentVaultProjectId, setPendingAgentVaultProjectId] = useState<string | null>(null);
 
   const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
   const cmInstances = useMemo(
@@ -151,6 +165,20 @@ export const ProjectCategoryOverview = () => {
   );
   const isPamAccessBlocked =
     Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
+
+  const isAgentVaultMember = useMemo(
+    () =>
+      Boolean(
+        currentOrg?.agentVaultProjectId &&
+          projects.some((project) => project.id === currentOrg.agentVaultProjectId)
+      ),
+    [currentOrg?.agentVaultProjectId, projects]
+  );
+  const isAgentVaultAccessBlocked =
+    Boolean(currentOrg?.agentVaultProjectId) &&
+    !isOrgAdmin &&
+    !canRequestAccess &&
+    !isAgentVaultMember;
 
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
@@ -199,6 +227,12 @@ export const ProjectCategoryOverview = () => {
           { label: "accounts", value: productStats.pam.accountsCount },
           { label: "account templates", value: productStats.pam.accountTemplatesCount },
           { label: "folders", value: productStats.pam.foldersCount }
+        ];
+      case ProjectType.AgentVault:
+        return [
+          { label: "access bundles", value: productStats.agentVault.accessBundlesCount },
+          { label: "services", value: productStats.agentVault.servicesCount },
+          { label: "proxies", value: productStats.agentVault.proxiesCount }
         ];
       default:
         return [];
@@ -300,6 +334,57 @@ export const ProjectCategoryOverview = () => {
     }
   };
 
+  const navigateToAgentVault = () => {
+    navigate({
+      to: "/organizations/$orgId/agent-vault/sessions",
+      params: { orgId: currentOrg?.id ?? "" }
+    });
+  };
+
+  const enterAgentVaultProject = async () => {
+    let agentVaultProjectId: string;
+    try {
+      agentVaultProjectId = currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to resolve the Agent Vault project."
+      });
+      return;
+    }
+
+    const isMember = projects.some((p) => p.id === agentVaultProjectId);
+    if (isMember) {
+      navigateToAgentVault();
+      return;
+    }
+
+    setPendingAgentVaultProjectId(agentVaultProjectId);
+
+    if (isOrgAdmin) {
+      try {
+        await orgAdminAccessProject.mutateAsync({ projectId: agentVaultProjectId });
+        navigateToAgentVault();
+      } catch (err) {
+        createNotification({
+          type: "error",
+          text: err instanceof Error ? err.message : "Failed to join the Agent Vault project."
+        });
+      }
+      return;
+    }
+
+    if (canRequestAccess) {
+      setIsAgentVaultRequestAccessOpen(true);
+      return;
+    }
+
+    createNotification({
+      type: "error",
+      text: "You don't have access to Agent Vault. Ask an Agent Vault admin to add you."
+    });
+  };
+
   const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
@@ -322,6 +407,11 @@ export const ProjectCategoryOverview = () => {
       return;
     }
 
+    if (type === ProjectType.AgentVault) {
+      await enterAgentVaultProject();
+      return;
+    }
+
     navigate({
       to: "/organizations/$orgId/projects/$type",
       params: { orgId, type: projectTypeToUrlSlug(type) }
@@ -331,7 +421,7 @@ export const ProjectCategoryOverview = () => {
   if (isProjectsLoading) {
     return (
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: PRODUCT_TILE_COUNT }).map((_, i) => (
           <Card key={`tile-loading-${i + 1}`}>
             <CardHeader>
               <div className="flex items-start gap-3">
@@ -366,6 +456,13 @@ export const ProjectCategoryOverview = () => {
     ? ({
         id: pendingPamProjectId,
         name: "Privileged Access Manager"
+      } as Project)
+    : undefined;
+
+  const agentVaultRequestAccessProject: Project | undefined = pendingAgentVaultProjectId
+    ? ({
+        id: pendingAgentVaultProjectId,
+        name: "Agent Vault"
       } as Project)
     : undefined;
 
@@ -423,7 +520,8 @@ export const ProjectCategoryOverview = () => {
 
           const isAccessBlocked =
             (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
-            (type === ProjectType.PAM && isPamAccessBlocked);
+            (type === ProjectType.PAM && isPamAccessBlocked) ||
+            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
 
           if (isAccessBlocked) {
             return (
@@ -445,7 +543,11 @@ export const ProjectCategoryOverview = () => {
 
           // Cert Manager and PAM resolve their destination asynchronously (instance picker,
           // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
-          if (type === ProjectType.CertificateManager || type === ProjectType.PAM) {
+          if (
+            type === ProjectType.CertificateManager ||
+            type === ProjectType.PAM ||
+            type === ProjectType.AgentVault
+          ) {
             return (
               <Card
                 key={type}
@@ -490,6 +592,16 @@ export const ProjectCategoryOverview = () => {
         }}
         project={pamRequestAccessProject}
         subTitle="Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
+      />
+
+      <RequestProjectAccessModal
+        isOpen={isAgentVaultRequestAccessOpen}
+        onOpenChange={(isOpen) => {
+          setIsAgentVaultRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingAgentVaultProjectId(null);
+        }}
+        project={agentVaultRequestAccessProject}
+        subTitle="Requesting access to Agent Vault. You may include an optional note for admins to review your request."
       />
 
       <CertManagerNotConfiguredModal

@@ -26,6 +26,7 @@ export enum AuditLogStreamProduct {
   KMS = "kms",
   SecretScanning = "secret-scanning",
   PAM = "pam",
+  AgentVault = "agent-vault",
   // Org-level events (no associated project), e.g. SSO, org settings, user/identity management.
   Organization = "organization"
 }

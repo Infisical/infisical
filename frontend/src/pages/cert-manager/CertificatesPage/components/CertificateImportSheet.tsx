@@ -43,6 +43,7 @@ import type { TCertificatePemSummary } from "@app/helpers/certificatePem";
 import type { TPkcs12Entry } from "@app/helpers/pkcs12";
 import { useImportCertificate, useImportPkcs12Entries } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { useWizardSteps } from "@app/hooks/useWizardSteps";
 
 import {
   CertificateProfileSelect,
@@ -52,7 +53,7 @@ import {
   useCertificateImportReference
 } from "./certificate-import-fields";
 import { getCertificateImportReference } from "./certificate-import-linkage";
-import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
+import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
 import { CertificateImportFormData, certificateImportSchema } from "./types";
 
 const MAX_KEYSTORE_BYTES = 1024 * 1024;

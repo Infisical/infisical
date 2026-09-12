@@ -1,0 +1,79 @@
+import { useFormContext } from "react-hook-form";
+
+import {
+  Detail,
+  DetailGroup,
+  DetailGroupHeader,
+  DetailLabel,
+  DetailValue
+} from "@app/components/v3";
+import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
+
+import { credentialPreview } from "./CredentialFields";
+import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+
+type Props = {
+  isUpdate: boolean;
+};
+
+export const ReviewFields = ({ isUpdate }: Props) => {
+  const { watch } = useFormContext<TServiceForm>();
+  const form = watch();
+
+  const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
+  const secretLabel = isBasic ? "Password" : "Token";
+  const sends = credentialPreview(form);
+
+  const outcome = (value: string | undefined, canClear: boolean) => {
+    if (!isUpdate) return value ? "Set" : "None";
+    if (value === UNCHANGED_SECRET) return "Unchanged";
+    if (value) return "Replaced";
+    return canClear ? "Cleared" : "Unchanged";
+  };
+
+  return (
+    <div className="mb-4 flex flex-col gap-y-8">
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">Details</DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <Detail>
+            <DetailLabel>Name</DetailLabel>
+            <DetailValue>{form.name}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Hosts</DetailLabel>
+            <DetailValue className="font-mono">{form.hostPattern}</DetailValue>
+          </Detail>
+        </div>
+      </DetailGroup>
+
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">Credential</DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <Detail>
+            <DetailLabel>Type</DetailLabel>
+            <DetailValue>{CREDENTIAL_LABELS[form.credentialType]}</DetailValue>
+          </Detail>
+          {sends && (
+            <Detail>
+              <DetailLabel>Sends</DetailLabel>
+              <DetailValue className="font-mono">{sends}</DetailValue>
+            </Detail>
+          )}
+          {isBasic && (
+            <Detail>
+              <DetailLabel>Username</DetailLabel>
+              <DetailValue>{outcome(form.username, true)}</DetailValue>
+            </Detail>
+          )}
+          {form.credentialType !== AgentVaultCredentialType.Passthrough && (
+            <Detail>
+              <DetailLabel>{secretLabel}</DetailLabel>
+              <DetailValue>{outcome(form.secret, isBasic)}</DetailValue>
+            </Detail>
+          )}
+        </div>
+      </DetailGroup>
+    </div>
+  );
+};

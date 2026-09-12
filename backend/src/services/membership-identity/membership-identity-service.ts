@@ -11,14 +11,14 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
+import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
@@ -231,6 +231,7 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     }
     return { membership };
   };
@@ -309,6 +310,18 @@ export const membershipIdentityServiceFactory = ({
     let shouldRestoreOrgTokens = false;
 
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+      // The project advisory lock before the row lock, the order every other caller takes: a product-route
+      // change holding the advisory lock needs KEY SHARE on this row, so the reverse order deadlocks.
+      const newRolesHavePermanentAdmin = data.roles.some(
+        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
+      );
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+      }
       const currentMembership = await membershipIdentityDAL.findByIdForUpdate(existingMembership.id, tx);
       if (!currentMembership) {
         throw new BadRequestError({ message: "Identity doesn't have membership" });
@@ -416,6 +429,14 @@ export const membershipIdentityServiceFactory = ({
       });
 
     const performDelete = async (tx: Knex) => {
+      if (scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
+      }
+
       await additionalPrivilegeDAL.delete(
         {
           actorIdentityId: dto.selector.identityId,
@@ -479,9 +500,11 @@ export const membershipIdentityServiceFactory = ({
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
       usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, AgentVaultIdentities.key);
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
       usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
 
     if (needsRevocationBump && externalTx) {

@@ -68,12 +68,14 @@ const GENERIC_FILTER_KEYS = ["event", "actor", "actor_id", "source"];
 
 // Per-product filter keys. Products not listed fall back to the full set (secrets default)
 const PRODUCT_FILTER_KEYS: Partial<Record<ProjectType, string[]>> = {
-  [ProjectType.PAM]: GENERIC_FILTER_KEYS
+  [ProjectType.PAM]: GENERIC_FILTER_KEYS,
+  [ProjectType.AgentVault]: GENERIC_FILTER_KEYS
 };
 
 // Per-product example hints for the free-text event filter (products not listed use the default)
 const PRODUCT_EVENT_HINTS: Partial<Record<ProjectType, string>> = {
-  [ProjectType.PAM]: "pam-account-access, pam-session-start, ..."
+  [ProjectType.PAM]: "pam-account-access, pam-session-start, ...",
+  [ProjectType.AgentVault]: "agent-vault-session-mint, agent-vault-proxy-enroll, ..."
 };
 
 const getProductFilterProperties = (projectType?: ProjectType) => {

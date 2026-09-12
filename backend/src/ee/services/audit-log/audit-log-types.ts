@@ -99,7 +99,8 @@ export type TCreateAuditLogDTO = {
     | ScepAccountActor
     | GatewayActor
     | RelayActor
-    | KmipServerActor;
+    | KmipServerActor
+    | AgentVaultProxyActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -754,6 +755,25 @@ export enum EventType {
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
   PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
   PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
+  AGENT_VAULT_ACCESS_BUNDLE_CREATE = "agent-vault-access-bundle-create",
+  AGENT_VAULT_ACCESS_BUNDLE_UPDATE = "agent-vault-access-bundle-update",
+  AGENT_VAULT_ACCESS_BUNDLE_DELETE = "agent-vault-access-bundle-delete",
+  AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
+  AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
+  AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
+  AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
+  AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
+  AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD = "agent-vault-access-bundle-member-add",
+  AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE = "agent-vault-access-bundle-member-remove",
+  AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
+  AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
+  AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
+  AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
+  AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
+  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -932,7 +952,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.SCEP_ACCOUNT]: "profileId",
   [ActorType.GATEWAY]: "gatewayId",
   [ActorType.RELAY]: "relayId",
-  [ActorType.KMIP_SERVER]: "kmipServerId"
+  [ActorType.KMIP_SERVER]: "kmipServerId",
+  [ActorType.AGENT_VAULT_PROXY]: "agentVaultProxyId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -1009,6 +1030,10 @@ interface KmipServerActorMetadata {
   kmipServerId: string;
 }
 
+interface AgentVaultProxyActorMetadata {
+  agentVaultProxyId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1078,6 +1103,11 @@ export interface KmipServerActor {
   metadata: KmipServerActorMetadata;
 }
 
+export interface AgentVaultProxyActor {
+  type: ActorType.AGENT_VAULT_PROXY;
+  metadata: AgentVaultProxyActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1091,7 +1121,8 @@ export type Actor =
   | ScepAccountActor
   | GatewayActor
   | RelayActor
-  | KmipServerActor;
+  | KmipServerActor
+  | AgentVaultProxyActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -6079,6 +6110,197 @@ interface PamWebAccessSessionTicketCreatedEvent {
   };
 }
 
+interface AgentVaultProxyRegisterEvent {
+  type: EventType.AGENT_VAULT_PROXY_REGISTER;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyTokenReissueEvent {
+  type: EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyEnrollEvent {
+  type: EventType.AGENT_VAULT_PROXY_ENROLL;
+  metadata: {
+    proxyId: string;
+    name: string;
+    rootCaFingerprint: string;
+    replacedExistingCa: boolean;
+  };
+}
+
+interface AgentVaultProxyUpdateEvent {
+  type: EventType.AGENT_VAULT_PROXY_UPDATE;
+  metadata: {
+    proxyId: string;
+    name?: string;
+    trafficPolicy?: string;
+    allowedHosts?: string | null;
+    pollInterval?: number;
+  };
+}
+
+interface AgentVaultProxyRevokeEvent {
+  type: EventType.AGENT_VAULT_PROXY_REVOKE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyDeleteEvent {
+  type: EventType.AGENT_VAULT_PROXY_DELETE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultAccessBundleCreateEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
+  metadata: {
+    accessBundleId: string;
+    name: string;
+    description?: string | null;
+  };
+}
+
+interface AgentVaultAccessBundleUpdateEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    name?: string;
+    description?: string | null;
+  };
+}
+
+interface AgentVaultAccessBundleDeleteEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE;
+  metadata: {
+    accessBundleId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultServiceCreateEvent {
+  type: EventType.AGENT_VAULT_SERVICE_CREATE;
+  metadata: {
+    accessBundleId: string;
+    serviceId: string;
+    name: string;
+    hostPattern: string;
+    credentialType: string;
+    headerName?: string;
+    headerPrefix?: string;
+  };
+}
+
+interface AgentVaultServiceUpdateEvent {
+  type: EventType.AGENT_VAULT_SERVICE_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    serviceId: string;
+    name?: string;
+    hostPattern?: string;
+    credentialType?: string;
+    headerName?: string;
+    headerPrefix?: string;
+    credentialReplaced: boolean;
+  };
+}
+
+interface AgentVaultServiceDeleteEvent {
+  type: EventType.AGENT_VAULT_SERVICE_DELETE;
+  metadata: {
+    accessBundleId: string;
+    serviceId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProductMemberAddEvent {
+  type: EventType.AGENT_VAULT_MEMBER_ADD;
+  metadata: {
+    userId?: string;
+    userName?: string;
+    groupId?: string;
+    groupName?: string;
+    identityId?: string;
+    identityName?: string;
+    role: string;
+  };
+}
+
+interface AgentVaultProductMemberUpdateEvent {
+  type: EventType.AGENT_VAULT_MEMBER_UPDATE;
+  metadata: {
+    userId?: string;
+    userName?: string;
+    groupId?: string;
+    groupName?: string;
+    identityId?: string;
+    identityName?: string;
+    role: string;
+  };
+}
+
+interface AgentVaultProductMemberRemoveEvent {
+  type: EventType.AGENT_VAULT_MEMBER_REMOVE;
+  metadata: {
+    userId?: string;
+    userName?: string;
+    groupId?: string;
+    groupName?: string;
+    identityId?: string;
+    identityName?: string;
+  };
+}
+
+interface AgentVaultAccessBundleMemberAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    memberId: string;
+    userId?: string;
+    identityId?: string;
+    groupId?: string;
+  };
+}
+
+interface AgentVaultAccessBundleMemberRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    memberId: string;
+  };
+}
+
+interface AgentVaultSessionMintEvent {
+  type: EventType.AGENT_VAULT_SESSION_MINT;
+  metadata: {
+    sessionId: string;
+    accessBundleId: string;
+    accessBundleName: string;
+    expiresAt: string | null;
+  };
+}
+
+interface AgentVaultSessionRevokeEvent {
+  type: EventType.AGENT_VAULT_SESSION_REVOKE;
+  metadata: {
+    sessionId: string;
+  };
+}
+
 interface PamAccountCreateEvent {
   type: EventType.PAM_ACCOUNT_CREATE;
   metadata: {
@@ -7876,6 +8098,25 @@ export type Event =
   | PamAccountMemberRemoveEvent
   | PamAccountAccessEvent
   | PamWebAccessSessionTicketCreatedEvent
+  | AgentVaultAccessBundleCreateEvent
+  | AgentVaultAccessBundleUpdateEvent
+  | AgentVaultAccessBundleDeleteEvent
+  | AgentVaultServiceCreateEvent
+  | AgentVaultServiceUpdateEvent
+  | AgentVaultServiceDeleteEvent
+  | AgentVaultProductMemberAddEvent
+  | AgentVaultProductMemberUpdateEvent
+  | AgentVaultProductMemberRemoveEvent
+  | AgentVaultAccessBundleMemberAddEvent
+  | AgentVaultAccessBundleMemberRemoveEvent
+  | AgentVaultSessionMintEvent
+  | AgentVaultSessionRevokeEvent
+  | AgentVaultProxyRegisterEvent
+  | AgentVaultProxyTokenReissueEvent
+  | AgentVaultProxyEnrollEvent
+  | AgentVaultProxyUpdateEvent
+  | AgentVaultProxyRevokeEvent
+  | AgentVaultProxyDeleteEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

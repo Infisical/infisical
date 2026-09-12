@@ -76,7 +76,11 @@ export const telemetryDALFactory = (db: TDbClient) => {
         accessApprovalPolicies,
         honeyTokens,
         proxiedServices,
-        proxiedServicesUsedLast7Days
+        proxiedServicesUsedLast7Days,
+        agentVaultProxies,
+        activeAgentVaultProxies,
+        agentVaultAccessBundles,
+        agentVaultServices
       ] = await Promise.all([
         (async () => {
           const result = (await db(TableName.Users).where({ isGhost: false }).count().first())?.count as string;
@@ -140,7 +144,20 @@ export const telemetryDALFactory = (db: TDbClient) => {
               .first()
           )?.count as string;
           return parseInt(result || "0", 10);
-        })()
+        })(),
+        countTable(db, TableName.AgentVaultProxy),
+        (async () => {
+          const result = (
+            await db(TableName.AgentVaultProxy)
+              .whereNotNull("heartbeat")
+              .whereRaw(`"heartbeat" > NOW() - make_interval(secs => "pollInterval" * 3)`)
+              .count()
+              .first()
+          )?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
+        countTable(db, TableName.AgentVaultAccessBundle),
+        countTable(db, TableName.AgentVaultService)
       ]);
 
       // Per-type identity auth method breakdown
@@ -304,6 +321,10 @@ export const telemetryDALFactory = (db: TDbClient) => {
         honeyTokens,
         proxiedServices,
         proxiedServicesUsedLast7Days,
+        agentVaultProxies,
+        activeAgentVaultProxies,
+        agentVaultAccessBundles,
+        agentVaultServices,
         integrationBreakdown,
         projectTypeBreakdown,
         secretSyncBreakdown,

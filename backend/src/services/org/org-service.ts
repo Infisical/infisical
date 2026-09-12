@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
@@ -39,7 +40,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -218,10 +219,16 @@ export const orgServiceFactory = ({
       { sort: [["createdAt", "desc"]], limit: 1 }
     );
 
+    const agentVaultProjects = await projectDAL.find(
+      { orgId: data.id, type: ProjectType.AgentVault },
+      { sort: [["createdAt", "desc"]], limit: 1 }
+    );
+
     return {
       ...data,
       userTokenExpiration: data.userTokenExpiration || appCfg.JWT_REFRESH_LIFETIME,
-      pamProjectId: pamProjects[0]?.id ?? null
+      pamProjectId: pamProjects[0]?.id ?? null,
+      agentVaultProjectId: agentVaultProjects[0]?.id ?? null
     };
   };
 
@@ -722,6 +729,15 @@ export const orgServiceFactory = ({
         tx
       );
 
+      await bootstrapAgentVaultProject(
+        {
+          orgId: org.id,
+          adminUserIds: userId ? [userId] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
+        tx
+      );
+
       return org;
     };
 
@@ -729,8 +745,8 @@ export const orgServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
 
-    // The PAM bootstrap above seeds the creator as a project member, which changes the pam_identities meter.
     usageMeteringService.emit(organization.id, PamIdentities.key);
+    usageMeteringService.emit(organization.id, AgentVaultIdentities.key);
 
     return organization;
   };
@@ -1290,6 +1306,7 @@ export const orgServiceFactory = ({
     // Removing an org member cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, SecretIdentities.key);
     usageMeteringService.emit(orgId, PamIdentities.key);
+    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     return deletedMembership;
   };
 
@@ -1345,6 +1362,7 @@ export const orgServiceFactory = ({
     // Removing org members cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, SecretIdentities.key);
     usageMeteringService.emit(orgId, PamIdentities.key);
+    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     return deletedMemberships;
   };
 

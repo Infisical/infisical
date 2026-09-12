@@ -10,7 +10,18 @@ import {
 } from "@app/ee/services/permission/default-roles";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
+// Agent Vault resolves every slug except admin to its member set, so Viewer and No Access would promise
+// less access than they grant.
+const NARROWED_ROLE_PROJECT_TYPES = new Set<string>([ProjectType.AgentVault]);
+const NARROWED_ROLE_SLUGS = new Set<string>([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]);
+
+const AGENT_VAULT_ROLE_DESCRIPTIONS: Record<string, string> = {
+  [ProjectMembershipRole.Admin]: "Full administrative access over Agent Vault",
+  [ProjectMembershipRole.Member]: "Create sessions over the access bundles they're granted"
+};
+
 export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetPredefinedRolesDTO) => {
+  const isNarrowed = NARROWED_ROLE_PROJECT_TYPES.has(projectType);
   return [
     {
       id: uuidv4(),
@@ -63,5 +74,16 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
       createdAt: new Date(),
       updatedAt: new Date()
     }
-  ].filter(({ slug, type }) => (type ? type === projectType : true) && (!roleFilter || roleFilter === slug));
+  ]
+    .filter(
+      ({ slug, type }) =>
+        (type ? type === projectType : true) &&
+        (!roleFilter || roleFilter === slug) &&
+        (!isNarrowed || NARROWED_ROLE_SLUGS.has(slug))
+    )
+    .map((role) =>
+      projectType === ProjectType.AgentVault && AGENT_VAULT_ROLE_DESCRIPTIONS[role.slug]
+        ? { ...role, description: AGENT_VAULT_ROLE_DESCRIPTIONS[role.slug] }
+        : role
+    );
 };

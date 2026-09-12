@@ -12,7 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
@@ -25,7 +25,7 @@ import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipie
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
+import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -377,6 +377,7 @@ export const projectMembershipServiceFactory = ({
     }
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return orgMembers;
   };
 
@@ -457,6 +458,12 @@ export const projectMembershipServiceFactory = ({
     );
 
     const performDelete = async (tx: Knex) => {
+      await assertProductWillRetainAdmin({
+        project: await projectDAL.findById(projectId, tx),
+        excludeMembershipIds: projectMembers.map(({ id }) => id),
+        tx
+      });
+
       await additionalPrivilegeDAL.delete(
         {
           projectId,
@@ -524,6 +531,7 @@ export const projectMembershipServiceFactory = ({
 
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return memberships;
   };
 
@@ -570,6 +578,8 @@ export const projectMembershipServiceFactory = ({
     );
 
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
+      await assertProductWillRetainAdmin({ project, excludeMembershipIds: [actorMembership.id], tx });
+
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,
@@ -617,6 +627,7 @@ export const projectMembershipServiceFactory = ({
 
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    usageMeteringService.emitForProject(projectId, AgentVaultIdentities.key);
     return deletedMembership;
   };
 

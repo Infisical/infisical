@@ -1,0 +1,291 @@
+import { FastifyRequest } from "fastify";
+import { z } from "zod";
+
+import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
+import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { buildHostPatternSchema, parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AGENT_VAULT } from "@app/lib/api-docs";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
+import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
+  actorId: req.permission.id,
+  actor: req.permission.type,
+  actorOrgId: req.permission.orgId,
+  actorAuthMethod: req.permission.authMethod
+});
+
+const ProxyMemberViewSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
+  name: z.string().describe(AGENT_VAULT.PROXY.name),
+  heartbeat: z.date().nullable().describe(AGENT_VAULT.PROXY.heartbeat),
+  isHealthy: z.boolean().describe(AGENT_VAULT.PROXY.isHealthy),
+  rootCaFingerprint: z.string().nullable().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
+  rootCaExpiresAt: z.date().nullable().describe(AGENT_VAULT.PROXY.rootCaExpiresAt)
+});
+
+const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
+  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
+  pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval),
+  createdAt: z.date()
+});
+
+const EnrollmentSchema = z.object({
+  token: z.string().describe(AGENT_VAULT.PROXY.enrollmentToken),
+  expiresAt: z.date()
+});
+
+const ProxySettingsSchema = {
+  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  allowedHosts: buildHostPatternSchema("host exception").nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
+  pollInterval: z.number().int().min(10).max(300).describe(AGENT_VAULT.PROXY.pollInterval)
+};
+
+export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "listAgentVaultProxies",
+      description: "List the organization's Agent Vault proxies",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      response: { 200: z.object({ proxies: z.union([ProxyAdminViewSchema, ProxyMemberViewSchema]).array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const proxies = await server.services.agentVaultProxy.listProxies({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req)
+      });
+      return { proxies };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "createAgentVaultProxy",
+      description: "Register an Agent Vault proxy and issue its one-time enrollment token",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      body: z.object({
+        name: slugSchema({ max: 64, field: "Name" }).describe(AGENT_VAULT.PROXY.name),
+        trafficPolicy: ProxySettingsSchema.trafficPolicy.optional(),
+        allowedHosts: ProxySettingsSchema.allowedHosts.optional(),
+        pollInterval: ProxySettingsSchema.pollInterval.optional()
+      }),
+      response: { 200: z.object({ proxy: ProxyAdminViewSchema, ...EnrollmentSchema.shape }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { proxy, enrollment } = await server.services.agentVaultProxy.createProxy({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PROXY_REGISTER,
+          metadata: { proxyId: proxy.id, name: proxy.name }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyRegistered,
+        properties: {
+          proxyId: proxy.id,
+          trafficPolicy: proxy.trafficPolicy,
+          allowedHostCount: proxy.allowedHosts
+            ? parseHostPatterns(proxy.allowedHosts, "host exception").patterns.length
+            : 0
+        }
+      });
+
+      return { proxy, ...enrollment };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:proxyId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "updateAgentVaultProxy",
+      description: "Update an Agent Vault proxy's name or settings",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      body: z
+        .object({
+          name: slugSchema({ max: 64, field: "Name" }).optional().describe(AGENT_VAULT.PROXY.name),
+          trafficPolicy: ProxySettingsSchema.trafficPolicy.optional(),
+          allowedHosts: ProxySettingsSchema.allowedHosts.optional(),
+          pollInterval: ProxySettingsSchema.pollInterval.optional()
+        })
+        .refine(
+          (body) =>
+            body.name !== undefined ||
+            body.trafficPolicy !== undefined ||
+            body.allowedHosts !== undefined ||
+            body.pollInterval !== undefined,
+          "Provide at least one setting to update"
+        ),
+      response: { 200: z.object({ proxy: ProxyAdminViewSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const proxy = await server.services.agentVaultProxy.updateProxy({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PROXY_UPDATE,
+          metadata: { proxyId: proxy.id, ...req.body }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyUpdated,
+        properties: {
+          proxyId: proxy.id,
+          trafficPolicy: proxy.trafficPolicy,
+          allowedHostCount: proxy.allowedHosts
+            ? parseHostPatterns(proxy.allowedHosts, "host exception").patterns.length
+            : 0
+        }
+      });
+
+      return { proxy };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:proxyId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "deleteAgentVaultProxy",
+      description: "Delete an Agent Vault proxy",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      response: { 200: z.object({ proxy: z.object({ id: z.string().uuid(), name: z.string() }) }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const proxy = await server.services.agentVaultProxy.deleteProxy({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: { type: EventType.AGENT_VAULT_PROXY_DELETE, metadata: { proxyId: proxy.id, name: proxy.name } }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyDeleted,
+        properties: { proxyId: proxy.id }
+      });
+
+      return { proxy };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:proxyId/token-auth/generate-enrollment-token",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "reissueAgentVaultProxyEnrollmentToken",
+      description: "Issue a replacement enrollment token for an Agent Vault proxy",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      response: { 200: EnrollmentSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { proxy, enrollment } = await server.services.agentVaultProxy.reissueEnrollmentToken({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
+          metadata: { proxyId: proxy.id, name: proxy.name }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued,
+        properties: { proxyId: proxy.id }
+      });
+
+      return enrollment;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:proxyId/revoke",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "revokeAgentVaultProxyAccess",
+      description: "Revoke an Agent Vault proxy's access token",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
+      response: { 200: z.object({ proxy: ProxyAdminViewSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const proxy = await server.services.agentVaultProxy.revokeProxyAccess({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PROXY_REVOKE,
+          metadata: { proxyId: proxy.id, name: proxy.name }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultProxyAccessRevoked,
+        properties: { proxyId: proxy.id }
+      });
+
+      return { proxy };
+    }
+  });
+};

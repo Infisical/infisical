@@ -101,6 +101,11 @@ export enum ApiDocsTags {
   PamMemberships = "PAM Memberships",
   PamRoles = "PAM Roles",
   PamDiscovery = "PAM Discovery",
+  AgentVault = "Agent Vault",
+  AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultSessions = "Agent Vault Sessions",
+  AgentVaultProxies = "Agent Vault Proxies",
+  AgentVaultMemberships = "Agent Vault Memberships",
   KmipServers = "KMIP Servers"
 }
 
@@ -4181,5 +4186,80 @@ export const ENCRYPTION_KEY_ROTATION = {
       "Label of the previous key, which must match the key currently held. It is a precondition, not an identifier: it fails the request rather than removing a key you have not seen.",
     force:
       "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
+  }
+};
+
+export const AGENT_VAULT = {
+  ACCESS_BUNDLE: {
+    accessBundleId: "The ID of the access bundle.",
+    name: "The name of the access bundle.",
+    description: "A description of what this access bundle is for.",
+    serviceCount: "How many services the access bundle holds.",
+    memberCount: "How many users, machine identities and groups can reach the access bundle.",
+    hostPatterns: "Every host pattern the access bundle's services cover."
+  },
+  SERVICE: {
+    serviceId: "The ID of the service.",
+    name: "The name of the service.",
+    hostPattern:
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
+    credentialType: "How the credential is attached to the request: bearer, basic or passthrough.",
+    headerName: "The header the credential is written to. Defaults to Authorization.",
+    headerPrefix:
+      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
+    username:
+      "The username half of the basic credential. May be empty if a password is set. Never returned once saved, since some APIs put the whole key here.",
+    updateUsername:
+      "The username half of the basic credential. Omit to keep the stored username; send an empty string to remove it, which requires a password.",
+    updateValue: "The secret. Omit to keep the stored secret.",
+    updatePassword:
+      "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
+    createdAt: "When the service was added to the access bundle.",
+    value: "The secret. Never returned once saved.",
+    password:
+      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved."
+  },
+  MEMBER: {
+    memberId: "The ID of the access bundle membership.",
+    userId: "The ID of the user to grant the access bundle to.",
+    identityId: "The ID of the machine identity to grant the access bundle to.",
+    groupId: "The ID of the group to grant the access bundle to.",
+    userIds: "The IDs of the users to grant the access bundle to.",
+    identityIds: "The IDs of the machine identities to grant the access bundle to.",
+    groupIds: "The IDs of the groups to grant the access bundle to.",
+    skipped: "The IDs of the requested grantees who already had the access bundle and were left as they were."
+  },
+  MEMBERSHIP: {
+    role: "The Agent Vault role: admin or member."
+  },
+  PROXY: {
+    proxyId: "The ID of the proxy.",
+    name: "The name of the proxy.",
+    heartbeat: "When the proxy last checked in, or null if it never has.",
+    isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
+    enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
+    rootCaCertificate:
+      "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",
+    rootCaFingerprint:
+      "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
+    rootCaExpiresAt: "When the proxy's certificate authority expires.",
+    trafficPolicy:
+      "Which hosts an agent may reach through this proxy. 'any-host' lets every request out; 'bundle-hosts' allows only hosts an access bundle covers, plus anything in allowedHosts, and refuses the rest with a 403.",
+    allowedHosts:
+      "Hosts that stay reachable under the 'bundle-hosts' traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
+    pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
+    sessionToken: "The session an agent is running with. A selector, not a second credential."
+  },
+  SESSION: {
+    sessionId: "The ID of the session.",
+    accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
+    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
+    token: "The session token. Returned once, at mint, and never again.",
+    expiresAt: "When the session expires, or null when it never does.",
+    scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
+    status: "Filter by session status: active, revoked or expired.",
+    search: "Match sessions by actor name, actor email or access bundle name.",
+    limit: "The maximum number of sessions to return.",
+    offset: "How many sessions to skip."
   }
 };

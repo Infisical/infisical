@@ -14,9 +14,12 @@ import {
   ServiceTokenScopes,
   TProjects
 } from "@app/db/schemas";
+import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import {
+  agentVaultProjectAdminPermissions,
+  agentVaultProjectMemberPermissions,
   applicationAdminPermissions,
   applicationAuditorPermissions,
   applicationOperatorPermissions,
@@ -141,6 +144,9 @@ const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
 const resolvePamProjectRoleRules = (role: string) =>
   role === ProjectMembershipRole.Admin ? pamProjectAdminPermissions : pamProjectMemberPermissions;
 
+const resolveAgentVaultProjectRoleRules = (role: string) =>
+  role === ProjectMembershipRole.Admin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions;
+
 export const buildProjectPermissionRules = (
   projectUserRoles: TBuildProjectPermissionDTO,
   projectType?: string,
@@ -150,6 +156,7 @@ export const buildProjectPermissionRules = (
     projectUserRoles
       .map(({ role, permissions }) => {
         if (projectType === ProjectType.PAM) return resolvePamProjectRoleRules(role);
+        if (projectType === ProjectType.AgentVault) return resolveAgentVaultProjectRoleRules(role);
 
         switch (role) {
           case ProjectMembershipRole.Admin:
@@ -220,6 +227,12 @@ export const resolveResourceRoleRules = (resourceType: ResourceType, role: strin
     }
   }
 
+  // The arm exists so this switch never reads an Agent Vault row as a cert-manager application.
+  if (resourceType === ResourceType.AgentVaultAccessBundle) {
+    if (role === AgentVaultResourceRole.Consumer) return [];
+    throw new NotFoundError({ name: "AgentVaultRoleInvalid", message: `Agent Vault role '${role}' not found` });
+  }
+
   switch (role) {
     case ResourceMembershipRole.Admin:
       return applicationAdminPermissions;
@@ -246,9 +259,16 @@ const buildResourcePermissionRules = (appUserRoles: TBuildProjectPermissionDTO, 
   return rules;
 };
 
+const resolveResourceActionProjectType = (resourceType: ResourceType) => {
+  if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) return ActionProjectType.PAM;
+  if (resourceType === ResourceType.AgentVaultAccessBundle) return ActionProjectType.AgentVault;
+  return ActionProjectType.CertificateManager;
+};
+
 const resolveResourceProjectAdminFallback = (resourceType: ResourceType) => {
   if (resourceType === ResourceType.Signer) return projectAdminSignerFallbackPermissions;
   if (resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount) return [];
+  if (resourceType === ResourceType.AgentVaultAccessBundle) return [];
   return projectAdminApplicationFallbackPermissions;
 };
 
@@ -852,10 +872,7 @@ export const permissionServiceFactory = ({
           projectId,
           actorAuthMethod,
           actorOrgId,
-          actionProjectType:
-            resourceType === ResourceType.PamFolder || resourceType === ResourceType.PamAccount
-              ? ActionProjectType.PAM
-              : ActionProjectType.CertificateManager
+          actionProjectType: resolveResourceActionProjectType(resourceType)
         });
         isProjectAdmin = projectPerm.hasRole(ProjectMembershipRole.Admin);
         isProjectMember = true;
