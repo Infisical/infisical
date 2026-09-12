@@ -212,18 +212,20 @@ export const userServiceFactory = ({
     return { user: updatedUser, recoveryCodes };
   };
 
-  const hasMfaEnforcingOrg = async (userId: string) => {
+  const findMfaEnforcingOrgs = async (userId: string) => {
     const userOrgMemberships = await membershipUserDAL.find({
       actorUserId: userId,
       scope: AccessScope.Organization,
       status: OrgMembershipStatus.Accepted
     });
-    if (!userOrgMemberships.length) return false;
+    if (!userOrgMemberships.length) return [];
 
     const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
     const organizations = await orgDAL.find({ $in: { id: orgIds } });
-    return organizations.some((org) => org.enforceMfa);
+    return organizations.filter((org) => org.enforceMfa);
   };
+
+  const hasMfaEnforcingOrg = async (userId: string) => (await findMfaEnforcingOrgs(userId)).length > 0;
 
   // MFA cannot be turned off while any organization the user belongs to enforces it,
   // since doing so would lock them out of that org on the next login. This is the
@@ -613,11 +615,19 @@ export const userServiceFactory = ({
   // Removing a factor is never gated on that same factor, since the usual reason to
   // remove one is that it was lost. The strongest other configured factor stands in,
   // falling back to the required method when nothing else is set up (e.g. no SMTP on
-  // a self-hosted instance).
+  // a self-hosted instance). The exception is a factor some accepted org enforces:
+  // that org has ruled the alternatives insufficient, so the factor itself is still
+  // challenged and a lost device is recovered via recovery-code login instead. Every
+  // org is checked, not only the current context, so org switching cannot bypass it.
   const getStepUpMfaMethod = async (userId: string, orgId: string, excludeMethod?: MfaMethod): Promise<MfaMethod> => {
     const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
     const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
     if (!user || !excludeMethod || requiredMfaMethod !== excludeMethod) return requiredMfaMethod;
+
+    const enforcingOrgs = await findMfaEnforcingOrgs(userId);
+    if (enforcingOrgs.some((enforcingOrg) => (enforcingOrg.selectedMfaMethod ?? MfaMethod.EMAIL) === excludeMethod)) {
+      return requiredMfaMethod;
+    }
 
     const fallbackOrder = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL].filter(
       (method) => method !== excludeMethod
