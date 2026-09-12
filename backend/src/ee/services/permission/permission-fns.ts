@@ -666,6 +666,24 @@ export const interpolatePermissionRules = <T>(rules: T[], identityContext: Recor
   return JSON.parse(templatedRules(identityContext, { data: false })) as T[];
 };
 
+// `identity.auth.*` is read off the credential an identity authenticates with, so it is knowable only
+// for the actor of the live request. Rendered against a context that lacks it, the mustache collapses to
+// an empty string, and the condition it guarded turns into one nothing satisfies, which reads to a
+// privilege boundary as a grant anybody outranks. Rules that reference it keep their mustaches instead,
+// so they stay unsatisfiable on both sides of the comparison.
+const AUTH_TEMPLATE_PATH = "identity.auth";
+
+export const interpolateStoredIdentityRules = <T>(rules: T[], identityContext: Record<string, unknown>): T[] => {
+  const serializedRules = JSON.stringify(rules);
+
+  if (!serializedRules.includes("{{")) return rules;
+  if (!serializedRules.includes(AUTH_TEMPLATE_PATH)) return interpolatePermissionRules(rules, identityContext);
+
+  return rules.map((rule) =>
+    JSON.stringify(rule).includes(AUTH_TEMPLATE_PATH) ? rule : interpolatePermissionRules([rule], identityContext)[0]
+  );
+};
+
 export {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,

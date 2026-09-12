@@ -80,6 +80,7 @@ import {
   filterOverriddenFolderScopedDenyRules,
   getProjectPermissionFingerprint,
   interpolatePermissionRules,
+  interpolateStoredIdentityRules,
   isActiveRole,
   validateOrgSSO
 } from "./permission-fns";
@@ -1198,6 +1199,37 @@ export const permissionServiceFactory = ({
     return sources;
   };
 
+  const $interpolateGrantsForActor = async (
+    grants: MongoAbility[],
+    memberships: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>,
+    actorId: string,
+    actorType: ActorType.USER | ActorType.IDENTITY
+  ) => {
+    const username =
+      actorType === ActorType.USER
+        ? (await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId)))?.username
+        : (await requestMemoize(requestMemoKeys.identityFindById(actorId), () => identityDAL.findById(actorId)))?.name;
+
+    const identityContext = {
+      identity: {
+        id: actorId,
+        username: username ?? "",
+        metadata: escapeHandlebarsMissingDict(
+          objectify(
+            memberships[0]?.metadata ?? [],
+            (i) => i.key,
+            (i) => i.value
+          ),
+          "identity.metadata"
+        )
+      }
+    };
+
+    return grants.map((grant) =>
+      createMongoAbility(interpolateStoredIdentityRules(grant.rules, identityContext), { conditionsMatcher })
+    );
+  };
+
   const getActorGrantAbilities: TPermissionServiceFactory["getActorGrantAbilities"] = async ({
     scopeData,
     actorId,
@@ -1212,20 +1244,28 @@ export const permissionServiceFactory = ({
       : await getOrgPermissionByRoles(roleSlugs, scopeData.orgId, { ignoreUnresolvedRoles: true });
 
     const privilegePermissions = memberships.flatMap((membership) =>
-      (membership.additionalPrivileges ?? []).filter(isActiveRole).map(({ permissions }) => ({
-        permission: isProjectScope
-          ? createMongoAbility<ProjectPermissionSet>(
-              buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: permissions || [] }]),
-              { conditionsMatcher }
-            )
-          : createMongoAbility<OrgPermissionSet>(
-              buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: permissions || [] }]),
-              { conditionsMatcher }
-            )
-      }))
+      (membership.additionalPrivileges ?? [])
+        .filter(isActiveRole)
+        .map(({ permissions }) =>
+          isProjectScope
+            ? createMongoAbility<ProjectPermissionSet>(
+                buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: permissions || [] }]),
+                { conditionsMatcher }
+              )
+            : createMongoAbility<OrgPermissionSet>(
+                buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: permissions || [] }]),
+                { conditionsMatcher }
+              )
+        )
     );
 
-    return [...rolePermissions.map(({ permission }) => ({ permission })), ...privilegePermissions];
+    const grants: MongoAbility[] = [...rolePermissions.map(({ permission }) => permission), ...privilegePermissions];
+
+    const isTemplated = grants.some((grant) => JSON.stringify(grant.rules).includes("{{"));
+    if (!isTemplated) return grants.map((permission) => ({ permission }));
+
+    const interpolatedGrants = await $interpolateGrantsForActor(grants, memberships, actorId, actorType);
+    return interpolatedGrants.map((permission) => ({ permission }));
   };
 
   const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({
