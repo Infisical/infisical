@@ -1,12 +1,16 @@
 ---
 title: "Network architecture"
 sidebarTitle: "Network architecture"
-description: "Ports, egress requirements, and the relay tunnel that connect the Gateway to Infisical"
+description: "Ports, egress requirements, and the two ways the Gateway and Infisical connect"
 ---
 
-The Gateway is deployed inside your private network and makes **only outbound connections** — it never accepts inbound connections. It reaches Infisical through a [**relay server**](/documentation/platform/gateways/relay-deployment/overview) using an **SSH reverse tunnel over TCP**, so the platform can access your private resources (databases, internal APIs) without any inbound firewall rules. All traffic through the relay is double-encrypted, and the relay only routes traffic — it can't decrypt it.
+The Gateway is deployed inside your private network, alongside the resources Infisical needs to reach. Infisical never touches those resources directly. It sends every request through the Gateway, which forwards it to the database or internal API on the other side.
 
-## Connection model
+There are two ways the Gateway and Infisical reach each other, and they differ in one thing: which side opens the connection. Both carry the same mutually authenticated TLS between Infisical and the Gateway, with certificates issued by your organization's own certificate authorities. In relay mode the relay routes bytes without holding the keys to read them.
+
+<Info>Direct listen is only available on self-hosted Infisical.</Info>
+
+## Relay mode
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 70, 'rankSpacing': 110, 'curve': 'basis'}}}%%
@@ -24,16 +28,12 @@ flowchart LR
   PLAT -->|"TCP 8443 · TLS"| RELAY
 ```
 
-## Ports and connections
-
 | Connection | Source | Destination | Port | Protocol | Purpose |
 |---|---|---|---|---|---|
-| Relay tunnel | Gateway | Relay server | 2222 | TCP (SSH) | Establishes the SSH reverse tunnel — **egress** |
-| Infisical API | Gateway | Infisical instance host | 443 | TCP (HTTPS) | API communication + certificate requests — **egress** |
-| Platform ↔ relay | Infisical Platform | Relay server | 8443 | TCP + TLS | Platform connects to the relay; traffic is then routed over the gateway's existing tunnel |
-| Resource access | Gateway | Private resource | the resource's own port (e.g. 5432) | TCP or HTTP | Gateway forwards platform requests to the internal service — raw TCP for most resources (e.g. databases), HTTP for resources like Kubernetes — **local** |
-
-## Firewall / egress allowlist
+| Relay tunnel | Gateway | Relay server | 2222 | TCP (SSH) | Establishes the SSH reverse tunnel. **Egress** |
+| Infisical API | Gateway | Infisical instance host | 443 | TCP (HTTPS) | API communication and certificate requests. **Egress** |
+| Platform to relay | Infisical Platform | Relay server | 8443 | TCP + TLS | Platform connects to the relay, which routes the traffic over the gateway's existing tunnel |
+| Resource access | Gateway | Private resource | the resource's own port (e.g. 5432) | TCP or HTTP | Gateway forwards platform requests to the internal service. Raw TCP for most resources such as databases, HTTP for resources like Kubernetes. **Local** |
 
 On the Gateway host, allow **outbound** access only:
 
@@ -42,22 +42,62 @@ On the Gateway host, allow **outbound** access only:
 
 No inbound rules are required.
 
-With the default **Auto Select Relay** option there is no single relay address to allowlist, since the gateway may fail over between managed relays — see [Which relay address do I need to allowlist?](#frequently-asked-questions) below for the endpoints to include and how to pin to a single relay.
+With the default **Auto Select Relay** option there is no single relay address to allowlist, since the gateway may fail over between managed relays. See [Which relay address do I need to allowlist?](#frequently-asked-questions) below for the endpoints to include and how to pin to a single relay.
 
-## Self-hosted relay (optional)
+### Self-hosted relay (optional)
 
 If you run a self-hosted relay, that host needs:
 
 - **Inbound TCP 2222** from your gateways (SSH reverse tunnels)
-- **Inbound TCP 8443** from the Infisical instance host (platform ↔ relay)
+- **Inbound TCP 8443** from the Infisical instance host (platform to relay)
 - **Outbound TCP 443** to the Infisical instance host (relay API + certificates)
+
+## Direct listen mode
+
+```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 70, 'rankSpacing': 110, 'curve': 'basis'}}}%%
+flowchart LR
+  subgraph customer["Customer Private Network"]
+    direction LR
+    PLAT["Infisical Platform"]
+    GW["Infisical Gateway"]
+    RES[("Private Resource")]
+    PLAT -->|"listen address · mTLS"| GW
+    GW -->|"TCP 443 · HTTPS"| PLAT
+    GW -->|"TCP or HTTP forwarding"| RES
+  end
+```
+
+| Connection | Source | Destination | Port | Protocol | Purpose |
+|---|---|---|---|---|---|
+| Gateway listener | Infisical Platform | Gateway's listen address | the port you set with `--listen-address` | TCP + mTLS | Platform connects to the gateway to serve every operation. **Ingress** on the Gateway host |
+| Infisical API | Gateway | Infisical instance host | 443 | TCP (HTTPS) | API communication and certificate requests. **Egress** |
+| Resource access | Gateway | Private resource | the resource's own port (e.g. 5432) | TCP or HTTP | Gateway forwards platform requests to the internal service. **Local** |
+
+On the Gateway host, allow:
+
+- **Inbound** access on the port you set with `--listen-address`, from the Infisical instance host only
+- **Outbound TCP 443** to the Infisical instance host
+
+The listen address is the one Infisical dials, and it's written into the Gateway's server certificate, so it has to be stable. An internal DNS name or a load balancer in front of the Gateway both work. Changing it means updating `--listen-address` and restarting the Gateway, so it's issued a certificate for the new address.
+
+By default the Gateway binds the port from `--listen-address` on every interface. To bind somewhere else, such as one interface or a different local port behind a load balancer, pass `--bind` as well.
 
 ## Frequently asked questions
 
 <AccordionGroup>
   <Accordion title="Does the Gateway require any inbound ports?">
-    No. The Gateway makes only outbound connections (TCP 2222 to the relay and TCP 443 to the Infisical API). The platform reaches the Gateway back over its own outbound SSH tunnel via the relay, so no inbound firewall rules are needed.
+    In relay mode, no. The Gateway makes only outbound connections (TCP 2222 to the relay and TCP 443 to the Infisical API), and the platform reaches it back over that same tunnel.
+
+    In direct listen mode, yes. The Gateway accepts inbound connections on the port you set with `--listen-address`, and that port needs to be open to the Infisical instance host. Scope the rule to that host rather than opening the port broadly.
   </Accordion>
+
+  <Accordion title="Which mode should I use?">
+    Use direct listen when Infisical can already reach the Gateway host at a stable address, which is the common case when you self-host Infisical in the same network as your resources.
+
+    Use relay mode when the Gateway sits behind NAT or a firewall you can't open, when you're on Infisical Cloud, or when PAM CLI users connect from outside the Gateway's network. See [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for the full comparison.
+  </Accordion>
+
 
   <Accordion title="Does the Gateway only proxy raw TCP?">
     No. Depending on the target resource, the Gateway forwards either raw TCP or HTTP. Most resources (for example databases like PostgreSQL on 5432) are proxied as raw TCP, while resources such as Kubernetes are reached over HTTP forwarding. In both cases the Gateway connects to the resource on its own port inside your private network.
@@ -68,7 +108,7 @@ If you run a self-hosted relay, that host needs:
   </Accordion>
 
   <Accordion title="Can Gateway traffic egress through an HTTP forward proxy?">
-    Not currently. The Gateway's connection to the relay is a raw SSH tunnel over TCP (port 2222), and its connection to the Infisical API is TLS over TCP (port 443). Neither is HTTP, so an HTTP forward proxy can't transparently carry this traffic.
+    Not currently. In relay mode, the Gateway's connection to the relay is a raw SSH tunnel over TCP (port 2222), and its connection to the Infisical API is TLS over TCP (port 443). Neither is HTTP, so an HTTP forward proxy can't transparently carry this traffic.
 
     If an HTTP proxy is mandatory in your environment, you have two options:
 

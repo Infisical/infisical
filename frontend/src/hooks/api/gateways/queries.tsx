@@ -5,6 +5,14 @@ import { apiRequest } from "@app/config/request";
 import { TGatewayV2 } from "../gateways-v2/types";
 import { TGateway } from "./types";
 
+export type TListedGatewayV1 = TGateway & { isV1: true };
+export type TListedGatewayV2 = TGatewayV2 & { isV1: false };
+export type TListedGateway = TListedGatewayV1 | TListedGatewayV2;
+
+// A predicate, so the narrowing survives a .filter(). A plain boolean callback does not narrow.
+export const isListedGatewayV2 = (gateway: TListedGateway): gateway is TListedGatewayV2 =>
+  !gateway.isV1;
+
 export const gatewaysQueryKeys = {
   allKey: () => ["gateways"],
   listKey: () => [...gatewaysQueryKeys.allKey(), "list"],
@@ -19,7 +27,7 @@ export const gatewaysQueryKeys = {
 
         // Filter out enrollment-flow gateways that haven't connected yet
         // so gateway pickers don't show them as selectable options.
-        const connectedV2 = dataV2.filter((g) => g.identityId || g.heartbeat);
+        const connectedV2 = dataV2.filter((g) => g.identityId || g.heartbeat || g.directHeartbeat);
 
         return [
           ...data.gateways.map((g) => ({

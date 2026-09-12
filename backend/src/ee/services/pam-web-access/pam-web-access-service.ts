@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import net from "node:net";
 
 import type WebSocket from "ws";
@@ -6,6 +5,7 @@ import type WebSocket from "ws";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
@@ -13,12 +13,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import {
-  createGatewayConnection,
-  createRelayConnection,
-  destroyGatewayTunnel,
-  setupRelayServer
-} from "@app/lib/gateway-v2/gateway-v2";
+import { setupGatewayProxy, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -30,7 +25,12 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
+import {
+  PAM_CANCELLATION_FLUSH_TIMEOUT_MS,
+  PamAccessMethod,
+  PamSessionEndReason,
+  PamSessionStatus
+} from "../pam/pam-enums";
 import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -326,12 +326,8 @@ export const pamWebAccessServiceFactory = ({
     let session: { id: string; accountId?: string | null } | null = null;
     let cleanedUp = false;
     let handlerResult: TSessionHandlerResult | null = null;
-    let relayServer: { port: number; cleanup: () => Promise<void> } | null = null;
-    let relayCerts: {
-      relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-      gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-      relayHost: string;
-    } | null = null;
+    let proxyServer: { port: number; cleanup: () => Promise<void> } | null = null;
+    let sessionGatewayDetails: TGatewayV2ConnectionDetails | null = null;
     let expiryTimer: ReturnType<typeof setTimeout> | null = null;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -360,13 +356,13 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      if (relayServer) {
+      if (proxyServer) {
         try {
-          await relayServer.cleanup();
+          await proxyServer.cleanup();
         } catch (err) {
           logger.debug(err, "Error closing relay server");
         } finally {
-          relayServer = null;
+          proxyServer = null;
         }
       }
 
@@ -400,34 +396,29 @@ export const pamWebAccessServiceFactory = ({
         }
       }
 
-      if (relayCerts) {
-        const certs = relayCerts;
-        relayCerts = null;
+      if (sessionGatewayDetails) {
+        const details = sessionGatewayDetails;
+        sessionGatewayDetails = null;
         void (async () => {
-          let relayConn: net.Socket | null = null;
-          let cancelConn: net.Socket | null = null;
-          const tunnelId = crypto.randomBytes(4).toString("hex");
           try {
-            relayConn = await createRelayConnection({
-              relayHost: certs.relayHost,
-              clientCertificate: certs.relay.clientCertificate,
-              clientPrivateKey: certs.relay.clientPrivateKey,
-              serverCertificateChain: certs.relay.serverCertificateChain,
-              tunnelId
-            });
-            cancelConn = await createGatewayConnection(
-              relayConn,
-              certs.gateway,
-              GatewayProxyProtocol.PamSessionCancellation,
-              tunnelId
+            await withGatewayV2Proxy(
+              (port) =>
+                new Promise<void>((resolve, reject) => {
+                  // The ALPN signal is the connection itself, so the tunnel must outlive the forward.
+                  const cancelSocket = net.connect(port, "127.0.0.1", () => {
+                    cancelSocket.end();
+                  });
+                  cancelSocket.setTimeout(PAM_CANCELLATION_FLUSH_TIMEOUT_MS, () => {
+                    cancelSocket.destroy();
+                    resolve();
+                  });
+                  cancelSocket.on("close", () => resolve());
+                  cancelSocket.on("error", reject);
+                }),
+              { ...details, protocol: GatewayProxyProtocol.PamSessionCancellation }
             );
-            cancelConn.end();
           } catch (err) {
             logger.debug(err, "Session cancellation signal failed (best-effort)");
-          } finally {
-            // end() leaves the inner TLS session reading the gateway's close_notify through
-            // relayConn, so the transport must not be destroyed first.
-            destroyGatewayTunnel({ relayConn, gatewayConn: cancelConn });
           }
         })();
       }
@@ -541,7 +532,7 @@ export const pamWebAccessServiceFactory = ({
           poolId: account.gatewayPoolId ?? account.templateGatewayPoolId
         },
         async (gatewayId) => {
-          const attemptCerts = await gatewayV2Service.getPAMConnectionDetails({
+          const attemptGatewayDetails = await gatewayV2Service.getPAMConnectionDetails({
             gatewayId,
             sessionId: createdSession.id,
             accountType: handlerEntry.gatewayAccountType,
@@ -552,18 +543,20 @@ export const pamWebAccessServiceFactory = ({
               id: userId,
               type: ActorType.USER,
               name: user?.email ?? ""
-            }
+            },
+            // The platform opens this tunnel itself, so no client version gates the transport.
+            clientSupportsDirect: true
           });
 
-          if (!attemptCerts) {
+          if (!attemptGatewayDetails) {
             throw new BadRequestError({ message: "Failed to obtain gateway connection details" });
           }
 
           return {
-            certs: attemptCerts,
-            server: await setupRelayServer({
+            gatewayDetails: attemptGatewayDetails,
+            server: await setupGatewayProxy({
               protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
-              ...attemptCerts,
+              ...attemptGatewayDetails,
               longLived: true,
               eager: true
             })
@@ -571,8 +564,8 @@ export const pamWebAccessServiceFactory = ({
         }
       );
 
-      const { certs } = attempt.result;
-      relayServer = attempt.result.server;
+      const { gatewayDetails } = attempt.result;
+      proxyServer = attempt.result.server;
 
       // The tunnel is open from here rather than from whenever the session handler first dials, so
       // a socket that closed during setup has to be caught: its "close" fired before the listener
@@ -588,11 +581,7 @@ export const pamWebAccessServiceFactory = ({
         await pamSessionDAL.updateById(createdSession.id, { gatewayId: attempt.gatewayId });
       }
 
-      relayCerts = {
-        relayHost: certs.relayHost,
-        relay: certs.relay,
-        gateway: certs.gateway
-      };
+      sessionGatewayDetails = gatewayDetails;
 
       const isNearSessionExpiry = () => Date.now() >= expiresAt.getTime() - 30_000;
 
@@ -605,7 +594,7 @@ export const pamWebAccessServiceFactory = ({
 
       const ctx: TSessionContext = {
         socket,
-        relayPort: relayServer.port,
+        relayPort: proxyServer.port,
         resourceName: account.name,
         sessionId: session.id,
         sendMessage: boundSendMessage,

@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -870,6 +871,7 @@ export enum EventType {
   GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
+  GATEWAY_CONNECT = "gateway-connect",
 
   // Resource Auth Methods
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
@@ -7040,6 +7042,17 @@ interface GatewayEnrollEvent {
   };
 }
 
+interface GatewayConnectEvent {
+  type: EventType.GATEWAY_CONNECT;
+  metadata: {
+    gatewayId: string;
+    name: string;
+    transports: GatewayTransport[];
+    directAddress?: string;
+    relayName?: string;
+  };
+}
+
 type ResourceAuthMethodKind = "aws" | "kubernetes" | "token";
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
@@ -7960,6 +7973,7 @@ export type Event =
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
+  | GatewayConnectEvent
   | ResourceAuthMethodLoginEvent
   | ResourceAuthMethodLoginFailedEvent
   | ResourceAuthMethodUpdateEvent

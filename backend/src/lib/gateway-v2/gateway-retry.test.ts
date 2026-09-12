@@ -4,25 +4,25 @@ const RELAY_ERR = "TLS connection error: ECONNREFUSED";
 
 describe("isGatewayTransportFailure", () => {
   test("retryable when a channel failed to come up and none ever did", () => {
-    expect(isGatewayTransportFailure({ relayError: RELAY_ERR, establishedChannel: false })).toBe(true);
+    expect(isGatewayTransportFailure({ transportError: RELAY_ERR, establishedChannel: false })).toBe(true);
   });
 
   test("not retryable once a channel came up, even with a relay error recorded", () => {
-    // The bug this guards: relayError accumulates across every channel a proxy serves and is never
+    // The bug this guards: transportError accumulates across every channel a proxy serves and is never
     // cleared, so one transient setup blip would otherwise mark a later target-side failure (a
     // half-applied rotation) as safe to replay on another member.
-    expect(isGatewayTransportFailure({ relayError: RELAY_ERR, establishedChannel: true })).toBe(false);
+    expect(isGatewayTransportFailure({ transportError: RELAY_ERR, establishedChannel: true })).toBe(false);
   });
 
   test("not retryable with no relay error at all", () => {
-    expect(isGatewayTransportFailure({ relayError: "", establishedChannel: false })).toBe(false);
-    expect(isGatewayTransportFailure({ relayError: "", establishedChannel: true })).toBe(false);
+    expect(isGatewayTransportFailure({ transportError: "", establishedChannel: false })).toBe(false);
+    expect(isGatewayTransportFailure({ transportError: "", establishedChannel: true })).toBe(false);
   });
 
   test("several accumulated relay errors are still only retryable if nothing established", () => {
     const many = [RELAY_ERR, RELAY_ERR].join(",");
-    expect(isGatewayTransportFailure({ relayError: many, establishedChannel: false })).toBe(true);
-    expect(isGatewayTransportFailure({ relayError: many, establishedChannel: true })).toBe(false);
+    expect(isGatewayTransportFailure({ transportError: many, establishedChannel: false })).toBe(true);
+    expect(isGatewayTransportFailure({ transportError: many, establishedChannel: true })).toBe(false);
   });
 });
 
