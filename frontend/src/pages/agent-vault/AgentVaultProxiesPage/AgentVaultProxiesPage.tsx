@@ -88,7 +88,7 @@ const TrafficPolicyCell = ({ proxy }: { proxy: TAgentVaultProxy }) => {
 
   const cell = (
     <span>
-      {isBundleOnly ? "Bundle hosts only" : "Any host"}
+      {isBundleOnly ? "Access bundle hosts only" : "Any host"}
       {allowedHosts.length > 0 &&
         ` · ${allowedHosts.length} ${allowedHosts.length === 1 ? "exception" : "exceptions"}`}
     </span>
@@ -100,7 +100,6 @@ const TrafficPolicyCell = ({ proxy }: { proxy: TAgentVaultProxy }) => {
     <Tooltip>
       <TooltipTrigger asChild>{cell}</TooltipTrigger>
       <TooltipContent className="max-w-sm">
-        <p className="mb-1">Reachable without a credential:</p>
         <ul className="font-mono text-xs">
           {allowedHosts.map((host) => (
             <li key={host}>{host}</li>

@@ -38,10 +38,15 @@ import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVau
 import { slugSchema } from "@app/lib/schemas";
 
 const TRAFFIC_POLICY_CHOICES = [
-  { value: AgentVaultTrafficPolicy.AnyHost, title: "Allow requests to reach any host" },
+  {
+    value: AgentVaultTrafficPolicy.AnyHost,
+    title: "Any host",
+    description: "Allow requests to reach any host."
+  },
   {
     value: AgentVaultTrafficPolicy.BundleHosts,
-    title: "Only allow requests to reach hosts specified in access bundles"
+    title: "Access bundle hosts only",
+    description: "Only allow requests to reach hosts specified in access bundles."
   }
 ];
 
@@ -178,6 +183,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                             <Field orientation="horizontal">
                               <FieldContent>
                                 <FieldTitle>{choice.title}</FieldTitle>
+                                <FieldDescription>{choice.description}</FieldDescription>
                               </FieldContent>
                               <RadioGroupItem id={id} value={choice.value} />
                             </Field>
@@ -195,29 +201,13 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 name="allowedHosts"
                 render={({ field, fieldState }) => (
                   <Field>
-                    <FieldLabel>
-                      Exceptions
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <InfoIcon />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-sm">
-                          Hosts listed here are reached even though no access bundle covers them,
-                          with nothing added to the request. They are still intercepted. If a bundle
-                          does cover the same host, its credential still applies. To open a host for
-                          one bundle only, add a Pass-through service to that bundle instead.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FieldLabel>
+                    <FieldLabel>Exceptions</FieldLabel>
                     <FieldContent>
                       <Input
                         {...field}
                         placeholder="registry.npmjs.org, proxy.golang.org"
                         isError={Boolean(fieldState.error)}
                       />
-                      <FieldDescription>
-                        Reachable without being named in an access bundle.
-                      </FieldDescription>
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </FieldContent>
                   </Field>
