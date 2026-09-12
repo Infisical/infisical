@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TUsers } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -141,6 +141,17 @@ export const userServiceFactory = ({
     });
   };
 
+  const isMfaMethodConfigured = async (user: { id: string; email?: string | null }, method: MfaMethod) => {
+    if (method === MfaMethod.EMAIL) {
+      return Boolean(user.email) && getConfig().isSmtpConfigured;
+    }
+    if (method === MfaMethod.TOTP) {
+      return Boolean(await totpConfigDAL.findOne({ userId: user.id, isVerified: true }));
+    }
+    const credentials = await webAuthnCredentialDAL.find({ userId: user.id });
+    return credentials.length > 0;
+  };
+
   // A method can only be selected/activated once the user has actually configured
   // that factor. EMAIL uses the account email, so it needs no enrollment, but it
   // delivers codes over SMTP — which self-hosted instances may not have configured.
@@ -201,6 +212,21 @@ export const userServiceFactory = ({
     return { user: updatedUser, recoveryCodes };
   };
 
+  const findMfaEnforcingOrgs = async (userId: string) => {
+    const userOrgMemberships = await membershipUserDAL.find({
+      actorUserId: userId,
+      scope: AccessScope.Organization,
+      status: OrgMembershipStatus.Accepted
+    });
+    if (!userOrgMemberships.length) return [];
+
+    const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
+    const organizations = await orgDAL.find({ $in: { id: orgIds } });
+    return organizations.filter((org) => org.enforceMfa);
+  };
+
+  const hasMfaEnforcingOrg = async (userId: string) => (await findMfaEnforcingOrgs(userId)).length > 0;
+
   // MFA cannot be turned off while any organization the user belongs to enforces it,
   // since doing so would lock them out of that org on the next login. This is the
   // authoritative backend rule (the UI only greys out the button as a hint) and is
@@ -208,19 +234,21 @@ export const userServiceFactory = ({
   // step-up challenge only to be rejected — and again here in deactivateMfa as the
   // single source of truth that actually gates the state change.
   const assertMfaDisableAllowed = async (userId: string) => {
-    const userOrgMemberships = await membershipUserDAL.find({
-      actorUserId: userId,
-      scope: AccessScope.Organization
-    });
-    if (!userOrgMemberships.length) return;
-
-    const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
-    const organizations = await orgDAL.find({ $in: { id: orgIds } });
-    if (organizations.some((org) => org.enforceMfa)) {
+    if (await hasMfaEnforcingOrg(userId)) {
       throw new ForbiddenRequestError({
         message: "Two-factor authentication is required by your organization and cannot be disabled"
       });
     }
+  };
+
+  // With MFA required nowhere, login is password-only, so challenging here protects
+  // nothing: the same session could just enrol and enable its own factor instead.
+  // Every org is checked, not only the current one, so switching to a non-enforcing
+  // org is not a way to strip a factor another org relies on.
+  const isStepUpMfaRequired = async (userId: string) => {
+    const user = await userDAL.findById(userId);
+    if (user?.isMfaEnabled) return true;
+    return hasMfaEnforcingOrg(userId);
   };
 
   // Disables MFA. Enrolled factors are preserved so re-enabling does not require
@@ -583,10 +611,29 @@ export const userServiceFactory = ({
   // Mirrors login via the shared getRequiredMfaMethod: an org enforcing MFA dictates
   // the method, otherwise the user's own preference applies. Reaching a step-up-gated
   // route already proves membership of this org, so no permission check is needed.
-  const getStepUpMfaMethod = async (userId: string, orgId: string): Promise<MfaMethod> => {
+  //
+  // Removing a factor is never gated on that same factor, since the usual reason to
+  // remove one is that it was lost. The strongest other configured factor stands in,
+  // falling back to the required method when nothing else is set up (e.g. no SMTP on
+  // a self-hosted instance). The exception is a factor some accepted org enforces:
+  // that org has ruled the alternatives insufficient, so the factor itself is still
+  // challenged and a lost device is recovered via recovery-code login instead. Every
+  // org is checked, not only the current context, so org switching cannot bypass it.
+  const getStepUpMfaMethod = async (userId: string, orgId: string, excludeMethod?: MfaMethod): Promise<MfaMethod> => {
     const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
     const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
-    return requiredMfaMethod;
+    if (!user || !excludeMethod || requiredMfaMethod !== excludeMethod) return requiredMfaMethod;
+
+    const enforcingOrgs = await findMfaEnforcingOrgs(userId);
+    if (enforcingOrgs.some((enforcingOrg) => (enforcingOrg.selectedMfaMethod ?? MfaMethod.EMAIL) === excludeMethod)) {
+      return requiredMfaMethod;
+    }
+
+    const fallbackOrder = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL].filter(
+      (method) => method !== excludeMethod
+    );
+    const configured = await Promise.all(fallbackOrder.map((method) => isMfaMethodConfigured(user, method)));
+    return fallbackOrder.find((_, index) => configured[index]) ?? requiredMfaMethod;
   };
 
   const deleteUser = async (userId: string) => {
@@ -782,6 +829,7 @@ export const userServiceFactory = ({
     deleteUser,
     getMe,
     getStepUpMfaMethod,
+    isStepUpMfaRequired,
     createUserAction,
     listUserGroups,
     getUserAction,
