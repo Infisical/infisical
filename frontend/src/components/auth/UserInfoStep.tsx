@@ -162,11 +162,7 @@ export default function UserInfoStep({
   };
 
   return (
-    <form
-      className="mx-auto flex w-full flex-col items-center justify-center"
-      onSubmit={handleSubmit(onSubmit)}
-      noValidate
-    >
+    <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className={isInvite ? "mb-6 gap-2" : "mb-4 gap-2"}>
           <CardTitle
@@ -199,6 +195,14 @@ export default function UserInfoStep({
           ) : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <input
+            className="hidden"
+            type="text"
+            name="username"
+            autoComplete="username"
+            value={email}
+            readOnly
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
               <FieldLabel className="sr-only" htmlFor="signup-first-name">
@@ -233,6 +237,14 @@ export default function UserInfoStep({
               ) : null}
             </Field>
           </div>
+          {isInvite && (
+            <Field>
+              <FieldLabel className="sr-only" htmlFor="signup-email">
+                Email
+              </FieldLabel>
+              <Input variant="outlined" id="signup-email" type="email" value={email} disabled />
+            </Field>
+          )}
           {!isInvite && (
             <Field data-invalid={showOrganizationNameError}>
               <FieldLabel className="sr-only" htmlFor="signup-organization-name">
@@ -268,20 +280,6 @@ export default function UserInfoStep({
               />
             </Field>
           )}
-          <Field className={isInvite ? undefined : "hidden"}>
-            <FieldLabel className="sr-only" htmlFor="signup-email">
-              Email
-            </FieldLabel>
-            <Input
-              variant="outlined"
-              id="signup-email"
-              name="email"
-              type="email"
-              autoComplete="username"
-              value={email}
-              readOnly
-            />
-          </Field>
           <PasswordField
             variant="outlined"
             id="new-password"
@@ -340,6 +338,7 @@ export default function UserInfoStep({
           </AnimatedCollapse>
           <Button
             type="submit"
+            onClick={handleSubmit(onSubmit)}
             variant="project"
             size="lg"
             isFullWidth
@@ -350,6 +349,6 @@ export default function UserInfoStep({
           </Button>
         </CardContent>
       </AuthPagePanel>
-    </form>
+    </div>
   );
 }
