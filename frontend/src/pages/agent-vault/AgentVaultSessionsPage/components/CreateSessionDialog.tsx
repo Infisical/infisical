@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldDescription,
@@ -24,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { useDiscardChangesGuard } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
   useListAgentVaultAccessBundles
@@ -47,6 +49,8 @@ const TTL_PRESETS = [
 const DEFAULT_TTL_PRESET = "7d";
 
 const MIN_TTL_MS = 60 * 1000;
+// Mirrors the API's ceiling: past it the expiry overflows and the request fails with a 500.
+const MAX_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 
 const getCustomTtlError = (value: string) => {
   let parsed: number | undefined;
@@ -58,6 +62,7 @@ const getCustomTtlError = (value: string) => {
 
   if (typeof parsed !== "number" || Number.isNaN(parsed)) return "Not a valid duration.";
   if (parsed < MIN_TTL_MS) return "At least 1 minute.";
+  if (parsed > MAX_TTL_MS) return "At most 100 years. Pick Never for no expiry.";
   return null;
 };
 
@@ -85,6 +90,10 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   const isTtlValid = customTtlError === null;
   const visibleTtlError = customTtl.length > 0 ? customTtlError : null;
 
+  const isDirty = Boolean(selectedBundle) || customTtl.length > 0;
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
+
   useEffect(() => {
     if (isOpen) {
       setSelectedBundle(null);
@@ -110,7 +119,16 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          onOpenChange(true);
+          return;
+        }
+        requestDiscard();
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Session</DialogTitle>
@@ -205,7 +223,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={requestDiscard}>
             Cancel
           </Button>
           <Button
@@ -217,6 +235,14 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
             Create Session
           </Button>
         </DialogFooter>
+
+        <DiscardChangesAlertDialog
+          open={isDiscardDialogOpen}
+          onOpenChange={setIsDiscardDialogOpen}
+          onDiscard={confirmDiscard}
+          title="Discard Changes?"
+          description="The access bundle and expiry you picked will be lost."
+        />
       </DialogContent>
     </Dialog>
   );

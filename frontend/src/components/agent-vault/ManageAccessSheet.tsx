@@ -169,7 +169,7 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                Revoke access for &quot;{memberToRemoveName}&quot;
+                Revoke Access for &quot;{memberToRemoveName}&quot;
               </AlertDialogTitle>
               <AlertDialogDescription>
                 They lose this bundle, and any live session they hold stops reaching its hosts at

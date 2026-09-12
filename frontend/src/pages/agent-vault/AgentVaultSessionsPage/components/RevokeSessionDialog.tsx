@@ -27,7 +27,7 @@ export const RevokeSessionDialog = ({ session, onOpenChange }: Props) => {
     <DeleteConfirmDialog
       isOpen={Boolean(session)}
       onOpenChange={onOpenChange}
-      title={`Revoke session for "${session?.actorName}"`}
+      title={`Revoke Session for "${session?.actorName}"`}
       description="Proxies stop attaching credentials for this session at their next poll. This cannot be undone."
       confirmKey="revoke"
       confirmLabel="Revoke Session"
