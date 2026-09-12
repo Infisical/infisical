@@ -53,6 +53,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import {
   applyOauthScopeToOrgRules,
   applyOauthScopeToProjectRules,
@@ -82,6 +83,7 @@ import {
   filterOverriddenFolderScopedDenyRules,
   getProjectPermissionFingerprint,
   interpolatePermissionRules,
+  interpolateStoredIdentityRules,
   isActiveRole,
   validateOrgSSO
 } from "./permission-fns";
@@ -1214,6 +1216,106 @@ export const permissionServiceFactory = ({
     return sources;
   };
 
+  const $folderScopedGrantAbilities = async (
+    projectId: string,
+    actorType: ActorType.USER | ActorType.IDENTITY,
+    actorId: string,
+    memberships: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>
+  ) => {
+    if (hasActiveProjectAdminRole(memberships)) return [];
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.SecretManager) return [];
+
+    const { privileges } = await fetchFolderScopedPrivileges(projectId, actorType, actorId, {
+      additionalPrivilegeDAL,
+      secretFolderDAL
+    });
+
+    return privileges.filter(isActiveRole).map((privilege) =>
+      createMongoAbility<ProjectPermissionSet>(
+        buildFolderScopedPrivilegeRules([privilege]).filter((rule) => !rule.inverted),
+        { conditionsMatcher }
+      )
+    );
+  };
+
+  const $interpolateGrantsForActor = async (
+    grants: MongoAbility[],
+    memberships: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>,
+    actorId: string,
+    actorType: ActorType.USER | ActorType.IDENTITY
+  ) => {
+    const username =
+      actorType === ActorType.USER
+        ? (await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId)))?.username
+        : (await requestMemoize(requestMemoKeys.identityFindById(actorId), () => identityDAL.findById(actorId)))?.name;
+
+    const identityContext = {
+      identity: {
+        id: actorId,
+        username: username ?? "",
+        metadata: escapeHandlebarsMissingDict(
+          objectify(
+            memberships[0]?.metadata ?? [],
+            (i) => i.key,
+            (i) => i.value
+          ),
+          "identity.metadata"
+        )
+      }
+    };
+
+    return grants.map((grant) =>
+      createMongoAbility(interpolateStoredIdentityRules(grant.rules, identityContext), { conditionsMatcher })
+    );
+  };
+
+  const getActorGrantAbilities: TPermissionServiceFactory["getActorGrantAbilities"] = async ({
+    scopeData,
+    actorId,
+    actorType
+  }) => {
+    const memberships = await permissionDAL.getPermission({ scopeData, actorId, actorType });
+    const roleSlugs = resolveMembershipRoleSlugs(memberships.flatMap((membership) => membership.roles));
+    const isProjectScope = scopeData.scope === AccessScope.Project;
+
+    const rolePermissions = isProjectScope
+      ? await getProjectPermissionByRoles(roleSlugs, scopeData.projectId, { ignoreUnresolvedRoles: true })
+      : await getOrgPermissionByRoles(roleSlugs, scopeData.orgId, { ignoreUnresolvedRoles: true });
+
+    const privilegePermissions = memberships.flatMap((membership) =>
+      (membership.additionalPrivileges ?? [])
+        .filter(isActiveRole)
+        .map(({ permissions }) =>
+          isProjectScope
+            ? createMongoAbility<ProjectPermissionSet>(
+                buildProjectPermissionRules([{ role: ProjectMembershipRole.Custom, permissions: permissions || [] }]),
+                { conditionsMatcher }
+              )
+            : createMongoAbility<OrgPermissionSet>(
+                buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: permissions || [] }]),
+                { conditionsMatcher }
+              )
+        )
+    );
+
+    const grants: MongoAbility[] = [...rolePermissions.map(({ permission }) => permission), ...privilegePermissions];
+
+    const folderGrants = isProjectScope
+      ? await $folderScopedGrantAbilities(scopeData.projectId, actorType, actorId, memberships)
+      : [];
+
+    const isTemplated = grants.some((grant) => JSON.stringify(grant.rules).includes("{{"));
+    const resolvedGrants = isTemplated
+      ? await $interpolateGrantsForActor(grants, memberships, actorId, actorType)
+      : grants;
+
+    return [...resolvedGrants, ...folderGrants].map((permission) => ({ permission }));
+  };
+
   const getMembershipPermissionAudit: TPermissionServiceFactory["getMembershipPermissionAudit"] = async ({
     actor,
     actorId,
@@ -1443,6 +1545,7 @@ export const permissionServiceFactory = ({
     getOrgPermissionByRoles,
     getProjectPermissionByRoles,
     checkGroupProjectPermission,
+    getActorGrantAbilities,
     getMembershipPermissionAudit,
     getIdentityPermissionAudit,
     invalidateProjectFolderPermissionCache,
