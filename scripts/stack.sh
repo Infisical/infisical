@@ -36,14 +36,11 @@ port_for() {
   printf '%s' $(( 20000 + ($(printf '%s' "$1" | cksum | cut -d' ' -f1) % 20000) ))
 }
 
-# portless registers a route under whatever suffix its proxy was started with,
-# and `alias` silently ignores a --tld flag, so the hostname cannot be assumed.
-#
-# Read it from `portless list`, which is the live view. ~/.portless/routes.json
-# looks like the route store but is not: a freshly registered alias does not
-# appear there, so anything read from it can be arbitrarily stale. `portless get`
-# is no good either, since for an unknown name it invents one from the project
-# directory and still exits 0.
+# Read the hostname from `portless list`, the documented live view. Do not read
+# ~/.portless/routes.json: which directory is authoritative has moved between
+# portless versions, so a file that looks like the route store can be months out
+# of date. `portless get` is no good either, since for an unknown name it invents
+# one from the project directory and still exits 0.
 stack_host() {
   esc=$(printf '\033')
   portless list 2>/dev/null \
@@ -52,60 +49,41 @@ stack_host() {
     | head -1
 }
 
-# portless exposes no liveness check: `alias` and `get` both succeed while the
-# proxy is stopped, and routes.json records no state. Name resolution is the
-# real signal, since the proxy is what makes these names resolve at all.
-host_resolves() {
-  dscacheutil -q host -a name "$1" 2>/dev/null | grep -q 'ip_address'
+# A route takes its suffix from the proxy, and a running proxy keeps whichever
+# suffixes it started with. `portless doctor` reports them on its Mode line,
+# which is the only supported way to ask.
+proxy_serves_tld() {
+  portless doctor 2>/dev/null \
+    | sed -n 's/^Mode:.*/&/p' \
+    | grep -q "\.$TLD\([,[:space:]]\|\$\)"
 }
 
-TLD=test
+# Serve .localhost alongside .test so an existing route under the default suffix
+# keeps working across the restart.
+start_proxy() {
+  portless proxy start --tld "$TLD" --tld localhost "$@"
+}
 
-cmd_proxy() {
+ensure_proxy() {
   command -v portless >/dev/null 2>&1 || {
     echo "portless is not installed. Install it with: npm install -g portless" >&2
-    exit 1
-  }
-  # Binds port 443, so this may ask for your password. Safe to re-run: portless
-  # reports an already-running proxy rather than failing.
-  portless proxy start --tld "$TLD" >/dev/null 2>&1 || true
-}
-
-# A route takes its suffix from the running proxy, portless does not report that
-# suffix, and `proxy start` will not change it. So the only way to learn it is to
-# register a route and look at the result, and the only way to change it is a
-# restart. Do that once, visibly: it binds port 443 and will ask for a password,
-# which must not be hidden.
-ensure_proxy_tld() {
-  name=$1 port=$2
-
-  portless alias "$name" "$port" --force >/dev/null 2>&1 || {
-    echo "Could not register a portless route for $name." >&2
     return 1
   }
 
-  host=$(stack_host "$name")
-  case "$host" in
-    ""|*".$TLD") return 0 ;;
-  esac
+  start_proxy >/dev/null 2>&1 || true
+  proxy_serves_tld && return 0
 
-  echo "Proxy is serving .${host##*.}; restarting it on .$TLD."
+  echo "Proxy is not serving .$TLD; restarting it so it does."
   echo "This binds port 443, so it may ask for your password."
-  # Not hidden: stop can need the same privileges as start, and if it fails the
-  # proxy stays up, `proxy start` returns 0 for an already-running proxy, and
-  # the suffix never changes.
+  # Not hidden: if stop fails the proxy stays up, start then reports an
+  # already-running proxy, and the suffix silently never changes.
   portless proxy stop || echo "Could not stop the proxy; it may still be running." >&2
-  portless proxy start --tld "$TLD" || {
-    echo "Could not start the proxy on .$TLD." >&2
+  start_proxy || { echo "Could not start the proxy." >&2; return 1; }
+
+  proxy_serves_tld || {
+    echo "Proxy restarted but is still not serving .$TLD. Run: portless doctor" >&2
     return 1
   }
-
-  portless alias "$name" "$port" --force >/dev/null 2>&1 || true
-  host=$(stack_host "$name")
-  case "$host" in
-    *".$TLD") return 0 ;;
-    *) echo "Proxy restarted but the route is still $host." >&2; return 1 ;;
-  esac
 }
 
 stack_name() {
@@ -175,9 +153,8 @@ cmd_init() {
   if command -v portless >/dev/null 2>&1; then
     # Order matters: a route takes its suffix from the proxy that is running
     # when it is registered.
-    cmd_proxy
-    # Settle the suffix once using the app route, then register the rest.
-    if ensure_proxy_tld "$NAME" "$(get STACK_NGINX_PORT)"; then
+    if ensure_proxy; then
+      portless alias "$NAME" "$(get STACK_NGINX_PORT)" --force >/dev/null 2>&1 || true
       portless alias "mail.$NAME" "$(get STACK_MAIL_PORT)" --force >/dev/null 2>&1 || true
     else
       echo "Continuing without a hostname. The ports below still work." >&2
@@ -237,6 +214,6 @@ case "$1" in
   down) cmd_down ;;
   rm)   cmd_rm ;;
   db)   cmd_db ;;
-  proxy) cmd_proxy ;;
+  proxy) ensure_proxy ;;
   *)    usage ;;
 esac

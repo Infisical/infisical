@@ -128,10 +128,19 @@ may ask for your password, and it is safe to re-run. `stack-init` calls it for
 you before registering a hostname.
 
 The suffix belongs to the proxy rather than to an individual route, and a
-running proxy keeps the suffix it started with. `stack-init` handles that for
-you: if it registers a route and sees the wrong suffix, it restarts the proxy
-and registers again. Routes are re-served afterwards, so the only cost is a
-brief interruption to anything else running through the proxy.
+running proxy keeps whichever suffixes it started with. `stack-init` handles
+that: it asks `portless doctor` what the proxy is serving and restarts it only
+if `.test` is missing. The restart serves `.localhost` too, so routes under the
+default suffix keep working.
+
+<Note>
+  This needs portless 0.15 or newer, for `portless doctor` and for serving more
+  than one suffix at a time. Upgrade with `npm install -g portless@latest`.
+</Note>
+
+If a hostname does not resolve, `portless doctor` diagnoses the proxy, routes,
+DNS and certificate trust in one go, and `portless hosts sync` fixes resolution
+when the `/etc/hosts` entries have drifted.
 
 `make stack-up` prints the hostname that was actually registered, and says so
 when it will not resolve.
