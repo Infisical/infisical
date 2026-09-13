@@ -33,6 +33,9 @@ set_var() {
 # these are notes on when you would override one, not instructions.
 write_stack_header() {
   grep -q '^# --- stack ---' .env 2>/dev/null && return 0
+  # Collapse any run of blank lines at the end, so stripping a previous stack
+  # block does not leave a gap here.
+  tmp=$(mktemp) && awk 'BEGIN{n=0} /^$/{n++;next} {while(n>0){print "";n--} print}' .env > "$tmp" && mv "$tmp" .env
   cat >> .env <<'EOF'
 
 # --- stack --- written by `make stack-init`, all optional
@@ -158,8 +161,13 @@ create_env() {
 
   main=$(main_checkout) || main=""
   if [ -n "$main" ] && [ "$main" != "$(pwd)" ] && [ -f "$main/.env" ]; then
-    cp "$main/.env" .env
-    echo "Created .env from $main/.env"
+    # Take the secrets, drop that checkout's identity. Its stack block names a
+    # stack and a set of ports that are already in use; inheriting them would
+    # point this checkout at the other one's containers and volumes.
+    sed -e '/^# --- stack ---/,/^# SITE_URL and VITE_ALLOWED_HOSTS/d' \
+        -e '/^STACK_/d' -e '/^SITE_URL=/d' -e '/^VITE_ALLOWED_HOSTS=/d' \
+        "$main/.env" > .env
+    echo "Created .env from $main/.env (its stack settings are not carried over)"
     return 0
   fi
 
