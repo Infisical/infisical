@@ -36,6 +36,29 @@ port_for() {
   printf '%s' $(( 20000 + ($(printf '%s' "$1" | cksum | cut -d' ' -f1) % 20000) ))
 }
 
+# portless registers a route under whatever TLD its proxy was started with, and
+# `alias` silently ignores a --tld flag, so the hostname cannot be assumed.
+# `portless get` is no good either: for a name it does not know it invents one
+# from the project and still exits 0. The route file is the only ground truth.
+stack_host() {
+  [ -f "$HOME/.portless/routes.json" ] || return 0
+  sed -n 's/.*"hostname"[[:space:]]*:[[:space:]]*"\('"$1"'\.[^"]*\)".*/\1/p' \
+    "$HOME/.portless/routes.json" | head -1
+}
+
+# portless exposes no liveness check: `alias` and `get` both succeed while the
+# proxy is stopped, and routes.json records no state. Name resolution is the
+# real signal, since the proxy is what makes these names resolve at all.
+host_resolves() {
+  dscacheutil -q host -a name "$1" 2>/dev/null | grep -q 'ip_address'
+}
+
+portless_hint() {
+  echo "  The portless proxy does not appear to be running, so these names will" >&2
+  echo "  not resolve. Start it once with:" >&2
+  echo "    portless proxy start --tld test" >&2
+}
+
 stack_name() {
   get STACK_NAME && return 0
   # The directory, not the branch: switching branches inside a checkout must
@@ -101,10 +124,13 @@ cmd_init() {
   fi
 
   if command -v portless >/dev/null 2>&1; then
-    portless alias "$NAME" "$(get STACK_NGINX_PORT)" --tld test --force >/dev/null 2>&1 || true
-    portless alias "mail.$NAME" "$(get STACK_MAIL_PORT)" --tld test --force >/dev/null 2>&1 || true
+    portless alias "$NAME" "$(get STACK_NGINX_PORT)" --force >/dev/null 2>&1 \
+      || echo "Warning: could not register a portless route for $NAME." >&2
+    portless alias "mail.$NAME" "$(get STACK_MAIL_PORT)" --force >/dev/null 2>&1 \
+      || echo "Warning: could not register a portless route for mail.$NAME." >&2
   else
-    echo "portless not installed, so no .test hostname. See the contributing guide." >&2
+    echo "portless is not installed, so this stack gets no hostname." >&2
+    echo "Install it with: npm install -g portless" >&2
   fi
 
   echo "Stack '$NAME' initialised. Run 'make stack-up'."
@@ -113,10 +139,25 @@ cmd_init() {
 cmd_up() {
   require_stack
   compose up --build -d
+
   printf '\nStack %s is running:\n' "$NAME"
-  echo "  App:      https://$NAME.test"
-  echo "  Mail:     https://mail.$NAME.test"
+  app_host=$(stack_host "$NAME")
+  mail_host=$(stack_host "mail.$NAME")
+  if [ -n "$app_host" ]; then
+    echo "  App:      https://$app_host"
+    [ -n "$mail_host" ] && echo "  Mail:     https://$mail_host"
+  fi
+  echo "  App port: localhost:$(get STACK_NGINX_PORT)"
   echo "  Postgres: localhost:$(get STACK_DB_PORT)"
+
+  # Reaching the stack by port always works; the hostname only does when the
+  # proxy is up, so say so rather than printing a URL that fails to resolve.
+  if [ -n "$app_host" ]; then
+    host_resolves "$app_host" || portless_hint
+  else
+    echo "  No portless route is registered for this stack." >&2
+    portless_hint
+  fi
 }
 
 cmd_down() { require_stack; compose down; }

@@ -123,6 +123,11 @@ $ npm install -g portless
 $ portless proxy start --tld test
 ```
 
+The proxy has to be running for these hostnames to resolve, and the `--tld`
+belongs to the proxy rather than to an individual route, so start it that way
+once. `make stack-up` prints the hostname that was actually registered and
+tells you when it will not resolve.
+
 Then, in any checkout or `git worktree`:
 
 ```bash
