@@ -1,14 +1,22 @@
 import path from "path";
-import RE2 from "re2";
+const RE2Class: typeof RegExp = (() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require("re2");
+  } catch {
+    return RegExp;
+  }
+})();
 
 // given two paths irrespective of ending with / or not
 // this will return true if its equal
 export const isSamePath = (from: string, to: string) => !path.relative(from, to);
 
 export const removeTrailingSlash = (str: string) => {
-  if (str === "/") return str;
+  if (!str) return str;
+  if (/^\/+$/.test(str)) return "/";
 
-  return str.endsWith("/") ? str.slice(0, -1) : str;
+  return str.replace(/\/+$/, "");
 };
 
 export const prefixWithSlash = (str: string) => {
@@ -16,11 +24,11 @@ export const prefixWithSlash = (str: string) => {
   return `/${str}`;
 };
 
-const vowelRegex = new RE2(/^[aeiou]/i);
+const vowelRegex = new RE2Class(/^[aeiou]/i);
 
 export const startsWithVowel = (str: string) => vowelRegex.test(str);
 
-const pickWordsRegex = new RE2(/(\W+)/);
+const pickWordsRegex = new RE2Class(/(\W+)/);
 export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[] }) => {
   const words = dto.unsanitizedString.split(pickWordsRegex);
 
@@ -35,5 +43,6 @@ export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[
 };
 
 export const sanitizeSqlLikeString = (value: string): string => {
-  return String(value).replace(new RE2("[%_\\\\]", "g"), "\\$&");
+  return String(value).replace(new RE2Class("[%_\\\\]", "g"), "\\$&");
 };
+
