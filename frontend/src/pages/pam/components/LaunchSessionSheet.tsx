@@ -24,6 +24,7 @@ import {
   SelectValue
 } from "@app/components/v3/generic/Select";
 import { useOrganization } from "@app/context";
+import { copyTextToClipboard } from "@app/helpers/clipboard";
 import { TAccessiblePamAccount } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
@@ -61,8 +62,12 @@ const LaunchTab = ({
     cliHost ? ` --target '${cliHost}'` : ""
   } --domain '${window.location.origin}'`;
   const handleCopyCommand = async () => {
-    await navigator.clipboard.writeText(cliCommand);
-    createNotification({ text: "Command copied to clipboard", type: "success" });
+    const copied = await copyTextToClipboard(cliCommand);
+    createNotification(
+      copied
+        ? { text: "Command copied to clipboard", type: "success" }
+        : { text: "Failed to copy command. Please copy it manually.", type: "error" }
+    );
   };
 
   return (

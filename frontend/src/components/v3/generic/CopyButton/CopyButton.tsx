@@ -1,6 +1,7 @@
 import { ComponentProps, forwardRef } from "react";
 import { Check, Copy } from "lucide-react";
 
+import { copyTextToClipboard } from "@app/helpers/clipboard";
 import { useTimedReset } from "@app/hooks";
 
 import { IconButton } from "../IconButton";
@@ -24,7 +25,7 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(
         size={size}
         aria-label={ariaLabel}
         onClick={(event) => {
-          navigator.clipboard.writeText(value);
+          copyTextToClipboard(value);
           setCopyText("Copied");
           onClick?.(event);
         }}
