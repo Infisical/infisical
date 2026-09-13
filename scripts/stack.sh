@@ -29,6 +29,14 @@ set_var() {
   fi
 }
 
+# A .env whose last line has no newline would have the first appended setting
+# glued onto it. Fix that once here rather than guarding every append.
+end_with_newline() {
+  [ -s .env ] || return 0
+  [ "$(tail -c 1 .env | wc -l)" -eq 0 ] && printf '\n' >> .env
+  return 0
+}
+
 # Ports are derived from the stack name, so they are identical on every run and
 # differ between checkouts. cksum is POSIX, so macOS and Linux agree. The range
 # sits above the well-known ports and below the ephemeral range.
@@ -127,6 +135,8 @@ cmd_init() {
     cp .env.example .env
     echo "Created .env from .env.example."
   fi
+
+  end_with_newline
 
   NAME=$(stack_name)
   [ -n "$NAME" ] || { echo "Could not determine a stack name." >&2; exit 1; }
