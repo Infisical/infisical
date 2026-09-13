@@ -11,6 +11,7 @@ import {
   XIcon
 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { Spinner } from "@app/components/v2";
 import { Button } from "@app/components/v3/generic/Button";
 import { cn } from "@app/components/v3/utils";
@@ -191,9 +192,15 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
       try {
         const result = await fetchSchemas();
         setSchemas(result);
-        const hasSelected = result.find((s) => s.name === selectedSchema);
-        const activeSchema = hasSelected ? selectedSchema : (result[0]?.name ?? defaultSchema);
-        if (!hasSelected && result.length > 0 && !keepSelected) {
+        const matched = result.find((s) => s.name.toLowerCase() === selectedSchema.toLowerCase());
+        const activeSchema = matched?.name ?? result[0]?.name ?? defaultSchema;
+        if (!matched && result.length > 0) {
+          createNotification({
+            type: "warning",
+            text: `Schema "${selectedSchema}" was not found. Browsing "${activeSchema}" instead.`
+          });
+        }
+        if (activeSchema !== selectedSchema && result.length > 0 && !keepSelected) {
           setSelectedSchema(activeSchema);
         }
         if (result.length > 0) {
