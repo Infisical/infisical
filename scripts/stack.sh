@@ -13,6 +13,9 @@ set -eu
 # an empty database.
 DEFAULT_SEED_VOLUME=infisical_postgres-data1
 
+# Suffix the stacks use. The proxy serves this alongside portless's default.
+TLD=test
+
 usage() {
   echo "usage: $0 {init|up|down|rm|db|proxy}" >&2
   exit 64
@@ -60,9 +63,6 @@ end_with_newline() {
 port_for() {
   printf '%s' $(( 20000 + ($(printf '%s' "$1" | cksum | cut -d' ' -f1) % 20000) ))
 }
-
-# Suffix the stacks use. The proxy serves this alongside portless's default.
-TLD=test
 
 # Read the hostname from `portless list`, the documented live view. Do not read
 # ~/.portless/routes.json: which directory is authoritative has moved between
@@ -188,8 +188,8 @@ cmd_init() {
   [ -n "$NAME" ] || { echo "Could not determine a stack name." >&2; exit 1; }
 
   set_var STACK_NAME "$NAME"
-  set_var SITE_URL "https://$NAME.test"
-  set_var VITE_ALLOWED_HOSTS "$NAME.test"
+  set_var SITE_URL "https://$NAME.$TLD"
+  set_var VITE_ALLOWED_HOSTS "$NAME.$TLD"
   set_var STACK_NGINX_PORT  "$(port_for "$NAME")"
   set_var STACK_DB_PORT  "$(port_for "db-$NAME")"
   set_var STACK_REDIS_PORT  "$(port_for "redis-$NAME")"
@@ -279,8 +279,10 @@ cmd_down() { require_stack; compose down; }
 
 cmd_rm() {
   require_stack
-  compose down -v
-  docker image rm "infisical-dev-backend:$NAME" "infisical-dev-frontend:$NAME" >/dev/null 2>&1 || true
+  # --rmi local removes the images compose built for this project. Naming them
+  # by hand would not work: with no `image:` in the compose file they are tagged
+  # <project>-<service>, not the infisical-dev-* the old worktree file used.
+  compose down -v --rmi local
   portless alias --remove "$NAME" >/dev/null 2>&1 || true
   portless alias --remove "mail.$NAME" >/dev/null 2>&1 || true
   echo "Stack '$NAME' removed. The checkout itself is untouched."
