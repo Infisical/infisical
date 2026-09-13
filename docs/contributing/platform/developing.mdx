@@ -120,13 +120,23 @@ This needs [portless](https://portless.sh) to map each stack to a hostname:
 
 ```bash
 $ npm install -g portless
-$ portless proxy start --tld test
+$ make stack-proxy
 ```
 
-The proxy has to be running for these hostnames to resolve, and the `--tld`
-belongs to the proxy rather than to an individual route, so start it that way
-once. `make stack-up` prints the hostname that was actually registered and
-tells you when it will not resolve.
+`stack-proxy` starts the proxy on the `.test` suffix. It binds port 443, so it
+may ask for your password, and it is safe to re-run. `stack-init` calls it for
+you before registering a hostname.
+
+The suffix belongs to the proxy, not to an individual route, and it is stamped
+onto each route when that route is registered. So a proxy already running on a
+different suffix has to be restarted, which `stack-proxy` will tell you:
+
+```bash
+$ portless proxy stop && portless proxy start --tld test
+```
+
+`make stack-up` prints the hostname that was actually registered, and says so
+when it will not resolve.
 
 Then, in any checkout or `git worktree`:
 
@@ -146,6 +156,7 @@ prints every address the stack listens on.
 | `make stack-down` | Stop it, keeping the database and hostnames |
 | `make stack-rm` | Remove containers, volumes, images and hostnames |
 | `make stack-db` | Open `psql` against this stack's database |
+| `make stack-proxy` | Start the portless proxy on the `.test` suffix |
 
 A new stack starts empty and migrates on first boot. Seeding it from a copy of
 an existing volume is quicker: `stack-init` writes `STACK_SEED_VOLUME` into

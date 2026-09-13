@@ -132,7 +132,7 @@ install:
 
 # Run this checkout as its own stack, so several branches can be up at once.
 # See docs/contributing/platform/developing.mdx.
-stack-init stack-up stack-down stack-rm stack-db:
+stack-init stack-up stack-down stack-rm stack-db stack-proxy:
 	@./scripts/stack.sh $(subst stack-,,$@)
 
-.PHONY: install stack-init stack-up stack-down stack-rm stack-db
+.PHONY: install stack-init stack-up stack-down stack-rm stack-db stack-proxy

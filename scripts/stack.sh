@@ -14,7 +14,7 @@ set -eu
 DEFAULT_SEED_VOLUME=infisical_postgres-data1
 
 usage() {
-  echo "usage: $0 {init|up|down|rm|db}" >&2
+  echo "usage: $0 {init|up|down|rm|db|proxy}" >&2
   exit 64
 }
 
@@ -53,10 +53,34 @@ host_resolves() {
   dscacheutil -q host -a name "$1" 2>/dev/null | grep -q 'ip_address'
 }
 
-portless_hint() {
-  echo "  The portless proxy does not appear to be running, so these names will" >&2
-  echo "  not resolve. Start it once with:" >&2
-  echo "    portless proxy start --tld test" >&2
+TLD=test
+
+# The proxy is what makes these names resolve, and it stamps its TLD onto each
+# route at registration time. `portless proxy start` is idempotent but will not
+# change the TLD of a proxy that is already up, so a mismatch needs a restart.
+proxy_tld() {
+  [ -f "$HOME/.portless/routes.json" ] || return 0
+  sed -n 's/.*"hostname"[^"]*"[^"]*\.\([a-z]*\)".*/\1/p' "$HOME/.portless/routes.json" | head -1
+}
+
+cmd_proxy() {
+  command -v portless >/dev/null 2>&1 || {
+    echo "portless is not installed. Install it with: npm install -g portless" >&2
+    exit 1
+  }
+
+  current=$(proxy_tld)
+  if [ -n "$current" ] && [ "$current" != "$TLD" ]; then
+    echo "The proxy is serving .$current routes, but stacks expect .$TLD." >&2
+    echo "Restart it so new routes get the right suffix:" >&2
+    echo "  portless proxy stop && portless proxy start --tld $TLD" >&2
+    echo "Existing .$current routes are re-registered by running stack-init again." >&2
+    return 1
+  fi
+
+  # Binds port 443, so this may ask for your password. Safe to re-run: portless
+  # reports an already-running proxy rather than failing.
+  portless proxy start --tld "$TLD"
 }
 
 stack_name() {
@@ -124,6 +148,9 @@ cmd_init() {
   fi
 
   if command -v portless >/dev/null 2>&1; then
+    # Order matters: a route takes its suffix from the proxy that is running
+    # when it is registered.
+    cmd_proxy || echo "Continuing without a hostname; the ports below still work." >&2
     portless alias "$NAME" "$(get STACK_NGINX_PORT)" --force >/dev/null 2>&1 \
       || echo "Warning: could not register a portless route for $NAME." >&2
     portless alias "mail.$NAME" "$(get STACK_MAIL_PORT)" --force >/dev/null 2>&1 \
@@ -183,5 +210,6 @@ case "$1" in
   down) cmd_down ;;
   rm)   cmd_rm ;;
   db)   cmd_db ;;
+  proxy) cmd_proxy ;;
   *)    usage ;;
 esac
