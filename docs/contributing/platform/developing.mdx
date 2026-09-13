@@ -135,7 +135,8 @@ Worth knowing:
 
 - The stack is named after its directory and its ports are hashed from that
   name, so they are stable and differ per checkout. Switching branches inside a
-  checkout does not move them.
+  checkout does not move them. A long name keeps both ends, so branches that
+  differ only in a trailing suffix still get separate stacks.
 - `stack-init` copies `.env` from your main checkout for its keys, minus that
   checkout's stack settings. Without one it falls back to `.env.example`.
 - It seeds the database from `STACK_SEED_VOLUME`, defaulting to

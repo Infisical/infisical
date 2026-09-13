@@ -131,9 +131,17 @@ ensure_proxy() {
 
 # Compose project names must be lowercase alphanumerics and hyphens, so a name
 # typed into .env gets the same treatment as one taken from the directory.
+#
+# Long names keep both ends rather than just the front. Branches that differ
+# only in a trailing suffix are common, and truncating from the front alone
+# gives them the same stack: the same ports, containers and database volume.
 sanitise_name() {
-  printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\n' '-' \
-    | sed 's/--*/-/g; s/^-*//; s/-*$//' | cut -c1-40 | sed 's/-*$//'
+  clean=$(printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\n' '-' \
+    | sed 's/--*/-/g; s/^-*//; s/-*$//')
+  [ ${#clean} -le 40 ] && { printf '%s' "$clean"; return 0; }
+  printf '%s-%s' \
+    "$(printf '%s' "$clean" | cut -c1-31 | sed 's/-*$//')" \
+    "$(printf '%s' "$clean" | rev | cut -c1-8 | rev | sed 's/^-*//')"
 }
 
 stack_name() {
