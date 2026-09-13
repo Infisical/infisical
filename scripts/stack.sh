@@ -205,8 +205,11 @@ cmd_up() {
     echo "  App:      https://$app_host"
     [ -n "$mail_host" ] && echo "  Mail:     https://$mail_host"
   fi
+  db_port=$(get STACK_DB_PORT)
   echo "  App port: localhost:$(get STACK_NGINX_PORT)"
-  echo "  Postgres: localhost:$(get STACK_DB_PORT)"
+  echo "  Postgres: localhost:$db_port"
+  echo "  Redis:    localhost:$(get STACK_REDIS_PORT)"
+  echo "  psql:     PGPASSWORD=infisical psql -h localhost -p $db_port -U infisical -d infisical"
 
   # Reaching the stack by port always works; the hostname only does when the
   # proxy is up, so say so rather than printing a URL that fails to resolve.
