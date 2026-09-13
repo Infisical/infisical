@@ -36,6 +36,9 @@ port_for() {
   printf '%s' $(( 20000 + ($(printf '%s' "$1" | cksum | cut -d' ' -f1) % 20000) ))
 }
 
+# Suffix the stacks use. The proxy serves this alongside portless's default.
+TLD=test
+
 # Read the hostname from `portless list`, the documented live view. Do not read
 # ~/.portless/routes.json: which directory is authoritative has moved between
 # portless versions, so a file that looks like the route store can be months out
@@ -64,13 +67,27 @@ start_proxy() {
   portless proxy start --tld "$TLD" --tld localhost "$@"
 }
 
+# A registered route still needs to resolve. portless keeps /etc/hosts in step
+# with its routes, so when it does not, that sync has drifted.
+host_resolves() {
+  dscacheutil -q host -a name "$1" 2>/dev/null | grep -q 'ip_address'
+}
+
+portless_hint() {
+  echo "  That hostname does not resolve yet. If it persists:" >&2
+  echo "    portless hosts sync" >&2
+  echo "    portless doctor" >&2
+}
+
 ensure_proxy() {
   command -v portless >/dev/null 2>&1 || {
     echo "portless is not installed. Install it with: npm install -g portless" >&2
     return 1
   }
 
-  start_proxy >/dev/null 2>&1 || true
+  # stdout only: an already-running proxy is normal and noisy, but hiding
+  # stderr here once turned a fatal scripting error into a bare exit code.
+  start_proxy >/dev/null || true
   proxy_serves_tld && return 0
 
   echo "Proxy is not serving .$TLD; restarting it so it does."
