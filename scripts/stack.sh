@@ -29,6 +29,20 @@ set_var() {
   fi
 }
 
+# Explain the block before writing it, once. Everything in it has a default, so
+# these are notes on when you would override one, not instructions.
+write_stack_header() {
+  grep -q '^# --- stack ---' .env 2>/dev/null && return 0
+  cat >> .env <<'EOF'
+
+# --- stack --- written by `make stack-init`, all optional
+#   STACK_NAME         renames the stack; ports and hostname derive from it
+#   STACK_*_PORT       hashed from the name; change one only if it clashes
+#   STACK_SEED_VOLUME  volume to seed the database from; blank starts empty
+# SITE_URL and VITE_ALLOWED_HOSTS below are rewritten to match STACK_NAME.
+EOF
+}
+
 # A .env whose last line has no newline would have the first appended setting
 # glued onto it. Fix that once here rather than guarding every append.
 end_with_newline() {
@@ -137,6 +151,7 @@ cmd_init() {
   fi
 
   end_with_newline
+  write_stack_header
 
   NAME=$(stack_name)
   [ -n "$NAME" ] || { echo "Could not determine a stack name." >&2; exit 1; }
