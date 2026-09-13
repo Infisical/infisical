@@ -102,7 +102,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     }
 
     const params = (req.params as { identifier?: string; applicationId?: string; profileId?: string }) ?? {};
-    const isAppScoped = matchedRoute.startsWith("/applications/");
+    // routeOptions.url carries the plugin prefix, so the route shape is not visible there
+    const isAppScoped = Boolean(params.applicationId && params.profileId);
 
     let estConfig;
     if (isAppScoped) {
