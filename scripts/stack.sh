@@ -59,9 +59,10 @@ end_with_newline() {
 
 # Ports are derived from the stack name, so they are identical on every run and
 # differ between checkouts. cksum is POSIX, so macOS and Linux agree. The range
-# sits above the well-known ports and below the ephemeral range.
+# sits above the well-known ports and below the ephemeral range; it is wide
+# because each stack takes 13 of them and collisions are birthday-shaped.
 port_for() {
-  printf '%s' $(( 20000 + ($(printf '%s' "$1" | cksum | cut -d' ' -f1) % 20000) ))
+  printf '%s' $(( 20000 + ($(printf '%s' "$1" | cksum | cut -d' ' -f1) % 40000) ))
 }
 
 # Read the hostname from `portless list`, the documented live view. Do not read
@@ -128,12 +129,17 @@ ensure_proxy() {
   }
 }
 
+# Compose project names must be lowercase alphanumerics and hyphens, so a name
+# typed into .env gets the same treatment as one taken from the directory.
+sanitise_name() {
+  printf '%s' "$1" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\n' '-' \
+    | sed 's/--*/-/g; s/^-*//; s/-*$//' | cut -c1-40 | sed 's/-*$//'
+}
+
 stack_name() {
-  get STACK_NAME && return 0
   # The directory, not the branch: switching branches inside a checkout must
   # not move its ports or orphan its database.
-  printf '%s' "$(basename "$(pwd)")" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-\n' '-' \
-    | sed 's/--*/-/g; s/^-*//; s/-*$//' | cut -c1-40 | sed 's/-*$//'
+  sanitise_name "$(get STACK_NAME || basename "$(pwd)")"
 }
 
 require_stack() {
@@ -188,8 +194,6 @@ cmd_init() {
   [ -n "$NAME" ] || { echo "Could not determine a stack name." >&2; exit 1; }
 
   set_var STACK_NAME "$NAME"
-  set_var SITE_URL "https://$NAME.$TLD"
-  set_var VITE_ALLOWED_HOSTS "$NAME.$TLD"
   set_var STACK_NGINX_PORT  "$(port_for "$NAME")"
   set_var STACK_DB_PORT  "$(port_for "db-$NAME")"
   set_var STACK_REDIS_PORT  "$(port_for "redis-$NAME")"
@@ -245,6 +249,14 @@ cmd_init() {
     echo "Install it with: npm install -g portless" >&2
   fi
 
+  # Written last, from the route that actually exists. Doing it earlier would
+  # promise .test even when the proxy handed out something else, and the app
+  # builds its links and redirects from this.
+  host=$(stack_host "$NAME")
+  [ -n "$host" ] || host="$NAME.$TLD"
+  set_var SITE_URL "https://$host"
+  set_var VITE_ALLOWED_HOSTS "$host"
+
   echo "Stack '$NAME' initialised. Run 'make stack-up'."
 }
 
@@ -283,6 +295,9 @@ cmd_rm() {
   # by hand would not work: with no `image:` in the compose file they are tagged
   # <project>-<service>, not the infisical-dev-* the old worktree file used.
   compose down -v --rmi local
+  # init creates this volume itself, so it lacks compose's ownership labels and
+  # `down -v` may leave it. Harmless when compose already removed it.
+  docker volume rm "${NAME}_postgres-data" >/dev/null 2>&1 || true
   portless alias --remove "$NAME" >/dev/null 2>&1 || true
   portless alias --remove "mail.$NAME" >/dev/null 2>&1 || true
   echo "Stack '$NAME' removed. The checkout itself is untouched."
