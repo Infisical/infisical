@@ -100,7 +100,7 @@ The Docker stack installs its own inside the containers. Lint and type checks
 run against the host, so those need:
 
 ```bash
-$ make install
+make install
 ```
 
 ## Running several stacks at once
@@ -112,14 +112,14 @@ server and hostname.
 Needs [portless](https://portless.sh) 0.15 or newer:
 
 ```bash
-$ npm install -g portless
+npm install -g portless
 ```
 
 Then in any checkout or `git worktree`:
 
 ```bash
-$ make stack-init
-$ make stack-up
+make stack-init
+make stack-up
 ```
 
 | Command | What it does |
