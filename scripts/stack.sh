@@ -143,12 +143,35 @@ compose() {
 }
 
 # --- commands ---------------------------------------------------------------
-cmd_init() {
-  if [ ! -f .env ]; then
-    [ -f .env.example ] || { echo "Run this from the repo root." >&2; exit 1; }
-    cp .env.example .env
-    echo "Created .env from .env.example."
+# Where this checkout's main working tree is. Plain git, so it resolves the same
+# whether the worktree came from `git worktree add` or from a worktree manager.
+main_checkout() {
+  common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+  (cd "$common/.." 2>/dev/null && pwd) || return 1
+}
+
+# .env is gitignored, so a new worktree never has one. Prefer the main
+# checkout's: it holds the keys this machine's data was encrypted with, and a
+# stack seeded from an existing volume can only read that volume with them.
+create_env() {
+  [ ! -f .env ] || return 0
+
+  main=$(main_checkout) || main=""
+  if [ -n "$main" ] && [ "$main" != "$(pwd)" ] && [ -f "$main/.env" ]; then
+    cp "$main/.env" .env
+    echo "Created .env from $main/.env"
+    return 0
   fi
+
+  [ -f .env.example ] || { echo "No .env or .env.example here. Run this from the repo root." >&2; exit 1; }
+  cp .env.example .env
+  ENV_FROM_EXAMPLE=1
+  echo "Created .env from .env.example."
+}
+
+cmd_init() {
+  ENV_FROM_EXAMPLE=
+  create_env
 
   end_with_newline
   write_stack_header
@@ -185,8 +208,16 @@ cmd_init() {
     elif docker volume inspect "$seed" >/dev/null 2>&1; then
       echo "Seeding $volume from $seed..."
       docker run --rm -v "$seed":/from:ro -v "$volume":/to alpine sh -c 'cp -a /from/. /to/'
-      grep -q '^ENCRYPTION_KEY=.' .env \
-        || echo "Warning: .env has no ENCRYPTION_KEY, so seeded data will not decrypt." >&2
+      if ! grep -q '^ENCRYPTION_KEY=.' .env; then
+        echo "Warning: .env has no ENCRYPTION_KEY, so seeded data will not decrypt." >&2
+      elif [ -n "$ENV_FROM_EXAMPLE" ]; then
+        # The example key is not the key that wrote any real volume, so seeding
+        # with it produces a backend that starts and then cannot read anything.
+        echo "Warning: seeded from $seed, but ENCRYPTION_KEY came from .env.example." >&2
+        echo "  That key did not write this volume, so the backend will not decrypt it." >&2
+        echo "  Copy ENCRYPTION_KEY from the checkout that owns the volume, or set" >&2
+        echo "  STACK_SEED_VOLUME= in .env to start from an empty database." >&2
+      fi
     else
       echo "$seed not found, so starting empty. Migrations run on first boot."
     fi

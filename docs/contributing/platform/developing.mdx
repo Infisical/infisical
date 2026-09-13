@@ -156,6 +156,11 @@ $ make stack-up
 volume and registers the hostnames. It prints the name it chose, and `stack-up`
 prints every address the stack listens on.
 
+`.env` is gitignored, so a new worktree never has one. `stack-init` copies it
+from your main checkout when there is one, because that file holds the key your
+existing database volumes were encrypted with. Failing that it falls back to
+`.env.example`, and says which it used.
+
 | Command | What it does |
 | --- | --- |
 | `make stack-init` | Prepare this checkout: `.env`, ports, volume, hostnames |
