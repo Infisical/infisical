@@ -8,6 +8,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { PkiSync } from "./pki-sync-enums";
 import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";
 import { assertPkiSyncCanHoldCertificateCount } from "./pki-sync-fns";
@@ -46,6 +47,7 @@ type TPkiSyncFilterReconcileDeps = {
     queuePkiSyncRemoveCertificatesById: (payload: TQueuePkiSyncRemoveCertificatesByIdDTO) => Promise<unknown>;
   };
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
 };
 
 const PKI_SYNC_FILTER_LOCK_TTL_MS = 60 * 1000;
@@ -82,6 +84,16 @@ const getPkiSyncLinkDestinationTargets = (record: {
 }): string[] => {
   const files = (record.syncMetadata as { files?: string[] } | null)?.files ?? [];
   return [...(record.externalIdentifier ? [record.externalIdentifier] : []), ...files];
+};
+
+export const describePkiSyncApplication = async (
+  applicationId: string | null | undefined,
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">
+): Promise<{ applicationId?: string; applicationName?: string }> => {
+  if (!applicationId) return {};
+
+  const application = await pkiApplicationDAL.findById(applicationId);
+  return { applicationId, ...(application?.name ? { applicationName: application.name } : {}) };
 };
 
 export const computePkiSyncCertificateDiff = async (
@@ -132,7 +144,7 @@ export const applyPkiSyncCertificateDiff = async (
   auditLogInfo?: AuditLogInfo,
   writeFilters?: (tx: Knex) => Promise<void>
 ): Promise<{ linked: TPkiSyncCertificateRef[]; unlinked: TPkiSyncCertificateRef[] }> => {
-  const { certificateSyncDAL, pkiSyncQueue, auditLogService } = deps;
+  const { certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL } = deps;
   const { toLink, toUnlink } = diff;
 
   const unlinkIds = new Set(toUnlink.map((certificate) => certificate.id));
@@ -181,6 +193,7 @@ export const applyPkiSyncCertificateDiff = async (
   if (toLink.length === 0 && toUnlink.length === 0) return { linked: [], unlinked: [] };
 
   const auditActor: AuditLogInfo = auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } };
+  const applicationLabel = await describePkiSyncApplication(pkiSync.applicationId, pkiApplicationDAL);
 
   if (toLink.length > 0) {
     await auditLogService.createAuditLog({
@@ -193,7 +206,7 @@ export const applyPkiSyncCertificateDiff = async (
           name: pkiSync.name,
           count: toLink.length,
           certificates: toLink.map(({ id, commonName }) => ({ id, commonName })),
-          ...(pkiSync.applicationId ? { applicationId: pkiSync.applicationId } : {})
+          ...applicationLabel
         }
       }
     });
@@ -218,7 +231,7 @@ export const applyPkiSyncCertificateDiff = async (
           count: toUnlink.length,
           certificates: toUnlink,
           removedFromDestination: idsAtDestination.length > 0,
-          ...(pkiSync.applicationId ? { applicationId: pkiSync.applicationId } : {})
+          ...applicationLabel
         }
       }
     });

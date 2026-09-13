@@ -503,7 +503,7 @@ export const pkiSyncServiceFactory = ({
     return applyPkiSyncCertificateDiff(
       pkiSync,
       diff,
-      { certificateDAL, certificateSyncDAL, pkiSyncQueue, auditLogService },
+      { certificateDAL, certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL },
       opts.auditLogInfo,
       opts.writeFilters
     );
@@ -648,7 +648,7 @@ export const pkiSyncServiceFactory = ({
         }
       );
 
-      if (pkiSync.isAutoSyncEnabled) {
+      if (pkiSync.isAutoSyncEnabled && linkedCertificates.length === 0) {
         await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSync.id });
       }
 

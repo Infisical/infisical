@@ -50,7 +50,8 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
   };
 
   const findIneligibleFilteredLinks = async (
-    limit: number
+    limit: number,
+    offset = 0
   ): Promise<Array<{ certificateId: string; applicationId: string }>> => {
     try {
       const docs = (await db
@@ -68,7 +69,8 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
         .select(`${TableName.CertificateSync}.certificateId`, `${TableName.PkiSync}.applicationId`)
         .groupBy(`${TableName.CertificateSync}.certificateId`, `${TableName.PkiSync}.applicationId`)
         .orderByRaw(`min(??) asc`, [`${TableName.CertificateSync}.updatedAt`])
-        .limit(limit)) as Array<{ certificateId: string; applicationId: string }>;
+        .limit(limit)
+        .offset(offset)) as Array<{ certificateId: string; applicationId: string }>;
 
       return docs;
     } catch (error) {

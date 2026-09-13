@@ -772,6 +772,7 @@ export const pkiSyncQueueFactory = ({
           pkiSyncDAL,
           pkiSyncQueue: { queuePkiSyncSyncCertificatesById, queuePkiSyncRemoveCertificatesById },
           auditLogService,
+          pkiApplicationDAL,
           withSyncFilterLock: (syncId, run) => withPkiSyncFilterLock(keyStore, syncId, run)
         });
       } catch (error) {

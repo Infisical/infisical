@@ -101,10 +101,17 @@ export const CertificateManagementModal = ({
   const totalPages = Math.ceil(totalCount / pageSize);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const orderNamesSeen = React.useRef(new Map<string, string>());
 
   React.useEffect(() => {
     setSelectedIds(preselectedOrderIds);
   }, [JSON.stringify(preselectedOrderIds)]);
+
+  React.useEffect(() => {
+    allCertificates.forEach((cert) => {
+      if (cert.orderId) orderNamesSeen.current.set(cert.orderId, cert.commonName);
+    });
+  }, [allCertificates]);
 
   const handleToggleSelection = (orderId: string) => {
     setSelectedIds((prev) => {
@@ -165,9 +172,11 @@ export const CertificateManagementModal = ({
   }, [isOpen]);
 
   const handleSaveCertificates = () => {
-    const orderNames = allCertificates
-      .filter((cert) => cert.orderId && selectedIds.includes(cert.orderId))
-      .map((cert) => [cert.orderId as string, cert.commonName] as [string, string]);
+    const orderNames = selectedIds
+      .filter((orderId) => orderNamesSeen.current.has(orderId))
+      .map(
+        (orderId) => [orderId, orderNamesSeen.current.get(orderId) as string] as [string, string]
+      );
 
     onOrderSelectionChange?.(selectedIds, orderNames);
     onClose();

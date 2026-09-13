@@ -531,7 +531,7 @@ export const certificateServiceFactory = ({
     await triggerSyncsForDeletedCertificate(
       cert.id,
       pkiSyncIdsHoldingCertificate,
-      { pkiSyncDAL, pkiSyncQueue, auditLogService },
+      { pkiSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL },
       { commonName: cert.commonName, projectId: cert.projectId, applicationId: cert.applicationId },
       auditLogInfo
     );

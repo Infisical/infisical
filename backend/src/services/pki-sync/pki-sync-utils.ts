@@ -6,10 +6,15 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync } from "./pki-sync-enums";
 import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";
-import { applyPkiSyncCertificateDiff, TPkiSyncReconcileTarget } from "./pki-sync-filter-reconcile-fns";
+import {
+  applyPkiSyncCertificateDiff,
+  describePkiSyncApplication,
+  TPkiSyncReconcileTarget
+} from "./pki-sync-filter-reconcile-fns";
 import { assertPkiSyncCanHoldCertificateCount } from "./pki-sync-fns";
 import {
   TPkiSyncFilters,
@@ -118,6 +123,7 @@ export const triggerSyncsForDeletedCertificate = async (
     pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
     pkiSyncQueue: TPkiSyncRunQueue;
     auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+    pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   },
   certificate: { commonName: string; projectId: string; applicationId?: string | null },
   auditLogInfo?: AuditLogInfo
@@ -126,6 +132,10 @@ export const triggerSyncsForDeletedCertificate = async (
 
   try {
     const pkiSyncs = await dependencies.pkiSyncDAL.find({ $in: { id: pkiSyncIds } });
+    const applicationLabel = await describePkiSyncApplication(
+      certificate.applicationId,
+      dependencies.pkiApplicationDAL
+    );
 
     await Promise.all(
       pkiSyncs.map((pkiSync) =>
@@ -142,7 +152,7 @@ export const triggerSyncsForDeletedCertificate = async (
               removedFromDestination: Boolean(
                 (pkiSync.syncOptions as { canRemoveCertificates?: boolean } | null)?.canRemoveCertificates
               ),
-              ...(pkiSync.applicationId ? { applicationId: pkiSync.applicationId } : {})
+              ...applicationLabel
             }
           }
         })
@@ -229,6 +239,7 @@ type TReconcileCertificateAgainstSyncsDeps = {
     queuePkiSyncRemoveCertificatesById: (payload: TQueuePkiSyncRemoveCertificatesByIdDTO) => Promise<unknown>;
   };
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   withSyncFilterLock: <T>(syncId: string, run: () => Promise<T>) => Promise<T>;
 };
 
@@ -308,7 +319,7 @@ const $reconcileCertificateAgainstSync = async (
           certificateId,
           commonName: matched[0].commonName,
           reason: limitError instanceof Error ? limitError.message : "This sync cannot hold another certificate.",
-          ...(pkiSync.applicationId ? { applicationId: pkiSync.applicationId } : {})
+          ...(await describePkiSyncApplication(pkiSync.applicationId, dependencies.pkiApplicationDAL))
         }
       }
     });

@@ -4711,6 +4711,7 @@ interface PkiSyncLinkCertificatesEvent {
     certificates: { id: string; commonName: string }[];
     filters?: TPkiSyncFilters;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4723,6 +4724,7 @@ interface PkiSyncUnlinkCertificatesEvent {
     certificates: { id: string; commonName: string }[];
     removedFromDestination?: boolean;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4735,6 +4737,7 @@ interface PkiSyncSkipCertificateEvent {
     commonName: string;
     reason: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 

@@ -7,6 +7,7 @@ import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 
 const INELIGIBLE_LINK_BATCH = 500;
+const INELIGIBLE_LINK_MAX_BATCHES_PER_RUN = 10;
 
 type TPkiSyncCleanupQueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
@@ -60,20 +61,33 @@ export const pkiSyncCleanupQueueServiceFactory = ({
 
   const reconcileIneligibleFilteredLinks = async () => {
     try {
-      const stale = await certificateSyncDAL.findIneligibleFilteredLinks(INELIGIBLE_LINK_BATCH);
+      let queued = 0;
 
-      if (stale.length === 0) return;
+      for (let page = 0; page < INELIGIBLE_LINK_MAX_BATCHES_PER_RUN; page += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const stale = await certificateSyncDAL.findIneligibleFilteredLinks(
+          INELIGIBLE_LINK_BATCH,
+          page * INELIGIBLE_LINK_BATCH
+        );
 
-      logger.info(`cron[pki-sync-cleanup]: re-evaluating ${stale.length} certificate(s) held by a filtered sync`);
+        if (stale.length === 0) break;
 
-      for (const { certificateId, applicationId } of stale) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          await pkiSyncQueue.queuePkiSyncLinkMatchingCertificates({ certificateId, applicationId });
-        } catch (error) {
-          logger.error(error, `Failed to queue a filter reconcile [certificateId=${certificateId}]`);
+        for (const { certificateId, applicationId } of stale) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            await pkiSyncQueue.queuePkiSyncLinkMatchingCertificates({ certificateId, applicationId });
+            queued += 1;
+          } catch (error) {
+            logger.error(error, `Failed to queue a filter reconcile [certificateId=${certificateId}]`);
+          }
         }
+
+        if (stale.length < INELIGIBLE_LINK_BATCH) break;
       }
+
+      if (queued === 0) return;
+
+      logger.info(`cron[pki-sync-cleanup]: re-evaluating ${queued} certificate(s) held by a filtered sync`);
     } catch (error) {
       logger.error(error, "Failed to re-evaluate certificates held by a filtered sync");
     }

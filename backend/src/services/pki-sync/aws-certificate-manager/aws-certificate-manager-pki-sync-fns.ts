@@ -549,6 +549,43 @@ export const awsCertificateManagerPkiSyncFactory = ({
       }
     }
 
+    const untaggedTrackedArns = existingSyncRecords
+      .map((syncRecord) => syncRecord.externalIdentifier)
+      .filter((arn): arn is string => {
+        if (!arn) return false;
+
+        const acmCert = acmCertificatesByArn.get(arn);
+        return Boolean(
+          acmCert?.Tags && !acmCert.Tags.some((tag) => tag.Key === INFISICAL_PKI_SYNC_TAG && tag.Value === pkiSync.id)
+        );
+      });
+
+    if (untaggedTrackedArns.length > 0) {
+      await executeWithConcurrencyLimit(
+        untaggedTrackedArns,
+        async (certificateArn) => {
+          try {
+            await withRateLimitRetry(
+              () =>
+                acm.send(
+                  new AddTagsToCertificateCommand({
+                    CertificateArn: certificateArn,
+                    Tags: [{ Key: INFISICAL_PKI_SYNC_TAG, Value: pkiSync.id }]
+                  })
+                ),
+              { operation: "tag-existing-certificate", syncId: pkiSync.id }
+            );
+          } catch (error) {
+            logger.warn(
+              error,
+              `Could not tag an existing AWS Certificate Manager certificate with its sync [syncId=${pkiSync.id}]`
+            );
+          }
+        },
+        { operation: "tag-existing-certificates", syncId: pkiSync.id }
+      );
+    }
+
     const certificatesToRemove: string[] = [];
 
     if (canRemoveCertificates) {
