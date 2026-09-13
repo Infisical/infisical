@@ -127,16 +127,11 @@ $ make stack-proxy
 may ask for your password, and it is safe to re-run. `stack-init` calls it for
 you before registering a hostname.
 
-The suffix belongs to the proxy, not to an individual route, and it is stamped
-onto each route when that route is registered. A proxy already running on a
-different suffix therefore has to be restarted before a route can pick the new
-one up. `stack-init` checks the route it just created and prints this when that
-has happened:
-
-```bash
-$ portless proxy stop && portless proxy start --tld test
-$ make stack-init
-```
+The suffix belongs to the proxy rather than to an individual route, and a
+running proxy keeps the suffix it started with. `stack-init` handles that for
+you: if it registers a route and sees the wrong suffix, it restarts the proxy
+and registers again. Routes are re-served afterwards, so the only cost is a
+brief interruption to anything else running through the proxy.
 
 `make stack-up` prints the hostname that was actually registered, and says so
 when it will not resolve.
