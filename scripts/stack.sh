@@ -36,14 +36,20 @@ port_for() {
   printf '%s' $(( 20000 + ($(printf '%s' "$1" | cksum | cut -d' ' -f1) % 20000) ))
 }
 
-# portless registers a route under whatever TLD its proxy was started with, and
-# `alias` silently ignores a --tld flag, so the hostname cannot be assumed.
-# `portless get` is no good either: for a name it does not know it invents one
-# from the project and still exits 0. The route file is the only ground truth.
+# portless registers a route under whatever suffix its proxy was started with,
+# and `alias` silently ignores a --tld flag, so the hostname cannot be assumed.
+#
+# Read it from `portless list`, which is the live view. ~/.portless/routes.json
+# looks like the route store but is not: a freshly registered alias does not
+# appear there, so anything read from it can be arbitrarily stale. `portless get`
+# is no good either, since for an unknown name it invents one from the project
+# directory and still exits 0.
 stack_host() {
-  [ -f "$HOME/.portless/routes.json" ] || return 0
-  sed -n 's/.*"hostname"[[:space:]]*:[[:space:]]*"\('"$1"'\.[^"]*\)".*/\1/p' \
-    "$HOME/.portless/routes.json" | head -1
+  esc=$(printf '\033')
+  portless list 2>/dev/null \
+    | sed "s/${esc}\[[0-9;]*m//g" \
+    | sed -n 's|^[[:space:]]*https\{0,1\}://\('"$1"'\.[^:/[:space:]]*\).*|\1|p' \
+    | head -1
 }
 
 # portless exposes no liveness check: `alias` and `get` both succeed while the
