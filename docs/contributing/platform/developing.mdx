@@ -128,11 +128,14 @@ may ask for your password, and it is safe to re-run. `stack-init` calls it for
 you before registering a hostname.
 
 The suffix belongs to the proxy, not to an individual route, and it is stamped
-onto each route when that route is registered. So a proxy already running on a
-different suffix has to be restarted, which `stack-proxy` will tell you:
+onto each route when that route is registered. A proxy already running on a
+different suffix therefore has to be restarted before a route can pick the new
+one up. `stack-init` checks the route it just created and prints this when that
+has happened:
 
 ```bash
 $ portless proxy stop && portless proxy start --tld test
+$ make stack-init
 ```
 
 `make stack-up` prints the hostname that was actually registered, and says so

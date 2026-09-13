@@ -55,32 +55,32 @@ host_resolves() {
 
 TLD=test
 
-# The proxy is what makes these names resolve, and it stamps its TLD onto each
-# route at registration time. `portless proxy start` is idempotent but will not
-# change the TLD of a proxy that is already up, so a mismatch needs a restart.
-proxy_tld() {
-  [ -f "$HOME/.portless/routes.json" ] || return 0
-  sed -n 's/.*"hostname"[^"]*"[^"]*\.\([a-z]*\)".*/\1/p' "$HOME/.portless/routes.json" | head -1
-}
-
 cmd_proxy() {
   command -v portless >/dev/null 2>&1 || {
     echo "portless is not installed. Install it with: npm install -g portless" >&2
     exit 1
   }
-
-  current=$(proxy_tld)
-  if [ -n "$current" ] && [ "$current" != "$TLD" ]; then
-    echo "The proxy is serving .$current routes, but stacks expect .$TLD." >&2
-    echo "Restart it so new routes get the right suffix:" >&2
-    echo "  portless proxy stop && portless proxy start --tld $TLD" >&2
-    echo "Existing .$current routes are re-registered by running stack-init again." >&2
-    return 1
-  fi
-
   # Binds port 443, so this may ask for your password. Safe to re-run: portless
   # reports an already-running proxy rather than failing.
-  portless proxy start --tld "$TLD"
+  portless proxy start --tld "$TLD" >/dev/null 2>&1 || true
+}
+
+# A route takes its suffix from the proxy that was running when it was
+# registered, and `portless proxy start` will not change the suffix of a proxy
+# that is already up. Rather than guess the proxy's state, register first and
+# look at what this stack's own route actually got: that is self-correcting,
+# where reading it from some older route is not.
+fix_tld_or_explain() {
+  host=$(stack_host "$1")
+  case "$host" in
+    "") return 0 ;;
+    *".$TLD") return 0 ;;
+  esac
+  echo "" >&2
+  echo "This stack registered as $host, not .$TLD, because the proxy is" >&2
+  echo "already running on a different suffix. Restart it and re-run init:" >&2
+  echo "  portless proxy stop && portless proxy start --tld $TLD" >&2
+  echo "  make stack-init" >&2
 }
 
 stack_name() {
@@ -150,11 +150,12 @@ cmd_init() {
   if command -v portless >/dev/null 2>&1; then
     # Order matters: a route takes its suffix from the proxy that is running
     # when it is registered.
-    cmd_proxy || echo "Continuing without a hostname; the ports below still work." >&2
+    cmd_proxy
     portless alias "$NAME" "$(get STACK_NGINX_PORT)" --force >/dev/null 2>&1 \
       || echo "Warning: could not register a portless route for $NAME." >&2
     portless alias "mail.$NAME" "$(get STACK_MAIL_PORT)" --force >/dev/null 2>&1 \
       || echo "Warning: could not register a portless route for mail.$NAME." >&2
+    fix_tld_or_explain "$NAME"
   else
     echo "portless is not installed, so this stack gets no hostname." >&2
     echo "Install it with: npm install -g portless" >&2
