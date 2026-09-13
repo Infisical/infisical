@@ -94,6 +94,67 @@ Once running, access the BullBoard UI at [http://localhost:3008](http://localhos
 docker compose -f docker-compose.dev.yml down
 ```
 
+## Installing dependencies
+
+The Docker stack installs its own inside the containers. Lint and type checks
+run against the host, so those need:
+
+```bash
+make install
+```
+
+## Running several stacks at once
+
+The stack above uses fixed ports, so only one runs at a time. To keep a second
+branch up, run each checkout as its own stack with its own database, Redis, mail
+server and hostname.
+
+Needs [portless](https://portless.sh) 0.15 or newer:
+
+```bash
+npm install -g portless
+```
+
+Then in any checkout or `git worktree`:
+
+```bash
+make stack-init
+make stack-up
+```
+
+| Command | What it does |
+| --- | --- |
+| `make stack-init` | Prepare this checkout: `.env`, ports, volume, hostname |
+| `make stack-up` | Launch the stack |
+| `make stack-down` | Stop it, keeping the database |
+| `make stack-rm` | Remove containers, volumes, images and hostname |
+| `make stack-db` | Open `psql` against this stack's database |
+| `make stack-proxy` | Start the portless proxy on its own |
+
+Worth knowing:
+
+- The stack is named after its directory and its ports are hashed from that
+  name, so they are stable and differ per checkout. Switching branches inside a
+  checkout does not move them. A long name keeps both ends, so branches that
+  differ only in a trailing suffix still get separate stacks.
+- `stack-init` copies `.env` from your main checkout for its keys, minus that
+  checkout's stack settings. Without one it falls back to `.env.example`.
+- It seeds the database from `STACK_SEED_VOLUME`, defaulting to
+  `infisical_postgres-data1`, and starts empty if that volume is missing or the
+  setting is blank.
+- `stack-init` starts the proxy, which binds port 443 and may ask for your
+  password.
+
+<Warning>
+  Seeded data only reads back with the `ENCRYPTION_KEY` that wrote it. Seeding a
+  volume with a different key gives a backend that starts and then cannot
+  decrypt anything.
+</Warning>
+
+When a hostname does not resolve, `portless doctor` checks the proxy, routes,
+DNS and certificate trust in one pass. Only the default services get per-stack
+ports, so two stacks cannot run the same Compose profile at once.
+
 ## Starting Infisical docs locally
 
 We use [Mintlify](https://mintlify.com/) for our docs.

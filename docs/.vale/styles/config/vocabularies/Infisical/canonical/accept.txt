@@ -623,3 +623,6 @@ iss
 # --- Surfaced by the code-signing pages ---
 # Vale strips a trailing `'s`, so the possessive needs no separate entry.
 MSBuild
+
+# --- Surfaced by the parallel dev environments page ---
+portless
