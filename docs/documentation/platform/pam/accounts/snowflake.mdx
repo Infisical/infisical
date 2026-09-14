@@ -12,7 +12,7 @@ Every statement runs from the [gateway](/documentation/platform/gateways/overvie
 
 - A Snowflake user for Infisical to connect as.
 - A warehouse the user's role can use.
-- A [gateway](/documentation/platform/gateways/overview) that can reach your Snowflake account. Snowflake returns large results from cloud object storage rather than from the account host, so a gateway behind an egress allowlist needs that storage reachable too.
+- A [gateway](/documentation/platform/gateways/overview) on version 0.43.133 or later that can reach your Snowflake account. Earlier gateways don't support Snowflake and refuse the session. Snowflake returns large results from cloud object storage rather than from the account host, so a gateway behind an egress allowlist needs that storage reachable too.
 - A key pair or a programmatic access token for that user. Snowflake blocks single-factor password sign-in for human users, so password authentication only works for a service user whose account policy still permits it.
 
 ## Creating an account
@@ -110,6 +110,8 @@ Command blocking matches the text of each statement, so a statement that builds 
 
   </Tab>
   <Tab title="CLI">
+    Requires Infisical CLI version 0.43.133 or later.
+
     The CLI starts a local proxy that snowsql, DBeaver, and the Snowflake drivers connect to. It speaks plain HTTP on `127.0.0.1`, so connect with `ssl=off` and no certificate to trust. The username and password are ignored, since the gateway authenticates for you.
 
     ```bash
