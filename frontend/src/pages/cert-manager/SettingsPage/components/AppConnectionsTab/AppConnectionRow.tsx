@@ -88,7 +88,7 @@ export const AppConnectionRow = ({
               className="mr-0.5 w-5"
             />
             {ConnectionIcon && (
-              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-primary-700" />
+              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-project" />
             )}
           </div>
           <span>{connectionDetails.name}</span>

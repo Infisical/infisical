@@ -1,0 +1,28 @@
+/* Freeze the editor's palette so site color experiments cannot hide its controls. */
+.color-lab { position: fixed; bottom: 16px; z-index: 2147483646; color-scheme: dark; color: var(--color-foreground); font: 13px/1.4 Inter, sans-serif; }
+.color-lab-launcher { margin-left: auto; background: var(--color-popover); box-shadow: 0 8px 30px #0005; }
+.color-lab-mark { width: 14px; height: 14px; border-radius: 50%; background: conic-gradient(#ed7272, #edda72, #78c6aa, #729eed, #ed7272); }
+.color-lab-panel { position: absolute; bottom: 46px; right: 0; width: min(360px, calc(100vw - 32px)); max-height: calc(100dvh - 90px); display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-popover); box-shadow: 0 16px 64px #0006; }
+.color-lab[style*="left:"] .color-lab-panel { right: auto; left: 0; }
+.color-lab header { display: flex; justify-content: space-between; align-items: center; }
+.color-lab strong { font-size: 16px; font-weight: 600; }
+.color-lab small { display: block; margin-top: 3px; color: var(--color-label); font-size: 11px; }
+.color-lab-toolbar { display: flex; align-items: center; gap: 6px; }
+.color-lab-toolbar > :last-child { margin-left: auto; }
+.color-lab-list { overflow-y: auto; min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; }
+.color-lab h3 { margin: 12px 0 8px; font-size: 11px; font-weight: 500; color: var(--color-label); }
+.color-lab details { border-radius: 9px; background: var(--color-container); margin-bottom: 5px; }
+.color-lab summary { display: flex; align-items: center; gap: 9px; min-height: 40px; padding: 8px 10px; cursor: pointer; list-style: none; }
+.color-lab summary::-webkit-details-marker { display: none; }
+.color-lab summary:hover { background: var(--color-container-hover); border-radius: 9px; }
+.color-lab summary:focus-visible { outline: 2px solid var(--color-label); outline-offset: -2px; border-radius: 9px; }
+.color-lab-swatch { width: 20px; height: 20px; flex-shrink: 0; border-radius: 5px; border: 1px solid #ffffff30; }
+.color-lab-chevron { margin-left: auto; }
+.color-lab-editor { padding: 0 10px 10px; }
+.color-lab code { display: block; padding: 6px 0 12px; font-size: 11px; color: var(--color-label); }
+.color-lab-channel { display: grid; grid-template-columns: 62px minmax(0, 1fr) 76px; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 11px; }
+.color-lab input[type="range"] { width: 100%; min-width: 0; accent-color: var(--color-foreground); }
+.color-lab input[type="number"] { height: 28px; font-size: 11px; padding: 4px; }
+.color-lab footer { border-top: 1px solid var(--color-border); padding-top: 10px; font-size: 11px; color: var(--color-label); }
+.color-lab footer p { margin: 6px 0 0; }
+.color-lab textarea { width: 100%; height: 90px; margin-top: 8px; background: var(--color-container); color: var(--color-foreground); }

@@ -16,4 +16,5 @@ export * from "./ScopeIcons";
 export * from "./SecretInput";
 export * from "./SecretManagerResources/SecretManagerResources";
 export * from "./SecretPathInput";
+export * from "./ThemeProvider";
 export * from "./VerificationCode";
