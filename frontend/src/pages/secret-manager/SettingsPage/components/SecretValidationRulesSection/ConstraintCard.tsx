@@ -10,6 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -22,7 +23,6 @@ import {
   CONSTRAINT_VALUE_LABELS,
   ConstraintTarget,
   ConstraintType,
-  isValuelessConstraint,
   MAX_PREVENT_VALUE_REUSE_VERSIONS,
   RuleType,
   TRuleForm
@@ -54,13 +54,11 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
   const Icon = constraintOption?.icon;
   const placeholder = constraintOption?.placeholder;
   const isPreventValueReuse = constraintType === ConstraintType.PreventValueReuse;
-  const isValueless = isValuelessConstraint(constraintType);
-  // Both of these only ever apply to the secret value, so there is nothing to choose.
-  const hasFixedTarget = isPreventValueReuse || isValueless;
   const isNumericInput =
-    constraintType === ConstraintType.MinLength ||
-    constraintType === ConstraintType.MaxLength ||
-    constraintType === ConstraintType.PreventValueReuse;
+    constraintType === ConstraintType.MinLength || constraintType === ConstraintType.MaxLength;
+  const checkOtherSecretsInScope = watch(
+    `enforcement.constraints.${index}.checkOtherSecretsInScope`
+  );
 
   return (
     <div className="rounded-md border border-border bg-card p-4">
@@ -80,75 +78,144 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
         <p className="mt-1.5 text-xs text-muted">{constraintOption.cardDescription}</p>
       )}
 
-      <div className={`mt-3 grid gap-3 ${isValueless ? "grid-cols-1" : "grid-cols-2"}`}>
-        {(() => {
-          if (isGeneratedCredentialRule) {
-            return (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-muted">Applies to</label>
-                <Input value="Generated Password" readOnly className="cursor-default opacity-60" />
+      {isPreventValueReuse ? (
+        <div className="mt-3 flex flex-col">
+          <Controller
+            control={control}
+            name={`enforcement.constraints.${index}.checkOtherSecretsInScope`}
+            render={({ field: { value, onChange } }) => (
+              <div className="flex items-start justify-between gap-4 border-t border-border pt-3">
+                <div className="flex flex-col">
+                  <span className="text-sm text-foreground">Other secrets in scope</span>
+                  <span className="text-xs text-muted">
+                    Reject values currently used by other secrets in this rule&apos;s scope
+                  </span>
+                </div>
+                <Toggle
+                  aria-label="Check the new value against other secrets in this rule's scope"
+                  checked={Boolean(value)}
+                  onCheckedChange={onChange}
+                  variant="project"
+                />
               </div>
-            );
-          }
-          if (hasFixedTarget) {
-            return (
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-muted">Applies to</label>
-                <Input value="Secret Value" readOnly className="cursor-default opacity-60" />
-              </div>
-            );
-          }
-          return (
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted">Applies to</label>
-              <Controller
-                control={control}
-                name={`enforcement.constraints.${index}.appliesTo`}
-                render={({ field: { value, onChange } }) => (
-                  <Select value={value} onValueChange={onChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      <SelectItem
-                        value={ConstraintTarget.SecretKey}
-                        disabled={otherTargets.has(ConstraintTarget.SecretKey)}
-                      >
-                        Secret Key
-                      </SelectItem>
-                      <SelectItem
-                        value={ConstraintTarget.SecretValue}
-                        disabled={otherTargets.has(ConstraintTarget.SecretValue)}
-                      >
-                        Secret Value
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+            )}
+          />
+
+          <Controller
+            control={control}
+            name={`enforcement.constraints.${index}.checkPreviousVersions`}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <div className="mt-3 flex flex-col border-t border-border pt-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-foreground">
+                      This secret&apos;s previous versions
+                    </span>
+                    <span className="text-xs text-muted">Reject values this secret held before</span>
+                  </div>
+                  <Toggle
+                    aria-label="Check the new value against this secret's previous versions"
+                    checked={Boolean(value)}
+                    onCheckedChange={onChange}
+                    variant="project"
+                  />
+                </div>
+                {error?.message && <p className="mt-2 text-xs text-danger">{error.message}</p>}
+                {value && (
+                  <div className="mt-3 flex items-center justify-between gap-4">
+                    <label
+                      htmlFor={`reuse-previous-versions-count-${index}`}
+                      className="flex items-center gap-1 text-xs font-medium text-muted"
+                    >
+                      {CONSTRAINT_VALUE_LABELS[constraintType]}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent side="left" align="start" className="max-w-xs">
+                          <p className="text-sm">
+                            How many of the secret&apos;s own previous versions the new value must
+                            differ from.
+                          </p>
+                          <p className="mt-2 text-xs text-muted">
+                            Maximum: {MAX_PREVENT_VALUE_REUSE_VERSIONS} versions
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </label>
+                    <Controller
+                      control={control}
+                      name={`enforcement.constraints.${index}.value`}
+                      render={({ field, fieldState: { error: valueError } }) => (
+                        <div className="w-24">
+                          <Input
+                            {...field}
+                            id={`reuse-previous-versions-count-${index}`}
+                            type="number"
+                            min={1}
+                            max={MAX_PREVENT_VALUE_REUSE_VERSIONS}
+                            placeholder={placeholder?.toString() || undefined}
+                            isError={Boolean(valueError)}
+                          />
+                          {valueError?.message && (
+                            <p className="mt-1 text-xs text-danger">{valueError.message}</p>
+                          )}
+                        </div>
+                      )}
+                    />
+                  </div>
                 )}
-              />
-            </div>
-          );
-        })()}
-        {!isValueless && (
+              </div>
+            )}
+          />
+
+          {checkOtherSecretsInScope && <BlindIndexAlert />}
+        </div>
+      ) : (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {(() => {
+            if (isGeneratedCredentialRule) {
+              return (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted">Applies to</label>
+                  <Input value="Generated Password" readOnly className="cursor-default opacity-60" />
+                </div>
+              );
+            }
+            return (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-muted">Applies to</label>
+                <Controller
+                  control={control}
+                  name={`enforcement.constraints.${index}.appliesTo`}
+                  render={({ field: { value, onChange } }) => (
+                    <Select value={value} onValueChange={onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem
+                          value={ConstraintTarget.SecretKey}
+                          disabled={otherTargets.has(ConstraintTarget.SecretKey)}
+                        >
+                          Secret Key
+                        </SelectItem>
+                        <SelectItem
+                          value={ConstraintTarget.SecretValue}
+                          disabled={otherTargets.has(ConstraintTarget.SecretValue)}
+                        >
+                          Secret Value
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            );
+          })()}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted">
-              <div className="flex items-center gap-1">
-                {CONSTRAINT_VALUE_LABELS[constraintType]}
-                {constraintType === ConstraintType.PreventValueReuse && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoIcon className="ml-1 size-3.5 text-muted" />
-                    </TooltipTrigger>
-                    <TooltipContent side="left" align="start" className="max-w-xs">
-                      <p className="text-sm">
-                        When a secret is updated, its new value is validated against the specified
-                        number of prior versions.
-                      </p>
-                      <p className="mt-2 text-xs text-muted">Maximum: 25 versions</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
+              {CONSTRAINT_VALUE_LABELS[constraintType]}
             </label>
             <Controller
               control={control}
@@ -158,8 +225,6 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
                   <Input
                     {...field}
                     type={isNumericInput ? "number" : "text"}
-                    min={isPreventValueReuse ? 1 : undefined}
-                    max={isPreventValueReuse ? MAX_PREVENT_VALUE_REUSE_VERSIONS : undefined}
                     placeholder={placeholder?.toString() || undefined}
                     isError={Boolean(error)}
                   />
@@ -168,10 +233,8 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
               )}
             />
           </div>
-        )}
-      </div>
-
-      {isValueless && <BlindIndexAlert />}
+          </div>
+      )}
     </div>
   );
 };

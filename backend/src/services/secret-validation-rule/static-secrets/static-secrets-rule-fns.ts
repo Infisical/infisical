@@ -51,7 +51,7 @@ export const evaluateStaticSecretConstraints = (
   }
 
   const { duplicateOf } = secret;
-  if (config.valueConstraints.reusePrevention?.otherSecrets && duplicateOf) {
+  if (config.valueConstraints.reusePrevention?.otherSecretsInScope && duplicateOf) {
     violations.push({
       kind: ConstraintKind.ReuseOtherSecrets,
       label: CONSTRAINT_LABELS[ConstraintKind.ReuseOtherSecrets],

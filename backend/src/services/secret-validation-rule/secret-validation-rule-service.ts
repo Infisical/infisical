@@ -53,7 +53,7 @@ import { TDuplicateSecret, TStaticSecretsRuleConfig } from "./static-secrets";
 
 /** Only static-secret rules can ask for a value no other secret already holds. */
 const $wantsCrossSecretUniqueness = (config: TSecretValidationRuleConfig) =>
-  Boolean((config as TStaticSecretsRuleConfig).valueConstraints?.reusePrevention?.otherSecrets);
+  Boolean((config as TStaticSecretsRuleConfig).valueConstraints?.reusePrevention?.otherSecretsInScope);
 
 type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;

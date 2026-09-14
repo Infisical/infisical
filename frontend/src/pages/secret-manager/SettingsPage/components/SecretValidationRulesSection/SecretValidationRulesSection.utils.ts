@@ -1,8 +1,7 @@
 import {
-  CopyIcon,
   DatabaseIcon,
+  EqualNotIcon,
   HashIcon,
-  HistoryIcon,
   KeyRoundIcon,
   LayersIcon,
   LucideIcon,
@@ -35,8 +34,7 @@ export enum ConstraintType {
   RegexPattern = "regex-pattern",
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
-  PreventValueReuse = "prevent-value-reuse",
-  PreventDuplicateValues = "prevent-duplicate-values"
+  PreventValueReuse = "prevent-value-reuse"
 }
 
 export enum ConstraintTarget {
@@ -92,20 +90,10 @@ export const CONSTRAINT_OPTIONS: {
   {
     type: ConstraintType.PreventValueReuse,
     label: "Prevent Value Reuse",
-    description: "Prevent reusing previous secret values",
-    cardDescription:
-      "When a secret is updated, its new value is validated against the specified number of prior versions.",
+    description: "Reject values already in use",
+    cardDescription: "Rejects an update when the new value matches a value already in use.",
     placeholder: 10,
-    icon: HistoryIcon,
-    allowedTargets: [ConstraintTarget.SecretValue]
-  },
-  {
-    type: ConstraintType.PreventDuplicateValues,
-    label: "Prevent Duplicate Values",
-    description: "Prevent reusing a value another secret holds",
-    cardDescription:
-      "A secret cannot be given a value that another secret in this rule's scope already holds. Requires secret blind indexing on the project.",
-    icon: CopyIcon,
+    icon: EqualNotIcon,
     allowedTargets: [ConstraintTarget.SecretValue]
   }
 ];
@@ -116,8 +104,7 @@ export const CONSTRAINT_VALUE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Pattern",
   [ConstraintType.RequiredPrefix]: "Text",
   [ConstraintType.RequiredSuffix]: "Text",
-  [ConstraintType.PreventValueReuse]: "Previous versions",
-  [ConstraintType.PreventDuplicateValues]: "Enabled"
+  [ConstraintType.PreventValueReuse]: "Versions to check"
 };
 
 export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
@@ -126,8 +113,7 @@ export const CONSTRAINT_TYPE_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.RegexPattern]: "Regex Pattern",
   [ConstraintType.RequiredPrefix]: "Required Prefix",
   [ConstraintType.RequiredSuffix]: "Required Suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent Value Reuse",
-  [ConstraintType.PreventDuplicateValues]: "Prevent Duplicate Values"
+  [ConstraintType.PreventValueReuse]: "Prevent Value Reuse"
 };
 
 export const RULE_TYPE_LABELS: Record<RuleType, string> = {
@@ -180,50 +166,56 @@ export const SECRET_ROTATION_PROVIDER_OPTIONS: TProviderOption<SecretRotationRul
   }
 ];
 
-// Both reuse checks are intentionally static-secret-only. For dynamic secrets
-// each lease is independent so reuse has no meaning; for rotations we drive
-// uniqueness through password generation (length/regex) rather than failing a
-// rotation at issue time because the generator happened to land on a value
-// that is already in use.
+// Reuse prevention is intentionally static-secret-only. For dynamic secrets each
+// lease is independent so reuse has no meaning; for rotations we drive uniqueness
+// through password generation (length/regex) rather than failing a rotation at
+// issue time because the generator happened to land on a value already in use.
 export const DYNAMIC_SECRET_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicateValues
+  ConstraintType.PreventValueReuse
 ];
 export const SECRET_ROTATION_RULE_DISALLOWED_CONSTRAINTS: ConstraintType[] = [
-  ConstraintType.PreventValueReuse,
-  ConstraintType.PreventDuplicateValues
+  ConstraintType.PreventValueReuse
 ];
 
 export const MAX_PREVENT_VALUE_REUSE_VERSIONS = MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS;
-
-// Switching this one on is the whole setting, so the form carries no value alongside it.
-export const isValuelessConstraint = (type: ConstraintType) =>
-  type === ConstraintType.PreventDuplicateValues;
+export const DEFAULT_PREVENT_VALUE_REUSE_VERSIONS = 10;
 
 export const constraintSchema = z
   .object({
     type: z.nativeEnum(ConstraintType),
     appliesTo: z.nativeEnum(ConstraintTarget),
-    value: z.string()
+    value: z.string(),
+    // Reuse prevention holds two independently toggleable checks; every other
+    // constraint is a single setting carried in `value`.
+    checkPreviousVersions: z.boolean().optional(),
+    checkOtherSecretsInScope: z.boolean().optional()
   })
-  .refine(
-    (c) =>
-      c.type === ConstraintType.PreventValueReuse ||
-      isValuelessConstraint(c.type) ||
-      c.value.length > 0,
-    {
-      message: "Value is required",
-      path: ["value"]
-    }
-  )
+  .refine((c) => c.type === ConstraintType.PreventValueReuse || c.value.length > 0, {
+    message: "Value is required",
+    path: ["value"]
+  })
   .superRefine((c, ctx) => {
     if (c.type === ConstraintType.PreventValueReuse) {
+      if (!c.checkPreviousVersions && !c.checkOtherSecretsInScope) {
+        ctx.addIssue({
+          path: ["checkPreviousVersions"],
+          code: z.ZodIssueCode.custom,
+          message: "Turn on at least one check"
+        });
+        return;
+      }
+
+      if (!c.checkPreviousVersions) return;
+
       const num = Number(c.value);
 
-      const isAboveMaxVersions =
-        Number.isInteger(num) && (num < 1 || num > MAX_PREVENT_VALUE_REUSE_VERSIONS);
-
-      if (isAboveMaxVersions) {
+      if (!c.value.length || !Number.isInteger(num)) {
+        ctx.addIssue({
+          path: ["value"],
+          code: z.ZodIssueCode.custom,
+          message: "Number of previous versions is required"
+        });
+      } else if (num < 1 || num > MAX_PREVENT_VALUE_REUSE_VERSIONS) {
         ctx.addIssue({
           path: ["value"],
           code: z.ZodIssueCode.custom,
@@ -327,18 +319,16 @@ const NUMERIC_CONSTRAINTS: ConstraintType[] = [ConstraintType.MinLength, Constra
 export const groupConstraintsByTarget = (constraints: TConstraint[]) => {
   const grouped: Partial<Record<ConstraintTarget, TValueConstraints>> = {};
 
-  constraints.forEach(({ type, appliesTo, value }) => {
+  constraints.forEach(({ type, appliesTo, value, checkPreviousVersions, checkOtherSecretsInScope }) => {
     const current = grouped[appliesTo] ?? {};
 
     if (type === ConstraintType.PreventValueReuse) {
       grouped[appliesTo] = {
         ...current,
-        reusePrevention: { ...current.reusePrevention, previousVersions: Number(value) }
-      };
-    } else if (type === ConstraintType.PreventDuplicateValues) {
-      grouped[appliesTo] = {
-        ...current,
-        reusePrevention: { ...current.reusePrevention, otherSecrets: true }
+        reusePrevention: {
+          ...(checkPreviousVersions && { previousVersions: Number(value) }),
+          ...(checkOtherSecretsInScope && { otherSecretsInScope: true })
+        }
       };
     } else {
       grouped[appliesTo] = {
@@ -357,20 +347,19 @@ export const flattenConstraints = (
 ): TConstraint[] => {
   const { reusePrevention, ...fields } = constraints ?? {};
 
-  const flattened = Object.entries(fields)
+  const flattened: TConstraint[] = Object.entries(fields)
     .filter(([, value]) => value !== undefined)
     .map(([field, value]) => ({ type: CONSTRAINT_TYPES[field], appliesTo, value: String(value) }));
 
-  if (reusePrevention?.previousVersions !== undefined) {
+  // `otherSecretsInScope` is absent on rules saved before the two checks were merged.
+  if (reusePrevention?.previousVersions !== undefined || reusePrevention?.otherSecretsInScope) {
     flattened.push({
       type: ConstraintType.PreventValueReuse,
       appliesTo,
-      value: String(reusePrevention.previousVersions)
+      value: String(reusePrevention.previousVersions ?? DEFAULT_PREVENT_VALUE_REUSE_VERSIONS),
+      checkPreviousVersions: reusePrevention.previousVersions !== undefined,
+      checkOtherSecretsInScope: Boolean(reusePrevention.otherSecretsInScope)
     });
-  }
-
-  if (reusePrevention?.otherSecrets) {
-    flattened.push({ type: ConstraintType.PreventDuplicateValues, appliesTo, value: "" });
   }
 
   return flattened;
