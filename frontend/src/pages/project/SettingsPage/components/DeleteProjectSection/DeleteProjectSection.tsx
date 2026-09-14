@@ -125,7 +125,7 @@ export const DeleteProjectSection = () => {
       size="sm"
       isPending={isLeaving}
       isDisabled={!isDirectMember}
-      variant="neutral"
+      variant="danger"
       onClick={() => handlePopUpOpen("leaveWorkspace")}
     >
       {`Leave ${currentProject?.name}`}
@@ -202,7 +202,7 @@ export const DeleteProjectSection = () => {
           )}
         </ProjectPermissionCan>
       </CardContent>
-      <CardFooter className="min-h-8 justify-end gap-2 border-t border-danger/15 bg-danger/5 p-4">
+      <CardFooter className="min-h-8 justify-end gap-4 border-t border-danger/15 bg-danger/5 p-4">
         {isDirectMember ? (
           leaveButton
         ) : (
@@ -230,7 +230,7 @@ export const DeleteProjectSection = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this project?</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <Alert variant="danger">
+              <Alert variant="danger" appearance="borderless">
                 <AlertContent>
                   Permanently delete {currentProject?.name} and all of its data. This action is not
                   reversible.
@@ -269,7 +269,7 @@ export const DeleteProjectSection = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to leave this project?</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <Alert variant="warning">
+              <Alert variant="warning" appearance="borderless">
                 <AlertContent>
                   Leaving {currentProject?.name} removes your access to the project and its
                   contents.
