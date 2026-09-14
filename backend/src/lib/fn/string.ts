@@ -1,12 +1,5 @@
 import path from "path";
-const RE2Class: typeof RegExp = (() => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require("re2");
-  } catch {
-    return RegExp;
-  }
-})();
+import RE2 from "re2";
 
 // given two paths irrespective of ending with / or not
 // this will return true if its equal
@@ -24,11 +17,11 @@ export const prefixWithSlash = (str: string) => {
   return `/${str}`;
 };
 
-const vowelRegex = new RE2Class(/^[aeiou]/i);
+const vowelRegex = new RE2(/^[aeiou]/i);
 
 export const startsWithVowel = (str: string) => vowelRegex.test(str);
 
-const pickWordsRegex = new RE2Class(/(\W+)/);
+const pickWordsRegex = new RE2(/(\W+)/);
 export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[] }) => {
   const words = dto.unsanitizedString.split(pickWordsRegex);
 
@@ -43,6 +36,6 @@ export const sanitizeString = (dto: { unsanitizedString: string; tokens: string[
 };
 
 export const sanitizeSqlLikeString = (value: string): string => {
-  return String(value).replace(new RE2Class("[%_\\\\]", "g"), "\\$&");
+  return String(value).replace(new RE2("[%_\\\\]", "g"), "\\$&");
 };
 
