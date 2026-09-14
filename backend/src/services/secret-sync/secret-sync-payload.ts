@@ -19,6 +19,7 @@ export type TSecretSyncPayload = {
   environment: string;
   flatten: (opts?: { applySchema?: boolean }) => TSecretMap;
   findConflicts: (opts?: { applySchema?: boolean }) => TSecretSyncConflict[];
+  dedupeConflicts: () => TSecretSyncPayload;
 };
 
 export type TSecretSyncConflict = {
@@ -90,10 +91,10 @@ const buildConflictError = (conflicts: TSecretSyncConflict[]) => {
   });
 };
 
-// The remove path deletes by destination key and does not care which duplicate wins, so it
-// dedupes before the payload is built. That keeps flatten() itself unconditional: a sync that
-// has drifted into a duplicate-name state must still be removable, since deleteSyncOnComplete
-// only drops the sync row after a successful remove.
+// Removal deletes by destination key and does not care which duplicate wins, so dedupeConflicts()
+// (below) uses this to resolve a conflict before a provider's own flatten() call ever sees it: a
+// sync that has drifted into a duplicate-name state must still be removable, since
+// deleteSyncOnComplete only drops the sync row after a successful remove.
 export const dedupeEntriesByDestinationKey = (
   entries: TSecretPayload[],
   { environment, keySchema }: { environment: string; keySchema?: string }
@@ -151,5 +152,14 @@ export const createSecretSyncPayload = (
   // keySchema itself is deliberately not a field on this object: nothing outside this module
   // needs to read it directly, and findConflicts() is how an external caller (the
   // recursive-conflicts preview endpoint) reaches the same check flatten() runs, without it.
-  findConflicts: (opts) => findFlattenConflicts({ secrets, environment, keySchema }, opts)
+  findConflicts: (opts) => findFlattenConflicts({ secrets, environment, keySchema }, opts),
+  // Removal hands the whole payload to a provider's own removeSecrets, which calls flatten()
+  // itself with no idea this is a removal, so tolerating a duplicate name has to happen here,
+  // before that flatten() call exists to throw on it. Returns a new payload; this one's
+  // duplicate-free by construction, so its own flatten() call, whatever calls it, never conflicts.
+  dedupeConflicts: () =>
+    createSecretSyncPayload(dedupeEntriesByDestinationKey(secrets, { environment, keySchema }), {
+      environment,
+      keySchema
+    })
 });

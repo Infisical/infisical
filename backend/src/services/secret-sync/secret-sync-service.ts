@@ -34,7 +34,6 @@ import {
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions
 } from "@app/services/secret-sync/secret-sync-fns";
-import { createSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { buildSyncPayload, getSyncedFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
@@ -248,7 +247,7 @@ export const secretSyncServiceFactory = ({
         kmsService
       });
 
-      const entries = await buildSyncPayload(
+      return buildSyncPayload(
         {
           folderDAL,
           projectEnvDAL,
@@ -269,11 +268,10 @@ export const secretSyncServiceFactory = ({
           sourcePath,
           sourceFolderId,
           recursive: true,
+          keySchema,
           includeImports: true
         }
       );
-
-      return createSecretSyncPayload(entries, { environment, keySchema });
     });
 
   // Flattening a subtree onto a destination that holds one flat list can produce two secrets with

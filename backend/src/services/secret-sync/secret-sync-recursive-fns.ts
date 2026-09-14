@@ -7,7 +7,11 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { TSecretPayload } from "@app/services/secret-sync/secret-sync-payload";
+import {
+  createSecretSyncPayload,
+  TSecretPayload,
+  TSecretSyncPayload
+} from "@app/services/secret-sync/secret-sync-payload";
 import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
@@ -113,12 +117,10 @@ export const mergeImportedSecrets = (
 };
 
 // Resolves and decrypts every secret in the sync's source subtree (a single folder, or, when
-// recursive, that folder plus every folder beneath it), merging in any imports. This is the raw
-// ingredient list a TSecretSyncPayload is built from; it is deliberately not itself a
-// TSecretSyncPayload, since whether these entries should be deduped by destination key before
-// wrapping (the remove path needs that; every other caller wants a hard conflict instead) is a
-// decision specific to what each caller is about to do with them, not something this function
-// should know or care about.
+// recursive, that folder plus every folder beneath it), merging in any imports, and wraps the
+// result in a TSecretSyncPayload. A cross-folder duplicate name is not resolved here: flatten()
+// throws on it by default, and payload.dedupeConflicts() is how the one caller that needs to
+// tolerate it (removal) gets a payload that won't.
 export const buildSyncPayload = async (
   deps: {
     folderDAL: Pick<TSecretFolderDALFactory, "find" | "findByManySecretPath">;
@@ -135,12 +137,13 @@ export const buildSyncPayload = async (
     sourcePath: string;
     sourceFolderId: string;
     recursive: boolean;
+    keySchema?: string;
     includeImports: boolean;
   }
-): Promise<TSecretPayload[]> => {
+): Promise<TSecretSyncPayload> => {
   const { folderDAL, projectEnvDAL, secretV2BridgeDAL, secretImportDAL, expandSecretReferences, decryptSecretValue } =
     deps;
-  const { projectId, environment, sourcePath, sourceFolderId, recursive, includeImports } = args;
+  const { projectId, environment, sourcePath, sourceFolderId, recursive, keySchema, includeImports } = args;
 
   const folders = await getSyncedFolders({
     folderDAL,
@@ -195,7 +198,7 @@ export const buildSyncPayload = async (
   );
 
   if (!includeImports) {
-    return entries;
+    return createSecretSyncPayload(entries, { environment, keySchema });
   }
 
   const secretImports = await secretImportDAL.findByFolderIds(folders.map(({ folderId }) => folderId));
@@ -240,5 +243,5 @@ export const buildSyncPayload = async (
     assertWithinSecretLimit(allEntries.length);
   }
 
-  return allEntries;
+  return createSecretSyncPayload(allEntries, { environment, keySchema });
 };

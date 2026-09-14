@@ -244,7 +244,7 @@ describe("buildSyncPayload", () => {
       }
     } as unknown as Parameters<typeof buildSyncPayload>[0];
 
-    const entries = await buildSyncPayload(buildDeps, {
+    const payload = await buildSyncPayload(buildDeps, {
       projectId: "proj-1",
       environment: "dev",
       sourcePath: "/",
@@ -253,18 +253,12 @@ describe("buildSyncPayload", () => {
       includeImports: true
     });
 
-    const paths = entries.map((entry) => entry.path).sort();
+    const paths = payload.secrets.map((entry) => entry.path).sort();
 
     expect(paths).toEqual(["/", "/api"]);
   });
 });
 
-// buildSyncPayload never dedupes or rejects a cross-folder name collision itself: whether that's
-// a hard conflict (sync/create) or something to look past (remove, so a sync that has drifted
-// into this state stays deletable) is a decision only the caller can make, made by wrapping this
-// function's raw entries with createSecretSyncPayload, optionally deduping them first. See
-// secret-sync-payload.test.ts for that composition, and secret-sync-queue.ts's
-// $getInfisicalSecrets for the one caller that dedupes.
 describe("buildSyncPayload cross-folder duplicates", () => {
   const duplicateNameSecret = (folderId: string, value: string) => ({
     id: `secret-${folderId}`,
@@ -316,9 +310,21 @@ describe("buildSyncPayload cross-folder duplicates", () => {
     includeImports: true
   };
 
-  test("returns both colliding entries as-is, neither deduped nor rejected", async () => {
-    const entries = await buildSyncPayload(dedupeDeps, args);
+  // Pins the sync-path requirement from the same bug: a name used in two folders must still fail
+  // loudly on this path, since only the remove path may look past it.
+  test("a cross-folder duplicate name still throws by default", async () => {
+    const payload = await buildSyncPayload(dedupeDeps, args);
 
-    expect(entries.map((entry) => entry.path).sort()).toEqual(["/", "/api"]);
+    expect(() => payload.flatten()).toThrow(/DB_URL/);
+  });
+
+  // A sync whose secrets collide across folders would otherwise be stuck: it fails to sync, and
+  // until dedupeConflicts() existed, it also failed to remove, which is the only way to delete it.
+  test("dedupeConflicts() lets the remove path complete despite the same duplicate", async () => {
+    const payload = await buildSyncPayload(dedupeDeps, args);
+    const deduped = payload.dedupeConflicts();
+
+    expect(() => deduped.flatten()).not.toThrow();
+    expect(Object.keys(deduped.flatten())).toEqual(["DB_URL"]);
   });
 });

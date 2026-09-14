@@ -112,6 +112,25 @@ describe("createSecretSyncPayload", () => {
       { key: "DB_URL", paths: ["/backend", "/backend/api"] }
     ]);
   });
+
+  test("dedupeConflicts() returns a payload whose flatten() no longer throws", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
+      environment: "dev"
+    });
+
+    const deduped = payload.dedupeConflicts();
+
+    expect(() => deduped.flatten()).not.toThrow();
+    expect(Object.keys(deduped.flatten())).toEqual(["DB_URL"]);
+  });
+
+  test("dedupeConflicts() leaves a payload with no conflicts unchanged", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/"), secret("API_KEY", "/api")], {
+      environment: "dev"
+    });
+
+    expect(payload.dedupeConflicts().secrets).toHaveLength(2);
+  });
 });
 
 describe("findFlattenConflicts", () => {
