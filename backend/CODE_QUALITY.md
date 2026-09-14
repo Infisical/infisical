@@ -267,7 +267,7 @@ customers are calling it.
 ## Audit Log Events Admins Can Read
 
 An audit log event is read by an admin investigating an incident, in a UI that renders the
-`metadata` body as raw JSON, or in their own SIEM. They cannot run a query to expand a UUID.
+`metadata` body as raw JSON, or in their own SIEM.
 
 **Every identifier in an event's `metadata` must be paired with a human-readable label,
 resolved when the event is emitted.** An identifier is any field whose name ends in an
