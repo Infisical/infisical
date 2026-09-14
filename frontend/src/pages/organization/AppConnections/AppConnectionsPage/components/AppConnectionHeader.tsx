@@ -1,4 +1,5 @@
 import { DocumentationLinkBadge } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -14,9 +15,9 @@ export const AppConnectionHeader = ({ app, isConnected }: Props) => {
   return (
     <div className="flex w-full items-start gap-2">
       <div className="relative flex h-10 w-10 items-center justify-center rounded-md bg-container">
-        <img
+        <ProviderIcon
           alt={`${appDetails.name} logo`}
-          src={`/images/integrations/${appDetails.image}`}
+          icon={appDetails.image}
           className="h-7 w-7 object-contain"
         />
         {AppIcon && <AppIcon className="absolute right-0.5 bottom-0.5 size-3 text-project" />}

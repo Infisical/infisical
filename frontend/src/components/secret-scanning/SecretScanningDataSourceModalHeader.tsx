@@ -1,4 +1,5 @@
 import { DocumentationLinkBadge } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
@@ -12,9 +13,9 @@ export const SecretScanningDataSourceModalHeader = ({ type, isConfigured }: Prop
 
   return (
     <div className="flex w-full items-start gap-2">
-      <img
+      <ProviderIcon
         alt={`${dataSourceDetails.name} logo`}
-        src={`/images/integrations/${dataSourceDetails.image}`}
+        icon={dataSourceDetails.image}
         className="h-12 rounded-md bg-surface-recessed p-2"
       />
       <div>

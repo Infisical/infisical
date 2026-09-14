@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { GlobeIcon, PlusIcon, SearchIcon } from "lucide-react";
 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import {
   POPULAR_PROXIED_SERVICE_TEMPLATES,
   PROXIED_SERVICE_TEMPLATES,
@@ -34,8 +35,8 @@ const TemplateCard = ({
           {imgError ? (
             <GlobeIcon className="h-5 w-5 text-label-secondary" />
           ) : (
-            <img
-              src={`/images/integrations/${template.image}`}
+            <ProviderIcon
+              icon={template.image}
               alt={`${template.name} logo`}
               className="h-6 w-6 object-contain"
               onError={() => setImgError(true)}

@@ -3,9 +3,11 @@ import * as React from "react";
 import { isDarkAuthPath } from "./auth-theme";
 
 export type Theme = "dark" | "light" | "system";
+export type ResolvedTheme = Exclude<Theme, "system">;
 
 type ThemeContextValue = {
   theme: Theme;
+  resolvedTheme: ResolvedTheme;
   setTheme: (theme: Theme) => void;
 };
 
@@ -26,12 +28,19 @@ const readStoredTheme = (): Theme => {
   }
 };
 
-const getSystemTheme = () =>
+const getSystemTheme = (): ResolvedTheme =>
   window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 
-const applyTheme = (theme: Theme) => {
-  const preferredTheme = theme === "system" ? getSystemTheme() : theme;
-  const resolvedTheme = isDarkAuthPath(window.location.pathname) ? "dark" : preferredTheme;
+const resolveTheme = (
+  theme: Theme,
+  pathname: string,
+  systemTheme: ResolvedTheme = getSystemTheme()
+): ResolvedTheme => {
+  if (isDarkAuthPath(pathname)) return "dark";
+  return theme === "system" ? systemTheme : theme;
+};
+
+const applyTheme = (resolvedTheme: ResolvedTheme) => {
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.style.colorScheme = resolvedTheme;
 };
@@ -46,7 +55,7 @@ const persistTheme = (theme: Theme) => {
 
 export const initializeTheme = () => {
   const theme = readStoredTheme();
-  applyTheme(theme);
+  applyTheme(resolveTheme(theme, window.location.pathname));
   return theme;
 };
 
@@ -55,10 +64,12 @@ export const ThemeProvider = ({
   pathname
 }: React.PropsWithChildren<{ pathname: string }>) => {
   const [theme, setThemeState] = React.useState<Theme>(readStoredTheme);
+  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>(getSystemTheme);
+  const resolvedTheme = resolveTheme(theme, pathname, systemTheme);
 
   React.useLayoutEffect(() => {
-    applyTheme(theme);
-  }, [theme, pathname]);
+    applyTheme(resolvedTheme);
+  }, [resolvedTheme]);
 
   React.useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -67,8 +78,8 @@ export const ThemeProvider = ({
     };
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
-    const handleSystemThemeChange = () => {
-      if (theme === "system") applyTheme(theme);
+    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+      setSystemTheme(event.matches ? "light" : "dark");
     };
 
     window.addEventListener("storage", handleStorage);
@@ -77,15 +88,21 @@ export const ThemeProvider = ({
       window.removeEventListener("storage", handleStorage);
       mediaQuery.removeEventListener("change", handleSystemThemeChange);
     };
-  }, [theme]);
-
-  const setTheme = React.useCallback((nextTheme: Theme) => {
-    applyTheme(nextTheme);
-    persistTheme(nextTheme);
-    setThemeState(nextTheme);
   }, []);
 
-  const value = React.useMemo(() => ({ theme, setTheme }), [setTheme, theme]);
+  const setTheme = React.useCallback(
+    (nextTheme: Theme) => {
+      applyTheme(resolveTheme(nextTheme, pathname));
+      persistTheme(nextTheme);
+      setThemeState(nextTheme);
+    },
+    [pathname]
+  );
+
+  const value = React.useMemo(
+    () => ({ resolvedTheme, setTheme, theme }),
+    [resolvedTheme, setTheme, theme]
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };

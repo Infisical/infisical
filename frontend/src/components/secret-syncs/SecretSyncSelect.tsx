@@ -11,6 +11,7 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { useSubscription } from "@app/context";
 import { POPULAR_SECRET_SYNCS, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp } from "@app/hooks";
@@ -44,11 +45,7 @@ const ProviderCard = ({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
-          <img
-            src={`/images/integrations/${image}`}
-            alt={`${name} logo`}
-            className="h-6 w-6 object-contain"
-          />
+          <ProviderIcon icon={image} alt={`${name} logo`} className="h-6 w-6 object-contain" />
         </div>
         <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
           {category}

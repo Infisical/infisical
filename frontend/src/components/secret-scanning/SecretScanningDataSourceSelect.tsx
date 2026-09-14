@@ -2,6 +2,7 @@ import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Spinner, Tooltip } from "@app/components/v2";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningDataSource,
@@ -36,12 +37,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             onClick={() => onSelect(type)}
             className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-border-control bg-surface-hover p-4 duration-200 hover:bg-surface-active"
           >
-            <img
-              src={`/images/integrations/${image}`}
-              width={size}
-              className="mt-auto"
-              alt={`${name} logo`}
-            />
+            <ProviderIcon icon={image} width={size} className="mt-auto" alt={`${name} logo`} />
             <div className="mt-auto max-w-xs text-center text-xs font-medium text-label-cool duration-200 group-hover:text-foreground-cool">
               {name}
             </div>

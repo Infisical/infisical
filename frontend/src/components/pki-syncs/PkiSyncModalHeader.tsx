@@ -1,4 +1,5 @@
 import { DocumentationLinkBadge } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
@@ -12,9 +13,9 @@ export const PkiSyncModalHeader = ({ destination, isConfigured }: Props) => {
 
   return (
     <div className="flex w-full items-start gap-2">
-      <img
+      <ProviderIcon
         alt={`${destinationDetails.name} logo`}
-        src={`/images/integrations/${destinationDetails.image}`}
+        icon={destinationDetails.image}
         className="h-12 w-12 rounded-md bg-surface-recessed object-contain p-2"
       />
       <div>

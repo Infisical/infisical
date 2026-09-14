@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { ProxiedServiceTemplate } from "@app/helpers/proxiedServiceTemplates";
 
 import { TProxiedServiceForm } from "./schema";
@@ -62,8 +63,8 @@ const ServiceIcon = ({ template }: { template?: ProxiedServiceTemplate }) => {
 
   if (template && !imgError) {
     return (
-      <img
-        src={`/images/integrations/${template.image}`}
+      <ProviderIcon
+        icon={template.image}
         alt=""
         className="size-3.5 shrink-0 object-contain"
         onError={() => setImgError(true)}
