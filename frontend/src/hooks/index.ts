@@ -5,6 +5,8 @@ export {
 export { useDebounce } from "./useDebounce";
 export { useDiscardChangesGuard } from "./useDiscardChangesGuard";
 export * from "./useGetProjectTypeFromRoute";
+export { useImplicitProduct } from "./useImplicitProduct";
+export { useImplicitProjectId } from "./useImplicitProjectId";
 export { useLastLogin } from "./useLastLogin";
 export { useLocalStorageState } from "./useLocalStorageState";
 export { useOnboarding } from "./useOnboarding";
@@ -18,4 +20,6 @@ export { useSecretsActivationNudge } from "./useSecretsActivationNudge";
 export { useSlashFocusSearch } from "./useSlashFocusSearch";
 export { useSyntaxHighlight } from "./useSyntaxHighlight";
 export { useTimedReset } from "./useTimedReset";
+export { useTimeRemaining } from "./useTimeRemaining";
 export { useToggle } from "./useToggle";
+export { useWizardSteps } from "./useWizardSteps";

@@ -236,7 +236,7 @@ export const MilvusProvider = ({
       },
       sanitizeMilvusUsername
     );
-    const password = metadata?.passwordValidation?.constraints?.length
+    const password = metadata?.passwordValidation
       ? generatePasswordWithConstraints(metadata.passwordValidation.constraints)
       : generatePassword();
     const roleName = deriveRoleName(username);

@@ -1,9 +1,11 @@
-import { useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 
 import {
+  buildVaultImportPreview,
   VaultConnectionAndNamespaceFields,
-  VaultFieldLabel
+  VaultFieldLabel,
+  VaultImportPreview
 } from "@app/components/external-migrations";
 import {
   createVaultImportSelection,
@@ -16,9 +18,13 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Checkbox,
   Combobox,
+  DiscardChangesAlertDialog,
   Field,
+  FieldContent,
   FieldDescription,
+  FieldLabel,
   Sheet,
   SheetClose,
   SheetContent,
@@ -33,21 +39,36 @@ import {
 import { useBadgeOverflow } from "@app/components/v3/generic/DataGrid/hooks/use-badge-overflow";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
+
+export type TVaultSecretImportArgs = {
+  vaultPaths: string[];
+  namespace: string;
+  mountPath: string;
+  connectionId: string;
+  keepVaultStructure: boolean;
+};
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   appConnections: TAvailableAppConnection[];
-  onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
+  destinationPath: string;
+  onImport: (args: TVaultSecretImportArgs) => void;
 };
 
 type ContentProps = {
   onClose: () => void;
   appConnections: TAvailableAppConnection[];
-  onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
+  destinationPath: string;
+  onImport: (args: TVaultSecretImportArgs) => void;
+  onDirtyChange: (isDirty: boolean) => void;
 };
 
 const MAX_PATH_LENGTH = 30;
+
+// keep in sync with MAX_VAULT_IMPORT_PATHS on the import endpoint
+const MAX_IMPORT_PATHS = 25;
 
 const getDisplayPath = (path: string) =>
   path.length > MAX_PATH_LENGTH ? `…${path.slice(path.length - MAX_PATH_LENGTH)}` : path;
@@ -76,15 +97,35 @@ const renderWildcardPath = (path: string) => {
   );
 };
 
-const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
+const Content = ({
+  onClose,
+  appConnections,
+  destinationPath,
+  onImport,
+  onDirtyChange
+}: ContentProps) => {
   const hasAppConnections = appConnections.length > 0;
+  const [keepVaultStructure, setKeepVaultStructure] = useState(false);
   const [state, dispatch] = useReducer(
     vaultImportSelectionReducer<string[]>,
     appConnections.map(({ id }) => id),
     createVaultImportSelection<string[]>
   );
   const { connectionId, mountPath, namespace } = state;
-  const selectedPaths = state.selection ?? [];
+  const selectedPaths = useMemo(() => state.selection ?? [], [state.selection]);
+  const initialConnectionIdRef = useRef(connectionId);
+  const isDirty =
+    connectionId !== initialConnectionIdRef.current ||
+    Boolean(namespace) ||
+    Boolean(mountPath) ||
+    selectedPaths.length > 0 ||
+    keepVaultStructure;
+
+  useEffect(() => {
+    onDirtyChange(isDirty);
+    return () => onDirtyChange(false);
+  }, [isDirty, onDirtyChange]);
+
   const activeConnectionId = hasAppConnections ? (connectionId ?? undefined) : undefined;
   const shouldFetchMounts = Boolean(namespace && activeConnectionId);
   const shouldFetchPaths = Boolean(namespace && mountPath && activeConnectionId);
@@ -118,7 +159,27 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
   });
   const hiddenSkippedPaths = skippedWildcardPaths.slice(visibleSkippedPaths.length);
 
+  const preview = useMemo(
+    () =>
+      buildVaultImportPreview({
+        selectedPaths,
+        destinationPath,
+        mountPath: mountPath ?? "",
+        keepVaultStructure
+      }),
+    [selectedPaths, destinationPath, mountPath, keepVaultStructure]
+  );
+  const { invalidPaths } = preview;
+  const isOverPathLimit = selectedPaths.length > MAX_IMPORT_PATHS;
+
   const handleImport = () => {
+    if (isOverPathLimit) {
+      createNotification({
+        type: "error",
+        text: `Select at most ${MAX_IMPORT_PATHS} Vault paths per import`
+      });
+      return;
+    }
     if (!selectedPaths.length) {
       createNotification({
         type: "error",
@@ -141,8 +202,12 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
       });
       return;
     }
+    if (!mountPath) {
+      createNotification({ type: "error", text: "Please select a secrets engine" });
+      return;
+    }
 
-    onImport(selectedPaths, namespace, connectionId);
+    onImport({ vaultPaths: selectedPaths, namespace, mountPath, connectionId, keepVaultStructure });
     onClose();
   };
 
@@ -226,9 +291,76 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
             modal
           />
           <FieldDescription>
-            Choose one or more secret paths from the selected mount to import into Infisical
+            Choose up to {MAX_IMPORT_PATHS} secret paths from the selected mount to import into
+            Infisical
           </FieldDescription>
         </Field>
+
+        <Field
+          orientation="horizontal"
+          className="rounded-md border border-border bg-container px-3.5 py-3"
+        >
+          <Checkbox
+            id="vault-secret-import-keep-structure"
+            variant="project"
+            isChecked={keepVaultStructure}
+            onCheckedChange={(checked) => setKeepVaultStructure(checked === true)}
+          />
+          <FieldContent>
+            <FieldLabel htmlFor="vault-secret-import-keep-structure" className="cursor-pointer">
+              Preserve folder structure
+            </FieldLabel>
+            <FieldDescription>
+              Create folders inside Infisical, matching the selected Vault secret&apos;s path.
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+
+        {isOverPathLimit && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertTitle>
+              {selectedPaths.length} secret paths selected, {MAX_IMPORT_PATHS} is the maximum
+            </AlertTitle>
+            <AlertDescription>
+              An import handles at most {MAX_IMPORT_PATHS} Vault paths at a time. Deselect{" "}
+              {selectedPaths.length - MAX_IMPORT_PATHS} path
+              {selectedPaths.length - MAX_IMPORT_PATHS > 1 ? "s" : ""} and import the rest in
+              another run.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {invalidPaths.length > 0 && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertTitle>
+              {invalidPaths.length} secret path
+              {invalidPaths.length > 1 ? "s cannot become folders" : " cannot become a folder"}
+            </AlertTitle>
+            <AlertDescription>
+              <p>
+                Infisical folder names allow only letters, numbers, dashes and underscores. Rename
+                the following {invalidPaths.length > 1 ? "paths" : "path"} in Vault, or import
+                without preserving the folder structure.
+              </p>
+              <div className="mt-2 flex flex-wrap items-start gap-1">
+                {invalidPaths.map((path) => (
+                  <Badge
+                    isTruncatable
+                    key={path}
+                    variant="warning"
+                    className="font-mono text-foreground/80"
+                  >
+                    {path}
+                  </Badge>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {selectedPaths.length > 0 && <VaultImportPreview preview={preview} />}
 
         {skippedWildcardPaths.length > 0 && (
           <Alert variant="warning">
@@ -295,7 +427,11 @@ const Content = ({ onClose, appConnections, onImport }: ContentProps) => {
           variant="project"
           onClick={handleImport}
           isDisabled={
-            !selectedPaths.length || mountsQuery.isLoading || vaultSecretPathsQuery.isLoading
+            !selectedPaths.length ||
+            isOverPathLimit ||
+            invalidPaths.length > 0 ||
+            mountsQuery.isLoading ||
+            vaultSecretPathsQuery.isLoading
           }
         >
           Import Secrets
@@ -309,29 +445,65 @@ export const VaultSecretImportModal = ({
   isOpen,
   onOpenChange,
   appConnections,
+  destinationPath,
   onImport
-}: Props) => (
-  <Sheet open={isOpen} onOpenChange={onOpenChange}>
-    {isOpen && (
-      <SheetContent className="sm:max-w-2xl" onOpenAutoFocus={(event) => event.preventDefault()}>
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <div className="flex size-5 items-center justify-center rounded-full bg-foreground/75">
-              <img src="/images/integrations/Vault.png" alt="" className="mt-0.5 size-4" />
-            </div>
-            Import from HashiCorp Vault
-          </SheetTitle>
-          <SheetDescription>
-            Select a Vault namespace and one or more secret paths to import secrets into the current
-            environment and folder.
-          </SheetDescription>
-        </SheetHeader>
-        <Content
-          onClose={() => onOpenChange(false)}
-          appConnections={appConnections}
-          onImport={onImport}
-        />
-      </SheetContent>
-    )}
-  </Sheet>
-);
+}: Props) => {
+  const [isDirty, setIsDirty] = useState(false);
+
+  const closeSheet = useCallback(() => {
+    setIsDirty(false);
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) {
+      requestDiscard();
+      return;
+    }
+    onOpenChange(true);
+  };
+
+  return (
+    <>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+        {isOpen && (
+          <SheetContent
+            className="sm:max-w-2xl"
+            onOpenAutoFocus={(event) => event.preventDefault()}
+          >
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <div className="flex size-5 items-center justify-center rounded-full bg-foreground/75">
+                  <img src="/images/integrations/Vault.png" alt="" className="mt-0.5 size-4" />
+                </div>
+                Import from HashiCorp Vault
+              </SheetTitle>
+              <SheetDescription>
+                Select a Vault namespace and one or more secret paths to import secrets into the
+                current environment and folder.
+              </SheetDescription>
+            </SheetHeader>
+            <Content
+              onClose={closeSheet}
+              appConnections={appConnections}
+              destinationPath={destinationPath}
+              onImport={onImport}
+              onDirtyChange={setIsDirty}
+            />
+          </SheetContent>
+        )}
+      </Sheet>
+
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Vault Import?"
+        description="Your selected Vault namespace and secret paths will be lost."
+      />
+    </>
+  );
+};

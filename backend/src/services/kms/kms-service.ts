@@ -299,11 +299,14 @@ export const kmsServiceFactory = ({
     return tx ? dbQuery(tx) : kmsDAL.transaction(dbQuery);
   };
 
+  // a project only owns the reserved key generated for it. Anything else is the CMEK API's to delete
   const deleteInternalKms = async (kmsId: string, orgId: string, tx?: Knex) => {
     const kms = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kms) return;
     if (kms.isExternal) return;
     if (kms.orgId !== orgId) throw new ForbiddenRequestError({ message: "KMS doesn't belong to organization" });
+    if (!kms.isReserved) return;
+    if (kms.orgKms.id === kms.id) return;
     return kmsDAL.deleteById(kmsId, tx);
   };
 

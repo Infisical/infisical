@@ -47,7 +47,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useAddGatewayToPool, useRemoveGatewayFromPool } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { gatewaysQueryKeys, isListedGatewayV2 } from "@app/hooks/api/gateways/queries";
 import { useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
@@ -228,7 +228,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                   </TableRow>
                 )}
                 {memberGateways.map((gw) => {
-                  const isOnline = isGatewayHealthy(gw);
+                  const isOnline = isListedGatewayV2(gw) && isGatewayHealthy(gw);
 
                   return (
                     <TableRow key={gw.id}>

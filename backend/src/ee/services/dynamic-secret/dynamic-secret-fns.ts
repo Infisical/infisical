@@ -3,8 +3,77 @@ import net from "node:net";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { isPrivateIp } from "@app/lib/ip/ipRange";
+import { getIpRange, isPrivateIp } from "@app/lib/ip/ipRange";
 import { getDbConnectionHost } from "@app/lib/knex";
+
+const getReservedIps = async () => {
+  const appCfg = getConfig();
+  const reservedHosts = [appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI)].concat(
+    (appCfg.DB_READ_REPLICAS || []).map((el) => getDbConnectionHost(el.DB_CONNECTION_URI)),
+    getDbConnectionHost(appCfg.REDIS_URL),
+    getDbConnectionHost(appCfg.CLICKHOUSE_URL),
+    getDbConnectionHost(appCfg.AUDIT_LOGS_DB_CONNECTION_URI)
+  );
+
+  const exclusiveIps: string[] = [];
+  for await (const el of reservedHosts) {
+    if (el) {
+      if (net.isIP(el)) {
+        exclusiveIps.push(el);
+      } else {
+        const resolvedIps = (await dns.lookup(el, { all: true })).map(({ address }) => address);
+        exclusiveIps.push(...resolvedIps);
+      }
+    }
+  }
+  return exclusiveIps;
+};
+
+// Unlike verifyHostInputValidity, allows private hosts: a gateway's listen address is private by design.
+// A direct gateway lives on a private network, so private and unique-local space stays allowed.
+// Everything else here would point the platform at itself or at its own link-local neighbours,
+// including the cloud metadata endpoint on 169.254.0.0/16.
+const UNDIALABLE_IP_RANGES = new Set([
+  "unspecified",
+  "broadcast",
+  "multicast",
+  "linkLocal",
+  "loopback",
+  "reserved",
+  "ipv4Mapped"
+]);
+
+export const assertHostNotInfisicalInfrastructure = async ({ host }: { host: string }) => {
+  const appCfg = getConfig();
+  if (appCfg.isDevelopmentMode || appCfg.isTestMode) return;
+
+  let hostIps: string[];
+  if (net.isIP(host)) {
+    hostIps = [host];
+  } else {
+    try {
+      hostIps = (await dns.lookup(host, { all: true })).map(({ address }) => address);
+    } catch {
+      // A gateway is often registered before its DNS record exists.
+      return;
+    }
+  }
+
+  const undialable = hostIps.find((el) => UNDIALABLE_IP_RANGES.has(getIpRange(el)));
+  if (undialable) {
+    throw new BadRequestError({
+      message: `The address ${undialable} cannot be dialed by Infisical. Use an address the Infisical instance can reach over your network.`
+    });
+  }
+
+  const exclusiveIps = await getReservedIps();
+  if (hostIps.some((el) => exclusiveIps.includes(el))) {
+    throw new BadRequestError({
+      message:
+        "The host belongs to a service that is in-use by Infisical, such as the Infisical database or Redis instance. You cannot use hosts that are in-use by Infisical."
+    });
+  }
+};
 
 export const verifyHostInputValidity = async ({
   host,
@@ -23,25 +92,7 @@ export const verifyHostInputValidity = async ({
 
   if (isGateway) return [host];
 
-  const reservedHosts = [appCfg.DB_HOST || getDbConnectionHost(appCfg.DB_CONNECTION_URI)].concat(
-    (appCfg.DB_READ_REPLICAS || []).map((el) => getDbConnectionHost(el.DB_CONNECTION_URI)),
-    getDbConnectionHost(appCfg.REDIS_URL),
-    getDbConnectionHost(appCfg.CLICKHOUSE_URL),
-    getDbConnectionHost(appCfg.AUDIT_LOGS_DB_CONNECTION_URI)
-  );
-
-  // get host db ip
-  const exclusiveIps: string[] = [];
-  for await (const el of reservedHosts) {
-    if (el) {
-      if (net.isIP(el)) {
-        exclusiveIps.push(el);
-      } else {
-        const resolvedIps = (await dns.lookup(el, { all: true })).map(({ address }) => address);
-        exclusiveIps.push(...resolvedIps);
-      }
-    }
-  }
+  const exclusiveIps = await getReservedIps();
 
   const normalizedHost = host.split(":")[0].toLowerCase();
   let inputHostIps: string[];

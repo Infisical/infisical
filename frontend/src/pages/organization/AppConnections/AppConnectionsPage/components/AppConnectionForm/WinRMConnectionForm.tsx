@@ -156,6 +156,7 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <TooltipTrigger asChild>
                       <div>
                         <GatewayPicker
+                          isError={Boolean(error)}
                           isRequired
                           isDisabled={!isAllowed}
                           value={{
@@ -243,8 +244,14 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
                 <FieldLabel htmlFor="password">Password</FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                <FieldError errors={[error]} />
+                <SecretInput
+                  aria-describedby={error ? "password-error" : undefined}
+                  id="password"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <FieldError id="password-error" errors={[error]} />
               </Field>
             )}
           />
@@ -262,7 +269,12 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     no server certificate is required.
                   </FieldDescription>
                 </FieldContent>
-                <Toggle id="ssl-enabled" checked={value} onCheckedChange={onChange} />
+                <Toggle
+                  aria-invalid={Boolean(error)}
+                  id="ssl-enabled"
+                  checked={value}
+                  onCheckedChange={onChange}
+                />
               </Field>
               <FieldError errors={[error]} />
             </Field>
@@ -306,6 +318,7 @@ export const WinRMConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </FieldDescription>
                 </FieldContent>
                 <Toggle
+                  aria-invalid={Boolean(error)}
                   id="ssl-reject-unauthorized"
                   checked={sslEnabled ? value : false}
                   onCheckedChange={onChange}

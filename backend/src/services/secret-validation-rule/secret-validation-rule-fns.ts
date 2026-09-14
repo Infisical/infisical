@@ -1,467 +1,203 @@
 import picomatch from "picomatch";
-import RE2 from "re2";
 
 import { DynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers/models";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
-import { MAX_PREVENT_VALUE_REUSE_VERSIONS } from "./secret-validation-rule-schemas";
+import { DynamicSecretsRuleConfigSchema, TDynamicSecretsRuleConfig } from "./dynamic-secrets";
+import { SecretRotationsRuleConfigSchema, TSecretRotationsRuleConfig } from "./secret-rotations";
+import { listSetConstraintFields } from "./secret-validation-rule-constraint-fns";
 import {
   ConstraintTarget,
-  ConstraintType,
   DynamicSecretRuleProvider,
   SecretRotationRuleProvider,
-  SecretValidationRuleType,
-  TConstraint,
-  TDynamicSecretsInputs,
-  TSecretRotationsInputs,
-  TSecretValidationRuleInputs,
-  TStaticSecretsInputs
-} from "./secret-validation-rule-types";
+  SecretValidationRuleType
+} from "./secret-validation-rule-enums";
+import { SECRET_VALIDATION_RULE_NAME_MAP } from "./secret-validation-rule-maps";
+import { TValueConstraints } from "./secret-validation-rule-schemas";
+import { TGeneratedCredentialProvider, TSecretValidationRuleConfig } from "./secret-validation-rule-types";
+import {
+  evaluateStaticSecretConstraints,
+  StaticSecretsRuleConfigSchema,
+  TSecretToValidate,
+  TStaticSecretsRuleConfig
+} from "./static-secrets";
 
-type TExistingRule = {
-  id: string;
-  name: string;
-  envId?: string | null;
-  secretPath: string;
-  type: string;
-  inputs?: unknown;
+const CONFIG_SCHEMA_MAP = {
+  [SecretValidationRuleType.StaticSecrets]: StaticSecretsRuleConfigSchema,
+  [SecretValidationRuleType.DynamicSecrets]: DynamicSecretsRuleConfigSchema,
+  [SecretValidationRuleType.SecretRotations]: SecretRotationsRuleConfigSchema
+};
+
+export const parseSecretValidationRuleConfig = (type: string, config: unknown): TSecretValidationRuleConfig => {
+  const schema = CONFIG_SCHEMA_MAP[type as SecretValidationRuleType];
+  if (!schema) {
+    throw new InternalServerError({ message: `Unsupported secret validation rule type '${type}'` });
+  }
+  return schema.parse(config);
+};
+
+/** A rule's constraints keyed by what they apply to, so any two rules can be compared field by field. */
+export const getConstraintsByTarget = (
+  type: SecretValidationRuleType,
+  config: TSecretValidationRuleConfig
+): Record<string, TValueConstraints | undefined> => {
+  if (type === SecretValidationRuleType.StaticSecrets) {
+    const { keyConstraints, valueConstraints } = config as TStaticSecretsRuleConfig;
+    return { [ConstraintTarget.SecretKey]: keyConstraints, [ConstraintTarget.SecretValue]: valueConstraints };
+  }
+
+  const { passwordConstraints } = config as TDynamicSecretsRuleConfig | TSecretRotationsRuleConfig;
+  return { [ConstraintTarget.GeneratedPassword]: passwordConstraints };
+};
+
+/** The providers a generated-credential rule covers, or null for static-secret rules. */
+export const getRuleProviders = (
+  type: SecretValidationRuleType,
+  config: TSecretValidationRuleConfig
+): TGeneratedCredentialProvider[] | null => {
+  if (type === SecretValidationRuleType.StaticSecrets) return null;
+  return (config as TDynamicSecretsRuleConfig | TSecretRotationsRuleConfig).providers;
 };
 
 const doPathsOverlap = (pathA: string, pathB: string): boolean => {
   const opts: picomatch.PicomatchOptions = { strictSlashes: false };
 
-  if (picomatch.isMatch(pathA, pathB, opts) || picomatch.isMatch(pathB, pathA, opts)) {
-    return true;
-  }
+  if (picomatch.isMatch(pathA, pathB, opts) || picomatch.isMatch(pathB, pathA, opts)) return true;
 
-  // When both sides are globs, check if the non-glob prefix of one is
-  // reachable from the other pattern.  e.g. "/a/**" vs "/a/b/*" → the
-  // prefix "/a/b" is matched by "/a/**".
+  // When both sides are globs, check whether the non-glob prefix of one is reachable from the other
+  // pattern, e.g. "/a/**" vs "/a/b/*" — the prefix "/a/b" is matched by "/a/**".
   const scanA = picomatch.scan(pathA);
   const scanB = picomatch.scan(pathB);
+  if (!scanA.isGlob || !scanB.isGlob) return false;
 
-  if (scanA.isGlob && scanB.isGlob) {
-    const prefixA = scanA.base || "/";
-    const prefixB = scanB.base || "/";
-
-    if (picomatch.isMatch(prefixA, pathB, opts) || picomatch.isMatch(prefixB, pathA, opts)) {
-      return true;
-    }
-  }
-
-  return false;
+  return picomatch.isMatch(scanA.base || "/", pathB, opts) || picomatch.isMatch(scanB.base || "/", pathA, opts);
 };
 
-const doEnvironmentsOverlap = (envIdA: string | null | undefined, envIdB: string | null | undefined): boolean => {
-  if (!envIdA || !envIdB) return true;
-  return envIdA === envIdB;
-};
+// A rule with no environment covers every environment, so it overlaps with all of them.
+const doEnvironmentsOverlap = (envIdA?: string | null, envIdB?: string | null) =>
+  !envIdA || !envIdB || envIdA === envIdB;
 
-/**
- * For static secrets: two rules conflict if they share any constraint of the
- * same type + appliesTo target in overlapping scope.  This is because two
- * constraints of the same kind on the same target can contradict each other
- * (e.g. two different regex patterns on the value).
- */
-const $checkStaticSecretsConstraintOverlap = (
-  incoming: TStaticSecretsInputs,
-  existing: TStaticSecretsInputs
-): ConstraintType[] => {
-  const overlapping: ConstraintType[] = [];
-
-  for (const incomingConstraint of incoming.constraints) {
-    for (const existingConstraint of existing.constraints) {
-      if (
-        incomingConstraint.type === existingConstraint.type &&
-        incomingConstraint.appliesTo === existingConstraint.appliesTo
-      ) {
-        overlapping.push(incomingConstraint.type);
-      }
-    }
-  }
-
-  return overlapping;
-};
-
-/**
- * For dynamic-secret / secret-rotation rules: two rules conflict only if their
- * selected provider sets intersect AND they share at least one constraint type
- * targeting the same generated field (e.g. two regex patterns on the password).
- */
-const $checkGeneratedSecretConstraintOverlap = (
-  incoming: TDynamicSecretsInputs | TSecretRotationsInputs,
-  existing: TDynamicSecretsInputs | TSecretRotationsInputs
-): ConstraintType[] => {
-  const incomingProviders = new Set<string>(incoming.providers as string[]);
-  const sharesProvider = (existing.providers as string[]).some((p) => incomingProviders.has(p));
-  if (!sharesProvider) return [];
-
-  const overlapping: ConstraintType[] = [];
-  for (const incomingConstraint of incoming.constraints) {
-    for (const existingConstraint of existing.constraints) {
-      if (
-        incomingConstraint.type === existingConstraint.type &&
-        incomingConstraint.appliesTo === existingConstraint.appliesTo
-      ) {
-        overlapping.push(incomingConstraint.type);
-      }
-    }
-  }
-  return overlapping;
-};
-
-type TOverlapChecker<TInputs = TSecretValidationRuleInputs> = (
-  incoming: TInputs,
-  existing: TInputs
-) => ConstraintType[];
-
-const overlapCheckersByType: Record<SecretValidationRuleType, TOverlapChecker> = {
-  [SecretValidationRuleType.StaticSecrets]: $checkStaticSecretsConstraintOverlap as TOverlapChecker,
-  [SecretValidationRuleType.DynamicSecrets]: $checkGeneratedSecretConstraintOverlap as TOverlapChecker,
-  [SecretValidationRuleType.SecretRotations]: $checkGeneratedSecretConstraintOverlap as TOverlapChecker
-};
-
-export const checkForOverlappingRules = ({
-  ruleType,
-  envId,
-  secretPath,
-  inputs,
-  existingRules,
-  excludeRuleId
-}: {
-  ruleType: SecretValidationRuleType;
-  envId: string | null;
-  secretPath: string;
-  inputs: TSecretValidationRuleInputs;
-  existingRules: TExistingRule[];
-  excludeRuleId?: string;
-}): void => {
-  const checker = overlapCheckersByType[ruleType as SecretValidationRuleType];
-  if (!checker) {
-    return;
-  }
-
-  for (const existing of existingRules) {
-    // if the rule is the one being updated, skip the check
-    if (excludeRuleId && existing.id === excludeRuleId) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    // if the rule type doesn't match, skip the check
-    if (existing.type !== ruleType) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    // if the env or folder ID doesn't overlap, skip the check
-    if (!doEnvironmentsOverlap(envId, existing.envId) || !doPathsOverlap(secretPath, existing.secretPath)) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    // at this point we're sure that the rule is overlapping with other rules, so we check if the constraints themselves are overlapping
-    const overlappingConstraints = checker(inputs, existing.inputs as TSecretValidationRuleInputs);
-
-    if (overlappingConstraints.length > 0) {
-      const constraintList = [...new Set(overlappingConstraints)].join(", ");
-      throw new BadRequestError({
-        message:
-          `Rule "${existing.name}" already enforces overlapping constraints (${constraintList}) ` +
-          `on the same scope. Adjust the environment, path, or constraints to avoid conflicts.`
-      });
-    }
-  }
-};
-
-// ---------------------------------------------------------------------------
-// Constraint enforcement — evaluate rules against secrets
-// ---------------------------------------------------------------------------
-
-type TSecretToValidate = {
-  key: string;
-  value?: string;
-  previousValues?: string[];
-};
-
-type TValidationRule = {
+export type TExistingRule = {
+  id: string;
   name: string;
   envId?: string | null;
   secretPath: string;
   type: string;
-  inputs: unknown;
-};
-
-type TValidationViolation = {
-  secretKey: string;
-  ruleName: string;
-  constraintType: ConstraintType;
-  message: string;
-};
-
-export const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
-  [ConstraintType.MinLength]: "Minimum length",
-  [ConstraintType.MaxLength]: "Maximum length",
-  [ConstraintType.RegexPattern]: "Regex pattern",
-  [ConstraintType.RequiredPrefix]: "Required prefix",
-  [ConstraintType.RequiredSuffix]: "Required suffix",
-  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous secret values"
-};
-
-const TARGET_LABELS: Record<ConstraintTarget, string> = {
-  [ConstraintTarget.SecretKey]: "key",
-  [ConstraintTarget.SecretValue]: "value",
-  [ConstraintTarget.GeneratedPassword]: "password"
-};
-
-export const evaluateConstraint = (constraint: TConstraint, secret: TSecretToValidate): string | null => {
-  // Skip value constraints when no value mutation is occurring (e.g. key-only rename)
-  if (constraint.appliesTo === ConstraintTarget.SecretValue && secret.value === undefined) {
-    return null;
-  }
-
-  const targetValue = constraint.appliesTo === ConstraintTarget.SecretKey ? secret.key : (secret.value ?? "");
-  const targetLabel = TARGET_LABELS[constraint.appliesTo];
-
-  switch (constraint.type) {
-    case ConstraintType.MinLength: {
-      const min = Number(constraint.value);
-
-      if (Number.isNaN(min)) {
-        return `${targetLabel} must be at least ${min} characters (got ${targetValue.length})`;
-      }
-
-      if (targetValue.length < min) {
-        return `${targetLabel} must be at least ${min} characters (got ${targetValue.length})`;
-      }
-      return null;
-    }
-    case ConstraintType.MaxLength: {
-      const max = Number(constraint.value);
-
-      if (Number.isNaN(max)) {
-        return `${targetLabel} must be at most ${max} characters (got ${targetValue.length})`;
-      }
-
-      if (targetValue.length > max) {
-        return `${targetLabel} must be at most ${max} characters (got ${targetValue.length})`;
-      }
-      return null;
-    }
-    case ConstraintType.RegexPattern: {
-      try {
-        const regex = new RE2(constraint.value);
-        if (!regex.test(targetValue)) {
-          return `${targetLabel} must match pattern ${constraint.value}`;
-        }
-        return null;
-      } catch {
-        // re2 throws an error if the pattern is invalid
-        return `${targetLabel} must match pattern ${constraint.value}`;
-      }
-    }
-    case ConstraintType.RequiredPrefix: {
-      if (!targetValue.startsWith(constraint.value)) {
-        return `${targetLabel} must start with "${constraint.value}"`;
-      }
-      return null;
-    }
-    case ConstraintType.RequiredSuffix: {
-      if (!targetValue.endsWith(constraint.value)) {
-        return `${targetLabel} must end with "${constraint.value}"`;
-      }
-      return null;
-    }
-    case ConstraintType.PreventValueReuse: {
-      if (secret.value === undefined || !secret.previousValues?.length) {
-        return null;
-      }
-      const versionCount = Number(constraint.value) || MAX_PREVENT_VALUE_REUSE_VERSIONS;
-      const valuesToCheck = secret.previousValues.slice(0, versionCount);
-      if (valuesToCheck.includes(secret.value)) {
-        return `${targetLabel} cannot reuse any of the last ${versionCount} values`;
-      }
-      return null;
-    }
-    default:
-      return null;
-  }
-};
-
-export type TStaticSecretConstraintViolation = {
-  constraintType: ConstraintType;
-  constraintLabel: string;
-  message: string;
+  config: TSecretValidationRuleConfig;
 };
 
 /**
- * Evaluate a single secret against a set of static-secret constraints, returning every violation
- * (non-throwing). Reused by the audit-report compliance scan to surface already-stored secrets that do
- * not conform to a validation rule that was created after them.
+ * Two rules of the same type conflict when they cover the same secrets and constrain the same thing.
+ * Each would impose its own bound, so the second is rejected rather than both silently enforced.
  */
-export const evaluateStaticSecretConstraints = (
-  constraints: TConstraint[],
-  secret: TSecretToValidate
-): TStaticSecretConstraintViolation[] => {
-  const violations: TStaticSecretConstraintViolation[] = [];
-  for (const constraint of constraints) {
-    const error = evaluateConstraint(constraint, secret);
-    if (error) {
-      violations.push({
-        constraintType: constraint.type,
-        constraintLabel: CONSTRAINT_LABELS[constraint.type],
-        message: error
-      });
-    }
-  }
-  return violations;
-};
+export const checkForOverlappingRules = ({
+  type,
+  envId,
+  secretPath,
+  config,
+  existingRules,
+  excludeRuleId
+}: {
+  type: SecretValidationRuleType;
+  envId: string | null;
+  secretPath: string;
+  config: TSecretValidationRuleConfig;
+  existingRules: TExistingRule[];
+  excludeRuleId?: string;
+}): void => {
+  const incomingFields = listSetConstraintFields(getConstraintsByTarget(type, config));
+  const incomingProviders = getRuleProviders(type, config);
 
-/**
- * Evaluate static secret constraints against a set of secrets.
- */
-const enforceStaticSecretsRules = (rules: TValidationRule[], secrets: TSecretToValidate[]): TValidationViolation[] => {
-  const violations: TValidationViolation[] = [];
+  for (const existing of existingRules) {
+    const sharesScope =
+      existing.id !== excludeRuleId &&
+      existing.type === type &&
+      doEnvironmentsOverlap(envId, existing.envId) &&
+      doPathsOverlap(secretPath, existing.secretPath);
 
-  for (const rule of rules) {
-    const inputs = rule.inputs as TStaticSecretsInputs | undefined;
-    if (!inputs?.constraints?.length) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
+    if (sharesScope) {
+      const existingProviders = getRuleProviders(type, existing.config);
+      const sharesProvider =
+        !incomingProviders || !existingProviders || existingProviders.some((p) => incomingProviders.includes(p));
 
-    for (const secret of secrets) {
-      for (const constraint of inputs.constraints) {
-        const error = evaluateConstraint(constraint, secret);
-        if (error) {
-          violations.push({
-            secretKey: secret.key,
-            ruleName: rule.name,
-            constraintType: constraint.type,
-            message: error
+      if (sharesProvider) {
+        const existingFields = listSetConstraintFields(getConstraintsByTarget(type, existing.config));
+        const conflicts = [...incomingFields].filter((field) => existingFields.has(field));
+
+        if (conflicts.length) {
+          throw new BadRequestError({
+            message: `Rule "${existing.name}" already constrains ${conflicts.join(", ")} over the same secrets. Change the environment, the secret path, or the constraints so the two rules do not overlap.`
           });
         }
       }
     }
   }
-
-  return violations;
 };
 
-// Registry of enforcement functions per rule type.
-// To add a new rule type, implement an enforcer and add it here.
-type TRuleEnforcer = (rules: TValidationRule[], secrets: TSecretToValidate[]) => TValidationViolation[];
-
-// Generated-credential rule types (dynamic-secrets / secret-rotations) are
-// enforced inline at password generation time, not through this enforcement
-// path, so they intentionally have no entry here.
-const ruleEnforcersByType: Partial<Record<SecretValidationRuleType, TRuleEnforcer>> = {
-  [SecretValidationRuleType.StaticSecrets]: enforceStaticSecretsRules
+/** Only static-secret rules reach this path; generated credentials are shaped at generation. */
+export type TRuleToEnforce = {
+  name: string;
+  config: TStaticSecretsRuleConfig;
 };
 
-/**
- * Finds matching rules for the given scope and evaluates all constraints
- * against the provided secrets. Throws a BadRequestError if any violation
- * is found.
- *
- * @param projectRules  All rules for the project (caller fetches from DAL)
- * @param envId         The environment ID of the secrets being written
- * @param secretPath    The path where secrets are being written (concrete, not a glob)
- * @param secrets       The plaintext secrets to validate
- */
+export const findRulesCoveringScope = <T extends { envId?: string | null; secretPath: string }>(
+  rules: T[],
+  { envId, secretPath }: { envId: string; secretPath: string }
+) =>
+  rules.filter(
+    (rule) =>
+      (!rule.envId || rule.envId === envId) && picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })
+  );
+
 export const enforceSecretValidationRules = ({
-  projectRules,
-  envId,
-  secretPath,
+  rules,
   secrets
 }: {
-  projectRules: TValidationRule[];
-  envId: string;
-  secretPath: string;
-  secrets: TSecretToValidate[];
+  rules: TRuleToEnforce[];
+  secrets: (TSecretToValidate & { previousValues?: string[] })[];
 }): void => {
-  if (!projectRules.length || !secrets.length) return;
+  const failures: string[] = [];
 
-  const matchingRulesByType = new Map<SecretValidationRuleType, TValidationRule[]>();
-
-  for (const rule of projectRules) {
-    // Check environment match (null envId on rule = all environments)
-    if (rule.envId && rule.envId !== envId) {
-      // eslint-disable-next-line no-continue
-      continue;
+  for (const rule of rules) {
+    for (const secret of secrets) {
+      for (const violation of evaluateStaticSecretConstraints(rule.config, secret)) {
+        failures.push(
+          `Secret "${secret.key}": ${violation.message} (rule: "${rule.name}", constraint: ${violation.label})`
+        );
+      }
     }
-
-    // Check path match (rule.secretPath may be a glob)
-    if (!picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    const ruleType = rule.type as SecretValidationRuleType;
-    const existing = matchingRulesByType.get(ruleType) || [];
-    existing.push(rule);
-    matchingRulesByType.set(ruleType, existing);
   }
 
-  const allViolations: TValidationViolation[] = [];
-
-  for (const [ruleType, matchedRules] of matchingRulesByType) {
-    const enforcer = ruleEnforcersByType[ruleType];
-    if (!enforcer) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-    const violations = enforcer(matchedRules, secrets);
-    allViolations.push(...violations);
-  }
-
-  if (allViolations.length > 0) {
-    const details = allViolations.map(
-      (v) =>
-        `Secret "${v.secretKey}": ${v.message} (rule: "${v.ruleName}", constraint: ${CONSTRAINT_LABELS[v.constraintType]})`
-    );
-
-    throw new BadRequestError({
-      message: `Secret validation failed:\n${details.join("\n\n")}`
-    });
+  if (failures.length) {
+    throw new BadRequestError({ message: `Secret validation failed:\n${failures.join("\n\n")}` });
   }
 };
 
-// Maps a runtime dynamic-secret provider type to the rule-provider slug
-// selectable in a secret validation rule. Providers that aren't yet
-// covered by validation rules return null, which short-circuits the lookup.
+// Runtime provider types that validation rules can constrain. Anything unmapped returns null, which
+// short-circuits the rule lookup for that provider.
 export const convertDynamicSecretProviderToValidationRuleProvider = (
   type: DynamicSecretProviders
 ): DynamicSecretRuleProvider | null => {
-  if (type === DynamicSecretProviders.SqlDatabase) return DynamicSecretRuleProvider.SqlDatabase;
-  if (type === DynamicSecretProviders.Milvus) return DynamicSecretRuleProvider.Milvus;
-
-  return null;
+  const map: Partial<Record<DynamicSecretProviders, DynamicSecretRuleProvider>> = {
+    [DynamicSecretProviders.SqlDatabase]: DynamicSecretRuleProvider.SqlDatabase,
+    [DynamicSecretProviders.Milvus]: DynamicSecretRuleProvider.Milvus
+  };
+  return map[type] ?? null;
 };
 
-// Maps a runtime rotation type to the rule-provider slug selectable in a
-// secret validation rule. Rotation types not yet covered return null.
 export const convertSecretRotationToValidationRuleProvider = (
   type: SecretRotation
 ): SecretRotationRuleProvider | null => {
-  if (type === SecretRotation.PostgresCredentials) {
-    return SecretRotationRuleProvider.PostgresCredentials;
-  }
-  if (type === SecretRotation.MySqlCredentials) {
-    return SecretRotationRuleProvider.MySqlCredentials;
-  }
-  if (type === SecretRotation.MsSqlCredentials) {
-    return SecretRotationRuleProvider.MsSqlCredentials;
-  }
-  if (type === SecretRotation.OracleDBCredentials) {
-    return SecretRotationRuleProvider.OracleDBCredentials;
-  }
-  if (type === SecretRotation.UnixLinuxLocalAccount) {
-    return SecretRotationRuleProvider.UnixLinuxLocalAccount;
-  }
-  if (type === SecretRotation.LdapPassword) {
-    return SecretRotationRuleProvider.LdapPassword;
-  }
-  return null;
+  const map: Partial<Record<SecretRotation, SecretRotationRuleProvider>> = {
+    [SecretRotation.PostgresCredentials]: SecretRotationRuleProvider.PostgresCredentials,
+    [SecretRotation.MySqlCredentials]: SecretRotationRuleProvider.MySqlCredentials,
+    [SecretRotation.MsSqlCredentials]: SecretRotationRuleProvider.MsSqlCredentials,
+    [SecretRotation.OracleDBCredentials]: SecretRotationRuleProvider.OracleDBCredentials,
+    [SecretRotation.UnixLinuxLocalAccount]: SecretRotationRuleProvider.UnixLinuxLocalAccount,
+    [SecretRotation.LdapPassword]: SecretRotationRuleProvider.LdapPassword
+  };
+  return map[type] ?? null;
 };
+
+export const secretValidationRuleName = (type: SecretValidationRuleType) => SECRET_VALIDATION_RULE_NAME_MAP[type];

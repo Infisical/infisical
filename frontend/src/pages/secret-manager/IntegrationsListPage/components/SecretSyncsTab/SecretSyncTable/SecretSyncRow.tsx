@@ -144,7 +144,7 @@ export const SecretSyncRow = ({
       }
       className={twMerge(
         "group h-12",
-        syncStatus === SecretSyncStatus.Failed && "bg-red/5 hover:bg-red/10"
+        syncStatus === SecretSyncStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
     >
       <TableCell>
@@ -267,7 +267,7 @@ export const SecretSyncRow = ({
                           <RefreshCwIcon />
                           Trigger Sync
                         </span>
-                        <InfoIcon className="size-3.5 text-bunker-300" />
+                        <InfoIcon className="size-3.5 text-label" />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="left" sideOffset={20}>
@@ -298,7 +298,7 @@ export const SecretSyncRow = ({
                             <DownloadIcon />
                             Import Secrets
                           </span>
-                          <InfoIcon className="size-3.5 text-bunker-300" />
+                          <InfoIcon className="size-3.5 text-label" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={20}>
@@ -330,7 +330,7 @@ export const SecretSyncRow = ({
                             <EraserIcon />
                             Remove Secrets
                           </span>
-                          <InfoIcon className="size-3.5 text-bunker-300" />
+                          <InfoIcon className="size-3.5 text-label" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="left" sideOffset={20}>
