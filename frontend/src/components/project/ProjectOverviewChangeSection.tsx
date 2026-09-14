@@ -9,6 +9,8 @@ import {
   Button,
   Card,
   CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   CopyButton,
@@ -42,9 +44,12 @@ type Props = {
 export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) => {
   const { currentProject } = useProject();
   const { mutateAsync, isPending } = useUpdateProject();
-  const { handleSubmit, control, reset } = useForm<BaseFormData>({
-    resolver: zodResolver(baseFormSchema)
-  });
+  const {
+    handleSubmit,
+    control,
+    reset,
+    formState: { isDirty }
+  } = useForm<BaseFormData>({ resolver: zodResolver(baseFormSchema) });
 
   useEffect(() => {
     if (currentProject) {
@@ -68,15 +73,17 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
       text: "Successfully updated project overview",
       type: "success"
     });
+    reset(data);
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>Project Overview</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="flex max-w-5xl flex-col gap-4">
+    <form onSubmit={handleSubmit(onFormSubmit)} className="mb-6">
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle>Project Overview</CardTitle>
+          <CardDescription>Update your project name and description.</CardDescription>
+        </CardHeader>
+        <CardContent className="max-w-md px-6 pb-6">
           <FieldGroup>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
@@ -160,15 +167,23 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
               )}
             </ProjectPermissionCan>
           </FieldGroup>
+        </CardContent>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
           <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
             {(isAllowed) => (
-              <Button variant="project" type="submit" isPending={isPending} isDisabled={!isAllowed}>
-                Save
+              <Button
+                variant="project"
+                size="sm"
+                type="submit"
+                isPending={isPending}
+                isDisabled={!isAllowed || !isDirty}
+              >
+                Save changes
               </Button>
             )}
           </ProjectPermissionCan>
-        </form>
-      </CardContent>
-    </Card>
+        </CardFooter>
+      </Card>
+    </form>
   );
 };
