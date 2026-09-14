@@ -12,7 +12,6 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -59,6 +58,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
+import { areSecretSyncDestinationConfigsEqual } from "./secret-sync-duplicate-check";
 import {
   DESTINATION_DUPLICATE_CHECK_MAP,
   SECRET_SYNC_CONNECTION_MAP,
@@ -242,7 +242,6 @@ export const secretSyncServiceFactory = ({
         canExpandValue: () => true,
         actorOrgId,
         orgDAL,
-        licenseService,
         projectFolderGrantDAL,
         projectDAL,
         kmsService
@@ -260,7 +259,6 @@ export const secretSyncServiceFactory = ({
             projectFolderGrantDAL,
             actorOrgId,
             orgDAL,
-            licenseService,
             kmsService
           }
         },
@@ -549,7 +547,7 @@ export const secretSyncServiceFactory = ({
 
       const candidates = existingSyncs.filter((sync) => {
         if (sync.id === excludeSyncId) return false;
-        return deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
+        return areSecretSyncDestinationConfigsEqual(destination, sync.destinationConfig, destinationConfig, skipFields);
       });
 
       const duplicateCheckResults = await Promise.all(

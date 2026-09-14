@@ -1,0 +1,152 @@
+---
+title: "Proxies"
+description: "Run the proxy that attaches credentials, set its traffic policy, and understand how agents trust it."
+---
+
+A proxy is the forward proxy that brokers credentials: it applies the real credential to matching requests on the way out and leaves everything else untouched. It runs where agent traffic leaves your network: on a host of its own that agents across your network share, or next to a single agent. You create it in the dashboard, enroll it once from the CLI, and change its settings from the dashboard afterwards.
+
+## Enrolling
+
+Go to **Proxies**, select **Create Proxy**, name it, and select **Create**. The dialog shows a one-time enrollment token, valid for an hour, and the same three snippets below with your token and instance filled in. Run one of them where the proxy will live:
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxy-enrollment-token.png" alt="The Enrollment Token dialog with CLI, Docker, and systemd tabs and the one-hour countdown" />
+</Frame>
+
+<Tabs>
+  <Tab title="CLI">
+    ```bash
+    infisical agent-vault proxy \
+      --enrollment-token <enrollment-token> \
+      --domain <your-instance-url>
+    ```
+  </Tab>
+  <Tab title="Docker">
+    ```bash
+    docker run -d --name agent-vault-proxy \
+      -p 17323:17323 \
+      -v agent-vault-proxy:/etc/infisical/agent-vault \
+      infisical/cli agent-vault proxy \
+      --enrollment-token <enrollment-token> \
+      --domain <your-instance-url>
+    ```
+
+    The volume holds the state directory, so a re-created container resumes instead of needing a new token.
+  </Tab>
+  <Tab title="systemd">
+    ```ini
+    [Unit]
+    Description=Infisical Agent Vault proxy
+    After=network-online.target
+
+    [Service]
+    ExecStart=/usr/local/bin/infisical agent-vault proxy --enrollment-token <enrollment-token> --domain <your-instance-url>
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+    Save it as `/etc/systemd/system/agent-vault-proxy.service`, then run `sudo systemctl enable --now agent-vault-proxy`.
+  </Tab>
+</Tabs>
+
+`--domain` points the proxy at your Infisical instance. It defaults to `https://app.infisical.com`, so EU Cloud and self-hosted instances have to pass it.
+
+The proxy enrolls, generates its own certificate authority, and serves on port `17323`. It keeps its state in `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root, so run it somewhere that directory persists. Running the same command again on a restart is fine. A proxy that starts with an empty state directory needs a new token: select **New Enrollment Token** on the proxy's menu.
+
+<Note>
+  Anything on a command line is readable by other users on the machine. To keep the token out of it, put `INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN=<enrollment-token>` in a file with mode `0600` and pass it with `--env-file` (Docker) or `EnvironmentFile=` (systemd), dropping `--enrollment-token` from the command. You can delete the file once the proxy has enrolled.
+</Note>
+
+Run `infisical agent-vault proxy --port 18000` to listen on a different port.
+
+## Settings
+
+Every setting lives in Infisical and reaches a running proxy on its next poll. Select **Edit Settings** on the proxy's menu.
+
+### Traffic policy
+
+Which hosts an agent may reach through this proxy.
+
+- **Allow requests to reach any host**, the default: every request goes out. Hosts an access bundle covers get its credential, and the rest go out with none.
+- **Only allow requests to reach hosts specified in access bundles**: a request to any host outside them is refused, unless the host is an exception.
+
+Use the second when the proxy sits somewhere it could reach more than you intend, such as a network with internal systems on it. Under it, a pass-through service is how one access bundle makes a host reachable without giving it a credential.
+
+A refusal isn't a refused connection. The proxy answers `CONNECT` with `200 Connection Established` and completes the TLS handshake first, then refuses the request itself:
+
+```text
+HTTP/1.1 403 Forbidden
+
+no service covers host "internal.example.com": host blocked by policy
+```
+
+Ports are part of the match. A [service's host pattern](/documentation/platform/agent-vault/access-bundles#host-patterns) that names no port covers port 443 only, so a service on `example.com` doesn't cover `example.com:8443`, and under this policy a request to the second is refused. Name the port in the pattern to cover it.
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the two traffic policy options and the poll interval" />
+</Frame>
+
+### Exceptions
+
+A comma-separated list of hosts that stay reachable under **Only allow requests to reach hosts specified in access bundles**, with no credential attached. Use it for hosts every agent needs, such as a package registry or a documentation site. Under **Allow requests to reach any host** the list changes nothing.
+
+An exception written without a port matches that host on every port, unlike a service pattern, which means port 443 when it names none.
+
+An exception isn't exempt from interception. Every HTTPS host is TLS-terminated by the proxy before any policy applies, so an exception is a host the proxy doesn't block, not a host it leaves alone. To open a host for one access bundle rather than for every agent on the proxy, add a pass-through service to that bundle instead.
+
+### Poll interval
+
+How often, in seconds, the proxy re-checks each active session with Infisical and picks up settings changes. The default is 60 and the range is 10 to 300. Every "within one poll interval" on these pages means this number.
+
+If the proxy can't reach Infisical, it keeps serving what it last knew for five poll intervals, then refuses the affected requests with a 502 until it can check again. It never forwards a request without the credential it was supposed to attach. The Proxies page marks a proxy **Unreachable** after three missed check-ins.
+
+## Certificate trust
+
+The proxy terminates TLS to attach the credential, so each agent has to trust the proxy's certificate authority. Every proxy has its own.
+
+`infisical agent-vault run` handles this. It fetches the certificate from the proxy on every run and sets `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT` for the agent. On macOS it also offers to add the certificate to your login keychain, for tools such as `gh` and `docker` that read the system trust store. Pass `--no-ca-trust` to skip the step on a machine that already trusts the proxy.
+
+An agent you start without the CLI, such as a container that sets `HTTPS_PROXY` itself, needs the certificate mounted and those variables set. `http://<proxy-address>/_agent-vault/ca` returns the certificate inside a JSON object, so write the `certificate` field out on its own:
+
+```bash
+curl -s http://<proxy-address>/_agent-vault/ca | jq -r .certificate > ca.pem
+```
+
+That agent also needs `HTTPS_PROXY` and `HTTP_PROXY` set, with the session token as the password:
+
+```bash
+export HTTPS_PROXY="http://x-agent-vault:<session-token>@<proxy-address>"
+export HTTP_PROXY="$HTTPS_PROXY"
+```
+
+The session token travels to the proxy with every request, so run the proxy where only your agents can reach it: the same host, a private network, or a container network.
+
+### Pinning
+
+To make sure the agent is talking to your proxy and nothing else, pass the fingerprint from the Proxies page:
+
+```bash
+infisical agent-vault run --session-token <session-token> --proxy <proxy-address> --ca-fingerprint SHA256:9F:2C:... -- claude
+```
+
+The CLI aborts before starting the agent if the served certificate doesn't match. Pin when the agent runs on a network you don't fully control.
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing two healthy proxies with their traffic policy and certificate authority fingerprints" />
+</Frame>
+
+### APIs with a private certificate authority
+
+The proxy verifies the certificate of each API it connects to, the way any HTTPS client would. If an API you're connecting to uses a private certificate authority, the machine running the proxy has to trust that authority. The agent's machine doesn't.
+
+### Re-enrolling
+
+Selecting **New Enrollment Token** and enrolling again replaces the proxy's certificate authority. The proxy keeps its name, settings, and history. Restart any agent that was running through it, since it trusts the old certificate. Update any `--ca-fingerprint` pin, mounted copy of the certificate, or macOS keychain entry as well.
+
+## Revoking and deleting
+
+**Revoke Access** on a proxy's menu invalidates the proxy's token on its next poll. Every agent routed through it loses credentials, and the proxy process exits with a message saying its access was revoked. Use it when you believe the proxy host is compromised. To bring the proxy back, select **New Enrollment Token** and enroll again.
+
+**Delete** removes the proxy record. A running process for it exits the same way.

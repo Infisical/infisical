@@ -1,0 +1,238 @@
+import { useEffect, useState } from "react";
+import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  CodeBlock,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
+import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
+
+import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+
+export const credentialPreview = (
+  form: {
+    credentialType: AgentVaultCredentialType;
+    headerName?: string;
+    headerPrefix?: string;
+  },
+  secret = "••••••••"
+): string | null => {
+  if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
+  if (form.credentialType === AgentVaultCredentialType.Basic)
+    return `Authorization: Basic ${secret}`;
+  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
+  return `${form.headerName || "Authorization"}: ${prefix}${secret}`;
+};
+
+type SecretName = "secret" | "username";
+
+const SecretInput = <TName extends SecretName>({
+  field,
+  label,
+  placeholder,
+  isError,
+  isUntouched
+}: {
+  field: ControllerRenderProps<TServiceForm, TName>;
+  label: string;
+  placeholder: string;
+  isError: boolean;
+  isUntouched: boolean;
+}) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <InputGroup>
+      <InputGroupInput
+        {...field}
+        type={isVisible ? "text" : "password"}
+        // Selected rather than cleared, so focusing the field and moving on cannot remove a credential.
+        onFocus={(event) => {
+          if (isUntouched) event.target.select();
+        }}
+        placeholder={placeholder}
+        isError={isError}
+      />
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton
+          // A stored credential is never returned, so until it is replaced there is nothing to reveal.
+          isDisabled={isUntouched}
+          aria-label={`${isVisible ? "Hide" : "Show"} ${label.toLowerCase()}`}
+          onClick={() => setIsVisible((prev) => !prev)}
+        >
+          {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
+  );
+};
+
+type Props = {
+  storedType?: AgentVaultCredentialType;
+};
+
+export const CredentialFields = ({ storedType }: Props) => {
+  const { control, watch, setValue } = useFormContext<TServiceForm>();
+  const credentialType = watch("credentialType");
+  const secret = watch("secret");
+  const username = watch("username");
+  const headerName = watch("headerName");
+  const headerPrefix = watch("headerPrefix");
+
+  const isBasic = credentialType === AgentVaultCredentialType.Basic;
+  const isUntouched = secret === UNCHANGED_SECRET;
+  const isUsernameUntouched = username === UNCHANGED_SECRET;
+
+  useEffect(() => {
+    if (!storedType || credentialType === storedType) return;
+    if (isUntouched) setValue("secret", "");
+    if (isUsernameUntouched) setValue("username", "");
+  }, [isUntouched, isUsernameUntouched, credentialType, storedType, setValue]);
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Controller
+        control={control}
+        name="credentialType"
+        render={({ field }) => (
+          <Field>
+            <FieldLabel>Credential Type</FieldLabel>
+            <FieldContent>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(AgentVaultCredentialType).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {CREDENTIAL_LABELS[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FieldContent>
+          </Field>
+        )}
+      />
+
+      {credentialType === AgentVaultCredentialType.Bearer && (
+        <>
+          <Controller
+            control={control}
+            name="headerName"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel>Header Name</FieldLabel>
+                <FieldContent>
+                  <Input
+                    {...field}
+                    placeholder="Authorization"
+                    isError={Boolean(fieldState.error)}
+                  />
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="headerPrefix"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel>Prefix</FieldLabel>
+                <FieldContent>
+                  <Input {...field} placeholder="Bearer" isError={Boolean(fieldState.error)} />
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
+        </>
+      )}
+
+      {credentialType === AgentVaultCredentialType.Basic && (
+        <Controller
+          control={control}
+          name="username"
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel>Username</FieldLabel>
+              <FieldContent>
+                <SecretInput
+                  field={field}
+                  label="Username"
+                  placeholder="Enter the username"
+                  isError={Boolean(fieldState.error)}
+                  isUntouched={isUsernameUntouched}
+                />
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
+
+      {credentialType !== AgentVaultCredentialType.Passthrough && (
+        <Controller
+          control={control}
+          name="secret"
+          render={({ field, fieldState }) => (
+            <Field>
+              <FieldLabel>{isBasic ? "Password" : "Token"}</FieldLabel>
+              <FieldContent>
+                <SecretInput
+                  field={field}
+                  label={isBasic ? "Password" : "Token"}
+                  placeholder={isBasic ? "Enter the password" : "Enter the token"}
+                  isError={Boolean(fieldState.error)}
+                  isUntouched={isUntouched}
+                />
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
+
+      {credentialType !== AgentVaultCredentialType.Passthrough && (
+        <CodeBlock
+          label="Sends"
+          isCopyable={false}
+          value={
+            credentialPreview(
+              { credentialType, headerName, headerPrefix },
+              isBasic ? "base64(<username>:<password>)" : "<token>"
+            ) ?? ""
+          }
+        />
+      )}
+
+      {credentialType === AgentVaultCredentialType.Passthrough && (
+        <Alert variant="info">
+          <AlertTitle>No credentials are sent</AlertTitle>
+          <AlertDescription>
+            Requests go out as they are. On a proxy that denies everything else, this is what makes
+            these hosts reachable.
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
+};

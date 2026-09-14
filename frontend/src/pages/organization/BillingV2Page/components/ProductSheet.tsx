@@ -23,13 +23,13 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Toggle
 } from "@app/components/v3";
 import {
   BillingV2Cadence,
@@ -306,7 +306,7 @@ const PlanCard = ({
         {!isCustom && (showCadenceToggle || cardCadence === "annual") && (
           <div className="flex items-center gap-2">
             {showCadenceToggle && (
-              <Switch
+              <Toggle
                 variant="org"
                 size="sm"
                 className="shrink-0"

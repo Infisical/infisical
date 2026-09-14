@@ -1,5 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
@@ -18,7 +19,7 @@ import {
   ProjectPermissionSub,
   useProject
 } from "@app/context";
-import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
+import { CaStatus, CaType, useDeleteCa, useGetCaQuota, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
@@ -33,8 +34,25 @@ export const ExternalCaSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "ca",
     "deleteCa",
-    "caStatus" // enable / disable
+    "caStatus", // enable / disable
+    "upgradePlan"
   ] as const);
+
+  // maxCas covers every CA type, so an external CA is capped the same way an internal one is.
+  // maxInternalCas is deliberately not consulted here: it caps INTERNAL only.
+  const { data: caQuota } = useGetCaQuota();
+  const caLimit = caQuota?.certificateAuthorities;
+  const isAtCaLimit = typeof caLimit?.limit === "number" && caLimit.used >= caLimit.limit;
+
+  const handleCreateCa = () => {
+    if (isAtCaLimit) {
+      handlePopUpOpen("upgradePlan", {
+        text: `Your plan includes ${caLimit.limit} certificate ${caLimit.limit === 1 ? "authority" : "authorities"}. Your organization is using ${caLimit.used}. Upgrade to add more.`
+      });
+      return;
+    }
+    handlePopUpOpen("ca");
+  };
 
   const onRemoveCaSubmit = async (id: string, type: CaType) => {
     if (!currentProject?.id) return;
@@ -87,11 +105,7 @@ export const ExternalCaSection = () => {
             a={ProjectPermissionSub.CertificateAuthorities}
           >
             {(isAllowed) => (
-              <Button
-                variant="project"
-                onClick={() => handlePopUpOpen("ca")}
-                isDisabled={!isAllowed}
-              >
+              <Button variant="project" onClick={handleCreateCa} isDisabled={!isAllowed}>
                 <PlusIcon />
                 Create External CA
               </Button>
@@ -138,6 +152,12 @@ export const ExternalCaSection = () => {
             popUp?.caStatus?.data as { caId: string; type: CaType; status: CaStatus }
           )
         }
+      />
+
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={(popUp.upgradePlan?.data as { text: string })?.text}
       />
     </Card>
   );

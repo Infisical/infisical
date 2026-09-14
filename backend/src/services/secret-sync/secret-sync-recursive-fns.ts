@@ -1,4 +1,3 @@
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { groupBy } from "@app/lib/fn";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -26,7 +25,6 @@ export type TFnSecretsV2FromImportsDeps = {
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   actorOrgId: string;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 

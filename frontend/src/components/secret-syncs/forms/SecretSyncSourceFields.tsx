@@ -7,16 +7,16 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Label,
   SecretPathInput,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -101,14 +101,15 @@ const DefaultSecretSyncSourceFields = () => {
           <Field>
             <FieldLabel>Environment</FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
                 value={value}
-                onChange={onChange}
+                onValueChange={onChange}
                 options={currentProject.environments}
                 placeholder="Select environment..."
                 getOptionLabel={(option) => option?.name}
                 getOptionValue={(option) => option?.id}
                 isError={Boolean(error)}
+                modal
               />
               <FieldError errors={[error]} />
             </FieldContent>
@@ -148,7 +149,7 @@ const DefaultSecretSyncSourceFields = () => {
                     : `Also sync secrets from every folder beneath this path, however deep. Secret names must be unique across all of them, and the combined total can't exceed ${SECRET_SYNC_MAX_SECRETS} secrets.`}
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="recursive"
                 variant="project"
                 checked={Boolean(value) && !importsFromDestination}

@@ -2,7 +2,6 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -13,6 +12,7 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
@@ -25,6 +25,10 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
+import {
+  ExternalMetadataSchema,
+  ImportExternalMetadataSchema
+} from "@app/services/certificate-common/external-metadata-schemas";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import {
@@ -1349,7 +1353,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema.omit({ orderId: true }).extend({
+          certificate: SanitizedCertificateSchema.extend({
             subject: z
               .object({
                 commonName: z.string().optional(),
@@ -1375,6 +1379,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               .optional(),
             caName: z.string().nullable().optional(),
             caType: z.enum(["internal", "external"]).nullable().optional(),
+            externalMetadata: ExternalMetadataSchema.nullable().optional().describe(CERTIFICATES.GET.externalMetadata),
             profileName: z.string().nullable().optional(),
             applicationName: z.string().nullable().optional(),
             hasPrivateKey: z.boolean().describe(CERTIFICATES.GET.hasPrivateKey),
@@ -1411,8 +1416,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      const parsedExternalMetadata = ExternalMetadataSchema.safeParse(cert.externalMetadata);
+
       return {
-        certificate: cert
+        certificate: {
+          ...cert,
+          externalMetadata: parsedExternalMetadata.success ? parsedExternalMetadata.data : null
+        }
       };
     }
   });
@@ -1626,10 +1636,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
         friendlyName: z.string().trim().max(255).optional().describe(CERTIFICATES.IMPORT.friendlyName),
         pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId),
-        applicationId: z.string().trim().uuid().optional()
+        applicationId: z.string().trim().uuid().optional(),
+        profileId: z.string().trim().uuid().optional().describe(CERTIFICATES.IMPORT.profileId),
+        externalMetadata: ImportExternalMetadataSchema.optional().describe(CERTIFICATES.IMPORT.externalMetadata)
       }),
       response: {
         200: z.object({
+          certificateId: z.string().uuid().describe(CERTIFICATES.IMPORT.certificateId),
           certificate: z.string().trim().describe(CERTIFICATES.IMPORT.certificate),
           certificateChain: z.string().trim().optional().describe(CERTIFICATES.IMPORT.certificateChain),
           privateKey: z.string().trim().optional().describe(CERTIFICATES.IMPORT.privateKey),
@@ -1638,7 +1651,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, certificateChain, privateKey, serialNumber, cert } =
+      const { certificate, certificateChain, privateKey, serialNumber, cert, profileName, caName } =
         await server.services.certificate.importCert({
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -1656,7 +1669,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber
+            serialNumber,
+            certificateProfileId: cert.profileId ?? undefined,
+            profileName: profileName ?? undefined,
+            caId: cert.caId ?? undefined,
+            caName: caName ?? undefined
           }
         }
       });
@@ -1673,6 +1690,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
+        certificateId: cert.id,
         certificate,
         certificateChain,
         privateKey,
@@ -1767,7 +1785,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema.omit({ orderId: true })
+          certificate: SanitizedCertificateSchema
         })
       }
     },
@@ -1828,7 +1846,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema.omit({ orderId: true })
+          certificate: SanitizedCertificateSchema
         })
       }
     },

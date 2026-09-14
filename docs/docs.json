@@ -410,11 +410,6 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  },
-                  {
-                    "group": "Agent Vault",
-                    "icon": "arrow-up-right-from-square",
-                    "root": "https://docs.agent-vault.dev/"
                   }
                 ]
               }
@@ -750,6 +745,28 @@
                 ]
               }
             ]
+          },
+          {
+            "item": "Agent Vault",
+            "icon": "sparkles",
+            "pages": [
+              "documentation/platform/agent-vault/overview",
+              {
+                "group": "Get started",
+                "pages": [
+                  "documentation/platform/agent-vault/quickstart"
+                ]
+              },
+              {
+                "group": "Product reference",
+                "pages": [
+                  "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/sessions",
+                  "documentation/platform/agent-vault/proxies",
+                  "documentation/platform/agent-vault/access-control"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -1069,10 +1086,10 @@
             "icon": "network-wired",
             "pages": [
               "documentation/platform/gateways/overview",
+              "documentation/setup/networking",
               {
                 "group": "Gateways",
                 "pages": [
-                  "documentation/setup/networking",
                   "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-deployment",
                   "documentation/platform/gateways/gateway-pools",
@@ -1252,6 +1269,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/agent-vault",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",
@@ -3719,6 +3737,42 @@
                           "api-reference/endpoints/secret-syncs/zabbix/sync-secrets",
                           "api-reference/endpoints/secret-syncs/zabbix/import-secrets",
                           "api-reference/endpoints/secret-syncs/zabbix/remove-secrets"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "group": "Secret validation rules",
+                    "pages": [
+                      "api-reference/endpoints/secret-validation-rules/list",
+                      {
+                        "group": "Static secrets",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/list",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/create",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/update",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/delete"
+                        ]
+                      },
+                      {
+                        "group": "Dynamic secrets",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/list",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/create",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/update",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/delete"
+                        ]
+                      },
+                      {
+                        "group": "Secret rotations",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/list",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/create",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/update",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/delete"
                         ]
                       }
                     ]

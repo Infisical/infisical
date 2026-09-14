@@ -215,7 +215,9 @@ export const projectCleanupQueueFactory = ({
       });
 
       if (!deleted) {
-        logger.info(`project-hard-delete: already removed by a concurrent worker [projectId=${projectId}]`);
+        logger.info(
+          `project-hard-delete: hard-deleted project was already removed by a concurrent worker [projectId=${projectId}]`
+        );
         return;
       }
 

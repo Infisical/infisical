@@ -73,7 +73,7 @@ function SelectedActionBar({
     <div
       data-slot="selected-action-bar-positioner"
       className={cn(
-        "pointer-events-none fixed inset-x-4 bottom-16 z-40 flex justify-center",
+        "pointer-events-none fixed inset-x-4 bottom-8 z-40 flex justify-center",
         "transition-[opacity,translate,filter,scale] ease-out motion-reduce:transition-none",
         isVisible
           ? "translate-y-0 scale-100 opacity-100 blur-none duration-200"
@@ -91,7 +91,7 @@ function SelectedActionBar({
         data-slot="selected-action-bar"
         data-state={isVisible ? "open" : "closed"}
         className={cn(
-          "pointer-events-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-wrap items-center gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pl-4 text-foreground shadow-lg",
+          "pointer-events-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-wrap items-center gap-2 overflow-y-auto rounded-md border border-border bg-popover p-2 pl-4 text-foreground shadow-floating",
           className
         )}
       >

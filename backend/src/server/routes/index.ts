@@ -25,6 +25,17 @@ import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
+import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
+import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
+import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
+import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
+import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
+import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
+import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
+import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
+import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -206,6 +217,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { logger } from "@app/lib/logger";
 import { Redlock } from "@app/lib/red-lock";
+import { RunMode } from "@app/lib/types";
+import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
@@ -543,6 +556,7 @@ import { injectPermission } from "../plugins/auth/inject-permission";
 import { goSidecarPlugin } from "../plugins/go-sidecar";
 // import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
 import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
+import { injectAgentVaultProjectId } from "../plugins/inject-agent-vault-project-id";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
@@ -586,16 +600,31 @@ export const registerRoutes = async (
   const appCfg = getConfig();
 
   const redlock = new Redlock([redis], { retryCount: 0 });
-  const cronJob = cronJobFactory({ redis, redlock });
-  cronJob.start();
+  const cronJob = cronJobFactory({ redis, redlock, schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled });
+  if (envConfig.isGeneralWorkerRunModeEnabled) {
+    cronJob.start();
+  }
+
+  // An api-only deployment with no general-workers pod queues background work nobody consumes, so
+  // the fleet reports itself in Redis and every api pod complains when the reports stop.
+  const workerHeartbeat = workerHeartbeatFactory({ keyStore });
+  if (envConfig.isGeneralWorkerRunModeEnabled) {
+    workerHeartbeat.startReporting(RunMode.GeneralWorkers);
+  }
+
+  if (envConfig.isApiRunModeEnabled) {
+    workerHeartbeat.startMonitoring(RunMode.GeneralWorkers);
+  }
 
   // Reached from the gateway proxy layer in src/lib, which has no DI, so it is installed as a module
   // singleton rather than threaded through every call site.
   const gatewayLoadTracker = initGatewayLoadTracker(keyStore);
 
-  await server.register(registerSecretScanningV2Webhooks, {
-    prefix: "/secret-scanning/webhooks"
-  });
+  if (envConfig.isApiRunModeEnabled) {
+    await server.register(registerSecretScanningV2Webhooks, {
+      prefix: "/secret-scanning/webhooks"
+    });
+  }
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -1283,10 +1312,12 @@ export const registerRoutes = async (
     groupDAL,
     userGroupMembershipDAL,
     orgMembershipDAL,
+    userAliasDAL,
     membershipRoleDAL,
     membershipGroupDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    auditLogService
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1561,7 +1592,8 @@ export const registerRoutes = async (
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    projectMembershipDAL
+    projectMembershipDAL,
+    usageMeteringService
   });
 
   const rateLimitService = rateLimitServiceFactory({
@@ -1774,6 +1806,53 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const agentVaultAccessBundleDAL = agentVaultAccessBundleDALFactory(db);
+  const agentVaultServiceDAL = agentVaultServiceDALFactory(db);
+  const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
+  const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
+  const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
+  const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
+
+  const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
+    agentVaultAccessBundleDAL,
+    agentVaultServiceDAL,
+    permissionService,
+    kmsService,
+    membershipDAL,
+    membershipRoleDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
+  });
+
+  const agentVaultSessionService = agentVaultSessionServiceFactory({
+    agentVaultSessionDAL,
+    agentVaultSessionAccessBundleDAL,
+    agentVaultAccessBundleDAL,
+    membershipDAL,
+    permissionService
+  });
+
+  const agentVaultProjectResolver = agentVaultProjectResolverFactory({
+    db,
+    projectDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    keyStore
+  });
+
+  const agentVaultMembershipService = agentVaultMembershipServiceFactory({
+    membershipDAL,
+    identityDAL,
+    membershipRoleDAL,
+    groupDAL,
+    projectAccessRequestDAL,
+    userDAL,
+    userAliasDAL,
+    orgDAL,
+    permissionService,
+    usageMeteringService
+  });
+
   const pamProjectResolver = pamProjectResolverFactory({
     db,
     projectDAL,
@@ -1853,10 +1932,22 @@ export const registerRoutes = async (
     gatewayPoolMembershipDAL,
     relayDAL,
     kmipServerDAL,
+    agentVaultProxyDAL,
     identityDAL,
     permissionService,
     licenseService,
     gatewayProxyRegistry
+  });
+
+  const agentVaultProxyService = agentVaultProxyServiceFactory({
+    agentVaultProxyDAL,
+    agentVaultResolveDAL,
+    agentVaultSessionDAL,
+    membershipDAL,
+    orgDAL,
+    permissionService,
+    kmsService,
+    resourceAuthMethodService
   });
 
   const relayService = relayServiceFactory({
@@ -2337,8 +2428,7 @@ export const registerRoutes = async (
     keyStore,
     secretValidationRuleService,
     projectFolderGrantDAL,
-    orgDAL,
-    licenseService
+    orgDAL
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -2500,8 +2590,7 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     projectFolderGrantDAL,
-    orgDAL,
-    licenseService
+    orgDAL
   });
 
   const integrationService = integrationServiceFactory({
@@ -2517,8 +2606,7 @@ export const registerRoutes = async (
     secretDAL,
     kmsService,
     projectFolderGrantDAL,
-    orgDAL,
-    licenseService
+    orgDAL
   });
 
   const accessTokenQueue = accessTokenQueueServiceFactory({
@@ -2789,6 +2877,7 @@ export const registerRoutes = async (
     pkiAlertChannelDAL,
     pkiAlertHistoryDAL,
     permissionService,
+    licenseService,
     smtpService,
     kmsService,
     notificationService,
@@ -2902,7 +2991,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL
+    scepTransactionDAL,
+    agentVaultSessionService
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -3005,7 +3095,9 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     folderVersionDAL,
-    notificationService
+    notificationService,
+    secretApprovalRequestService,
+    auditLogService
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
@@ -3084,6 +3176,7 @@ export const registerRoutes = async (
     acmeEnrollmentConfigDAL,
     scepEnrollmentConfigDAL,
     appConnectionService,
+    licenseService,
     approvalPolicyDAL,
     certificateProfileDAL,
     certificateAuthorityDAL,
@@ -3283,7 +3376,6 @@ export const registerRoutes = async (
     notificationService,
     pkiApplicationDAL,
     projectDAL,
-    licenseService,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -3397,6 +3489,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
     permissionService,
+    licenseService,
     appConnectionDAL,
     appConnectionService,
     caAutoRenewalQueue
@@ -3466,7 +3559,21 @@ export const registerRoutes = async (
     telemetryService
   });
 
+  const digicertCaFns = DigiCertCertificateAuthorityFns({
+    appConnectionDAL,
+    appConnectionService,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    kmsService,
+    projectDAL
+  });
+
   const certificateService = certificateServiceFactory({
+    usageCounterDAL,
+    keyStore,
     certificateDAL,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -3486,21 +3593,14 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationDAL,
+    certificateProfileDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
+    digicertFns: digicertCaFns,
+    certificatePolicyService,
     licenseService,
     usageMeteringService,
     hsmConnectorService
-  });
-
-  const digicertCaFns = DigiCertCertificateAuthorityFns({
-    appConnectionDAL,
-    appConnectionService,
-    certificateAuthorityDAL,
-    externalCertificateAuthorityDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    kmsService,
-    projectDAL
   });
 
   const godaddyCaFns = GoDaddyCertificateAuthorityFns({
@@ -3554,6 +3654,9 @@ export const registerRoutes = async (
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
+    licenseService,
+    usageCounterDAL,
+    keyStore,
     certificateRequestDAL,
     certificateProfileDAL,
     acmeAccountDAL,
@@ -3578,6 +3681,7 @@ export const registerRoutes = async (
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
     permissionService,
+    licenseService,
     projectMembershipDAL,
     membershipDAL,
     pkiApplicationDAL,
@@ -3596,6 +3700,8 @@ export const registerRoutes = async (
   });
 
   const certificateV3Service = certificateV3ServiceFactory({
+    usageCounterDAL,
+    keyStore,
     certificateDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
@@ -3684,6 +3790,7 @@ export const registerRoutes = async (
 
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
+    usageCounterDAL,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -3719,6 +3826,8 @@ export const registerRoutes = async (
 
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
+    licenseService,
+    usageCounterDAL,
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
@@ -3798,6 +3907,7 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     pkiDiscoveryScanHistoryDAL,
     permissionService,
+    licenseService,
     gatewayV2DAL,
     gatewayPoolDAL,
     gatewayPoolService,
@@ -3964,7 +4074,10 @@ export const registerRoutes = async (
     secretService,
     auditLogService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    folderService,
+    folderDAL,
+    projectEnvDAL
   });
 
   // setup the communication with license key server
@@ -4123,6 +4236,11 @@ export const registerRoutes = async (
     pkiApplicationEnrollment: pkiApplicationEnrollmentService,
     certManagerProjectResolver,
     pamProjectResolver,
+    agentVaultProjectResolver,
+    agentVaultAccessBundle: agentVaultAccessBundleService,
+    agentVaultProxy: agentVaultProxyService,
+    agentVaultSession: agentVaultSessionService,
+    agentVaultMembership: agentVaultMembershipService,
     pamAccountTemplate: pamAccountTemplateService,
     pamFolder: pamFolderService,
     pamAccount: pamAccountService,
@@ -4226,6 +4344,9 @@ export const registerRoutes = async (
     globalThis.testServices = server.services;
   }
 
+  // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
+  // (env overrides, license plan, rate limits, admin integration config), so an API pod that stopped
+  // running them would serve stale config rather than shed background work.
   const cronJobs: CronJob[] = [];
   if (appCfg.isProductionMode) {
     const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
@@ -4305,6 +4426,7 @@ export const registerRoutes = async (
   await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
   await server.register(injectPamProjectId);
+  await server.register(injectAgentVaultProjectId);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
 
@@ -4359,44 +4481,49 @@ export const registerRoutes = async (
     }
   });
 
-  // register special routes
-  await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
-  await server.register(registerPkiScepRouter, { prefix: "/scep" });
+  // A worker-only pod still serves /api/status so liveness and readiness probes keep working, but
+  // none of the product API.
+  if (envConfig.isApiRunModeEnabled) {
+    // register special routes
+    await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+    await server.register(registerPkiScepRouter, { prefix: "/scep" });
 
-  // register routes for v1
-  await server.register(
-    async (v1Server) => {
-      await v1Server.register(registerV1EERoutes);
-      await v1Server.register(registerV1Routes);
-    },
-    { prefix: "/api/v1" }
-  );
-  await server.register(
-    async (v2Server) => {
-      await v2Server.register(registerV2EERoutes);
-      await v2Server.register(registerV2Routes);
-    },
-    { prefix: "/api/v2" }
-  );
-  await server.register(
-    async (v3Server) => {
-      await v3Server.register(registerV3EERoutes);
-      await v3Server.register(registerV3Routes);
-    },
-    { prefix: "/api/v3" }
-  );
-  await server.register(registerV4Routes, { prefix: "/api/v4" });
+    // register routes for v1
+    await server.register(
+      async (v1Server) => {
+        await v1Server.register(registerV1EERoutes);
+        await v1Server.register(registerV1Routes);
+      },
+      { prefix: "/api/v1" }
+    );
+    await server.register(
+      async (v2Server) => {
+        await v2Server.register(registerV2EERoutes);
+        await v2Server.register(registerV2Routes);
+      },
+      { prefix: "/api/v2" }
+    );
+    await server.register(
+      async (v3Server) => {
+        await v3Server.register(registerV3EERoutes);
+        await v3Server.register(registerV3Routes);
+      },
+      { prefix: "/api/v3" }
+    );
+    await server.register(registerV4Routes, { prefix: "/api/v4" });
 
-  // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
-  // This route should NEVER BE ENABLED IN PRODUCTION!
-  if (getConfig().isBddNockApiEnabled) {
-    await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
+    // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
+    // This route should NEVER BE ENABLED IN PRODUCTION!
+    if (getConfig().isBddNockApiEnabled) {
+      await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
+    }
   }
 
   server.addHook("onClose", async () => {
     gatewayLoadTracker.shutdown();
     cronJobs.forEach((job) => job.stop());
     await cronJob.stop();
+    await workerHeartbeat.stop();
     await telemetryService.flushAll();
     await eventBusService.close();
     await projectEventsSSEService.close();

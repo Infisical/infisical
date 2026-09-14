@@ -195,7 +195,7 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 | [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
 | [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select with chips, rich rows, and viewport-aware positioning.                   |
 | [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Sunsetting compatibility path for creatable, grouped, or advanced custom-rendering behavior.                |
-| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
+| [`Toggle`](frontend/src/components/v3/generic/Toggle/Toggle.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
 | [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
 | [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                               | Date-range filter with presets — for filter bars.                                                           |
 | [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                           | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
@@ -278,16 +278,17 @@ host component; don't override unless necessary.
 ## 6. Depth & Elevation
 
 Depth is conveyed by layered surface tones and borders. Shadows are reserved
-for elements that float (Popover, DropdownMenu, Sheet).
+for elements that float (Popover, DropdownMenu, Sheet, SelectedActionBar).
 
-| Layer           | Surface                                  | Border                        |
-| --------------- | ---------------------------------------- | ----------------------------- |
-| Page            | `bg-page`                                | —                             |
-| Card            | `bg-card`                                | `border-border`               |
-| Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg` |
-| Row hover       | `bg-container-hover`                     | —                             |
-| Focus           | —                                        | 3px ring, `--color-ring`      |
-| Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                             |
+| Layer           | Surface                                  | Border                              |
+| --------------- | ---------------------------------------- | ----------------------------------- |
+| Page            | `bg-page`                                | —                                   |
+| Card            | `bg-card`                                | `border-border`                     |
+| Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg`       |
+| Floating bar    | `bg-popover`                             | `border-border` + `shadow-floating` |
+| Row hover       | `bg-container-hover`                     | —                                   |
+| Focus           | —                                        | 3px ring, `--color-ring`            |
+| Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                                   |
 
 Never add a box-shadow to a Card, Table row, standalone Badge, or `ButtonBadge`;
 it breaks the border-defined system. An overlapping `ButtonBadge` uses its
@@ -309,7 +310,7 @@ legible across the control edge.
 - **DON'T** use v2 components when a v3 equivalent exists unless the existing scope is v2.
 - **DON'T** add box-shadows as a depth cue — borders and surface tones do
   that work. The exception is elements that genuinely float (Popover,
-  DropdownMenu, Sheet), which already include it.
+  DropdownMenu, Sheet, SelectedActionBar), which already include it.
 - **DON'T** invent new colors. If it isn't in `index.css` `@theme`, it
   doesn't belong.
 - **DON'T** use `project` yellow, `org` blue, or `sub-org` green as generic

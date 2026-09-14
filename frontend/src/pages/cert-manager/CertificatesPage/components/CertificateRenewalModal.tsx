@@ -33,6 +33,7 @@ import {
 } from "@app/hooks/api/certificates/enums";
 import { useGetCertificateById } from "@app/hooks/api/certificates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { useWizardSteps } from "@app/hooks/useWizardSteps";
 import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
 import {
   CertSubjectAlternativeNameType,
@@ -48,7 +49,7 @@ import {
   unionUsageOptions
 } from "./certificateRenewalUtils";
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
-import { CertificateWizardSheet, useWizardSteps, WizardStep } from "./CertificateWizardSheet";
+import { CertificateWizardSheet, WizardStep } from "./CertificateWizardSheet";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";

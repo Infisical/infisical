@@ -30,8 +30,8 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -414,7 +414,13 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
   ) => (
     <Field data-invalid={Boolean(error)}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input {...field} {...inputProps} id={id} aria-invalid={Boolean(error)} />
+      <Input
+        {...field}
+        {...inputProps}
+        id={id}
+        aria-invalid={Boolean(error)}
+        {...(field.name === "name" ? { autoComplete: "off", name: id } : {})}
+      />
       <FieldError errors={[error]} />
     </Field>
   );
@@ -701,7 +707,7 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                         render={({ field: { value, onChange } }) => (
                           <Field>
                             <div className="flex items-center gap-2">
-                              <Switch
+                              <Toggle
                                 id="identity-auth-template-clear-token-reviewer-jwt"
                                 checked={value}
                                 onCheckedChange={onChange}
@@ -749,7 +755,7 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                         return (
                           <Field data-invalid={Boolean(error)}>
                             <div className="flex items-center gap-2">
-                              <Switch
+                              <Toggle
                                 id="identity-auth-template-verify-tls"
                                 checked={hasCaCert ? true : value}
                                 onCheckedChange={onChange}

@@ -28,6 +28,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger
 } from "@app/components/v3/generic/Sidebar";
+import { useOrganization } from "@app/context";
 
 type AdminSubmenuItem = {
   label: string;
@@ -171,6 +172,7 @@ const AdminNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: AdminSubmenu) =>
 export const AdminSidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
 
   const isOnResources = pathname.startsWith("/admin/resources");
 
@@ -209,6 +211,16 @@ export const AdminSidebar = () => {
               transition={{ duration: 0.15, ease: "easeOut" }}
             >
               <SidebarGroup>
+                <SidebarGroupLabel asChild>
+                  <Link
+                    to="/organizations/$orgId/projects"
+                    params={{ orgId: currentOrg.id }}
+                    className="cursor-pointer hover:bg-foreground/[0.025]"
+                  >
+                    <ChevronLeft />
+                    <span>Organization</span>
+                  </Link>
+                </SidebarGroupLabel>
                 <AdminNav onSubmenuOpen={handleSubmenuOpen} />
               </SidebarGroup>
             </motion.div>

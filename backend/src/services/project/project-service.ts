@@ -7,6 +7,7 @@ import {
   ActionProjectType,
   OrganizationActionScope,
   OrgMembershipRole,
+  OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
@@ -56,7 +57,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
@@ -176,7 +177,7 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
@@ -208,7 +209,8 @@ const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
 
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
-  [ProjectType.PAM]: "Privileged Access Manager"
+  [ProjectType.PAM]: "Privileged Access Manager",
+  [ProjectType.AgentVault]: "Agent Vault"
 };
 
 export const projectServiceFactory = ({
@@ -264,6 +266,12 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
+    if (type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
+      });
+    }
+
     const organization = await orgDAL.findOne({ id: actorOrgId });
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -747,6 +755,7 @@ export const projectServiceFactory = ({
     // the just-committed row; the counter filters by project type.
     usageMeteringService.emit(results.orgId, SecretIdentities.key);
     usageMeteringService.emit(results.orgId, PamIdentities.key);
+    usageMeteringService.emit(results.orgId, AgentVaultIdentities.key);
     return results;
   };
 
@@ -773,6 +782,12 @@ export const projectServiceFactory = ({
     if (project.type === ProjectType.PAM) {
       throw new BadRequestError({
         message: "Privileged Access Manager projects cannot be deleted."
+      });
+    }
+
+    if (project.type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects cannot be deleted."
       });
     }
 
@@ -831,6 +846,7 @@ export const projectServiceFactory = ({
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
       usageMeteringService.emit(project.orgId, PamIdentities.key);
+      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
       return { ...softDeletedProject, slug: project.slug };
     } finally {
       await lock.release();
@@ -902,6 +918,28 @@ export const projectServiceFactory = ({
     return workspaces;
   };
 
+  const getAccessibleProjectsWithSubOrgs = async ({
+    actorId,
+    actorOrgId
+  }: Pick<TListProjectsDTO, "actorId" | "actorOrgId">) => {
+    const organizations = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
+    const currentOrganization = organizations.find((organization) => organization.id === actorOrgId);
+    const organizationIds = [actorOrgId];
+    for (const organization of currentOrganization?.subOrganizations ?? []) {
+      // eslint-disable-next-line no-await-in-loop -- Keep membership reads bounded to one database connection.
+      const membership = await orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.USER,
+        actorId,
+        orgId: organization.id,
+        status: OrgMembershipStatus.Accepted
+      });
+      if (membership?.isActive) organizationIds.push(organization.id);
+    }
+
+    const projects = await projectDAL.findUserProjects(actorId, organizationIds);
+    return projects.map(({ id, orgId, name, slug, type }) => ({ id, orgId, name, slug, type }));
+  };
+
   const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
@@ -932,6 +970,14 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    // The org-scoped products own one implicit project each, so its name, slug and delete protection are
+    // not the caller's to change. Create and delete are already guarded; this route was not.
+    if (project.type === ProjectType.AgentVault || project.type === ProjectType.PAM) {
+      throw new BadRequestError({
+        message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type]} is managed for your organization and cannot be renamed or reconfigured here.`
+      });
+    }
 
     if (update.secretDetectionIgnoreValues && !hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
@@ -2252,11 +2298,15 @@ export const projectServiceFactory = ({
     const projectTypeUrl = PROJECT_ACCESS_REQUEST_URL_SLUGS[project.type as ProjectType] ?? project.type;
     const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
-    // PAM is a per-org singleton with no project-scoped route, unlike other product types
-    const callbackPath =
-      project.type === ProjectType.PAM
-        ? `/organizations/${project.orgId}/pam/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`
-        : `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`;
+    const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
+      [ProjectType.PAM]: "pam",
+      [ProjectType.AgentVault]: "agent-vault"
+    };
+    const orgScopedPath = orgScopedProductPath[project.type as ProjectType];
+
+    const callbackPath = orgScopedPath
+      ? `/organizations/${project.orgId}/${orgScopedPath}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`
+      : `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`;
 
     const productLabel = PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type as ProjectType] ?? null;
     const notificationTitle = productLabel ? `${productLabel} Access Request` : "Project Access Request";
@@ -2361,6 +2411,7 @@ export const projectServiceFactory = ({
     createProject,
     deleteProject,
     getProjects,
+    getAccessibleProjectsWithSubOrgs,
     updateProject,
     getProjectUpgradeStatus,
     getAProject,

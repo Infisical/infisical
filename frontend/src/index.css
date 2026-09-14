@@ -68,6 +68,14 @@
 }
 
 @theme {
+  --z-index-sticky: 10;
+  --z-index-backdrop: 20;
+  --z-index-modal: 30;
+  --z-index-dropdown: 40;
+  --z-index-popover: 50;
+  --z-index-tooltip: 60;
+  --z-index-toast: 70;
+
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
@@ -99,6 +107,7 @@
   --color-product-kms: #34edbf;
   --color-product-ss: #b056f0;
   --color-product-pam: #ff3568;
+  --color-product-av: #a1d434;
   --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
@@ -110,6 +119,9 @@
   --color-accent: #7d7f80;
   --color-container: #1a1c1e;
   --color-container-hover: #1f2123;
+
+  /* Elevation */
+  --shadow-floating: 0 8px 32px rgb(0 0 0 / 0.6);
 
   /* Sidebar */
   --color-sidebar: #19191c;

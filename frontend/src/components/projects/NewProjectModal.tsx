@@ -192,6 +192,8 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
                 {...field}
                 placeholder="Type your project name"
                 isError={Boolean(error)}
+                autoComplete="off"
+                name="new-project-name"
               />
               {error && <FieldError>{error.message}</FieldError>}
             </Field>

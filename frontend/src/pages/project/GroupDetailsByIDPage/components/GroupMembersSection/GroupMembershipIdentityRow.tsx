@@ -15,6 +15,7 @@ import { TGroupMemberMachineIdentity } from "@app/hooks/api/groups/types";
 
 type Props = {
   identity: TGroupMemberMachineIdentity;
+  canAssumePrivileges: boolean;
   onAssumePrivileges: (identityId: string) => void;
 };
 
@@ -24,6 +25,7 @@ export const GroupMembershipIdentityRow = ({
     joinedGroupAt,
     id
   },
+  canAssumePrivileges,
   onAssumePrivileges
 }: Props) => {
   return (
@@ -33,33 +35,38 @@ export const GroupMembershipIdentityRow = ({
       </TableCell>
       <TableCell isTruncatable>{name}</TableCell>
       <TableCell>{new Date(joinedGroupAt).toLocaleDateString()}</TableCell>
-      <TableCell>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              variant="ghost"
-              size="xs"
-              aria-label={`Actions for machine identity ${name}`}
-            >
-              <EllipsisIcon />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <ProjectPermissionCan
-              I={ProjectPermissionIdentityActions.AssumePrivileges}
-              a={ProjectPermissionSub.Identity}
-            >
-              {(isAllowed) => {
-                return (
-                  <DropdownMenuItem onClick={() => onAssumePrivileges(id)} isDisabled={!isAllowed}>
-                    Assume Privileges
-                  </DropdownMenuItem>
-                );
-              }}
-            </ProjectPermissionCan>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TableCell>
+      {canAssumePrivileges && (
+        <TableCell>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                aria-label={`Actions for machine identity ${name}`}
+              >
+                <EllipsisIcon />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <ProjectPermissionCan
+                I={ProjectPermissionIdentityActions.AssumePrivileges}
+                a={ProjectPermissionSub.Identity}
+              >
+                {(isAllowed) => {
+                  return (
+                    <DropdownMenuItem
+                      onClick={() => onAssumePrivileges(id)}
+                      isDisabled={!isAllowed}
+                    >
+                      Assume Privileges
+                    </DropdownMenuItem>
+                  );
+                }}
+              </ProjectPermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      )}
     </TableRow>
   );
 };
