@@ -215,7 +215,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
   return (
     <div>
       <div className="flex gap-2">
-        <InputGroup className="h-10 flex-1">
+        <InputGroup className="flex-1">
           <InputGroupAddon>
             <SearchIcon />
           </InputGroupAddon>
@@ -233,7 +233,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "flex h-9 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
