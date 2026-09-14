@@ -6835,6 +6835,7 @@ interface FinalizeAcmeOrderEvent {
   metadata: {
     orderId: string;
     commonName: string;
+    csr: string;
   };
 }
 

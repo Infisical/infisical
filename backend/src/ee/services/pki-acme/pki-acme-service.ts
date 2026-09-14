@@ -1531,7 +1531,8 @@ export const pkiAcmeServiceFactory = ({
           type: EventType.FINALIZE_ACME_ORDER,
           metadata: {
             orderId: updatedOrder.id,
-            commonName: finalizedCsr.commonName || ""
+            commonName: finalizedCsr.commonName || "",
+            csr: updatedOrder.csr!
           }
         }
       });
