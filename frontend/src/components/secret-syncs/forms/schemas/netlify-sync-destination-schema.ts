@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 export enum NetlifySyncContext {
   // All = "all", - Netlify doesn't allow "all" as the context when using is_secret: true
@@ -18,9 +18,15 @@ export const NetlifySyncDestinationSchema = BaseSecretSyncSchema().merge(
     destinationConfig: z.object({
       accountId: z.string(),
       accountName: z.string(),
-      siteId: z.string().optional(),
+      siteId: z
+        .string()
+        .nullish()
+        .transform((value) => value || undefined),
       siteName: z.string().optional(),
-      context: z.nativeEnum(NetlifySyncContext).optional()
+      context: z
+        .nativeEnum(NetlifySyncContext)
+        .nullish()
+        .transform((value) => value || undefined)
     })
   })
 );

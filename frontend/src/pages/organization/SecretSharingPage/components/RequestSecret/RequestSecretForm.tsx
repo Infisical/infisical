@@ -106,7 +106,14 @@ export const RequestSecretForm = () => {
             <FieldLabel>
               Name <span className="text-xs text-muted italic">- Optional</span>
             </FieldLabel>
-            <Input {...field} placeholder="API Key" type="text" isError={Boolean(error)} />
+            <Input
+              {...field}
+              placeholder="API Key"
+              type="text"
+              isError={Boolean(error)}
+              autoComplete="off"
+              name="secret-request-name"
+            />
             {error && <FieldError>{error.message}</FieldError>}
           </Field>
         )}

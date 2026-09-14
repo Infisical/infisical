@@ -127,7 +127,11 @@ type TPamAccountServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
-    "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources" | "checkGrant"
+    | "getAccessStatusBatch"
+    | "getFolderPolicyConfigured"
+    | "getBreakGlassUserFolders"
+    | "cleanupAccountResources"
+    | "checkGrant"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -276,33 +280,43 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ])
     );
 
-    const [accessStatusMap, credentialAccessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] =
-      await Promise.all([
-        deps.pamAccessRequestService.getAccessStatusBatch(
-          { actorId: ctx.actorId, actor: ctx.actor },
-          accountIdsRequiringApproval,
-          projectId
-        ),
-        deps.pamAccessRequestService.getAccessStatusBatch(
-          { actorId: ctx.actorId, actor: ctx.actor },
-          accountIdsRequiringApproval,
-          projectId,
-          PamAccessType.Credential
-        ),
-        deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
-        // Resolve every account's effective permissions in one membership fetch
-        getAccountPermissionRulesMap(
-          membershipDAL,
-          membershipRoleDAL,
-          projectId,
-          accounts.map((a) => ({ id: a.id, folderId: a.folderId })),
-          ctx
-        )
-      ]);
+    const [
+      accessStatusMap,
+      credentialAccessStatusMap,
+      foldersWithApprovalPolicy,
+      breakGlassFolders,
+      permissionsByAccountId
+    ] = await Promise.all([
+      deps.pamAccessRequestService.getAccessStatusBatch(
+        { actorId: ctx.actorId, actor: ctx.actor },
+        accountIdsRequiringApproval,
+        projectId
+      ),
+      deps.pamAccessRequestService.getAccessStatusBatch(
+        { actorId: ctx.actorId, actor: ctx.actor },
+        accountIdsRequiringApproval,
+        projectId,
+        PamAccessType.Credential
+      ),
+      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
+      deps.pamAccessRequestService.getBreakGlassUserFolders(
+        folderIdsRequiringApproval,
+        { actorId: ctx.actorId, actor: ctx.actor },
+        ctx.actorOrgId
+      ),
+      // Resolve every account's effective permissions in one membership fetch
+      getAccountPermissionRulesMap(
+        membershipDAL,
+        membershipRoleDAL,
+        projectId,
+        accounts.map((a) => ({ id: a.id, folderId: a.folderId })),
+        ctx
+      )
+    ]);
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
+      const { requiresApproval, requireReason, allowBreakGlass } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
@@ -331,9 +345,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
+        pendingRequestId: statusEntry?.pendingRequestId ?? null,
+        canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),
         credentialAccessStatus: requiresApproval
           ? (credentialStatusEntry?.accessStatus ?? PamAccessStatus.None)
           : PamAccessStatus.None,
+        credentialPendingRequestId: credentialStatusEntry?.pendingRequestId ?? null,
         permissions: permissionsByAccountId.get(a.id) ?? [],
         createdAt: a.createdAt,
         updatedAt: a.updatedAt
@@ -1168,18 +1185,25 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const folderIdsRequiringApproval = [
       ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
-    const [accessStatusMap, foldersWithApprovalPolicy] = await Promise.all([
+    const [accessStatusMap, foldersWithApprovalPolicy, breakGlassFolders] = await Promise.all([
       deps.pamAccessRequestService.getAccessStatusBatch(
         { actorId: ctx.actorId, actor: ctx.actor },
         accountIdsRequiringApproval,
         projectId
       ),
-      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval)
+      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
+      deps.pamAccessRequestService.getBreakGlassUserFolders(
+        folderIdsRequiringApproval,
+        { actorId: ctx.actorId, actor: ctx.actor },
+        ctx.actorOrgId
+      )
     ]);
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval, requireReason, requireMfa } = resolveAccessControls(a.templatePolicies);
+        const { requiresApproval, requireReason, requireMfa, allowBreakGlass } = resolveAccessControls(
+          a.templatePolicies
+        );
         const statusEntry = accessStatusMap.get(a.id);
         const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
         let disabledReason: string | null = null;
@@ -1205,6 +1229,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           requireMfa,
           accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
+          pendingRequestId: statusEntry?.pendingRequestId ?? null,
+          canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),
           disabledReason,
           createdAt: a.createdAt,
           updatedAt: a.updatedAt

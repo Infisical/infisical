@@ -1,6 +1,7 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
@@ -61,6 +62,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
@@ -144,6 +146,14 @@ export const AccessApprovalRequest = ({
     ProjectPermissionMemberActions.Read,
     ProjectPermissionSub.Member
   );
+  const navigate = useNavigate({
+    from: ROUTE_PATHS.SecretManager.ApprovalPage.path
+  });
+  const searchParams = useSearch({
+    from: ROUTE_PATHS.SecretManager.ApprovalPage.id
+  });
+
+  const { requestId } = searchParams;
 
   const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
   const membersGroupById = useMemo(
@@ -476,6 +486,8 @@ export const AccessApprovalRequest = ({
       const details = generateRequestDetails(request);
       const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
 
+      navigate({ search: (prev) => ({ ...prev, requestId: request.id }) });
+
       setSelectedRequest({
         ...request,
         user: details.isRequestedByCurrentUser
@@ -501,6 +513,15 @@ export const AccessApprovalRequest = ({
       validRequestedByFilter ||
       (statusFilter === "close" && closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length)
   );
+
+  useEffect(() => {
+    if (requestId && !selectedRequest && requests?.length) {
+      const foundRequest = requests.find((r) => r.id === requestId);
+      if (foundRequest) {
+        handleSelectRequest(foundRequest);
+      }
+    }
+  }, [requestId, requests]);
 
   return (
     <>
@@ -941,7 +962,11 @@ export const AccessApprovalRequest = ({
           request={selectedRequest}
           members={members || []}
           isOpen={popUp.reviewRequest.isOpen}
-          onOpenChange={() => {
+          onOpenChange={(open) => {
+            if (!open) {
+              navigate({ search: (prev) => ({ ...prev, requestId: "" }) });
+            }
+
             handlePopUpClose("reviewRequest");
             setSelectedRequest(null);
             refetchRequests();

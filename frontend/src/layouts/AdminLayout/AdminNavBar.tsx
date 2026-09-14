@@ -11,7 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useMatchRoute } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";

@@ -38,7 +38,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { AzureAppConfigurationFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -162,6 +162,8 @@ export const AzureAppConfigurationConnectionForm = ({
     setValue,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const scopeVariant = useScopeVariant();
 

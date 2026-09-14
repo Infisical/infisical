@@ -40,7 +40,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { AzureClientSecretsFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -191,6 +191,8 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
     setValue,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const scopeVariant = useScopeVariant();
 
@@ -413,11 +415,14 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
                 <Field className="mb-4">
                   <FieldLabel htmlFor="credentials.certificateBody">Certificate</FieldLabel>
                   <SecretInput
+                    aria-describedby={error ? "credentials.certificateBody-error" : undefined}
+                    id="credentials.certificateBody"
+                    isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="-----BEGIN CERTIFICATE-----..."
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="credentials.certificateBody-error" errors={[error]} />
                 </Field>
               )}
             />
@@ -428,11 +433,14 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
                 <Field className="mb-4">
                   <FieldLabel htmlFor="credentials.privateKey">Private Key</FieldLabel>
                   <SecretInput
+                    aria-describedby={error ? "credentials.privateKey-error" : undefined}
+                    id="credentials.privateKey"
+                    isError={Boolean(error)}
                     placeholder="-----BEGIN PRIVATE KEY-----..."
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="credentials.privateKey-error" errors={[error]} />
                 </Field>
               )}
             />

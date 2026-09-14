@@ -2,7 +2,6 @@ import path from "node:path";
 
 import RE2 from "re2";
 
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -11,7 +10,6 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
@@ -102,7 +100,6 @@ type TInterpolateSecretArg = {
   // Omit them for same-project-only expansion; cross-project refs then fail closed.
   actorOrgId?: string;
   orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
-  licenseService?: Pick<TLicenseServiceFactory, "getPlan">;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   projectDAL?: Pick<TProjectDALFactory, "find">;
   kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -123,7 +120,6 @@ export const expandSecretReferencesFactory = ({
   userId,
   actorOrgId,
   orgDAL,
-  licenseService,
   projectFolderGrantDAL,
   projectDAL,
   kmsService,
@@ -131,14 +127,12 @@ export const expandSecretReferencesFactory = ({
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
   let crossProjectAllowedCache: boolean | undefined;
-  const hasCrossProjectConfig = Boolean(
-    actorOrgId && orgDAL && licenseService && projectFolderGrantDAL && projectDAL && kmsService
-  );
+  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
-    if (!hasCrossProjectConfig || !actorOrgId || !orgDAL || !licenseService) return false;
+    if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
     if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;
-    const plan = await licenseService.getPlan(actorOrgId);
-    crossProjectAllowedCache = await isCrossProjectEnabled(actorOrgId, orgDAL, plan);
+    const org = await orgDAL.findOrgById(actorOrgId);
+    crossProjectAllowedCache = org?.allowCrossProjectSecretSharing ?? false;
     return crossProjectAllowedCache;
   };
   const slugToProjectId = new Map<string, string | null>();
@@ -165,22 +159,12 @@ export const expandSecretReferencesFactory = ({
   const getCacheUniqueKey = (environment: string, secretPath: string, srcProjectId?: string) =>
     srcProjectId ? `${srcProjectId}:${environment}-${secretPath}` : `${environment}-${secretPath}`;
 
-  const fetchSecret = async (
-    environment: string,
-    secretPath: string,
-    secretKey: string
-  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
-    const cacheKey = getCacheUniqueKey(environment, secretPath);
+  const pendingFolderLoads = new Map<string, Promise<void>>();
 
-    if (secretCache?.[cacheKey]) {
-      const cachedSecret = secretCache[cacheKey][secretKey];
-      if (cachedSecret) return { ...cachedSecret };
-      return { value: "", tags: [], exists: false };
-    }
-
+  const loadFolderSecrets = async (environment: string, secretPath: string, cacheKey: string) => {
     try {
       const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-      if (!folder) return { value: "", tags: [], exists: false };
+      if (!folder) return;
       // When userId is provided, findByFolderId returns both shared and personal secrets.
       // Personal overrides will take precedence over shared secrets in the reduce below.
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
@@ -206,14 +190,32 @@ export const expandSecretReferencesFactory = ({
       );
 
       secretCache[cacheKey] = decryptedSecret;
-
-      const fetchedSecret = secretCache[cacheKey][secretKey];
-      if (fetchedSecret) return { ...fetchedSecret };
-      return { value: "", tags: [], exists: false };
     } catch (error) {
       secretCache[cacheKey] = {};
-      return { value: "", tags: [], exists: false };
     }
+  };
+
+  const fetchSecret = async (
+    environment: string,
+    secretPath: string,
+    secretKey: string
+  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
+    const cacheKey = getCacheUniqueKey(environment, secretPath);
+
+    if (!secretCache[cacheKey]) {
+      let pending = pendingFolderLoads.get(cacheKey);
+      if (!pending) {
+        // Concurrent reference expansion must share the folder read before its result is cached.
+        pending = loadFolderSecrets(environment, secretPath, cacheKey).finally(() => {
+          pendingFolderLoads.delete(cacheKey);
+        });
+        pendingFolderLoads.set(cacheKey, pending);
+      }
+      await pending;
+    }
+
+    const secret = secretCache[cacheKey]?.[secretKey];
+    return secret ? { ...secret } : { value: "", tags: [], exists: false };
   };
 
   const recursivelyExpandSecret = async (dto: {

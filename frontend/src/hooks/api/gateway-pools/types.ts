@@ -45,8 +45,11 @@ export type TGatewayPoolConnectedResources = {
 export type TGatewayPoolMember = {
   id: string;
   name: string;
+  relayId: string | null;
   heartbeat: string | null;
   heartbeatTTL: number | null;
+  directAddress: string | null;
+  directHeartbeat: string | null;
 };
 
 export type TGatewayPoolWithMembers = {

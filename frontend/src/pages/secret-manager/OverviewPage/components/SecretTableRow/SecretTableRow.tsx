@@ -108,6 +108,10 @@ type Props = {
   virtualIndex: number;
   measureElement: (node: Element | null) => void;
   onUnsavedChange?: (secretKey: string, hasUnsavedChanges: boolean) => void;
+  onCopySecret?: (request: {
+    source: { id: string; name: string; path: string; isValueHidden: boolean };
+    environmentSlug: string;
+  }) => void;
 };
 
 export const SecretTableRow = ({
@@ -134,7 +138,8 @@ export const SecretTableRow = ({
   isSelectionDisabled,
   virtualIndex,
   measureElement,
-  onUnsavedChange
+  onUnsavedChange,
+  onCopySecret
 }: Props) => {
   const totalCols = environments.length + 2; // secret key row + icon
   const rowRef = useRef<HTMLTableRowElement | null>(null);
@@ -416,6 +421,20 @@ export const SecretTableRow = ({
             skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
             reminder={singleEnvSecret?.reminder}
             revokedProjectFolderGrant={singleEnvSecret?.revokedProjectFolderGrant}
+            onCopySecret={
+              singleEnvSecret?.id
+                ? () =>
+                    onCopySecret?.({
+                      source: {
+                        id: singleEnvSecret.id,
+                        name: secretKey,
+                        path: singleEnvSecret.path ?? secretPath,
+                        isValueHidden: singleEnvSecret.secretValueHidden
+                      },
+                      environmentSlug: singleEnvSlug
+                    })
+                : undefined
+            }
           />
         ) : (
           <TableCell
@@ -710,6 +729,20 @@ export const SecretTableRow = ({
                               skipMultilineEncoding={secret?.skipMultilineEncoding}
                               reminder={secret?.reminder}
                               revokedProjectFolderGrant={secret?.revokedProjectFolderGrant}
+                              onCopySecret={
+                                secret?.id
+                                  ? () =>
+                                      onCopySecret?.({
+                                        source: {
+                                          id: secret.id,
+                                          name: secretKey,
+                                          path: secret.path ?? secretPath,
+                                          isValueHidden: secret.secretValueHidden
+                                        },
+                                        environmentSlug: slug
+                                      })
+                                  : undefined
+                              }
                             />
                           </TableCell>
                         </TableRow>

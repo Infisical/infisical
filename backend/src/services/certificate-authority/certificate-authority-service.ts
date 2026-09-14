@@ -80,6 +80,8 @@ import {
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
+import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "./certificate-authority-maps";
+import { assertCertificateAuthorityQuota, resolveEffectiveMaxCas } from "./certificate-authority-quota-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
   TCertificateAuthority,
@@ -132,6 +134,7 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
     | "countInternalCasByOrgId"
+    | "countCasByOrgId"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
@@ -326,18 +329,24 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type !== CaType.INTERNAL && type !== CaType.ACME && !plan.pkiEnterpriseCaIntegrations) {
+      throw new BadRequestError({
+        message: `Failed to connect ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} due to plan restriction. Upgrade plan to connect an external certificate authority.`
+      });
+    }
+
+    // Internal CAs are gated inside internalCertificateAuthorityService.createCa, which every internal
+    // creation path funnels through, so only the external types are checked here.
+    if (type !== CaType.INTERNAL) {
+      await assertCertificateAuthorityQuota({
+        projectId,
+        isInternal: false,
+        deps: { projectDAL, licenseService, certificateAuthorityDAL }
+      });
+    }
+
     if (type === CaType.INTERNAL) {
       const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
-
-      if (typeof plan.maxInternalCas === "number") {
-        const currentInternalCaCount = await certificateAuthorityDAL.countInternalCasByOrgId(actor.orgId);
-        if (currentInternalCaCount >= plan.maxInternalCas) {
-          throw new BadRequestError({
-            message:
-              "Failed to create internal certificate authority due to plan limit reached. Upgrade plan to add more internal certificate authorities."
-          });
-        }
-      }
 
       if (internalConfig.keySource === CertKeySource.Hsm) {
         if (!internalConfig.hsmConnectorId) {
@@ -630,6 +639,36 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
+  };
+
+  const getCertificateAuthorityQuota = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const plan = await licenseService.getPlan(project.orgId);
+    const [totalUsed, internalUsed] = await Promise.all([
+      certificateAuthorityDAL.countCasByOrgId(project.orgId),
+      certificateAuthorityDAL.countInternalCasByOrgId(project.orgId)
+    ]);
+
+    return {
+      certificateAuthorities: { used: totalUsed, limit: resolveEffectiveMaxCas(plan) },
+      internalCertificateAuthorities: { used: internalUsed, limit: plan.maxInternalCas ?? null }
+    };
   };
 
   const listCertificateAuthoritiesByProjectId = async (
@@ -1451,6 +1490,7 @@ export const certificateAuthorityServiceFactory = ({
     createCertificateAuthority,
     findCertificateAuthorityById,
     listCertificateAuthoritiesByProjectId,
+    getCertificateAuthorityQuota,
     findCertificateAuthorityByNameAndProjectId,
     updateCertificateAuthority,
     deleteCertificateAuthority,

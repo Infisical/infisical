@@ -10,7 +10,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -40,7 +40,7 @@ export const CloudflareWorkersSyncOptionsFields = () => {
                   bindings on Cloudflare Workers, not create new ones.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="sync-non-secret-bindings"
                 variant="project"
                 checked={value}

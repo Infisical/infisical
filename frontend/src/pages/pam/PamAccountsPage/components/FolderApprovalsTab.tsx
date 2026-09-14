@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { components, OptionProps } from "react-select";
-import { Ban, FilterIcon, Trash2, User as UserIcon, Users as UsersIcon } from "lucide-react";
+import {
+  Ban,
+  FilterIcon,
+  ShieldAlert,
+  Trash2,
+  User as UserIcon,
+  Users as UsersIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -137,6 +144,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const [approvers, setApprovers] = useState<ApproverEntry[]>([]);
+  const [breakGlassUsers, setBreakGlassApprovers] = useState<ApproverEntry[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [notificationConfigs, setNotificationConfigs] = useState<TPamNotificationConfig[]>([]);
 
@@ -144,6 +152,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     if (!config?.steps?.[0]) return [];
     return config.steps[0].approvers.map((a) => ({ type: a.type, id: a.id }));
   }, [config]);
+
+  const savedBreakGlassUsers = useMemo(
+    () => (config?.breakGlassUsers ?? []).map((a) => ({ type: a.type, id: a.id })),
+    [config]
+  );
 
   const savedNotificationConfigs = useMemo<TPamNotificationConfig[]>(
     () =>
@@ -169,6 +182,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   }, [savedApprovers]);
 
   useEffect(() => {
+    setBreakGlassApprovers(savedBreakGlassUsers);
+  }, [savedBreakGlassUsers]);
+
+  useEffect(() => {
     setNotificationConfigs(savedNotificationConfigs);
   }, [savedNotificationConfigs]);
 
@@ -176,7 +193,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     () => JSON.stringify(notificationConfigs) !== JSON.stringify(savedNotificationConfigs),
     [notificationConfigs, savedNotificationConfigs]
   );
-  const isAnyDirty = isDirty || isNotifDirty;
+  const isBreakGlassDirty = useMemo(
+    () => JSON.stringify(breakGlassUsers) !== JSON.stringify(savedBreakGlassUsers),
+    [breakGlassUsers, savedBreakGlassUsers]
+  );
+  const isAnyDirty = isDirty || isNotifDirty || isBreakGlassDirty;
 
   useEffect(() => {
     onDirtyChange?.(isAnyDirty);
@@ -186,6 +207,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const selectedIds = useMemo(
     () => new Set(approvers.map((a) => `${a.type}:${a.id}`)),
     [approvers]
+  );
+
+  const selectedBreakGlassIds = useMemo(
+    () => new Set(breakGlassUsers.map((a) => `${a.type}:${a.id}`)),
+    [breakGlassUsers]
   );
 
   const userMap = useMemo(
@@ -241,6 +267,31 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     return [...groups, ...users];
   }, [orgGroups, orgUsers, selectedIds, memberUserIds, memberGroupIds]);
 
+  const breakGlassOptions = useMemo<ApproverOption[]>(() => {
+    const groups: ApproverOption[] = (orgGroups ?? [])
+      .filter((g) => memberGroupIds.has(g.id) && !selectedBreakGlassIds.has(`group:${g.id}`))
+      .map((g) => ({ value: g.id, label: g.name, kind: PamApproverType.Group, subtitle: "Group" }));
+
+    const users: ApproverOption[] = (orgUsers ?? [])
+      .filter(
+        (ou) =>
+          ou.user.id &&
+          memberUserIds.has(ou.user.id) &&
+          !selectedBreakGlassIds.has(`user:${ou.user.id}`)
+      )
+      .map((ou) => {
+        const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
+        return {
+          value: ou.user.id,
+          label: name || ou.user.email || ou.inviteEmail || ou.user.username,
+          kind: PamApproverType.User,
+          subtitle: ou.user.email ?? ou.inviteEmail ?? ""
+        };
+      });
+
+    return [...groups, ...users];
+  }, [orgGroups, orgUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
+
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;
     setApprovers((prev) => [...prev, { type: opt.kind, id: opt.value }]);
@@ -250,6 +301,15 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const removeApprover = (index: number) => {
     setApprovers((prev) => prev.filter((_, i) => i !== index));
     setIsDirty(true);
+  };
+
+  const addBreakGlassUser = (opt: ApproverOption | null) => {
+    if (!opt) return;
+    setBreakGlassApprovers((prev) => [...prev, { type: opt.kind, id: opt.value }]);
+  };
+
+  const removeBreakGlassUser = (index: number) => {
+    setBreakGlassApprovers((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = () => {
@@ -266,10 +326,19 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       return;
     }
 
+    if (breakGlassUsers.length > 0 && approvers.length === 0) {
+      createNotification({
+        type: "error",
+        text: "Break-glass users need at least one approver to skip"
+      });
+      return;
+    }
+
     setConfig.mutate(
       {
         folderId,
         steps: [{ approvers }],
+        breakGlassUsers,
         // undefined leaves server-side configs untouched when the plan doesn't include the feature
         notificationConfigs: isPamSlackEnabled ? notificationConfigs : undefined
       },
@@ -287,6 +356,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   const handleDiscard = () => {
     setApprovers(savedApprovers);
+    setBreakGlassApprovers(savedBreakGlassUsers);
     setNotificationConfigs(savedNotificationConfigs);
     setIsDirty(false);
   };
@@ -375,6 +445,94 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                           aria-label="Remove approver"
                           className="text-muted hover:text-danger"
                           onClick={() => removeApprover(idx)}
+                        >
+                          <Trash2 className="size-4" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">
+            Break-Glass Users
+            <Badge variant="pam">{breakGlassUsers.length}</Badge>
+          </CardTitle>
+          <CardDescription>
+            Users and groups who can grant themselves access to accounts in this folder in an
+            emergency, without an approver. Only applies to accounts whose template has the Allow
+            Break-Glass policy on. Every use is recorded in the audit log and emailed to the
+            approvers who were skipped.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <FilterableSelect
+            value={null}
+            options={breakGlassOptions}
+            onChange={(opt) => addBreakGlassUser(opt as ApproverOption | null)}
+            getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
+            getOptionLabel={(opt) => opt.label}
+            components={{ Option: ApproverSelectOption }}
+            placeholder="Add a user or group..."
+            noOptionsMessage={() =>
+              "No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
+            }
+          />
+
+          {breakGlassUsers.length === 0 ? (
+            <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
+              No break-glass users configured. Nobody can bypass approval in this folder.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Approver</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {breakGlassUsers.map((approver, idx) => {
+                  const Icon = KIND_ICON[approver.type];
+                  const displayName =
+                    approver.type === PamApproverType.User
+                      ? (userMap.get(approver.id)?.label ?? approver.id)
+                      : (groupMap.get(approver.id) ?? approver.id);
+                  const subtitle =
+                    approver.type === PamApproverType.User
+                      ? userMap.get(approver.id)?.email
+                      : undefined;
+
+                  return (
+                    <TableRow key={`bg-${approver.type}-${approver.id}`} className="h-14">
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <Icon className="size-4 shrink-0 text-muted" />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{displayName}</span>
+                            {subtitle && <span className="text-xs text-muted">{subtitle}</span>}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="neutral">
+                          {approver.type === PamApproverType.User ? "User" : "Group"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell variant="action">
+                        <IconButton
+                          variant="ghost"
+                          size="xs"
+                          aria-label="Remove break-glass user"
+                          className="text-muted hover:text-danger"
+                          onClick={() => removeBreakGlassUser(idx)}
                         >
                           <Trash2 className="size-4" />
                         </IconButton>
@@ -482,7 +640,22 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                           <AccessTypeBadge accessType={request.accessType} />
                         </TableCell>
                         <TableCell>
-                          <Badge variant={status.variant}>{status.label}</Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={status.variant}>{status.label}</Badge>
+                            {request.isBreakGlass && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="danger">
+                                    <ShieldAlert className="mr-1 size-3" />
+                                    Break-glass
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {request.bypassReason ? ` Reason: "${request.bypassReason}"` : ""}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </TableCell>
                         {canRevoke && (
                           <TableCell variant="action" onClick={(e) => e.stopPropagation()}>

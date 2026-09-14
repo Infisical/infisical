@@ -1,1 +1,1 @@
-export { useOrgAdminAccessProject } from "./mutation";
+export { grantOrgAdminProjectAccess, useOrgAdminAccessProject } from "./mutation";

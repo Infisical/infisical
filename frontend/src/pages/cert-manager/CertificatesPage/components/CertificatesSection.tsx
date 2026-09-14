@@ -29,7 +29,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
-import { CertificateImportModal } from "./CertificateImportModal";
+import { CertificateImportSheet } from "./CertificateImportSheet";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
 import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
@@ -185,7 +185,7 @@ export const CertificatesSection = ({
           applicationId={applicationId}
           applicationName={applicationName}
         />
-        <CertificateImportModal
+        <CertificateImportSheet
           popUp={popUp}
           handlePopUpToggle={handlePopUpToggle}
           applicationId={applicationId}

@@ -13,7 +13,7 @@ import {
   Stepper,
   StepperList,
   StepperStep,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -232,7 +232,7 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
                         to only sync manually.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="auto-sync-enabled"
                       variant="project"
                       checked={value}

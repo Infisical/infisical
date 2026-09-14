@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
 
 import { Button } from "../Button";
 import {
@@ -48,6 +49,12 @@ const PROJECTS = Array.from({ length: 18 }, (_, index) => ({
   name:
     index % 4 === 0 ? `Project ${index + 1} with a long descriptive name` : `Project ${index + 1}`
 }));
+
+const VAULTS = [
+  { id: "engineering", name: "Engineering", items: 42 },
+  { id: "infrastructure", name: "Infrastructure", items: 18 },
+  { id: "security", name: "Security", items: 7 }
+] as const;
 
 const ComboboxStoryPortalContext = createContext<HTMLElement | null>(null);
 
@@ -185,14 +192,58 @@ export const RichOptions: Story = {
   render: () => <RichOptionsRender />
 };
 
+const OpaqueOptionFieldsRender = () => {
+  const [value, setValue] = useState<(typeof VAULTS)[number] | null>(VAULTS[0]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-vault">Vault</FieldLabel>
+      <StoryCombobox
+        id="combobox-vault"
+        options={VAULTS}
+        value={value}
+        onValueChange={setValue}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        getOptionKeywords={(option) => [`${option.items} items`]}
+        placeholder="Select vault..."
+        searchPlaceholder="Search vaults..."
+        searchAriaLabel="Search vaults"
+        renderOption={(option) => (
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            <span className="truncate">{option.name}</span>
+            <span className="shrink-0 text-xs text-muted">{option.items} items</span>
+          </div>
+        )}
+      />
+    </Field>
+  );
+};
+
+export const OpaqueOptionFields: Story = {
+  name: "Example: Opaque Option Fields",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Consumer option objects are opaque to the underlying primitive. Fields such as a numeric `items` count cannot be mistaken for the combobox's internal grouped-item structure."
+      }
+    }
+  },
+  render: () => <OpaqueOptionFieldsRender />
+};
+
 const MultipleRender = () => {
   const [value, setValue] = useState<(typeof PROJECTS)[number][]>(PROJECTS.slice(0, 2));
 
   return (
     <Field>
-      <FieldLabel htmlFor="combobox-projects">Projects</FieldLabel>
+      <FieldLabel id="combobox-projects-label" htmlFor="combobox-projects">
+        Projects
+      </FieldLabel>
       <StoryCombobox
         id="combobox-projects"
+        aria-labelledby="combobox-projects-label"
         multiple
         options={PROJECTS}
         value={value}
@@ -215,7 +266,16 @@ const MultipleRender = () => {
  */
 export const Multiple: Story = {
   name: "Multiple: Chips",
-  render: () => <MultipleRender />
+  render: () => <MultipleRender />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const combobox = canvas.getByRole("combobox", { name: "Projects" });
+
+    await userEvent.click(canvas.getByText("Projects"));
+    await userEvent.type(combobox, "Project 3");
+    await expect(combobox).toHaveFocus();
+    await expect(combobox).toHaveAccessibleName("Projects");
+  }
 };
 
 const SelectAllRender = () => {
@@ -413,9 +473,12 @@ export const States: Story = {
         />
       </Field>
       <Field data-disabled="true">
-        <FieldLabel htmlFor="combobox-disabled-projects">Projects</FieldLabel>
+        <FieldLabel id="combobox-disabled-projects-label" htmlFor="combobox-disabled-projects">
+          Projects
+        </FieldLabel>
         <StoryCombobox
           id="combobox-disabled-projects"
+          aria-labelledby="combobox-disabled-projects-label"
           multiple
           options={PROJECTS}
           value={PROJECTS.slice(0, 2)}
@@ -501,4 +564,30 @@ export const ViewportEdges: Story = {
     }
   },
   render: () => <ViewportEdgesRender />
+};
+
+/** Saved IDs remain visible even when a server search returns a different page. */
+export const ServerFilteredSelection: Story = {
+  name: "Example: Server-filtered Saved Selection",
+  render: () => {
+    const [value, setValue] = useState<string | null>("saved-workspace");
+    const [query, setQuery] = useState("");
+    const options = ["first-page-workspace", "another-workspace"].filter((id) =>
+      id.includes(query)
+    );
+    return (
+      <Combobox
+        aria-label="Workspace"
+        options={options}
+        value={value}
+        onValueChange={setValue}
+        onClear={() => setValue(null)}
+        getOptionValue={(id) => id}
+        getOptionLabel={(id) => id}
+        shouldFilter={false}
+        includeMissingSelectedOptions={!query}
+        onInputValueChange={setQuery}
+      />
+    );
+  }
 };

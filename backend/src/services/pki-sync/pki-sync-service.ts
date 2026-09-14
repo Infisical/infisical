@@ -30,7 +30,7 @@ import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-s
 import { PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
   assertPkiSyncDestinationConfigAllowsCertificateCount,
-  enterprisePkiSyncCheck,
+  assertPkiSyncLicense,
   getPkiSyncMaxCertificates,
   getPkiSyncProviderCapabilities,
   listPkiSyncOptions,
@@ -98,7 +98,7 @@ type TPkiSyncServiceFactoryDep = {
     | "clearSyncMetadataFlag"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -454,7 +454,7 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    await enterprisePkiSyncCheck(licenseService, actor.orgId, destination);
+    await assertPkiSyncLicense(licenseService, actor.orgId);
 
     let subscriber;
     if (subscriberId) {
@@ -477,7 +477,11 @@ export const pkiSyncServiceFactory = ({
     const destinationApps = getPkiSyncConnectionApps(destination);
 
     // Validates permission to connect and app is valid for sync destination
-    const connection = await appConnectionService.connectAppConnectionById(destinationApps, connectionId, actor);
+    const connection = await appConnectionService.validateAppConnectionUsageById(
+      destinationApps,
+      { connectionId, projectId },
+      actor
+    );
 
     assertTargetHostMatchesConnection({ destination, connection, destinationConfig });
 
@@ -640,11 +644,11 @@ export const pkiSyncServiceFactory = ({
     // Swapping the connection re-runs the App Connection Connect check, as it always has. Editing the
     // sync's own fields must not: the delivery target is gated by SetTargetHost below, and the sync row
     // already carries enough of its current connection to validate against.
-    let resolvedConnection: Awaited<ReturnType<typeof appConnectionService.connectAppConnectionById>> | undefined;
+    let resolvedConnection: Awaited<ReturnType<typeof appConnectionService.validateAppConnectionUsageById>> | undefined;
     const resolveConnection = async () => {
-      resolvedConnection ??= await appConnectionService.connectAppConnectionById(
+      resolvedConnection ??= await appConnectionService.validateAppConnectionUsageById(
         getPkiSyncConnectionApps(pkiSync.destination),
-        connectionId ?? pkiSync.connectionId,
+        { connectionId: connectionId ?? pkiSync.connectionId, projectId: pkiSync.projectId },
         actor
       );
       return resolvedConnection;
@@ -1039,9 +1043,9 @@ export const pkiSyncServiceFactory = ({
       await validateCertificatesForSync(args.certificateIds, args.projectId, args.applicationId);
     }
 
-    const connection = await appConnectionService.connectAppConnectionById(
+    const connection = await appConnectionService.validateAppConnectionUsageById(
       getPkiSyncConnectionApps(args.destination),
-      args.connectionId,
+      { connectionId: args.connectionId, projectId: args.projectId },
       actor
     );
 
