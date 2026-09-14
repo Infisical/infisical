@@ -5,7 +5,7 @@ import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib
 import {
   EventOutboxStatus,
   IEventOutboxConsumer,
-  TOutboxRowResult
+  TOutboxEventResult
 } from "@app/services/event-outbox/event-outbox-types";
 
 import { TAlertDALFactory } from "./alert-dal";
@@ -41,26 +41,26 @@ export const alertEventConsumerFactory = ({
   const subscribesTo = (eventType: string): boolean => alertProviderRegistry.eventTriggeredKeys().has(eventType);
 
   // subscribesTo only sees the event type, so a valid event key on the wrong resourceType gets past it.
-  // Fail here, terminally and naming both, instead of marking the row delivered as "no matching alert".
-  const $isDeclaredEvent = (row: TEventOutbox): boolean =>
+  // Fail here, terminally and naming both, instead of marking the event delivered as "no matching alert".
+  const $isDeclaredEvent = (event: TEventOutbox): boolean =>
     Boolean(
       alertProviderRegistry
-        .get(row.resourceType)
-        ?.events.some((event) => event.key === row.eventType && event.triggerType === AlertTriggerType.Event)
+        .get(event.resourceType)
+        ?.events.some((declared) => declared.key === event.eventType && declared.triggerType === AlertTriggerType.Event)
     );
 
-  const $handleRow = async (row: TEventOutbox, findAlerts: TAlertLookup): Promise<TOutboxRowResult> => {
-    const id = String(row.id);
+  const $handleEvent = async (event: TEventOutbox, findAlerts: TAlertLookup): Promise<TOutboxEventResult> => {
+    const id = String(event.id);
 
-    if (!$isDeclaredEvent(row)) {
+    if (!$isDeclaredEvent(event)) {
       return {
         id,
         status: EventOutboxStatus.Failed,
-        error: `No alert provider for resource type '${row.resourceType}' declares '${row.eventType}' as an event-triggered alert`
+        error: `No alert provider for resource type '${event.resourceType}' declares '${event.eventType}' as an event-triggered alert`
       };
     }
 
-    const payload = AlertEventPayloadSchema.safeParse(row.payload);
+    const payload = AlertEventPayloadSchema.safeParse(event.payload);
     if (!payload.success) {
       return {
         id,
@@ -69,20 +69,20 @@ export const alertEventConsumerFactory = ({
       };
     }
 
-    const progress = AlertEventProgressSchema.safeParse(row.progress ?? {});
+    const progress = AlertEventProgressSchema.safeParse(event.progress ?? {});
     const delivered = new Set(progress.success ? progress.data.deliveredChannelIds : []);
 
     const alerts = await findAlerts({
-      orgId: row.orgId,
-      projectId: row.projectId,
-      resourceType: row.resourceType,
-      resourceId: row.resourceId,
-      eventType: row.eventType
+      orgId: event.orgId,
+      projectId: event.projectId,
+      resourceType: event.resourceType,
+      resourceId: event.resourceId,
+      eventType: event.eventType
     });
 
     if (alerts.length === 0) {
       recordAlertDispatchOutcomeMetric({
-        resourceType: row.resourceType,
+        resourceType: event.resourceType,
         outcome: AlertDispatchOutcome.NoMatchingAlert
       });
       return { id, status: EventOutboxStatus.Delivered };
@@ -93,9 +93,9 @@ export const alertEventConsumerFactory = ({
     for (const alert of alerts) {
       // eslint-disable-next-line no-await-in-loop -- at most a project- and an org-scoped alert
       const result = await alertEngine.runAlertForEvent(alert, {
-        eventType: row.eventType,
+        eventType: event.eventType,
         targetIds: payload.data.targetIds,
-        payload: (row.payload ?? {}) as Record<string, unknown>,
+        payload: (event.payload ?? {}) as Record<string, unknown>,
         skipChannelIds: [...delivered]
       });
       result.deliveredChannelIds.forEach((channelId) => delivered.add(channelId));
@@ -116,7 +116,7 @@ export const alertEventConsumerFactory = ({
     return { ...outcome, status: EventOutboxStatus.Delivered };
   };
 
-  const handle = async (rows: TEventOutbox[]): Promise<TOutboxRowResult[]> => {
+  const handle = async (events: TEventOutbox[]): Promise<TOutboxEventResult[]> => {
     const alertsByScope = new Map<string, ReturnType<TAlertLookup>>();
     const findAlerts: TAlertLookup = (filter) => {
       const key = `${filter.orgId}|${filter.projectId ?? ""}|${filter.eventType}`;
@@ -128,15 +128,15 @@ export const alertEventConsumerFactory = ({
       return lookup;
     };
 
-    const results: TOutboxRowResult[] = [];
+    const results: TOutboxEventResult[] = [];
 
-    for (const row of rows) {
+    for (const event of events) {
       try {
         // eslint-disable-next-line no-await-in-loop -- ordering is the point
-        results.push(await $handleRow(row, findAlerts));
+        results.push(await $handleEvent(event, findAlerts));
       } catch (error) {
         results.push({
-          id: String(row.id),
+          id: String(event.id),
           status: EventOutboxStatus.Retry,
           error: error instanceof Error ? error.message : "Unknown error"
         });

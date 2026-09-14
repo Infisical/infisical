@@ -20,8 +20,8 @@ import {
   OutboxEventSchema,
   STALE_CLAIM_THRESHOLD_MS,
   TOutboxEvent,
-  TOutboxFlushKey,
-  TOutboxRowResult
+  TOutboxEventResult,
+  TOutboxFlushKey
 } from "./event-outbox-types";
 
 const PRUNE_BATCH_SIZE = 5_000;
@@ -142,7 +142,11 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     }
   };
 
-  const $applyResults = async (rows: TEventOutbox[], lockToken: string, results: TOutboxRowResult[]): Promise<void> => {
+  const $applyResults = async (
+    rows: TEventOutbox[],
+    lockToken: string,
+    results: TOutboxEventResult[]
+  ): Promise<void> => {
     const byId = new Map(results.map((result) => [result.id, result]));
     const now = Date.now();
 
@@ -166,7 +170,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       };
 
       const attempts = row.attempts + 1;
-      let finalStatus: TOutboxRowResult["status"];
+      let finalStatus: TOutboxEventResult["status"];
       if (result.status === EventOutboxStatus.Delivered) {
         finalStatus = EventOutboxStatus.Delivered;
         delivered.push({ id, progress: result.progress });
@@ -222,7 +226,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     key: TOutboxFlushKey,
     claimed: TEventOutbox[],
     lockToken: string
-  ): Promise<TOutboxRowResult[]> => {
+  ): Promise<TOutboxEventResult[]> => {
     const ids = claimed.map((row) => String(row.id));
     const heartbeat = setInterval(() => {
       eventOutboxDAL.extendClaims(ids, lockToken).catch((error) => {

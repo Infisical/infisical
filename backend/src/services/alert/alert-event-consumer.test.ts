@@ -15,7 +15,7 @@ const EVENT_TYPE = "approval.workflow.request_opened";
 
 const makeAlert = (id: string) => ({ id, resourceType: "approval.workflow", orgId: ORG_ID }) as never;
 
-const makeRow = (overrides?: Partial<TEventOutbox>): TEventOutbox =>
+const makeEvent = (overrides?: Partial<TEventOutbox>): TEventOutbox =>
   ({
     id: 1,
     consumer: "alert",
@@ -92,10 +92,10 @@ describe("alert outbox consumer", () => {
     expect(consumer.subscribesTo("identity.authentication.expiry")).toBe(false);
   });
 
-  test("delivers the event's targets and marks the row delivered", async () => {
+  test("delivers the event's targets and marks it delivered", async () => {
     const { consumer, runs } = buildConsumer();
 
-    const [result] = await consumer.handle([makeRow()]);
+    const [result] = await consumer.handle([makeEvent()]);
 
     expect(result.status).toBe(EventOutboxStatus.Delivered);
     expect(runs[0].targetIds).toEqual(["req-1"]);
@@ -106,10 +106,10 @@ describe("alert outbox consumer", () => {
 
   // The alert was deleted or disabled between the gate and the worker, so nobody is owed a
   // notification. That's a completed event, not something to retry forever.
-  test("marks the row delivered when no alert matches any more", async () => {
+  test("marks the event delivered when no alert matches any more", async () => {
     const { consumer, runs } = buildConsumer({ alerts: [] });
 
-    const [result] = await consumer.handle([makeRow()]);
+    const [result] = await consumer.handle([makeEvent()]);
 
     expect(result.status).toBe(EventOutboxStatus.Delivered);
     expect(runs).toHaveLength(0);
@@ -120,7 +120,7 @@ describe("alert outbox consumer", () => {
       results: [{ outcome: AlertDispatchOutcome.DeliveryPartial, deliveredChannelIds: ["c-1"] }]
     });
 
-    const [result] = await consumer.handle([makeRow()]);
+    const [result] = await consumer.handle([makeEvent()]);
 
     expect(result.status).toBe(EventOutboxStatus.Retry);
     expect(result.progress).toEqual({ deliveredChannelIds: ["c-1"] });
@@ -129,7 +129,7 @@ describe("alert outbox consumer", () => {
   test("skips the channels a previous attempt already delivered to", async () => {
     const { consumer, runs } = buildConsumer();
 
-    await consumer.handle([makeRow({ progress: { deliveredChannelIds: ["c-1"] } })]);
+    await consumer.handle([makeEvent({ progress: { deliveredChannelIds: ["c-1"] } })]);
 
     expect(runs[0].skipChannelIds).toEqual(["c-1"]);
   });
@@ -138,7 +138,7 @@ describe("alert outbox consumer", () => {
   test("fails terminally on an unreadable payload", async () => {
     const { consumer } = buildConsumer();
 
-    const [result] = await consumer.handle([makeRow({ payload: { targetIds: [] } })]);
+    const [result] = await consumer.handle([makeEvent({ payload: { targetIds: [] } })]);
 
     expect(result.status).toBe(EventOutboxStatus.Failed);
     expect(result.error).toContain("Unreadable alert event payload");
@@ -153,7 +153,7 @@ describe("alert outbox consumer", () => {
       ]
     });
 
-    const [result] = await consumer.handle([makeRow()]);
+    const [result] = await consumer.handle([makeEvent()]);
 
     expect(runs.map((run) => run.alertId)).toEqual(["alert-project", "alert-org"]);
     expect(result.progress).toEqual({ deliveredChannelIds: ["c-1", "c-2"] });
@@ -164,7 +164,7 @@ describe("alert outbox consumer", () => {
   test("fails terminally when no provider declares the event for that resource type", async () => {
     const { consumer, runs, getLookups } = buildConsumer();
 
-    const [result] = await consumer.handle([makeRow({ resourceType: "pki.certificate" })]);
+    const [result] = await consumer.handle([makeEvent({ resourceType: "pki.certificate" })]);
 
     expect(result.status).toBe(EventOutboxStatus.Failed);
     expect(result.error).toContain("pki.certificate");
@@ -173,9 +173,9 @@ describe("alert outbox consumer", () => {
     expect(getLookups()).toBe(0);
   });
 
-  // Throwing out of handle() sends the whole batch back for retry, re-notifying on rows that already
-  // delivered, so one row's failure has to stay that row's failure.
-  test("retries only the row whose lookup threw", async () => {
+  // Throwing out of handle() sends the whole batch back for retry, re-notifying on events that already
+  // delivered, so one event's failure has to stay that event's failure.
+  test("retries only the event whose lookup threw", async () => {
     let calls = 0;
     const { consumer, runs } = buildConsumer({
       eventKeys: [EVENT_TYPE, "approval.workflow.request_closed", "approval.workflow.request_reopened"],
@@ -187,9 +187,9 @@ describe("alert outbox consumer", () => {
     });
 
     const results = await consumer.handle([
-      makeRow({ id: 1, eventType: EVENT_TYPE }),
-      makeRow({ id: 2, eventType: "approval.workflow.request_closed" }),
-      makeRow({ id: 3, eventType: "approval.workflow.request_reopened" })
+      makeEvent({ id: 1, eventType: EVENT_TYPE }),
+      makeEvent({ id: 2, eventType: "approval.workflow.request_closed" }),
+      makeEvent({ id: 3, eventType: "approval.workflow.request_reopened" })
     ]);
 
     expect(results.map((result) => result.status)).toEqual([
@@ -205,22 +205,22 @@ describe("alert outbox consumer", () => {
     const { consumer, getLookups } = buildConsumer();
 
     await consumer.handle([
-      makeRow({ id: 1, payload: { targetIds: ["req-1"] } }),
-      makeRow({ id: 2, payload: { targetIds: ["req-2"] } }),
-      makeRow({ id: 3, payload: { targetIds: ["req-3"] } })
+      makeEvent({ id: 1, payload: { targetIds: ["req-1"] } }),
+      makeEvent({ id: 2, payload: { targetIds: ["req-2"] } }),
+      makeEvent({ id: 3, payload: { targetIds: ["req-3"] } })
     ]);
 
     expect(getLookups()).toBe(1);
   });
 
-  // Rows arrive in id order and share one resource, so handling them concurrently would deliver that
+  // Events arrive in id order and share one resource, so handling them concurrently would deliver that
   // resource's events out of order.
-  test("handles rows serially, in the order given", async () => {
+  test("handles events serially, in the order given", async () => {
     const { consumer, runs } = buildConsumer();
 
     const results = await consumer.handle([
-      makeRow({ id: 1, payload: { targetIds: ["req-1"] } }),
-      makeRow({ id: 2, payload: { targetIds: ["req-2"] } })
+      makeEvent({ id: 1, payload: { targetIds: ["req-1"] } }),
+      makeEvent({ id: 2, payload: { targetIds: ["req-2"] } })
     ]);
 
     expect(results.map((result) => result.id)).toEqual(["1", "2"]);

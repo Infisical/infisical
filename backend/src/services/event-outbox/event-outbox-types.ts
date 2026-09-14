@@ -62,7 +62,7 @@ export const OutboxEventSchema = z.object({
 
 export type TOutboxEvent = z.input<typeof OutboxEventSchema>;
 
-export type TOutboxRowResult = {
+export type TOutboxEventResult = {
   id: string;
   status: EventOutboxStatus.Delivered | EventOutboxStatus.Retry | EventOutboxStatus.Failed;
   error?: string;
@@ -88,6 +88,6 @@ export interface IEventOutboxConsumer<TPayload = unknown> {
   // wants the event is decided later, in handle().
   subscribesTo(eventType: string): boolean;
 
-  // Rows for a single (resourceType, resourceId), in id order. Must return one result per row.
-  handle(rows: TEventOutbox[]): Promise<TOutboxRowResult[]>;
+  // Events for a single (resourceType, resourceId), in id order. Must return one result per event.
+  handle(events: TEventOutbox[]): Promise<TOutboxEventResult[]>;
 }
