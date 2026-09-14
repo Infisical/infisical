@@ -21,6 +21,7 @@ import {
   UsersIcon
 } from "lucide-react";
 
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   GlobalCommandMenu,
   type GlobalCommandMenuGroup,
@@ -66,6 +67,7 @@ import { useGetUserOrgPermissions } from "@app/hooks/api/roles";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { getRootCommandMenuAction } from "./rootCommandMenuTelemetry";
 import { useSecretManagerCommandSearch } from "./useSecretManagerCommandSearch";
 
 export type RootCommandMenuShell = "organization" | "admin" | "personal-settings";
@@ -92,28 +94,47 @@ const projectIconClassNames: Record<ProjectType, string> = {
 };
 
 const NavigationCommandMenu = ({
+  shell,
   browseGroups,
   searchGroups,
   searchStatus,
   asyncSearch
 }: CommandContent & {
+  shell: RootCommandMenuShell;
   asyncSearch?: AsyncCommandSearch;
-}) => (
-  <GlobalCommandMenu
-    groups={browseGroups}
-    searchGroups={[...searchGroups, ...(asyncSearch?.groups ?? [])]}
-    searchStatus={
-      [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "loading") ??
-      [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "error")
-    }
-    onSearchChange={asyncSearch?.onSearchChange}
-    title="Search Infisical"
-    description="Search pages, projects, organizations, teams, and commands."
-    placeholder="Find..."
-    emptyMessage="No matching pages or commands."
-    showFooter={false}
-  />
-);
+}) => {
+  const telemetry = new Telemetry().getInstance();
+
+  return (
+    <GlobalCommandMenu
+      groups={browseGroups}
+      searchGroups={[...searchGroups, ...(asyncSearch?.groups ?? [])]}
+      searchStatus={
+        [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "loading") ??
+        [searchStatus, asyncSearch?.searchStatus].find((status) => status?.state === "error")
+      }
+      onSearchChange={asyncSearch?.onSearchChange}
+      onShortcutToggle={(open) => {
+        if (open) {
+          telemetry.capture("Command Menu Opened", { shell, source: "keyboard-shortcut" });
+        }
+      }}
+      onItemSelect={(item, { mode }) => {
+        telemetry.capture("Command Menu Action Selected", {
+          shell,
+          mode,
+          action: getRootCommandMenuAction(item),
+          actionType: item.children ? "drill-down" : "navigation"
+        });
+      }}
+      title="Search Infisical"
+      description="Search pages, projects, organizations, teams, and commands."
+      placeholder="Find..."
+      emptyMessage="No matching pages or commands."
+      showFooter={false}
+    />
+  );
+};
 
 const navigateToProject = (
   navigate: ReturnType<typeof useNavigate>,
@@ -353,6 +374,7 @@ const PersonalSettingsCommandMenu = () => {
 
   return (
     <NavigationCommandMenu
+      shell="personal-settings"
       searchStatus={entityGroups.searchStatus}
       browseGroups={[{ heading: "Account", items: accountItems }, nestedGroup]}
       searchGroups={[
@@ -407,6 +429,7 @@ const AdminCommandMenu = () => {
 
   return (
     <NavigationCommandMenu
+      shell="admin"
       searchStatus={entityGroups.searchStatus}
       browseGroups={[
         { heading: "Server Console", items: adminItems },
@@ -914,6 +937,7 @@ const CertificateProjectCommandMenu = ({
 
   return (
     <NavigationCommandMenu
+      shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
@@ -936,6 +960,7 @@ const SecretManagerProjectCommandMenu = ({
 
   return (
     <NavigationCommandMenu
+      shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
@@ -980,6 +1005,7 @@ const CurrentProjectCommandMenu = ({ content }: { content: CommandContent }) => 
 
   return (
     <NavigationCommandMenu
+      shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
         { heading: currentProject.name, items: projectItems.slice(0, 2) },
@@ -1062,7 +1088,7 @@ const OrganizationCommandMenu = () => {
     ]
   };
   if (projectId || orgScopedProduct) return <CurrentProjectCommandMenu content={content} />;
-  return <NavigationCommandMenu {...content} />;
+  return <NavigationCommandMenu shell="organization" {...content} />;
 };
 
 export const RootCommandMenu = ({ shell }: { shell: RootCommandMenuShell }) => {
