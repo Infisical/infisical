@@ -99,7 +99,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
                         id="project-name"
                         placeholder="Project name"
                         {...field}
-                        disabled={!isAllowed}
+                        disabled={!isAllowed || isPending}
                         isError={Boolean(error)}
                         autoComplete="off"
                         name="project-name"
@@ -155,7 +155,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
                         {...field}
                         rows={3}
                         className="resize-none"
-                        disabled={!isAllowed}
+                        disabled={!isAllowed || isPending}
                         isError={Boolean(error)}
                       />
                       <FieldError>{error?.message}</FieldError>

@@ -3,6 +3,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   Checkbox,
@@ -32,11 +33,12 @@ export const DeleteProjectProtection = () => {
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
+    <Card className="mb-6 gap-0 overflow-hidden p-0">
+      <CardHeader className="p-6">
         <CardTitle>Delete Protection</CardTitle>
+        <CardDescription>Prevent this project from being deleted accidentally.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-6 pb-6">
         <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
           {(isAllowed) => (
             <Field

@@ -16,7 +16,8 @@ import {
   AlertDialogTitle,
   Button,
   Card,
-  CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Tooltip,
@@ -109,17 +110,21 @@ export const DeleteProjectSection = () => {
   );
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
+    <Card className="mb-6 gap-0 overflow-hidden p-0">
+      <CardHeader className="p-6">
         <CardTitle>
           <TriangleAlert className="size-4 text-danger" />
           Danger Zone
         </CardTitle>
+        <CardDescription>
+          Permanently delete this project or remove your access to it.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-wrap gap-4">
+      <CardFooter className="min-h-8 justify-end gap-2 border-t border-neutral/15 bg-neutral/5 p-4">
         <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
           {(isAllowed) => (
             <Button
+              size="sm"
               isPending={isDeleting}
               isDisabled={!isAllowed}
               variant="danger"
@@ -142,7 +147,7 @@ export const DeleteProjectSection = () => {
             </TooltipContent>
           </Tooltip>
         )}
-      </CardContent>
+      </CardFooter>
 
       <AlertDialog
         open={popUp.deleteWorkspace.isOpen}
