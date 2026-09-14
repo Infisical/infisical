@@ -25,7 +25,7 @@ import {
   StepperStep,
   Toggle
 } from "@app/components/v3";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { getCertificateDisplayName, PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   PkiSync,
@@ -471,7 +471,9 @@ export const EditPkiSyncForm = ({
                 <p>These certificates no longer match the filters and will be detached:</p>
                 <ul className="max-h-40 overflow-y-auto font-mono text-xs">
                   {pendingUnlink?.preview.toUnlink.map((certificate) => (
-                    <li key={certificate.id}>{certificate.commonName}</li>
+                    <li key={certificate.id}>
+                      {getCertificateDisplayName(certificate).originalDisplayName}
+                    </li>
                   ))}
                 </ul>
                 {pendingUnlink?.preview.willRemoveFromDestination && (

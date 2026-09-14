@@ -48,7 +48,6 @@ import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
 import { TPostSyncCommandResult } from "@app/services/pki-sync/pki-sync-post-sync-command-fns";
-import { TPkiSyncFilters } from "@app/services/pki-sync/pki-sync-types";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TCreateSecretSyncDTO,
@@ -4709,7 +4708,6 @@ interface PkiSyncLinkCertificatesEvent {
     name: string;
     count: number;
     certificates: { id: string; commonName: string }[];
-    filters?: TPkiSyncFilters;
     applicationId?: string;
     applicationName?: string;
   };

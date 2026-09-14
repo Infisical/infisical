@@ -3,7 +3,10 @@ import { faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { isCertificateOrderTheOnlyFilter } from "@app/components/pki-syncs/forms/pki-sync-filter-fns";
+import {
+  hasAnyFilter,
+  isCertificateOrderTheOnlyFilter
+} from "@app/components/pki-syncs/forms/pki-sync-filter-fns";
 import {
   Button,
   Checkbox,
@@ -28,6 +31,7 @@ import {
   useListPkiSyncsWithCertificate,
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api/pkiSyncs";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -41,6 +45,14 @@ type Props = {
   };
   handlePopUpToggle: (popUpName: "managePkiSyncs", state?: boolean) => void;
   applicationName?: string;
+};
+
+const getSyncUnavailableReason = (sync: TPkiSync): string | null => {
+  if (!sync.applicationId) return "Not attached to an Application";
+  if (!hasAnyFilter(sync.filters)) return "No filters, so it holds nothing";
+  if (!isCertificateOrderTheOnlyFilter(sync.filters))
+    return "Selects certificates by profile or metadata";
+  return null;
 };
 
 const PER_PAGE = 10;
@@ -242,9 +254,8 @@ export const CertificateManagePkiSyncsModal = ({
                 </THead>
                 <TBody>
                   {paginatedSyncs.map((sync) => {
-                    const managesItsOwnCertificates = !isCertificateOrderTheOnlyFilter(
-                      sync.filters
-                    );
+                    const unavailableReason = getSyncUnavailableReason(sync);
+                    const managesItsOwnCertificates = Boolean(unavailableReason);
 
                     return (
                       <Tr
@@ -268,9 +279,9 @@ export const CertificateManagePkiSyncsModal = ({
                           <div className="truncate" title={sync.name}>
                             {sync.name}
                           </div>
-                          {managesItsOwnCertificates && (
+                          {unavailableReason && (
                             <div className="truncate text-xs text-mineshaft-400">
-                              Selects certificates by filter
+                              {unavailableReason}
                             </div>
                           )}
                         </Td>

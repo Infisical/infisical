@@ -16,11 +16,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { truncateCertificateSerialNumber } from "@app/helpers/pkiSyncs";
+import { getCertificateDisplayName, truncateCertificateSerialNumber } from "@app/helpers/pkiSyncs";
 
 export type TMatchedCertificateRow = {
   id: string;
   commonName: string;
+  altNames?: string | null;
   serialNumber?: string | null;
   notAfter?: string | null;
   profileName?: string | null;
@@ -65,7 +66,7 @@ export const PkiSyncMatchedCertificatesTable = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Common Name</TableHead>
+          <TableHead className="w-full">SAN / CN</TableHead>
           <TableHead className="w-1/5">Serial Number</TableHead>
           <TableHead className="w-1/5">Profile</TableHead>
           <TableHead className="w-1/6">Expires At</TableHead>
@@ -74,15 +75,18 @@ export const PkiSyncMatchedCertificatesTable = ({
       <TableBody>
         {rows.map((row) => {
           const isExpired = row.notAfter ? new Date(row.notAfter) < new Date() : false;
+          const { originalDisplayName } = getCertificateDisplayName(row);
 
           return (
             <TableRow key={row.id}>
               <TableCell className="max-w-0">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="truncate font-mono text-sm">{row.commonName}</div>
+                    <div className="truncate font-mono text-sm">{originalDisplayName}</div>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-lg">{row.commonName}</TooltipContent>
+                  <TooltipContent className="max-w-lg break-words">
+                    {originalDisplayName}
+                  </TooltipContent>
                 </Tooltip>
               </TableCell>
               <TableCell className="max-w-0">
@@ -91,7 +95,9 @@ export const PkiSyncMatchedCertificatesTable = ({
                 </div>
               </TableCell>
               <TableCell className="max-w-0">
-                <div className="truncate text-sm">{row.profileName ?? "-"}</div>
+                <div className="truncate text-sm" title={row.profileName ?? ""}>
+                  {row.profileName ?? "-"}
+                </div>
               </TableCell>
               <TableCell className="max-w-0">
                 <span className={isExpired ? "text-sm text-danger" : "text-sm"}>

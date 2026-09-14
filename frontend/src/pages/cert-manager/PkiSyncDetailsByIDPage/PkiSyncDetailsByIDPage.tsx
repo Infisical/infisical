@@ -140,7 +140,11 @@ const PageContent = () => {
                 <CardHeader className="grid-cols-[1fr_auto] border-b">
                   <CardTitle>Details</CardTitle>
                   <CardAction className="col-start-2 row-start-1 self-start justify-self-end">
-                    <PkiSyncActionTriggers pkiSync={pkiSync} onEdit={handleEdit} />
+                    <PkiSyncActionTriggers
+                      pkiSync={pkiSync}
+                      onEdit={handleEdit}
+                      onDelete={handleBack}
+                    />
                   </CardAction>
                 </CardHeader>
                 <CardContent>

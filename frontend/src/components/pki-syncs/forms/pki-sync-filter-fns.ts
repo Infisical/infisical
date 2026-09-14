@@ -1,3 +1,4 @@
+import { getCertificateDisplayName } from "@app/helpers/pkiSyncs";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 export const FILTER_KINDS = ["certificateOrderIds", "profileIds", "metadata"] as const;
@@ -34,12 +35,15 @@ export const isCertificateOrderTheOnlyFilter = (filters: TPkiSyncFilters | null 
   FILTER_KINDS.every((kind) => kind === "certificateOrderIds" || !isFilterPresent(filters, kind));
 
 export const buildOrderNameMap = (
-  certificates: { orderId?: string; commonName: string }[] | undefined
+  certificates: { orderId?: string; commonName: string; altNames?: string | null }[] | undefined
 ): Map<string, string> =>
   new Map(
     (certificates ?? [])
       .filter((certificate) => certificate.orderId)
-      .map(({ orderId, commonName }) => [orderId as string, commonName])
+      .map((certificate) => [
+        certificate.orderId as string,
+        getCertificateDisplayName(certificate).originalDisplayName
+      ])
   );
 
 const GCP_MAX_CERTIFICATES_PER_MAP_ENTRY = 4;

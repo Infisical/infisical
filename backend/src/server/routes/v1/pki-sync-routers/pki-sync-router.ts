@@ -15,6 +15,7 @@ import { PkiSyncFiltersField, PkiSyncStoredFiltersField } from "@app/services/pk
 const PkiSyncCertificateRefSchema = z.object({
   id: z.string().uuid(),
   commonName: z.string(),
+  altNames: z.string().nullable().optional(),
   serialNumber: z.string().optional(),
   notAfter: z.date().optional(),
   orderId: z.string().uuid().optional(),

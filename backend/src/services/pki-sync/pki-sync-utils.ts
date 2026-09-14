@@ -12,6 +12,8 @@ import { PkiSync } from "./pki-sync-enums";
 import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";
 import {
   applyPkiSyncCertificateDiff,
+  assertPkiSyncCanHoldMatchedCertificates,
+  computePkiSyncCertificateDiff,
   describePkiSyncApplication,
   TPkiSyncReconcileTarget
 } from "./pki-sync-filter-reconcile-fns";
@@ -333,6 +335,34 @@ const $reconcileCertificateAgainstSync = async (
   );
 
   logger.info(`Linked certificate to PKI sync by filter [certificateId=${certificateId}] [pkiSyncId=${pkiSync.id}]`);
+};
+
+export const reconcileSyncFilters = async (syncId: string, dependencies: TReconcileCertificateAgainstSyncsDeps) => {
+  await dependencies.withSyncFilterLock(syncId, async () => {
+    const pkiSync = await dependencies.pkiSyncDAL.findById(syncId, dependencies.pkiSyncDAL.primaryNode());
+    if (!pkiSync?.applicationId) return;
+
+    const target = pkiSync as TPkiSyncReconcileTarget;
+    const diff = await computePkiSyncCertificateDiff(target, pkiSync.filters as TPkiSyncFilters | null, dependencies);
+    if (diff.toLink.length === 0 && diff.toUnlink.length === 0) return;
+
+    let applicableDiff = diff;
+    try {
+      assertPkiSyncCanHoldMatchedCertificates(target, diff.matched.length);
+    } catch (capError) {
+      logger.warn(
+        capError,
+        `A filtered PKI sync matches more certificates than it can hold, so only detachments were applied [pkiSyncId=${syncId}]`
+      );
+      applicableDiff = { ...diff, toLink: [] };
+      if (applicableDiff.toUnlink.length === 0) return;
+    }
+
+    const { linked, unlinked } = await applyPkiSyncCertificateDiff(target, applicableDiff, dependencies);
+    logger.info(
+      `Reconciled a filtered PKI sync [pkiSyncId=${syncId}] [linked=${linked.length}] [unlinked=${unlinked.length}]`
+    );
+  });
 };
 
 export const reconcileCertificateAgainstMatchingSyncs = async (

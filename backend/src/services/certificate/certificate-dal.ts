@@ -145,6 +145,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   type TMatchedSyncCertificate = {
     id: string;
     commonName: string;
+    altNames?: string | null;
     serialNumber: string;
     notAfter: Date;
     orderId: string;
@@ -523,6 +524,7 @@ export const certificateDALFactory = (db: TDbClient) => {
   ): Promise<TMatchedSyncCertificate[]> => {
     try {
       let query = db(TableName.Certificate)
+        .distinctOn(`${TableName.Certificate}.orderId`)
         .leftJoin(
           TableName.PkiCertificateProfile,
           `${TableName.Certificate}.profileId`,
@@ -555,16 +557,24 @@ export const certificateDALFactory = (db: TDbClient) => {
         query = query.limit(options.limit);
       }
 
-      return (await query
-        .orderBy(`${TableName.Certificate}.commonName`, "asc")
+      const certificates = (await query
+        .orderBy([
+          { column: `${TableName.Certificate}.orderId` },
+          { column: `${TableName.Certificate}.notBefore`, order: "desc" }
+        ])
         .select(
           `${TableName.Certificate}.id`,
           `${TableName.Certificate}.commonName`,
+          `${TableName.Certificate}.altNames`,
           `${TableName.Certificate}.serialNumber`,
           `${TableName.Certificate}.notAfter`,
           `${TableName.Certificate}.orderId`,
           db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName")
         )) as TMatchedSyncCertificate[];
+
+      return certificates.sort((a, b) =>
+        (a.altNames?.trim() || a.commonName).localeCompare(b.altNames?.trim() || b.commonName)
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates matching sync filters" });
     }

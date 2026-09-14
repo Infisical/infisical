@@ -2,18 +2,16 @@ import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
-import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 
-const INELIGIBLE_LINK_BATCH = 500;
-const INELIGIBLE_LINK_MAX_BATCHES_PER_RUN = 10;
+const FILTERED_SYNC_BATCH = 500;
+const FILTERED_SYNC_MAX_BATCHES_PER_RUN = 20;
 
 type TPkiSyncCleanupQueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
-  pkiSyncDAL: Pick<TPkiSyncDALFactory, "findPkiSyncsWithExpiredCertificates">;
-  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findIneligibleFilteredLinks">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "findPkiSyncsWithExpiredCertificates" | "findFilteredSyncIds">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncReconcileFilters">;
 };
 
 export type TPkiSyncCleanupQueueServiceFactory = ReturnType<typeof pkiSyncCleanupQueueServiceFactory>;
@@ -21,7 +19,6 @@ export type TPkiSyncCleanupQueueServiceFactory = ReturnType<typeof pkiSyncCleanu
 export const pkiSyncCleanupQueueServiceFactory = ({
   cronJob,
   pkiSyncDAL,
-  certificateSyncDAL,
   pkiSyncQueue
 }: TPkiSyncCleanupQueueServiceFactoryDep) => {
   const appCfg = getConfig();
@@ -59,37 +56,35 @@ export const pkiSyncCleanupQueueServiceFactory = ({
     }
   };
 
-  const reconcileIneligibleFilteredLinks = async () => {
+  const reconcileFilteredSyncs = async () => {
     try {
       let queued = 0;
+      let afterId: string | undefined;
 
-      for (let page = 0; page < INELIGIBLE_LINK_MAX_BATCHES_PER_RUN; page += 1) {
+      for (let batch = 0; batch < FILTERED_SYNC_MAX_BATCHES_PER_RUN; batch += 1) {
         // eslint-disable-next-line no-await-in-loop
-        const stale = await certificateSyncDAL.findIneligibleFilteredLinks(
-          INELIGIBLE_LINK_BATCH,
-          page * INELIGIBLE_LINK_BATCH
-        );
+        const syncIds = await pkiSyncDAL.findFilteredSyncIds(FILTERED_SYNC_BATCH, afterId);
+        if (syncIds.length === 0) break;
 
-        if (stale.length === 0) break;
-
-        for (const { certificateId, applicationId } of stale) {
+        for (const syncId of syncIds) {
           try {
             // eslint-disable-next-line no-await-in-loop
-            await pkiSyncQueue.queuePkiSyncLinkMatchingCertificates({ certificateId, applicationId });
+            await pkiSyncQueue.queuePkiSyncReconcileFilters({ syncId });
             queued += 1;
           } catch (error) {
-            logger.error(error, `Failed to queue a filter reconcile [certificateId=${certificateId}]`);
+            logger.error(error, `Failed to queue a filter reconcile [pkiSyncId=${syncId}]`);
           }
         }
 
-        if (stale.length < INELIGIBLE_LINK_BATCH) break;
+        afterId = syncIds[syncIds.length - 1];
+        if (syncIds.length < FILTERED_SYNC_BATCH) break;
       }
 
       if (queued === 0) return;
 
-      logger.info(`cron[pki-sync-cleanup]: re-evaluating ${queued} certificate(s) held by a filtered sync`);
+      logger.info(`cron[pki-sync-cleanup]: re-evaluating the certificates held by ${queued} filtered sync(s)`);
     } catch (error) {
-      logger.error(error, "Failed to re-evaluate certificates held by a filtered sync");
+      logger.error(error, "Failed to re-evaluate the certificates held by filtered syncs");
     }
   };
 
@@ -104,7 +99,7 @@ export const pkiSyncCleanupQueueServiceFactory = ({
 
         const [expiredCertificateSweep] = await Promise.allSettled([
           syncExpiredCertificatesForPkiSyncs(),
-          reconcileIneligibleFilteredLinks()
+          reconcileFilteredSyncs()
         ]);
 
         if (expiredCertificateSweep.status === "rejected") throw expiredCertificateSweep.reason;
@@ -115,6 +110,6 @@ export const pkiSyncCleanupQueueServiceFactory = ({
   return {
     init,
     syncExpiredCertificatesForPkiSyncs,
-    reconcileIneligibleFilteredLinks
+    reconcileFilteredSyncs
   };
 };

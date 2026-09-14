@@ -760,6 +760,19 @@ export const getPkiSyncCertificateCap = (
   return caps.length ? Math.min(...caps.map(({ cap }) => cap)) : undefined;
 };
 
+export const assertPkiSyncCertificateCapsAllowCount = (
+  destination: PkiSync,
+  syncOptions: Record<string, unknown> | undefined,
+  destinationConfig: Record<string, unknown> | undefined,
+  resultingCertificateCount: number
+) => {
+  const exceeded = getPkiSyncCertificateCaps(destination, syncOptions, destinationConfig).find(
+    ({ cap }) => resultingCertificateCount > cap
+  );
+
+  if (exceeded) throw new BadRequestError({ message: exceeded.reason(resultingCertificateCount) });
+};
+
 export const assertPkiSyncCanHoldCertificateCount = (
   destination: PkiSync,
   syncOptions: Record<string, unknown> | undefined,
@@ -772,11 +785,7 @@ export const assertPkiSyncCanHoldCertificateCount = (
     });
   }
 
-  const exceeded = getPkiSyncCertificateCaps(destination, syncOptions, destinationConfig).find(
-    ({ cap }) => resultingCertificateCount > cap
-  );
-
-  if (exceeded) throw new BadRequestError({ message: exceeded.reason(resultingCertificateCount) });
+  assertPkiSyncCertificateCapsAllowCount(destination, syncOptions, destinationConfig, resultingCertificateCount);
 };
 
 const PKI_SYNC_FILTER_LABELS: Record<TPkiSyncFilterKind, string> = {

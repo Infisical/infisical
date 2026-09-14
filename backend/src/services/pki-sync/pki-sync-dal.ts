@@ -304,6 +304,26 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     return expandPkiSync(pkiSync);
   };
 
+  const findFilteredSyncIds = async (limit: number, afterId?: string): Promise<string[]> => {
+    try {
+      let query = db
+        .replicaNode()(TableName.PkiSync)
+        .whereNotNull(`${TableName.PkiSync}.applicationId`)
+        .whereNotNull(`${TableName.PkiSync}.filters`);
+
+      if (afterId) query = query.where(`${TableName.PkiSync}.id`, ">", afterId);
+
+      const rows = (await query
+        .select(`${TableName.PkiSync}.id`)
+        .orderBy(`${TableName.PkiSync}.id`, "asc")
+        .limit(limit)) as Array<{ id: string }>;
+
+      return rows.map(({ id }) => id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find filtered PKI sync ids" });
+    }
+  };
+
   const findPkiSyncsWithExpiredCertificates = async (): Promise<Array<{ id: string; subscriberId: string }>> => {
     try {
       const yesterday = new Date();
@@ -438,6 +458,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     find,
     create,
     updateById,
+    findFilteredSyncIds,
     findPkiSyncsWithExpiredCertificates
   };
 };

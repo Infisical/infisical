@@ -42,7 +42,7 @@ import {
 } from "./pki-sync-filter-reconcile-fns";
 import {
   assertFiltersCannotExceedCertificateCap,
-  assertPkiSyncCanHoldCertificateCount,
+  assertPkiSyncCertificateCapsAllowCount,
   assertPkiSyncLicense,
   getPkiSyncProviderCapabilities,
   listPkiSyncOptions,
@@ -412,15 +412,6 @@ export const pkiSyncServiceFactory = ({
 
     const certificates = await $findApplicationCertificates(certificateIds, expectedProjectId, expectedApplicationId);
 
-    const withoutOrder = certificates.filter((cert) => !cert.orderId);
-    if (withoutOrder.length > 0) {
-      throw new BadRequestError({
-        message: `Certificates without a certificate order cannot be synced: ${withoutOrder
-          .map((cert) => `'${cert.commonName}'`)
-          .join(", ")}`
-      });
-    }
-
     const orderIds = [...new Set(certificates.map((cert) => cert.orderId))];
 
     if (requireSyncable && expectedApplicationId) {
@@ -527,7 +518,7 @@ export const pkiSyncServiceFactory = ({
       auditLogInfo
     }: TCreatePkiSyncDTO,
     actor: OrgServiceActor
-  ): Promise<TPkiSync & { linkedCertificates: TPkiSyncCertificateRef[] }> => {
+  ): Promise<TPkiSync> => {
     if (!applicationId) {
       throw new BadRequestError({
         message:
@@ -652,7 +643,7 @@ export const pkiSyncServiceFactory = ({
         await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSync.id });
       }
 
-      return { ...(pkiSync as TPkiSync), linkedCertificates };
+      return pkiSync as TPkiSync;
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === "23505") {
         throw new BadRequestError({
@@ -679,9 +670,7 @@ export const pkiSyncServiceFactory = ({
       auditLogInfo
     }: Omit<TUpdatePkiSyncDTO, "projectId">,
     actor: OrgServiceActor
-  ): Promise<
-    TPkiSync & { linkedCertificates: TPkiSyncCertificateRef[]; unlinkedCertificates: TPkiSyncCertificateRef[] }
-  > => {
+  ): Promise<TPkiSync> => {
     const pkiSync = await pkiSyncDAL.findById(id);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
     if (applicationId && pkiSync.applicationId !== applicationId) {
@@ -841,7 +830,7 @@ export const pkiSyncServiceFactory = ({
 
     if (syncOptions || destinationConfig) {
       const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
-      assertPkiSyncCanHoldCertificateCount(
+      assertPkiSyncCertificateCapsAllowCount(
         pkiSync.destination,
         effectiveSyncOptions,
         effectiveDestinationConfig,
@@ -888,7 +877,7 @@ export const pkiSyncServiceFactory = ({
     };
 
     if (Object.values(update).every((value) => value === undefined)) {
-      return { ...(pkiSync as TPkiSync), linkedCertificates: [], unlinkedCertificates: [] };
+      return pkiSync as TPkiSync;
     }
 
     const storedFilters = pkiSync.filters as TPkiSyncFilters | null;
@@ -899,10 +888,10 @@ export const pkiSyncServiceFactory = ({
 
     if (!areFiltersChanging) {
       const written = await pkiSyncDAL.updateById(id, update);
-      return { ...(written as TPkiSync), linkedCertificates: [], unlinkedCertificates: [] };
+      return written as TPkiSync;
     }
 
-    const { updatedPkiSync, linked, unlinked } = await $withFilterLock(id, async () => {
+    const { updatedPkiSync } = await $withFilterLock(id, async () => {
       const current = await pkiSyncDAL.findById(id, pkiSyncDAL.primaryNode());
       if (!current) throw new NotFoundError({ message: `Could not find PKI sync with ID ${id}` });
 
@@ -915,23 +904,19 @@ export const pkiSyncServiceFactory = ({
         filters
       );
 
-      const applied = await $reconcileFilters(target, filters, {
+      await $reconcileFilters(target, filters, {
         auditLogInfo,
         writeFilters: async (tx) => {
           await pkiSyncDAL.updateById(id, update, tx);
         }
       });
 
-      const written = await pkiSyncDAL.findById(id);
+      const written = await pkiSyncDAL.findById(id, pkiSyncDAL.primaryNode());
 
-      return { updatedPkiSync: written ?? current, ...applied };
+      return { updatedPkiSync: written ?? current };
     });
 
-    return {
-      ...(updatedPkiSync as TPkiSync),
-      linkedCertificates: linked,
-      unlinkedCertificates: unlinked
-    };
+    return updatedPkiSync as TPkiSync;
   };
 
   const deletePkiSync = async (
@@ -1449,14 +1434,36 @@ export const pkiSyncServiceFactory = ({
       if (!current) throw new NotFoundError({ message: `Could not find PKI sync with ID ${pkiSync.id}` });
 
       const stored = $assertCertificateOrderListIsTheOnlySyncFilter(current);
-      const nextFilters = { ...stored, certificateOrderIds: nextOrderIds(stored.certificateOrderIds ?? []) };
+      const storedOrderIds = stored.certificateOrderIds ?? [];
+      const requestedOrderIds = nextOrderIds(storedOrderIds);
 
-      return $reconcileFilters(current as TPkiSyncReconcileTarget, nextFilters, {
+      if (deepEqual(storedOrderIds, requestedOrderIds)) return { linked: [], unlinked: [] };
+
+      const nextFilters = { ...stored, certificateOrderIds: requestedOrderIds };
+
+      const applied = await $reconcileFilters(current as TPkiSyncReconcileTarget, nextFilters, {
         auditLogInfo,
         writeFilters: async (tx) => {
           await pkiSyncDAL.updateById(pkiSync.id, { filters: nextFilters }, tx);
         }
       });
+
+      await auditLogService.createAuditLog({
+        ...(auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } }),
+        projectId: current.projectId,
+        event: {
+          type: EventType.UPDATE_PKI_SYNC,
+          metadata: {
+            pkiSyncId: current.id,
+            name: current.name,
+            destination: current.destination,
+            hasFilters: true,
+            ...(current.applicationId && { applicationId: current.applicationId })
+          }
+        }
+      });
+
+      return applied;
     });
   };
 

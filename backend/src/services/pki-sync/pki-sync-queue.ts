@@ -61,10 +61,11 @@ import {
   TPkiSyncSyncCertificatesDTO,
   TQueuePkiSyncImportCertificatesByIdDTO,
   TQueuePkiSyncLinkMatchingCertificatesDTO,
+  TQueuePkiSyncReconcileFiltersDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "./pki-sync-types";
-import { reconcileCertificateAgainstMatchingSyncs } from "./pki-sync-utils";
+import { reconcileCertificateAgainstMatchingSyncs, reconcileSyncFilters } from "./pki-sync-utils";
 
 export type TPkiSyncQueueFactory = ReturnType<typeof pkiSyncQueueFactory>;
 
@@ -189,6 +190,18 @@ export const pkiSyncQueueFactory = ({
         delay: 3000
       },
       jobId: `pki-sync-link-${payload.certificateId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      removeOnComplete: true,
+      removeOnFail: true
+    });
+
+  const queuePkiSyncReconcileFilters = async (payload: TQueuePkiSyncReconcileFiltersDTO) =>
+    queueService.queue(QueueName.PkiSync, QueueJobs.PkiSyncReconcileFilters, payload, {
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 3000
+      },
+      jobId: `pki-sync-reconcile-filters-${payload.syncId}`,
       removeOnComplete: true,
       removeOnFail: true
     });
@@ -748,6 +761,16 @@ export const pkiSyncQueueFactory = ({
         break;
       }
       case QueueJobs.PkiSyncRemoveCertificates: {
+        const { failedToAcquireLockCount = 0, ...rest } = job.data as TQueuePkiSyncRemoveCertificatesByIdDTO;
+
+        if (failedToAcquireLockCount < REQUEUE_LIMIT) {
+          await queuePkiSyncRemoveCertificatesById({
+            ...rest,
+            failedToAcquireLockCount: failedToAcquireLockCount + 1
+          });
+          return;
+        }
+
         await pkiSyncDAL.updateById(syncId, {
           removeStatus: PkiSyncStatus.Failed,
           lastRemoveMessage:
@@ -782,6 +805,20 @@ export const pkiSyncQueueFactory = ({
         );
         throw error;
       }
+      return;
+    }
+
+    if (job.name === QueueJobs.PkiSyncReconcileFilters) {
+      const { syncId: reconcileSyncId } = job.data as TQueuePkiSyncReconcileFiltersDTO;
+      await reconcileSyncFilters(reconcileSyncId, {
+        certificateDAL,
+        certificateSyncDAL,
+        pkiSyncDAL,
+        pkiSyncQueue: { queuePkiSyncSyncCertificatesById, queuePkiSyncRemoveCertificatesById },
+        auditLogService,
+        pkiApplicationDAL,
+        withSyncFilterLock: (lockSyncId, run) => withPkiSyncFilterLock(keyStore, lockSyncId, run)
+      });
       return;
     }
 
@@ -864,6 +901,7 @@ export const pkiSyncQueueFactory = ({
 
   return {
     queuePkiSyncLinkMatchingCertificates,
+    queuePkiSyncReconcileFilters,
     queuePkiSyncSyncCertificatesById,
     queuePkiSyncImportCertificatesById,
     queuePkiSyncRemoveCertificatesById

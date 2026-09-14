@@ -19,6 +19,7 @@ export type TPkiSyncFilters = {
 export type TPkiSyncCertificateRef = {
   id: string;
   commonName: string;
+  altNames?: string | null;
   serialNumber?: string;
   notAfter?: Date;
   orderId?: string;
@@ -301,6 +302,10 @@ export type TQueuePkiSyncLinkMatchingCertificatesDTO = {
   applicationId: string;
 };
 
+export type TQueuePkiSyncReconcileFiltersDTO = {
+  syncId: string;
+};
+
 export type TQueuePkiSyncSyncCertificatesByIdDTO = {
   syncId: string;
   failedToAcquireLockCount?: number;
@@ -321,6 +326,7 @@ export type TQueuePkiSyncRemoveCertificatesByIdDTO = {
   auditLogInfo?: AuditLogInfo;
   deleteSyncOnComplete?: boolean;
   certificateIds?: string[];
+  failedToAcquireLockCount?: number;
 };
 
 export type TPkiSyncSyncCertificatesDTO = Job<

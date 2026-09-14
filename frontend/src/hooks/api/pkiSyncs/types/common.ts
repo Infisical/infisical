@@ -111,6 +111,7 @@ export type TPkiSyncHealthCheckResult = {
 export type TPkiSyncPreviewCertificate = {
   id: string;
   commonName: string;
+  altNames?: string | null;
   serialNumber?: string;
   notAfter?: string;
   orderId?: string;
@@ -121,6 +122,6 @@ export type TPkiSyncFilterPreview = {
   matchedCount: number;
   hasMoreMatches: boolean;
   certificates: TPkiSyncPreviewCertificate[];
-  toUnlink: { id: string; commonName: string }[];
+  toUnlink: { id: string; commonName: string; altNames?: string | null }[];
   willRemoveFromDestination: boolean;
 };

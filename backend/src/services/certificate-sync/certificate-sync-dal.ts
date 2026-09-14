@@ -4,7 +4,6 @@ import { TDbClient } from "@app/db";
 import { TableName, TCertificateSyncs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { CertificateSyncStatus } from "./certificate-sync-enums";
 
@@ -46,35 +45,6 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByPkiSyncAndCertificate" });
-    }
-  };
-
-  const findIneligibleFilteredLinks = async (
-    limit: number,
-    offset = 0
-  ): Promise<Array<{ certificateId: string; applicationId: string }>> => {
-    try {
-      const docs = (await db
-        .replicaNode()(TableName.CertificateSync)
-        .join(TableName.Certificate, `${TableName.Certificate}.id`, `${TableName.CertificateSync}.certificateId`)
-        .join(TableName.PkiSync, `${TableName.PkiSync}.id`, `${TableName.CertificateSync}.pkiSyncId`)
-        .whereNotNull(`${TableName.PkiSync}.applicationId`)
-        .whereNotNull(`${TableName.PkiSync}.filters`)
-        .where((qb) => {
-          void qb
-            .whereNot(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
-            .orWhere(`${TableName.Certificate}.notAfter`, "<=", new Date())
-            .orWhereNotNull(`${TableName.Certificate}.renewedByCertificateId`);
-        })
-        .select(`${TableName.CertificateSync}.certificateId`, `${TableName.PkiSync}.applicationId`)
-        .groupBy(`${TableName.CertificateSync}.certificateId`, `${TableName.PkiSync}.applicationId`)
-        .orderByRaw(`min(??) asc`, [`${TableName.CertificateSync}.updatedAt`])
-        .limit(limit)
-        .offset(offset)) as Array<{ certificateId: string; applicationId: string }>;
-
-      return docs;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindIneligibleFilteredLinks" });
     }
   };
 
@@ -355,7 +325,6 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     findByCertificateId,
     findByPkiSyncAndCertificate,
     findCertificateIdsByPkiSyncId,
-    findIneligibleFilteredLinks,
     findPkiSyncIdsByCertificateId,
     findExternalIdentifiersInUse,
     addCertificates,

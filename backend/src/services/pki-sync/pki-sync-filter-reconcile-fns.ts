@@ -122,7 +122,7 @@ export const computePkiSyncCertificateDiff = async (
 
   const toUnlink: TPkiSyncCertificateRef[] = unlinkIds.length
     ? (await certificateDAL.find({ projectId: pkiSync.projectId, $in: { id: unlinkIds } })).map(
-        ({ id, commonName }) => ({ id, commonName })
+        ({ id, commonName, altNames }) => ({ id, commonName, altNames })
       )
     : [];
 

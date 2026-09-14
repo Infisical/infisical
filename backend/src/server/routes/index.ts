@@ -1772,6 +1772,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     approvalPolicyDAL,
     approvalRequestDAL,
+    pkiSyncDAL,
     permissionService
   });
 
@@ -3386,7 +3387,6 @@ export const registerRoutes = async (
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
     cronJob,
     pkiSyncDAL,
-    certificateSyncDAL,
     pkiSyncQueue
   });
 

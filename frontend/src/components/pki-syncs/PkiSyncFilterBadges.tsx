@@ -29,9 +29,9 @@ const FilterBadgeOverflow = ({ badges }: { badges: ReactNode[] }) => {
   );
 };
 
-export const PkiSyncAnyFilterLabel = <span className="text-sm text-muted/50 italic">Any</span>;
+const PkiSyncAnyFilterLabel = <span className="text-sm text-muted/50 italic">Any</span>;
 
-export const PkiSyncNoFilterLabel = <span className="text-sm text-muted/50 italic">None</span>;
+const PkiSyncNoFilterLabel = <span className="text-sm text-muted/50 italic">None</span>;
 
 export const PkiSyncFilterCountLabel = ({ count, names }: TFilterCountLabelProps) => {
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
@@ -63,7 +63,7 @@ export const PkiSyncFilterCountLabel = ({ count, names }: TFilterCountLabelProps
   );
 };
 
-export const PkiSyncFilterValueBadges = ({ values }: { values: string[] }) => {
+const PkiSyncFilterValueBadges = ({ values }: { values: string[] }) => {
   if (values.length === 0) return null;
 
   return (
