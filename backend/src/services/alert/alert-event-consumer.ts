@@ -2,11 +2,7 @@ import { z } from "zod";
 
 import { TEventOutbox } from "@app/db/schemas";
 import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
-import {
-  EventOutboxStatus,
-  IEventOutboxConsumer,
-  TOutboxEventResult
-} from "@app/services/event-outbox/event-outbox-types";
+import { EventOutboxStatus, IEventConsumer, TEventConsumerResult } from "@app/services/event-outbox/event-outbox-types";
 
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertEngine } from "./alert-engine";
@@ -37,7 +33,7 @@ export const alertEventConsumerFactory = ({
   alertDAL,
   alertEngine,
   alertProviderRegistry
-}: TAlertEventConsumerDep): IEventOutboxConsumer<z.infer<typeof AlertEventPayloadSchema>> => {
+}: TAlertEventConsumerDep): IEventConsumer<z.infer<typeof AlertEventPayloadSchema>> => {
   const subscribesTo = (eventType: string): boolean => alertProviderRegistry.eventTriggeredKeys().has(eventType);
 
   // subscribesTo only sees the event type, so a valid event key on the wrong resourceType gets past it.
@@ -49,7 +45,7 @@ export const alertEventConsumerFactory = ({
         ?.events.some((declared) => declared.key === event.eventType && declared.triggerType === AlertTriggerType.Event)
     );
 
-  const $handleEvent = async (event: TEventOutbox, findAlerts: TAlertLookup): Promise<TOutboxEventResult> => {
+  const $handleEvent = async (event: TEventOutbox, findAlerts: TAlertLookup): Promise<TEventConsumerResult> => {
     const id = String(event.id);
 
     if (!$isDeclaredEvent(event)) {
@@ -116,7 +112,7 @@ export const alertEventConsumerFactory = ({
     return { ...outcome, status: EventOutboxStatus.Delivered };
   };
 
-  const handle = async (events: TEventOutbox[]): Promise<TOutboxEventResult[]> => {
+  const handle = async (events: TEventOutbox[]): Promise<TEventConsumerResult[]> => {
     const alertsByScope = new Map<string, ReturnType<TAlertLookup>>();
     const findAlerts: TAlertLookup = (filter) => {
       const key = `${filter.orgId}|${filter.projectId ?? ""}|${filter.eventType}`;
@@ -128,7 +124,7 @@ export const alertEventConsumerFactory = ({
       return lookup;
     };
 
-    const results: TOutboxEventResult[] = [];
+    const results: TEventConsumerResult[] = [];
 
     for (const event of events) {
       try {

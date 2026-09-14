@@ -6,7 +6,7 @@ import { eventOutboxRegistryFactory } from "./event-outbox-registry";
 import { eventOutboxServiceFactory } from "./event-outbox-service";
 import {
   EventOutboxStatus,
-  IEventOutboxConsumer,
+  IEventConsumer,
   MAX_OUTBOX_ATTEMPTS,
   MAX_OUTBOX_PAYLOAD_BYTES,
   TOutboxEvent
@@ -37,20 +37,20 @@ const makeEvent = (overrides?: Partial<TOutboxEvent>): TOutboxEvent => ({
   ...overrides
 });
 
-const makeConsumer = (overrides?: Partial<IEventOutboxConsumer>): IEventOutboxConsumer =>
+const makeConsumer = (overrides?: Partial<IEventConsumer>): IEventConsumer =>
   ({
     name: "alert",
     payloadSchema: z.object({ targetIds: z.array(z.string()).min(1) }),
     subscribesTo: (eventType: string) => eventType === "approval.workflow.request_opened",
     handle: async () => [],
     ...overrides
-  }) as IEventOutboxConsumer;
+  }) as IEventConsumer;
 
 // `tx` is a sentinel: emit has to thread the caller's transaction through untouched, since a call
 // that silently opens its own connection is how the pool deadlocks.
 const TX = { sentinel: true } as never;
 
-const buildService = (consumers: IEventOutboxConsumer[]) => {
+const buildService = (consumers: IEventConsumer[]) => {
   const registry = eventOutboxRegistryFactory();
   consumers.forEach((consumer) => registry.register(consumer));
 
@@ -170,7 +170,7 @@ describe("event outbox drain", () => {
 
   const buildDrain = (opts: {
     batches: TEventOutbox[][];
-    handle: IEventOutboxConsumer["handle"];
+    handle: IEventConsumer["handle"];
     consumerName?: string;
     settled?: (input: { delivered: { ids: string[] }[] }) => number;
   }) => {

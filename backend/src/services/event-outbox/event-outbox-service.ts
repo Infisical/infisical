@@ -12,15 +12,15 @@ import {
   DELIVERED_RETENTION_MS,
   EventOutboxStatus,
   FAILED_RETENTION_MS,
-  IEventOutboxConsumer,
+  IEventConsumer,
   MAX_BATCHES_PER_FLUSH,
   MAX_OUTBOX_ATTEMPTS,
   MAX_OUTBOX_PAYLOAD_BYTES,
   OUTBOX_CLAIM_BATCH_SIZE,
   OutboxEventSchema,
   STALE_CLAIM_THRESHOLD_MS,
+  TEventConsumerResult,
   TOutboxEvent,
-  TOutboxEventResult,
   TOutboxFlushKey
 } from "./event-outbox-types";
 
@@ -145,7 +145,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   const $applyResults = async (
     rows: TEventOutbox[],
     lockToken: string,
-    results: TOutboxEventResult[]
+    results: TEventConsumerResult[]
   ): Promise<void> => {
     const byId = new Map(results.map((result) => [result.id, result]));
     const now = Date.now();
@@ -170,7 +170,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       };
 
       const attempts = row.attempts + 1;
-      let finalStatus: TOutboxEventResult["status"];
+      let finalStatus: TEventConsumerResult["status"];
       if (result.status === EventOutboxStatus.Delivered) {
         finalStatus = EventOutboxStatus.Delivered;
         delivered.push({ id, progress: result.progress });
@@ -222,11 +222,11 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
 
   // The heartbeat lets a slow batch outlive STALE_CLAIM_THRESHOLD_MS without being delivered twice.
   const $handleClaimed = async (
-    consumer: IEventOutboxConsumer,
+    consumer: IEventConsumer,
     key: TOutboxFlushKey,
     claimed: TEventOutbox[],
     lockToken: string
-  ): Promise<TOutboxEventResult[]> => {
+  ): Promise<TEventConsumerResult[]> => {
     const ids = claimed.map((row) => String(row.id));
     const heartbeat = setInterval(() => {
       eventOutboxDAL.extendClaims(ids, lockToken).catch((error) => {

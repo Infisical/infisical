@@ -62,7 +62,7 @@ export const OutboxEventSchema = z.object({
 
 export type TOutboxEvent = z.input<typeof OutboxEventSchema>;
 
-export type TOutboxEventResult = {
+export type TEventConsumerResult = {
   id: string;
   status: EventOutboxStatus.Delivered | EventOutboxStatus.Retry | EventOutboxStatus.Failed;
   error?: string;
@@ -76,7 +76,7 @@ export type TOutboxFlushKey = {
   resourceId: string;
 };
 
-export interface IEventOutboxConsumer<TPayload = unknown> {
+export interface IEventConsumer<TPayload = unknown> {
   // Stored on every row and part of the flush job id, so renaming it orphans in-flight rows.
   name: string;
 
@@ -89,5 +89,5 @@ export interface IEventOutboxConsumer<TPayload = unknown> {
   subscribesTo(eventType: string): boolean;
 
   // Events for a single (resourceType, resourceId), in id order. Must return one result per event.
-  handle(events: TEventOutbox[]): Promise<TOutboxEventResult[]>;
+  handle(events: TEventOutbox[]): Promise<TEventConsumerResult[]>;
 }
