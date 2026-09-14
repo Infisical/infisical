@@ -62,16 +62,17 @@ const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
-      <Link
-        to="/organizations/$orgId/projects/kms/kmip-servers"
-        params={{ orgId }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition hover:text-label"
-      >
-        <ChevronLeftIcon size={16} />
-        KMIP Servers
-      </Link>
-      <KmipServerPageHeader kmipServer={kmipServer} orgId={orgId} />
+    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+      <KmipServerPageHeader
+        kmipServer={kmipServer}
+        orgId={orgId}
+        backLink={
+          <Link to="/organizations/$orgId/projects/kms/kmip-servers" params={{ orgId }}>
+            <ChevronLeftIcon aria-hidden className="size-4" />
+            KMIP Servers
+          </Link>
+        }
+      />
       <div className="flex flex-col gap-8 lg:flex-row">
         <div className="w-full min-w-0 shrink-0 lg:w-96">
           <KmipServerDetailsCard kmipServer={kmipServer} />

@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { BanIcon, CopyIcon, EllipsisIcon, TrashIcon } from "lucide-react";
 
@@ -31,7 +32,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteKmipServerById, useRevokeKmipServerAccess } from "@app/hooks/api/kmipServers";
 import { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
-export const KmipServerPageHeader = ({ kmipServer, orgId }: Props) => {
+export const KmipServerPageHeader = ({ kmipServer, orgId, backLink }: Props) => {
   const navigate = useNavigate();
   const { isSubOrganization } = useOrganization();
   const { mutateAsync: deleteKmipServer, isPending: isDeleting } = useDeleteKmipServerById();
@@ -68,6 +69,7 @@ export const KmipServerPageHeader = ({ kmipServer, orgId }: Props) => {
         scope={isSubOrganization ? "namespace" : "org"}
         title={kmipServer.name}
         description="KMIP server configuration and authentication"
+        backLink={backLink}
       >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -174,4 +176,5 @@ export const KmipServerPageHeader = ({ kmipServer, orgId }: Props) => {
 type Props = {
   kmipServer: TKmipServerWithAuthMethod;
   orgId: string;
+  backLink: ReactElement;
 };
