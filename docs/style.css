@@ -2,6 +2,67 @@
   border-radius: 0 !important;
 }
 
+/* Per-product global theming.
+   Mintlify sets `data-current-path` on <html> and updates it on client-side nav,
+   so overriding --primary / --primary-light here retints Mintlify's own UI
+   (sidebar, TOC, cards, buttons) for every page under a product. */
+
+/* Secrets Management (and related: dynamic secrets, rotation, agent proxy) */
+html[data-current-path^="/documentation/platform/secrets-mgmt"],
+html[data-current-path^="/documentation/platform/dynamic-secrets"],
+html[data-current-path^="/documentation/platform/secret-rotation"],
+html[data-current-path^="/documentation/platform/agent-proxy"] {
+  --primary: 86 166 0 !important;
+  --primary-light: 86 166 0 !important;
+}
+html.dark[data-current-path^="/documentation/platform/secrets-mgmt"],
+html.dark[data-current-path^="/documentation/platform/dynamic-secrets"],
+html.dark[data-current-path^="/documentation/platform/secret-rotation"],
+html.dark[data-current-path^="/documentation/platform/agent-proxy"] {
+  --primary: 158 224 103 !important;
+  --primary-light: 158 224 103 !important;
+}
+
+/* Secrets Scanning */
+html[data-current-path^="/documentation/platform/secret-scanning"] {
+  --primary: 139 47 208 !important;
+  --primary-light: 139 47 208 !important;
+}
+html.dark[data-current-path^="/documentation/platform/secret-scanning"] {
+  --primary: 176 86 240 !important;
+  --primary-light: 176 86 240 !important;
+}
+
+/* Certificate Management (PKI) */
+html[data-current-path^="/documentation/platform/pki"] {
+  --primary: 161 98 7 !important;
+  --primary-light: 161 98 7 !important;
+}
+html.dark[data-current-path^="/documentation/platform/pki"] {
+  --primary: 245 196 81 !important;
+  --primary-light: 245 196 81 !important;
+}
+
+/* Key Management (KMS) */
+html[data-current-path^="/documentation/platform/kms"] {
+  --primary: 16 158 122 !important;
+  --primary-light: 16 158 122 !important;
+}
+html.dark[data-current-path^="/documentation/platform/kms"] {
+  --primary: 52 237 191 !important;
+  --primary-light: 52 237 191 !important;
+}
+
+/* Privileged Access Management (PAM) */
+html[data-current-path^="/documentation/platform/pam"] {
+  --primary: 220 38 38 !important;
+  --primary-light: 220 38 38 !important;
+}
+html.dark[data-current-path^="/documentation/platform/pam"] {
+  --primary: 255 138 133 !important;
+  --primary-light: 255 138 133 !important;
+}
+
 /* Quickstarts index page */
 .qs-index {
   max-width: 960px;
@@ -130,15 +191,17 @@
   margin: 2.5rem 0;
 }
 
-.qs-index__section--secrets { --qs-accent: #56a600; }
-.qs-index__section--scanning { --qs-accent: #8b2fd0; }
-.qs-index__section--certificates { --qs-accent: #a16207; }
-.qs-index__section--kms { --qs-accent: #109e7a; }
-.qs-index__section--pam { --qs-accent: #dc2626; }
+.qs-index__section--secrets { --qs-accent: #56a600; --primary: 86 166 0 !important; --primary-light: 86 166 0 !important; }
+.qs-index__section--scanning { --qs-accent: #8b2fd0; --primary: 139 47 208 !important; --primary-light: 139 47 208 !important; }
+.qs-index__section--certificates { --qs-accent: #a16207; --primary: 161 98 7 !important; --primary-light: 161 98 7 !important; }
+.qs-index__section--kms { --qs-accent: #109e7a; --primary: 16 158 122 !important; --primary-light: 16 158 122 !important; }
+.qs-index__section--pam { --qs-accent: #dc2626; --primary: 220 38 38 !important; --primary-light: 220 38 38 !important; }
 .qs-index__section--identity,
 .qs-index__section--networking,
 .qs-index__section--self-hosting {
   --qs-accent: #5c5c5c;
+  --primary: 92 92 92 !important;
+  --primary-light: 92 92 92 !important;
 }
 
 .qs-index__section h2 {
@@ -255,15 +318,17 @@
   color: #9f9f9f;
 }
 
-.dark .qs-index__section--secrets { --qs-accent: #9ee067; }
-.dark .qs-index__section--scanning { --qs-accent: #b056f0; }
-.dark .qs-index__section--certificates { --qs-accent: #f5c451; }
-.dark .qs-index__section--kms { --qs-accent: #34edbf; }
-.dark .qs-index__section--pam { --qs-accent: #ff8a85; }
+.dark .qs-index__section--secrets { --qs-accent: #9ee067; --primary: 158 224 103 !important; --primary-light: 158 224 103 !important; }
+.dark .qs-index__section--scanning { --qs-accent: #b056f0; --primary: 176 86 240 !important; --primary-light: 176 86 240 !important; }
+.dark .qs-index__section--certificates { --qs-accent: #f5c451; --primary: 245 196 81 !important; --primary-light: 245 196 81 !important; }
+.dark .qs-index__section--kms { --qs-accent: #34edbf; --primary: 52 237 191 !important; --primary-light: 52 237 191 !important; }
+.dark .qs-index__section--pam { --qs-accent: #ff8a85; --primary: 255 138 133 !important; --primary-light: 255 138 133 !important; }
 .dark .qs-index__section--identity,
 .dark .qs-index__section--networking,
 .dark .qs-index__section--self-hosting {
   --qs-accent: #cfcfcf;
+  --primary: 207 207 207 !important;
+  --primary-light: 207 207 207 !important;
 }
 
 .dark .qs-index th {
@@ -305,13 +370,13 @@
 }
 
 #sidebar li > a.text-primary {
-  background-color: #fbfde9;
-  border-left-color: #dbf530;
-  color: #5f7000;
+  background-color: color-mix(in srgb, rgb(var(--primary-light)) 15%, transparent);
+  border-left-color: rgb(var(--primary-light));
+  color: color-mix(in srgb, rgb(var(--primary-light)) 80%, #000);
 }
 
 #header {
-  border-left: 2px solid #dbf530;
+  border-left: 2px solid rgb(var(--primary-light));
   padding-left: 16px;
   padding-right: 16px;
   background-color: #f7f7f6;
@@ -384,14 +449,14 @@
 }
 
 .dark #sidebar li > a.text-primary {
-  background-color: #1b1d0d;
-  border-left-color: #dbf530;
-  color: #dbf530;
+  background-color: color-mix(in srgb, rgb(var(--primary-light)) 12%, transparent);
+  border-left-color: rgb(var(--primary-light));
+  color: rgb(var(--primary-light));
 }
 
 .dark #header {
   background-color: #101114;
-  border-left-color: #dbf530;
+  border-left-color: rgb(var(--primary-light));
 }
 
 .dark #page-context-menu button:hover {
@@ -870,7 +935,7 @@ a.ifx-steps__label:hover {
 
 .ifx-card {
   --ifx-ink: #6f6f6f;
-  --ifx-accent: #dbf530;
+  --ifx-accent: rgb(var(--primary-light));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -883,26 +948,36 @@ a.ifx-steps__label:hover {
 .ifx-card--secrets {
   --ifx-ink: #56a600;
   --ifx-accent: #56a600;
+  --primary: 86 166 0 !important;
+  --primary-light: 86 166 0 !important;
 }
 
 .ifx-card--scanning {
   --ifx-ink: #8b2fd0;
   --ifx-accent: #8b2fd0;
+  --primary: 139 47 208 !important;
+  --primary-light: 139 47 208 !important;
 }
 
 .ifx-card--certificates {
   --ifx-ink: #a16207;
   --ifx-accent: #a16207;
+  --primary: 161 98 7 !important;
+  --primary-light: 161 98 7 !important;
 }
 
 .ifx-card--pam {
   --ifx-ink: #dc2626;
   --ifx-accent: #dc2626;
+  --primary: 220 38 38 !important;
+  --primary-light: 220 38 38 !important;
 }
 
 .ifx-card--kms {
   --ifx-ink: #109e7a;
   --ifx-accent: #109e7a;
+  --primary: 16 158 122 !important;
+  --primary-light: 16 158 122 !important;
 }
 
 .ifx-card__links {
@@ -1052,26 +1127,36 @@ a.ifx-card__title:hover .ifx-card__chevron {
 .dark .ifx-card--secrets {
   --ifx-ink: #9ee067;
   --ifx-accent: #9ee067;
+  --primary: 158 224 103 !important;
+  --primary-light: 158 224 103 !important;
 }
 
 .dark .ifx-card--scanning {
   --ifx-ink: #b056f0;
   --ifx-accent: #b056f0;
+  --primary: 176 86 240 !important;
+  --primary-light: 176 86 240 !important;
 }
 
 .dark .ifx-card--certificates {
   --ifx-ink: #f5c451;
   --ifx-accent: #f5c451;
+  --primary: 245 196 81 !important;
+  --primary-light: 245 196 81 !important;
 }
 
 .dark .ifx-card--pam {
   --ifx-ink: #ff8a85;
   --ifx-accent: #ff8a85;
+  --primary: 255 138 133 !important;
+  --primary-light: 255 138 133 !important;
 }
 
 .dark .ifx-card--kms {
   --ifx-ink: #34edbf;
   --ifx-accent: #34edbf;
+  --primary: 52 237 191 !important;
+  --primary-light: 52 237 191 !important;
 }
 
 .dark .ifx-card__title {
@@ -1312,7 +1397,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
-  border-left-color: #dbf530;
+  border-left-color: rgb(var(--primary-light));
   background-color: #f7f7f6;
 }
 
@@ -1327,7 +1412,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .dark #sidebar-content ul[aria-hidden="true"] + ul.sidebar-group:not(:has(button)) > li > a.text-primary {
-  border-left-color: #dbf530;
+  border-left-color: rgb(var(--primary-light));
   background-color: #101114;
   color: #f3f3f4;
 }
