@@ -796,7 +796,8 @@ export const secretApprovalRequestServiceFactory = ({
         message: "The policy associated with this secret approval request has been deleted."
       });
     }
-    if (!policy.envId) {
+    const { envId: policyEnvId } = policy;
+    if (!policyEnvId) {
       throw new BadRequestError({
         message: "The policy associated with this secret approval request is not linked to the environment."
       });
@@ -806,7 +807,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (secretApprovalRequest.status !== RequestState.Open)
       throw new BadRequestError({ message: "You can only approve or reject open approval requests" });
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { hasRole, permission } = await permissionService.getProjectPermission({
       actor: ActorType.USER,
       actorId,
       projectId,
@@ -903,6 +904,49 @@ export const secretApprovalRequestServiceFactory = ({
 
       const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
+        // The request-time check ran before the approvals did. Another write, or another pending
+        // request, may have claimed a proposed value since, so the rules are enforced again here,
+        // under the same transaction that applies the writes.
+        const secretsToValidate = [
+          ...secretCreationCommits.map((el) => ({
+            key: el.key,
+            value: el.encryptedValue
+              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+              : undefined
+          })),
+          ...secretUpdationCommits
+            .filter((el) => !el.secret?.isRotatedSecret && (Boolean(el.encryptedValue) || el.key !== el.secret?.key))
+            .map((el) => ({
+              key: el.key,
+              value: el.encryptedValue
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+                : undefined,
+              secretId: el.secretId ?? undefined
+            }))
+        ];
+
+        if (secretsToValidate.length) {
+          const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+          await secretValidationRuleService.validateSecrets(
+            {
+              projectId,
+              environment,
+              envId: policyEnvId,
+              secretPath: folderPaths?.[0]?.path || "/",
+              secrets: secretsToValidate,
+              canAccessLocation: (duplicateEnvironment, duplicateSecretPath) =>
+                permission.can(
+                  ProjectPermissionSecretActions.DescribeSecret,
+                  subject(ProjectPermissionSub.Secrets, {
+                    environment: duplicateEnvironment,
+                    secretPath: duplicateSecretPath
+                  })
+                )
+            },
+            tx
+          );
+        }
+
         const creationBlindIndexes = await Promise.all(
           secretCreationCommits.map((el) =>
             el.encryptedValue
