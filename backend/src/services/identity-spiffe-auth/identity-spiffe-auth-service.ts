@@ -39,7 +39,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -88,7 +88,7 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentitySpiffeAuthServiceFactory = ReturnType<typeof identitySpiffeAuthServiceFactory>;
@@ -148,7 +148,7 @@ export const identitySpiffeAuthServiceFactory = ({
   kmsService,
   orgDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentitySpiffeAuthServiceFactoryDep) => {
   type TFlattenedTrustBundle = {
     configurationType: string;
@@ -620,7 +620,7 @@ export const identitySpiffeAuthServiceFactory = ({
       );
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.SPIFFE_AUTH,
@@ -778,7 +778,7 @@ export const identitySpiffeAuthServiceFactory = ({
     const updatedSpiffeAuth = await identitySpiffeAuthDAL.transaction(async (tx) => {
       const doc = await identitySpiffeAuthDAL.updateById(identitySpiffeAuth.id, updateQuery, tx);
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.SPIFFE_AUTH,
@@ -970,7 +970,7 @@ export const identitySpiffeAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.SPIFFE_AUTH }, tx);
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.SPIFFE_AUTH,

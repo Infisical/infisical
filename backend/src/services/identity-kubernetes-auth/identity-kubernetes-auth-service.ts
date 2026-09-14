@@ -62,7 +62,7 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -132,7 +132,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -157,7 +157,7 @@ export const identityKubernetesAuthServiceFactory = ({
   gatewayPoolDAL,
   orgDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
   const $gatewayProxyWrapper = async <T>(
     inputs: {
@@ -1144,7 +1144,7 @@ export const identityKubernetesAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
@@ -1617,7 +1617,7 @@ export const identityKubernetesAuthServiceFactory = ({
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const doc = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery, tx);
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
@@ -1829,7 +1829,7 @@ export const identityKubernetesAuthServiceFactory = ({
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.KUBERNETES_AUTH,

@@ -29,7 +29,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -69,7 +69,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityAzureAuthServiceFactory = ReturnType<typeof identityAzureAuthServiceFactory>;
@@ -84,7 +84,7 @@ export const identityAzureAuthServiceFactory = ({
   licenseService,
   orgDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentityAzureAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: azureJwt, organizationSlug }: TLoginAzureAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -353,7 +353,7 @@ export const identityAzureAuthServiceFactory = ({
       );
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.AZURE_AUTH,
@@ -476,7 +476,7 @@ export const identityAzureAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.AZURE_AUTH,
@@ -632,7 +632,7 @@ export const identityAzureAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.AZURE_AUTH }, tx);
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.AZURE_AUTH,

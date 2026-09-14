@@ -6,10 +6,11 @@ import { eventOutboxRegistryFactory } from "./event-outbox-registry";
 import { eventOutboxServiceFactory } from "./event-outbox-service";
 import {
   EventOutboxStatus,
+  EventResultStatus,
   IEventConsumer,
   MAX_OUTBOX_ATTEMPTS,
   MAX_OUTBOX_PAYLOAD_BYTES,
-  TOutboxEvent
+  TEventInput
 } from "./event-outbox-types";
 
 const { loggerWarn } = vi.hoisted(() => ({ loggerWarn: vi.fn<(...args: unknown[]) => void>() }));
@@ -28,7 +29,7 @@ vi.mock("@app/lib/telemetry/metrics", () => ({
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
-const makeEvent = (overrides?: Partial<TOutboxEvent>): TOutboxEvent => ({
+const makeEvent = (overrides?: Partial<TEventInput>): TEventInput => ({
   eventType: "approval.workflow.request_opened",
   resourceType: "approval.workflow",
   resourceId: "policy-1",
@@ -223,7 +224,7 @@ describe("event outbox drain", () => {
   test("commits a delivered result and stops when a claim comes back empty", async () => {
     const { service, commits } = buildDrain({
       batches: [[makeRow()]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
     });
 
     const result = await service.drain({
@@ -264,7 +265,7 @@ describe("event outbox drain", () => {
   test("fails a row terminally once it has used up its attempts", async () => {
     const { service, commits } = buildDrain({
       batches: [[makeRow({ attempts: MAX_OUTBOX_ATTEMPTS - 1 })]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Retry })),
+      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Retry })),
       consumerName: "alert"
     });
 
@@ -282,8 +283,8 @@ describe("event outbox drain", () => {
       handle: async (rows) =>
         rows.map((row) =>
           Number(row.id) <= 2
-            ? { id: String(row.id), status: EventOutboxStatus.Delivered }
-            : { id: String(row.id), status: EventOutboxStatus.Retry, error: "slack 502" }
+            ? { id: String(row.id), status: EventResultStatus.Delivered }
+            : { id: String(row.id), status: EventResultStatus.Retry, error: "slack 502" }
         )
     });
 
@@ -301,7 +302,7 @@ describe("event outbox drain", () => {
       handle: async (rows) =>
         rows.map((row) => ({
           id: String(row.id),
-          status: EventOutboxStatus.Delivered,
+          status: EventResultStatus.Delivered,
           progress: { deliveredChannelIds: [`c-${row.id}`] }
         }))
     });
@@ -316,7 +317,7 @@ describe("event outbox drain", () => {
   test("commits under the token the batch was claimed with", async () => {
     const { service, commits, claimTokens } = buildDrain({
       batches: [[makeRow()]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
     });
 
     await service.drain(KEY);
@@ -330,7 +331,7 @@ describe("event outbox drain", () => {
     loggerWarn.mockClear();
     const { service } = buildDrain({
       batches: [[makeRow({ id: 1 }), makeRow({ id: 2 })]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered })),
+      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered })),
       settled: () => 1
     });
 
@@ -344,7 +345,7 @@ describe("event outbox drain", () => {
     loggerWarn.mockClear();
     const { service } = buildDrain({
       batches: [[makeRow()]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
     });
 
     await service.drain(KEY);
@@ -362,8 +363,7 @@ describe("event outbox drain", () => {
         batches: [[makeRow({ id: 1 }), makeRow({ id: 2 })]],
         handle: (rows) =>
           new Promise((resolve) => {
-            release = () =>
-              resolve(rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered as const })));
+            release = () => resolve(rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered })));
           })
       });
 
@@ -405,7 +405,7 @@ describe("event outbox drain", () => {
       registry.register(
         makeConsumer({
           name: "alert",
-          handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+          handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
         })
       );
       let commitCalls = 0;
@@ -443,7 +443,7 @@ describe("event outbox drain", () => {
       registry.register(
         makeConsumer({
           name: "alert",
-          handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Delivered }))
+          handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
         })
       );
       let commitCalls = 0;

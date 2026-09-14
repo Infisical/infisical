@@ -41,7 +41,7 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -82,7 +82,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityJwtAuthServiceFactory = ReturnType<typeof identityJwtAuthServiceFactory>;
@@ -98,7 +98,7 @@ export const identityJwtAuthServiceFactory = ({
   kmsService,
   orgDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentityJwtAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginJwtAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -542,7 +542,7 @@ export const identityJwtAuthServiceFactory = ({
       );
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.JWT_AUTH,
@@ -698,7 +698,7 @@ export const identityJwtAuthServiceFactory = ({
     const updatedJwtAuth = await identityJwtAuthDAL.transaction(async (tx) => {
       const doc = await identityJwtAuthDAL.updateById(identityJwtAuth.id, updateQuery, tx);
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.JWT_AUTH,
@@ -881,7 +881,7 @@ export const identityJwtAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.JWT_AUTH }, tx);
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.JWT_AUTH,

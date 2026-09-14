@@ -34,7 +34,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -71,7 +71,7 @@ type TIdentityOciAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
@@ -86,7 +86,7 @@ export const identityOciAuthServiceFactory = ({
   permissionService,
   orgDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid, organizationSlug }: TLoginOciAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -366,7 +366,7 @@ export const identityOciAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.OCI_AUTH,
@@ -488,7 +488,7 @@ export const identityOciAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.OCI_AUTH,
@@ -644,7 +644,7 @@ export const identityOciAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OCI_AUTH }, tx);
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.OCI_AUTH,

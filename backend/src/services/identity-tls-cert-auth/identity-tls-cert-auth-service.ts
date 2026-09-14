@@ -32,7 +32,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -190,7 +190,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export const identityTlsCertAuthServiceFactory = ({
@@ -204,7 +204,7 @@ export const identityTlsCertAuthServiceFactory = ({
   kmsService,
   orgDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentityTlsCertAuthServiceFactoryDep): TIdentityTlsCertAuthServiceFactory => {
   const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({
     identityId,
@@ -591,7 +591,7 @@ export const identityTlsCertAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
@@ -731,7 +731,7 @@ export const identityTlsCertAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
@@ -900,7 +900,7 @@ export const identityTlsCertAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.TLS_CERT_AUTH }, tx);
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.TLS_CERT_AUTH,

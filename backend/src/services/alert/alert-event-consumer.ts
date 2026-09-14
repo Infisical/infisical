@@ -1,15 +1,19 @@
 import { z } from "zod";
 
-import { TEventOutbox } from "@app/db/schemas";
 import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
-import { EventOutboxStatus, IEventConsumer, TEventConsumerResult } from "@app/services/event-outbox/event-outbox-types";
+import {
+  EventResultStatus,
+  IEventConsumer,
+  TEvent,
+  TEventConsumerResult
+} from "@app/services/event-outbox/event-outbox-types";
 
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertEngine } from "./alert-engine";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { AlertTriggerType, MAX_TARGET_IDS_PER_EVENT } from "./alert-types";
 
-export const ALERT_OUTBOX_CONSUMER = "alert";
+export const ALERT_EVENT_CONSUMER = "alert";
 
 // Emitters name targets by id and the provider rehydrates them at delivery. Keeping the payload to
 // ids is what lets one consumer serve every provider.
@@ -38,20 +42,20 @@ export const alertEventConsumerFactory = ({
 
   // subscribesTo only sees the event type, so a valid event key on the wrong resourceType gets past it.
   // Fail here, terminally and naming both, instead of marking the event delivered as "no matching alert".
-  const $isDeclaredEvent = (event: TEventOutbox): boolean =>
+  const $isDeclaredEvent = (event: TEvent): boolean =>
     Boolean(
       alertProviderRegistry
         .get(event.resourceType)
         ?.events.some((declared) => declared.key === event.eventType && declared.triggerType === AlertTriggerType.Event)
     );
 
-  const $handleEvent = async (event: TEventOutbox, findAlerts: TAlertLookup): Promise<TEventConsumerResult> => {
+  const $handleEvent = async (event: TEvent, findAlerts: TAlertLookup): Promise<TEventConsumerResult> => {
     const id = String(event.id);
 
     if (!$isDeclaredEvent(event)) {
       return {
         id,
-        status: EventOutboxStatus.Failed,
+        status: EventResultStatus.Failed,
         error: `No alert provider for resource type '${event.resourceType}' declares '${event.eventType}' as an event-triggered alert`
       };
     }
@@ -60,7 +64,7 @@ export const alertEventConsumerFactory = ({
     if (!payload.success) {
       return {
         id,
-        status: EventOutboxStatus.Failed,
+        status: EventResultStatus.Failed,
         error: `Unreadable alert event payload: ${payload.error.issues.map((issue) => issue.message).join(", ")}`
       };
     }
@@ -81,7 +85,7 @@ export const alertEventConsumerFactory = ({
         resourceType: event.resourceType,
         outcome: AlertDispatchOutcome.NoMatchingAlert
       });
-      return { id, status: EventOutboxStatus.Delivered };
+      return { id, status: EventResultStatus.Delivered };
     }
 
     const errors: string[] = [];
@@ -107,12 +111,12 @@ export const alertEventConsumerFactory = ({
 
     const outcome = { id, progress: { deliveredChannelIds: [...delivered] } };
     if (errors.length > 0) {
-      return { ...outcome, status: EventOutboxStatus.Retry, error: errors.join("; ") };
+      return { ...outcome, status: EventResultStatus.Retry, error: errors.join("; ") };
     }
-    return { ...outcome, status: EventOutboxStatus.Delivered };
+    return { ...outcome, status: EventResultStatus.Delivered };
   };
 
-  const handle = async (events: TEventOutbox[]): Promise<TEventConsumerResult[]> => {
+  const handle = async (events: TEvent[]): Promise<TEventConsumerResult[]> => {
     const alertsByScope = new Map<string, ReturnType<TAlertLookup>>();
     const findAlerts: TAlertLookup = (filter) => {
       const key = `${filter.orgId}|${filter.projectId ?? ""}|${filter.eventType}`;
@@ -133,7 +137,7 @@ export const alertEventConsumerFactory = ({
       } catch (error) {
         results.push({
           id: String(event.id),
-          status: EventOutboxStatus.Retry,
+          status: EventResultStatus.Retry,
           error: error instanceof Error ? error.message : "Unknown error"
         });
       }
@@ -143,7 +147,7 @@ export const alertEventConsumerFactory = ({
   };
 
   return {
-    name: ALERT_OUTBOX_CONSUMER,
+    name: ALERT_EVENT_CONSUMER,
     payloadSchema: AlertEventPayloadSchema,
     subscribesTo,
     handle

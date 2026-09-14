@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import RE2 from "re2";
 import { z } from "zod";
 
@@ -49,7 +50,7 @@ const keySchema = z
     "Must be lowercase and dot-namespaced, e.g. 'pki.certificate.issued'"
   );
 
-export const OutboxEventSchema = z.object({
+export const EventInputSchema = z.object({
   eventType: keySchema,
   resourceType: keySchema,
   resourceId: z.string().trim().min(1).max(MAX_OUTBOX_KEY_LENGTH),
@@ -60,11 +61,27 @@ export const OutboxEventSchema = z.object({
   occurredAt: z.date().optional()
 });
 
-export type TOutboxEvent = z.input<typeof OutboxEventSchema>;
+export type TEventInput = z.input<typeof EventInputSchema>;
+
+export type TEventEmitter = {
+  emit: (event: TEventInput, tx: Knex) => Promise<void>;
+};
+
+// What a consumer sees. Lock, attempt, and status columns are the outbox's business, not the consumer's.
+export type TEvent = Pick<
+  TEventOutbox,
+  "id" | "eventType" | "resourceType" | "resourceId" | "orgId" | "projectId" | "payload" | "progress" | "occurredAt"
+>;
+
+export enum EventResultStatus {
+  Delivered = "delivered",
+  Retry = "retry",
+  Failed = "failed"
+}
 
 export type TEventConsumerResult = {
   id: string;
-  status: EventOutboxStatus.Delivered | EventOutboxStatus.Retry | EventOutboxStatus.Failed;
+  status: EventResultStatus;
   error?: string;
   // Opaque to the outbox; handed back on the next attempt so a retry can skip what already landed.
   progress?: Record<string, unknown> | null;
@@ -89,5 +106,5 @@ export interface IEventConsumer<TPayload = unknown> {
   subscribesTo(eventType: string): boolean;
 
   // Events for a single (resourceType, resourceId), in id order. Must return one result per event.
-  handle(events: TEventOutbox[]): Promise<TEventConsumerResult[]>;
+  handle(events: TEvent[]): Promise<TEventConsumerResult[]>;
 }

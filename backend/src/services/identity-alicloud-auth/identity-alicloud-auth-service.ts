@@ -33,7 +33,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -73,7 +73,7 @@ type TIdentityAliCloudAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityAliCloudAuthServiceFactory = ReturnType<typeof identityAliCloudAuthServiceFactory>;
@@ -88,7 +88,7 @@ export const identityAliCloudAuthServiceFactory = ({
   permissionService,
   orgDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentityAliCloudAuthServiceFactoryDep) => {
   const login = async ({ identityId, organizationSlug, ...params }: TLoginAliCloudAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -352,7 +352,7 @@ export const identityAliCloudAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.ALICLOUD_AUTH,
@@ -472,7 +472,7 @@ export const identityAliCloudAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.ALICLOUD_AUTH,
@@ -628,7 +628,7 @@ export const identityAliCloudAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.ALICLOUD_AUTH }, tx);
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.ALICLOUD_AUTH,

@@ -10,17 +10,18 @@ import { TEventOutboxRegistry } from "./event-outbox-registry";
 import {
   computeBackoffMs,
   DELIVERED_RETENTION_MS,
+  EventInputSchema,
   EventOutboxStatus,
+  EventResultStatus,
   FAILED_RETENTION_MS,
   IEventConsumer,
   MAX_BATCHES_PER_FLUSH,
   MAX_OUTBOX_ATTEMPTS,
   MAX_OUTBOX_PAYLOAD_BYTES,
   OUTBOX_CLAIM_BATCH_SIZE,
-  OutboxEventSchema,
   STALE_CLAIM_THRESHOLD_MS,
   TEventConsumerResult,
-  TOutboxEvent,
+  TEventInput,
   TOutboxFlushKey
 } from "./event-outbox-types";
 
@@ -74,8 +75,8 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   // `tx` is required on purpose: the row has to commit with the business write. Nothing here reads the
   // DB or calls into a consumer, and nothing is caught: a bad event is a bug at the emit site (so 500,
   // not 400), and swallowing a failed insert would leave the caller with a poisoned transaction.
-  const emit = async (event: TOutboxEvent, tx: Knex): Promise<void> => {
-    const parsed = OutboxEventSchema.safeParse(event);
+  const emit = async (event: TEventInput, tx: Knex): Promise<void> => {
+    const parsed = EventInputSchema.safeParse(event);
     if (!parsed.success) {
       throw new InternalServerError({
         name: "EventOutboxInvalidEvent",
@@ -165,16 +166,16 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       // No result means unaccounted for, not delivered.
       const result = byId.get(id) ?? {
         id,
-        status: EventOutboxStatus.Retry as const,
+        status: EventResultStatus.Retry,
         error: "Consumer returned no result for this event"
       };
 
       const attempts = row.attempts + 1;
-      let finalStatus: TEventConsumerResult["status"];
-      if (result.status === EventOutboxStatus.Delivered) {
+      let finalStatus: EventOutboxStatus;
+      if (result.status === EventResultStatus.Delivered) {
         finalStatus = EventOutboxStatus.Delivered;
         delivered.push({ id, progress: result.progress });
-      } else if (result.status === EventOutboxStatus.Failed || attempts >= MAX_OUTBOX_ATTEMPTS) {
+      } else if (result.status === EventResultStatus.Failed || attempts >= MAX_OUTBOX_ATTEMPTS) {
         finalStatus = EventOutboxStatus.Failed;
         failed.push({ id, error: result.error });
       } else {
@@ -245,7 +246,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
         error,
         `event-outbox: consumer '${key.consumer}' threw while handling a batch [resourceType=${key.resourceType}] [resourceId=${key.resourceId}]`
       );
-      return claimed.map((row) => ({ id: String(row.id), status: EventOutboxStatus.Retry as const, error: message }));
+      return claimed.map((row) => ({ id: String(row.id), status: EventResultStatus.Retry, error: message }));
     } finally {
       clearInterval(heartbeat);
     }
@@ -335,5 +336,3 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
 
   return { emit, drain, sweepStaleClaims, pruneTerminalRows };
 };
-
-export type TEventOutboxEmitter = Pick<TEventOutboxServiceFactory, "emit">;

@@ -32,7 +32,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -91,7 +91,7 @@ type TIdentityUaServiceFactoryDep = {
     | "sortedSetMembersPrimary"
     | "acquireLock"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityUaServiceFactory = ReturnType<typeof identityUaServiceFactory>;
@@ -109,7 +109,7 @@ export const identityUaServiceFactory = ({
   keyStore,
   identityDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentityUaServiceFactoryDep) => {
   const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
     const authMetricStartTime = performance.now();
@@ -553,7 +553,7 @@ export const identityUaServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
@@ -708,7 +708,7 @@ export const identityUaServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
@@ -862,7 +862,7 @@ export const identityUaServiceFactory = ({
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
       const deletedUniversalAuth = await identityUaDAL.delete({ identityId }, tx);
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
@@ -999,7 +999,7 @@ export const identityUaServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
@@ -1307,7 +1307,7 @@ export const identityUaServiceFactory = ({
     const updatedClientSecret = await identityUaDAL.transaction(async (tx) => {
       const doc = await identityUaClientSecretDAL.updateById(clientSecretId, { isClientSecretRevoked: true }, tx);
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,

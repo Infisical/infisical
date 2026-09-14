@@ -648,12 +648,19 @@ whenever the pod dies or Redis is down in that window. It's not alert-specific:
 `alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
 at-least-once delivery of a domain event registers next to it.
 
-**Emitting:** `eventOutboxService.emit(event, tx)`. `tx` is required on purpose.
+**Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
+`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]`
+(the row minus its lock, attempt, and status columns) and return `TEventConsumerResult` with an
+`EventResultStatus`. Names with "outbox" in them (the DAL, queue, cron jobs, metrics,
+`EventOutboxStatus`, `TOutboxFlushKey`) describe the mechanism and stay inside the module and its
+wiring. A dependency field for the emitter is `eventEmitter`, not `eventOutboxService`.
+
+**Emitting:** `eventEmitter.emit(event, tx)`. `tx` is required on purpose.
 
 ```ts
 await someDAL.transaction(async (tx) => {
   const request = await approvalRequestDAL.create({ ... }, tx);
-  await eventOutbox.emit(
+  await eventEmitter.emit(
     {
       eventType: "approval.workflow.request_opened",
       resourceType: "approval.workflow",
@@ -678,7 +685,7 @@ await someDAL.transaction(async (tx) => {
 **How delivery works:**
 
 - **The row owns retry state** (`attempts`, `nextRetryAt`, backoff, terminal `failed`); the consumer
-  owns what "delivered" means and reports `Delivered` / `Retry` / `Failed` plus `progress` per row.
+  owns what "delivered" means and reports `Delivered` / `Retry` / `Failed` plus `progress` per event.
   Backoff is exponential with jitter from 30s, and `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an
   hour after the first, because a `failed` row is a notification nobody will receive. To replay failed
   rows by hand: `status = 'retry', attempts = 0, nextRetryAt = now()`.
@@ -695,8 +702,8 @@ await someDAL.transaction(async (tx) => {
 - **Discovery only looks at consumers registered in this process.** Rows for any other name would sort
   first forever and, past the limit, hide every real key. They wait and show up on the oldest-pending
   gauge instead.
-- **Don't let one row's failure escape `handle`.** The outbox retries the whole batch when `handle`
-  throws. Catch per row and report `Retry` for that row alone (see `alert-event-consumer.ts`).
+- **Don't let one event's failure escape `handle`.** The outbox retries the whole batch when `handle`
+  throws. Catch per event and report `Retry` for that event alone (see `alert-event-consumer.ts`).
 - **BullMQ owns latency, not correctness.** `attempts: 1` on the flush job is intentional; retry lives
   on the row. A lost job costs one relay interval.
 - **The relay is a `setInterval`, not a cron job.** It doesn't need exactly-once (`FOR UPDATE SKIP

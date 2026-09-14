@@ -7,7 +7,7 @@ export const eventOutboxRegistryFactory = () => {
 
   const register = (consumer: IEventConsumer) => {
     if (consumers.has(consumer.name)) {
-      throw new Error(`Event outbox consumer already registered under the name '${consumer.name}'`);
+      throw new Error(`Event consumer already registered under the name '${consumer.name}'`);
     }
     consumers.set(consumer.name, consumer);
   };

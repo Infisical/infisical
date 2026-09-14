@@ -252,7 +252,7 @@ describe("identity credential alert provider", () => {
     expect(byPlatform[0].kind === "auth-method-change" && byPlatform[0].actorLabel).toBe("Infisical");
   });
 
-  // A drifted emit site must surface in the outbox error, not as a notification with blank fields.
+  // A drifted emit site must fail the event with a clear error, not send a notification with blank fields.
   test("findTargetsByIds rejects a payload the emitter contract does not describe", async () => {
     const provider = buildProvider();
     await expect(

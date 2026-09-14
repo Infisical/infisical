@@ -51,7 +51,7 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -92,7 +92,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuthServiceFactory>;
@@ -109,7 +109,7 @@ export const identityOidcAuthServiceFactory = ({
   kmsService,
   orgDAL,
   identityAccessTokenService,
-  eventOutboxService
+  eventEmitter
 }: TIdentityOidcAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: oidcJwt, organizationSlug }: TLoginOidcAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -775,7 +775,7 @@ export const identityOidcAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.OIDC_AUTH,
@@ -993,7 +993,7 @@ export const identityOidcAuthServiceFactory = ({
     const updatedOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const doc = await identityOidcAuthDAL.updateById(identityOidcAuth.id, updateQuery, tx);
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.OIDC_AUTH,
@@ -1178,7 +1178,7 @@ export const identityOidcAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OIDC_AUTH }, tx);
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.OIDC_AUTH,

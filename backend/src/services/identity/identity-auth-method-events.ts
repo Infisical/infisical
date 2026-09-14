@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 export const IDENTITY_AUTHENTICATION_RESOURCE_TYPE = "identity.authentication";
 export const IDENTITY_AUTH_METHOD_CHANGED_EVENT = "identity.authentication.auth-method-changed";
@@ -37,11 +37,11 @@ export type TIdentityAuthMethodChangeInput = {
 };
 
 export const emitIdentityAuthMethodChanged = (
-  eventOutbox: TEventOutboxEmitter,
+  eventEmitter: TEventEmitter,
   { membership, authMethod, change, actor, actorId, credential }: TIdentityAuthMethodChangeInput,
   tx: Knex
 ): Promise<void> =>
-  eventOutbox.emit(
+  eventEmitter.emit(
     {
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
       resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,

@@ -26,7 +26,7 @@ import {
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { TEventOutboxEmitter } from "@app/services/event-outbox/event-outbox-service";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange
@@ -74,7 +74,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
-  eventOutboxService: TEventOutboxEmitter;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
@@ -88,7 +88,7 @@ export const identityTokenAuthServiceFactory = ({
   permissionService,
   licenseService,
   orgDAL,
-  eventOutboxService
+  eventEmitter
 }: TIdentityTokenAuthServiceFactoryDep) => {
   const attachTokenAuth = async ({
     identityId,
@@ -185,7 +185,7 @@ export const identityTokenAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.TOKEN_AUTH,
@@ -304,7 +304,7 @@ export const identityTokenAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.TOKEN_AUTH,
@@ -464,7 +464,7 @@ export const identityTokenAuthServiceFactory = ({
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.TOKEN_AUTH }, tx);
 
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.TOKEN_AUTH,
@@ -648,7 +648,7 @@ export const identityTokenAuthServiceFactory = ({
         persistToPg: { tx, name }
       });
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.TOKEN_AUTH,
@@ -897,7 +897,7 @@ export const identityTokenAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityMembershipOrg,
           authMethod: IdentityAuthMethod.TOKEN_AUTH,
@@ -984,7 +984,7 @@ export const identityTokenAuthServiceFactory = ({
         tx
       );
       await emitIdentityAuthMethodChanged(
-        eventOutboxService,
+        eventEmitter,
         {
           membership: identityOrgMembership,
           authMethod: IdentityAuthMethod.TOKEN_AUTH,

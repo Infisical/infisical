@@ -66,7 +66,7 @@ describe("alert provider registry", () => {
     ).not.toThrow();
   });
 
-  test("reports only the event-triggered keys, so the outbox consumer ignores scheduled ones", () => {
+  test("reports only the event-triggered keys, so the event consumer ignores scheduled ones", () => {
     const registry = alertProviderRegistryFactory();
     registry.register(
       baseProvider({

@@ -1,6 +1,5 @@
-import { TEventOutbox } from "@app/db/schemas";
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
-import { EventOutboxStatus } from "@app/services/event-outbox/event-outbox-types";
+import { EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
 
 import { alertEventConsumerFactory } from "./alert-event-consumer";
 import { AlertTriggerType } from "./alert-types";
@@ -15,10 +14,9 @@ const EVENT_TYPE = "approval.workflow.request_opened";
 
 const makeAlert = (id: string) => ({ id, resourceType: "approval.workflow", orgId: ORG_ID }) as never;
 
-const makeEvent = (overrides?: Partial<TEventOutbox>): TEventOutbox =>
+const makeEvent = (overrides?: Partial<TEvent>): TEvent =>
   ({
     id: 1,
-    consumer: "alert",
     eventType: EVENT_TYPE,
     resourceType: "approval.workflow",
     resourceId: "policy-1",
@@ -26,11 +24,9 @@ const makeEvent = (overrides?: Partial<TEventOutbox>): TEventOutbox =>
     projectId: null,
     payload: { targetIds: ["req-1"] },
     occurredAt: new Date(),
-    status: EventOutboxStatus.Processing,
-    attempts: 0,
     progress: null,
     ...overrides
-  }) as TEventOutbox;
+  }) as TEvent;
 
 const buildConsumer = (opts?: {
   alerts?: unknown[];
@@ -84,7 +80,7 @@ const buildConsumer = (opts?: {
   return { consumer, runs, getLookups: () => lookups };
 };
 
-describe("alert outbox consumer", () => {
+describe("alert event consumer", () => {
   test("subscribes only to event keys a registered provider declares as event-triggered", () => {
     const { consumer } = buildConsumer();
 
@@ -97,7 +93,7 @@ describe("alert outbox consumer", () => {
 
     const [result] = await consumer.handle([makeEvent()]);
 
-    expect(result.status).toBe(EventOutboxStatus.Delivered);
+    expect(result.status).toBe(EventResultStatus.Delivered);
     expect(runs[0].targetIds).toEqual(["req-1"]);
     // The provider sees everything the emitter wrote, not only the ids the consumer validated.
     expect(runs[0].payload).toEqual({ targetIds: ["req-1"] });
@@ -111,7 +107,7 @@ describe("alert outbox consumer", () => {
 
     const [result] = await consumer.handle([makeEvent()]);
 
-    expect(result.status).toBe(EventOutboxStatus.Delivered);
+    expect(result.status).toBe(EventResultStatus.Delivered);
     expect(runs).toHaveLength(0);
   });
 
@@ -122,7 +118,7 @@ describe("alert outbox consumer", () => {
 
     const [result] = await consumer.handle([makeEvent()]);
 
-    expect(result.status).toBe(EventOutboxStatus.Retry);
+    expect(result.status).toBe(EventResultStatus.Retry);
     expect(result.progress).toEqual({ deliveredChannelIds: ["c-1"] });
   });
 
@@ -140,7 +136,7 @@ describe("alert outbox consumer", () => {
 
     const [result] = await consumer.handle([makeEvent({ payload: { targetIds: [] } })]);
 
-    expect(result.status).toBe(EventOutboxStatus.Failed);
+    expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("Unreadable alert event payload");
   });
 
@@ -166,7 +162,7 @@ describe("alert outbox consumer", () => {
 
     const [result] = await consumer.handle([makeEvent({ resourceType: "pki.certificate" })]);
 
-    expect(result.status).toBe(EventOutboxStatus.Failed);
+    expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("pki.certificate");
     expect(result.error).toContain("approval.workflow.request_opened");
     expect(runs).toHaveLength(0);
@@ -193,9 +189,9 @@ describe("alert outbox consumer", () => {
     ]);
 
     expect(results.map((result) => result.status)).toEqual([
-      EventOutboxStatus.Delivered,
-      EventOutboxStatus.Retry,
-      EventOutboxStatus.Delivered
+      EventResultStatus.Delivered,
+      EventResultStatus.Retry,
+      EventResultStatus.Delivered
     ]);
     expect(results[1].error).toBe("connection reset");
     expect(runs.map((run) => run.alertId)).toEqual(["alert-1", "alert-3"]);
