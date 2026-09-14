@@ -7,7 +7,14 @@ export const PreviewBadge = ({ type }: { type: ProjectType }) => {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="info">Preview</Badge>
+        <Badge
+          variant="info"
+          tabIndex={0}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          Preview
+        </Badge>
       </TooltipTrigger>
       <TooltipContent>
         Agent Vault is in preview and subject to change. Not recommended for production
