@@ -139,9 +139,11 @@ Worth knowing:
   differ only in a trailing suffix still get separate stacks.
 - `stack-init` copies `.env` from your main checkout for its keys, minus that
   checkout's stack settings. Without one it falls back to `.env.example`.
-- It seeds the database from `STACK_SEED_VOLUME`, defaulting to
-  `infisical_postgres-data1`, and starts empty if that volume is missing or the
-  setting is blank.
+- It seeds the database from `STACK_SEED_VOLUME`, defaulting to your main
+  checkout's own stack volume, and starts empty if that volume is missing or
+  the setting is blank. The default follows the main checkout's directory
+  rather than a branch, so a worktree cut from another branch still seeds from
+  the main checkout and not from that branch's database.
 - `stack-init` starts the proxy, which binds port 443 and may ask for your
   password.
 

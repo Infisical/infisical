@@ -8,11 +8,6 @@
 # behaves exactly as it always has.
 set -eu
 
-# Written into .env on first init so it is visible and editable there. Point it
-# at another volume to seed from that instead, or blank it to always start with
-# an empty database.
-DEFAULT_SEED_VOLUME=infisical_postgres-data1
-
 # Suffix the stacks use. The proxy serves this alongside portless's default.
 TLD=test
 
@@ -167,6 +162,18 @@ main_checkout() {
   (cd "$common/.." 2>/dev/null && pwd) || return 1
 }
 
+# New stacks seed from the main checkout's own database, so there is one source
+# per machine rather than a name everyone has to agree on. It is keyed to that
+# checkout's directory, not to a branch, so a worktree cut from another branch
+# still seeds from the main checkout rather than from that branch's database.
+#
+# Written into .env on first init, so point it at another volume there to seed
+# from that instead, or blank it to always start empty.
+default_seed_volume() {
+  main=$(main_checkout) || return 0
+  printf '%s_postgres-data' "$(sanitise_name "$(basename "$main")")"
+}
+
 # .env is gitignored, so a new worktree never has one. Prefer the main
 # checkout's: it holds the keys this machine's data was encrypted with, and a
 # stack seeded from an existing volume can only read that volume with them.
@@ -217,7 +224,7 @@ cmd_init() {
   # stack name, so creating it here is what compose will pick up. Seeding from
   # an existing volume is far quicker than migrating an empty database, but the
   # data only reads back with the ENCRYPTION_KEY that wrote it.
-  grep -q '^STACK_SEED_VOLUME=' .env || set_var STACK_SEED_VOLUME "$DEFAULT_SEED_VOLUME"
+  grep -q '^STACK_SEED_VOLUME=' .env || set_var STACK_SEED_VOLUME "$(default_seed_volume)"
   seed=$(get STACK_SEED_VOLUME || true)
 
   volume="${NAME}_postgres-data"

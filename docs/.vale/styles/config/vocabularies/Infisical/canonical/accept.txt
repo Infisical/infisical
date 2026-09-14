@@ -625,3 +625,4 @@ MSBuild
 
 # --- Surfaced by the parallel dev environments page ---
 portless
+worktree
