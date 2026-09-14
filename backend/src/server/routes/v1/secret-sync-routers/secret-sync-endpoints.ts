@@ -10,6 +10,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { KeySchemaSchema } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSecretSync, TSecretSyncInput } from "@app/services/secret-sync/secret-sync-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -557,8 +558,13 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       body: z.object({
         projectId: z.string().uuid(),
         environment: slugSchema({ field: "environment", max: 64 }),
-        secretPath: z.string().trim().min(1, "Secret path required").transform(removeTrailingSlash),
-        keySchema: z.string().trim().max(255).optional()
+        secretPath: z
+          .string()
+          .trim()
+          .min(1, "Secret path required")
+          .transform(removeTrailingSlash)
+          .describe(SecretSyncs.CREATE(destination).secretPath),
+        keySchema: KeySchemaSchema
       }),
       response: {
         200: z.object({

@@ -20,6 +20,39 @@ const RECURSIVE_SYNC_REFINEMENT = {
 const isRecursiveCombinationAllowed = (options: { recursive?: unknown; initialSyncBehavior?: unknown }) =>
   !options.recursive || options.initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination;
 
+// Shared by BaseSyncOptionsSchema and the recursive-conflicts preview route: both compile this
+// string as a Handlebars template (getKeyWithSchema in secret-sync-payload.ts), so both need the
+// same guard against a syntactically invalid one reaching handlebars.compile() uncaught.
+export const KeySchemaSchema = z
+  .string()
+  .trim()
+  .max(255)
+  .optional()
+  .refine(
+    (val) => {
+      if (!val) return true;
+
+      const allowedOptionalPlaceholders = ["{{environment}}"];
+
+      const allowedPlaceholdersRegexPart = ["{{secretKey}}", ...allowedOptionalPlaceholders]
+        .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
+        .join("|");
+
+      const allowedContentRegex = new RE2(`^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`);
+      const contentIsValid = allowedContentRegex.test(val);
+
+      // Check if {{secretKey}} is present
+      const secretKeyRegex = new RE2(/\{\{secretKey\}\}/);
+      const secretKeyIsPresent = secretKeyRegex.test(val);
+
+      return contentIsValid && secretKeyIsPresent;
+    },
+    {
+      message:
+        "Key schema must include exactly one {{secretKey}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+    }
+  );
+
 const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
   destination,
   syncOptionsConfig: { canImportSecrets, supportsKeySchema = true, supportsDisableSecretDeletion = true },
@@ -39,34 +72,7 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
       : z.literal(SecretSyncInitialSyncBehavior.OverwriteDestination)
     ).describe(SecretSyncs.SYNC_OPTIONS(destination).initialSyncBehavior),
     keySchema: supportsKeySchema
-      ? z
-          .string()
-          .optional()
-          .refine(
-            (val) => {
-              if (!val) return true;
-
-              const allowedOptionalPlaceholders = ["{{environment}}"];
-
-              const allowedPlaceholdersRegexPart = ["{{secretKey}}", ...allowedOptionalPlaceholders]
-                .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
-                .join("|");
-
-              const allowedContentRegex = new RE2(`^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`);
-              const contentIsValid = allowedContentRegex.test(val);
-
-              // Check if {{secretKey}} is present
-              const secretKeyRegex = new RE2(/\{\{secretKey\}\}/);
-              const secretKeyIsPresent = secretKeyRegex.test(val);
-
-              return contentIsValid && secretKeyIsPresent;
-            },
-            {
-              message:
-                "Key schema must include exactly one {{secretKey}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
-            }
-          )
-          .describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema)
+      ? KeySchemaSchema.describe(SecretSyncs.SYNC_OPTIONS(destination).keySchema)
       : z
           .string()
           .optional()

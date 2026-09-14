@@ -34,9 +34,11 @@ export const getAncestorPaths = (path: string): string[] => {
 };
 
 // buildSyncPayload expands secret references for every secret concurrently
-// (Promise.allSettled below), and expansion can hit the DB per secret. Kept low against a
-// 10-connection pool; raise it if customers need more room and the concurrency is bounded first.
-export const SECRET_SYNC_MAX_SECRETS = 100;
+// (Promise.allSettled below), and expansion can hit the DB per secret, so this stays well under
+// what a 10-connection pool can take at once even with every slot serving one sync. Applies to
+// every sync, not just recursive ones: an oversized single folder is the same risk as an
+// oversized subtree. Raise further only once that concurrency is actually bounded.
+export const SECRET_SYNC_MAX_SECRETS = 500;
 
 export const assertWithinSecretLimit = (count: number) => {
   if (count <= SECRET_SYNC_MAX_SECRETS) return;
