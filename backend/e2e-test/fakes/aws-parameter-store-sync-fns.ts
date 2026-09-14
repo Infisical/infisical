@@ -6,6 +6,12 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 // Type-only, and by a path the aliases do not match, so this does not resolve back to here.
 import type * as RealProvider from "../../src/services/secret-sync/aws-parameter-store/aws-parameter-store-sync-fns";
+// By a path the aliases do not match, so this resolves to the real module, not back to here.
+// getHierarchicalParameterName is a pure function with no AWS SDK use, so reusing the real one
+// here (instead of re-deriving the naming rule) is exactly what the "reproduce the contract, not
+// just the shape" rule in backend/CLAUDE.md asks for: one implementation of the naming rule, two
+// of everything that actually talks to a destination.
+import { getHierarchicalParameterName } from "../../src/services/secret-sync/aws-parameter-store/aws-parameter-store-sync-fns";
 
 // Stands in for the AWS Parameter Store provider so the specs can assert what Infisical hands
 // to a destination without reaching AWS. Wired up by test.alias in vitest.e2e.config.mts;
@@ -82,9 +88,35 @@ export const fakeParameterStore = {
   })
 };
 
+const buildSecretMap = (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload): TSecretMap => {
+  if (!secretSync.syncOptions.preserveSecretPaths) return payload.flatten();
+
+  const { destinationConfig, syncOptions } = secretSync;
+  const map: TSecretMap = {};
+
+  for (const entry of payload.secrets) {
+    const name = getHierarchicalParameterName({
+      destinationPath: destinationConfig.path,
+      secretPath: entry.path,
+      key: entry.key,
+      keySchema: syncOptions.keySchema,
+      environment: payload.environment
+    });
+
+    map[name.slice(destinationConfig.path.length)] = {
+      value: entry.value,
+      id: entry.id,
+      comment: entry.comment,
+      secretMetadata: entry.secretMetadata
+    };
+  }
+
+  return map;
+};
+
 export const AwsParameterStoreSyncFns = {
   syncSecrets: (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
+    const secretMap = buildSecretMap(secretSync, payload);
     const { syncOptions, environment } = secretSync;
     const store = storeForSync(secretSync);
 
@@ -140,7 +172,7 @@ export const AwsParameterStoreSyncFns = {
     ),
 
   removeSecrets: (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
+    const secretMap = buildSecretMap(secretSync, payload);
     const store = storeForSync(secretSync);
 
     if (store.writeError) {

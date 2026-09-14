@@ -178,6 +178,77 @@ describe("Secret syncs", async () => {
     });
   });
 
+  describe("Preserving secret paths mirrors the Infisical folder structure into the destination", () => {
+    test("A recursive sync with preserveSecretPaths nests each secret under its own folder path", async () => {
+      await addSecret("/services", "PARENT_KEY", "parent-value");
+      await addSecret("/services/api", "CHILD_KEY", "child-value");
+
+      const { secretSync } = await newSync("preserves-hierarchy", {
+        secretPath: "/services",
+        recursive: true,
+        preserveSecretPaths: true
+      });
+      await triggerSecretSync({
+        syncId: secretSync!.id,
+        region: REGION,
+        destinationPath: pathFor("preserves-hierarchy"),
+        authToken: jwtAuthToken
+      });
+
+      expect(fakeParameterStore.at(REGION, pathFor("preserves-hierarchy")).read()).toEqual({
+        "services/PARENT_KEY": "parent-value",
+        "services/api/CHILD_KEY": "child-value"
+      });
+
+      await removeSecret("/services", "PARENT_KEY");
+      await removeSecret("/services/api", "CHILD_KEY");
+    });
+
+    // preserveSecretPaths names the destination; recursive decides what the source fetches. A
+    // non-recursive sync still mirrors its one folder's own path rather than flattening it away.
+    test("A non-recursive sync with preserveSecretPaths still nests under its own source folder path", async () => {
+      await addSecret("/services", "API_KEY", "api-value");
+
+      const { secretSync } = await newSync("preserves-hierarchy-flat-source", {
+        secretPath: "/services",
+        preserveSecretPaths: true
+      });
+      await triggerSecretSync({
+        syncId: secretSync!.id,
+        region: REGION,
+        destinationPath: pathFor("preserves-hierarchy-flat-source"),
+        authToken: jwtAuthToken
+      });
+
+      expect(fakeParameterStore.at(REGION, pathFor("preserves-hierarchy-flat-source")).read()).toEqual({
+        "services/API_KEY": "api-value"
+      });
+
+      await removeSecret("/services", "API_KEY");
+    });
+
+    test("Deleting a nested secret in Infisical removes its nested name from the destination", async () => {
+      await addSecret("/services/api", "CHILD_KEY", "child-value");
+
+      const { secretSync } = await newSync("preserves-hierarchy-deletes", {
+        secretPath: "/services",
+        recursive: true,
+        preserveSecretPaths: true
+      });
+      const address = {
+        region: REGION,
+        destinationPath: pathFor("preserves-hierarchy-deletes"),
+        authToken: jwtAuthToken
+      };
+      await triggerSecretSync({ syncId: secretSync!.id, ...address });
+
+      await removeSecret("/services/api", "CHILD_KEY");
+      await triggerSecretSync({ syncId: secretSync!.id, ...address });
+
+      expect(fakeParameterStore.at(REGION, pathFor("preserves-hierarchy-deletes")).read()).toEqual({});
+    });
+  });
+
   describe("A sync resolves imported and referenced secret values before sending them", () => {
     test("A secret imported into the source secret path is sent to the destination", async () => {
       await addSecret("/", "SHARED_KEY", "shared-value");

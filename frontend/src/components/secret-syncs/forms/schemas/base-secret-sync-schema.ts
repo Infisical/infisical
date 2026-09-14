@@ -10,6 +10,7 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
     initialSyncBehavior: z.nativeEnum(SecretSyncInitialSyncBehavior),
     disableSecretDeletion: z.boolean().optional().default(false),
     recursive: z.boolean().optional(),
+    preserveSecretPaths: z.boolean().optional(),
     keySchema: z
       .string()
       .optional()

@@ -447,6 +447,7 @@ export type TSyncOptionsConfig = {
   canRemoveSecretsOnDeletion?: boolean;
   supportsKeySchema?: boolean;
   supportsDisableSecretDeletion?: boolean;
+  supportsSecretPaths?: boolean;
 };
 
 export type TListSecretSyncsByProjectId = {

@@ -6,6 +6,7 @@ export type RootSyncOptions = {
   disableSecretDeletion?: boolean;
   keySchema?: string;
   recursive?: boolean;
+  preserveSecretPaths?: boolean;
 };
 
 export type TRootSecretSync = {

@@ -145,16 +145,23 @@ const DefaultSecretSyncSourceFields = () => {
                 <Label htmlFor="recursive">Recursively sync secrets</Label>
                 <FieldDescription>
                   {importsFromDestination
-                    ? "Not available when the initial sync imports secrets from the destination. There is no single folder to import them back into."
+                    ? 'Turning this on switches the initial sync behavior to "Overwrite destination," since subfolder secrets have no single folder to import back into.'
                     : `Also sync secrets from every folder beneath this path, however deep. Secret names must be unique across all of them, and the combined total can't exceed ${SECRET_SYNC_MAX_SECRETS} secrets.`}
                 </FieldDescription>
               </FieldContent>
               <Toggle
                 id="recursive"
                 variant="project"
-                checked={Boolean(value) && !importsFromDestination}
-                disabled={importsFromDestination}
-                onCheckedChange={onChange}
+                checked={Boolean(value)}
+                onCheckedChange={(checked) => {
+                  if (checked && importsFromDestination) {
+                    setValue(
+                      "syncOptions.initialSyncBehavior",
+                      SecretSyncInitialSyncBehavior.OverwriteDestination
+                    );
+                  }
+                  onChange(checked);
+                }}
               />
             </Field>
             <FieldError errors={[error]} />

@@ -284,6 +284,32 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
           )}
         />
       )}
+      {syncOption?.supportsSecretPaths && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveSecretPaths"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label htmlFor="preserve-secret-paths">Preserve secret paths</Label>
+                  <FieldDescription>
+                    Mirror each secret&apos;s Infisical folder path into its name in{" "}
+                    {destinationName}, instead of flattening every secret to a single level.
+                  </FieldDescription>
+                </FieldContent>
+                <Toggle
+                  id="preserve-secret-paths"
+                  variant="project"
+                  checked={Boolean(value)}
+                  onCheckedChange={onChange}
+                />
+              </Field>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      )}
       {children}
       {syncOption?.supportsKeySchema !== false && <SecretSyncKeySchemaField />}
       {AdditionalSyncOptionsFieldsComponent}
