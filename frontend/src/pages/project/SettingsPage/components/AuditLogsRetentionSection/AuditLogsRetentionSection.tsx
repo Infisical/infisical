@@ -96,7 +96,7 @@ export const AuditLogsRetentionSection = () => {
       >
         <Card className="gap-0 overflow-hidden p-0">
           <CardHeader className="p-6">
-            <CardTitle>Audit Logs Retention</CardTitle>
+            <CardTitle className="font-alliance">Audit Logs Retention</CardTitle>
             <CardDescription>
               Set the number of days to keep your project audit logs.
             </CardDescription>

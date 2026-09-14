@@ -1,9 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
-import { TriangleAlert } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription as AlertContent,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -12,7 +14,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
   Button,
   Card,
@@ -124,7 +125,7 @@ export const DeleteProjectSection = () => {
       size="sm"
       isPending={isLeaving}
       isDisabled={!isDirectMember}
-      variant="danger"
+      variant="neutral"
       onClick={() => handlePopUpOpen("leaveWorkspace")}
     >
       {`Leave ${currentProject?.name}`}
@@ -142,6 +143,7 @@ export const DeleteProjectSection = () => {
         variant="danger"
         onClick={() => handlePopUpOpen("deleteWorkspace")}
       >
+        <Trash2Icon />
         {`Delete ${currentProject?.name}`}
       </Button>
     );
@@ -164,12 +166,9 @@ export const DeleteProjectSection = () => {
   };
 
   return (
-    <Card className="mb-6 gap-0 overflow-hidden p-0">
+    <Card className="mb-6 gap-0 overflow-hidden border-danger/25 p-0">
       <CardHeader className="p-6">
-        <CardTitle>
-          <TriangleAlert className="size-4 text-danger" />
-          Danger Zone
-        </CardTitle>
+        <CardTitle className="font-alliance">Danger Zone</CardTitle>
         <CardDescription>
           Manage delete protection, permanently delete this project, or leave it.
         </CardDescription>
@@ -203,10 +202,7 @@ export const DeleteProjectSection = () => {
           )}
         </ProjectPermissionCan>
       </CardContent>
-      <CardFooter className="min-h-8 justify-end gap-2 border-t border-neutral/15 bg-neutral/5 p-4">
-        <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
-          {renderDeleteButton}
-        </ProjectPermissionCan>
+      <CardFooter className="min-h-8 justify-end gap-2 border-t border-danger/15 bg-danger/5 p-4">
         {isDirectMember ? (
           leaveButton
         ) : (
@@ -220,6 +216,9 @@ export const DeleteProjectSection = () => {
             </TooltipContent>
           </Tooltip>
         )}
+        <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
+          {renderDeleteButton}
+        </ProjectPermissionCan>
       </CardFooter>
 
       <AlertDialog
@@ -229,13 +228,14 @@ export const DeleteProjectSection = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogMedia>
-              <TriangleAlert className="text-danger" />
-            </AlertDialogMedia>
             <AlertDialogTitle>Are you sure you want to delete this project?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Permanently delete {currentProject?.name} and all of its data. This action is not
-              reversible, so please be careful.
+            <AlertDialogDescription asChild>
+              <Alert variant="danger">
+                <AlertContent>
+                  Permanently delete {currentProject?.name} and all of its data. This action is not
+                  reversible.
+                </AlertContent>
+              </Alert>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogConfirmationField
@@ -267,13 +267,14 @@ export const DeleteProjectSection = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogMedia>
-              <TriangleAlert className="text-danger" />
-            </AlertDialogMedia>
             <AlertDialogTitle>Are you sure you want to leave this project?</AlertDialogTitle>
-            <AlertDialogDescription>
-              If you leave {currentProject?.name} you will lose access to the project and its
-              contents.
+            <AlertDialogDescription asChild>
+              <Alert variant="warning">
+                <AlertContent>
+                  Leaving {currentProject?.name} removes your access to the project and its
+                  contents.
+                </AlertContent>
+              </Alert>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogConfirmationField
@@ -285,7 +286,7 @@ export const DeleteProjectSection = () => {
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isLeaving}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              variant="danger"
+              variant="warning"
               isPending={isLeaving}
               onClick={(event) => {
                 event.preventDefault();

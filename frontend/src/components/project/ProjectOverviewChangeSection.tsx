@@ -80,7 +80,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
     <form onSubmit={handleSubmit(onFormSubmit)} className="mb-6">
       <Card className="gap-0 overflow-hidden p-0">
         <CardHeader className="p-6">
-          <CardTitle>Project Overview</CardTitle>
+          <CardTitle className="font-alliance">Project Overview</CardTitle>
           <CardDescription>Update your project name and description.</CardDescription>
         </CardHeader>
         <CardContent className="max-w-md px-6 pb-6">
