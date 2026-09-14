@@ -486,7 +486,8 @@ const trialHistoryItemSchema = z
     outcome: z.string(),
     ended_detail: z.string().nullish(),
     started_at: z.number().nullish(),
-    trial_ends_at: z.number().nullish()
+    trial_ends_at: z.number().nullish(),
+    ended_at: z.number().nullish()
   })
   .passthrough();
 const trialsResponseSchema = z.object({ trials: z.array(trialHistoryItemSchema).default([]) }).passthrough();

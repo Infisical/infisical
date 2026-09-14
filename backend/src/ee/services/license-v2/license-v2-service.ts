@@ -766,8 +766,8 @@ export const licenseV2ServiceFactory = ({
           basePlanTier: trial.base_plan_key ?? null,
           outcome: trial.outcome,
           endedDetail: trial.ended_detail ?? null,
-          endedAt: formatDate(trial.trial_ends_at),
-          endedDaysAgo: daysSince(trial.trial_ends_at)
+          endedAt: formatDate(trial.ended_at),
+          endedDaysAgo: daysSince(trial.ended_at)
         }));
       } catch (error) {
         logger.error(error, `billing-v2: failed to read trial history [orgId=${orgId}]`);
