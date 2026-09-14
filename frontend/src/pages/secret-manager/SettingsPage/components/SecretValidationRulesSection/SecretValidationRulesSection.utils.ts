@@ -319,24 +319,26 @@ const NUMERIC_CONSTRAINTS: ConstraintType[] = [ConstraintType.MinLength, Constra
 export const groupConstraintsByTarget = (constraints: TConstraint[]) => {
   const grouped: Partial<Record<ConstraintTarget, TValueConstraints>> = {};
 
-  constraints.forEach(({ type, appliesTo, value, checkPreviousVersions, checkOtherSecretsInScope }) => {
-    const current = grouped[appliesTo] ?? {};
+  constraints.forEach(
+    ({ type, appliesTo, value, checkPreviousVersions, checkOtherSecretsInScope }) => {
+      const current = grouped[appliesTo] ?? {};
 
-    if (type === ConstraintType.PreventValueReuse) {
-      grouped[appliesTo] = {
-        ...current,
-        reusePrevention: {
-          ...(checkPreviousVersions && { previousVersions: Number(value) }),
-          ...(checkOtherSecretsInScope && { otherSecretsInScope: true })
-        }
-      };
-    } else {
-      grouped[appliesTo] = {
-        ...current,
-        [CONSTRAINT_FIELDS[type]]: NUMERIC_CONSTRAINTS.includes(type) ? Number(value) : value
-      };
+      if (type === ConstraintType.PreventValueReuse) {
+        grouped[appliesTo] = {
+          ...current,
+          reusePrevention: {
+            ...(checkPreviousVersions && { previousVersions: Number(value) }),
+            ...(checkOtherSecretsInScope && { otherSecretsInScope: true })
+          }
+        };
+      } else {
+        grouped[appliesTo] = {
+          ...current,
+          [CONSTRAINT_FIELDS[type]]: NUMERIC_CONSTRAINTS.includes(type) ? Number(value) : value
+        };
+      }
     }
-  });
+  );
 
   return grouped;
 };

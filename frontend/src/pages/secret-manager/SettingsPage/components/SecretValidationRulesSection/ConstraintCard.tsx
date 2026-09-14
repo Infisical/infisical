@@ -111,7 +111,9 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
                     <span className="text-sm text-foreground">
                       This secret&apos;s previous versions
                     </span>
-                    <span className="text-xs text-muted">Reject values this secret held before</span>
+                    <span className="text-xs text-muted">
+                      Reject values this secret held before
+                    </span>
                   </div>
                   <Toggle
                     aria-label="Check the new value against this secret's previous versions"
@@ -178,7 +180,11 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
               return (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-muted">Applies to</label>
-                  <Input value="Generated Password" readOnly className="cursor-default opacity-60" />
+                  <Input
+                    value="Generated Password"
+                    readOnly
+                    className="cursor-default opacity-60"
+                  />
                 </div>
               );
             }
@@ -233,7 +239,7 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
               )}
             />
           </div>
-          </div>
+        </div>
       )}
     </div>
   );
