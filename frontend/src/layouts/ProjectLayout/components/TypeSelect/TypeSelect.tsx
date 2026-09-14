@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 
+import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { Command, CommandGroup, CommandItem, CommandList } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -134,6 +135,7 @@ const TypeSelectInner = ({
           <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>
         </button>
+        <PreviewBadge type={currentType} />
         <NavbarSwitcherTrigger aria-label="switch-product-type" />
         <NavbarSwitcherContent className="w-80">
           <Command>

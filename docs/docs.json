@@ -765,6 +765,7 @@
           {
             "item": "Agent Vault",
             "icon": "sparkles",
+            "tag": "PREVIEW",
             "pages": [
               "documentation/platform/agent-vault/overview",
               {
