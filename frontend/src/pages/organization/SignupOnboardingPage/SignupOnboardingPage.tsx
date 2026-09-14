@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import { OnboardingProgress } from "@app/components/auth/OnboardingPageLayout";
+import { OnboardingStepTransition } from "@app/components/auth/OnboardingStepTransition";
 import OrgNameStep from "@app/components/auth/OrgNameStep";
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
@@ -25,13 +26,6 @@ enum OnboardingSection {
   Complete = "complete"
 }
 
-// The completion summary shows no counter.
-const STEP_NUMBERS: Partial<Record<OnboardingSection, number>> = {
-  [OnboardingSection.OrgName]: 1,
-  [OnboardingSection.ProductSelect]: 2,
-  [OnboardingSection.InviteTeam]: 3
-};
-
 /**
  * Org setup for freshly signed-up people who have no organization yet: provider-verified
  * OAuth signups (which bypass /signup/sso) and code-verified SSO signups both land here.
@@ -44,6 +38,8 @@ export const SignupOnboardingPage = () => {
 
   const [section, setSection] = useState<OnboardingSection>(OnboardingSection.Loading);
   const [orgId, setOrgId] = useState("");
+  const [inviteEmails, setInviteEmails] = useState("");
+  const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
   const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
   const [createdProjects, setCreatedProjects] = useState<
@@ -109,10 +105,19 @@ export const SignupOnboardingPage = () => {
       case OnboardingSection.OrgName:
         return <OrgNameStep onComplete={handleOrgNameComplete} />;
       case OnboardingSection.ProductSelect:
-        return <ProductSelectionStep onComplete={handleProductSelectComplete} />;
+        return (
+          <ProductSelectionStep
+            onComplete={handleProductSelectComplete}
+            initialProducts={selectedProducts}
+            projectCache={projectCache}
+          />
+        );
       case OnboardingSection.InviteTeam:
         return (
           <TeamInviteStep
+            emails={inviteEmails}
+            onEmailsChange={setInviteEmails}
+            onBack={() => setSection(OnboardingSection.ProductSelect)}
             productName={
               selectedProducts.length === 1
                 ? getSignupProduct(selectedProducts[0])?.name
@@ -122,6 +127,7 @@ export const SignupOnboardingPage = () => {
               project ? [project.id] : []
             )}
             grantPamAccess={selectedProducts.includes(ProjectType.PAM)}
+            grantAgentVaultAccess={selectedProducts.includes(ProjectType.AgentVault)}
             onComplete={() => setSection(OnboardingSection.Complete)}
           />
         );
@@ -138,54 +144,34 @@ export const SignupOnboardingPage = () => {
     }
   };
 
-  const totalSteps = serverDetails?.emailConfigured ? 3 : 2;
-  const stepNumber = STEP_NUMBERS[section];
-  const stepIndicator = stepNumber ? (
-    <OnboardingProgress currentStep={stepNumber} totalSteps={totalSteps} />
-  ) : undefined;
+  const isWorkspaceSetup =
+    section === OnboardingSection.ProductSelect ||
+    section === OnboardingSection.InviteTeam ||
+    section === OnboardingSection.Complete;
 
-  const completeAsideDescription = (() => {
-    if (selectedProducts.length === 0) return "Your organization overview has everything laid out.";
-    if (selectedProducts.length === 1) {
-      return `${getSignupProduct(selectedProducts[0])?.name} is set up and ready to use.`;
-    }
-    return "Your products are set up and ready to go.";
-  })();
-  const asideContent = (() => {
-    switch (section) {
-      case OnboardingSection.ProductSelect:
-        return {
-          eyebrow: "One platform, five products",
-          description:
-            "Secrets, PKI, KMS, privileged access, and scanning. Start where it hurts most."
-        };
-      case OnboardingSection.InviteTeam:
-        return {
-          eyebrow: "Better together",
-          description: "Infisical works best when your whole team is in one place."
-        };
-      case OnboardingSection.Complete:
-        return {
-          eyebrow: "You're all set",
-          description: completeAsideDescription
-        };
-      default:
-        return undefined;
-    }
-  })();
+  const postAuthSteps = serverDetails?.emailConfigured
+    ? [OnboardingSection.ProductSelect, OnboardingSection.InviteTeam, OnboardingSection.Complete]
+    : [OnboardingSection.ProductSelect, OnboardingSection.Complete];
+  const stepIndicator = isWorkspaceSetup ? (
+    <OnboardingProgress
+      currentStep={postAuthSteps.indexOf(section) + 1}
+      totalSteps={postAuthSteps.length}
+    />
+  ) : undefined;
 
   return (
     <AuthPageLayout
       showFooter={false}
       headerAction={stepIndicator}
-      aside={asideContent}
+      variant={isWorkspaceSetup ? "focused" : "split"}
+      contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
       bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
     >
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      {renderView()}
+      <OnboardingStepTransition step={section}>{renderView()}</OnboardingStepTransition>
     </AuthPageLayout>
   );
 };

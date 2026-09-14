@@ -546,7 +546,6 @@ export const CreateSecretForm = ({
                     onUsePassword={field.onChange}
                     projectId={projectId}
                     secretPath={secretPath}
-                    environments={environments}
                   />
                 </div>
                 <FieldError errors={[errors.value]} />

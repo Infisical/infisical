@@ -45,7 +45,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -143,6 +143,7 @@ export const Page = () => {
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const canAssumePrivileges = !isCertManager && supportsAssumePrivileges(currentProject.type);
   let memberDisplayName = "Unnamed User";
   if (membershipDetails) {
     const { firstName, lastName, email, username } = membershipDetails.user;
@@ -219,7 +220,7 @@ export const Page = () => {
                     >
                       Copy User ID
                     </DropdownMenuItem>
-                    {!isCertManager && (
+                    {canAssumePrivileges && (
                       <ProjectPermissionCan
                         I={ProjectPermissionMemberActions.AssumePrivileges}
                         a={ProjectPermissionSub.Member}

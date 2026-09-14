@@ -200,7 +200,12 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                         Connector name <span className="text-danger">*</span>
                       </FieldLabel>
                       <FieldContent>
-                        <Input {...field} isError={Boolean(error)} />
+                        <Input
+                          {...field}
+                          isError={Boolean(error)}
+                          autoComplete="off"
+                          name="hsm-connector-name"
+                        />
                         <FieldDescription>Lowercase letters, numbers, and dashes.</FieldDescription>
                         <FieldError errors={[error]} />
                       </FieldContent>

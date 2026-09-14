@@ -165,6 +165,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Billing Team"
                       isError={Boolean(error)}
                       {...field}
+                      autoComplete="off"
+                      name="org-role-name"
                     />
                     <FieldError>{error?.message}</FieldError>
                   </Field>
