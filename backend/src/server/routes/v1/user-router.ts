@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -586,12 +587,13 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      // Other passkeys can still answer the challenge, so only removing the last one
-      // needs to fall back to a different factor.
       const { credentials } = await server.services.webAuthn.getUserWebAuthnCredentials({
         userId: req.permission.id
       });
-      const isRemovingLastPasskey = credentials.every((credential) => credential.id === req.params.id);
+      if (!credentials.some((credential) => credential.id === req.params.id)) {
+        throw new NotFoundError({ message: "Credential not found" });
+      }
+      const isRemovingLastPasskey = credentials.length === 1;
 
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
