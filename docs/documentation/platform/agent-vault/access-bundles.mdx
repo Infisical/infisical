@@ -31,7 +31,7 @@ Each service has a name, the hosts it covers, and a credential. Open an access b
 | ---------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | **Bearer**       | One header, `<header name>: <prefix> <value>`. Defaults to `Authorization: Bearer <value>`.          | Most APIs. Set the header name to `X-API-Key` and clear the prefix for APIs that take a bare key. |
 | **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be blank.                      | APIs behind HTTP basic auth, including ones that put the whole key in the username.         |
-| **Pass-through** | Nothing. The request is forwarded unchanged.                                                         | To make a host reachable on a proxy that allows only access bundle hosts. See [Traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). |
+| **Pass-through** | Nothing, unless the service has transformations. Otherwise the request is forwarded unchanged.       | To make a host reachable on a proxy that allows only access bundle hosts. See [Traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). |
 
 The first step offers a **Template** for common services, which fills in the hosts and the header. Choose **Custom** to set them yourself.
 
@@ -53,12 +53,67 @@ internal-api.example.com:8443
 
 - A host without a port means port `443`. Credentials are attached to HTTPS traffic only.
 - `*.` at the start matches exactly one label. `*.example.com` covers `api.example.com`, not `a.b.example.com` or `example.com`.
-- Paths aren't allowed. A service covers a host, not a route on it.
+- A host pattern names a host, not a route on it. To restrict routes, use [path prefixes](#methods-and-paths).
 
 Keep patterns as narrow as the API allows. A wildcard covers every host under it, and the credential goes to all of them. Some templates carry a placeholder such as `<your-tenant>.atlassian.net` for this reason; replace it with your own tenant before saving.
+
+### Methods and paths
+
+A service allows every HTTP method and every path on its hosts by default. Clear **All Methods** to pick the methods it allows, and clear **All Paths** to list the path prefixes it allows. You can add up to 20 of each.
+
+A path prefix matches whole segments, so `/repos` covers `/repos/octo/hello` but not `/repositories`. Write the path exactly as it appears in the URL.
+
+The proxy blocks a request that breaks these rules with a 403, before it leaves your network:
+
+```text
+HTTP/1.1 403 Forbidden
+
+service "github" does not allow POST: blocked by service policy
+```
+
+A path-restricted service also refuses a request whose path contains a `.` or `..` segment, an empty segment, a `;`, or a `\`. Servers read those differently, and the proxy can't tell how the upstream will read the path, so it blocks the request.
+
+It refuses percent-escapes on the same grounds, but only those that decode to a separator, a dot, a control character, or to bytes that aren't valid UTF-8. That covers `%2e`, `%2f`, `%5c`, double-encoded forms such as `%252e`, the null-truncation trick `..%00`, and overlong encodings such as `%c0%ae`, which some servers read as a dot. An ordinary escape works normally, so a path carrying a space or a non-ASCII character, such as `/repos/owner/repo/contents/café.md`, is fine. This applies only to services that set path prefixes.
 
 ### When two services cover one host
 
 Within one access bundle, two services can't cover the same host with the same pattern. Infisical rejects the save and names the service that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one service covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first service's credential.
 
 Different access bundles can cover the same host with different credentials. An agent gets the credential from the access bundle its session carries.
+
+## Transformations
+
+A service can add two things to a request that the agent never holds: extra headers and placeholder substitutions. Both are optional, both work with any credential type including pass-through, and you can add up to 20 of each.
+
+### Custom headers
+
+Some APIs need a header alongside the credential, such as an organization id or an API version. Add one on the **Transformations** step with a name, an optional prefix, and a value. The proxy attaches it to every request to that service.
+
+Infisical never returns a header value once it's saved, so renaming a header keeps its value and there's nothing to retype.
+
+A header can't reuse the credential's own header name: the custom value would overwrite the credential, and the agent would get a 401 it can't explain. The proxy also sets some headers itself, such as `Host`, `Content-Length` and `Connection`, and rejects those names too.
+
+### Substitutions
+
+When an agent already sends a fake value, a substitution swaps it for the real one on the way out. Give the placeholder your agent sends, the real value, and where in the request to look for it: the path, the query string, a header, or the body.
+
+For example, an agent configured with `__GITHUB_PAT__` as its GitHub token sends:
+
+```text
+Authorization: Bearer __GITHUB_PAT__
+```
+
+and GitHub receives the real token. The agent never holds it.
+
+The swap is a plain find-and-replace, so pick a placeholder distinctive enough that it can't appear anywhere else in the request.
+
+The proxy leaves the body alone in two cases:
+
+- A body larger than 10 MB.
+- A body sent with `Content-Encoding`, because the proxy doesn't decompress it.
+
+The placeholder then reaches the upstream unchanged, and the proxy logs a warning naming the service.
+
+<Warning>
+  Method rules, path rules, custom headers and substitutions all need a recent proxy. An older proxy forwards the request without them: the credential still goes out, the restrictions aren't enforced, and the upstream rejects a request that needed a custom header. Upgrade your proxies before you rely on any of these.
+</Warning>

@@ -38,6 +38,16 @@ export const SERVICE_STEPS: StepMeta[] = [
     rightDescription: "Agents reach this service without ever holding the credentials themselves."
   },
   {
+    step: ServiceStep.Transformations,
+    name: "Transformations",
+    shortDescription: "Headers and substitutions",
+    title: "Transformations",
+    subtitle: "Extra headers and placeholder swaps. Skip this if you don't need them.",
+    rightLabel: "TRANSFORMATIONS",
+    rightDescription:
+      "Headers are added to every request to this service. A substitution swaps a placeholder your agent already sends for the real value."
+  },
+  {
     step: ServiceStep.Review,
     name: "Review",
     shortDescription: "Confirm and add",

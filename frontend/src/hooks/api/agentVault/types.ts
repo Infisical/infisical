@@ -1,7 +1,9 @@
 import {
   AgentVaultCredentialType,
+  AgentVaultHttpMethod,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
+  AgentVaultSubstitutionSurface,
   AgentVaultTrafficPolicy
 } from "./enums";
 
@@ -30,12 +32,41 @@ export type TAgentVaultCredentialUpdate =
   | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
+export type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
+
+export type TAgentVaultSubstitutionSummary = {
+  id: string;
+  placeholder: string;
+  surfaces: AgentVaultSubstitutionSurface[];
+};
+
+/** `id` is optional because the API matches a row by name (or placeholder) when one is not sent, and
+ * `value` is optional because omitting it keeps whatever is already stored for that row. */
+export type TAgentVaultCustomHeaderInput = {
+  id?: string;
+  name: string;
+  prefix?: string;
+  value?: string;
+};
+
+export type TAgentVaultSubstitutionInput = {
+  id?: string;
+  placeholder: string;
+  surfaces: AgentVaultSubstitutionSurface[];
+  value?: string;
+};
+
 export type TAgentVaultService = {
   id: string;
   accessBundleId: string;
   name: string;
   hostPattern: string;
+  // null means unrestricted.
+  allowedMethods: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes: string[] | null;
   credential: TAgentVaultCredentialSummary;
+  headers: TAgentVaultCustomHeaderSummary[];
+  substitutions: TAgentVaultSubstitutionSummary[];
   createdAt: string;
 };
 
@@ -141,7 +172,11 @@ export type TCreateAgentVaultServiceDTO = {
   accessBundleId: string;
   name: string;
   hostPattern: string;
+  allowedMethods?: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes?: string[] | null;
   credential: TAgentVaultCredentialInput;
+  headers?: TAgentVaultCustomHeaderInput[];
+  substitutions?: TAgentVaultSubstitutionInput[];
 };
 
 export type TUpdateAgentVaultServiceDTO = {
@@ -149,7 +184,11 @@ export type TUpdateAgentVaultServiceDTO = {
   serviceId: string;
   name?: string;
   hostPattern?: string;
+  allowedMethods?: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
+  headers?: TAgentVaultCustomHeaderInput[];
+  substitutions?: TAgentVaultSubstitutionInput[];
 };
 
 export type TAddAgentVaultMembersDTO = {

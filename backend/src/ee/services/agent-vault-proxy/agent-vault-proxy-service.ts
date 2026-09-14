@@ -24,6 +24,8 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
+import { TAgentVaultServiceHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-header-dal";
+import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
@@ -49,6 +51,8 @@ const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
 type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
   agentVaultResolveDAL: TAgentVaultResolveDALFactory;
+  agentVaultServiceHeaderDAL: Pick<TAgentVaultServiceHeaderDALFactory, "findByServiceIds">;
+  agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
@@ -65,6 +69,8 @@ export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxySe
 export const agentVaultProxyServiceFactory = ({
   agentVaultProxyDAL,
   agentVaultResolveDAL,
+  agentVaultServiceHeaderDAL,
+  agentVaultServiceSubstitutionDAL,
   agentVaultSessionDAL,
   membershipDAL,
   orgDAL,
@@ -377,9 +383,18 @@ export const agentVaultProxyServiceFactory = ({
       accessBundleIds
     });
 
+    const serviceIds = rows.map((row) => row.id);
+    const [headerRows, substitutionRows] = await Promise.all([
+      agentVaultServiceHeaderDAL.findByServiceIds(serviceIds),
+      agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
+    ]);
+
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
-    // a kms_keys read (or an external KMS round trip) per resolve for nothing.
-    const decryptor = rows.some((row) => row.encryptedCredential)
+    // a kms_keys read (or an external KMS round trip) per resolve for nothing. Transformations are always
+    // sealed, so one of them is reason enough on its own.
+    const hasSealedValue =
+      rows.some((row) => row.encryptedCredential) || headerRows.length > 0 || substitutionRows.length > 0;
+    const decryptor = hasSealedValue
       ? (
           await kmsService.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
@@ -388,12 +403,29 @@ export const agentVaultProxyServiceFactory = ({
         ).decryptor
       : null;
 
+    const $decryptValue = (encryptedValue: Buffer) => {
+      if (!decryptor) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
+      return (JSON.parse(decryptor({ cipherTextBlob: encryptedValue }).toString("utf-8")) as { value: string }).value;
+    };
+
     const services: TResolvedService[] = rows.map((row) => ({
       id: row.id,
       name: row.name,
       accessBundleName: row.accessBundleName,
       hostPattern: row.hostPattern,
-      credential: $decryptCredential(row, decryptor)
+      allowedMethods: row.allowedMethods,
+      allowedPathPrefixes: row.allowedPathPrefixes,
+      credential: $decryptCredential(row, decryptor),
+      headers: headerRows
+        .filter((header) => header.serviceId === row.id)
+        .map((header) => ({ name: header.name, prefix: header.prefix, value: $decryptValue(header.encryptedValue) })),
+      substitutions: substitutionRows
+        .filter((substitution) => substitution.serviceId === row.id)
+        .map((substitution) => ({
+          placeholder: substitution.placeholder,
+          surfaces: substitution.surfaces,
+          value: $decryptValue(substitution.encryptedValue)
+        }))
     }));
 
     logger.info(

@@ -42,6 +42,7 @@ import {
   UNCHANGED_SECRET
 } from "./serviceSchema";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
+import { TransformationsFields } from "./TransformationsFields";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
   name: "",
@@ -50,7 +51,13 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   headerName: "Authorization",
   headerPrefix: "Bearer",
   username: "",
-  secret: ""
+  secret: "",
+  allMethods: true,
+  methods: [],
+  allPaths: true,
+  pathPrefixes: [],
+  headers: [],
+  substitutions: []
 };
 
 type Props = {
@@ -69,7 +76,12 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
   const schema = useMemo(() => buildServiceSchema(service), [service]);
 
-  const formMethods = useForm<TServiceForm>({ resolver: zodResolver(schema) });
+  const formMethods = useForm<TServiceForm>({
+    // Without these every value is undefined until the open effect resets, and the repeating lists read
+    // .includes() on mount.
+    defaultValues: BLANK_SERVICE_FORM,
+    resolver: zodResolver(schema)
+  });
   const {
     handleSubmit,
     reset,
@@ -117,7 +129,24 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
         username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
-        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
+        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
+        allMethods: service.allowedMethods === null,
+        methods: service.allowedMethods ?? [],
+        allPaths: service.allowedPathPrefixes === null,
+        pathPrefixes: (service.allowedPathPrefixes ?? []).map((value) => ({ value })),
+        // The stored values never come back, so each row carries the sentinel until it is retyped.
+        headers: service.headers.map((header) => ({
+          id: header.id,
+          name: header.name,
+          prefix: header.prefix,
+          value: UNCHANGED_SECRET
+        })),
+        substitutions: service.substitutions.map((substitution) => ({
+          id: substitution.id,
+          placeholder: substitution.placeholder,
+          surfaces: substitution.surfaces,
+          value: UNCHANGED_SECRET
+        }))
       });
     } else {
       reset(BLANK_SERVICE_FORM);
@@ -185,6 +214,29 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     };
   };
 
+  const buildPolicy = (data: TServiceForm) => ({
+    allowedMethods: data.allMethods ? null : data.methods,
+    allowedPathPrefixes: data.allPaths
+      ? null
+      : data.pathPrefixes.map((prefix) => prefix.value.trim())
+  });
+
+  // An untouched row sends no value at all, which the API reads as "keep what is stored".
+  const buildTransformations = (data: TServiceForm) => ({
+    headers: data.headers.map((header) => ({
+      ...(header.id ? { id: header.id } : {}),
+      name: header.name,
+      prefix: header.prefix,
+      ...(header.value === UNCHANGED_SECRET ? {} : { value: header.value })
+    })),
+    substitutions: data.substitutions.map((substitution) => ({
+      ...(substitution.id ? { id: substitution.id } : {}),
+      placeholder: substitution.placeholder,
+      surfaces: substitution.surfaces,
+      ...(substitution.value === UNCHANGED_SECRET ? {} : { value: substitution.value })
+    }))
+  });
+
   const onSubmit = async (data: TServiceForm) => {
     try {
       if (service) {
@@ -193,14 +245,18 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           serviceId: service.id,
           name: data.name,
           hostPattern: data.hostPattern,
-          credential: buildCredentialPatch(data)
+          ...buildPolicy(data),
+          credential: buildCredentialPatch(data),
+          ...buildTransformations(data)
         });
       } else {
         await createService.mutateAsync({
           accessBundleId,
           name: data.name,
           hostPattern: data.hostPattern,
-          credential: buildCredential(data)
+          ...buildPolicy(data),
+          credential: buildCredential(data),
+          ...buildTransformations(data)
         });
       }
 
@@ -225,17 +281,48 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
       }
 
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-        const hostIssues = serverResponse.message.filter(
-          (issue) => issue.path[0] === "hostPattern"
-        );
-        if (hostIssues.length > 0) {
-          setError("hostPattern", {
-            type: "server",
-            message: hostIssues.map((issue) => issue.message).join(" ")
-          });
-          setStep(stepKeys.indexOf(ServiceStep.Details));
-        }
-        if (hostIssues.length < serverResponse.message.length) onRequestError(error);
+        // A server issue whose path names a field maps back onto that field and jumps to its step, so the
+        // user sees what to fix instead of a toast with the form parked on Review.
+        const STEP_OF_FIELD: Record<string, ServiceStep> = {
+          name: ServiceStep.Details,
+          hostPattern: ServiceStep.Details,
+          allowedMethods: ServiceStep.Details,
+          allowedPathPrefixes: ServiceStep.Details,
+          credential: ServiceStep.Credential,
+          headers: ServiceStep.Transformations,
+          substitutions: ServiceStep.Transformations
+        };
+
+        const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
+          allowedMethods: "methods",
+          allowedPathPrefixes: "pathPrefixes",
+          credential: "secret"
+        };
+
+        let earliestStep: number | null = null;
+        let unmapped = false;
+
+        serverResponse.message.forEach((issue) => {
+          const root = String(issue.path[0]);
+          const issueStep = STEP_OF_FIELD[root];
+          if (!issueStep) {
+            unmapped = true;
+            return;
+          }
+
+          // Index-addressed issues (headers.0.name) keep their path so the row's own field is marked.
+          const target =
+            issue.path.length > 1 && (root === "headers" || root === "substitutions")
+              ? (issue.path.join(".") as keyof TServiceForm)
+              : (FORM_FIELD_OF[root] ?? (root as keyof TServiceForm));
+
+          setError(target, { type: "server", message: issue.message });
+          const index = stepKeys.indexOf(issueStep);
+          if (index !== -1 && (earliestStep === null || index < earliestStep)) earliestStep = index;
+        });
+
+        if (earliestStep !== null) setStep(earliestStep);
+        if (unmapped) onRequestError(error);
         return;
       }
 
@@ -354,6 +441,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   {current.step === ServiceStep.Credential && (
                     <CredentialFields storedType={service?.credential.type} />
                   )}
+                  {current.step === ServiceStep.Transformations && <TransformationsFields />}
                   {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
 

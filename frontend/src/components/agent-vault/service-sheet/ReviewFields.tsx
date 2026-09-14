@@ -10,7 +10,9 @@ import {
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { credentialPreview } from "./CredentialFields";
-import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import { CREDENTIAL_LABELS, SURFACE_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+
+const NONE = <span className="text-muted italic">None</span>;
 
 type Props = {
   isUpdate: boolean;
@@ -44,6 +46,18 @@ export const ReviewFields = ({ isUpdate }: Props) => {
             <DetailLabel>Hosts</DetailLabel>
             <DetailValue className="font-mono">{form.hostPattern}</DetailValue>
           </Detail>
+          <Detail>
+            <DetailLabel>Methods</DetailLabel>
+            <DetailValue className={form.allMethods ? undefined : "font-mono"}>
+              {form.allMethods ? "All" : form.methods.join(", ")}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Paths</DetailLabel>
+            <DetailValue className={form.allPaths ? undefined : "font-mono"}>
+              {form.allPaths ? "All" : form.pathPrefixes.map((prefix) => prefix.value).join(", ")}
+            </DetailValue>
+          </Detail>
         </div>
       </DetailGroup>
 
@@ -72,6 +86,35 @@ export const ReviewFields = ({ isUpdate }: Props) => {
               <DetailValue>{outcome(form.secret, isBasic)}</DetailValue>
             </Detail>
           )}
+        </div>
+      </DetailGroup>
+
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">
+          Transformations
+        </DetailGroupHeader>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          <Detail>
+            <DetailLabel>Headers</DetailLabel>
+            <DetailValue className={form.headers.length ? "font-mono" : undefined}>
+              {form.headers.length ? form.headers.map((header) => header.name).join(", ") : NONE}
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Substitutions</DetailLabel>
+            <DetailValue className={form.substitutions.length ? "font-mono" : undefined}>
+              {form.substitutions.length
+                ? form.substitutions
+                    .map(
+                      (substitution) =>
+                        `${substitution.placeholder} in ${substitution.surfaces
+                          .map((surface) => SURFACE_LABELS[surface].toLowerCase())
+                          .join(", ")}`
+                    )
+                    .join("; ")
+                : NONE}
+            </DetailValue>
+          </Detail>
         </div>
       </DetailGroup>
     </div>

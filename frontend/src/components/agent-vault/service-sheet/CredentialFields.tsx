@@ -41,17 +41,24 @@ export const credentialPreview = (
   return `${form.headerName || "Authorization"}: ${prefix}${secret}`;
 };
 
-type SecretName = "secret" | "username";
+type SecretName =
+  | "secret"
+  | "username"
+  | `headers.${number}.value`
+  | `substitutions.${number}.value`;
 
-const SecretInput = <TName extends SecretName>({
+export const SecretInput = <TName extends SecretName>({
   field,
   label,
+  ariaLabel,
   placeholder,
   isError,
   isUntouched
 }: {
   field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
+  /** Needed where the visible label renders on the first row only, as the repeating lists do. */
+  ariaLabel?: string;
   placeholder: string;
   isError: boolean;
   isUntouched: boolean;
@@ -62,6 +69,7 @@ const SecretInput = <TName extends SecretName>({
     <InputGroup>
       <InputGroupInput
         {...field}
+        aria-label={ariaLabel}
         type={isVisible ? "text" : "password"}
         // Selected rather than cleared, so focusing the field and moving on cannot remove a credential.
         onFocus={(event) => {
