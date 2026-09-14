@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
@@ -86,6 +86,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
+  ProjectPermissionSet,
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
@@ -206,6 +207,14 @@ export const secretApprovalRequestServiceFactory = ({
   queueService,
   secretValidationRuleService
 }: TSecretApprovalRequestServiceFactoryDep) => {
+  // A duplicate-value violation may only name where the value is already used when the writer can read there.
+  const $canDescribeSecretAt =
+    (permission: MongoAbility<ProjectPermissionSet>) => (environment: string, secretPath: string) =>
+      permission.can(
+        ProjectPermissionSecretActions.DescribeSecret,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+
   const requestCount = async ({
     projectId,
     policyId,
@@ -934,14 +943,7 @@ export const secretApprovalRequestServiceFactory = ({
               envId: policyEnvId,
               secretPath: folderPaths?.[0]?.path || "/",
               secrets: secretsToValidate,
-              canAccessLocation: (duplicateEnvironment, duplicateSecretPath) =>
-                permission.can(
-                  ProjectPermissionSecretActions.DescribeSecret,
-                  subject(ProjectPermissionSub.Secrets, {
-                    environment: duplicateEnvironment,
-                    secretPath: duplicateSecretPath
-                  })
-                )
+              canAccessLocation: $canDescribeSecretAt(permission)
             },
             tx
           );
@@ -2518,7 +2520,8 @@ export const secretApprovalRequestServiceFactory = ({
           environment,
           envId: folder.envId,
           secretPath,
-          secrets: secretsToValidate
+          secrets: secretsToValidate,
+          canAccessLocation: $canDescribeSecretAt(permission)
         },
         providedTx
       );

@@ -129,8 +129,9 @@ export type TValidateSecretsDTO = {
   envId: string;
   secretPath: string;
   secrets: TSecretToValidate[];
-  // Whether the writer may read a location a duplicate value was found in. Without it the violation
-  // would name a secret they cannot see, telling them where a value they hold is also used.
+  // Whether the writer may read a location a duplicate value was found in. A violation must not name
+  // a secret they cannot see, telling them where a value they hold is also used, so a caller that
+  // omits this has every location hidden.
   canAccessLocation?: (environment: string, secretPath: string) => boolean;
 };
 

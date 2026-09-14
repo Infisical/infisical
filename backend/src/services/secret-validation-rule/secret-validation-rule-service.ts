@@ -459,7 +459,8 @@ export const secretValidationRuleServiceFactory = ({
 
     const accessByLocation = new Map<string, boolean>();
     const isHidden = (dupEnvironment: string, dupPath: string) => {
-      if (!canAccessLocation) return false;
+      // A caller that cannot say what the writer may read gets the location withheld, never leaked.
+      if (!canAccessLocation) return true;
 
       const location = `${dupEnvironment}:${dupPath}`;
       let hidden = accessByLocation.get(location);
