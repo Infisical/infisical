@@ -569,7 +569,8 @@ export const secretValidationRuleServiceFactory = ({
       folderDAL,
       secretDAL,
       decryptSecretValue: (value) => (value ? decryptor({ cipherTextBlob: value }).toString() : undefined),
-      canExpandValue: () => true
+      canExpandValue: () => true,
+      tx
     });
 
     const resolvedSecrets = await Promise.all(
