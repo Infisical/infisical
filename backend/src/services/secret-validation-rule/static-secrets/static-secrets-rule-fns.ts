@@ -2,12 +2,12 @@ import { CONSTRAINT_LABELS, evaluateConstraints, TConstraintViolation } from "..
 import { ConstraintKind, ConstraintTarget } from "../secret-validation-rule-enums";
 import { TStaticSecretsRuleConfig } from "./static-secrets-rule-types";
 
-/** Where a value that another secret already holds was found, once the service has looked it up. */
+// Where a value that another secret already holds was found, once the service has looked it up.
 export type TDuplicateSecret = {
   key: string;
   environment: string;
   secretPath: string;
-  /** Set when the writer cannot read the location, so the message has to stay vague. */
+  // Set when the writer cannot read the location, so the message has to stay vague.
   hidden?: boolean;
 };
 
@@ -53,8 +53,8 @@ export const evaluateStaticSecretConstraints = (
   const { duplicateOf } = secret;
   if (config.valueConstraints.reusePrevention?.otherSecretsInScope && duplicateOf) {
     violations.push({
-      kind: ConstraintKind.ReuseOtherSecrets,
-      label: CONSTRAINT_LABELS[ConstraintKind.ReuseOtherSecrets],
+      kind: ConstraintKind.ReuseOtherSecretsInScope,
+      label: CONSTRAINT_LABELS[ConstraintKind.ReuseOtherSecretsInScope],
       // Naming a secret the writer cannot read would leak where a value they do know is also used.
       message: duplicateOf.hidden
         ? "value is already used by another secret in this project"

@@ -41,7 +41,7 @@ export const PgSqlLock = {
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
-  SecretValueUniqueCheck: (projectId: string) => pgAdvisoryLockHashText(`secret-value-unique-check:${projectId}`)
+  SecretValueReuseCheck: (projectId: string) => pgAdvisoryLockHashText(`secret-value-reuse-check:${projectId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict

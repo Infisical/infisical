@@ -43,6 +43,8 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
     secret: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET as string
   });
 
+  await probot.load(probotApp);
+
   // github push event webhook
   server.route({
     method: "POST",

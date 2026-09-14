@@ -52,7 +52,7 @@ import {
 import { TDuplicateSecret, TStaticSecretsRuleConfig } from "./static-secrets";
 
 /** Only static-secret rules can ask for a value no other secret already holds. */
-const $wantsCrossSecretUniqueness = (config: TSecretValidationRuleConfig) =>
+const $preventsReuseAcrossSecrets = (config: TSecretValidationRuleConfig) =>
   Boolean((config as TStaticSecretsRuleConfig).valueConstraints?.reusePrevention?.otherSecretsInScope);
 
 type TSecretValidationRuleServiceFactoryDep = {
@@ -108,7 +108,6 @@ export const secretValidationRuleServiceFactory = ({
     }
   };
 
-  // Pass `tx` from inside a transaction: without it the key lookup checks out a second connection.
   const $getCipher = (projectId: string, tx?: Knex) =>
     kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx);
 
@@ -201,9 +200,9 @@ export const secretValidationRuleServiceFactory = ({
     );
   };
 
-  // Cross-secret uniqueness is answered from the blind index, so a project without one cannot enforce it.
+  // Reuse across secrets is answered from the blind index, so a project without one cannot enforce it.
   const $assertBlindIndexingAvailable = async (projectId: string, config: TSecretValidationRuleConfig) => {
-    if (!$wantsCrossSecretUniqueness(config)) return;
+    if (!$preventsReuseAcrossSecrets(config)) return;
 
     const project = await projectDAL.findById(projectId);
     if (!project.secretBlindIndexEnabled) {
@@ -428,7 +427,7 @@ export const secretValidationRuleServiceFactory = ({
 
     // Two writes of the same value would each find no duplicate and both land. The lock makes this
     // check and the write that follows it atomic, so the second one sees the first.
-    if (tx) await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretValueUniqueCheck(projectId)]);
+    if (tx) await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretValueReuseCheck(projectId)]);
 
     const blindIndexes = await Promise.all(
       candidates.map((secret) => generateSecretBlindIndex(Buffer.from(secret.value)))
@@ -548,16 +547,16 @@ export const secretValidationRuleServiceFactory = ({
       });
     }
 
-    // Only one covering rule can ask for cross-secret uniqueness; overlap is rejected at save time.
-    const uniquenessRule = coveringRules.find((rule) => $wantsCrossSecretUniqueness(rule.config));
-    const duplicates = uniquenessRule
+    // Only one covering rule can ask for reuse prevention across secrets; overlap is rejected at save time.
+    const reuseAcrossSecretsRule = coveringRules.find((rule) => $preventsReuseAcrossSecrets(rule.config));
+    const duplicates = reuseAcrossSecretsRule
       ? await $findDuplicatesInScope(
           {
             projectId,
             environment,
             secretPath,
             secrets,
-            scope: uniquenessRule.scope,
+            scope: reuseAcrossSecretsRule.scope,
             canAccessLocation,
             generateSecretBlindIndex
           },

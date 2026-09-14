@@ -141,7 +141,7 @@ export type TRuleToEnforce = {
   config: TStaticSecretsRuleConfig;
 };
 
-/** Whether a rule scoped to `rulePath` reaches a secret sitting at `secretPath`. */
+// Whether a rule scoped to `rulePath` reaches a secret sitting at `secretPath`
 export const doesRulePathCover = (rulePath: string, secretPath: string) =>
   picomatch.isMatch(secretPath, rulePath, { strictSlashes: false });
 

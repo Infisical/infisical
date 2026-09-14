@@ -11,7 +11,7 @@ export enum ConstraintKind {
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
   ReusePreviousVersions = "reuse-previous-versions",
-  ReuseOtherSecrets = "reuse-other-secrets"
+  ReuseOtherSecretsInScope = "reuse-other-secrets-in-scope"
 }
 
 export enum ConstraintTarget {
