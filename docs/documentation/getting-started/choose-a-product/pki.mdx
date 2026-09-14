@@ -1,0 +1,54 @@
+---
+title: "Manage certificates"
+sidebarTitle: "Manage certificates"
+description: "Issue, distribute, and renew the X.509 certificates that authenticate services, devices, and code."
+---
+
+Infisical Certificate Management manages the lifecycle of X.509 certificates for an organization. This includes issuing certificates from certificate authorities, deploying them to services, tracking their expiration, and signing code with managed keys. It replaces manual processes such as running `openssl` scripts, tracking certificates in spreadsheets, and monitoring expiration by hand.
+
+<Card title="Certificate Management docs" icon="file-certificate" href="/documentation/platform/pki/overview">
+  Certificate authorities, issuance protocols, discovery, sync, alerting, and code signing.
+</Card>
+
+## Use cases
+
+<CardGroup cols={2}>
+  <Card title="Issue TLS and mTLS certificates" icon="certificate" href="/documentation/platform/pki/applications/overview">
+    Issue certificates for web servers, service-to-service authentication, and device identity.
+  </Card>
+  <Card title="Enroll devices with ACME, EST, or SCEP" icon="mobile" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Issue certificates to devices using an enrollment protocol supported by the device or its management system.
+  </Card>
+  <Card title="Sync certificates to cloud destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push issued certificates to destinations such as AWS ACM, Azure Key Vault, and Cloudflare.
+  </Card>
+  <Card title="Discover certificates already deployed" icon="radar" href="/documentation/platform/pki/discovery/overview">
+    Scan infrastructure to identify certificates that were issued outside of Infisical and add them to the inventory.
+  </Card>
+  <Card title="Sign code with centralized keys" icon="file-signature" href="/documentation/platform/pki/code-signing/overview">
+    Sign binaries, container images, and firmware using keys managed within Infisical.
+  </Card>
+  <Card title="Get alerts before certificates expire" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Send alerts through Slack, PagerDuty, or webhooks when a certificate approaches its expiration date.
+  </Card>
+</CardGroup>
+
+## What is a certificate?
+
+An X.509 certificate binds a public key to an identity, such as a domain, service, device, or person. The certificate is signed by a certificate authority (CA) that other systems are configured to trust. TLS uses a single certificate so that a client can verify a server's identity. Mutual TLS uses two certificates, one on each side of the connection, so that both parties can verify the other's identity. Device certificates authenticate a device such as a phone or laptop when it enrolls with a device management system. Code signing certificates are used to verify that a binary or other software artifact hasn't been modified since it was signed.
+
+## Why manage certificates
+
+When a certificate expires, the service that relies on it stops functioning correctly. Preventing this requires tracking the expiration date of every certificate in use and renewing each one before it expires. When certificates are managed through manual processes, an expiration can be missed if the person responsible doesn't receive an alert, doesn't know where the certificate is deployed, or isn't aware that a renewal is required.
+
+A certificate management system maintains a single record of every certificate that has been issued, the certificate authority that issued it, the systems where it's deployed, and its expiration date. Expiring certificates can be renewed automatically, or an alert can be raised so that a person can renew them. Issuance can be governed by documented policies rather than by informal knowledge held by individual team members.
+
+## How Infisical does it
+
+Infisical Certificate Management supports three stages of the certificate lifecycle.
+
+- **Issuance.** Certificates can be issued from private [CA hierarchies](/documentation/platform/pki/ca/overview) managed within Infisical, or from external providers such as DigiCert, AWS Private CA, and Let's Encrypt. Requests can be submitted through the API or through the [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), and [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) enrollment protocols.
+- **Delivery.** Certificates can be [synchronized](/documentation/platform/pki/applications/certificate-syncs/overview) to destinations such as AWS ACM, Azure Key Vault, and Cloudflare. The [discovery](/documentation/platform/pki/discovery/overview) feature scans infrastructure to identify certificates that were issued outside of Infisical so they can be added to the inventory.
+- **Renewal and alerting.** Certificates can be renewed automatically before they expire, and [alerts](/documentation/platform/pki/applications/alerting/overview) can be sent through Slack, PagerDuty, or webhooks when a certificate requires attention. [Approval workflows](/documentation/platform/pki/applications/approvals) can be configured so that certain certificates require review before they're issued.
+
+[Code signing](/documentation/platform/pki/code-signing/overview) is available for signing binaries, container images, and firmware. Signing operations use centrally managed keys and can be gated by approval workflows. Infisical also supports PKCS#11 integration for use with existing signing tools.

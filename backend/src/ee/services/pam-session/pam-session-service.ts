@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { CliCapability, cliSupports } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -726,7 +727,10 @@ export const pamSessionServiceFactory = ({
         id: actor.actorId,
         type: actor.actor,
         name: user?.email ?? actorName
-      }
+      },
+      // The platform dials for web sessions, so only a CLI caller is gated on its version.
+      clientSupportsDirect:
+        accessMethod === PamAccessMethod.Web || cliSupports(actorUserAgent, CliCapability.DirectGatewayTransport)
     });
 
     if (!certs) {
@@ -774,9 +778,10 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs,
       accessMethod: PamAccessMethod.Cli,
       relayHost: certs.relayHost,
-      relayClientCertificate: certs.relay.clientCertificate,
-      relayClientPrivateKey: certs.relay.clientPrivateKey,
-      relayServerCertificateChain: certs.relay.serverCertificateChain,
+      directAddress: certs.directAddress,
+      relayClientCertificate: certs.relay?.clientCertificate,
+      relayClientPrivateKey: certs.relay?.clientPrivateKey,
+      relayServerCertificateChain: certs.relay?.serverCertificateChain,
       gatewayClientCertificate: certs.gateway.clientCertificate,
       gatewayClientPrivateKey: certs.gateway.clientPrivateKey,
       gatewayServerCertificateChain: certs.gateway.serverCertificateChain

@@ -291,6 +291,29 @@ export enum ProjectPermissionProxiedServiceActions {
   ReportUsage = "report-usage"
 }
 
+export enum ProjectPermissionAgentVaultAccessBundleActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ManageMembers = "manage-members"
+}
+
+export enum ProjectPermissionAgentVaultSessionActions {
+  Read = "read",
+  Create = "create",
+  Revoke = "revoke"
+}
+
+export enum ProjectPermissionAgentVaultProxyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueToken = "issue-token",
+  Revoke = "revoke"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -443,6 +466,9 @@ export enum ProjectPermissionSub {
   HsmConnectors = "hsm-connectors",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
+  AgentVaultAccessBundles = "agent-vault-access-bundles",
+  AgentVaultSessions = "agent-vault-sessions",
+  AgentVaultProxies = "agent-vault-proxies",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -723,6 +749,9 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
+  | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
+  | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
+  | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
   | [
       ProjectPermissionProjectFolderGrantActions,
       (

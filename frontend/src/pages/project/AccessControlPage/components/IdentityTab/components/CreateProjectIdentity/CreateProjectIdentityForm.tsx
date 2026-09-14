@@ -19,8 +19,9 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
+import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS, PAM_PRODUCT_ROLE_OPTIONS } from "@app/helpers/roles";
 import {
   projectIdentityMembershipQuery,
   useCreateIdentityProjectAdditionalPrivilege,
@@ -30,6 +31,7 @@ import {
   useListProjectIdentityMemberships,
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
+import { agentVaultKeys, useAddAgentVaultProductMember } from "@app/hooks/api/agentVault";
 import { UNIVERSAL_AUTH_DEFAULTS, useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { pamKeys, useAddPamProductIdentityMember } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -46,6 +48,11 @@ import {
   createProjectIdentitySchema,
   TCreateProjectIdentityForm
 } from "./schema";
+
+const SUBMIT_VARIANT_BY_PRODUCT: Partial<Record<ProjectType, "pam" | "av">> = {
+  [ProjectType.PAM]: "pam",
+  [ProjectType.AgentVault]: "av"
+};
 
 const buildTemplatePermissions = (
   projectType: ProjectType,
@@ -89,24 +96,27 @@ export const CreateProjectIdentityForm = ({
   const queryClient = useQueryClient();
   const isCertManager = projectType === ProjectType.CertificateManager;
   const isPam = projectType === ProjectType.PAM;
+  const isAgentVault = projectType === ProjectType.AgentVault;
+  const isProductScoped = isPam || isAgentVault;
 
+  const { currentOrg } = useOrganization();
   const { data: projectRoles } = useGetProjectRoles(projectId, projectType);
 
-  // PAM product membership is only ever Admin or Member, and PAM has no externally visible project, so
-  // the generic role copy ("...over a project") is replaced with the product's own wording.
   const roles = useMemo(() => {
-    if (!isPam) return projectRoles;
+    if (!isProductScoped) return projectRoles;
+
+    const options = isPam ? PAM_PRODUCT_ROLE_OPTIONS : AGENT_VAULT_PRODUCT_ROLE_OPTIONS;
 
     return (projectRoles ?? []).flatMap((role) => {
-      const productRole = PAM_PRODUCT_ROLE_OPTIONS.find((option) => option.value === role.slug);
+      const productRole = options.find((option) => option.value === role.slug);
       if (!productRole) return [];
 
       return [{ ...role, name: productRole.label, description: productRole.description }];
     });
-  }, [projectRoles, isPam]);
+  }, [projectRoles, isProductScoped, isPam]);
 
   const defaultRole =
-    isCertManager || isPam
+    isCertManager || isProductScoped
       ? { slug: ProjectMembershipRole.Member, name: "Member" }
       : { slug: ProjectMembershipRole.NoAccess, name: "No Access" };
 
@@ -152,6 +162,7 @@ export const CreateProjectIdentityForm = ({
   const { mutateAsync: updateMembership } = useUpdateProjectIdentityMembership();
   const { mutateAsync: createMembership } = useCreateProjectIdentityMembership();
   const { mutateAsync: addPamProductIdentityMember } = useAddPamProductIdentityMember();
+  const { mutateAsync: addAgentVaultProductMember } = useAddAgentVaultProductMember();
   const { mutateAsync: addUniversalAuth } = useAddIdentityUniversalAuth();
   const { mutateAsync: createAdditionalPrivilege } = useCreateIdentityProjectAdditionalPrivilege();
 
@@ -162,17 +173,15 @@ export const CreateProjectIdentityForm = ({
       let identityId: string;
 
       if (data.mode === CreateProjectIdentityMode.Create) {
-        // PAM's membership PATCH takes a single product role rather than the generic roles array, so
-        // the role is set at creation time instead of through a follow-up membership update.
         const created = await createProjectIdentity({
           name: data.name!.trim(),
           projectId,
           hasDeleteProtection: true,
-          ...(isPam && data.role?.slug ? { roles: [{ role: data.role.slug }] } : {})
+          ...(isProductScoped && data.role?.slug ? { roles: [{ role: data.role.slug }] } : {})
         });
         identityId = created.id;
 
-        if (!isPam && data.role?.slug) {
+        if (!isProductScoped && data.role?.slug) {
           await updateMembership({
             roles: [{ role: data.role.slug }],
             identityId,
@@ -191,7 +200,7 @@ export const CreateProjectIdentityForm = ({
       } else {
         identityId = data.identity!.id;
 
-        // PAM keeps its own add-member endpoint, which enforces the product-admin check, the
+        // Each product keeps its own add-member endpoint, which enforces the product-admin check, the
         // admin/member-only roles, and the rejection of identities scoped to another project.
         if (isPam) {
           await addPamProductIdentityMember({
@@ -199,6 +208,8 @@ export const CreateProjectIdentityForm = ({
             identityId,
             role: data.role.slug
           });
+        } else if (isAgentVault) {
+          await addAgentVaultProductMember({ identityId, role: data.role.slug });
         } else {
           await createMembership({
             projectId,
@@ -209,9 +220,11 @@ export const CreateProjectIdentityForm = ({
         }
       }
 
-      // The PAM tab reads its own product-membership list, which the generic mutations don't know about.
       if (isPam) {
         queryClient.invalidateQueries({ queryKey: pamKeys.productIdentities() });
+      }
+      if (isAgentVault) {
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.productMembers(currentOrg.id) });
       }
 
       const hasTemplateGrants = data.templateIds.length > 0;
@@ -386,7 +399,7 @@ export const CreateProjectIdentityForm = ({
         <SheetFooter className="border-t">
           <Button
             type="submit"
-            variant={isPam ? "pam" : "project"}
+            variant={SUBMIT_VARIANT_BY_PRODUCT[projectType] ?? "project"}
             isPending={isSubmitting}
             isDisabled={isSubmitting}
           >
