@@ -57,7 +57,9 @@ export const BlindIndexAlert = () => {
     );
   };
 
-  const hasFailed = status?.status === "failed" && !enableBlindIndex.isPending;
+  // The enable request failing leaves the status at not-found, so the mutation is the only signal.
+  const hasFailed =
+    (status?.status === "failed" || enableBlindIndex.isError) && !enableBlindIndex.isPending;
 
   if (wasTriggered && !hasFailed) {
     return (
