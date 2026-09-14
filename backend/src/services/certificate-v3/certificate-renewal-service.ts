@@ -83,7 +83,11 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
-import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
+import {
+  addRenewedCertificateToSyncs,
+  queueCertificateFilterReconcile,
+  triggerAutoSyncForCertificate
+} from "../pki-sync/pki-sync-utils";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { copyMetadataFromCertificate } from "../resource-metadata/resource-metadata-fns";
 import {
@@ -133,10 +137,14 @@ type TCertificateRenewalServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
-    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate" | "updateSyncMetadata"
+    | "findPkiSyncIdsByCertificateId"
+    | "addCertificates"
+    | "findByPkiSyncAndCertificate"
+    | "updateSyncMetadata"
+    | "primaryNode"
   >;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: TProjectDALFactory;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
@@ -302,6 +310,11 @@ export const certificateRenewalServiceFactory = ({
     actorOrgId: string;
   }): Promise<TCertificateIssuanceResponse> => {
     await triggerAutoSyncForCertificate(newCertificateId, { certificateSyncDAL, pkiSyncDAL, pkiSyncQueue });
+
+    if (originalCert.applicationId) {
+      await queueCertificateFilterReconcile(newCertificateId, originalCert.applicationId, pkiSyncQueue);
+      await queueCertificateFilterReconcile(originalCert.id, originalCert.applicationId, pkiSyncQueue);
+    }
 
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({

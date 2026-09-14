@@ -9,7 +9,9 @@ import {
   TListPkiSyncOptions,
   TListPkiSyncs,
   TPkiSync,
-  TPkiSyncCertificate
+  TPkiSyncCertificate,
+  TPkiSyncFilterPreview,
+  TPkiSyncFilters
 } from "@app/hooks/api/pkiSyncs/types";
 
 import { PkiSyncStatus } from "./enums";
@@ -34,7 +36,59 @@ export const pkiSyncKeys = {
   awsListeners: (connectionId: string, region: string, loadBalancerArn: string) =>
     [...pkiSyncKeys.all, "aws-listeners", connectionId, region, loadBalancerArn] as const,
   kempVirtualServices: (connectionId: string) =>
-    [...pkiSyncKeys.all, "kemp-virtual-services", connectionId] as const
+    [...pkiSyncKeys.all, "kemp-virtual-services", connectionId] as const,
+  matchingCertificateIds: (
+    projectId: string,
+    applicationId: string,
+    filters?: TPkiSyncFilters | null
+  ) =>
+    [
+      ...pkiSyncKeys.all,
+      "matching-certificate-ids",
+      projectId,
+      applicationId,
+      filters ?? null
+    ] as const
+};
+
+export const usePkiSyncPreviewCertificates = ({
+  projectId,
+  applicationId,
+  pkiSyncId,
+  filters,
+  enabled = false
+}: {
+  projectId: string;
+  applicationId?: string | null;
+  pkiSyncId?: string | null;
+  filters?: TPkiSyncFilters | null;
+  enabled?: boolean;
+}) => {
+  return useQuery({
+    queryKey: pkiSyncKeys.matchingCertificateIds(
+      projectId,
+      pkiSyncId ?? applicationId ?? "",
+      filters
+    ),
+    enabled,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data } = await apiRequest.post<TPkiSyncFilterPreview>(
+        "/api/v1/cert-manager/syncs/certificates/preview",
+        pkiSyncId
+          ? { pkiSyncId, filters: filters ?? null }
+          : { applicationId, filters: filters ?? null }
+      );
+
+      return {
+        certificates: data.certificates,
+        totalCount: data.matchedCount,
+        hasMoreMatches: data.hasMoreMatches,
+        toUnlink: data.toUnlink,
+        willRemoveFromDestination: data.willRemoveFromDestination
+      };
+    }
+  });
 };
 
 export const usePkiSyncOptions = (

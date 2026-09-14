@@ -115,7 +115,7 @@ flowchart LR
     
     Configure:
     - **Destination**: Select the App Connection and target endpoint
-    - **Certificates**: Choose which certificates to sync
+    - **Certificates**: Add filters describing the certificates this sync holds. A sync with no filters holds nothing
     - **Options**: Configure sync behavior (see below)
   </Step>
   <Step title="Certificates are synced">
@@ -123,11 +123,95 @@ flowchart LR
   </Step>
 </Steps>
 
+## Certificate filters
+
+A sync holds whichever of the Application's certificates match its filters. Filters describe the certificates rather than naming them, so every certificate issued into the Application afterwards is attached automatically.
+
+Filters live on the **Certificates** step of the sync, under the **Add Filter** menu. Three are available, and they can be combined:
+
+| Filter | Matches |
+|--------|---------|
+| **Certificate Order** | Every certificate belonging to the selected orders |
+| **Certificate profile** | Certificates issued from any of the selected profiles |
+| **Metadata** | Certificates carrying every key and value pair listed |
+
+Each filter matches exactly, with no wildcards or patterns, and a certificate has to match **every** filter you set. Adding a filter always narrows the sync, never widens it. So `profile = Prod TLS Edge` plus `metadata tier = prod` holds only the certificates that are both.
+
+A sync with no filters holds nothing, so a new sync stays empty until you describe what it should take. To sync the whole Application, set a filter that matches all of it, such as **Certificate profile** listing every profile in the Application. Setting a filter to an empty list also matches nothing.
+
+### Syncs with a certificate limit
+
+Four things limit how many certificates a sync can hold:
+
+- **The destination itself.** Nutanix Prism Central replaces one cluster certificate, so it holds one.
+- **A GCP Certificate Manager sync bound to a certificate map.** It holds four.
+- **A name schema with no placeholder.** Every certificate needs a distinct name at the destination, so keep `{{certificateId}}` or `{{shortCertificateId}}` in the schema to hold more than one.
+- **A health check or post-sync command naming one certificate.** `{{certificatePath}}` and `{{commonName}}` each resolve to a single certificate. Use `{{certificateFiles}}` or `{{certificateDirectory}}` in a command that has to cover every certificate in the run.
+
+A limited sync takes **Certificate Order** and nothing else, naming at most as many orders as it can hold. **Certificate profile** and **Metadata** match every certificate issued into the Application, so they're rejected, on their own and alongside an order filter. A sync with no filters is accepted, since it holds nothing.
+
+### Orders and renewals
+
+A certificate id belongs to one certificate, and renewing it produces a new id. An order groups a certificate with every renewal of it, so naming an order keeps matching after a renewal. That is why syncs filter on orders rather than certificate ids.
+
+At any moment an order matches exactly one certificate: its newest active one. A renewal therefore replaces its predecessor at the destination rather than joining it. Each certificate's order id is on its detail page, and the picker lets you choose an order by any certificate in it.
+
+### Metadata pairs
+
+Enter a key on its own to match any certificate carrying that key, whatever its value. Enter a key and a value to match that exact pair. A certificate has to carry every pair listed, so each pair narrows the filter further.
+
+### Attaching and detaching one certificate
+
+`POST` and `DELETE` on `/api/v1/cert-manager/syncs/:pkiSyncId/certificates` take certificate ids, resolve each to the order it belongs to, and add or remove that order in the **Certificate Order** filter. `infisical_certificate_sync_certificate` uses this in Terraform, so a client that names a certificate still follows its renewals.
+
+The same resolution applies to the `certificateIds` field on sync creation.
+
+Both work only on a sync whose **Certificate Order** filter is its only filter. On a sync that also filters by profile or metadata, or on one with no filters, they're rejected, because rewriting the order list would narrow the sync and detach everything else. Edit the filters instead.
+
+### When certificates are attached and detached
+
+One certificate is checked against the Application's syncs whenever it is:
+
+- Issued through any enrollment method, including the API, ACME, EST, and SCEP
+- Imported into the Application
+- Renewed, either manually or by auto-renewal
+- Updated with new metadata
+- Assigned to the Application after being issued outside one
+- Deleted
+
+Editing a sync's filters re-checks every certificate in the Application instead. Certificates that now match are attached, and certificates that no longer match are detached.
+
+Only active certificates are attached. Expired, revoked, and superseded certificates are skipped, so a renewal replaces its predecessor at the destination rather than joining it.
+
+### Detaching can delete at the destination
+
+A certificate that leaves a sync is deleted from the destination when **Allow to remove certificates from destination** is enabled, whether it left because it was deleted, because it stopped being active, or because a filter changed.
+
+That makes a filter edit destructive. A load balancer serving a certificate loses it the moment that certificate stops matching. Before saving, Infisical lists the certificates a filter change would detach and asks you to confirm. Terraform prints the same list as a warning at plan. The API applies the change with no prompt, so call the [preview endpoint](#previewing-a-filter-change) first.
+
+### Previewing a filter change
+
+`POST /api/v1/cert-manager/syncs/certificates/preview` reports what a set of filters matches and changes nothing. Name the sync you intend to save them to:
+
+```bash
+curl -X POST "https://app.infisical.com/api/v1/cert-manager/syncs/certificates/preview" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"pkiSyncId": "<sync-id>", "filters": {"profileIds": ["<profile-id>"]}}'
+```
+
+The response carries `matchedCount` and `certificates` for what the filters match, `hasMoreMatches` when they match more than a sync can hold, and `toUnlink` with `willRemoveFromDestination` for what the sync would lose. To try filters out before the sync exists, send `applicationId` instead of `pkiSyncId`: nothing can be detached yet, so `toUnlink` comes back empty.
+
+<Note>
+  - A sync can hold up to 500 certificates.
+  - One filter can name at most 500 certificate orders, 20 certificate profiles, or 20 metadata pairs.
+</Note>
+
 ## Sync options
 
 | Option | Description |
 |--------|-------------|
-| **Remove on expiry** | Automatically remove expired certificates from the destination |
+| **Allow to remove certificates from destination** | Delete a certificate from the destination once it leaves this sync |
 | **Include Root CA** | Include the root CA certificate in the chain |
 | **Certificate naming** | Customize how certificates are named in the destination via the Certificate Name Schema (default: `Infisical-{{certificateId}}`) |
 

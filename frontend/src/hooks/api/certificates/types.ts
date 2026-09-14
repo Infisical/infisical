@@ -39,6 +39,7 @@ export type TCertificate = {
   subjectAltNames: string;
   altNames?: string;
   serialNumber: string;
+  orderId?: string;
   notBefore: string;
   notAfter: string;
   keyUsages: CertKeyUsage[];

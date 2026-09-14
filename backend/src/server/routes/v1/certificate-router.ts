@@ -1795,7 +1795,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo
       });
 
       await server.services.auditLog.createAuditLog({

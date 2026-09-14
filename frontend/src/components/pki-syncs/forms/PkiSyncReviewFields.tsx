@@ -1,31 +1,23 @@
 import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
+import { FilterIcon } from "lucide-react";
 
-import {
-  Badge,
-  CodeBlock,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3";
+import { buildPkiSyncFilterSummary } from "@app/components/pki-syncs/PkiSyncFilterBadges";
+import { Badge, CodeBlock, Empty, EmptyDescription, EmptyMedia } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
-  getCertificateDisplayName,
   KEY_VALUE_SYNC_OPTION_FIELDS,
   PKI_SYNC_MAP,
-  truncateCertificateSerialNumber,
   VALUE_SYNC_OPTION_FIELDS
 } from "@app/helpers/pkiSyncs";
-import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
+import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { usePkiSyncPreviewCertificates } from "@app/hooks/api/pkiSyncs";
+import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
+import { buildOrderNameMap, hasAnyFilter } from "./pki-sync-filter-fns";
+import { PkiSyncMatchedCertificatesTable } from "./PkiSyncMatchedCertificatesTable";
 
 const ReviewFieldLabel = ({ label, children }: { label: string; children?: ReactNode }) => (
   <div className="row-span-2 grid min-w-0 grid-rows-subgrid pb-2">
@@ -38,28 +30,25 @@ const ReviewFieldLabel = ({ label, children }: { label: string; children?: React
   </div>
 );
 
-export const PkiSyncReviewFields = () => {
+type Props = {
+  applicationId?: string;
+};
+
+export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
   const { watch } = useFormContext<TPkiSyncForm>();
   const { currentProject } = useProject();
 
-  const { data } = useListWorkspaceCertificates({
-    projectId: currentProject?.id || "",
+  const { data: profileData } = useListCertificateProfiles({
+    limit: 100,
     offset: 0,
-    limit: 100
+    applicationId
   });
-
-  const certificates = data?.certificates || [];
-
-  const getSelectedCertificates = (certificateIds?: string[]) => {
-    if (!certificateIds || certificateIds.length === 0) return [];
-    return certificates.filter((cert) => certificateIds.includes(cert.id));
-  };
 
   const {
     name,
     description,
     connection,
-    certificateIds,
+    filters,
     syncOptions,
     destination,
     destinationConfig,
@@ -67,7 +56,24 @@ export const PkiSyncReviewFields = () => {
   } = watch();
 
   const destinationName = PKI_SYNC_MAP[destination].name;
-  const selectedCertificates = getSelectedCertificates(certificateIds);
+
+  const { data: preview, isPending: isPreviewPending } = usePkiSyncPreviewCertificates({
+    projectId: currentProject?.id || "",
+    applicationId,
+    filters: (filters ?? null) as TPkiSyncFilters | null,
+    enabled: Boolean(applicationId) && hasAnyFilter(filters)
+  });
+
+  const orderNameById = buildOrderNameMap(preview?.certificates);
+
+  const matchedRows = hasAnyFilter(filters) ? (preview?.certificates ?? []) : [];
+  const filterFields = buildPkiSyncFilterSummary({
+    filters: (filters ?? null) as TPkiSyncFilters | null,
+    profileNameById: new Map(
+      (profileData?.certificateProfiles ?? []).map(({ id, slug }) => [id, slug])
+    ),
+    orderNameById
+  });
   const postSyncCommand =
     syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
   const healthCheckCommand =
@@ -80,60 +86,38 @@ export const PkiSyncReviewFields = () => {
           <span className="text-sm text-muted">Certificates</span>
         </div>
         <div className="w-full">
-          {selectedCertificates.length === 0 ? (
-            <span className="text-sm text-muted/50 italic">No certificates selected</span>
+          <p className="mb-2 text-sm font-medium text-foreground">Filters</p>
+          {filterFields ? (
+            <div className="mb-4 grid grid-cols-3 gap-x-8">
+              {filterFields.map(({ label, value }) => (
+                <ReviewFieldLabel key={label} label={label}>
+                  {value}
+                </ReviewFieldLabel>
+              ))}
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>SAN / CN</TableHead>
-                  <TableHead className="w-1/5">Serial Number</TableHead>
-                  <TableHead className="w-1/6">Issued At</TableHead>
-                  <TableHead className="w-1/6 pr-5">Expires At</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedCertificates.map((cert) => {
-                  const { originalDisplayName, displayName, isTruncated } =
-                    getCertificateDisplayName(cert);
-                  const truncatedSerial = truncateCertificateSerialNumber(cert.serialNumber);
-
-                  return (
-                    <TableRow key={cert.id}>
-                      <TableCell className="max-w-0">
-                        {isTruncated ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="truncate">{displayName}</div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-lg">
-                              {originalDisplayName}
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <div className="truncate">{displayName}</div>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-0">
-                        <div className="font-mono text-xs" title={cert.serialNumber}>
-                          {truncatedSerial}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-0">
-                        <span className="text-sm">
-                          {new Date(cert.notBefore).toLocaleDateString()}
-                        </span>
-                      </TableCell>
-                      <TableCell className="max-w-0 pr-5">
-                        <span className="text-sm">
-                          {new Date(cert.notAfter).toLocaleDateString()}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <Empty className="mb-4 border py-8">
+              <EmptyMedia variant="icon">
+                <FilterIcon />
+              </EmptyMedia>
+              <EmptyDescription>No filters, so this sync holds nothing.</EmptyDescription>
+            </Empty>
+          )}
+          {hasAnyFilter(filters) && (
+            <>
+              <p className="mb-2 text-sm font-medium text-foreground">Matched Certificates</p>
+              <p className="mb-2 text-xs text-muted">
+                {preview?.hasMoreMatches
+                  ? `More than ${matchedRows.length} certificates match. Narrow the filters before saving.`
+                  : `${matchedRows.length} certificate${matchedRows.length === 1 ? "" : "s"} will be synced.`}
+              </p>
+              <PkiSyncMatchedCertificatesTable
+                rows={matchedRows}
+                isLoading={isPreviewPending}
+                emptyTitle="No certificates match"
+                emptyDescription="Nothing in this Application matches these filters yet."
+              />
+            </>
           )}
         </div>
       </div>

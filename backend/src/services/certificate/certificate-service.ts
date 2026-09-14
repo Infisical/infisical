@@ -3,6 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -56,7 +57,12 @@ import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-colle
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
-import { triggerAutoSyncForCertificate } from "@app/services/pki-sync/pki-sync-utils";
+import {
+  findPkiSyncIdsHoldingCertificate,
+  queueCertificateFilterReconcile,
+  triggerAutoSyncForCertificate,
+  triggerSyncsForDeletedCertificate
+} from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -138,9 +144,10 @@ type TCertificateServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "primaryNode">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateAuthorityService: Pick<TCertificateAuthorityServiceFactory, "revokeCertificate">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
@@ -170,6 +177,7 @@ export const certificateServiceFactory = ({
   kmsService,
   permissionService,
   certificateSyncDAL,
+  auditLogService,
   pkiSyncDAL,
   pkiSyncQueue,
   certificateAuthorityService,
@@ -426,8 +434,23 @@ export const certificateServiceFactory = ({
   /**
    * Delete certificate with serial number [serialNumber]
    */
-  const deleteCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
+  const deleteCert = async ({
+    id,
+    serialNumber,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId,
+    auditLogInfo
+  }: TDeleteCertDTO) => {
     const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({
+        message: id
+          ? `Certificate with id '${id}' not found`
+          : `Certificate with serial number '${serialNumber}' not found`
+      });
+    }
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
@@ -467,6 +490,8 @@ export const certificateServiceFactory = ({
       );
     }
 
+    const pkiSyncIdsHoldingCertificate = await findPkiSyncIdsHoldingCertificate(cert.id, { certificateSyncDAL });
+
     let deletedCert;
     try {
       deletedCert = await certificateDAL.transaction(async (tx) => {
@@ -503,12 +528,13 @@ export const certificateServiceFactory = ({
       throw err;
     }
 
-    // Trigger auto sync for PKI syncs connected to this certificate
-    await triggerAutoSyncForCertificate(cert.id, {
-      certificateSyncDAL,
-      pkiSyncDAL,
-      pkiSyncQueue
-    });
+    await triggerSyncsForDeletedCertificate(
+      cert.id,
+      pkiSyncIdsHoldingCertificate,
+      { pkiSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL },
+      { commonName: cert.commonName, projectId: cert.projectId, applicationId: cert.applicationId },
+      auditLogInfo
+    );
 
     usageMeteringService.emitForProject(cert.projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(cert.projectId, WildcardCerts.key);
@@ -544,11 +570,6 @@ export const certificateServiceFactory = ({
     }
   };
 
-  /**
-   * Revoke certificate with serial number [serialNumber].
-   * Note: Revoking a certificate adds it to the certificate revocation list (CRL)
-   * of its issuing CA
-   */
   const revokeCert = async ({
     id,
     serialNumber,
@@ -708,6 +729,10 @@ export const certificateServiceFactory = ({
       pkiSyncDAL,
       pkiSyncQueue
     });
+
+    if (cert.applicationId) {
+      await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
+    }
 
     // rebuild CRL (TODO: move to interval-based cron job)
     // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
@@ -1369,6 +1394,10 @@ export const certificateServiceFactory = ({
     usageMeteringService.emitForProject(projectId, ActiveCerts.key);
     usageMeteringService.emitForProject(projectId, WildcardCerts.key);
 
+    if (cert.id && cert.applicationId) {
+      await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
+    }
+
     return {
       certificate: certificatePem,
       certificateChain: chainPem,
@@ -1642,6 +1671,9 @@ export const certificateServiceFactory = ({
     }
 
     const [updatedCert] = await certificateDAL.update({ id: cert.id }, { applicationId });
+
+    await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
+
     return { certificate: updatedCert, application };
   };
 

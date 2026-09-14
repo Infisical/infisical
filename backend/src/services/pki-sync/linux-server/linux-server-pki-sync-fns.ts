@@ -21,6 +21,7 @@ import {
   withSshConnection
 } from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
@@ -51,6 +52,7 @@ type TLinuxServerPkiSyncFactoryDeps = {
     TCertificateSyncDALFactory,
     "findByPkiSyncId" | "findByPkiSyncAndCertificate" | "updateById" | "addCertificates" | "removeCertificates"
   >;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -262,8 +264,9 @@ const reconcileLinuxServerRemovals = async (args: {
   certificateMap: TCertificateMap;
   deliveredPaths: Set<string>;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "removeCertificates">;
+  certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
 }): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
-  const { sftp, pkiSync, certificateMap, deliveredPaths, certificateSyncDAL } = args;
+  const { sftp, pkiSync, certificateMap, deliveredPaths, certificateSyncDAL, certificateDAL } = args;
   const failedRemovals: Array<{ name: string; error: string }> = [];
   let removed = 0;
 
@@ -274,8 +277,19 @@ const reconcileLinuxServerRemovals = async (args: {
   );
   const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
 
+  const untrackCandidateIds = existingSyncRecords
+    .map((record) => record.certificateId)
+    .filter((id): id is string => Boolean(id) && !activeCertificateIds.has(id));
+  const stillActiveIds = new Set(
+    (await certificateDAL.findActiveCertificatesByIds(untrackCandidateIds)).map((cert) => cert.id)
+  );
+
   for (const record of existingSyncRecords) {
-    if (!record.certificateId || activeCertificateIds.has(record.certificateId)) {
+    if (
+      !record.certificateId ||
+      activeCertificateIds.has(record.certificateId) ||
+      stillActiveIds.has(record.certificateId)
+    ) {
       // eslint-disable-next-line no-continue
       continue;
     }
@@ -393,6 +407,7 @@ const runLinuxServerPostSyncCommand = ({
 
 export const linuxServerPkiSyncFactory = ({
   certificateSyncDAL,
+  certificateDAL,
   gatewayV2Service,
   gatewayPoolService,
   keyStore
@@ -539,7 +554,8 @@ export const linuxServerPkiSyncFactory = ({
             pkiSync,
             certificateMap,
             deliveredPaths,
-            certificateSyncDAL
+            certificateSyncDAL,
+            certificateDAL
           });
           removed += reconciliation.removed;
           failedRemovals.push(...reconciliation.failedRemovals);
