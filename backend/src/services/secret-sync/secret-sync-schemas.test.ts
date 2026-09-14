@@ -20,6 +20,9 @@ describe("BaseSyncOptionsSchema recursive", () => {
     expect(result.success).toBe(true);
   });
 
+  // Importing would need to write each secret back into the subfolder it came from, which isn't
+  // supported yet, so allowing this combination would squash every subfolder's secrets into the
+  // sync's root folder instead. See RECURSIVE_SYNC_REFINEMENT.
   test("rejects recursive combined with importing from the destination", () => {
     const result = schema.safeParse({
       initialSyncBehavior: SecretSyncInitialSyncBehavior.ImportPrioritizeSource,

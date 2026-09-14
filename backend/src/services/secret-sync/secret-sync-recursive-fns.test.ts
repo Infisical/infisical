@@ -2,8 +2,8 @@ import {
   assertWithinSecretLimit,
   buildSyncPayload,
   getAncestorPaths,
+  getSyncedFolders,
   mergeImportedSecrets,
-  resolveSyncFolders,
   SECRET_SYNC_MAX_SECRETS
 } from "./secret-sync-recursive-fns";
 
@@ -15,11 +15,11 @@ const deps = {
     ]
   },
   projectEnvDAL: { findOne: async () => ({ id: "env-1", slug: "dev", projectId: "proj-1" }) }
-} as unknown as Pick<Parameters<typeof resolveSyncFolders>[0], "folderDAL" | "projectEnvDAL">;
+} as unknown as Pick<Parameters<typeof getSyncedFolders>[0], "folderDAL" | "projectEnvDAL">;
 
-describe("resolveSyncFolders", () => {
+describe("getSyncedFolders", () => {
   test("returns only the source folder when recursive is off", async () => {
-    const folders = await resolveSyncFolders({
+    const folders = await getSyncedFolders({
       ...deps,
       projectId: "proj-1",
       environment: "dev",
@@ -32,7 +32,7 @@ describe("resolveSyncFolders", () => {
   });
 
   test("returns the source folder and its descendants when recursive is on", async () => {
-    const folders = await resolveSyncFolders({
+    const folders = await getSyncedFolders({
       ...deps,
       projectId: "proj-1",
       environment: "dev",
@@ -147,7 +147,16 @@ describe("mergeImportedSecrets", () => {
     expect(merged.map((entry) => entry.path).sort()).toEqual(["/backend", "/backend/api"]);
   });
 
-  test("a later import wins over an earlier one in the same folder, as today", () => {
+  // Two import statements in the same folder resolving the same key is pre-existing, released
+  // behavior: the reverse loop this reuses already shipped in secret-v2-bridge-service.ts. This
+  // pins that behavior so mergeImportedSecrets doesn't change it, not because it's the right
+  // design. Ideally a same-folder import collision would be a conflict error, the same way a
+  // duplicate name across folders already is.
+  //
+  // "Later" means higher position: secretImportDAL.findByFolderIds orders imports by position
+  // ascending, and that order survives unchanged through fnSecretsV2FromImports, so the import
+  // listed lower in that folder's import list is what wins.
+  test("the import listed later (by position) wins over an earlier one in the same folder", () => {
     const merged = mergeImportedSecrets(
       [],
       [
@@ -226,7 +235,6 @@ describe("buildSyncPayload", () => {
         projectFolderGrantDAL: { find: async () => [] },
         actorOrgId: "org-1",
         orgDAL: { findOrgById: async () => ({ allowCrossProjectSecretSharing: false }) },
-        licenseService: { getPlan: async () => ({ crossProjectSecretSharing: false }) },
         kmsService: {
           createCipherPairWithDataKey: async () => ({
             decryptor: () => "",
@@ -236,7 +244,7 @@ describe("buildSyncPayload", () => {
       }
     } as unknown as Parameters<typeof buildSyncPayload>[0];
 
-    const payload = await buildSyncPayload(buildDeps, {
+    const entries = await buildSyncPayload(buildDeps, {
       projectId: "proj-1",
       environment: "dev",
       sourcePath: "/",
@@ -245,13 +253,19 @@ describe("buildSyncPayload", () => {
       includeImports: true
     });
 
-    const paths = payload.secrets.map((entry) => entry.path).sort();
+    const paths = entries.map((entry) => entry.path).sort();
 
     expect(paths).toEqual(["/", "/api"]);
   });
 });
 
-describe("buildSyncPayload dedupeForRemoval", () => {
+// buildSyncPayload never dedupes or rejects a cross-folder name collision itself: whether that's
+// a hard conflict (sync/create) or something to look past (remove, so a sync that has drifted
+// into this state stays deletable) is a decision only the caller can make, made by wrapping this
+// function's raw entries with createSecretSyncPayload, optionally deduping them first. See
+// secret-sync-payload.test.ts for that composition, and secret-sync-queue.ts's
+// $getInfisicalSecrets for the one caller that dedupes.
+describe("buildSyncPayload cross-folder duplicates", () => {
   const duplicateNameSecret = (folderId: string, value: string) => ({
     id: `secret-${folderId}`,
     key: "DB_URL",
@@ -284,7 +298,6 @@ describe("buildSyncPayload dedupeForRemoval", () => {
       projectFolderGrantDAL: { find: async () => [] },
       actorOrgId: "org-1",
       orgDAL: { findOrgById: async () => ({ allowCrossProjectSecretSharing: false }) },
-      licenseService: { getPlan: async () => ({ crossProjectSecretSharing: false }) },
       kmsService: {
         createCipherPairWithDataKey: async () => ({
           decryptor: () => "",
@@ -303,20 +316,9 @@ describe("buildSyncPayload dedupeForRemoval", () => {
     includeImports: true
   };
 
-  // Pins the sync-path requirement from the same bug: a name used in two folders must still
-  // fail loudly on this path, since only the remove path may look past it.
-  test("a cross-folder duplicate name still throws when dedupeForRemoval is not set", async () => {
-    const payload = await buildSyncPayload(dedupeDeps, args);
+  test("returns both colliding entries as-is, neither deduped nor rejected", async () => {
+    const entries = await buildSyncPayload(dedupeDeps, args);
 
-    expect(() => payload.flatten()).toThrow(/DB_URL/);
-  });
-
-  // A sync whose secrets collide across folders would otherwise be stuck: it fails to sync,
-  // and until this test, it also failed to remove, which is the only way to delete it.
-  test("dedupeForRemoval lets the remove path complete despite the same duplicate", async () => {
-    const payload = await buildSyncPayload(dedupeDeps, { ...args, dedupeForRemoval: true });
-
-    expect(() => payload.flatten()).not.toThrow();
-    expect(Object.keys(payload.flatten())).toEqual(["DB_URL"]);
+    expect(entries.map((entry) => entry.path).sort()).toEqual(["/", "/api"]);
   });
 });

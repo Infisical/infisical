@@ -44,6 +44,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { createSecretSyncPayload, dedupeEntriesByDestinationKey } from "@app/services/secret-sync/secret-sync-payload";
 import { buildSyncPayload, getAncestorPaths } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncAction,
@@ -302,7 +303,7 @@ export const secretSyncQueueFactory = ({
       kmsService
     });
 
-    return buildSyncPayload(
+    const entries = await buildSyncPayload(
       {
         folderDAL,
         projectEnvDAL,
@@ -323,10 +324,18 @@ export const secretSyncQueueFactory = ({
         sourcePath: folder.path,
         sourceFolderId: folderId,
         recursive: Boolean(syncOptions?.recursive),
-        keySchema: syncOptions?.keySchema,
-        includeImports,
-        dedupeForRemoval
+        includeImports
       }
+    );
+
+    // Duplicates across folders are deduped before the payload is built, so flatten() cannot
+    // throw here: a sync that has drifted into a duplicate-name state must still be removable.
+    // Every other caller keeps the duplicate-name check intact.
+    return createSecretSyncPayload(
+      dedupeForRemoval
+        ? dedupeEntriesByDestinationKey(entries, { environment: environment.slug, keySchema: syncOptions?.keySchema })
+        : entries,
+      { environment: environment.slug, keySchema: syncOptions?.keySchema }
     );
   };
 
@@ -831,8 +840,8 @@ export const secretSyncQueueFactory = ({
         projectId
       });
 
-      // Duplicates across folders are deduped before the payload is built, so flatten() cannot
-      // throw here: a sync that has drifted into a duplicate-name state must still be removable.
+      // dedupeForRemoval: a sync that has drifted into a duplicate-name state must still be
+      // removable. See $getInfisicalSecrets for why.
       const payload = await $getInfisicalSecrets(secretSync, true, true);
 
       await SecretSyncFns.removeSecrets(

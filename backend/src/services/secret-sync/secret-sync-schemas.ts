@@ -9,6 +9,10 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+// Importing would need to write each secret back into the subfolder it came from, which we don't
+// support yet (hierarchical writes to destinations that can represent folders are planned for a
+// later PR). Until then, allowing this combination would silently squash every subfolder's
+// secrets into the sync's root folder, restructuring the user's existing secrets tree.
 const RECURSIVE_SYNC_REFINEMENT = {
   path: ["recursive"],
   message:
@@ -76,15 +80,18 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
     recursive: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).recursive)
   });
 
+  // What refinedSchema actually is: baseSchema, merged with the destination's own extra
+  // sync-option fields when `merge` supplies them, wrapped in a Zod effect that enforces
+  // isRecursiveCombinationAllowed across the result.
   type TRefinedSchema = z.ZodEffects<
     T extends AnyZodObject
       ? z.ZodObject<z.objectUtil.MergeShapes<typeof baseSchema.shape, T["shape"]>>
       : typeof baseSchema
   >;
 
-  // `merge` is supplied exactly when `T` is a ZodObject, which is the condition this type branches
-  // on, and the compiler cannot correlate a runtime ternary with a type parameter. Passing an
-  // explicit type argument that disagrees with the `merge` argument would make the assertion false.
+  // The cast below is needed because TypeScript can't verify it on its own: every caller passes
+  // `merge` and a real T together or neither, so the runtime ternary and the type-level ternary
+  // above always agree, but the compiler has no way to prove that from a runtime value.
   const refinedSchema = (
     merge
       ? baseSchema.merge(merge).refine(isRecursiveCombinationAllowed, RECURSIVE_SYNC_REFINEMENT)
@@ -170,5 +177,10 @@ export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .optional()
       .describe(SecretSyncs.UPDATE(destination).secretPath),
     isAutoSyncEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isAutoSyncEnabled),
+    // Optional like every other field here, so an update can touch just the name or description
+    // without resending sync options. This can't be used to sneak past
+    // isRecursiveCombinationAllowed: initialSyncBehavior inside BaseSyncOptionsSchema stays
+    // required, so a request that includes syncOptions at all must still submit a complete,
+    // valid one.
     syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge, isUpdateSchema: true }).optional()
   });

@@ -34,7 +34,8 @@ import {
   preSaveTransformDestinationConfig,
   preSaveTransformSyncOptions
 } from "@app/services/secret-sync/secret-sync-fns";
-import { buildSyncPayload, resolveSyncFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
+import { createSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
+import { buildSyncPayload, getSyncedFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
   SecretSyncStatus,
   TCheckDuplicateDestinationDTO,
@@ -162,7 +163,7 @@ export const secretSyncServiceFactory = ({
       recursive: boolean;
     }
   ) => {
-    const folders = await resolveSyncFolders({
+    const folders = await getSyncedFolders({
       folderDAL,
       projectEnvDAL,
       projectId,
@@ -247,7 +248,7 @@ export const secretSyncServiceFactory = ({
         kmsService
       });
 
-      return buildSyncPayload(
+      const entries = await buildSyncPayload(
         {
           folderDAL,
           projectEnvDAL,
@@ -268,11 +269,11 @@ export const secretSyncServiceFactory = ({
           sourcePath,
           sourceFolderId,
           recursive: true,
-          keySchema,
-          includeImports: true,
-          dedupeForRemoval: false
+          includeImports: true
         }
       );
+
+      return createSecretSyncPayload(entries, { environment, keySchema });
     });
 
   // Flattening a subtree onto a destination that holds one flat list can produce two secrets with
