@@ -1,14 +1,14 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
   faCheckCircle,
   faCubesStacked,
   faFilter,
+  faMagnifyingGlass,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   IconButton,
+  Input,
   Pagination,
   Table,
   TableContainer,
@@ -30,9 +31,8 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@app/components/v3";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
-import { usePagination, usePopUp, useResetPageHelper, useSlashFocusSearch } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretScanningDataSource,
@@ -86,8 +86,6 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
     setOrderDirection,
     setOrderBy
   } = usePagination<DataSourcesOrderBy>(DataSourcesOrderBy.Name, { initPerPage: 20 });
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useSlashFocusSearch(searchInputRef);
 
   const filteredDataSources = useMemo(
     () =>
@@ -215,17 +213,13 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
   return (
     <div>
       <div className="flex gap-2">
-        <InputGroup className="flex-1">
-          <InputGroupAddon>
-            <SearchIcon />
-          </InputGroupAddon>
-          <InputGroupInput
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            ref={searchInputRef}
-            placeholder="Search data sources..."
-          />
-        </InputGroup>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search data sources..."
+          className="flex-1"
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
@@ -233,7 +227,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-9 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
