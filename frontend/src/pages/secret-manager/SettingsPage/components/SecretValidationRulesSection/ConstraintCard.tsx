@@ -92,20 +92,22 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
             control={control}
             name={`enforcement.constraints.${index}.checkOtherSecretsInScope`}
             render={({ field: { value, onChange } }) => (
-              <Field orientation="horizontal" className="border-t border-border pt-3">
-                <FieldContent>
-                  <FieldTitle>Other secrets in scope</FieldTitle>
-                  <FieldDescription>
-                    Reject values currently used by other secrets in this rule&apos;s scope
-                  </FieldDescription>
-                </FieldContent>
-                <Toggle
-                  aria-label="Check the new value against other secrets in this rule's scope"
-                  checked={Boolean(value)}
-                  onCheckedChange={onChange}
-                  variant="project"
-                />
-              </Field>
+              <div className="border-t border-border pt-3">
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Other secrets in scope</FieldTitle>
+                    <FieldDescription>
+                      Reject values currently used by other secrets in this rule&apos;s scope
+                    </FieldDescription>
+                  </FieldContent>
+                  <Toggle
+                    aria-label="Check the new value against other secrets in this rule's scope"
+                    checked={Boolean(value)}
+                    onCheckedChange={onChange}
+                    variant="project"
+                  />
+                </Field>
+              </div>
             )}
           />
 
@@ -150,18 +152,20 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
                             </TooltipContent>
                           </Tooltip>
                         </FieldLabel>
-                        <FieldContent className="w-24 flex-none">
-                          <Input
-                            {...field}
-                            id={valueId}
-                            type="number"
-                            min={1}
-                            max={MAX_PREVENT_VALUE_REUSE_VERSIONS}
-                            placeholder={placeholder?.toString() || undefined}
-                            isError={Boolean(valueError)}
-                          />
-                          <FieldError errors={[valueError]} />
-                        </FieldContent>
+                        <div className="w-24">
+                          <FieldContent>
+                            <Input
+                              {...field}
+                              id={valueId}
+                              type="number"
+                              min={1}
+                              max={MAX_PREVENT_VALUE_REUSE_VERSIONS}
+                              placeholder={placeholder?.toString() || undefined}
+                              isError={Boolean(valueError)}
+                            />
+                            <FieldError errors={[valueError]} />
+                          </FieldContent>
+                        </div>
                       </Field>
                     )}
                   />
