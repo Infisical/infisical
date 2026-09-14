@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -9,6 +9,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
@@ -72,7 +73,14 @@ type TUserServiceFactoryDep = {
     | "findAllMyAccounts"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "find" | "findEffectiveOrgMembership" | "findEffectiveOrgMemberships">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    | "findById"
+    | "find"
+    | "findEffectiveOrgMembership"
+    | "findEffectiveOrgMemberships"
+    | "findActiveEffectiveOrgMembershipsByUserId"
+  >;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -221,16 +229,15 @@ export const userServiceFactory = ({
   };
 
   const findMfaEnforcingOrgs = async (userId: string) => {
-    const userOrgMemberships = await membershipUserDAL.find({
-      actorUserId: userId,
-      scope: AccessScope.Organization,
-      status: OrgMembershipStatus.Accepted
-    });
-    if (!userOrgMemberships.length) return [];
+    const memberships = await orgDAL.findActiveEffectiveOrgMembershipsByUserId(userId);
+    if (!memberships.length) return [];
 
-    const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
-    const organizations = await orgDAL.find({ $in: { id: orgIds } });
-    return organizations.filter((org) => org.enforceMfa);
+    const memberOrgs = await orgDAL.find({
+      $in: { id: unique(memberships.map((membership) => membership.scopeOrgId)) }
+    });
+    const rootOrgIds = unique(memberOrgs.map((org) => org.rootOrgId ?? org.id));
+    const rootOrgs = await orgDAL.find({ $in: { id: rootOrgIds } });
+    return rootOrgs.filter((org) => org.enforceMfa);
   };
 
   const hasMfaEnforcingOrg = async (userId: string) => (await findMfaEnforcingOrgs(userId)).length > 0;
