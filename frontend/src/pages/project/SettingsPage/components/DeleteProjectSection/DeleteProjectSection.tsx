@@ -100,6 +100,7 @@ export const DeleteProjectSection = () => {
 
   const leaveButton = (
     <Button
+      size="sm"
       isPending={isLeaving}
       isDisabled={!isDirectMember}
       variant="danger"
