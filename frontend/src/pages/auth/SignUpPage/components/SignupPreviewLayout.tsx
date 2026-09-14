@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { BookOpen } from "lucide-react";
 
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
-import { Button, Card } from "@app/components/v3";
+import { Button, Card, CardContent, CardFooter } from "@app/components/v3";
 
 import { SignupDashboardPreview } from "./SignupDashboardPreview";
 
@@ -30,10 +30,12 @@ export const SignupPreviewLayout = ({
         </Button>
       </AuthPageHeader>
       <main className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
-        <Card className="max-h-[calc(100dvh-9rem)] thin-scrollbar w-full max-w-md gap-0 overflow-y-auto bg-card/95 px-6 py-7 shadow-none backdrop-blur-xl sm:px-8 sm:py-9">
-          {children}
+        <Card className="max-h-[calc(100dvh-9rem)] thin-scrollbar w-full max-w-md overflow-y-auto">
+          <CardContent>{children}</CardContent>
           {bottomContent ? (
-            <div className="mt-6 border-t border-border pt-5 text-center">{bottomContent}</div>
+            <CardFooter className="justify-center border-t pt-5 text-center">
+              {bottomContent}
+            </CardFooter>
           ) : null}
         </Card>
       </main>
