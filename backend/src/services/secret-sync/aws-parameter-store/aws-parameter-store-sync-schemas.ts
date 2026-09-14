@@ -101,7 +101,7 @@ export const AwsParameterStoreSyncOptionsSchema = z.object({
     .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_PARAMETER_STORE.syncSecretMetadataAsTags)
 });
 
-const AwsParameterStoreSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
+const AwsParameterStoreSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true, supportsSecretPaths: true };
 
 export const AwsParameterStoreSyncSchema = BaseSecretSyncSchema(
   SecretSync.AWSParameterStore,
@@ -136,6 +136,7 @@ export const AwsParameterStoreSyncListItemSchema = z
     connection: z.literal(AppConnection.AWS),
     destination: z.literal(SecretSync.AWSParameterStore),
     canImportSecrets: z.literal(true),
-    canRemoveSecretsOnDeletion: z.literal(true)
+    canRemoveSecretsOnDeletion: z.literal(true),
+    supportsSecretPaths: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSParameterStore] }));

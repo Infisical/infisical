@@ -55,7 +55,12 @@ export const KeySchemaSchema = z
 
 const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
   destination,
-  syncOptionsConfig: { canImportSecrets, supportsKeySchema = true, supportsDisableSecretDeletion = true },
+  syncOptionsConfig: {
+    canImportSecrets,
+    supportsKeySchema = true,
+    supportsDisableSecretDeletion = true,
+    supportsSecretPaths = false
+  },
   merge,
   isUpdateSchema
 }: {
@@ -81,7 +86,10 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
     disableSecretDeletion: supportsDisableSecretDeletion
       ? z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
       : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`),
-    recursive: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).recursive)
+    recursive: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).recursive),
+    preserveSecretPaths: supportsSecretPaths
+      ? z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).preserveSecretPaths)
+      : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`)
   });
 
   // What refinedSchema actually is: baseSchema, merged with the destination's own extra

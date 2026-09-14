@@ -25,7 +25,7 @@ import { isAwsError } from "@app/lib/aws/error";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
+import { getKeyWithSchema, TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TAwsParameterStoreSyncWithCredentials } from "./aws-parameter-store-sync-types";
@@ -79,18 +79,77 @@ const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema
   return `${path}${pathSegments.join("/")}/`;
 };
 
+// Mirrors a secret's own Infisical folder into its parameter name, so a subtree fetched
+// recursively lands nested in AWS instead of collapsed to one level. Distinct folders always
+// produce distinct names (the folder segment differs), and within one folder two secrets can
+// never collide after getKeyWithSchema (KeySchemaSchema requires every schema to contain
+// {{secretKey}}, so distinct raw keys always produce distinct output) - so, unlike flatten(),
+// this never needs to detect or reject a destination-name collision.
+export const getHierarchicalParameterName = ({
+  destinationPath,
+  secretPath,
+  key,
+  keySchema,
+  environment
+}: {
+  destinationPath: string;
+  secretPath: string;
+  key: string;
+  keySchema: string | undefined;
+  environment: string;
+}): string => {
+  const folderSegment = secretPath === "/" ? "" : `${secretPath.slice(1)}/`;
+  const schemaAppliedKey = getKeyWithSchema({ key, environment, schema: keySchema });
+
+  return `${destinationPath}${folderSegment}${schemaAppliedKey}`;
+};
+
+// Builds the same shape flatten() would (map keyed by the name relative to destinationConfig.path),
+// but from each secret's own path instead of collapsing them all to one level. Never collides the
+// way flatten() can (see getHierarchicalParameterName), so it needs no conflict handling.
+const buildHierarchicalSecretMap = (
+  payload: TSecretSyncPayload,
+  { destinationPath, keySchema }: { destinationPath: string; keySchema: string | undefined }
+): TSecretMap => {
+  const map: TSecretMap = {};
+
+  for (const entry of payload.secrets) {
+    const name = getHierarchicalParameterName({
+      destinationPath,
+      secretPath: entry.path,
+      key: entry.key,
+      keySchema,
+      environment: payload.environment
+    });
+
+    map[name.slice(destinationPath.length)] = {
+      value: entry.value,
+      id: entry.id,
+      comment: entry.comment,
+      secretMetadata: entry.secretMetadata
+    };
+  }
+
+  return map;
+};
+
 const getParametersByPath = async (
   ssm: SSMClient,
   path: string,
   keySchema: string | undefined,
-  environment: string
+  environment: string,
+  recursive: boolean
 ): Promise<TAWSParameterStoreRecord> => {
   const awsParameterStoreSecretsRecord: TAWSParameterStoreRecord = {};
   let hasNext = true;
   let nextToken: string | undefined;
   let attempt = 0;
 
-  const fullPath = getFullPath({ path, keySchema, environment });
+  // In recursive/hierarchical mode, names live at varying depths under `path`, so the
+  // keySchema-derived narrowing getFullPath applies for the flat, single-level case cannot
+  // define a single listing root; `path` itself, listed recursively, is the only root that
+  // covers every depth.
+  const fullPath = recursive ? path : getFullPath({ path, keySchema, environment });
 
   while (hasNext) {
     try {
@@ -98,7 +157,7 @@ const getParametersByPath = async (
       const parameters = await ssm.send(
         new GetParametersByPathCommand({
           Path: fullPath,
-          Recursive: false,
+          Recursive: recursive,
           WithDecryption: true,
           MaxResults: BATCH_SIZE,
           NextToken: nextToken
@@ -139,14 +198,15 @@ const getParameterMetadataByPath = async (
   ssm: SSMClient,
   path: string,
   keySchema: string | undefined,
-  environment: string
+  environment: string,
+  recursive: boolean
 ): Promise<TAWSParameterStoreMetadataRecord> => {
   const awsParameterStoreMetadataRecord: TAWSParameterStoreMetadataRecord = {};
   let hasNext = true;
   let nextToken: string | undefined;
   let attempt = 0;
 
-  const fullPath = getFullPath({ path, keySchema, environment });
+  const fullPath = recursive ? path : getFullPath({ path, keySchema, environment });
 
   while (hasNext) {
     try {
@@ -158,7 +218,7 @@ const getParameterMetadataByPath = async (
           ParameterFilters: [
             {
               Key: "Path",
-              Option: "OneLevel",
+              Option: recursive ? "Recursive" : "OneLevel",
               Values: [fullPath]
             }
           ]
@@ -355,8 +415,15 @@ const deleteParametersBatch = async (
 
 export const AwsParameterStoreSyncFns = {
   syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
     const { destinationConfig, syncOptions, environment } = secretSync;
+    const preserveSecretPaths = Boolean(syncOptions.preserveSecretPaths);
+
+    const secretMap = preserveSecretPaths
+      ? buildHierarchicalSecretMap(payload, {
+          destinationPath: destinationConfig.path,
+          keySchema: syncOptions.keySchema
+        })
+      : payload.flatten();
 
     const ssm = await getSSM(secretSync);
 
@@ -364,14 +431,16 @@ export const AwsParameterStoreSyncFns = {
       ssm,
       destinationConfig.path,
       syncOptions.keySchema,
-      environment!.slug
+      environment!.slug,
+      preserveSecretPaths
     );
 
     const awsParameterStoreMetadataRecord = await getParameterMetadataByPath(
       ssm,
       destinationConfig.path,
       syncOptions.keySchema,
-      environment!.slug
+      environment!.slug,
+      preserveSecretPaths
     );
 
     const { shouldManageTags, awsParameterStoreTagsRecord } = await getParameterStoreTagsRecord(
@@ -467,6 +536,11 @@ export const AwsParameterStoreSyncFns = {
     for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
       const [key, parameter] = entry;
 
+      // matchesSchema anchors the schema's static prefix to the start of the key, so with
+      // preserveSecretPaths on, a folder segment ahead of that prefix makes an otherwise-owned
+      // hierarchical key fail this check and never get deleted. That is a known limitation, not a
+      // data-loss risk: it only ever leaves stale parameters behind, never deletes a param this
+      // sync doesn't own, so it's safe to leave until a real user hits it.
       // eslint-disable-next-line no-continue
       if (!matchesSchema(key, environment?.slug || "", syncOptions.keySchema)) continue;
 
@@ -489,7 +563,8 @@ export const AwsParameterStoreSyncFns = {
       ssm,
       destinationConfig.path,
       syncOptions.keySchema,
-      environment!.slug
+      environment!.slug,
+      Boolean(syncOptions.preserveSecretPaths)
     );
 
     return Object.fromEntries(
@@ -497,8 +572,15 @@ export const AwsParameterStoreSyncFns = {
     );
   },
   removeSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
     const { destinationConfig, syncOptions, environment } = secretSync;
+    const preserveSecretPaths = Boolean(syncOptions.preserveSecretPaths);
+
+    const secretMap = preserveSecretPaths
+      ? buildHierarchicalSecretMap(payload, {
+          destinationPath: destinationConfig.path,
+          keySchema: syncOptions.keySchema
+        })
+      : payload.flatten();
 
     const ssm = await getSSM(secretSync);
 
@@ -506,7 +588,8 @@ export const AwsParameterStoreSyncFns = {
       ssm,
       destinationConfig.path,
       syncOptions.keySchema,
-      environment!.slug
+      environment!.slug,
+      preserveSecretPaths
     );
 
     const parametersToDelete: Parameter[] = [];

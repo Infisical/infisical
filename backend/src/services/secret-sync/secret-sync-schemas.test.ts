@@ -2,6 +2,10 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "./secret-sync-enums";
 import { BaseSecretSyncSchema, KeySchemaSchema } from "./secret-sync-schemas";
 
 const schema = BaseSecretSyncSchema(SecretSync.Render, { canImportSecrets: true }).shape.syncOptions;
+const hierarchySchema = BaseSecretSyncSchema(SecretSync.Render, {
+  canImportSecrets: true,
+  supportsSecretPaths: true
+}).shape.syncOptions;
 
 describe("BaseSyncOptionsSchema recursive", () => {
   test("defaults to absent, which means non-recursive", () => {
@@ -28,6 +32,39 @@ describe("BaseSyncOptionsSchema recursive", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("BaseSyncOptionsSchema preserveSecretPaths", () => {
+  test("rejects preserveSecretPaths on a destination that doesn't support it", () => {
+    const result = schema.safeParse({
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
+      preserveSecretPaths: true
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts preserveSecretPaths on a destination that supports it", () => {
+    const result = hierarchySchema.safeParse({
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
+      preserveSecretPaths: true
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.preserveSecretPaths).toBe(true);
+  });
+
+  // preserveSecretPaths controls destination naming; recursive controls what the source fetches.
+  // A single, non-recursive folder can still have its path mirrored into the destination name.
+  test("accepts preserveSecretPaths without recursive also being enabled", () => {
+    const result = hierarchySchema.safeParse({
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
+      recursive: false,
+      preserveSecretPaths: true
+    });
+
+    expect(result.success).toBe(true);
   });
 });
 
