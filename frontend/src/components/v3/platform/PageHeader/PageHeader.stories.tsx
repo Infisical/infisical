@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FingerprintIcon, PlusIcon } from "lucide-react";
+import { ChevronLeftIcon, FingerprintIcon, PlusIcon } from "lucide-react";
 
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -119,6 +119,26 @@ export const WithDescriptionAndActions: Story = {
       description: {
         story:
           "Descriptions provide page context while children render page-level actions on the right."
+      }
+    }
+  }
+};
+
+export const WithBackLink: Story = {
+  name: "Example: Back Link",
+  args: {
+    backLink: (
+      <a href="#page-header-stories">
+        <ChevronLeftIcon aria-hidden className="size-4" />
+        All Projects
+      </a>
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Pass a native anchor or router link to render consistent back navigation above the page title."
       }
     }
   }
