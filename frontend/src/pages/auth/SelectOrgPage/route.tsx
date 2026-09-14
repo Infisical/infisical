@@ -3,6 +3,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
 
+import { captureSignupCompleted } from "@app/components/analytics/signupExperiment";
 import { createNotification } from "@app/components/notifications";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
@@ -70,6 +71,7 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
       } catch {
         // best-effort attribution; it must never block the signup redirect
       }
+      captureSignupCompleted("sso");
 
       // Provider-verified signups arrive with no org; send them to org setup instead of the
       // personal-org fallback. Fetch errors fall through to the strip-redirect, whose main
