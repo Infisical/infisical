@@ -21,6 +21,7 @@ import {
 } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
 import {
+  collectCredentialSecrets,
   parseInternalMetadata,
   validateConnectionDetails,
   validateCredentials
@@ -145,10 +146,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       accountType,
       await decrypt(projectId, account.encryptedCredentials)
     ) as Record<string, unknown>;
-    for (const field of ["password", "privateKey", "serviceAccountKeyJson", "clientSecret", "serviceAccountToken"]) {
-      const value = credentials[field];
-      if (typeof value === "string" && value) usedSecrets.push(value);
-    }
+    usedSecrets.push(...collectCredentialSecrets(accountType, credentials));
 
     const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
     if (validateCloud) {

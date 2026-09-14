@@ -536,6 +536,7 @@ const SettingsTab = ({
             return (
               <Editor
                 key={p.key}
+                accountType={template.type as PamAccountType}
                 label={p.label}
                 description={p.description}
                 value={policies[p.key]}
