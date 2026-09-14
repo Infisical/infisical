@@ -3431,8 +3431,9 @@ interface AutomatedRenewCertificate {
     newCertificateId?: string;
     commonName: string;
     profileId: string;
-    renewBeforeDays?: number;
+    renewBeforeDays: string;
     profileName: string;
+    status: CertificateRequestStatus;
     serialNumber?: string;
   };
 }
@@ -3443,7 +3444,7 @@ interface AutomatedRenewCertificateFailed {
     certificateId: string;
     commonName: string;
     profileId: string;
-    renewBeforeDays?: number;
+    renewBeforeDays: string;
     profileName: string;
     error: string;
   };

@@ -94,8 +94,9 @@ export const certificateV3QueueServiceFactory = ({
                       newCertificateId: renewed.certificateId,
                       commonName: certificate.commonName || "",
                       profileId: certificate.profileId!,
-                      renewBeforeDays: certificate.renewBeforeDays ?? undefined,
+                      renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
                       profileName: certificate.profileName || "",
+                      status: renewed.status,
                       serialNumber: renewed.serialNumber
                     }
                   }
@@ -115,7 +116,7 @@ export const certificateV3QueueServiceFactory = ({
                       certificateId: certificate.id,
                       commonName: certificate.commonName || "",
                       profileId: certificate.profileId || "",
-                      renewBeforeDays: certificate.renewBeforeDays ?? undefined,
+                      renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
                       profileName: certificate.profileName || "",
                       error: errorMessage
                     }
