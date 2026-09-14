@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { MultiValue } from "react-select";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Button, FilterableSelect, FormControl, IconButton, Input } from "@app/components/v2";
+import { Button, FormControl, IconButton, Input } from "@app/components/v2";
+import { Combobox } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
@@ -191,21 +191,15 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                               : undefined
                           }
                         >
-                          <FilterableSelect
-                            isMulti
+                          <Combobox
+                            multiple
                             placeholder="Select users..."
                             options={memberOptions}
                             getOptionValue={(option) => option.id}
                             getOptionLabel={(option) => userLabel(option.id)}
                             value={userApprovers}
-                            onChange={(selected) => {
-                              const newApprovers = [
-                                ...((selected as MultiValue<{
-                                  type: ApproverType;
-                                  id: string;
-                                }>) || []),
-                                ...groupApprovers
-                              ];
+                            onValueChange={(selected) => {
+                              const newApprovers = [...selected, ...groupApprovers];
                               onChange(newApprovers);
                             }}
                           />
@@ -222,21 +216,15 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                               : undefined
                           }
                         >
-                          <FilterableSelect
-                            isMulti
+                          <Combobox
+                            multiple
                             placeholder="Select groups..."
                             options={groupOptions}
                             getOptionValue={(option) => option.id}
                             getOptionLabel={(option) => groupLabel(option.id)}
                             value={groupApprovers}
-                            onChange={(selected) => {
-                              const newApprovers = [
-                                ...userApprovers,
-                                ...((selected as MultiValue<{
-                                  type: ApproverType;
-                                  id: string;
-                                }>) || [])
-                              ];
+                            onValueChange={(selected) => {
+                              const newApprovers = [...userApprovers, ...selected];
                               onChange(newApprovers);
                             }}
                           />
