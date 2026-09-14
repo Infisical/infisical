@@ -16,10 +16,15 @@ import {
   AlertDialogTitle,
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
+  Checkbox,
+  Field,
+  FieldContent,
+  FieldLabel,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -32,7 +37,7 @@ import {
   useProjectPermission
 } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { useDeleteWorkspace, useLeaveProject } from "@app/hooks/api";
+import { useDeleteWorkspace, useLeaveProject, useUpdateProject } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 const CONFIRM_KEYWORD = "confirm";
@@ -53,6 +58,8 @@ export const DeleteProjectSection = () => {
   const [isLeaving, setIsLeaving] = useToggle();
   const deleteWorkspace = useDeleteWorkspace();
   const leaveProject = useLeaveProject();
+  const { mutateAsync: updateProject, isPending: isUpdatingDeleteProtection } = useUpdateProject();
+  const hasDeleteProtection = currentProject?.hasDeleteProtection ?? false;
 
   const handleDeleteWorkspaceSubmit = async () => {
     setIsDeleting.on();
@@ -98,6 +105,20 @@ export const DeleteProjectSection = () => {
     }
   };
 
+  const handleToggleDeleteProjectProtection = async (state: boolean) => {
+    if (!currentProject) return;
+
+    await updateProject({
+      projectId: currentProject.id,
+      hasDeleteProtection: state
+    });
+
+    createNotification({
+      text: `Successfully ${state ? "enabled" : "disabled"} delete protection`,
+      type: "success"
+    });
+  };
+
   const leaveButton = (
     <Button
       size="sm"
@@ -110,6 +131,38 @@ export const DeleteProjectSection = () => {
     </Button>
   );
 
+  const renderDeleteButton = (isAllowed: boolean) => {
+    const isDisabled =
+      !isAllowed || isDeleting || isUpdatingDeleteProtection || hasDeleteProtection;
+    const deleteButton = (
+      <Button
+        size="sm"
+        isPending={isDeleting}
+        isDisabled={isDisabled}
+        variant="danger"
+        onClick={() => handlePopUpOpen("deleteWorkspace")}
+      >
+        {`Delete ${currentProject?.name}`}
+      </Button>
+    );
+
+    if (!isAllowed || (!hasDeleteProtection && !isUpdatingDeleteProtection)) return deleteButton;
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip explains why the inner button is disabled */}
+          <span tabIndex={0}>{deleteButton}</span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {hasDeleteProtection
+            ? "Disable delete protection before deleting this project."
+            : "Updating delete protection."}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
   return (
     <Card className="mb-6 gap-0 overflow-hidden p-0">
       <CardHeader className="p-6">
@@ -118,22 +171,41 @@ export const DeleteProjectSection = () => {
           Danger Zone
         </CardTitle>
         <CardDescription>
-          Permanently delete this project or remove your access to it.
+          Manage delete protection, permanently delete this project, or leave it.
         </CardDescription>
       </CardHeader>
+      <CardContent className="px-6 pb-6">
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+          {(isAllowed) => (
+            <Field
+              orientation="horizontal"
+              data-disabled={!isAllowed || isUpdatingDeleteProtection}
+              className="items-start"
+            >
+              <Checkbox
+                id="hasDeleteProtection"
+                variant="project"
+                isDisabled={!isAllowed || isUpdatingDeleteProtection}
+                isChecked={hasDeleteProtection}
+                onCheckedChange={(state) => {
+                  if (state !== "indeterminate") {
+                    handleToggleDeleteProjectProtection(state);
+                  }
+                }}
+              />
+              <FieldContent>
+                <FieldLabel htmlFor="hasDeleteProtection" size="sm">
+                  Protect this project from accidental deletion. Disable this setting before you can
+                  delete the project.
+                </FieldLabel>
+              </FieldContent>
+            </Field>
+          )}
+        </ProjectPermissionCan>
+      </CardContent>
       <CardFooter className="min-h-8 justify-end gap-2 border-t border-neutral/15 bg-neutral/5 p-4">
         <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
-          {(isAllowed) => (
-            <Button
-              size="sm"
-              isPending={isDeleting}
-              isDisabled={!isAllowed}
-              variant="danger"
-              onClick={() => handlePopUpOpen("deleteWorkspace")}
-            >
-              {`Delete ${currentProject?.name}`}
-            </Button>
-          )}
+          {renderDeleteButton}
         </ProjectPermissionCan>
         {isDirectMember ? (
           leaveButton
