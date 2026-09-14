@@ -17,15 +17,12 @@ import {
   AlertDialogTitle,
   Button,
   Card,
-  CardContent,
+  CardAction,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-  Checkbox,
-  Field,
-  FieldContent,
-  FieldLabel,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -166,60 +163,74 @@ export const DeleteProjectSection = () => {
   };
 
   return (
-    <Card className="mb-6 gap-0 overflow-hidden border-danger/25 p-0">
-      <CardHeader className="p-6">
-        <CardTitle className="font-alliance">Danger Zone</CardTitle>
-        <CardDescription>
-          Manage delete protection, permanently delete this project, or leave it.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-6 pb-6">
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-          {(isAllowed) => (
-            <Field
-              orientation="horizontal"
-              data-disabled={!isAllowed || isUpdatingDeleteProtection}
-              className="items-start"
+    <>
+      <Card className="mb-6 gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Delete Protection</CardTitle>
+          <CardDescription>Prevent this project from being accidentally deleted.</CardDescription>
+          <CardAction className="@xs:self-center">
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.Settings}
             >
-              <Checkbox
-                id="hasDeleteProtection"
-                variant="project"
-                isDisabled={!isAllowed || isUpdatingDeleteProtection}
-                isChecked={hasDeleteProtection}
-                onCheckedChange={(state) => {
-                  if (state !== "indeterminate") {
-                    handleToggleDeleteProjectProtection(state);
-                  }
-                }}
-              />
-              <FieldContent>
-                <FieldLabel htmlFor="hasDeleteProtection" size="sm">
-                  Protect this project from accidental deletion. Disable this setting before you can
-                  delete the project.
-                </FieldLabel>
-              </FieldContent>
-            </Field>
+              {(isAllowed) => (
+                <Toggle
+                  id="hasDeleteProtection"
+                  variant="project"
+                  checked={hasDeleteProtection}
+                  disabled={!isAllowed || isUpdatingDeleteProtection}
+                  aria-label="Toggle delete protection"
+                  onCheckedChange={handleToggleDeleteProjectProtection}
+                />
+              )}
+            </ProjectPermissionCan>
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="min-h-8 border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
+          <p className="text-sm text-muted">
+            {hasDeleteProtection
+              ? "Delete protection is enabled. Disable it before deleting this project."
+              : "Delete protection is disabled. This project can be deleted by members with permission."}
+          </p>
+        </CardFooter>
+      </Card>
+
+      <Card className="mb-6 gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Leave Project</CardTitle>
+          <CardDescription>Remove your access to this project and its contents.</CardDescription>
+        </CardHeader>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          {isDirectMember ? (
+            leaveButton
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip explains why the inner button is disabled */}
+                <span tabIndex={0}>{leaveButton}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                You&apos;re a member through a group. Leave the group to remove access.
+              </TooltipContent>
+            </Tooltip>
           )}
-        </ProjectPermissionCan>
-      </CardContent>
-      <CardFooter className="min-h-8 justify-end gap-4 border-t border-danger/15 bg-danger/5 p-4">
-        {isDirectMember ? (
-          leaveButton
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable wrapper required so the tooltip explains why the inner button is disabled */}
-              <span tabIndex={0}>{leaveButton}</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              You&apos;re a member through a group. Leave the group to remove access.
-            </TooltipContent>
-          </Tooltip>
-        )}
-        <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
-          {renderDeleteButton}
-        </ProjectPermissionCan>
-      </CardFooter>
+        </CardFooter>
+      </Card>
+
+      <Card className="mb-6 gap-0 overflow-hidden border-danger/25 p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Danger Zone</CardTitle>
+          <CardDescription>Permanently delete this project and all of its data.</CardDescription>
+        </CardHeader>
+        <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Delete}
+            a={ProjectPermissionSub.Project}
+          >
+            {renderDeleteButton}
+          </ProjectPermissionCan>
+        </CardFooter>
+      </Card>
 
       <AlertDialog
         open={popUp.deleteWorkspace.isOpen}
@@ -298,6 +309,6 @@ export const DeleteProjectSection = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </>
   );
 };
