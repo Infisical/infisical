@@ -8,15 +8,18 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Card,
-  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
+  CopyButton,
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   TextArea
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
@@ -31,20 +34,7 @@ const baseFormSchema = z.object({
     .optional()
 });
 
-const formSchemaWithSlug = baseFormSchema.extend({
-  slug: z
-    .string()
-    .min(1, "Required")
-    .max(64, "Too long, maximum length is 64 characters")
-    .regex(
-      /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
-      "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
-    )
-});
-
 type BaseFormData = z.infer<typeof baseFormSchema>;
-type FormDataWithSlug = z.infer<typeof formSchemaWithSlug>;
-
 type Props = {
   showSlugField?: boolean;
 };
@@ -52,33 +42,26 @@ type Props = {
 export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) => {
   const { currentProject } = useProject();
   const { mutateAsync, isPending } = useUpdateProject();
-  const { handleSubmit, control, reset, watch } = useForm<BaseFormData | FormDataWithSlug>({
-    resolver: zodResolver(showSlugField ? formSchemaWithSlug : baseFormSchema)
+  const { handleSubmit, control, reset } = useForm<BaseFormData>({
+    resolver: zodResolver(baseFormSchema)
   });
-
-  const currentSlug = showSlugField ? watch("slug") : currentProject?.slug;
 
   useEffect(() => {
     if (currentProject) {
       reset({
         name: currentProject.name,
-        description: currentProject.description ?? "",
-        ...(showSlugField && { slug: currentProject.slug })
+        description: currentProject.description ?? ""
       });
     }
-  }, [currentProject, showSlugField]);
+  }, [currentProject, reset]);
 
-  const onFormSubmit = async (data: BaseFormData | FormDataWithSlug) => {
+  const onFormSubmit = async (data: BaseFormData) => {
     if (!currentProject?.id) return;
 
     await mutateAsync({
       projectId: currentProject.id,
       newProjectName: data.name,
-      newProjectDescription: data.description,
-      ...(showSlugField &&
-        "slug" in data && {
-          newSlug: data.slug !== currentProject.slug ? data.slug : undefined
-        })
+      newProjectDescription: data.description
     });
 
     createNotification({
@@ -91,39 +74,9 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
     <Card className="mb-6">
       <CardHeader>
         <CardTitle>Project Overview</CardTitle>
-        <CardAction className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(currentSlug || "");
-              createNotification({
-                text: "Copied project slug to clipboard",
-                type: "success"
-              });
-            }}
-            title="Click to copy project slug"
-          >
-            Copy Project Slug
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(currentProject?.id || "");
-              createNotification({
-                text: "Copied project ID to clipboard",
-                type: "success"
-              });
-            }}
-            title="Click to copy project ID"
-          >
-            Copy Project ID
-          </Button>
-        </CardAction>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="flex max-w-md flex-col gap-4">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex max-w-5xl flex-col gap-4">
           <FieldGroup>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
@@ -153,31 +106,31 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
               )}
             </ProjectPermissionCan>
             {showSlugField && (
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.Project}
-              >
-                {(isAllowed) => (
-                  <Controller
-                    defaultValue=""
-                    render={({ field, fieldState: { error } }) => (
-                      <Field data-invalid={Boolean(error)}>
-                        <FieldLabel htmlFor="project-slug">Project slug</FieldLabel>
-                        <Input
-                          id="project-slug"
-                          placeholder="Project slug"
-                          {...field}
-                          disabled={!isAllowed}
-                          isError={Boolean(error)}
-                        />
-                        <FieldError>{error?.message}</FieldError>
-                      </Field>
-                    )}
-                    control={control}
-                    name="slug"
+              <Field>
+                <FieldLabel htmlFor="project-slug">Project slug</FieldLabel>
+                <InputGroup>
+                  <InputGroupInput id="project-slug" value={currentProject?.slug ?? ""} readOnly />
+                  <InputGroupAddon align="inline-end">
+                    <CopyButton value={currentProject?.slug ?? ""} ariaLabel="Copy project slug" />
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+            )}
+            {showSlugField && (
+              <Field>
+                <FieldLabel htmlFor="project-id">Project ID</FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
+                    id="project-id"
+                    value={currentProject?.id ?? ""}
+                    readOnly
+                    className="font-mono text-muted"
                   />
-                )}
-              </ProjectPermissionCan>
+                  <InputGroupAddon align="inline-end">
+                    <CopyButton value={currentProject?.id ?? ""} ariaLabel="Copy project ID" />
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
             )}
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
