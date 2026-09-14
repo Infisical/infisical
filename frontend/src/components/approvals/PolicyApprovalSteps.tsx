@@ -193,6 +193,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                         >
                           <Combobox
                             multiple
+                            modal
                             placeholder="Select users..."
                             options={memberOptions}
                             getOptionValue={(option) => option.id}
@@ -218,6 +219,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                         >
                           <Combobox
                             multiple
+                            modal
                             placeholder="Select groups..."
                             options={groupOptions}
                             getOptionValue={(option) => option.id}
