@@ -9,10 +9,8 @@ import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
-// Importing would need to write each secret back into the subfolder it came from, which we don't
-// support yet (hierarchical writes to destinations that can represent folders are planned for a
-// later PR). Until then, allowing this combination would silently squash every subfolder's
-// secrets into the sync's root folder, restructuring the user's existing secrets tree.
+// We don't allow initial sync import combined with recursive, because it can change the shape of
+// how secrets are organized in Infisical, which would then influence future syncs.
 const RECURSIVE_SYNC_REFINEMENT = {
   path: ["recursive"],
   message:
@@ -177,10 +175,5 @@ export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .optional()
       .describe(SecretSyncs.UPDATE(destination).secretPath),
     isAutoSyncEnabled: z.boolean().optional().describe(SecretSyncs.UPDATE(destination).isAutoSyncEnabled),
-    // Optional like every other field here, so an update can touch just the name or description
-    // without resending sync options. This can't be used to sneak past
-    // isRecursiveCombinationAllowed: initialSyncBehavior inside BaseSyncOptionsSchema stays
-    // required, so a request that includes syncOptions at all must still submit a complete,
-    // valid one.
     syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge, isUpdateSchema: true }).optional()
   });

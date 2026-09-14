@@ -47,10 +47,6 @@ export const assertWithinSecretLimit = (count: number) => {
   });
 };
 
-// A secret path is just a folder's location written as a filesystem-style string, so "folder"
-// and "path" name the same node here; each folder has exactly one path and each path names
-// exactly one folder, so this never returns the same folder twice. Non-recursive: just the
-// source folder. Recursive: the source folder plus every folder beneath it.
 export const getSyncedFolders = async ({
   folderDAL,
   projectEnvDAL,

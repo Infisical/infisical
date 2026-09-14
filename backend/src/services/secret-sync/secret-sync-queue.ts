@@ -839,8 +839,8 @@ export const secretSyncQueueFactory = ({
             credentials
           }
         } as TSecretSyncWithCredentials,
-        // A sync that has drifted into a duplicate-name state must still be removable: dedupe
-        // before any provider's own flatten() call gets a chance to throw on it.
+        // We don't care about duplicates when removing secrets: a duplicate name still maps to
+        // the same destination key we're deleting either way.
         payload.dedupeConflicts(),
         {
           appConnectionDAL,

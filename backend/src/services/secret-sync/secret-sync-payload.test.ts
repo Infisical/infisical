@@ -118,6 +118,8 @@ describe("createSecretSyncPayload", () => {
       environment: "dev"
     });
 
+    expect(() => payload.flatten()).toThrow(/"DB_URL" in \/backend and \/backend\/api/);
+
     const deduped = payload.dedupeConflicts();
 
     expect(() => deduped.flatten()).not.toThrow();
