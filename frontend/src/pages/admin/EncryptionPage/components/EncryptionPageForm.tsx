@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -88,16 +89,16 @@ export const EncryptionPageForm = () => {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>KMS Encryption Strategy</CardTitle>
-          <CardDescription>
-            Select which type of encryption strategy you want to use for your KMS root key. HSM is
-            supported on Enterprise plans.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Card className="gap-0 overflow-hidden p-0">
+          <CardHeader className="p-6">
+            <CardTitle>KMS Encryption Strategy</CardTitle>
+            <CardDescription>
+              Select which type of encryption strategy you want to use for your KMS root key. HSM is
+              supported on Enterprise plans.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-6 pb-6">
             {!!rootKmsDetails && (
               <Controller
                 control={control}
@@ -128,35 +129,28 @@ export const EncryptionPageForm = () => {
                 )}
               />
             )}
-
-            <div className="mt-6 flex w-full items-center justify-between">
-              <Button
-                variant="neutral"
-                type="submit"
-                isPending={isSubmitting}
-                isDisabled={!isDirty}
-              >
-                Save
-              </Button>
-
-              {config.fipsEnabled && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="info">
-                      FIPS mode enabled
-                      <InfoIcon />
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    FIPS mode is enabled. Cryptographic operations within the FIPS boundaries are
-                    validated as FIPS compliant.
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+          <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+            {config.fipsEnabled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="info" className="mr-auto">
+                    FIPS Mode Enabled
+                    <InfoIcon />
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  FIPS mode is enabled. Cryptographic operations within the FIPS boundaries are
+                  validated as FIPS compliant.
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
+              Save Changes
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

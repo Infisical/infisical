@@ -8,6 +8,12 @@ import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -220,102 +226,107 @@ export const EmailDomainsTable = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-xl font-medium text-foreground">Email Domains</p>
-          <p className="text-sm text-accent">Manage verified email domains across your instance.</p>
-        </div>
-        <Button variant="neutral" onClick={() => handlePopUpOpen("addEmailDomain")}>
-          <PlusIcon />
-          Add Domain
-        </Button>
-      </div>
-      <InputGroup>
-        <InputGroupAddon>
-          <SearchIcon />
-        </InputGroupAddon>
-        <InputGroupInput
-          aria-label="Search email domains"
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          placeholder="Search by domain or organization name..."
-        />
-      </InputGroup>
-      <div className="mt-4">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th className="w-1/3">Domain</Th>
-                <Th className="w-1/3">Organization</Th>
-                <Th className="w-1/6">Status</Th>
-                <Th className="w-5" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && <TableSkeleton columns={4} innerKey="email-domains" />}
-              {!isPending &&
-                emailDomains?.map((ed) => (
-                  <Tr key={ed.id} className="w-full">
-                    <Td className="max-w-0">
-                      <p className="truncate">{ed.domain}</p>
-                    </Td>
-                    <Td className="max-w-0">
-                      <p className="truncate">{ed.orgName ?? ed.orgId}</p>
-                    </Td>
-                    <Td>
-                      <Badge variant={ed.status === "verified" ? "success" : "warning"}>
-                        {ed.status}
-                      </Badge>
-                    </Td>
-                    <Td>
-                      <div className="flex justify-end">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton aria-label="Options" size="xs" variant="ghost">
-                              <EllipsisVerticalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() =>
-                                handlePopUpOpen("deleteEmailDomain", {
-                                  emailDomainId: ed.id,
-                                  domain: ed.domain
-                                })
-                              }
-                            >
-                              <Trash2Icon />
-                              Delete Domain
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </Td>
-                  </Tr>
-                ))}
-            </TBody>
-          </Table>
-          {!isPending && isEmpty && <EmptyState title="No email domains found" icon={Globe2Icon} />}
-        </TableContainer>
-        {!isPending && totalCount > 0 && (
-          <Pagination
-            count={totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
+    <Card className="mb-6 gap-0 overflow-hidden p-0">
+      <CardHeader className="p-6">
+        <CardTitle>Email Domains</CardTitle>
+        <CardDescription>Manage verified email domains across your instance.</CardDescription>
+        <CardAction>
+          <Button variant="neutral" onClick={() => handlePopUpOpen("addEmailDomain")}>
+            <PlusIcon />
+            Add Domain
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="px-6 pb-6">
+        <InputGroup>
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            aria-label="Search email domains"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            placeholder="Search by domain or organization name..."
           />
-        )}
-      </div>
+        </InputGroup>
+        <div className="mt-4">
+          {isEmpty ? (
+            <EmptyState className="border" title="No email domains found" icon={Globe2Icon} />
+          ) : (
+            <TableContainer>
+              <Table>
+                <THead>
+                  <Tr>
+                    <Th className="w-1/3">Domain</Th>
+                    <Th className="w-1/3">Organization</Th>
+                    <Th className="w-1/6">Status</Th>
+                    <Th className="w-5" />
+                  </Tr>
+                </THead>
+                <TBody>
+                  {isPending && <TableSkeleton columns={4} innerKey="email-domains" />}
+                  {!isPending &&
+                    emailDomains?.map((ed) => (
+                      <Tr key={ed.id} className="w-full">
+                        <Td className="max-w-0">
+                          <p className="truncate">{ed.domain}</p>
+                        </Td>
+                        <Td className="max-w-0">
+                          <p className="truncate">{ed.orgName ?? ed.orgId}</p>
+                        </Td>
+                        <Td>
+                          <Badge variant={ed.status === "verified" ? "success" : "warning"}>
+                            {ed.status}
+                          </Badge>
+                        </Td>
+                        <Td>
+                          <div className="flex justify-end">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton aria-label="Options" size="xs" variant="ghost">
+                                  <EllipsisVerticalIcon />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent sideOffset={2} align="end">
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  onClick={() =>
+                                    handlePopUpOpen("deleteEmailDomain", {
+                                      emailDomainId: ed.id,
+                                      domain: ed.domain
+                                    })
+                                  }
+                                >
+                                  <Trash2Icon />
+                                  Delete Domain
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </Td>
+                      </Tr>
+                    ))}
+                </TBody>
+              </Table>
+            </TableContainer>
+          )}
+          {!isPending && totalCount > 0 && (
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </div>
+      </CardContent>
       <AdminDeleteActionDialog
         isOpen={popUp.deleteEmailDomain.isOpen}
         confirmationKey="delete"
-        title={`Are you sure you want to delete domain ${
-          (popUp?.deleteEmailDomain?.data as { domain: string })?.domain || ""
-        }?`}
+        title={`Delete "${
+          (popUp?.deleteEmailDomain?.data as { domain: string })?.domain || "email domain"
+        }"`}
         onChange={(isOpen) => handlePopUpToggle("deleteEmailDomain", isOpen)}
         onConfirm={handleDelete}
       />
@@ -323,6 +334,6 @@ export const EmailDomainsTable = () => {
         isOpen={popUp.addEmailDomain.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addEmailDomain", isOpen)}
       />
-    </div>
+    </Card>
   );
 };

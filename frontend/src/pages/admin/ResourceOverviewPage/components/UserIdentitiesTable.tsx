@@ -19,6 +19,11 @@ import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Checkbox,
   DropdownMenu,
   DropdownMenuContent,
@@ -162,153 +167,156 @@ const UserPanelTable = ({
         </DropdownMenu>
       </div>
       <div className="mt-4">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th className="w-5">
-                  <Checkbox
-                    aria-label="Select all users on this page"
-                    id="member-page-select"
-                    isChecked={isPageSelected || isPageIndeterminate}
-                    isIndeterminate={isPageIndeterminate}
-                    onCheckedChange={() => {
-                      if (isPageSelected) {
-                        setSelectedUsers((prev) =>
-                          prev.filter((u) => !users?.find((user) => user.id === u.id))
-                        );
-                      } else {
-                        setSelectedUsers((prev) => [
-                          ...prev,
-                          ...(users?.filter((u) => !prev.find((user) => user.id === u.id)) ?? [])
-                        ]);
-                      }
-                    }}
-                  />
-                </Th>
-                <Th className="w-5/12">Name</Th>
-                <Th className="w-1/2">Username</Th>
-                <Th className="w-2/12" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && <TableSkeleton columns={4} innerKey="users" />}
-              {!isPending &&
-                users?.map((user) => {
-                  const { username, email, firstName, lastName, id, superAdmin } = user;
-                  const name =
-                    firstName || lastName ? `${firstName ?? ""} ${lastName ?? ""}`.trim() : null;
+        {isEmpty ? (
+          <EmptyState className="border" title="No user identities found" icon={UsersIcon} />
+        ) : (
+          <TableContainer>
+            <Table>
+              <THead>
+                <Tr>
+                  <Th className="w-5">
+                    <Checkbox
+                      aria-label="Select all users on this page"
+                      id="member-page-select"
+                      isChecked={isPageSelected || isPageIndeterminate}
+                      isIndeterminate={isPageIndeterminate}
+                      onCheckedChange={() => {
+                        if (isPageSelected) {
+                          setSelectedUsers((prev) =>
+                            prev.filter((u) => !users?.find((user) => user.id === u.id))
+                          );
+                        } else {
+                          setSelectedUsers((prev) => [
+                            ...prev,
+                            ...(users?.filter((u) => !prev.find((user) => user.id === u.id)) ?? [])
+                          ]);
+                        }
+                      }}
+                    />
+                  </Th>
+                  <Th className="w-5/12">Name</Th>
+                  <Th className="w-1/2">Username</Th>
+                  <Th className="w-2/12" />
+                </Tr>
+              </THead>
+              <TBody>
+                {isPending && <TableSkeleton columns={4} innerKey="users" />}
+                {!isPending &&
+                  users?.map((user) => {
+                    const { username, email, firstName, lastName, id, superAdmin } = user;
+                    const name =
+                      firstName || lastName ? `${firstName ?? ""} ${lastName ?? ""}`.trim() : null;
 
-                  const isSelected = selectedUserIds.includes(id);
-                  return (
-                    <Tr key={`user-${id}`} className="w-full">
-                      <Td>
-                        <Checkbox
-                          aria-label={`Select user ${username || email}`}
-                          id={`select-user-${id}`}
-                          isChecked={isSelected}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedUsers((prev) =>
-                              isSelected ? prev.filter((u) => u.id !== id) : [...prev, user]
-                            );
-                          }}
-                        />
-                      </Td>
-                      <Td className="w-5/12 max-w-0">
-                        <div className="flex items-center">
-                          <p className="truncate">
-                            {name ?? <span className="text-muted">Not Set</span>}
-                          </p>
-                          {superAdmin && (
-                            <Badge variant="info" className="ml-2">
-                              <UserCogIcon />
-                              Server Admin
-                            </Badge>
-                          )}
-                        </div>
-                      </Td>
-                      <Td className="w-5/12 max-w-0">
-                        <p className="truncate">{username || email}</p>
-                      </Td>
-                      <Td>
-                        <div className="flex justify-end">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton aria-label="Options" size="xs" variant="ghost">
-                                <EllipsisVerticalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("removeUser", {
-                                    username,
-                                    id
-                                  });
-                                }}
-                              >
-                                <UserRoundXIcon />
-                                Remove User
-                              </DropdownMenuItem>
-                              {!superAdmin && (
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!subscription?.instanceUserManagement) {
-                                      handlePopUpOpen("upgradePlan", {
-                                        username,
-                                        id,
-                                        text: "Your current plan does not allow setting additional server admins. To unlock this feature, please upgrade to Infisical Pro plan."
-                                      });
-                                      return;
-                                    }
-                                    handlePopUpOpen("upgradeToServerAdmin", {
-                                      username,
-                                      id
-                                    });
-                                  }}
-                                >
-                                  <ShieldCheckIcon />
-                                  Make User Server Admin
-                                </DropdownMenuItem>
-                              )}
-                              {superAdmin && (
+                    const isSelected = selectedUserIds.includes(id);
+                    return (
+                      <Tr key={`user-${id}`} className="w-full">
+                        <Td>
+                          <Checkbox
+                            aria-label={`Select user ${username || email}`}
+                            id={`select-user-${id}`}
+                            isChecked={isSelected}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedUsers((prev) =>
+                                isSelected ? prev.filter((u) => u.id !== id) : [...prev, user]
+                              );
+                            }}
+                          />
+                        </Td>
+                        <Td className="w-5/12 max-w-0">
+                          <div className="flex items-center">
+                            <p className="truncate">
+                              {name ?? <span className="text-muted">Not Set</span>}
+                            </p>
+                            {superAdmin && (
+                              <Badge variant="info" className="ml-2">
+                                <UserCogIcon />
+                                Server Admin
+                              </Badge>
+                            )}
+                          </div>
+                        </Td>
+                        <Td className="w-5/12 max-w-0">
+                          <p className="truncate">{username || email}</p>
+                        </Td>
+                        <Td>
+                          <div className="flex justify-end">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton aria-label="Options" size="xs" variant="ghost">
+                                  <EllipsisVerticalIcon />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent sideOffset={2} align="end">
                                 <DropdownMenuItem
                                   variant="danger"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!subscription?.instanceUserManagement) {
-                                      handlePopUpOpen("upgradePlan", {
-                                        username,
-                                        id,
-                                        text: "Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
-                                      });
-                                      return;
-                                    }
-                                    handlePopUpOpen("removeServerAdmin", {
+                                    handlePopUpOpen("removeUser", {
                                       username,
                                       id
                                     });
                                   }}
                                 >
-                                  <ShieldXIcon />
-                                  Remove Server Admin
+                                  <UserRoundXIcon />
+                                  Remove User
                                 </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-            </TBody>
-          </Table>
-          {!isPending && isEmpty && <EmptyState title="No users found" icon={UsersIcon} />}
-        </TableContainer>
+                                {!superAdmin && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!subscription?.instanceUserManagement) {
+                                        handlePopUpOpen("upgradePlan", {
+                                          username,
+                                          id,
+                                          text: "Your current plan does not allow setting additional server admins. To unlock this feature, please upgrade to Infisical Pro plan."
+                                        });
+                                        return;
+                                      }
+                                      handlePopUpOpen("upgradeToServerAdmin", {
+                                        username,
+                                        id
+                                      });
+                                    }}
+                                  >
+                                    <ShieldCheckIcon />
+                                    Make User Server Admin
+                                  </DropdownMenuItem>
+                                )}
+                                {superAdmin && (
+                                  <DropdownMenuItem
+                                    variant="danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!subscription?.instanceUserManagement) {
+                                        handlePopUpOpen("upgradePlan", {
+                                          username,
+                                          id,
+                                          text: "Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
+                                        });
+                                        return;
+                                      }
+                                      handlePopUpOpen("removeServerAdmin", {
+                                        username,
+                                        id
+                                      });
+                                    }}
+                                  >
+                                    <ShieldXIcon />
+                                    Remove Server Admin
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
+              </TBody>
+            </Table>
+          </TableContainer>
+        )}
         {!isEmpty && (
           <Pagination
             count={totalCount}
@@ -370,7 +378,7 @@ export const UserIdentitiesTable = () => {
     await deleteUser(id);
     createNotification({
       type: "success",
-      text: "Successfully deleted user"
+      text: "User deleted"
     });
 
     handlePopUpClose("removeUser");
@@ -385,7 +393,7 @@ export const UserIdentitiesTable = () => {
     await grantAdminAccess(id);
     createNotification({
       type: "success",
-      text: "Successfully granted server admin access to user"
+      text: "Server admin access granted"
     });
 
     handlePopUpClose("upgradeToServerAdmin");
@@ -400,7 +408,7 @@ export const UserIdentitiesTable = () => {
     await removeAdminAccess(id);
     createNotification({
       type: "success",
-      text: "Successfully removed server admin access from user"
+      text: "Server admin access removed"
     });
 
     handlePopUpClose("removeServerAdmin");
@@ -410,7 +418,7 @@ export const UserIdentitiesTable = () => {
     await deleteUsers(selectedUsers.map((user) => user.id));
 
     createNotification({
-      text: "Successfully removed users",
+      text: "Selected users deleted",
       type: "success"
     });
 
@@ -437,60 +445,61 @@ export const UserIdentitiesTable = () => {
           Delete
         </Button>
       </SelectedActionBar>
-      <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-xl font-medium text-foreground">User Identities</p>
-            <p className="text-sm text-accent">Manage user identities across your instance.</p>
-          </div>
-        </div>
-        <UserPanelTable
-          handlePopUpOpen={handlePopUpOpen}
-          users={users}
-          selectedUsers={selectedUsers}
-          setSelectedUsers={setSelectedUsers}
-          searchUserFilter={searchUserFilter}
-          setSearchUserFilter={setSearchUserFilter}
-          isPending={isPending}
-          adminsOnly={adminsOnly}
-          setAdminsOnly={setAdminsOnly}
-          page={page}
-          perPage={perPage}
-          setPage={setPage}
-          handlePerPageChange={handlePerPageChange}
-          totalCount={totalCount}
-        />
+      <Card className="mb-6 gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle>User Identities</CardTitle>
+          <CardDescription>Manage user identities across your instance.</CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 pb-6">
+          <UserPanelTable
+            handlePopUpOpen={handlePopUpOpen}
+            users={users}
+            selectedUsers={selectedUsers}
+            setSelectedUsers={setSelectedUsers}
+            searchUserFilter={searchUserFilter}
+            setSearchUserFilter={setSearchUserFilter}
+            isPending={isPending}
+            adminsOnly={adminsOnly}
+            setAdminsOnly={setAdminsOnly}
+            page={page}
+            perPage={perPage}
+            setPage={setPage}
+            handlePerPageChange={handlePerPageChange}
+            totalCount={totalCount}
+          />
+        </CardContent>
         <AdminDeleteActionDialog
           isOpen={popUp.removeUser.isOpen}
           confirmationKey="remove"
-          title={`Are you sure you want to delete User with username ${
-            (popUp?.removeUser?.data as { id: string; username: string })?.username || ""
-          }?`}
+          title={`Delete "${
+            (popUp?.removeUser?.data as { id: string; username: string })?.username || "user"
+          }"`}
           onChange={(isOpen) => handlePopUpToggle("removeUser", isOpen)}
           onConfirm={handleRemoveUser}
         />
         <AdminDeleteActionDialog
           isOpen={popUp.upgradeToServerAdmin.isOpen}
-          title={`Are you sure you want to grant Server Admin permissions to ${
+          title={`Grant Server Admin Access to "${
             (
               popUp?.upgradeToServerAdmin?.data as {
                 id: string;
                 username: string;
               }
-            )?.username || ""
-          }?`}
-          description=""
+            )?.username || "user"
+          }"`}
+          description="This user will be able to manage configuration and resources across the instance."
           onChange={(isOpen) => handlePopUpToggle("upgradeToServerAdmin", isOpen)}
           confirmationKey="confirm"
           onConfirm={handleGrantServerAdminAccess}
           confirmButtonText="Grant Access"
+          confirmButtonVariant="warning"
         />
         <AdminDeleteActionDialog
           isOpen={popUp.removeServerAdmin.isOpen}
-          title={`Are you sure you want to remove Server Admin permissions from ${
-            (popUp?.removeServerAdmin?.data as { id: string; username: string })?.username || ""
-          }?`}
-          description=""
+          title={`Remove Server Admin Access from "${
+            (popUp?.removeServerAdmin?.data as { id: string; username: string })?.username || "user"
+          }"`}
+          description="This user will no longer be able to manage the instance."
           onChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
           confirmationKey="confirm"
           onConfirm={handleRemoveServerAdminAccess}
@@ -503,7 +512,7 @@ export const UserIdentitiesTable = () => {
         />
         <AdminDeleteActionDialog
           isOpen={popUp.removeUsers.isOpen}
-          title="Are you sure you want to delete the following users?"
+          title="Delete Selected Users"
           onChange={(isOpen) => handlePopUpToggle("removeUsers", isOpen)}
           confirmationKey="confirm"
           onConfirm={() => handleRemoveUsers()}
@@ -547,7 +556,7 @@ export const UserIdentitiesTable = () => {
             </ul>
           </div>
         </AdminDeleteActionDialog>
-      </div>
+      </Card>
     </>
   );
 };

@@ -120,7 +120,7 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
                   variant="neutral"
                   onClick={() => window.open(getCustomSlackAppCreationUrl())}
                 >
-                  Create Slack app
+                  Create Slack App
                 </Button>
               </div>
               <div className="max-w-lg text-sm text-label">
@@ -167,7 +167,7 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
                   isPending={isSubmitting}
                   isDisabled={!isDirty}
                 >
-                  Save
+                  Save Changes
                 </Button>
               </div>
             </div>

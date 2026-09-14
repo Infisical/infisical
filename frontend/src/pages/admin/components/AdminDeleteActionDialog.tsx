@@ -23,6 +23,7 @@ type Props = {
   description?: string;
   onConfirm: () => Promise<void>;
   confirmButtonText?: string;
+  confirmButtonVariant?: "danger" | "neutral" | "warning";
   formContent?: ReactNode;
   children?: ReactNode;
   confirmationMessage?: ReactNode;
@@ -38,6 +39,7 @@ export const AdminDeleteActionDialog = ({
   title,
   description = "This action cannot be undone.",
   confirmButtonText = "Delete",
+  confirmButtonVariant = "danger",
   formContent,
   confirmationMessage,
   isDisabled,
@@ -111,7 +113,7 @@ export const AdminDeleteActionDialog = ({
             <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
             <Button
               type="submit"
-              variant="danger"
+              variant={confirmButtonVariant}
               size="sm"
               isPending={isPending}
               isDisabled={confirmation !== confirmationKey || isDisabled}

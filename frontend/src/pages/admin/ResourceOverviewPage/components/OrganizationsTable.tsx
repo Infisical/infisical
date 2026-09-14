@@ -18,12 +18,17 @@ import {
   UserRoundXIcon,
   UsersIcon
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -184,7 +189,7 @@ const ViewMembersModalContent = ({
       });
 
       createNotification({
-        text: "Successfully resent org invitation",
+        text: "Organization invitation resent",
         type: "success"
       });
     } finally {
@@ -205,178 +210,174 @@ const ViewMembersModalContent = ({
           placeholder="Search members..."
         />
       </InputGroup>
-      <TableContainer
-        className={twMerge(
-          "mt-4 flex flex-1 flex-col bg-container",
-          Boolean(filteredMembers.length) && "rounded-b-none"
-        )}
-      >
-        <Table className="overflow-y-auto bg-container">
-          <THead className="sticky top-0 z-50">
-            <Tr>
-              <Th className="w-1/3 border-none bg-container p-0">
-                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
-                  Name
-                  <IconButton
-                    variant="ghost"
-                    className={`ml-2 ${orderBy === MembersOrderBy.Name ? "" : "opacity-30"}`}
-                    aria-label="Sort by name"
-                    onClick={() => handleSort(MembersOrderBy.Name)}
-                  >
-                    {orderDirection === OrderByDirection.DESC && orderBy === MembersOrderBy.Name ? (
-                      <ArrowUpIcon />
-                    ) : (
-                      <ArrowDownIcon />
-                    )}
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/3 border-none bg-container p-0">
-                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
-                  Email
-                  <IconButton
-                    variant="ghost"
-                    className={`ml-2 ${orderBy === MembersOrderBy.Email ? "" : "opacity-30"}`}
-                    aria-label="Sort by email"
-                    onClick={() => handleSort(MembersOrderBy.Email)}
-                  >
-                    {orderDirection === OrderByDirection.DESC &&
-                    orderBy === MembersOrderBy.Email ? (
-                      <ArrowUpIcon />
-                    ) : (
-                      <ArrowDownIcon />
-                    )}
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4 border-none bg-container p-0">
-                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
-                  Role
-                </div>
-              </Th>
-              <Th className="w-5 border-none bg-container p-0">
-                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5" />
-              </Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {filteredMembers.slice(offset, perPage * page).map((member) => {
-              const { username, email, firstName, lastName, id } = member.user;
-              const { role, status } = member;
-              const name = firstName || lastName ? `${firstName} ${lastName}` : null;
-
-              return (
-                <Tr key={`user-${id}`} className="w-full">
-                  <Td className="max-w-0">
-                    <div className="flex items-center">
-                      <p className="truncate">
-                        {name ?? <span className="text-muted">Not Set</span>}
-                      </p>
-                    </div>
-                  </Td>
-                  <Td className="max-w-0">
-                    <div className="flex items-center">
-                      <p className="truncate">{username || email}</p>
-                      {role === OrgMembershipRole.Admin &&
-                        status !== OrgMembershipStatus.Accepted && (
-                          <Button
-                            isDisabled={resendOrgInvite.isPending}
-                            className="ml-2 font-normal"
-                            variant="outline"
-                            size="xs"
-                            isPending={
-                              resendOrgInvite.isPending && resendInviteId === member.membershipId
-                            }
-                            onClick={(e) => {
-                              onResendInvite(member.membershipId);
-                              e.stopPropagation();
-                            }}
-                          >
-                            <MailIcon />
-                            Resend Invite
-                          </Button>
+      {filteredMembers.length ? (
+        <>
+          <TableContainer className="mt-4 flex flex-1 flex-col rounded-b-none bg-container">
+            <Table className="overflow-y-auto bg-container">
+              <THead className="sticky top-0 z-50">
+                <Tr>
+                  <Th className="w-1/3 border-none bg-container p-0">
+                    <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
+                      Name
+                      <IconButton
+                        variant="ghost"
+                        className={`ml-2 ${orderBy === MembersOrderBy.Name ? "" : "opacity-30"}`}
+                        aria-label="Sort by name"
+                        onClick={() => handleSort(MembersOrderBy.Name)}
+                      >
+                        {orderDirection === OrderByDirection.DESC &&
+                        orderBy === MembersOrderBy.Name ? (
+                          <ArrowUpIcon />
+                        ) : (
+                          <ArrowDownIcon />
                         )}
+                      </IconButton>
                     </div>
-                  </Td>
-                  <Td>
-                    <div className="flex max-w-32">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge isTruncatable variant="neutral">
-                            <span className="capitalize">{member.role.replace("-", " ")}</span>
-                            {Boolean(member.roleId) && <CircleQuestionMarkIcon />}
-                          </Badge>
-                        </TooltipTrigger>
-                        {member.roleId && (
-                          <TooltipContent>This member has a custom role assigned.</TooltipContent>
+                  </Th>
+                  <Th className="w-1/3 border-none bg-container p-0">
+                    <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
+                      Email
+                      <IconButton
+                        variant="ghost"
+                        className={`ml-2 ${orderBy === MembersOrderBy.Email ? "" : "opacity-30"}`}
+                        aria-label="Sort by email"
+                        onClick={() => handleSort(MembersOrderBy.Email)}
+                      >
+                        {orderDirection === OrderByDirection.DESC &&
+                        orderBy === MembersOrderBy.Email ? (
+                          <ArrowUpIcon />
+                        ) : (
+                          <ArrowDownIcon />
                         )}
-                      </Tooltip>
+                      </IconButton>
                     </div>
-                  </Td>
-                  <Td>
-                    <div className="flex justify-end">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton aria-label="Options" size="xs" variant="ghost">
-                            <EllipsisVerticalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={2} align="end">
-                          <DropdownMenuItem
-                            variant="danger"
-                            onClick={() =>
-                              handlePopUpOpen("deleteOrganizationMembership", {
-                                membershipId: member.membershipId,
-                                orgId: organization.id,
-                                username: member.user.username,
-                                orgName: organization.name
-                              })
-                            }
-                          >
-                            <UserMinusIcon />
-                            Remove From Organization
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="danger"
-                            onClick={() =>
-                              handlePopUpOpen("deleteUser", {
-                                userId: member.user.id
-                              })
-                            }
-                          >
-                            <UserRoundXIcon />
-                            Delete User
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  </Th>
+                  <Th className="w-1/4 border-none bg-container p-0">
+                    <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
+                      Role
                     </div>
-                  </Td>
+                  </Th>
+                  <Th className="w-5 border-none bg-container p-0">
+                    <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5" />
+                  </Th>
                 </Tr>
-              );
-            })}
-          </TBody>
-        </Table>
-        {!filteredMembers.length && (
-          <EmptyState
-            className="my-auto bg-container"
-            title={
-              members.length
-                ? "No organization users match search..."
-                : "No organization users found"
-            }
-            icon={UsersIcon}
+              </THead>
+              <TBody>
+                {filteredMembers.slice(offset, perPage * page).map((member) => {
+                  const { username, email, firstName, lastName, id } = member.user;
+                  const { role, status } = member;
+                  const name = firstName || lastName ? `${firstName} ${lastName}` : null;
+
+                  return (
+                    <Tr key={`user-${id}`} className="w-full">
+                      <Td className="max-w-0">
+                        <div className="flex items-center">
+                          <p className="truncate">
+                            {name ?? <span className="text-muted">Not Set</span>}
+                          </p>
+                        </div>
+                      </Td>
+                      <Td className="max-w-0">
+                        <div className="flex items-center">
+                          <p className="truncate">{username || email}</p>
+                          {role === OrgMembershipRole.Admin &&
+                            status !== OrgMembershipStatus.Accepted && (
+                              <Button
+                                isDisabled={resendOrgInvite.isPending}
+                                className="ml-2 font-normal"
+                                variant="outline"
+                                size="xs"
+                                isPending={
+                                  resendOrgInvite.isPending &&
+                                  resendInviteId === member.membershipId
+                                }
+                                onClick={(e) => {
+                                  onResendInvite(member.membershipId);
+                                  e.stopPropagation();
+                                }}
+                              >
+                                <MailIcon />
+                                Resend Invite
+                              </Button>
+                            )}
+                        </div>
+                      </Td>
+                      <Td>
+                        <div className="flex max-w-32">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge isTruncatable variant="neutral">
+                                <span className="capitalize">{member.role.replace("-", " ")}</span>
+                                {Boolean(member.roleId) && <CircleQuestionMarkIcon />}
+                              </Badge>
+                            </TooltipTrigger>
+                            {member.roleId && (
+                              <TooltipContent>
+                                This member has a custom role assigned.
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </div>
+                      </Td>
+                      <Td>
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton aria-label="Options" size="xs" variant="ghost">
+                                <EllipsisVerticalIcon />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() =>
+                                  handlePopUpOpen("deleteOrganizationMembership", {
+                                    membershipId: member.membershipId,
+                                    orgId: organization.id,
+                                    username: member.user.username,
+                                    orgName: organization.name
+                                  })
+                                }
+                              >
+                                <UserMinusIcon />
+                                Remove From Organization
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() =>
+                                  handlePopUpOpen("deleteUser", {
+                                    userId: member.user.id
+                                  })
+                                }
+                              >
+                                <UserRoundXIcon />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+          </TableContainer>
+          <Pagination
+            className="rounded-b-md border border-t-0 border-border bg-container"
+            count={filteredMembers.length}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={setPerPage}
+            perPageList={[ORG_MEMBERS_TABLE_LIMIT]}
           />
-        )}
-      </TableContainer>
-      {Boolean(filteredMembers.length) && (
-        <Pagination
-          className="rounded-b-md border border-t-0 border-border bg-container"
-          count={filteredMembers.length}
-          page={page}
-          perPage={perPage}
-          onChangePage={setPage}
-          onChangePerPage={setPerPage}
-          perPageList={[ORG_MEMBERS_TABLE_LIMIT]}
+        </>
+      ) : (
+        <EmptyState
+          className="mt-4 border"
+          title={members.length ? "No members match your search" : "No organization members found"}
+          icon={UsersIcon}
         />
       )}
     </>
@@ -495,7 +496,7 @@ const OrganizationsPanelTable = ({
     });
 
     createNotification({
-      text: "Successfully joined organization",
+      text: "Organization joined",
       type: "success"
     });
   };
@@ -514,125 +515,128 @@ const OrganizationsPanelTable = ({
         />
       </InputGroup>
       <div className="mt-4">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th className="w-1/2">Name</Th>
-                <Th className="w-1/3">Members</Th>
-                <Th className="w-1/3">Projects</Th>
-                <Th className="w-5" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && <TableSkeleton columns={4} innerKey="organizations" />}
-              {!isPending &&
-                organizations?.map((org) => {
-                  const isMember = org.members.find((member) => member.user.id === user.id);
+        {isEmpty ? (
+          <EmptyState className="border" title="No organizations found" icon={Building2Icon} />
+        ) : (
+          <TableContainer>
+            <Table>
+              <THead>
+                <Tr>
+                  <Th className="w-1/2">Name</Th>
+                  <Th className="w-1/3">Members</Th>
+                  <Th className="w-1/3">Projects</Th>
+                  <Th className="w-5" />
+                </Tr>
+              </THead>
+              <TBody>
+                {isPending && <TableSkeleton columns={4} innerKey="organizations" />}
+                {!isPending &&
+                  organizations?.map((org) => {
+                    const isMember = org.members.find((member) => member.user.id === user.id);
 
-                  return (
-                    <Tr key={`org-${org.id}`} className="w-full">
-                      <Td className="w-1/2 max-w-0">
-                        <div className="flex items-center gap-x-1.5">
-                          {org.name ? (
-                            <p className="truncate">{org.name}</p>
-                          ) : (
-                            <span className="text-muted">Not Set</span>
-                          )}
-                        </div>
-                      </Td>
-                      <Td className="w-1/3">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handlePopUpOpen("viewMembers", {
-                              organization: org
-                            })
-                          }
-                          className="flex items-center hover:underline"
-                        >
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <EyeIcon className="mr-1.5 size-4 text-muted" />
-                            </TooltipTrigger>
-                            <TooltipContent>View Members</TooltipContent>
-                          </Tooltip>
-                          {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
-                          {!org.members.some(
-                            (member) =>
-                              member.role === OrgMembershipRole.Admin &&
-                              member.status === OrgMembershipStatus.Accepted
-                          ) && (
+                    return (
+                      <Tr key={`org-${org.id}`} className="w-full">
+                        <Td className="w-1/2 max-w-0">
+                          <div className="flex items-center gap-x-1.5">
+                            {org.name ? (
+                              <p className="truncate">{org.name}</p>
+                            ) : (
+                              <span className="text-muted">Not Set</span>
+                            )}
+                          </div>
+                        </Td>
+                        <Td className="w-1/3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handlePopUpOpen("viewMembers", {
+                                organization: org
+                              })
+                            }
+                            className="flex items-center hover:underline"
+                          >
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <TriangleAlertIcon className="ml-1.5 size-4 text-warning" />
+                                <EyeIcon className="mr-1.5 size-4 text-muted" />
                               </TooltipTrigger>
-                              <TooltipContent>
-                                No admins have accepted their invitations.
-                              </TooltipContent>
+                              <TooltipContent>View Members</TooltipContent>
                             </Tooltip>
-                          )}
-                        </button>
-                      </Td>
-                      <Td className="w-1/3">
-                        {org.projects.length} {org.projects.length === 1 ? "Project" : "Projects"}
-                      </Td>
-                      <Td>
-                        <div className="flex items-center justify-end gap-1">
-                          {isMember && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="flex size-7 items-center justify-center">
-                                  <UserCheckIcon className="size-4 text-muted" />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>You are a member of this organization</TooltipContent>
-                            </Tooltip>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton aria-label="Options" size="xs" variant="ghost">
-                                <EllipsisVerticalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
-                              {!isMember && (
+                            {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
+                            {!org.members.some(
+                              (member) =>
+                                member.role === OrgMembershipRole.Admin &&
+                                member.status === OrgMembershipStatus.Accepted
+                            ) && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <TriangleAlertIcon className="ml-1.5 size-4 text-warning" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  No admins have accepted their invitations.
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </button>
+                        </Td>
+                        <Td className="w-1/3">
+                          {org.projects.length} {org.projects.length === 1 ? "Project" : "Projects"}
+                        </Td>
+                        <Td>
+                          <div className="flex items-center justify-end gap-1">
+                            {isMember && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex size-7 items-center justify-center">
+                                    <UserCheckIcon className="size-4 text-muted" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  You are a member of this organization
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton aria-label="Options" size="xs" variant="ghost">
+                                  <EllipsisVerticalIcon />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent sideOffset={2} align="end">
+                                {!isMember && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAccessOrg(org.id);
+                                    }}
+                                  >
+                                    <UserPlusIcon />
+                                    Join Organization
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
+                                  variant="danger"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleAccessOrg(org.id);
+                                    handlePopUpOpen("deleteOrganization", {
+                                      orgId: org.id,
+                                      orgName: org.name
+                                    });
                                   }}
                                 >
-                                  <UserPlusIcon />
-                                  Join Organization
+                                  <Trash2Icon />
+                                  Delete Organization
                                 </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("deleteOrganization", {
-                                    orgId: org.id,
-                                    orgName: org.name
-                                  });
-                                }}
-                              >
-                                <Trash2Icon />
-                                Delete Organization
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-            </TBody>
-          </Table>
-          {!isPending && isEmpty && (
-            <EmptyState title="No organizations found" icon={Building2Icon} />
-          )}
-        </TableContainer>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
+              </TBody>
+            </Table>
+          </TableContainer>
+        )}
         {!isPending && totalCount > 0 && (
           <Pagination
             count={totalCount}
@@ -672,7 +676,7 @@ export const OrganizationsTable = () => {
     await deleteOrganization(orgId);
     createNotification({
       type: "success",
-      text: "Successfully deleted organization"
+      text: "Organization deleted"
     });
 
     handlePopUpClose("deleteOrganization");
@@ -691,7 +695,7 @@ export const OrganizationsTable = () => {
     await deleteOrganizationMembership({ organizationId: orgId, membershipId });
     createNotification({
       type: "success",
-      text: "Successfully removed user from organization"
+      text: "User removed from organization"
     });
 
     handlePopUpClose("viewMembers");
@@ -708,7 +712,7 @@ export const OrganizationsTable = () => {
     await deleteUser(userId);
     createNotification({
       type: "success",
-      text: "Successfully deleted user"
+      text: "User deleted"
     });
 
     handlePopUpClose("viewMembers");
@@ -716,50 +720,52 @@ export const OrganizationsTable = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-xl font-medium text-foreground">Organizations</p>
-          <p className="text-sm text-accent">
-            Manage, join and view organizations across your instance.
-          </p>
-        </div>
-        <Button variant="neutral" onClick={() => handlePopUpOpen("createOrganization")}>
-          <PlusIcon />
-          Add Organization
-        </Button>
-      </div>
-      <OrganizationsPanelTable
-        popUp={popUp}
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
+    <Card className="mb-6 gap-0 overflow-hidden p-0">
+      <CardHeader className="p-6">
+        <CardTitle>Organizations</CardTitle>
+        <CardDescription>
+          Manage, join, and view organizations across your instance.
+        </CardDescription>
+        <CardAction>
+          <Button variant="neutral" onClick={() => handlePopUpOpen("createOrganization")}>
+            <PlusIcon />
+            Add Organization
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="px-6 pb-6">
+        <OrganizationsPanelTable
+          popUp={popUp}
+          handlePopUpOpen={handlePopUpOpen}
+          handlePopUpToggle={handlePopUpToggle}
+        />
+      </CardContent>
       <AdminDeleteActionDialog
         isOpen={popUp.deleteOrganization.isOpen}
         confirmationKey="delete"
-        title={`Are you sure you want to delete organization ${
-          (popUp?.deleteOrganization?.data as { orgName: string })?.orgName || ""
-        }?`}
+        title={`Delete "${
+          (popUp?.deleteOrganization?.data as { orgName: string })?.orgName || "organization"
+        }"`}
         onChange={(isOpen) => handlePopUpToggle("deleteOrganization", isOpen)}
         onConfirm={handleDeleteOrganization}
       />
       <AdminDeleteActionDialog
         isOpen={popUp.deleteOrganizationMembership.isOpen}
         confirmationKey="delete"
-        title={`Are you sure you want to remove ${
-          (popUp?.deleteOrganizationMembership?.data as { username: string })?.username || ""
-        } from organization ${
-          (popUp?.deleteOrganizationMembership?.data as { orgName: string })?.orgName || ""
-        }?`}
+        title={`Remove "${
+          (popUp?.deleteOrganizationMembership?.data as { username: string })?.username || "user"
+        }" from "${
+          (popUp?.deleteOrganizationMembership?.data as { orgName: string })?.orgName ||
+          "organization"
+        }"`}
+        description="This user will lose access to the organization."
         onChange={(isOpen) => handlePopUpToggle("deleteOrganizationMembership", isOpen)}
         onConfirm={handleDeleteOrganizationMembership}
       />
       <AdminDeleteActionDialog
         isOpen={popUp.deleteUser.isOpen}
         confirmationKey="delete"
-        title={`Are you sure you want to delete user ${
-          (popUp?.deleteUser?.data as { username: string })?.username || ""
-        }?`}
+        title={`Delete "${(popUp?.deleteUser?.data as { username: string })?.username || "user"}"`}
         onChange={(isOpen) => handlePopUpToggle("deleteUser", isOpen)}
         onConfirm={handleDeleteUser}
       />
@@ -767,6 +773,6 @@ export const OrganizationsTable = () => {
         isOpen={popUp.createOrganization.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("createOrganization", isOpen)}
       />
-    </div>
+    </Card>
   );
 };

@@ -87,11 +87,11 @@ export const EncryptionKeyRotationSection = () => {
 
   if (isError || (!isPending && !rootKey)) {
     return (
-      <Card className="mt-6">
-        <CardHeader>
+      <Card className="mt-6 gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
           <CardTitle>Root Encryption Keys</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-6 pb-6">
           <Alert variant="warning">
             <AlertTriangleIcon />
             <AlertTitle>Encryption status could not be loaded</AlertTitle>
@@ -144,8 +144,8 @@ export const EncryptionKeyRotationSection = () => {
 
   return (
     <>
-      <Card className="mt-6">
-        <CardHeader>
+      <Card className="mt-6 gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
           <CardTitle>Root Encryption Keys</CardTitle>
           <CardDescription>
             Rotate the key that protects every secret in this instance. Every key is kept here after
@@ -160,7 +160,7 @@ export const EncryptionKeyRotationSection = () => {
             </CardAction>
           )}
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col gap-4 px-6 pb-6">
           {isHsmManaged && (
             <Alert variant="warning">
               <AlertTriangleIcon />

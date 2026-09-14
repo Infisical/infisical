@@ -10,6 +10,11 @@ import {
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -101,62 +106,65 @@ const IdentityPanelTable = ({
         </InputGroup>
       </div>
       <div className="mt-4">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Name</Th>
-                <Th className="w-5" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && <TableSkeleton columns={2} innerKey="identities" />}
-              {!isPending &&
-                identities?.map(({ name, id, isInstanceAdmin }) => (
-                  <Tr key={`identity-${id}`} className="w-full">
-                    <Td>
-                      {name}
-                      {isInstanceAdmin && (
-                        <Badge variant="info" className="ml-2">
-                          <ServerCogIcon />
-                          Server Admin
-                        </Badge>
-                      )}
-                    </Td>
-                    <Td>
-                      {isInstanceAdmin && (
-                        <div className="flex justify-end">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton aria-label="Options" size="xs" variant="ghost">
-                                <EllipsisVerticalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("removeServerAdmin", {
-                                    name,
-                                    id
-                                  });
-                                }}
-                              >
-                                <ShieldXIcon />
-                                Remove Server Admin
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      )}
-                    </Td>
-                  </Tr>
-                ))}
-            </TBody>
-          </Table>
-          {!isPending && isEmpty && <EmptyState title="No identities found" icon={WrenchIcon} />}
-        </TableContainer>
+        {isEmpty ? (
+          <EmptyState className="border" title="No machine identities found" icon={WrenchIcon} />
+        ) : (
+          <TableContainer>
+            <Table>
+              <THead>
+                <Tr>
+                  <Th>Name</Th>
+                  <Th className="w-5" />
+                </Tr>
+              </THead>
+              <TBody>
+                {isPending && <TableSkeleton columns={2} innerKey="identities" />}
+                {!isPending &&
+                  identities?.map(({ name, id, isInstanceAdmin }) => (
+                    <Tr key={`identity-${id}`} className="w-full">
+                      <Td>
+                        {name}
+                        {isInstanceAdmin && (
+                          <Badge variant="info" className="ml-2">
+                            <ServerCogIcon />
+                            Server Admin
+                          </Badge>
+                        )}
+                      </Td>
+                      <Td>
+                        {isInstanceAdmin && (
+                          <div className="flex justify-end">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton aria-label="Options" size="xs" variant="ghost">
+                                  <EllipsisVerticalIcon />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent sideOffset={2} align="end">
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("removeServerAdmin", {
+                                      name,
+                                      id
+                                    });
+                                  }}
+                                >
+                                  <ShieldXIcon />
+                                  Remove Server Admin
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                      </Td>
+                    </Tr>
+                  ))}
+              </TBody>
+            </Table>
+          </TableContainer>
+        )}
         {!isPending && totalCount > 0 && (
           <Pagination
             count={totalCount}
@@ -187,32 +195,32 @@ export const MachineIdentitiesTable = () => {
     await deleteIdentitySuperAdminAccess(id);
     createNotification({
       type: "success",
-      text: "Successfully removed server admin permissions"
+      text: "Server admin access removed"
     });
 
     handlePopUpClose("removeServerAdmin");
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-xl font-medium text-foreground">Machine Identities</p>
-          <p className="text-sm text-accent">Manage machine identities across your instance.</p>
-        </div>
-      </div>
-      <IdentityPanelTable handlePopUpOpen={handlePopUpOpen} />
+    <Card className="mb-6 gap-0 overflow-hidden p-0">
+      <CardHeader className="p-6">
+        <CardTitle>Machine Identities</CardTitle>
+        <CardDescription>Manage machine identities across your instance.</CardDescription>
+      </CardHeader>
+      <CardContent className="px-6 pb-6">
+        <IdentityPanelTable handlePopUpOpen={handlePopUpOpen} />
+      </CardContent>
       <AdminDeleteActionDialog
         isOpen={popUp.removeServerAdmin.isOpen}
-        title={`Are you sure you want to remove Server Admin permissions from ${
-          (popUp?.removeServerAdmin?.data as { name: string })?.name || ""
-        }?`}
-        description=""
+        title={`Remove Server Admin Access from "${
+          (popUp?.removeServerAdmin?.data as { name: string })?.name || "machine identity"
+        }"`}
+        description="This identity will no longer be able to manage the instance."
         onChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
         confirmationKey="confirm"
         onConfirm={handleRemoveServerAdmin}
         confirmButtonText="Remove Access"
       />
-    </div>
+    </Card>
   );
 };
