@@ -459,7 +459,9 @@ export const InitialStep = ({ isAdmin }: Props) => {
                     autoComplete="current-password"
                     id="current-password"
                     aria-invalid={(showDangerState && Boolean(errors.password)) || loginError}
-                    aria-describedby={loginError ? "login-credentials-error" : undefined}
+                    aria-describedby={
+                      !isLoading && loginError ? "login-credentials-error" : undefined
+                    }
                   />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton
