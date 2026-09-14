@@ -102,8 +102,6 @@ export enum PostHogEventTypes {
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
-  GatewayUpdated = "Gateway Updated",
-  GatewayDeleted = "Gateway Deleted",
   PamAccountTemplateCreated = "PAM Account Template Created",
   PamAccountTemplateUpdated = "PAM Account Template Updated",
   PamAccountTemplateDeleted = "PAM Account Template Deleted",
@@ -1088,20 +1086,6 @@ export type TGatewayCertExchangedEvent = {
     certificateSerialNumber: string;
     identityId: string;
     orgId?: string;
-  };
-};
-
-export type TGatewayUpdatedEvent = {
-  event: PostHogEventTypes.GatewayUpdated;
-  properties: {
-    gatewayId: string;
-  };
-};
-
-export type TGatewayDeletedEvent = {
-  event: PostHogEventTypes.GatewayDeleted;
-  properties: {
-    gatewayId: string;
   };
 };
 
@@ -2605,8 +2589,6 @@ export type TPostHogEvent = {
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
-  | TGatewayUpdatedEvent
-  | TGatewayDeletedEvent
   | TPamAccountTemplateEvent
   | TPamFolderEvent
   | TPamAccountEvent

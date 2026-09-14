@@ -3,8 +3,6 @@ import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -59,13 +57,11 @@ type TGitHubAppServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
     "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
   >;
-  gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -79,10 +75,8 @@ export const gitHubAppServiceFactory = ({
   kmsService,
   keyStore,
   licenseService,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
-  gatewayDAL,
   gatewayV2DAL,
   auditLogService,
   userDAL
@@ -151,9 +145,8 @@ export const gitHubAppServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: orgPermission.orgId });
     const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: orgPermission.orgId });
-    if (!gateway && !gatewayV2) {
+    if (!gatewayV2) {
       throw new NotFoundError({
         message: `Gateway with ID ${gatewayId} not found for org`
       });
@@ -585,7 +578,6 @@ export const gitHubAppServiceFactory = ({
           const { data } = effectiveGatewayId
             ? await requestWithGitHubGateway<TGitHubAppManifestResponse>(
                 { gatewayId: effectiveGatewayId },
-                gatewayService,
                 gatewayV2Service,
                 requestConfig,
                 await getGitHubGatewayConnectionDetails(effectiveGatewayId, apiBaseUrl, gatewayV2Service)

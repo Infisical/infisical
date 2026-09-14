@@ -14,11 +14,11 @@ import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
 import { getConfig } from "../config/env";
 import { BadRequestError, GatewayTransportError } from "../errors";
-import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
 import { markAttemptTransportFailure, markAttemptTunnelEstablished } from "./gateway-attempt-context";
 import { getGatewayLoadTracker } from "./gateway-load-tracker";
 import { isGatewayTransportFailure } from "./gateway-retry";
+import { GatewayProxyProtocol } from "./types";
 
 interface IGatewayProxyServer {
   server: net.Server;

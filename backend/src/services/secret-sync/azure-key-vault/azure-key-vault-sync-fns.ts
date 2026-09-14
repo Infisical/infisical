@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { AxiosError } from "axios";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -19,7 +18,6 @@ import { GetAzureKeyVaultSecret, TAzureKeyVaultSyncWithCredentials } from "./azu
 type TAzureKeyVaultSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -32,7 +30,6 @@ const AZURE_KEY_VAULT_CERTIFICATE_CONTENT_TYPES = ["application/x-pkcs12", "appl
 export const azureKeyVaultSyncFactory = ({
   kmsService,
   appConnectionDAL,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService
 }: TAzureKeyVaultSyncFactoryDeps) => {
@@ -50,7 +47,6 @@ export const azureKeyVaultSyncFactory = ({
       while (currentUrl) {
         const res = await requestWithAzureKeyVaultGateway<{ value: GetAzureKeyVaultSecret; nextLink: string }>(
           gatewayConnection,
-          gatewayService,
           gatewayV2Service,
           {
             method: "GET",
@@ -97,7 +93,6 @@ export const azureKeyVaultSyncFactory = ({
 
           const azureKeyVaultSecret = await requestWithAzureKeyVaultGateway<GetAzureKeyVaultSecret>(
             gatewayConnection,
-            gatewayService,
             gatewayV2Service,
             {
               method: "GET",
@@ -186,7 +181,7 @@ export const azureKeyVaultSyncFactory = ({
       while (!isSecretSet && maxTries > 0) {
         // try to set secret
         try {
-          await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayService, gatewayV2Service, {
+          await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayV2Service, {
             method: "PUT",
             url: `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
             data: {
@@ -203,7 +198,7 @@ export const azureKeyVaultSyncFactory = ({
           if (err instanceof AxiosError) {
             // eslint-disable-next-line
             if (err.response?.data?.error?.innererror?.code === "ObjectIsDeletedButRecoverable") {
-              await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayService, gatewayV2Service, {
+              await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayV2Service, {
                 method: "POST",
                 url: `${secretSync.destinationConfig.vaultBaseUrl}/deletedsecrets/${key}/recover?api-version=7.3`,
                 data: {},
@@ -248,7 +243,7 @@ export const azureKeyVaultSyncFactory = ({
         matchesSchema(secret, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
         !setSecrets.find((setSecret) => setSecret.key === secret)
     )) {
-      await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayService, gatewayV2Service, {
+      await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayV2Service, {
         method: "DELETE",
         url: `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${deleteSecretKey}?api-version=7.3`,
         headers: {
@@ -281,7 +276,7 @@ export const azureKeyVaultSyncFactory = ({
 
       if (underscoredKey in secretMap) {
         if (!disabledAzureKeyVaultSecretKeys.includes(underscoredKey)) {
-          await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayService, gatewayV2Service, {
+          await requestWithAzureKeyVaultGateway(gatewayConnection, gatewayV2Service, {
             method: "DELETE",
             url: `${secretSync.destinationConfig.vaultBaseUrl}/secrets/${key}?api-version=7.3`,
             headers: {
