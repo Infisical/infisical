@@ -62,6 +62,7 @@
             "pages": [
               "documentation/getting-started/concepts/platform-hierarchy",
               "documentation/getting-started/concepts/platform-iam",
+              "documentation/getting-started/concepts/audit-logs",
               "documentation/getting-started/concepts/app-connections",
               "documentation/getting-started/concepts/networking",
               "documentation/getting-started/concepts/internals",
