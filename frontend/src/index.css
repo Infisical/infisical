@@ -69,12 +69,14 @@
 
 @theme {
   --z-index-sticky: 10;
-  --z-index-backdrop: 20;
-  --z-index-modal: 30;
-  --z-index-dropdown: 40;
+  --z-index-action: 40;
+  --z-index-backdrop: 50;
+  --z-index-modal: 50;
+  --z-index-dropdown: 50;
   --z-index-popover: 50;
-  --z-index-tooltip: 60;
-  --z-index-toast: 70;
+  --z-index-combobox: 60;
+  --z-index-tooltip: 70;
+  --z-index-toast: 999999999;
 
   --breakpoint-dashboard: 1400px;
 

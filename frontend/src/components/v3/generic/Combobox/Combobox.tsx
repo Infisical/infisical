@@ -303,7 +303,7 @@ const ComboboxPopup = ({
       align="start"
       sideOffset={4}
       collisionPadding={8}
-      className="isolate z-[60] max-w-[calc(100vw-1rem)] outline-none"
+      className="isolate z-[var(--z-index-combobox)] max-w-[calc(100vw-1rem)] outline-none"
     >
       <ComboboxPrimitive.Popup
         aria-label={ariaLabel}
