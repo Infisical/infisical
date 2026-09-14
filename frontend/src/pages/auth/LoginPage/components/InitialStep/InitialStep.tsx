@@ -96,6 +96,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
     }
   });
   const showDangerState = submitCount > 0;
+  const isLoginErrorVisible = !isLoading && loginError;
 
   const redirectToSaml = (orgSlug: string) => {
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${encodeURIComponent(orgSlug)}${
@@ -459,9 +460,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
                     autoComplete="current-password"
                     id="current-password"
                     aria-invalid={(showDangerState && Boolean(errors.password)) || loginError}
-                    aria-describedby={
-                      !isLoading && loginError ? "login-credentials-error" : undefined
-                    }
+                    aria-describedby={isLoginErrorVisible ? "login-credentials-error" : undefined}
                   />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton
@@ -472,11 +471,9 @@ export const InitialStep = ({ isAdmin }: Props) => {
                     </InputGroupButton>
                   </InputGroupAddon>
                 </InputGroup>
-                {!isLoading && loginError && (
-                  <FieldError id="login-credentials-error">
-                    {t("login.error-login") ?? ""}
-                  </FieldError>
-                )}
+                <FieldError id="login-credentials-error" isOpen={isLoginErrorVisible}>
+                  {t("login.error-login") ?? ""}
+                </FieldError>
               </Field>
               {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
                 <div className="flex justify-center [&>div]:!w-full">
