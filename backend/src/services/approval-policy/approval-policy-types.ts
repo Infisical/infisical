@@ -184,3 +184,13 @@ export type TApprovalResourceFactory<
   postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine<C>;
   postRejectionRoutine: TApprovalRequestFactoryPostRejectionRoutine<C>;
 };
+
+// Subject of an approval request, flattened for audit metadata. Which fields are populated
+// depends on the request's policy type; PAM access requests contribute none.
+export type TApprovalRequestSubjectMetadata = {
+  certificateRequestId?: string;
+  commonName?: string;
+  profileName?: string;
+  signerId?: string;
+  signerName?: string;
+};

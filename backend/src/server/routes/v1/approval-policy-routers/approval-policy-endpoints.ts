@@ -13,6 +13,7 @@ import {
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "@app/services/approval-policy/approval-policy-types";
+import { getApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-request-fns";
 import {
   CreateCertRequestPolicySchema,
   UpdateCertRequestPolicySchema
@@ -419,9 +420,11 @@ export const registerApprovalPolicyEndpoints = ({
           event: {
             type: EventType.APPROVAL_REQUEST_CREATE,
             metadata: {
-              policyType,
+              policyType: request.type,
+              approvalRequestId: request.id,
               justification: req.body.justification || undefined,
-              requestDuration: req.body.requestDuration || "infinite"
+              requestDuration: req.body.requestDuration || "infinite",
+              ...getApprovalRequestSubjectMetadata(request)
             }
           }
         });
@@ -473,9 +476,10 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_GET,
           metadata: {
-            policyType,
-            requestId: request.id,
-            status: request.status
+            policyType: request.type,
+            approvalRequestId: request.id,
+            status: request.status,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -539,9 +543,10 @@ export const registerApprovalPolicyEndpoints = ({
           event: {
             type: EventType.APPROVAL_REQUEST_APPROVE,
             metadata: {
-              policyType,
-              requestId: req.params.requestId,
-              comment: req.body.comment
+              policyType: request.type,
+              approvalRequestId: request.id,
+              comment: req.body.comment,
+              ...getApprovalRequestSubjectMetadata(request)
             }
           }
         });
@@ -600,9 +605,10 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_REJECT,
           metadata: {
-            policyType,
-            requestId: req.params.requestId,
-            comment: req.body.comment
+            policyType: request.type,
+            approvalRequestId: request.id,
+            comment: req.body.comment,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });
@@ -653,8 +659,9 @@ export const registerApprovalPolicyEndpoints = ({
         event: {
           type: EventType.APPROVAL_REQUEST_CANCEL,
           metadata: {
-            policyType,
-            requestId: req.params.requestId
+            policyType: request.type,
+            approvalRequestId: request.id,
+            ...getApprovalRequestSubjectMetadata(request)
           }
         }
       });

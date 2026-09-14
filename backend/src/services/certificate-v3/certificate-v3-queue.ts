@@ -70,7 +70,7 @@ export const certificateV3QueueServiceFactory = ({
                   }
                 }
 
-                await certificateV3Service.renewCertificate({
+                const renewed = await certificateV3Service.renewCertificate({
                   actor: ActorType.PLATFORM,
                   actorId: "",
                   actorAuthMethod: null,
@@ -91,10 +91,12 @@ export const certificateV3QueueServiceFactory = ({
                     type: EventType.AUTOMATED_RENEW_CERTIFICATE,
                     metadata: {
                       certificateId: certificate.id,
+                      newCertificateId: renewed.certificateId,
                       commonName: certificate.commonName || "",
                       profileId: certificate.profileId!,
-                      renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
-                      profileName: certificate.profileName || ""
+                      renewBeforeDays: certificate.renewBeforeDays ?? undefined,
+                      profileName: certificate.profileName || "",
+                      serialNumber: renewed.serialNumber
                     }
                   }
                 });
@@ -113,7 +115,7 @@ export const certificateV3QueueServiceFactory = ({
                       certificateId: certificate.id,
                       commonName: certificate.commonName || "",
                       profileId: certificate.profileId || "",
-                      renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
+                      renewBeforeDays: certificate.renewBeforeDays ?? undefined,
                       profileName: certificate.profileName || "",
                       error: errorMessage
                     }

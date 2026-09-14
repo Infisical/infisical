@@ -94,7 +94,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
         event: {
           type: EventType.PKI_SIGNER_REQUEST_TO_SIGN,
-          metadata: { signerId: req.params.signerId, requestId: request?.id }
+          metadata: { signerId: req.params.signerId, approvalRequestId: request?.id }
         }
       });
 
@@ -141,7 +141,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
           type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING,
           metadata: {
             signerId: req.params.signerId,
-            requestId: result?.request?.id,
+            approvalRequestId: result?.request?.id,
             granteeUserId: req.body.granteeUserId,
             granteeIdentityId: req.body.granteeIdentityId
           }
@@ -179,7 +179,7 @@ export const registerSignerRequestsRouter = async (server: FastifyZodProvider) =
         projectId: await server.services.pkiSigner.getProjectIdForSigner(req.params.signerId),
         event: {
           type: EventType.PKI_SIGNER_REVOKE_REQUEST,
-          metadata: { signerId: req.params.signerId, requestId: req.params.requestId }
+          metadata: { signerId: req.params.signerId, approvalRequestId: req.params.requestId }
         }
       });
 

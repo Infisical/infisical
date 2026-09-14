@@ -1608,7 +1608,10 @@ export const pkiAcmeServiceFactory = ({
       event: {
         type: EventType.DOWNLOAD_ACME_CERTIFICATE,
         metadata: {
-          orderId
+          orderId,
+          certificateId: syncedOrder.certificateId,
+          commonName: Array.from(certObj.subjectName.getField("CN")?.values() || [])[0] || "",
+          serialNumber: certObj.serialNumber
         }
       }
     });
