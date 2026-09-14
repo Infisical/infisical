@@ -77,7 +77,11 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `--access-bundle` and the single-select Create Session sheet. The mint body stays a list, the junction table
   keeps `position`, resolve orders by position then name, and the Go matcher breaks ties by slice order, so
   lifting the cap is those three places plus the copy that says one (the api-docs string, the service's cap
-  message, the sheet and sessions page, the CLI help and the docs), not a migration.
+  message, the sheet and sessions page, the CLI help and the docs), not a migration. It now also needs a
+  decision `bestMatch` does not currently make: it picks by host specificity alone, so with two bundles on
+  one host a method- or path-restricted winner hard-403s a request the other bundle's unrestricted service
+  would have served. Cross-bundle host overlap used to decide only *which credential*; it would then decide
+  *whether the request goes at all*.
 - The bundle on a session is a ceiling fixed at mint and intersected with live reachability on every resolve.
   It can shrink and grow back, never past what was minted.
 - Grants are read fresh on every resolve. The actor's role comes through the platform's permission cache

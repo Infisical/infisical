@@ -16,7 +16,7 @@ import {
   TextArea
 } from "@app/components/v3";
 
-import { HTTP_METHODS, TServiceForm } from "./serviceSchema";
+import { HTTP_METHODS, MAX_PATH_PREFIXES, TServiceForm } from "./serviceSchema";
 
 export const DetailsFields = () => {
   const { control, watch, setValue } = useFormContext<TServiceForm>();
@@ -174,14 +174,16 @@ export const DetailsFields = () => {
                   )}
                 />
               ))}
-              <Button
-                size="xs"
-                variant="outline"
-                className="self-start"
-                onClick={() => pathPrefixes.append({ value: "" })}
-              >
-                Add Path Prefix
-              </Button>
+              {pathPrefixes.fields.length < MAX_PATH_PREFIXES && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  className="self-start"
+                  onClick={() => pathPrefixes.append({ value: "" })}
+                >
+                  Add Path Prefix
+                </Button>
+              )}
               <Controller
                 control={control}
                 name="pathPrefixes"
