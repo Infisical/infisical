@@ -269,21 +269,6 @@ customers are calling it.
 An audit log event is read by an admin investigating an incident, in a UI that renders the
 `metadata` body as raw JSON, or in their own SIEM.
 
-**Every identifier in an event's `metadata` must be paired with a human-readable label,
-resolved when the event is emitted.** An identifier is any field whose name ends in an
-id-like token in any casing (`groupId`, `group_id`, `groupID`), or a lone `id`. An optional
-id takes an equally optional label. Resolve the label by loading the parent record; adding
-the field to the type and passing `undefined` does not count. This applies to the event body
-only, not the surrounding envelope, which already carries the actor and org.
-
-```ts
-// Bad: nothing here tells the admin which certificate this was
-metadata: { certificateId: cert.id, profileId: profile.id }
-
-// Good
-metadata: { certificateId: cert.id, commonName: cert.commonName, profileId: profile.id, profileName: profile.slug }
-```
-
 **Name the field after what it identifies.** `requestId` on an event that carries an
 approval request's id sends the reader looking for a certificate request that does not
 match. Prefer `approvalRequestId`.

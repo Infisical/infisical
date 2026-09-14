@@ -1515,6 +1515,7 @@ export const pkiAcmeServiceFactory = ({
         await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
       }
       const updatedOrder = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId))!;
+      const finalizedCsr = extractCertificateRequestFromCSR(updatedOrder.csr!);
       order = updatedOrder;
       await auditLogService.createAuditLog({
         ...auditLogInfo,
@@ -1530,7 +1531,7 @@ export const pkiAcmeServiceFactory = ({
           type: EventType.FINALIZE_ACME_ORDER,
           metadata: {
             orderId: updatedOrder.id,
-            csr: updatedOrder.csr!
+            commonName: finalizedCsr.commonName || ""
           }
         }
       });

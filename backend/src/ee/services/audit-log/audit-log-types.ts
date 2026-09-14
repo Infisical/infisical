@@ -4945,6 +4945,7 @@ interface UpdatePkiSignerApprovalPolicyEvent {
   type: EventType.UPDATE_PKI_SIGNER_APPROVAL_POLICY;
   metadata: {
     signerId: string;
+    name: string;
     stepCount: number;
   };
 }
@@ -4953,6 +4954,7 @@ interface PkiSignerRequestToSignEvent {
   type: EventType.PKI_SIGNER_REQUEST_TO_SIGN;
   metadata: {
     signerId: string;
+    name: string;
     approvalRequestId?: string;
   };
 }
@@ -4961,6 +4963,7 @@ interface PkiSignerPreApproveSigningEvent {
   type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING;
   metadata: {
     signerId: string;
+    name: string;
     approvalRequestId?: string;
     granteeUserId?: string;
     granteeIdentityId?: string;
@@ -4971,6 +4974,7 @@ interface PkiSignerRevokeRequestEvent {
   type: EventType.PKI_SIGNER_REVOKE_REQUEST;
   metadata: {
     signerId: string;
+    name: string;
     approvalRequestId: string;
   };
 }
@@ -6830,7 +6834,7 @@ interface FinalizeAcmeOrderEvent {
   type: EventType.FINALIZE_ACME_ORDER;
   metadata: {
     orderId: string;
-    csr: string;
+    commonName: string;
   };
 }
 
