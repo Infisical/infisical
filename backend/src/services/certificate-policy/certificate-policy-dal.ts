@@ -9,6 +9,7 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
+import { TProfileCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 
 import { TCertificatePolicy, TCertificatePolicyInsert, TCertificatePolicyUpdate } from "./certificate-policy-types";
 
@@ -31,7 +32,8 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
       "extendedKeyUsages",
       "algorithms",
       "validity",
-      "basicConstraints"
+      "basicConstraints",
+      "customExtensions"
     ];
 
     jsonFields.forEach((field) => {
@@ -52,7 +54,8 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
       "extendedKeyUsages",
       "algorithms",
       "validity",
-      "basicConstraints"
+      "basicConstraints",
+      "customExtensions"
     ];
     const parsed = { ...raw } as Record<string, unknown>;
 
@@ -262,10 +265,15 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
   const getProfilesUsingPolicy = async (policyId: string, tx?: Knex) => {
     try {
       const profiles = await (tx || db)(TableName.PkiCertificateProfile)
-        .select("id", "slug", "description")
+        .select("id", "slug", "description", "defaults")
         .where({ certificatePolicyId: policyId });
 
-      return profiles as Array<{ id: string; slug: string; description?: string }>;
+      return profiles as Array<{
+        id: string;
+        slug: string;
+        description?: string;
+        defaults?: { customExtensions?: TProfileCustomExtension[] } | null;
+      }>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Get profiles using certificate policy" });
     }

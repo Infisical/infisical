@@ -106,7 +106,12 @@ const NameField = ({ control }: { control: Control<{ name: string }> }) => (
       <Field>
         <FieldLabel>Name</FieldLabel>
         <FieldContent>
-          <Input {...field} isError={!!fieldState.error} />
+          <Input
+            {...field}
+            isError={!!fieldState.error}
+            autoComplete="off"
+            name="pam-discovery-source-name"
+          />
           <FieldError>{fieldState.error?.message}</FieldError>
         </FieldContent>
       </Field>

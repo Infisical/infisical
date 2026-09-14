@@ -24,6 +24,32 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return session;
   };
 
+  // Returns whichever key ends up stored, so a caller that loses the claim still gets the
+  // winner's. One statement on the primary, because a follow-up read could hit a lagging replica.
+  const claimRecordingSecrets = async (
+    sessionId: string,
+    encryptedSessionKey: Buffer,
+    gatewayUploadTokenHash: Buffer,
+    tx?: Knex
+  ) => {
+    const [row] = await (tx || db)(TableName.PamSession)
+      .where({ id: sessionId })
+      .update({
+        encryptedSessionKey: db.raw("COALESCE(??, ?)", [
+          "encryptedSessionKey",
+          encryptedSessionKey
+        ]) as unknown as Buffer,
+        gatewayUploadTokenHash: db.raw("CASE WHEN ?? IS NULL THEN ? ELSE ?? END", [
+          "encryptedSessionKey",
+          gatewayUploadTokenHash,
+          "gatewayUploadTokenHash"
+        ]) as unknown as Buffer
+      })
+      .returning(["encryptedSessionKey"]);
+
+    return row as { encryptedSessionKey: Buffer | null } | undefined;
+  };
+
   const countActiveWebSessions = async (userId: string, projectId: string, tx?: Knex): Promise<number> => {
     const result = await (tx || db.replicaNode())(TableName.PamSession)
       .where("userId", userId)
@@ -169,6 +195,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findById,
+    claimRecordingSecrets,
     countActiveWebSessions,
     endExpiredWebSessions,
     endSessionById,

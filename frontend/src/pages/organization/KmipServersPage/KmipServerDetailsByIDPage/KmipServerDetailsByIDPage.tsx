@@ -1,11 +1,19 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
-import { ChevronLeftIcon } from "lucide-react";
+import { ChevronLeftIcon, ServerIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { EmptyState } from "@app/components/v2";
-import { PageLoader } from "@app/components/v3";
+import {
+  Button,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -31,7 +39,26 @@ const Page = () => {
   }
 
   if (!kmipServer) {
-    return <EmptyState title="KMIP server not found" />;
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ServerIcon />
+          </EmptyMedia>
+          <EmptyTitle>KMIP server not found</EmptyTitle>
+          <EmptyDescription>
+            It may have been deleted. Return to the list to pick another KMIP server.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/organizations/$orgId/projects/kms/kmip-servers" params={{ orgId }}>
+              Back to KMIP Servers
+            </Link>
+          </Button>
+        </EmptyContent>
+      </Empty>
+    );
   }
 
   return (
@@ -39,17 +66,17 @@ const Page = () => {
       <Link
         to="/organizations/$orgId/projects/kms/kmip-servers"
         params={{ orgId }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition hover:text-mineshaft-400/80"
+        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition hover:text-label"
       >
         <ChevronLeftIcon size={16} />
         KMIP Servers
       </Link>
       <KmipServerPageHeader kmipServer={kmipServer} orgId={orgId} />
-      <div className="flex flex-col gap-5 lg:flex-row">
-        <div className="flex w-full flex-col gap-y-5 lg:max-w-[24rem]">
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <div className="w-full min-w-0 shrink-0 lg:w-96">
           <KmipServerDetailsCard kmipServer={kmipServer} />
         </div>
-        <div className="flex flex-1 flex-col gap-y-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-y-8">
           <KmipServerDeploySection
             kmipServerId={kmipServerId}
             kmipServerName={kmipServer.name}

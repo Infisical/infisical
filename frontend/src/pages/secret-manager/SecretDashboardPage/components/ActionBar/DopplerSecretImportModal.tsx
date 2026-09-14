@@ -1,13 +1,16 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { components, GroupHeadingProps, OptionProps } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,11 +18,9 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  FieldContent,
   FieldError,
   FieldLabel
 } from "@app/components/v3";
-import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetDopplerConfigs, useGetDopplerProjects } from "@app/hooks/api/migration/queries";
 import { TDopplerConfig } from "@app/hooks/api/migration/types";
@@ -45,12 +46,38 @@ type Props = {
   ) => Promise<void>;
 };
 
-const DopplerConfigGroupHeading = (props: GroupHeadingProps<TDopplerConfig>) => (
-  <components.GroupHeading
-    {...props}
-    className="px-2 py-1.5 text-xs font-semibold tracking-wider text-muted uppercase"
-  />
-);
+const QueryOrFormError = ({
+  formError,
+  isQueryError,
+  queryMessage,
+  onRetry
+}: {
+  formError?: string;
+  isQueryError: boolean;
+  queryMessage: string;
+  onRetry: () => void;
+}) => {
+  if (formError) {
+    return <FieldError>{formError}</FieldError>;
+  }
+
+  if (!isQueryError) {
+    return <FieldError />;
+  }
+
+  return (
+    <FieldError>
+      {queryMessage}{" "}
+      <button
+        type="button"
+        className="underline underline-offset-4 hover:text-foreground"
+        onClick={onRetry}
+      >
+        Try again
+      </button>
+    </FieldError>
+  );
+};
 
 const formatConfigLabel = (config: TDopplerConfig) => {
   if (config.root) {
@@ -62,18 +89,6 @@ const formatConfigLabel = (config: TDopplerConfig) => {
     ? config.name.slice(prefix.length)
     : config.name;
   return branchName;
-};
-
-const DopplerConfigOption = (props: OptionProps<TDopplerConfig>) => {
-  const { data } = props;
-  return (
-    <components.Option {...props}>
-      <div className="flex items-center gap-2">
-        <span>{formatConfigLabel(data)}</span>
-        {data.root && <Badge variant="project">Root</Badge>}
-      </div>
-    </components.Option>
-  );
 };
 
 export const DopplerSecretImportModal = ({
@@ -89,7 +104,8 @@ export const DopplerSecretImportModal = ({
     handleSubmit,
     watch,
     reset,
-    formState: { errors, isSubmitting }
+    setValue,
+    formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -115,20 +131,24 @@ export const DopplerSecretImportModal = ({
     }
   }, [isOpen, reset, connections]);
 
-  const { data: dopplerProjects = [], isPending: isLoadingProjects } =
-    useGetDopplerProjects(connectionId);
-  const { data: dopplerConfigs = [], isPending: isLoadingConfigs } = useGetDopplerConfigs(
-    connectionId,
-    selectedDopplerProject || undefined
-  );
+  const {
+    data: dopplerProjects = [],
+    isPending: isLoadingProjects,
+    isError: isProjectsError,
+    refetch: refetchProjects
+  } = useGetDopplerProjects(connectionId);
+  const {
+    data: dopplerConfigs = [],
+    isPending: isLoadingConfigs,
+    isError: isConfigsError,
+    refetch: refetchConfigs
+  } = useGetDopplerConfigs(connectionId, selectedDopplerProject || undefined);
 
   const sortedDopplerConfigs = useMemo(() => {
     return [...dopplerConfigs].sort((a, b) => {
-      // Group by environment first
       if (a.environment !== b.environment) {
         return a.environment.localeCompare(b.environment);
       }
-      // Root configs come first within each environment
       if (a.root !== b.root) {
         return a.root ? -1 : 1;
       }
@@ -162,139 +182,185 @@ export const DopplerSecretImportModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mb-4 flex items-start gap-3 rounded-md border border-project/20 bg-project/5 p-3 text-sm text-project">
-          <InfoIcon className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-medium text-foreground">Import destination</p>
-            <p className="mt-1 text-foreground/75">
-              Secrets will be imported into environment{" "}
-              <code className="text-xs">{environment}</code> at path{" "}
-              <code className="text-xs">{secretPath}</code>.
-            </p>
-          </div>
-        </div>
+        <div className="space-y-4">
+          <Alert variant="project">
+            <InfoIcon />
+            <AlertTitle>Import destination</AlertTitle>
+            <AlertDescription>
+              <p>
+                Secrets will be imported into environment{" "}
+                <code className="text-xs">{environment}</code> at path{" "}
+                <code className="text-xs">{secretPath}</code>.
+              </p>
+            </AlertDescription>
+          </Alert>
 
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-          {showConnectionSelector && (
+          <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+            {showConnectionSelector && (
+              <Controller
+                control={control}
+                name="connectionId"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel htmlFor="doppler-import-connection">Doppler Connection</FieldLabel>
+                    <Combobox
+                      id="doppler-import-connection"
+                      value={
+                        connections.find((connection) => connection.id === field.value) ?? null
+                      }
+                      onValueChange={(connection) => {
+                        field.onChange(connection.id);
+                        setValue("dopplerProject", "");
+                        setValue("dopplerEnvironment", "");
+                      }}
+                      onClear={() => {
+                        field.onChange("");
+                        setValue("dopplerProject", "");
+                        setValue("dopplerEnvironment", "");
+                      }}
+                      options={connections}
+                      getOptionValue={(option) => option.id}
+                      getOptionLabel={(option) => option.name}
+                      placeholder="Select Doppler connection..."
+                      searchPlaceholder="Search Doppler connections..."
+                      searchAriaLabel="Search Doppler connections"
+                      clearAriaLabel="Clear Doppler connection"
+                      emptyMessage="No Doppler connections found."
+                      isError={Boolean(error)}
+                      modal
+                    />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            )}
+
             <Controller
               control={control}
-              name="connectionId"
-              render={({ field }) => {
-                const selectedItem = connections.find((c) => c.id === field.value);
-                return (
-                  <Field>
-                    <FieldLabel>Doppler Connection</FieldLabel>
-                    <FieldContent>
-                      <FilterableSelect
-                        value={selectedItem || null}
-                        onChange={(newValue) => {
-                          const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                          if (single && "id" in single) {
-                            field.onChange(single.id);
-                          } else {
-                            field.onChange("");
-                          }
-                        }}
-                        options={connections}
-                        placeholder="Select Doppler connection..."
-                        getOptionLabel={(option) => option.name}
-                        getOptionValue={(option) => option.id}
-                      />
-                    </FieldContent>
-                    <FieldError>{errors.connectionId?.message}</FieldError>
-                  </Field>
-                );
-              }}
+              name="dopplerProject"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="doppler-import-project">Source Project</FieldLabel>
+                  <Combobox
+                    id="doppler-import-project"
+                    value={dopplerProjects.find((project) => project.slug === field.value) ?? null}
+                    onValueChange={(project) => {
+                      field.onChange(project.slug);
+                      setValue("dopplerEnvironment", "");
+                    }}
+                    onClear={() => {
+                      field.onChange("");
+                      setValue("dopplerEnvironment", "");
+                    }}
+                    options={dopplerProjects}
+                    getOptionValue={(option) => option.slug}
+                    getOptionLabel={(option) => option.name}
+                    getOptionKeywords={(option) => (option.description ? [option.description] : [])}
+                    isDisabled={!connectionId}
+                    isLoading={Boolean(connectionId) && isLoadingProjects}
+                    isError={Boolean(error) || isProjectsError}
+                    placeholder={
+                      connectionId ? "Select source project..." : "Select a connection first..."
+                    }
+                    searchPlaceholder="Search Doppler projects..."
+                    searchAriaLabel="Search Doppler projects"
+                    clearAriaLabel="Clear source project"
+                    emptyMessage={
+                      isProjectsError
+                        ? "Failed to load Doppler projects."
+                        : "No Doppler projects found."
+                    }
+                    modal
+                  />
+                  <QueryOrFormError
+                    formError={error?.message}
+                    isQueryError={isProjectsError}
+                    queryMessage="Failed to load Doppler projects."
+                    onRetry={() => {
+                      refetchProjects();
+                    }}
+                  />
+                </Field>
+              )}
             />
-          )}
 
-          <Controller
-            control={control}
-            name="dopplerProject"
-            render={({ field }) => {
-              const selectedItem = dopplerProjects.find((p) => p.slug === field.value);
-
-              return (
+            <Controller
+              control={control}
+              name="dopplerEnvironment"
+              render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel>Source Project</FieldLabel>
-                  <FieldContent>
-                    <FilterableSelect
-                      value={selectedItem || null}
-                      onChange={(newValue) => {
-                        const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                        if (singleValue && "slug" in singleValue) {
-                          field.onChange(singleValue.slug);
-                        } else {
-                          field.onChange("");
-                        }
-                      }}
-                      isLoading={isLoadingProjects && Boolean(connectionId)}
-                      isDisabled={!connectionId}
-                      options={dopplerProjects}
-                      placeholder="Select source project..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.slug}
-                    />
-                  </FieldContent>
-                  <FieldError>{errors.dopplerProject?.message}</FieldError>
+                  <FieldLabel htmlFor="doppler-import-config">Source Config</FieldLabel>
+                  <Combobox
+                    id="doppler-import-config"
+                    value={
+                      sortedDopplerConfigs.find((config) => config.name === field.value) ?? null
+                    }
+                    onValueChange={(config) => field.onChange(config.name)}
+                    onClear={() => field.onChange("")}
+                    options={sortedDopplerConfigs}
+                    getOptionValue={(option) => option.name}
+                    getOptionLabel={formatConfigLabel}
+                    getOptionKeywords={(option) => [option.environment, option.name]}
+                    isDisabled={!selectedDopplerProject}
+                    isLoading={Boolean(selectedDopplerProject) && isLoadingConfigs}
+                    isError={Boolean(error) || isConfigsError}
+                    placeholder={
+                      selectedDopplerProject
+                        ? "Select source config..."
+                        : "Select a source project first..."
+                    }
+                    searchPlaceholder="Search Doppler configs..."
+                    searchAriaLabel="Search Doppler configs"
+                    clearAriaLabel="Clear source config"
+                    emptyMessage={
+                      isConfigsError
+                        ? "Failed to load Doppler configs."
+                        : "No Doppler configs found."
+                    }
+                    modal
+                    renderOption={(option) => (
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate">{formatConfigLabel(option)}</span>
+                          {option.root && <Badge variant="project">Root</Badge>}
+                        </div>
+                        <p className="text-xs leading-4 text-muted">{option.environment}</p>
+                      </div>
+                    )}
+                    renderValue={(option) => (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate">{formatConfigLabel(option)}</span>
+                        {option.root && <Badge variant="project">Root</Badge>}
+                      </span>
+                    )}
+                  />
+                  <QueryOrFormError
+                    formError={error?.message}
+                    isQueryError={isConfigsError}
+                    queryMessage="Failed to load Doppler configs."
+                    onRetry={() => {
+                      refetchConfigs();
+                    }}
+                  />
                 </Field>
-              );
-            }}
-          />
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="dopplerEnvironment"
-            render={({ field }) => {
-              const selectedItem = sortedDopplerConfigs.find((c) => c.name === field.value);
-
-              return (
-                <Field>
-                  <FieldLabel>Source Config</FieldLabel>
-                  <FieldContent>
-                    <FilterableSelect
-                      value={selectedItem || null}
-                      onChange={(newValue) => {
-                        const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                        if (singleValue && "name" in singleValue) {
-                          field.onChange(singleValue.name);
-                        } else {
-                          field.onChange("");
-                        }
-                      }}
-                      isLoading={isLoadingConfigs && Boolean(selectedDopplerProject)}
-                      isDisabled={!selectedDopplerProject}
-                      options={sortedDopplerConfigs}
-                      placeholder="Select source config..."
-                      getOptionLabel={formatConfigLabel}
-                      getOptionValue={(option) => option.name}
-                      groupBy="environment"
-                      components={{
-                        GroupHeading: DopplerConfigGroupHeading,
-                        Option: DopplerConfigOption
-                      }}
-                    />
-                  </FieldContent>
-                  <FieldError>{errors.dopplerEnvironment?.message}</FieldError>
-                </Field>
-              );
-            }}
-          />
-
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button type="button" variant="ghost" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="project"
-              isPending={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              Import Secrets
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button type="button" variant="ghost" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="project"
+                isPending={isSubmitting}
+                isDisabled={isSubmitting}
+              >
+                Import Secrets
+              </Button>
+            </DialogFooter>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -164,6 +164,7 @@ export const RelayPageHeader = ({
       </AlertDialog>
       <AlertDialog
         open={popUp.revokeRelay.isOpen}
+        confirmationValue={relay.name}
         onOpenChange={(open) => handlePopUpToggle("revokeRelay", open)}
       >
         <AlertDialogContent>
@@ -174,6 +175,7 @@ export const RelayPageHeader = ({
               to reconnect.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <AlertDialogConfirmationField inputProps={{ placeholder: relay.name }} />
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
             <AlertDialogAction

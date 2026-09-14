@@ -1,20 +1,18 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { THerokuApp } from "@app/hooks/api/appConnections/heroku";
 import { useHerokuConnectionListApps } from "@app/hooks/api/appConnections/heroku/queries";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -45,7 +43,7 @@ export const HerokuSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel id="secret-sync-heroku-app-label" htmlFor="secret-sync-heroku-app">
               App
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -57,23 +55,26 @@ export const HerokuSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-heroku-app-label"
+                aria-describedby={error ? "secret-sync-heroku-app-error" : undefined}
+                id="secret-sync-heroku-app"
+                isError={Boolean(error)}
                 isLoading={isAppsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={apps?.find((app) => app.id === value) ?? null}
-                onChange={(option) => {
-                  onChange((option as SingleValue<THerokuApp>)?.id ?? "");
-                  setValue(
-                    "destinationConfig.appName",
-                    (option as SingleValue<THerokuApp>)?.name ?? ""
-                  );
+                onValueChange={(option) => {
+                  onChange(option.id ?? "");
+                  setValue("destinationConfig.appName", option.name ?? "");
                 }}
                 options={apps}
                 placeholder="Select an app..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-heroku-app-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

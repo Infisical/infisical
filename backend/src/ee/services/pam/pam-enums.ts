@@ -91,3 +91,6 @@ export enum PamNotificationEvent {
   AccessRequestDenied = "access-request-denied",
   AccessRequestBypassed = "access-request-bypassed"
 }
+
+// Best-effort: the tunnel is torn down either way.
+export const PAM_CANCELLATION_FLUSH_TIMEOUT_MS = 5000;
