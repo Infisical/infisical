@@ -106,7 +106,13 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose, logou
             render={({ field, fieldState: { error } }) => (
               <div className="mb-4">
                 <FieldLabel>Name</FieldLabel>
-                <Input {...field} placeholder="Acme Corp" className="h-10" />
+                <Input
+                  {...field}
+                  placeholder="Acme Corp"
+                  className="h-10"
+                  autoComplete="off"
+                  name="organization-name"
+                />
                 {error && <FieldError>{error.message}</FieldError>}
               </div>
             )}

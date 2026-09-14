@@ -57,6 +57,10 @@ const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Secret expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
 };
+const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Record<AlertEventType, string> = {
+  [AlertEventType.IdentityAuthenticationExpiry]: "Client secret expiration alert",
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
+};
 const DEFAULT_EVENT_TYPE = AlertEventType.IdentityAuthenticationExpiry;
 
 const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
@@ -74,10 +78,10 @@ const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   hasIntegrationKey: Boolean(channel.config.hasIntegrationKey)
 });
 
-const buildFormDefaults = (alert?: TAlert): TAlertForm => {
+const buildFormDefaults = (alert: TAlert | undefined, defaultName: string): TAlertForm => {
   if (!alert) {
     return {
-      name: DEFAULT_ALERT_NAMES[DEFAULT_EVENT_TYPE],
+      name: defaultName,
       description: "",
       resourceType: AlertResourceType.IdentityAuthentication,
       eventType: DEFAULT_EVENT_TYPE,
@@ -105,12 +109,16 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
 export const AlertForm = ({ projectId, resourceId, alert, onComplete, onCancel }: Props) => {
   const isEditing = Boolean(alert);
   const scopeVariant = useScopeVariant();
+  const isAgentVault = scopeVariant === "av";
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
 
   const formMethods = useForm<TAlertForm>({
     resolver: zodResolver(alertFormSchema),
-    defaultValues: buildFormDefaults(alert)
+    defaultValues: buildFormDefaults(
+      alert,
+      isAgentVault ? "" : DEFAULT_ALERT_NAMES[DEFAULT_EVENT_TYPE]
+    )
   });
 
   const {
@@ -125,6 +133,9 @@ export const AlertForm = ({ projectId, resourceId, alert, onComplete, onCancel }
   const resourceTypeValue = useWatch({ control, name: "resourceType" });
   const eventTypeValue = useWatch({ control, name: "eventType" });
   const isExpiryEvent = eventTypeValue === AlertEventType.IdentityAuthenticationExpiry;
+  const alertNamePlaceholders = isAgentVault
+    ? AGENT_VAULT_ALERT_NAME_PLACEHOLDERS
+    : DEFAULT_ALERT_NAMES;
   const isResourceScope = Boolean(resourceId ?? alert?.resourceId);
   const handleEventTypeChange = (previous: AlertEventType, next: AlertEventType) => {
     setValue("eventType", next, { shouldDirty: true });
@@ -185,10 +196,11 @@ export const AlertForm = ({ projectId, resourceId, alert, onComplete, onCancel }
                 id="alert-name"
                 autoFocus
                 placeholder={
-                  DEFAULT_ALERT_NAMES[eventTypeValue] ?? DEFAULT_ALERT_NAMES[DEFAULT_EVENT_TYPE]
+                  alertNamePlaceholders[eventTypeValue] ?? alertNamePlaceholders[DEFAULT_EVENT_TYPE]
                 }
                 isError={Boolean(errors.name)}
                 {...register("name")}
+                autoComplete="off"
               />
               <FieldError errors={[errors.name]} />
             </FieldContent>

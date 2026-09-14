@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATE_POLICIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -17,6 +17,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import {
   certificatePolicyResponseSchema,
+  policyCustomExtensionSchema,
   policySubjectSchema
 } from "@app/services/certificate-policy/certificate-policy-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -169,7 +170,8 @@ const createCertificatePolicySchema = z.object({
   extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
   algorithms: policyAlgorithmsSchema.nullish(),
   validity: policyValiditySchema.nullish(),
-  basicConstraints: policyBasicConstraintsSchema.optional()
+  basicConstraints: policyBasicConstraintsSchema.optional(),
+  customExtensions: z.array(policyCustomExtensionSchema).nullish().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES)
 });
 
 const updateCertificatePolicySchema = z.object({
@@ -181,7 +183,8 @@ const updateCertificatePolicySchema = z.object({
   extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
   algorithms: policyAlgorithmsSchema.nullish(),
   validity: policyValiditySchema.nullish(),
-  basicConstraints: policyBasicConstraintsSchema.optional()
+  basicConstraints: policyBasicConstraintsSchema.optional(),
+  customExtensions: z.array(policyCustomExtensionSchema).nullish().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES)
 });
 
 export const registerCertificatePolicyRouter = async (server: FastifyZodProvider) => {
@@ -221,7 +224,10 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
           metadata: {
             certificatePolicyId: certificatePolicy.id,
             name: certificatePolicy.name,
-            projectId: certificatePolicy.projectId
+            projectId: certificatePolicy.projectId,
+            ...(certificatePolicy.customExtensions && {
+              customExtensionOids: certificatePolicy.customExtensions.map((rule) => rule.oid)
+            })
           }
         }
       });
@@ -377,7 +383,10 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
           type: EventType.UPDATE_CERTIFICATE_POLICY,
           metadata: {
             certificatePolicyId: certificatePolicy.id,
-            name: certificatePolicy.name
+            name: certificatePolicy.name,
+            ...(certificatePolicy.customExtensions && {
+              customExtensionOids: certificatePolicy.customExtensions.map((rule) => rule.oid)
+            })
           }
         }
       });

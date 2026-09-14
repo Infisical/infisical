@@ -42,23 +42,31 @@
         "tab": "Get started",
         "pages": [
           "documentation/getting-started/overview",
+          "documentation/getting-started/quickstarts",
           "documentation/getting-started/introduction",
+          "documentation/getting-started/set-up-with-ai",
+          "documentation/platform/external-migrations/overview",
+          "documentation/getting-started/concepts/deployment-models",
           {
-            "group": "Concepts",
+            "group": "Use cases",
             "pages": [
-              "documentation/getting-started/concepts/deployment-models",
-              "documentation/getting-started/concepts/platform-hierarchy",
-              "documentation/getting-started/concepts/platform-iam",
-              "documentation/getting-started/concepts/client-integrations",
-              "documentation/getting-started/concepts/audit-logs"
+              "documentation/getting-started/choose-a-product/secrets-management/overview",
+              "documentation/getting-started/choose-a-product/secret-scanning",
+              "documentation/getting-started/choose-a-product/pki",
+              "documentation/getting-started/choose-a-product/kms",
+              "documentation/getting-started/choose-a-product/pam"
             ]
           },
           {
-            "group": "Migrate to Infisical",
+            "group": "Understand the platform",
             "pages": [
-              "documentation/platform/external-migrations/overview",
-              "documentation/platform/external-migrations/doppler",
-              "documentation/platform/external-migrations/vault"
+              "documentation/getting-started/concepts/platform-hierarchy",
+              "documentation/getting-started/concepts/platform-iam",
+              "documentation/getting-started/concepts/audit-logs",
+              "documentation/getting-started/concepts/app-connections",
+              "documentation/getting-started/concepts/networking",
+              "documentation/getting-started/concepts/internals",
+              "documentation/getting-started/concepts/contributing"
             ]
           }
         ]
@@ -87,7 +95,15 @@
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
-                  "documentation/platform/secret-sharing"
+                  "documentation/platform/secret-sharing",
+                  {
+                    "group": "Migrate to Infisical",
+                    "root": "documentation/platform/secrets-mgmt/quick-starts/migrate",
+                    "pages": [
+                      "documentation/platform/external-migrations/doppler",
+                      "documentation/platform/external-migrations/vault"
+                    ]
+                  }
                 ]
               },
               {
@@ -410,11 +426,6 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  },
-                  {
-                    "group": "Agent Vault",
-                    "icon": "arrow-up-right-from-square",
-                    "root": "https://docs.agent-vault.dev/"
                   }
                 ]
               }
@@ -700,6 +711,7 @@
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/mongodb",
                       "documentation/platform/pam/accounts/redis",
+                      "documentation/platform/pam/accounts/snowflake",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -747,6 +759,29 @@
                   },
                   "documentation/platform/pam/auditing",
                   "documentation/platform/pam/architecture"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Agent Vault",
+            "icon": "sparkles",
+            "tag": "PREVIEW",
+            "pages": [
+              "documentation/platform/agent-vault/overview",
+              {
+                "group": "Get started",
+                "pages": [
+                  "documentation/platform/agent-vault/quickstart"
+                ]
+              },
+              {
+                "group": "Product reference",
+                "pages": [
+                  "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/sessions",
+                  "documentation/platform/agent-vault/proxies",
+                  "documentation/platform/agent-vault/access-control"
                 ]
               }
             ]
@@ -1069,10 +1104,10 @@
             "icon": "network-wired",
             "pages": [
               "documentation/platform/gateways/overview",
+              "documentation/setup/networking",
               {
                 "group": "Gateways",
                 "pages": [
-                  "documentation/setup/networking",
                   "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-deployment",
                   "documentation/platform/gateways/gateway-pools",
@@ -1252,6 +1287,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/agent-vault",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",
@@ -3722,6 +3758,42 @@
                         ]
                       }
                     ]
+                  },
+                  {
+                    "group": "Secret validation rules",
+                    "pages": [
+                      "api-reference/endpoints/secret-validation-rules/list",
+                      {
+                        "group": "Static secrets",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/list",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/create",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/update",
+                          "api-reference/endpoints/secret-validation-rules/static-secrets/delete"
+                        ]
+                      },
+                      {
+                        "group": "Dynamic secrets",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/list",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/create",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/update",
+                          "api-reference/endpoints/secret-validation-rules/dynamic-secrets/delete"
+                        ]
+                      },
+                      {
+                        "group": "Secret rotations",
+                        "pages": [
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/list",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/get-by-id",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/create",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/update",
+                          "api-reference/endpoints/secret-validation-rules/secret-rotations/delete"
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
@@ -4621,6 +4693,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/ai/model-context-protocol",
+      "destination": "/documentation/getting-started/set-up-with-ai"
+    },
     {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"

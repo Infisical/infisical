@@ -45,7 +45,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -143,6 +143,7 @@ export const Page = () => {
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const canAssumePrivileges = !isCertManager && supportsAssumePrivileges(currentProject.type);
   let memberDisplayName = "Unnamed User";
   if (membershipDetails) {
     const { firstName, lastName, email, username } = membershipDetails.user;
@@ -153,23 +154,9 @@ export const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col">
+    <div className="mx-auto flex max-w-8xl flex-col gap-8">
       {membershipDetails ? (
         <>
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId: currentProject.id,
-              orgId: currentOrg.id
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Member
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition-colors hover:text-foreground"
-          >
-            <ChevronLeftIcon className="size-4" />
-            {isCertManager ? "Users" : "Project Users"}
-          </Link>
           <PageHeader
             scope={currentProject.type}
             title={memberDisplayName}
@@ -177,6 +164,21 @@ export const Page = () => {
               isCertManager
                 ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
+            }
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId: currentProject.id,
+                  orgId: currentOrg.id
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Member
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {isCertManager ? "Users" : "Project Users"}
+              </Link>
             }
           >
             <div className="flex items-center gap-2">
@@ -219,7 +221,7 @@ export const Page = () => {
                     >
                       Copy User ID
                     </DropdownMenuItem>
-                    {!isCertManager && (
+                    {canAssumePrivileges && (
                       <ProjectPermissionCan
                         I={ProjectPermissionMemberActions.AssumePrivileges}
                         a={ProjectPermissionSub.Member}

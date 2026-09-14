@@ -56,6 +56,11 @@ export type GlobalCommandMenuProps = {
   searchGroups?: GlobalCommandMenuGroup[];
   searchStatus?: GlobalCommandMenuSearchStatus;
   onSearchChange?: (search: string) => void;
+  onItemSelect?: (
+    item: GlobalCommandMenuItem,
+    context: { mode: "browse" | "search" | "drill-down" }
+  ) => void;
+  onShortcutToggle?: (open: boolean) => void;
   isEnabled?: boolean;
   open?: boolean;
   defaultOpen?: boolean;
@@ -162,6 +167,8 @@ export const GlobalCommandMenu = ({
   searchGroups = groups,
   searchStatus = { state: "idle" },
   onSearchChange,
+  onItemSelect,
+  onShortcutToggle,
   isEnabled = true,
   open: controlledOpen,
   defaultOpen = false,
@@ -180,7 +187,7 @@ export const GlobalCommandMenu = ({
   const openRef = React.useRef(open);
   const invokerRef = React.useRef<HTMLElement | null>(null);
   const activeDrilldown = drilldown.at(-1);
-  let mode = "browse";
+  let mode: "browse" | "search" | "drill-down" = "browse";
   if (search.trim()) mode = "search";
   if (activeDrilldown) mode = "drill-down";
 
@@ -223,12 +230,14 @@ export const GlobalCommandMenu = ({
 
       event.preventDefault();
       event.stopPropagation();
-      setOpen(!openRef.current);
+      const nextOpen = !openRef.current;
+      setOpen(nextOpen);
+      onShortcutToggle?.(nextOpen);
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [isEnabled, setOpen]);
+  }, [isEnabled, onShortcutToggle, setOpen]);
 
   const goBack = () => {
     updateSearch("");
@@ -326,6 +335,8 @@ export const GlobalCommandMenu = ({
                   keywords={[item.label, item.breadcrumb, ...(item.keywords ?? [])]}
                   disabled={item.isDisabled}
                   onSelect={() => {
+                    onItemSelect?.(item, { mode });
+
                     if (item.children) {
                       updateSearch("");
                       setDrilldown((current) => [...current, item]);

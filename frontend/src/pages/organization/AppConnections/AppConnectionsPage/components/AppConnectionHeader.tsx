@@ -1,5 +1,3 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import { DocumentationLinkBadge } from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -11,6 +9,7 @@ type Props = {
 
 export const AppConnectionHeader = ({ app, isConnected }: Props) => {
   const appDetails = APP_CONNECTION_MAP[app];
+  const AppIcon = appDetails.icon;
 
   return (
     <div className="flex w-full items-start gap-2">
@@ -20,12 +19,7 @@ export const AppConnectionHeader = ({ app, isConnected }: Props) => {
           src={`/images/integrations/${appDetails.image}`}
           className="h-7 w-7 object-contain"
         />
-        {appDetails.icon && (
-          <FontAwesomeIcon
-            icon={appDetails.icon}
-            className="absolute right-0.5 bottom-0.5 text-primary-700"
-          />
-        )}
+        {AppIcon && <AppIcon className="absolute right-0.5 bottom-0.5 size-3 text-primary-700" />}
       </div>
       <div>
         <div className="flex items-center gap-x-2 text-mineshaft-300">

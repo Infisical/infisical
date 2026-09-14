@@ -133,6 +133,17 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, orgId, navigate]);
 
+  // An org-scoped product has one implicit project, so listing it here would offer a project view we
+  // hide everywhere else, plus a create button the backend refuses.
+  useEffect(() => {
+    if (projectType === ProjectType.AgentVault) {
+      navigate({
+        to: "/organizations/$orgId/agent-vault/sessions",
+        params: { orgId }
+      });
+    }
+  }, [projectType, orgId, navigate]);
+
   if (projectType === ProjectType.CertificateManager) {
     return (
       <CertManagerNotConfiguredModal
@@ -150,7 +161,7 @@ export const ProjectTypePage = () => {
     );
   }
 
-  if (projectType === ProjectType.PAM) {
+  if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
     return null;
   }
 

@@ -1,24 +1,20 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import {
-  TCloudflarePagesProject,
-  useCloudflareConnectionListPagesProjects
-} from "@app/hooks/api/appConnections/cloudflare";
+import { useCloudflareConnectionListPagesProjects } from "@app/hooks/api/appConnections/cloudflare";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -59,21 +55,34 @@ export const CloudflarePagesSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-cloudflare-pages-project-name-label"
+              htmlFor="secret-sync-cloudflare-pages-project-name"
+            >
+              Project
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-cloudflare-pages-project-name-label"
+                aria-describedby={
+                  error ? "secret-sync-cloudflare-pages-project-name-error" : undefined
+                }
+                id="secret-sync-cloudflare-pages-project-name"
+                isError={Boolean(error)}
                 isLoading={isProjectsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={projects ? (projects.find((project) => project.name === value) ?? []) : []}
-                onChange={(option) => {
-                  onChange((option as SingleValue<TCloudflarePagesProject>)?.name ?? null);
+                value={projects.find((project) => project.name === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.name ?? null);
                 }}
                 options={projects}
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                getOptionKeywords={(option) => [option.id.toString()]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-cloudflare-pages-project-name-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

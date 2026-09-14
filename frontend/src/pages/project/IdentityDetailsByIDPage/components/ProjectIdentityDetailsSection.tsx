@@ -1,6 +1,6 @@
 import { subject } from "@casl/ability";
 import { format } from "date-fns";
-import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
+import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon, VaultIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -52,12 +52,15 @@ export const ProjectIdentityDetailsSection = ({
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const isPam = currentProject?.type === ProjectType.PAM;
+  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   let productLabel = "Project";
   if (isCertManager) {
     productLabel = "Certificate Manager";
   } else if (isPam) {
     productLabel = "PAM";
+  } else if (isAgentVault) {
+    productLabel = "Agent Vault";
   }
 
   let joinedLabel = "Joined project";
@@ -65,6 +68,8 @@ export const ProjectIdentityDetailsSection = ({
     joinedLabel = "Joined certificate manager";
   } else if (isPam) {
     joinedLabel = "Joined PAM";
+  } else if (isAgentVault) {
+    joinedLabel = "Joined Agent Vault";
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
@@ -144,8 +149,8 @@ export const ProjectIdentityDetailsSection = ({
                     {isSubOrgIdentity ? "Sub-" : ""}Organization
                   </Badge>
                 ) : (
-                  <Badge variant="project">
-                    <ProjectIcon />
+                  <Badge variant={isAgentVault ? "av" : "project"}>
+                    {isAgentVault ? <VaultIcon /> : <ProjectIcon />}
                     {productLabel}
                   </Badge>
                 )}
@@ -223,7 +228,7 @@ export const ProjectIdentityDetailsSection = ({
       >
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Edit Project Identity</DialogTitle>
+            <DialogTitle>Edit {isAgentVault ? "Machine" : "Project"} Identity</DialogTitle>
             <DialogDescription>
               Update the identity&apos;s name, delete protection, and metadata.
             </DialogDescription>

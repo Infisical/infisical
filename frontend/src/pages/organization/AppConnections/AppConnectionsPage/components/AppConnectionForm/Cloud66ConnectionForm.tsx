@@ -118,8 +118,14 @@ export const Cloud66ConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <SecretInput
+                aria-describedby={error ? "access-token-error" : undefined}
+                id="access-token"
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="access-token-error" errors={[error]} />
             </Field>
           )}
         />
