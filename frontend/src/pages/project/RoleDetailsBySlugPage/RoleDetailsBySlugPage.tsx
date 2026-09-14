@@ -99,21 +99,7 @@ const Page = () => {
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-8xl">
-          <Link
-            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-            params={{
-              projectId,
-              orgId
-            }}
-            search={{
-              selectedTab: ProjectAccessControlTabs.Roles
-            }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-muted"
-          >
-            <ChevronLeftIcon className="size-4" />
-            {isCertManager ? "Roles" : "Project Roles"}
-          </Link>
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope={currentProject.type}
             title={displayName}
@@ -121,6 +107,21 @@ const Page = () => {
               <>
                 {data.slug} {data.description && `- ${data.description}`}
               </>
+            }
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId,
+                  orgId
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Roles
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {isCertManager ? "Roles" : "Project Roles"}
+              </Link>
             }
           >
             {isCustomRole && (

@@ -1,15 +1,16 @@
-import { faGithub, IconDefinition } from "@fortawesome/free-brands-svg-icons";
-import {
-  faBullseye,
-  faCertificate,
-  faKey,
-  faLink,
-  faLock,
-  faPassport,
-  faServer,
-  faUser
-} from "@fortawesome/free-solid-svg-icons";
 import { useRouterState } from "@tanstack/react-router";
+import {
+  FileBadgeIcon,
+  GithubIcon,
+  IdCardIcon,
+  KeyRoundIcon,
+  LinkIcon,
+  LockIcon,
+  LucideIcon,
+  RadarIcon,
+  ServerIcon,
+  UserIcon
+} from "lucide-react";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -109,7 +110,7 @@ export const APP_CONNECTION_MAP: Record<
     category: string;
     description: string;
     size?: number;
-    icon?: IconDefinition;
+    icon?: LucideIcon;
     enterprise?: boolean;
     aliases?: string[];
   }
@@ -129,7 +130,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.GitHubRadar]: {
     name: "GitHub Radar",
     image: "GitHub.png",
-    icon: faBullseye,
+    icon: RadarIcon,
     category: "SECURITY",
     description: "GitHub App connection used for secret scanning."
   },
@@ -646,10 +647,10 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
   switch (method) {
     case GitHubConnectionMethod.App:
     case GitHubRadarConnectionMethod.App:
-      return { name: "GitHub App", icon: faGithub };
+      return { name: "GitHub App", icon: GithubIcon };
     case GitHubConnectionMethod.Pat:
     case OnaConnectionMethod.PersonalAccessToken:
-      return { name: "Personal Access Token", icon: faKey };
+      return { name: "Personal Access Token", icon: KeyRoundIcon };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
     case AzureClientSecretsConnectionMethod.OAuth:
@@ -658,18 +659,18 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
     case VenafiTppConnectionMethod.OAuth:
-      return { name: "OAuth", icon: faPassport };
+      return { name: "OAuth", icon: IdCardIcon };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
-      return { name: "Access Key", icon: faKey };
+      return { name: "Access Key", icon: KeyRoundIcon };
     case AwsConnectionMethod.AssumeRole:
-      return { name: "Assume Role", icon: faUser };
+      return { name: "Assume Role", icon: UserIcon };
     case GcpConnectionMethod.ServiceAccountImpersonation:
-      return { name: "Service Account Impersonation", icon: faUser };
+      return { name: "Service Account Impersonation", icon: UserIcon };
     case DatabricksConnectionMethod.ServicePrincipal:
-      return { name: "Service Principal", icon: faUser };
+      return { name: "Service Principal", icon: UserIcon };
     case CamundaConnectionMethod.ClientCredentials:
-      return { name: "Client Credentials", icon: faKey };
+      return { name: "Client Credentials", icon: KeyRoundIcon };
     case HumanitecConnectionMethod.ApiToken:
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
@@ -686,9 +687,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
-      return { name: "API Token", icon: faKey };
+      return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
-      return { name: "API Key", icon: faKey };
+      return { name: "API Key", icon: KeyRoundIcon };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
@@ -697,9 +698,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
-      return { name: "Username & Password", icon: faLock };
+      return { name: "Username & Password", icon: LockIcon };
     case SnowflakeConnectionMethod.UsernameAndToken:
-      return { name: "Username & Token", icon: faKey };
+      return { name: "Username & Token", icon: KeyRoundIcon };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
@@ -710,23 +711,23 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HasuraCloudConnectionMethod.AccessToken:
     case QoveryConnectionMethod.AccessToken:
     case Cloud66ConnectionMethod.AccessToken:
-      return { name: "Personal Access Token", icon: faKey };
+      return { name: "Personal Access Token", icon: KeyRoundIcon };
     case Auth0ConnectionMethod.ClientCredentials:
     case SalesforceConnectionMethod.ClientCredentials:
-      return { name: "Client Credentials", icon: faServer };
+      return { name: "Client Credentials", icon: ServerIcon };
     case HCVaultConnectionMethod.AppRole:
-      return { name: "App Role", icon: faUser };
+      return { name: "App Role", icon: UserIcon };
     case LdapConnectionMethod.SimpleBind:
-      return { name: "Simple Bind", icon: faLink };
+      return { name: "Simple Bind", icon: LinkIcon };
     case HerokuConnectionMethod.AuthToken:
-      return { name: "Auth Token", icon: faKey };
+      return { name: "Auth Token", icon: KeyRoundIcon };
     case RailwayConnectionMethod.AccountToken:
     case SupabaseConnectionMethod.AccessToken:
-      return { name: "Account Token", icon: faKey };
+      return { name: "Account Token", icon: KeyRoundIcon };
     case RailwayConnectionMethod.TeamToken:
-      return { name: "Team Token", icon: faKey };
+      return { name: "Team Token", icon: KeyRoundIcon };
     case RailwayConnectionMethod.ProjectToken:
-      return { name: "Project Token", icon: faKey };
+      return { name: "Project Token", icon: KeyRoundIcon };
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
@@ -740,47 +741,47 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
     case DaytonaConnectionMethod.ApiKey:
-      return { name: "API Key", icon: faKey };
+      return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
-      return { name: "User Key", icon: faKey };
+      return { name: "User Key", icon: KeyRoundIcon };
     case AzureClientSecretsConnectionMethod.ClientSecret:
     case AzureAppConfigurationConnectionMethod.ClientSecret:
     case AzureKeyVaultConnectionMethod.ClientSecret:
     case AzureDevOpsConnectionMethod.ClientSecret:
-      return { name: "Client Secret", icon: faKey };
+      return { name: "Client Secret", icon: KeyRoundIcon };
     case AzureClientSecretsConnectionMethod.Certificate:
     case AzureKeyVaultConnectionMethod.Certificate:
-      return { name: "Certificate", icon: faCertificate };
+      return { name: "Certificate", icon: FileBadgeIcon };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
     case SpaceliftConnectionMethod.ApiKeySecret:
-      return { name: "API Key & Secret", icon: faKey };
+      return { name: "API Key & Secret", icon: KeyRoundIcon };
     case AzureDNSConnectionMethod.ClientSecret:
     case AzureEntraIdConnectionMethod.ClientSecret:
     case MicrosoftIntuneConnectionMethod.ClientSecret:
-      return { name: "Client Secret", icon: faKey };
+      return { name: "Client Secret", icon: KeyRoundIcon };
     case OctopusDeployConnectionMethod.ApiKey:
-      return { name: "API Key", icon: faKey };
+      return { name: "API Key", icon: KeyRoundIcon };
     case DatadogConnectionMethod.Token:
-      return { name: "Service Access Token", icon: faKey };
+      return { name: "Service Access Token", icon: KeyRoundIcon };
     case SshConnectionMethod.Password:
-      return { name: "Password", icon: faLock };
+      return { name: "Password", icon: LockIcon };
     case SshConnectionMethod.SshKey:
-      return { name: "SSH Key", icon: faKey };
+      return { name: "SSH Key", icon: KeyRoundIcon };
     case SmbConnectionMethod.Credentials:
-      return { name: "Credentials", icon: faLock };
+      return { name: "Credentials", icon: LockIcon };
     case WinRMConnectionMethod.UsernamePassword:
-      return { name: "Username & Password", icon: faLock };
+      return { name: "Username & Password", icon: LockIcon };
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
-      return { name: "Machine Identity - Universal Auth", icon: faKey };
+      return { name: "Machine Identity - Universal Auth", icon: KeyRoundIcon };
     case NetScalerConnectionMethod.BasicAuth:
     case KempLoadMasterConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
-      return { name: "Basic Auth", icon: faLock };
+      return { name: "Basic Auth", icon: LockIcon };
     case NutanixPrismCentralConnectionMethod.ApiKey:
-      return { name: "API Key", icon: faKey };
+      return { name: "API Key", icon: KeyRoundIcon };
     case OVHConnectionMethod.Certificate:
-      return { name: "Certificate", icon: faCertificate };
+      return { name: "Certificate", icon: FileBadgeIcon };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
