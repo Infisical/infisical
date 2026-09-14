@@ -622,12 +622,13 @@ export const userServiceFactory = ({
   const getStepUpMfaMethod = async (userId: string, orgId: string, excludeMethod?: MfaMethod): Promise<MfaMethod> => {
     const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
     const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
-    if (!user || !excludeMethod || requiredMfaMethod !== excludeMethod) return requiredMfaMethod;
+    if (!user || !excludeMethod) return requiredMfaMethod;
 
     const enforcingOrgs = await findMfaEnforcingOrgs(userId);
     if (enforcingOrgs.some((enforcingOrg) => (enforcingOrg.selectedMfaMethod ?? MfaMethod.EMAIL) === excludeMethod)) {
-      return requiredMfaMethod;
+      return excludeMethod;
     }
+    if (requiredMfaMethod !== excludeMethod) return requiredMfaMethod;
 
     const fallbackOrder = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL].filter(
       (method) => method !== excludeMethod
