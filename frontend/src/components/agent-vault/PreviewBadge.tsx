@@ -17,8 +17,7 @@ export const PreviewBadge = ({ type }: { type: ProjectType }) => {
         </Badge>
       </TooltipTrigger>
       <TooltipContent>
-        Agent Vault is in preview and subject to change. Not recommended for production
-        use.
+        Agent Vault is in preview and subject to change. Not recommended for production use.
       </TooltipContent>
     </Tooltip>
   );
