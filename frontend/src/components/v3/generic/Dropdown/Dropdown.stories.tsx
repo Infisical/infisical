@@ -120,14 +120,35 @@ export const WithDescriptions: Story = {
             </span>
           </div>
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuCheckboxItem checked>
           <div className="flex flex-col">
-            <span className="font-medium">ACME</span>
+            <span className="font-medium">Certificate renewal</span>
             <span className="text-xs text-accent">
-              Automate certificate lifecycle with ACME clients like Certbot or Caddy.
+              Renew certificates automatically before they expire.
             </span>
           </div>
-        </DropdownMenuItem>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuRadioGroup value="acme">
+          <DropdownMenuRadioItem value="acme">
+            <div className="flex flex-col">
+              <span className="font-medium">ACME</span>
+              <span className="text-xs text-accent">
+                Automate certificate lifecycle with ACME clients like Certbot or Caddy.
+              </span>
+            </div>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <div className="flex flex-col">
+              <span className="font-medium">Advanced methods</span>
+              <span className="text-xs text-accent">Configure an external enrollment method.</span>
+            </div>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem>SCEP</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
   )

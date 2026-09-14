@@ -93,7 +93,7 @@ function DropdownMenuCheckboxItem({
     <DropdownMenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
       className={cn(
-        "relative flex h-row-md cursor-pointer items-center gap-2.5 rounded-sm pr-10 pl-2 text-sm outline-0 select-none",
+        "relative flex min-h-row-md cursor-pointer items-center gap-2.5 rounded-sm py-1 pr-10 pl-2 text-sm outline-0 select-none",
         "focus:bg-foreground/5",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         "[&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-icon-md",
@@ -127,7 +127,7 @@ function DropdownMenuRadioItem({
     <DropdownMenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       className={cn(
-        "relative flex h-row-sm cursor-pointer items-center gap-2 rounded-sm pr-8 pl-2 text-sm outline-0 select-none",
+        "relative flex min-h-row-sm cursor-pointer items-center gap-2 rounded-sm py-1 pr-8 pl-2 text-sm outline-0 select-none",
         "focus:bg-foreground/10",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         "[&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-icon-sm",
@@ -204,7 +204,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex h-row-md cursor-default items-center gap-2.5 rounded-sm pr-2 pl-2 text-sm outline-0 select-none focus:bg-foreground/5 data-[inset]:pl-8 data-[state=open]:bg-foreground/5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-icon-md",
+        "flex min-h-row-md cursor-default items-center gap-2.5 rounded-sm px-2 py-1 text-sm outline-0 select-none focus:bg-foreground/5 data-[inset]:pl-8 data-[state=open]:bg-foreground/5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-icon-md",
         className
       )}
       {...props}
