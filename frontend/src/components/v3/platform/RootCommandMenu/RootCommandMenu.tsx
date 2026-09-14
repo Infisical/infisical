@@ -67,7 +67,6 @@ import { useGetUserOrgPermissions } from "@app/hooks/api/roles";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { getRootCommandMenuAction } from "./rootCommandMenuTelemetry";
 import { useSecretManagerCommandSearch } from "./useSecretManagerCommandSearch";
 
 export type RootCommandMenuShell = "organization" | "admin" | "personal-settings";
@@ -83,6 +82,24 @@ type AsyncCommandSearch = {
   searchStatus: GlobalCommandMenuSearchStatus;
   onSearchChange: (search: string) => void;
 };
+
+const COMMAND_MENU_EVENTS = {
+  Opened: "Command Menu Opened",
+  ActionSelected: "Command Menu Action Selected"
+} as const;
+
+const PRIVATE_ACTION_TYPES = [
+  ["entity-project-", "Project"],
+  ["entity-organization-", "Organization"],
+  ["entity-team-", "Team"],
+  ["project-resource-folder-", "Folder"],
+  ["project-resource-dynamic-", "Dynamic Secret"],
+  ["project-resource-rotation-", "Secret Rotation"],
+  ["project-resource-secret-", "Secret"]
+] as const;
+
+const getCommandMenuAction = ({ id, label }: Pick<GlobalCommandMenuItem, "id" | "label">) =>
+  PRIVATE_ACTION_TYPES.find(([prefix]) => id.startsWith(prefix))?.[1] ?? label;
 
 const projectIconClassNames: Record<ProjectType, string> = {
   [ProjectType.SecretManager]: "text-product-sm",
@@ -116,14 +133,14 @@ const NavigationCommandMenu = ({
       onSearchChange={asyncSearch?.onSearchChange}
       onShortcutToggle={(open) => {
         if (open) {
-          telemetry.capture("Command Menu Opened", { shell, source: "keyboard-shortcut" });
+          telemetry.capture(COMMAND_MENU_EVENTS.Opened, { shell, source: "keyboard-shortcut" });
         }
       }}
       onItemSelect={(item, { mode }) => {
-        telemetry.capture("Command Menu Action Selected", {
+        telemetry.capture(COMMAND_MENU_EVENTS.ActionSelected, {
           shell,
           mode,
-          action: getRootCommandMenuAction(item),
+          action: getCommandMenuAction(item),
           actionType: item.children ? "drill-down" : "navigation"
         });
       }}
