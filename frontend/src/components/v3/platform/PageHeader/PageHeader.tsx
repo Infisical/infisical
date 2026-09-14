@@ -88,7 +88,7 @@ export const PageHeader = ({
       {backLink && (
         <Slot
           data-slot="page-header-back-link"
-          className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="flex w-fit items-center gap-1 text-sm text-accent transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           {backLink}
         </Slot>
