@@ -476,6 +476,11 @@ export const ProjectCategoryOverview = () => {
             PRODUCT_STYLES[type];
           const Icon = getProjectLucideIcon(type);
 
+          const isAccessBlocked =
+            (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
+            (type === ProjectType.PAM && isPamAccessBlocked) ||
+            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
+
           const tileBody = (
             <>
               <CardHeader>
@@ -492,7 +497,9 @@ export const ProjectCategoryOverview = () => {
                       >
                         {getProjectTitle(type)}
                       </span>
-                      {type === ProjectType.AgentVault && <PreviewBadge />}
+                      {type === ProjectType.AgentVault && (
+                        <PreviewBadge withTooltip={!isAccessBlocked} />
+                      )}
                     </CardDescription>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
                       {getProjectDescription(type)}
@@ -519,11 +526,6 @@ export const ProjectCategoryOverview = () => {
               </CardContent>
             </>
           );
-
-          const isAccessBlocked =
-            (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
-            (type === ProjectType.PAM && isPamAccessBlocked) ||
-            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
 
           if (isAccessBlocked) {
             return (
