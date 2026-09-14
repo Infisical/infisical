@@ -10,6 +10,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  PreviewBadge,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -475,6 +476,11 @@ export const ProjectCategoryOverview = () => {
             PRODUCT_STYLES[type];
           const Icon = getProjectLucideIcon(type);
 
+          const isAccessBlocked =
+            (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
+            (type === ProjectType.PAM && isPamAccessBlocked) ||
+            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
+
           const tileBody = (
             <>
               <CardHeader>
@@ -485,12 +491,15 @@ export const ProjectCategoryOverview = () => {
                     <Icon className={iconClassName} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <CardDescription className="text-base font-semibold text-foreground">
+                    <CardDescription className="flex items-center gap-1.5 text-base font-semibold text-foreground">
                       <span
                         className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
                       >
                         {getProjectTitle(type)}
                       </span>
+                      {type === ProjectType.AgentVault && (
+                        <PreviewBadge withTooltip={!isAccessBlocked} />
+                      )}
                     </CardDescription>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
                       {getProjectDescription(type)}
@@ -517,11 +526,6 @@ export const ProjectCategoryOverview = () => {
               </CardContent>
             </>
           );
-
-          const isAccessBlocked =
-            (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
-            (type === ProjectType.PAM && isPamAccessBlocked) ||
-            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
 
           if (isAccessBlocked) {
             return (

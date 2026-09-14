@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-
 import { Check } from "lucide-react";
 
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
-import { Command, CommandGroup, CommandItem, CommandList } from "@app/components/v3";
+import { Command, CommandGroup, CommandItem, CommandList, PreviewBadge } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { getCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
@@ -133,6 +133,7 @@ const TypeSelectInner = ({
         >
           <ProductIcon className="h-[14px] w-[14px] shrink-0" />
           <span className="truncate">{pillLabel}</span>
+          {currentType === ProjectType.AgentVault && <PreviewBadge />}
         </button>
         <NavbarSwitcherTrigger aria-label="switch-product-type" />
         <NavbarSwitcherContent className="w-80">
@@ -154,7 +155,10 @@ const TypeSelectInner = ({
                       <Check className={currentType === type ? "opacity-100" : "opacity-0"} />
                       <ItemIcon className="h-4 w-4 shrink-0" />
                       <div className="flex min-w-0 flex-1 items-center justify-between">
-                        <span className="truncate text-sm">{getProjectTitle(type)}</span>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-sm">{getProjectTitle(type)}</span>
+                          {type === ProjectType.AgentVault && <PreviewBadge />}
+                        </div>
                         {!isCertManager && count > 1 && (
                           <span className="text-xs text-muted">{count}</span>
                         )}
