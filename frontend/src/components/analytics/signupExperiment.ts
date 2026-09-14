@@ -69,10 +69,18 @@ export const useSignupFlowVariant = (enabled = true) => {
       setVariant(nextVariant);
     };
 
-    const unsubscribe = client.onFeatureFlags(() => {
-      const flagValue = client.getFeatureFlag(SIGNUP_FLOW_FEATURE_FLAG);
-      const resolvedVariant = resolveSignupFlowVariant(flagValue);
-      settle(resolvedVariant.variant, resolvedVariant.shouldPersist);
+    const unsubscribe = client.onFeatureFlags((_flags, _variants, context) => {
+      try {
+        const flagValue = context?.errorsLoading
+          ? undefined
+          : client.getFeatureFlag(SIGNUP_FLOW_FEATURE_FLAG, {
+              fresh: true
+            });
+        const resolvedVariant = resolveSignupFlowVariant(flagValue);
+        settle(resolvedVariant.variant, resolvedVariant.shouldPersist);
+      } catch {
+        settle(SignupFlowVariant.Control);
+      }
     });
     const timeout = window.setTimeout(
       () => settle(SignupFlowVariant.Control),
@@ -89,11 +97,15 @@ export const useSignupFlowVariant = (enabled = true) => {
 };
 
 export const captureSignupCompleted = (signupMethod: "email" | "sso") => {
-  const client = getPostHog();
-  if (!client) return;
+  try {
+    const client = getPostHog();
+    if (!client) return;
 
-  client.capture(SIGNUP_COMPLETED_EVENT, {
-    signup_method: signupMethod,
-    signup_flow_variant: getPersistedSignupFlowVariant() ?? SignupFlowVariant.Control
-  });
+    client.capture(SIGNUP_COMPLETED_EVENT, {
+      signup_method: signupMethod,
+      signup_flow_variant: getPersistedSignupFlowVariant() ?? SignupFlowVariant.Control
+    });
+  } catch {
+    // Analytics must never block successful signup navigation.
+  }
 };
