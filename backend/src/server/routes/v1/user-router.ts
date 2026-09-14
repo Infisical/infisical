@@ -235,6 +235,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      await server.services.user.assertMfaFactorRemovable(req.permission.id, MfaMethod.TOTP);
       await ensureStepUpMfa(server, {
         userId: req.permission.id,
         orgId: req.permission.orgId,
@@ -594,6 +595,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         throw new NotFoundError({ message: "Credential not found" });
       }
       const isRemovingLastPasskey = credentials.length === 1;
+      if (isRemovingLastPasskey) {
+        await server.services.user.assertMfaFactorRemovable(req.permission.id, MfaMethod.WEBAUTHN);
+      }
 
       await ensureStepUpMfa(server, {
         userId: req.permission.id,

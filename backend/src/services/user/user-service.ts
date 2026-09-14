@@ -152,6 +152,14 @@ export const userServiceFactory = ({
     return credentials.length > 0;
   };
 
+  const findReplacementMfaMethod = async (user: { id: string; email?: string | null }, excludeMethod: MfaMethod) => {
+    const fallbackOrder = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL].filter(
+      (method) => method !== excludeMethod
+    );
+    const configured = await Promise.all(fallbackOrder.map((method) => isMfaMethodConfigured(user, method)));
+    return fallbackOrder.find((_, index) => configured[index]) ?? null;
+  };
+
   // A method can only be selected/activated once the user has actually configured
   // that factor. EMAIL uses the account email, so it needs no enrollment, but it
   // delivers codes over SMTP — which self-hosted instances may not have configured.
@@ -249,6 +257,26 @@ export const userServiceFactory = ({
     const user = await userDAL.findById(userId);
     if (user?.isMfaEnabled) return true;
     return hasMfaEnforcingOrg(userId);
+  };
+
+  const resolveMfaMethodAfterRemoval = async (userId: string, removedMethod: MfaMethod): Promise<MfaMethod | null> => {
+    const user = await userDAL.findById(userId);
+    if (!user || user.selectedMfaMethod !== removedMethod) return null;
+
+    const replacement = await findReplacementMfaMethod(user, removedMethod);
+    if (replacement) return replacement;
+
+    if (user.isMfaEnabled) {
+      throw new BadRequestError({
+        message:
+          "Cannot remove your only usable two-factor method while two-factor authentication is enabled. Set up a passkey or authenticator app first, or disable two-factor authentication."
+      });
+    }
+    return MfaMethod.EMAIL;
+  };
+
+  const assertMfaFactorRemovable = async (userId: string, method: MfaMethod) => {
+    await resolveMfaMethodAfterRemoval(userId, method);
   };
 
   // Disables MFA. Enrolled factors are preserved so re-enabling does not require
@@ -630,11 +658,7 @@ export const userServiceFactory = ({
     }
     if (requiredMfaMethod !== excludeMethod) return requiredMfaMethod;
 
-    const fallbackOrder = [MfaMethod.WEBAUTHN, MfaMethod.TOTP, MfaMethod.EMAIL].filter(
-      (method) => method !== excludeMethod
-    );
-    const configured = await Promise.all(fallbackOrder.map((method) => isMfaMethodConfigured(user, method)));
-    return fallbackOrder.find((_, index) => configured[index]) ?? requiredMfaMethod;
+    return (await findReplacementMfaMethod(user, excludeMethod)) ?? requiredMfaMethod;
   };
 
   const deleteUser = async (userId: string) => {
@@ -831,6 +855,8 @@ export const userServiceFactory = ({
     getMe,
     getStepUpMfaMethod,
     isStepUpMfaRequired,
+    resolveMfaMethodAfterRemoval,
+    assertMfaFactorRemovable,
     createUserAction,
     listUserGroups,
     getUserAction,
