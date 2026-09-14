@@ -5,7 +5,6 @@ import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
-import { initPostHog } from "./components/analytics/posthog";
 // Load-bearing import: the entry module pulling in this barrel is what keeps
 // @app/context in the entry chunk. Pointing this at a deeper path re-partitions
 // the chunks and breaks module init order, which took the app down on boot.
@@ -34,7 +33,6 @@ import "./translation";
 // for passing in lng and translations on init/
 
 initializePlatform();
-initPostHog();
 
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);

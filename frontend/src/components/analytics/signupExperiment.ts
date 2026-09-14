@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
+
 import { getPostHog, isPostHogEnabled } from "./posthog";
 import {
   resolveSignupFlowVariant,
@@ -97,15 +99,9 @@ export const useSignupFlowVariant = (enabled = true) => {
 };
 
 export const captureSignupCompleted = (signupMethod: "email" | "sso") => {
-  try {
-    const client = getPostHog();
-    if (!client) return;
-
-    client.capture(SIGNUP_COMPLETED_EVENT, {
-      signup_method: signupMethod,
-      signup_flow_variant: getPersistedSignupFlowVariant() ?? SignupFlowVariant.Control
-    });
-  } catch {
-    // Analytics must never block successful signup navigation.
-  }
+  const telemetry = new Telemetry().getInstance();
+  telemetry.capture(SIGNUP_COMPLETED_EVENT, {
+    signup_method: signupMethod,
+    signup_flow_variant: getPersistedSignupFlowVariant() ?? SignupFlowVariant.Control
+  });
 };
