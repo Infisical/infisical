@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { FormatOptionLabelMeta, MultiValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -108,6 +108,16 @@ const getManualMemberOption = (
   const username = email.trim().toLowerCase();
   return { type, username, name: username };
 };
+
+const getNewMemberOptionData = (
+  email: string,
+  optionLabel: ReactNode,
+  type: ApproverType.User | BypasserType.User
+): ApproverOptionData & { __isNew__: true } => ({
+  ...getManualMemberOption(email, type),
+  name: typeof optionLabel === "string" ? optionLabel : email,
+  __isNew__: true
+});
 
 const canAddMemberEmail = (input: string, options: readonly ApproverOptionData[]) => {
   const username = input.trim().toLowerCase();
@@ -584,6 +594,9 @@ const Form = ({
         filterOption={filterApproverOption}
         formatOptionLabel={formatApproverOptionLabel}
         formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+        getNewOptionData={(input, optionLabel) =>
+          getNewMemberOptionData(input, optionLabel, ApproverType.User)
+        }
         isValidNewOption={(input, value) =>
           canAddMemberEmail(input, [
             ...(value as MultiValue<ApproverOptionData>),
@@ -990,6 +1003,9 @@ const Form = ({
                 filterOption={filterApproverOption}
                 formatOptionLabel={formatApproverOptionLabel}
                 formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                getNewOptionData={(input, optionLabel) =>
+                  getNewMemberOptionData(input, optionLabel, ApproverType.User)
+                }
                 isValidNewOption={(input, value) =>
                   canAddMemberEmail(input, [
                     ...(value as MultiValue<ApproverOptionData>),
@@ -1096,6 +1112,9 @@ const Form = ({
                   filterOption={filterApproverOption}
                   formatOptionLabel={formatApproverOptionLabel}
                   formatCreateLabel={(input) => `Use member email “${input.trim()}”`}
+                  getNewOptionData={(input, optionLabel) =>
+                    getNewMemberOptionData(input, optionLabel, BypasserType.User)
+                  }
                   isValidNewOption={(input, value) =>
                     canAddMemberEmail(input, [
                       ...(value as MultiValue<ApproverOptionData>),
