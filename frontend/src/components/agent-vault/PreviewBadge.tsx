@@ -8,7 +8,7 @@ export const PreviewBadge = ({ type }: { type: ProjectType }) => {
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge
-          variant="info"
+          variant="warning"
           tabIndex={0}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
