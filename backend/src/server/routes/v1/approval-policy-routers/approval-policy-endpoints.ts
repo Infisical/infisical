@@ -422,6 +422,8 @@ export const registerApprovalPolicyEndpoints = ({
             metadata: {
               policyType: request.type,
               approvalRequestId: request.id,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail,
               justification: req.body.justification || undefined,
               requestDuration: req.body.requestDuration || "infinite",
               ...getApprovalRequestSubjectMetadata(request)
@@ -478,6 +480,8 @@ export const registerApprovalPolicyEndpoints = ({
           metadata: {
             policyType: request.type,
             approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
             status: request.status,
             ...getApprovalRequestSubjectMetadata(request)
           }
@@ -545,6 +549,8 @@ export const registerApprovalPolicyEndpoints = ({
             metadata: {
               policyType: request.type,
               approvalRequestId: request.id,
+              requesterName: request.requesterName,
+              requesterEmail: request.requesterEmail,
               comment: req.body.comment,
               ...getApprovalRequestSubjectMetadata(request)
             }
@@ -607,6 +613,8 @@ export const registerApprovalPolicyEndpoints = ({
           metadata: {
             policyType: request.type,
             approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
             comment: req.body.comment,
             ...getApprovalRequestSubjectMetadata(request)
           }
@@ -661,6 +669,8 @@ export const registerApprovalPolicyEndpoints = ({
           metadata: {
             policyType: request.type,
             approvalRequestId: request.id,
+            requesterName: request.requesterName,
+            requesterEmail: request.requesterEmail,
             ...getApprovalRequestSubjectMetadata(request)
           }
         }

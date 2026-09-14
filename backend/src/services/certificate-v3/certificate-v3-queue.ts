@@ -8,6 +8,7 @@ import { QueueJobs } from "@app/queue";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { CERTIFICATE_RENEWAL_CONFIG } from "../certificate-common/certificate-constants";
+import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateV3ServiceFactory } from "./certificate-v3-service";
 
 type TCertificateV3QueueServiceFactoryDep = {
@@ -79,6 +80,8 @@ export const certificateV3QueueServiceFactory = ({
                   internal: true
                 });
 
+                const isIssued = renewed.status === CertificateRequestStatus.ISSUED;
+
                 totalCertificatesRenewed += 1;
 
                 await auditLogService.createAuditLog({
@@ -91,13 +94,18 @@ export const certificateV3QueueServiceFactory = ({
                     type: EventType.AUTOMATED_RENEW_CERTIFICATE,
                     metadata: {
                       certificateId: certificate.id,
-                      newCertificateId: renewed.certificateId,
+                      // An external-CA renewal returns a renewal order id in `certificateId` while
+                      // it is still pending, so only an issued result names a real certificate.
+                      ...(isIssued && {
+                        newCertificateId: renewed.certificateId,
+                        serialNumber: renewed.serialNumber
+                      }),
+                      certificateRequestId: renewed.certificateRequestId,
                       commonName: certificate.commonName || "",
                       profileId: certificate.profileId!,
                       renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
                       profileName: certificate.profileName || "",
-                      status: renewed.status,
-                      serialNumber: renewed.serialNumber
+                      status: renewed.status
                     }
                   }
                 });

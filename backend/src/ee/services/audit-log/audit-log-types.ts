@@ -3429,6 +3429,7 @@ interface AutomatedRenewCertificate {
   metadata: {
     certificateId: string;
     newCertificateId?: string;
+    certificateRequestId?: string;
     commonName: string;
     profileId: string;
     renewBeforeDays: string;
@@ -6585,6 +6586,7 @@ interface CancelCertificateRequestEvent {
     commonName?: string;
     cancelled: boolean;
     previousStatus: string;
+    previousPendingMessage: string | null;
   };
 }
 
@@ -6647,6 +6649,8 @@ interface ApprovalRequestGetEvent {
   metadata: {
     policyType: string;
     approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     status: string;
   } & TApprovalRequestSubjectMetadata;
 }
@@ -6664,6 +6668,8 @@ interface ApprovalRequestCreateEvent {
   metadata: {
     policyType: string;
     approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     justification?: string;
     requestDuration: string;
   } & TApprovalRequestSubjectMetadata;
@@ -6674,6 +6680,8 @@ interface ApprovalRequestApproveEvent {
   metadata: {
     policyType: string;
     approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     comment?: string;
   } & TApprovalRequestSubjectMetadata;
 }
@@ -6683,6 +6691,8 @@ interface ApprovalRequestRejectEvent {
   metadata: {
     policyType: string;
     approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     comment?: string;
   } & TApprovalRequestSubjectMetadata;
 }
@@ -6692,6 +6702,8 @@ interface ApprovalRequestCancelEvent {
   metadata: {
     policyType: string;
     approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
   } & TApprovalRequestSubjectMetadata;
 }
 
