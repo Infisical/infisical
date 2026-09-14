@@ -13,7 +13,8 @@ const buttonBadgeBackgrounds: Partial<Record<NonNullable<TBadgeProps["variant"]>
   project: "bg-[color-mix(in_srgb,var(--color-project)_15%,var(--color-card))]",
   org: "bg-[color-mix(in_srgb,var(--color-org)_15%,var(--color-card))]",
   "sub-org": "bg-[color-mix(in_srgb,var(--color-sub-org)_15%,var(--color-card))]",
-  pam: "bg-[color-mix(in_srgb,var(--color-product-pam)_15%,var(--color-card))]"
+  pam: "bg-[color-mix(in_srgb,var(--color-product-pam)_15%,var(--color-card))]",
+  av: "bg-[color-mix(in_srgb,var(--color-product-av)_15%,var(--color-card))]"
 };
 
 const buttonBadgeVariants = cva("pointer-events-none absolute z-10", {

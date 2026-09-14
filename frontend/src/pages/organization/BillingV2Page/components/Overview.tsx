@@ -13,6 +13,7 @@ import { ProductsCard } from "./cards/ProductsCard";
 import { ErrorPanel } from "./states/ErrorPanel";
 import { OverviewSkeleton } from "./states/OverviewSkeleton";
 import { Banner } from "./Banner";
+import { TrialBanners } from "./TrialBanners";
 
 export type OverviewProps = {
   overview?: BillingV2Overview;
@@ -132,6 +133,14 @@ export const Overview = ({
         onManage={onUpgrade}
         onContact={onContact}
       /> */}
+      <TrialBanners
+        overview={overview}
+        catalog={catalog}
+        readOnly={productsReadOnly}
+        onManage={onUpgrade}
+        onUpdatePayment={onUpdatePayment}
+        onContact={onContact}
+      />
       <BillingHeaderCard overview={overview} catalog={catalog} />
       <ProductsCard
         overview={overview}

@@ -138,6 +138,14 @@ export type TQueueSecretScanningResourceDiffScan =
   | TQueueBitbucketResourceDiffScan
   | TQueueGitLabResourceDiffScan;
 
+export type TQueueSecretScanningResourceDiffScanPayload = {
+  payload: TQueueSecretScanningResourceDiffScan["payload"];
+  dataSourceType: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceId: string;
+  scanId: string;
+};
+
 export type TQueueSecretScanningSendNotification = {
   dataSource: TSecretScanningDataSources;
   resourceName: string;

@@ -28,11 +28,13 @@ import {
   assertCaInProfileProject,
   getCaCertChain
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { assertCaSupportsCustomExtensions } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
+import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -44,6 +46,7 @@ import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certifi
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -87,11 +90,15 @@ type TPkiScepServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  usageCounterDAL: Pick<
+    TUsageCounterDALFactory,
+    "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
+  >;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -123,6 +130,7 @@ export const pkiScepServiceFactory = ({
   appConnectionDAL,
   keyStore,
   licenseService,
+  usageCounterDAL,
   certificatePolicyDAL,
   certificatePolicyService,
   certificateRequestService,
@@ -911,13 +919,24 @@ export const pkiScepServiceFactory = ({
           validity: { ttl }
         },
         profile.defaults
-      )
+      ),
+      { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
       throw new BadRequestError({
         message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
       });
     }
+    assertCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
+
+    await validateCertificateRequestLicense({
+      request: { ...certRequest, keyAlgorithm, signatureAlgorithm },
+      altNames: (certRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
+      projectId: profile.projectId,
+      projectDAL,
+      licenseService,
+      quotaDeps: { projectDAL, licenseService, usageCounterDAL, keyStore }
+    });
 
     const newCertRequest = await certificateRequestService.createCertificateRequest({
       actor: ActorType.SCEP_ACCOUNT,
@@ -937,6 +956,7 @@ export const pkiScepServiceFactory = ({
       csr: csrPem,
       ttl,
       status: CertificateRequestStatus.PENDING,
+      customExtensions: validationResult.resolvedCustomExtensions,
       enrollmentType: EnrollmentType.SCEP,
       organization: certRequest.organization,
       organizationalUnit: certRequest.organizationalUnit,
@@ -950,6 +970,7 @@ export const pkiScepServiceFactory = ({
       certificateId: newCertRequest.id,
       profileId: profile.id,
       caId: profile.caId!,
+      customExtensions: validationResult.resolvedCustomExtensions,
       ttl,
       signatureAlgorithm: signatureAlgorithm || "",
       keyAlgorithm: keyAlgorithm || "",

@@ -66,7 +66,10 @@ export const FolderAccountRow = ({
     requireReason: account.requireReason,
     accessStatus,
     grantExpiresAt: account.grantExpiresAt,
+    pendingRequestId: account.pendingRequestId,
+    canBreakGlass: account.canBreakGlass,
     credentialAccessStatus: account.credentialAccessStatus,
+    credentialPendingRequestId: account.credentialPendingRequestId,
     createdAt: account.createdAt,
     updatedAt: account.updatedAt
   };

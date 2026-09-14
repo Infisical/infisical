@@ -143,6 +143,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                             shouldValidate: true
                           });
                         }}
+                        name="create-project-role-name"
                       />
                       <FieldError>{error?.message}</FieldError>
                     </Field>

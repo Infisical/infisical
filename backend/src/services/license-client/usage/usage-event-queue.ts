@@ -4,13 +4,9 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 
-import { ActiveCerts, InternalCas } from "../features";
 import { TMeteredFeature } from "./usage-counters";
 import { TUsageMeteringServiceFactory } from "./usage-metering-service";
 import { TUsageReporter, UsageReportError } from "./usage-reporter";
-
-// Temporarily not reporting the internal-CA and certificate meters; events for these drain harmlessly.
-const SKIPPED_DIMENSION_KEYS = new Set<string>([InternalCas.key, ActiveCerts.key]);
 
 // Self-hosted is a single license covering the whole database, so usage is reported once at this
 // instance identity ("full database" level) rather than per organization. Mirrors
@@ -48,9 +44,6 @@ export const usageEventQueueFactory = ({
   // Counts the meter and reports it to the License Server only when the value changed since the last
   // report. No-ops when the reporter is null (v2 disabled), so queued events drain harmlessly.
   const handleUsageEvent = async (orgId: string, dimensionKey: string, observedAt: Date) => {
-    if (SKIPPED_DIMENSION_KEYS.has(dimensionKey)) {
-      return;
-    }
     if (!usageReporter) {
       return;
     }
@@ -64,18 +57,21 @@ export const usageEventQueueFactory = ({
       }
     }
 
+    const metered = featureByKey.get(dimensionKey);
+    if (!metered) {
+      logger.warn(`usage-metering: unknown metered feature, dropping event [dimensionKey=${dimensionKey}]`);
+      return;
+    }
+
     // Self-hosted is one license over the whole database: report (and dedup) once at the instance
     // identity, not per triggering org. The metered counts already span the whole instance in that
     // mode, so the org that triggered the event is irrelevant here.
-    const reportOrgId = isCloud ? orgId : SELF_HOSTED_LICENSE_ORG_ID;
+    //
+    // On cloud the identity is the meter's own: a tree-scoped dimension resolves to the root so the
+    // family reports once, and everything else stays keyed on the triggering org.
+    const reportOrgId = isCloud ? ((await metered.resolveReportOrgId?.(orgId)) ?? orgId) : SELF_HOSTED_LICENSE_ORG_ID;
 
     try {
-      const metered = featureByKey.get(dimensionKey);
-      if (!metered) {
-        logger.warn(`usage-metering: unknown metered feature, dropping event [dimensionKey=${dimensionKey}]`);
-        return;
-      }
-
       const value = await metered.count(reportOrgId);
 
       const lastReportedKey = KeyStorePrefixes.LicenseUsageLastReported(reportOrgId, dimensionKey);

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Loader2Icon, Search } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -27,7 +26,7 @@ type Props = {
 };
 
 const ProviderCard = ({ app, onClick }: { app: AppConnection; onClick: () => void }) => {
-  const { name, image, category, description, icon } = APP_CONNECTION_MAP[app];
+  const { name, image, category, description, icon: AppIcon } = APP_CONNECTION_MAP[app];
 
   return (
     <button
@@ -42,13 +41,7 @@ const ProviderCard = ({ app, onClick }: { app: AppConnection; onClick: () => voi
             alt={`${name} logo`}
             className="h-6 w-6 object-contain"
           />
-          {icon && (
-            <FontAwesomeIcon
-              icon={icon}
-              className="absolute -right-1 -bottom-1 text-primary-700"
-              size="sm"
-            />
-          )}
+          {AppIcon && <AppIcon className="absolute -right-1 -bottom-1 size-3.5 text-primary-700" />}
         </div>
         <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
           {category}

@@ -12,6 +12,7 @@ export type {
   TCertificatePolicy,
   TCertificatePolicyRule,
   TCreateCertificatePolicyDTO,
+  TCustomExtensionRule,
   TDeleteCertificatePolicyDTO,
   TGetCertificatePolicyByIdDTO,
   TListCertificatePoliciesDTO,

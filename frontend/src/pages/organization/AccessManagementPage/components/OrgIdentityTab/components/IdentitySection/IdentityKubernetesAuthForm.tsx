@@ -28,12 +28,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -966,7 +966,7 @@ export const IdentityKubernetesAuthForm = ({
                     return (
                       <Field className={templateDisabledClass}>
                         <div className="flex items-center gap-2">
-                          <Switch
+                          <Toggle
                             id="k8s-verify-tls-certificate"
                             variant={scopeVariant}
                             checked={hasCaCert ? true : value}

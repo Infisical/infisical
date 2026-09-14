@@ -1,155 +1,166 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { SecretValidationRulesSchema } from "@app/db/schemas";
-import { SECRET_VALIDATION_RULES } from "@app/lib/api-docs";
+import { SecretValidationRules } from "@app/lib/api-docs";
+import { removeTrailingSlash } from "@app/lib/fn";
+import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 
 import {
-  ConstraintTarget,
-  ConstraintType,
-  DynamicSecretRuleProvider,
-  SecretRotationRuleProvider,
-  SecretValidationRuleType,
-  TSecretValidationRuleInputs
-} from "./secret-validation-rule-types";
+  MAX_CONSTRAINT_AFFIX_LENGTH,
+  MAX_CONSTRAINT_PATTERN_LENGTH,
+  MAX_GENERATED_CONSTRAINT_LENGTH,
+  MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS,
+  MAX_SECRET_CONSTRAINT_LENGTH
+} from "./secret-validation-rule-constants";
+import { ConstraintTarget, SecretValidationRuleType } from "./secret-validation-rule-enums";
+import { CONSTRAINT_TARGET_DOC_LABELS, SECRET_VALIDATION_RULE_NAME_MAP } from "./secret-validation-rule-maps";
 
-export const MAX_PREVENT_VALUE_REUSE_VERSIONS = 25;
+const lengthSchema = (max: number) => z.number().int().min(1).max(max);
 
-const STATIC_RULE_TARGETS = [ConstraintTarget.SecretKey, ConstraintTarget.SecretValue] as const;
-const GENERATED_RULE_TARGETS = [ConstraintTarget.GeneratedPassword] as const;
+// A generated credential is bounded by what the generator can produce; a stored secret is not.
+const maxLengthFor = (target: ConstraintTarget) =>
+  target === ConstraintTarget.GeneratedPassword ? MAX_GENERATED_CONSTRAINT_LENGTH : MAX_SECRET_CONSTRAINT_LENGTH;
 
-const GENERATED_CONSTRAINT_TYPES = [
-  ConstraintType.MinLength,
-  ConstraintType.MaxLength,
-  ConstraintType.RegexPattern,
-  ConstraintType.RequiredPrefix,
-  ConstraintType.RequiredSuffix
-] as const;
-const STATIC_CONSTRAINT_TYPES = [...GENERATED_CONSTRAINT_TYPES, ConstraintType.PreventValueReuse] as const;
-
-/** Embed description + example so Mintlify/OpenAPI curl samples include enum fields. */
-const openApiField = (description: string, example: string) => JSON.stringify({ description, example });
-
-type TConstraintInput = {
-  type: ConstraintType;
-  appliesTo: ConstraintTarget;
-  value: string;
-};
-
-const valueRequiredRefinement = (c: TConstraintInput) =>
-  c.type === ConstraintType.PreventValueReuse || c.value.length > 0;
-
-const preventValueReuseTargetRefinement = (c: TConstraintInput) =>
-  c.type !== ConstraintType.PreventValueReuse || c.appliesTo === ConstraintTarget.SecretValue;
-
-const preventValueReuseRangeRefinement = (c: TConstraintInput) => {
-  if (c.type !== ConstraintType.PreventValueReuse) return true;
-  const num = Number(c.value);
-  return Number.isInteger(num) && num >= 1 && num <= MAX_PREVENT_VALUE_REUSE_VERSIONS;
-};
-
-const withConstraintRefinements = <T extends z.ZodType<TConstraintInput>>(schema: T) =>
-  schema
-    .refine(valueRequiredRefinement, { message: "Value is required", path: ["value"] })
-    .refine(preventValueReuseTargetRefinement, {
-      message: "No value reuse constraint can only apply to secret values",
-      path: ["appliesTo"]
-    })
-    .refine(preventValueReuseRangeRefinement, {
-      message: `Prevent value reuse version count must be between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`,
-      path: ["value"]
-    });
-
-const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) => {
-  if (ruleType === SecretValidationRuleType.StaticSecrets) {
-    return withConstraintRefinements(
-      z.object({
-        type: z
-          .enum(STATIC_CONSTRAINT_TYPES)
-          .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeStatic, ConstraintType.MinLength)),
-        appliesTo: z
-          .enum(STATIC_RULE_TARGETS)
-          .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToStatic, ConstraintTarget.SecretValue)),
-        value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
-      })
-    );
-  }
-
-  return withConstraintRefinements(
-    z.object({
-      type: z
-        .enum(GENERATED_CONSTRAINT_TYPES)
-        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintTypeGenerated, ConstraintType.MinLength)),
-      appliesTo: z
-        .enum(GENERATED_RULE_TARGETS)
-        .describe(openApiField(SECRET_VALIDATION_RULES.RULE.appliesToGenerated, ConstraintTarget.GeneratedPassword)),
-      value: z.string().describe(openApiField(SECRET_VALIDATION_RULES.RULE.constraintValue, "8"))
-    })
+const regexPatternSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_CONSTRAINT_PATTERN_LENGTH)
+  .refine(
+    (pattern) => {
+      try {
+        // eslint-disable-next-line no-new
+        new RE2(pattern);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Must be a valid regular expression" }
   );
-};
 
-export const staticSecretsInputsSchema = z.object({
-  constraints: z
-    .array(buildConstraintSchemaForRuleType(SecretValidationRuleType.StaticSecrets))
-    .min(1)
-    .describe(SECRET_VALIDATION_RULES.RULE.constraints)
-});
+const affixSchema = z.string().min(1).max(MAX_CONSTRAINT_AFFIX_LENGTH);
 
-export const dynamicSecretsInputsSchema = z.object({
-  providers: z
-    .array(z.nativeEnum(DynamicSecretRuleProvider))
-    .min(1, "Select at least one provider")
-    .describe(SECRET_VALIDATION_RULES.RULE.dynamicSecretProviders),
-  constraints: z
-    .array(buildConstraintSchemaForRuleType(SecretValidationRuleType.DynamicSecrets))
-    .min(1)
-    .describe(SECRET_VALIDATION_RULES.RULE.constraints)
-});
-
-export const secretRotationsInputsSchema = z.object({
-  providers: z
-    .array(z.nativeEnum(SecretRotationRuleProvider))
-    .min(1, "Select at least one provider")
-    .describe(SECRET_VALIDATION_RULES.RULE.secretRotationProviders),
-  constraints: z
-    .array(buildConstraintSchemaForRuleType(SecretValidationRuleType.SecretRotations))
-    .min(1)
-    .describe(SECRET_VALIDATION_RULES.RULE.constraints)
-});
-
-// Discriminated union for create request bodies / API responses.
-// Constraints (and providers for generated-credential rules) sit directly on
-// the rule object — there is no nested `inputs` wrapper at the HTTP boundary.
-export const SecretValidationRuleSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal(SecretValidationRuleType.StaticSecrets).describe(SECRET_VALIDATION_RULES.RULE.type),
-    ...staticSecretsInputsSchema.shape
-  }),
-  z.object({
-    type: z.literal(SecretValidationRuleType.DynamicSecrets).describe(SECRET_VALIDATION_RULES.RULE.type),
-    ...dynamicSecretsInputsSchema.shape
-  }),
-  z.object({
-    type: z.literal(SecretValidationRuleType.SecretRotations).describe(SECRET_VALIDATION_RULES.RULE.type),
-    ...secretRotationsInputsSchema.shape
+const ReusePreventionSchema = z
+  .object({
+    previousVersions: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS)
+      .optional()
+      .describe(SecretValidationRules.REUSE_PREVENTION.previousVersions)
   })
-]);
+  .refine((reusePrevention) => Object.values(reusePrevention).some((value) => value !== undefined), {
+    message: "Set at least one reuse prevention option, or leave reusePrevention out entirely"
+  });
 
-// Map of type → inputs schema, used for runtime parsing
-const inputsSchemaMap: Record<SecretValidationRuleType, z.ZodSchema<TSecretValidationRuleInputs>> = {
-  [SecretValidationRuleType.StaticSecrets]: staticSecretsInputsSchema,
-  [SecretValidationRuleType.DynamicSecrets]: dynamicSecretsInputsSchema,
-  [SecretValidationRuleType.SecretRotations]: secretRotationsInputsSchema
+// the constraints every target supports
+export const BaseConstraintsSchema = z.object({
+  minLength: lengthSchema(MAX_SECRET_CONSTRAINT_LENGTH).optional(),
+  maxLength: lengthSchema(MAX_SECRET_CONSTRAINT_LENGTH).optional(),
+  regexPattern: regexPatternSchema.optional(),
+  requiredPrefix: affixSchema.optional(),
+  requiredSuffix: affixSchema.optional()
+});
+
+const withLengthWindowCheck = <T extends z.ZodRawShape>(shape: T) =>
+  z.object(shape).superRefine((constraints, ctx) => {
+    const { minLength, maxLength } = constraints as { minLength?: number; maxLength?: number };
+    if (minLength !== undefined && maxLength !== undefined && minLength > maxLength) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["minLength"],
+        message: `Minimum length (${minLength}) cannot be greater than maximum length (${maxLength})`
+      });
+    }
+  });
+
+const describedConstraintFields = (target: ConstraintTarget) => {
+  const docs = SecretValidationRules.CONSTRAINTS(CONSTRAINT_TARGET_DOC_LABELS[target]);
+  const { regexPattern, requiredPrefix, requiredSuffix } = BaseConstraintsSchema.shape;
+  const length = lengthSchema(maxLengthFor(target)).optional();
+
+  return {
+    docs,
+    shape: {
+      minLength: length.describe(docs.minLength),
+      maxLength: length.describe(docs.maxLength),
+      regexPattern: regexPattern.describe(docs.regexPattern),
+      requiredPrefix: requiredPrefix.describe(docs.requiredPrefix),
+      requiredSuffix: requiredSuffix.describe(docs.requiredSuffix)
+    }
+  };
 };
 
-export const parseSecretValidationRuleInputs = (type: string, inputs: unknown) => {
-  const schema = inputsSchemaMap[type as SecretValidationRuleType];
-  if (!schema) {
-    throw new Error(`Unknown secret validation rule type: ${type}`);
-  }
-  return schema.parse(inputs);
-};
+// the constraint object for one target. every field is optional; a field left out is not enforced
+export const buildConstraintsSchema = (target: ConstraintTarget) =>
+  withLengthWindowCheck(describedConstraintFields(target).shape);
 
-export const SecretValidationRuleResponseSchema = SecretValidationRulesSchema.omit({
+// a stored secret value can also be checked against values it has already had; a key cannot
+export const buildValueConstraintsSchema = (target: ConstraintTarget) =>
+  withLengthWindowCheck({
+    ...describedConstraintFields(target).shape,
+    reusePrevention: ReusePreventionSchema.optional().describe(SecretValidationRules.REUSE_PREVENTION.reusePrevention)
+  });
+
+export type TConstraints = z.infer<typeof BaseConstraintsSchema>;
+
+export type TReusePrevention = { previousVersions?: number };
+
+// a secret value additionally supports being checked against values it has already had
+export type TValueConstraints = TConstraints & { reusePrevention?: TReusePrevention };
+
+// true when at least one constraint field is set across every target on the rule
+export const hasAnyConstraint = (targets: (Record<string, unknown> | null | undefined)[]) =>
+  targets.some((target) => target && Object.values(target).some((value) => value !== undefined));
+
+export const BaseSecretValidationRuleSchema = SecretValidationRulesSchema.omit({
   type: true,
-  encryptedInputs: true
-}).and(SecretValidationRuleSchema);
+  encryptedInputs: true,
+  envId: true
+}).extend({
+  environment: z.object({ id: z.string().uuid(), name: z.string(), slug: z.string() }).nullable()
+});
+
+export const GenericCreateSecretValidationRuleFieldsSchema = (type: SecretValidationRuleType) => {
+  const docs = SecretValidationRules.CREATE(type);
+
+  return z.object({
+    name: GenericResourceNameSchema.describe(docs.name),
+    projectId: z.string().trim().min(1, "Project ID required").max(36).describe(docs.projectId),
+    description: z.string().trim().max(500).nullish().describe(docs.description),
+    environment: slugSchema({ field: "environment", max: 64 }).optional().describe(docs.environment),
+    secretPath: z
+      .string()
+      .trim()
+      .min(1, "Secret path required")
+      .max(1024)
+      .transform(removeTrailingSlash)
+      .describe(docs.secretPath),
+    isActive: z.boolean().default(true).describe(docs.isActive)
+  });
+};
+
+export const GenericUpdateSecretValidationRuleFieldsSchema = (type: SecretValidationRuleType) => {
+  const docs = SecretValidationRules.UPDATE(type);
+
+  return z.object({
+    name: GenericResourceNameSchema.optional().describe(docs.name),
+    description: z.string().trim().max(500).nullish().describe(docs.description),
+    environment: slugSchema({ field: "environment", max: 64 }).nullish().describe(docs.environment),
+    secretPath: z
+      .string()
+      .trim()
+      .min(1, "Secret path required")
+      .max(1024)
+      .transform(removeTrailingSlash)
+      .optional()
+      .describe(docs.secretPath),
+    isActive: z.boolean().optional().describe(docs.isActive)
+  });
+};
+
+export const secretValidationRuleTitle = (type: SecretValidationRuleType) =>
+  JSON.stringify({ title: SECRET_VALIDATION_RULE_NAME_MAP[type] });

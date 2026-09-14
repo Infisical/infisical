@@ -425,7 +425,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
 
   await server.register(fastifySession, {
-    secret: appCfg.COOKIE_SECRET_SIGN_KEY,
+    secret: server.cookieSigningKey,
     store: redisStore,
     cookie: {
       secure: appCfg.HTTPS_ENABLED,

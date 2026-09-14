@@ -20,7 +20,14 @@ export const SecretScanningDataSourceDetailsFields = () => {
             errorText={error?.message}
             label="Name"
           >
-            <Input autoFocus value={value} onChange={onChange} placeholder="my-data-source" />
+            <Input
+              autoFocus
+              value={value}
+              onChange={onChange}
+              placeholder="my-data-source"
+              autoComplete="off"
+              name="secret-scanning-data-source-name"
+            />
           </FormControl>
         )}
         control={control}

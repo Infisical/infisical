@@ -39,7 +39,7 @@ import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/al
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -1011,6 +1011,7 @@ export const scimServiceFactory = ({
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
     usageMeteringService.emit(membership.scopeOrgId, SecretIdentities.key);
     usageMeteringService.emit(membership.scopeOrgId, PamIdentities.key);
+    usageMeteringService.emit(membership.scopeOrgId, AgentVaultIdentities.key);
 
     await scimEventsDAL.create({
       orgId,

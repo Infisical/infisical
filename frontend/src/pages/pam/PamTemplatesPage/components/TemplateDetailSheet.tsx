@@ -27,8 +27,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
@@ -38,6 +38,7 @@ import {
   isRotatablePamAccountType,
   PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
+  PamPolicyType,
   useGetPamAccountTemplate,
   usePamAccountTypeMap,
   useUpdatePamAccountTemplate
@@ -224,7 +225,12 @@ const ConfigurationTab = ({
                   Name<span className="text-product-pam">*</span>
                 </FieldLabel>
                 <FieldContent>
-                  <Input {...field} isError={!!fieldState.error} />
+                  <Input
+                    {...field}
+                    isError={!!fieldState.error}
+                    autoComplete="off"
+                    name="pam-template-name"
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
@@ -385,8 +391,9 @@ const SettingsTab = ({
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const isRotatableTemplateType = isRotatablePamAccountType(template.type);
+  const requiresApproval = policies[PamPolicyType.RequiresApproval] === true;
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
-    (p) => POLICY_EDITORS[p.key]
+    (p) => POLICY_EDITORS[p.key] && (p.key !== PamPolicyType.AllowBreakGlass || requiresApproval)
   );
 
   const onSubmit = (data: SettingsForm) => {
@@ -529,6 +536,7 @@ const SettingsTab = ({
             return (
               <Editor
                 key={p.key}
+                accountType={template.type as PamAccountType}
                 label={p.label}
                 description={p.description}
                 value={policies[p.key]}
@@ -536,6 +544,9 @@ const SettingsTab = ({
                   const next = { ...policies };
                   if (value === null || value === undefined) delete next[p.key];
                   else next[p.key] = value;
+                  if (p.key === PamPolicyType.RequiresApproval && value !== true) {
+                    delete next[PamPolicyType.AllowBreakGlass];
+                  }
                   setValue("policies", next, { shouldDirty: true });
                 }}
               />
@@ -621,7 +632,7 @@ const SettingsTab = ({
                         rotate only when triggered manually.
                       </p>
                     </div>
-                    <Switch
+                    <Toggle
                       variant="pam"
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
@@ -720,7 +731,7 @@ const SettingsTab = ({
               render={({ field }) => (
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-foreground">Check credentials</p>
-                  <Switch
+                  <Toggle
                     variant="pam"
                     checked={field.value ?? false}
                     onCheckedChange={field.onChange}

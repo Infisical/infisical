@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PencilIcon } from "lucide-react";
 import { z } from "zod";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -32,7 +33,11 @@ import {
   DetailValue,
   IconButton
 } from "@app/components/v3";
-import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
+import {
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionSub,
+  useSubscription
+} from "@app/context";
 import {
   CaType,
   MAX_DISTRIBUTION_POINT_URL_LENGTH,
@@ -83,7 +88,11 @@ const editSchema = z.object({
 type EditFormData = z.infer<typeof editSchema>;
 
 export const CaDistributionPointsSection = ({ caId }: Props) => {
-  const { popUp, handlePopUpToggle } = usePopUp(["editCrlDistributionPoints"] as const);
+  const { popUp, handlePopUpToggle } = usePopUp([
+    "editCrlDistributionPoints",
+    "upgradePlan"
+  ] as const);
+  const { subscription } = useSubscription();
 
   const { data } = useGetCa({ caId, type: CaType.INTERNAL });
   const ca = data as TInternalCertificateAuthority | undefined;
@@ -107,6 +116,16 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
   });
 
   const crlUrls = useFieldArray({ control, name: "crlDistributionPointUrls" });
+
+  // Only adding a custom URL is plan-gated; toggling the managed URL and removing existing ones
+  // stay available, so the restriction belongs on this action rather than on opening the modal.
+  const handleAddCrlUrl = () => {
+    if (!subscription.caCrl) {
+      handlePopUpToggle("upgradePlan", true);
+      return;
+    }
+    crlUrls.append({ value: "" });
+  };
 
   if (!ca) return null;
 
@@ -259,7 +278,7 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
                   size="xs"
                   variant="outline_bg"
                   isDisabled={crlUrls.fields.length >= MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS}
-                  onClick={() => crlUrls.append({ value: "" })}
+                  onClick={handleAddCrlUrl}
                 >
                   Add URL
                 </ButtonV2>
@@ -283,6 +302,12 @@ export const CaDistributionPointsSection = ({ caId }: Props) => {
           </form>
         </ModalContent>
       </Modal>
+
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Certificate revocation lists are available on Infisical's Enterprise plan."
+      />
     </>
   );
 };

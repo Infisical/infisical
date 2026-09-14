@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
@@ -72,6 +73,7 @@ type TPkiAlertV2ServiceFactoryDep = {
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -87,6 +89,7 @@ export const pkiAlertV2ServiceFactory = ({
   pkiAlertChannelDAL,
   pkiAlertHistoryDAL,
   permissionService,
+  licenseService,
   smtpService,
   kmsService,
   notificationService,
@@ -235,6 +238,16 @@ export const pkiAlertV2ServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
+
+    const nonEmailChannel = channels.find((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
+    if (nonEmailChannel) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.pkiEnterpriseAlerting) {
+        throw new BadRequestError({
+          message: `Failed to create alert with a ${nonEmailChannel.channelType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
+        });
+      }
+    }
 
     if (eventType === PkiAlertEventType.EXPIRATION && !alertBefore) {
       throw new BadRequestError({ message: "alertBefore is required for expiration alerts" });
@@ -410,6 +423,23 @@ export const pkiAlertV2ServiceFactory = ({
         parseTimeToPostgresInterval(alertBefore);
       } catch (error) {
         throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
+      }
+    }
+
+    // An update replaces the channel set wholesale, so creation-only gating would let an org save an
+    // email-only alert and patch Slack into it. Keeping the types it already has stays allowed.
+    const addedChannelTypes = channels?.filter((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
+    if (addedChannelTypes?.length) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!plan.pkiEnterpriseAlerting) {
+        const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId);
+        const existingTypes = new Set(existingChannels.map((channel) => channel.channelType));
+        const newChannel = addedChannelTypes.find((channel) => !existingTypes.has(channel.channelType));
+        if (newChannel) {
+          throw new BadRequestError({
+            message: `Failed to add a ${newChannel.channelType} channel to this alert due to plan restriction. Upgrade plan to alert on channels other than email.`
+          });
+        }
       }
     }
 

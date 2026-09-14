@@ -6,6 +6,7 @@ export enum PamAccountType {
   OracleDB = "oracledb",
   MongoDB = "mongodb",
   Redis = "redis",
+  Snowflake = "snowflake",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
@@ -43,6 +44,12 @@ export enum PamSessionStatus {
 export enum PamSessionEndReason {
   Completed = "completed",
   Expired = "expired"
+}
+
+export enum PamSnowflakeAuthMethod {
+  KeyPair = "key-pair",
+  ProgrammaticAccessToken = "programmatic-access-token",
+  Password = "password"
 }
 
 export enum GcpServiceAccountAuthMethod {
@@ -88,5 +95,9 @@ export enum PamMemberKind {
 export enum PamNotificationEvent {
   AccessRequested = "access-requested",
   AccessRequestApproved = "access-request-approved",
-  AccessRequestDenied = "access-request-denied"
+  AccessRequestDenied = "access-request-denied",
+  AccessRequestBypassed = "access-request-bypassed"
 }
+
+// Best-effort: the tunnel is torn down either way.
+export const PAM_CANCELLATION_FLUSH_TIMEOUT_MS = 5000;
