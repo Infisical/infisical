@@ -13,7 +13,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AgentVault = "agent-vault"
 }
 
 export enum ProjectUserMembershipTemporaryMode {
@@ -45,6 +46,8 @@ export type Project = {
   enforceEncryptedSecretManagerSecretMetadata: boolean;
   isLegacyAdditionalPrivilegesEnabled: boolean;
 };
+
+export type TProjectNavigation = Pick<Project, "id" | "orgId" | "name" | "slug" | "type">;
 
 export type ProjectEnv = {
   id: string;

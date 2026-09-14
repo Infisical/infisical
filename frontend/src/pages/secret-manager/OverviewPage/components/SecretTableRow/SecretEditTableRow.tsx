@@ -97,7 +97,6 @@ import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashbo
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
-import { DuplicateSecretModal } from "./DuplicateSecretModal";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
@@ -175,6 +174,7 @@ type Props = {
   // that is outstanding so it can keep the row mounted instead of discarding the edit on scroll.
   unsavedChangeId?: string;
   onUnsavedChange?: (id: string, hasUnsavedChanges: boolean) => void;
+  onCopySecret?: () => void;
 };
 
 export const SecretEditTableRow = ({
@@ -214,13 +214,13 @@ export const SecretEditTableRow = ({
   pendingKeyName,
   revokedProjectFolderGrant,
   unsavedChangeId,
-  onUnsavedChange
+  onUnsavedChange,
+  onCopySecret
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
     "accessInsightsUpgrade",
-    "createSharedSecret",
-    "duplicateSecret"
+    "createSharedSecret"
   ] as const);
 
   const { currentProject } = useProject();
@@ -1337,7 +1337,7 @@ export const SecretEditTableRow = ({
               <TooltipTrigger asChild>
                 <IconButton
                   variant="ghost"
-                  className="hover:text-error size-7 border-0"
+                  className="size-7 border-0 hover:text-danger"
                   size="xs"
                   onClick={() => onBatchRevert?.(environment, secretName)}
                 >
@@ -1358,7 +1358,7 @@ export const SecretEditTableRow = ({
                       <IconButton
                         variant="ghost"
                         size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0"
                         onClick={() => setIsCommentOpen(true)}
                       >
                         <MessageSquareIcon className="size-3.5" />
@@ -1373,7 +1373,7 @@ export const SecretEditTableRow = ({
                       <IconButton
                         variant="ghost"
                         size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0"
                         onClick={() => setIsTagOpen(true)}
                       >
                         <TagsIcon className="size-3.5" />
@@ -1388,7 +1388,7 @@ export const SecretEditTableRow = ({
                       <IconButton
                         variant="ghost"
                         size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0"
                         onClick={() => setIsReminderOpen(true)}
                       >
                         <BellIcon className="size-3.5" />
@@ -1403,7 +1403,7 @@ export const SecretEditTableRow = ({
                       <IconButton
                         variant="ghost"
                         size="xs"
-                        className="size-7 border-0 text-muted hover:text-foreground"
+                        className="size-7 border-0"
                         onClick={() => setIsMetadataOpen(true)}
                       >
                         <CodeXmlIcon className="size-3.5" />
@@ -1420,7 +1420,7 @@ export const SecretEditTableRow = ({
               <IconButton
                 variant="ghost"
                 size="xs"
-                className="size-7 border-0 text-muted hover:text-foreground"
+                className="size-7 border-0"
                 isDisabled={
                   isPendingDelete ||
                   isImportedSecret ||
@@ -1453,7 +1453,7 @@ export const SecretEditTableRow = ({
               <IconButton
                 variant="ghost"
                 size="xs"
-                className="size-7 border-0 text-muted hover:text-foreground"
+                className="size-7 border-0"
                 isDisabled={isPendingDelete || !canCopySecret}
                 onClick={handleCopySharedToClipboard}
               >
@@ -1478,11 +1478,7 @@ export const SecretEditTableRow = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
-                  <IconButton
-                    variant="ghost"
-                    size="xs"
-                    className="size-7 border-0 text-muted hover:text-foreground"
-                  >
+                  <IconButton variant="ghost" size="xs" className="size-7 border-0">
                     <EllipsisIcon />
                   </IconButton>
                 </DropdownMenuTrigger>
@@ -1795,11 +1791,17 @@ export const SecretEditTableRow = ({
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5 text-xs"
-                    onClick={() => handlePopUpOpen("duplicateSecret")}
-                    isDisabled={isPendingBatchChange || isManagedSecret || isCreatable || !secretId}
+                    onClick={onCopySecret}
+                    isDisabled={
+                      isPendingBatchChange ||
+                      isManagedSecret ||
+                      isCreatable ||
+                      !secretId ||
+                      !onCopySecret
+                    }
                   >
                     <CopyPlus />
-                    Duplicate Secret
+                    Copy Secret
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
@@ -1808,10 +1810,10 @@ export const SecretEditTableRow = ({
                     : isCreatable
                       ? "Create Secret First"
                       : isHoneyTokenSecret
-                        ? "Cannot Duplicate Honey Token Secret"
+                        ? "Cannot Copy Honey Token Secret"
                         : isRotatedSecret
-                          ? "Cannot Duplicate Rotated Secret"
-                          : "Duplicate Secret"}
+                          ? "Cannot Copy Rotated Secret"
+                          : "Copy Secret"}
                 </TooltipContent>
               </Tooltip>
 
@@ -2004,14 +2006,6 @@ export const SecretEditTableRow = ({
         </AlertDialogContent>
       </AlertDialog>
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DuplicateSecretModal
-        isOpen={popUp.duplicateSecret.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("duplicateSecret", open)}
-        secrets={secretId ? [{ id: secretId, name: secretName }] : []}
-        secretPath={secretPath}
-        sourceEnvironment={{ slug: environment, name: environmentName }}
-        canCopySecretValue={!secretValueHidden}
-      />
     </>
   );
 

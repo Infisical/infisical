@@ -1,4 +1,11 @@
-import { ActiveCerts, AuditRetentionDays, IdentitiesMeter, InternalCas, SsoEnforcement } from "./features";
+import {
+  ActiveCerts,
+  AuditRetentionDays,
+  IdentitiesMeter,
+  InternalCas,
+  SsoEnforcement,
+  WildcardCerts
+} from "./features";
 
 export type TFeatureMapping = {
   // Must match a License Server feature registry key (a separate repo); a wrong key means the feature
@@ -264,8 +271,43 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "pkiCodeSigning"
   },
   {
-    v2Key: "enterprise_certificate_syncs",
-    v1Field: "enterpriseCertificateSyncs"
+    v2Key: "pki_enterprise_ca_integrations",
+    v1Field: "pkiEnterpriseCaIntegrations"
+  },
+  {
+    v2Key: "pki_external_intermediate_ca",
+    v1Field: "pkiExternalIntermediateCa"
+  },
+  {
+    v2Key: "pki_discovery",
+    v1Field: "pkiDiscovery"
+  },
+  {
+    v2Key: "pki_enterprise_alerting",
+    v1Field: "pkiEnterpriseAlerting"
+  },
+  {
+    v2Key: "pki_approvals",
+    v1Field: "pkiApprovals"
+  },
+  {
+    v2Key: "pki_syncs",
+    v1Field: "pkiSyncs"
+  },
+  {
+    v2Key: "max_sans_per_certificate",
+    v1Field: "maxSansPerCertificate"
+  },
+  {
+    // Counted by quotaKey rather than by row, so a renewal or re-enrollment is not a second unit.
+    v2Key: "max_certificates",
+    v1Field: "maxCertificates"
+  },
+  {
+    // Wildcard certificates, counted the same way. 0 means the plan has no wildcard support at all,
+    // which is how the free tier withholds them; these also count toward max_certificates.
+    v2Key: "max_wildcard_certificates",
+    v1Field: "maxWildcardCertificates"
   },
   {
     // v2's `internal_cas` is a usage meter; the internal-CA cap is a separate v2 feature
@@ -278,9 +320,21 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: null
   },
   {
-    // Max internal CAs allowed. Dedicated cap feature, separate from the `internal_cas` usage meter.
+    // Usage meter only; the cap is max_wildcard_certificates, mapped separately below.
+    v2Key: WildcardCerts.key,
+    v1Field: null
+  },
+  {
+    // Dedicated cap feature, separate from the `internal_cas` usage meter though both count the same
+    // set. The per-contract enterprise lever: caps internal CAs, leaves external and ACME unlimited.
     v2Key: "max_internal_cas",
     v1Field: "maxInternalCas"
+  },
+  {
+    // Separate from max_internal_cas because the tiers differ: free grants one CA of either kind,
+    // enterprise caps internal CAs only. Both enforced, whichever binds first.
+    v2Key: "max_cas",
+    v1Field: "maxCas"
   }
 ];
 

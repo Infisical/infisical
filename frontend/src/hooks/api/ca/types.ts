@@ -382,3 +382,8 @@ export type TRenewCaResponse = {
   serialNumber: string;
   projectId: string;
 };
+
+export type TCaQuota = {
+  certificateAuthorities: { used: number; limit: number | null };
+  internalCertificateAuthorities: { used: number; limit: number | null };
+};

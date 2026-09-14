@@ -113,6 +113,8 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
                     isError={Boolean(error)}
                     disabled={cannotEdit}
                     {...field}
+                    autoComplete="off"
+                    name="sub-org-name"
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

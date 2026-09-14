@@ -17,8 +17,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import {
   PamAccountType,
@@ -94,7 +94,7 @@ const ToggleField = ({
           <FieldLabel htmlFor={name} className="mb-0">
             {label}
           </FieldLabel>
-          <Switch id={name} variant="pam" checked={field.value} onCheckedChange={field.onChange} />
+          <Toggle id={name} variant="pam" checked={field.value} onCheckedChange={field.onChange} />
         </div>
       </Field>
     )}

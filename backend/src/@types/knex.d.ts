@@ -20,6 +20,21 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
+  TAgentVaultAccessBundles,
+  TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundlesUpdate,
+  TAgentVaultProxies,
+  TAgentVaultProxiesInsert,
+  TAgentVaultProxiesUpdate,
+  TAgentVaultServices,
+  TAgentVaultServicesInsert,
+  TAgentVaultServicesUpdate,
+  TAgentVaultSessionAccessBundles,
+  TAgentVaultSessionAccessBundlesInsert,
+  TAgentVaultSessionAccessBundlesUpdate,
+  TAgentVaultSessions,
+  TAgentVaultSessionsInsert,
+  TAgentVaultSessionsUpdate,
   TAlertChannelMemberships,
   TAlertChannelMembershipsInsert,
   TAlertChannelMembershipsUpdate,
@@ -1760,6 +1775,31 @@ declare module "knex/types/tables" {
     >;
     [TableName.PamDomain]: KnexOriginal.CompositeTableType<TPamDomains, TPamDomainsInsert, TPamDomainsUpdate>;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
+    [TableName.AgentVaultAccessBundle]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundles,
+      TAgentVaultAccessBundlesInsert,
+      TAgentVaultAccessBundlesUpdate
+    >;
+    [TableName.AgentVaultService]: KnexOriginal.CompositeTableType<
+      TAgentVaultServices,
+      TAgentVaultServicesInsert,
+      TAgentVaultServicesUpdate
+    >;
+    [TableName.AgentVaultSession]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessions,
+      TAgentVaultSessionsInsert,
+      TAgentVaultSessionsUpdate
+    >;
+    [TableName.AgentVaultSessionAccessBundle]: KnexOriginal.CompositeTableType<
+      TAgentVaultSessionAccessBundles,
+      TAgentVaultSessionAccessBundlesInsert,
+      TAgentVaultSessionAccessBundlesUpdate
+    >;
+    [TableName.AgentVaultProxy]: KnexOriginal.CompositeTableType<
+      TAgentVaultProxies,
+      TAgentVaultProxiesInsert,
+      TAgentVaultProxiesUpdate
+    >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,
       TPamAccountPoliciesInsert,

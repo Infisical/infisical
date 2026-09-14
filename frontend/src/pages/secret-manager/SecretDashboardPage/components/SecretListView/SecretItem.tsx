@@ -35,7 +35,7 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";

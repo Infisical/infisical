@@ -31,8 +31,8 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
@@ -463,7 +463,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                           Enable to present a client certificate during the TLS handshake.
                         </FieldDescription>
                       </FieldContent>
-                      <Switch
+                      <Toggle
                         id="ldap-enable-mtls"
                         variant="org"
                         checked={field.value}

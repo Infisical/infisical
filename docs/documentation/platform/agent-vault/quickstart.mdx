@@ -1,0 +1,162 @@
+---
+title: "Agent Vault quickstart"
+sidebarTitle: "Quickstart"
+description: "Create an access bundle, enroll a proxy, and launch an agent that makes authenticated GitHub calls with a token it never sees."
+---
+
+Every Agent Vault setup starts with the same things in Infisical: an access bundle holding a service for each API, a proxy enrolled where your agent's traffic leaves the network, and a session for the agent to run with. This quickstart walks you through creating all three and launching an agent.
+
+GitHub is this guide's running example. Any other API works the same way, and the steps are identical.
+
+## Before you begin
+
+- An Infisical organization where you're an Agent Vault admin. Organization admins can join Agent Vault as an admin themselves, without being added by someone else.
+- The [Infisical CLI](/cli/overview) installed on the host that will run the proxy and on the host that will run the agent. For this guide they can be the same machine.
+- A GitHub account, to create the token you'll broker.
+- Optional: [GitHub's `gh` CLI](https://cli.github.com/), used for the check at the end. A `curl` fallback is provided, so this isn't required.
+
+## 1. Create an access bundle
+
+First, get a GitHub personal access token to broker:
+
+1. Go to [GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/personal-access-tokens).
+2. Select **Generate new token**, give it a name, set an expiration, and choose the resource owner.
+3. Leave the permissions at their defaults. The check at the end of this guide calls `GET /user`, which any valid token can reach; later, grant only what your agent actually does.
+4. Select **Generate token** and copy the `github_pat_…` value. GitHub only shows it once.
+
+Then, in Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**. Select **Create Access Bundle**, name it `code-review`, and open it.
+
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with code-review entered as the name" />
+</Frame>
+
+Select **Add Service** and work through the steps:
+
+<Frame>
+  <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
+</Frame>
+
+<Steps>
+  <Step title="Pick the GitHub template">
+    The template fills everything in for you: the host `api.github.com` and the header GitHub expects, `Authorization: Bearer <token>`.
+  </Step>
+  <Step title="Details">
+    Keep the service name `github` and the host pattern `api.github.com`.
+  </Step>
+  <Step title="Credential">
+    Paste your `github_pat_…` token into **Token**. It's stored encrypted and never shown again.
+  </Step>
+  <Step title="Review and create">
+    Check the host and the header, then select **Add Service**.
+  </Step>
+</Steps>
+
+<Note>
+  Not on the template list? Pick **Custom** and set the host, header name, and prefix yourself. See [Access bundles and services](/documentation/platform/agent-vault/access-bundles).
+</Note>
+
+You're an admin, so you can already create sessions with this access bundle. To let a teammate or a machine identity run agents with it, select **Manage Access** on the access bundle and grant it to them. They have to be a member of Agent Vault first, under **Access Control**.
+
+## 2. Enroll a proxy
+
+Go to **Proxies**, select **Create Proxy**, name it, and select **Create**. The dialog shows a one-time enrollment token and the command to run.
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxy-enrollment-token.png" alt="The Enrollment Token dialog with the CLI command, and Docker and systemd tabs alongside it" />
+</Frame>
+
+On the host that will be the proxy:
+
+```bash
+infisical agent-vault proxy --enrollment-token <enrollment-token>
+```
+
+The proxy enrolls and listens on port `17323`. Leave it running and note this host's address; step 4 points the agent at it. Within a minute its status on the Proxies page turns to **Healthy**.
+
+<Note>
+  Fine for trying it out, but this dies with your terminal. The same dialog has Docker and systemd snippets, and [Proxies](/documentation/platform/agent-vault/proxies) covers running it for real.
+</Note>
+
+## 3. Create a session
+
+Go to **Sessions**, select **Create Session**, pick `code-review`, and select **Create Session**.
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session dialog with code-review picked and a seven day expiry" />
+</Frame>
+
+The token appears once, with the command to run. Copy it now.
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the infisical agent-vault run command with the session token" />
+</Frame>
+
+## 4. Launch your agent
+
+On the host where the agent runs, pass the token and the proxy's address. Everything after `--` is your agent's own command:
+
+```bash
+infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
+```
+
+The CLI trusts the proxy's certificate for the agent and starts `claude` with its HTTP traffic routed through the proxy. Calls to `api.github.com` leave the proxy with the real token attached; everything else goes out untouched. That host needs no Infisical login: the session token is the only thing on it.
+
+<Note>
+  **On macOS the first run asks for your password once.** It adds the proxy's certificate to your login keychain, which is what lets tools like `gh` accept its certificates.
+</Note>
+
+## 5. Verify it works
+
+Each check below makes the same `GET /user` call to `api.github.com`, and the client never sends a real token. As the request passes through the proxy, the real value of your GitHub token is attached, so GitHub returns your account profile even though the token never reached the client. That is the whole point: real authenticated work without the caller ever holding the credential.
+
+<Tabs>
+  <Tab title="Ask your agent">
+    The agent you just launched is already brokering. In its session, send:
+
+    > Run `curl -sS https://api.github.com/user` and show me the output.
+
+    GitHub answers with your profile. Run the same `curl` outside the agent and GitHub answers `401`.
+  </Tab>
+  <Tab title="gh CLI">
+    Not driving an interactive agent? Run the check in place of the agent command. `gh` insists on having a token, so give it a placeholder; the proxy replaces the header on the way out:
+
+    ```bash
+    infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- \
+      sh -c 'GITHUB_TOKEN=placeholder gh api user'
+    ```
+  </Tab>
+  <Tab title="curl">
+    No `gh`? Any HTTP client works the same way:
+
+    ```bash
+    infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.github.com/user
+    ```
+
+    The proxy logs the request as `brokered`.
+  </Tab>
+</Tabs>
+
+<Note>
+  Getting a `401`? The credential wasn't applied. Open the `code-review` access bundle and confirm a service covers `api.github.com`; if one does, the stored token is wrong. A `407` or `403` from the proxy itself means the session token was missing, revoked, or expired.
+</Note>
+
+<Note>
+  Working on your own machine and signed in with `infisical login`? Skip the Sessions page: `infisical agent-vault run --access-bundle code-review --proxy <proxy-host>:17323 -- claude` creates a session for you and revokes it when the agent exits. For an agent that runs unattended, run it as a machine identity instead — see [Sessions](/documentation/platform/agent-vault/sessions#creating-a-session).
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
+    Add more services, choose credential types, and grant access bundles to your team.
+  </Card>
+  <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
+    Choose how long a session lives and revoke one while an agent is running.
+  </Card>
+  <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
+    Run the proxy for real, decide what happens to other hosts, and pin its certificate.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/commands/agent-vault">
+    Every flag of `infisical agent-vault proxy` and `infisical agent-vault run`.
+  </Card>
+</CardGroup>

@@ -16,7 +16,7 @@ import {
   FieldDescription,
   FieldGroup,
   FieldTitle,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -109,7 +109,7 @@ export const ProductSettingsPage = () => {
                       a={OrgPermissionSubjects.Settings}
                     >
                       {(isAllowed) => (
-                        <Switch
+                        <Toggle
                           id="block-duplicate-secret-sync-destinations"
                           variant="project"
                           checked={currentOrg?.blockDuplicateSecretSyncDestinations ?? false}
@@ -132,7 +132,7 @@ export const ProductSettingsPage = () => {
                       a={OrgPermissionSubjects.Settings}
                     >
                       {(isAllowed) => (
-                        <Switch
+                        <Toggle
                           id="allow-cross-project-secret-sharing"
                           variant="project"
                           checked={currentOrg?.allowCrossProjectSecretSharing ?? false}

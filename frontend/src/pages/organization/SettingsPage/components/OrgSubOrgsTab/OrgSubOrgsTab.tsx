@@ -457,7 +457,7 @@ export const OrgSubOrgsTab = () => {
               isError={Boolean(errors.name)}
               errorText={errors.name?.message}
             >
-              <Input {...register("name")} placeholder="My Sub-Organization" />
+              <Input {...register("name")} placeholder="My Sub-Organization" autoComplete="off" />
             </FormControl>
             <FormControl
               label="Slug"

@@ -134,6 +134,8 @@ export const IdentityTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
                     id="token-name"
                     placeholder="My Token"
                     isError={Boolean(error)}
+                    autoComplete="off"
+                    name="token-name"
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

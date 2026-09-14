@@ -14,6 +14,7 @@ import {
   TrashIcon
 } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
@@ -56,13 +57,15 @@ import {
   ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import {
   TProjectFolderGrant,
   useListProjectFolderGrants
 } from "@app/hooks/api/projectFolderGrants";
 import { projectFolderGrantKeys } from "@app/hooks/api/projectFolderGrants/queries";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ShareSecretsEditData, ShareSecretsSheet } from "./ShareSecretsSheet";
 
@@ -200,6 +203,8 @@ export const CrossProjectSharingSection = () => {
   const [deleteTarget, setDeleteTarget] = useState<ProjectGroup | null>(null);
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const canEditGrants =
     permission.can(
       ProjectPermissionProjectFolderGrantActions.CreateGrant,
@@ -302,15 +307,16 @@ export const CrossProjectSharingSection = () => {
                       </IconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {(canEditGrants ||
-                        projectGroup.grants.some((grant) =>
-                          canRevokeGrant(grant.environmentSlug, grant.secretPath)
-                        )) && (
-                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
-                          <PencilIcon className="mr-2 size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
+                      {subscription?.crossProjectSecretSharing &&
+                        (canEditGrants ||
+                          projectGroup.grants.some((grant) =>
+                            canRevokeGrant(grant.environmentSlug, grant.secretPath)
+                          )) && (
+                          <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
+                            <PencilIcon className="mr-2 size-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
                       {projectGroup.grants.every((grant) =>
                         canRevokeGrant(grant.environmentSlug, grant.secretPath)
                       ) && (
@@ -395,6 +401,10 @@ export const CrossProjectSharingSection = () => {
               variant="project"
               size="sm"
               onClick={() => {
+                if (!subscription?.crossProjectSecretSharing) {
+                  handlePopUpOpen("upgradePlan");
+                  return;
+                }
                 setEditData(null);
                 setIsShareSheetOpen(true);
               }}
@@ -436,6 +446,11 @@ export const CrossProjectSharingSection = () => {
           if (!open) setDeleteTarget(null);
         }}
         sourceProjectId={currentProject.id}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="Your current plan does not allow sharing secrets across projects. To unlock this feature, please upgrade to Infisical Pro plan."
       />
     </Card>
   );

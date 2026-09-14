@@ -308,7 +308,7 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserProjects = async (userId: string, orgId: string, projectType?: ProjectType) => {
+  const findUserProjects = async (userId: string, orgId: string | string[], projectType?: ProjectType) => {
     try {
       const userGroupSubquery = db
         .replicaNode()(TableName.Groups)
@@ -320,7 +320,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .whereIn(`${TableName.Project}.orgId`, Array.isArray(orgId) ? orgId : [orgId])
         .whereNull(`${TableName.Project}.deleteAfter`)
         .andWhere((qb) => {
           void qb
@@ -512,15 +512,14 @@ export const projectDALFactory = (db: TDbClient) => {
         };
       }
 
-      const rows = await (tx || db.replicaNode())(TableName.Membership)
+      const conn = tx || db.replicaNode();
+      const rows = await conn(TableName.Membership)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .leftJoin(TableName.UserGroupMembership, function joinUserGroupMembership() {
-          this.on(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`).andOn(
-            `${TableName.UserGroupMembership}.isPending`,
-            "=",
-            (tx || db).raw("?", [false])
-          );
-        })
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.Membership}.actorGroupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -1018,7 +1017,7 @@ export const projectDALFactory = (db: TDbClient) => {
       const doc = await (tx || db.replicaNode())(TableName.Project)
         .whereNotIn("type", [ProjectType.CertificateManager])
         .whereNull("deleteAfter")
-        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM])
+        .whereNotIn("type", [ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])
         // Project rows of the removed SSH / Agent Sentinel products are left in
         // place (see migration 20260729150000) but must not consume workspace quota.
         .whereNotIn("type", ["ssh", "ai"])

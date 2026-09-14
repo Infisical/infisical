@@ -89,9 +89,9 @@ export type ProjectServiceActor = {
   orgId: string;
 };
 
-export enum QueueWorkerProfile {
-  All = "all",
-  Standard = "standard",
+export enum RunMode {
+  Api = "api",
+  GeneralWorkers = "general-workers",
   SecretScanning = "secret-scanning"
 }
 

@@ -141,6 +141,8 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
                         {...field}
                         disabled={!isAllowed}
                         isError={Boolean(error)}
+                        autoComplete="off"
+                        name="project-name"
                       />
                       <FieldError>{error?.message}</FieldError>
                     </Field>

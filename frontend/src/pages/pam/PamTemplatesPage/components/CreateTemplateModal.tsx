@@ -107,6 +107,7 @@ export const CreateTemplateModal = ({ isOpen, onOpenChange, onCreated }: Props) 
                   placeholder="e.g. production-postgresql"
                   isError={!!errors.name}
                   {...register("name")}
+                  autoComplete="off"
                 />
                 <FieldError>{errors.name?.message}</FieldError>
               </FieldContent>

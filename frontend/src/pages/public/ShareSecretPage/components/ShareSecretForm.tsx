@@ -25,8 +25,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -299,7 +299,7 @@ export const ShareSecretForm = ({
             defaultValue={SecretSharingAccessType.Organization}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <Field orientation="horizontal">
-                <Switch
+                <Toggle
                   variant="project"
                   checked={
                     field.value === SecretSharingAccessType.Organization ||
@@ -443,7 +443,7 @@ export const ShareSecretForm = ({
                         fieldState: { error }
                       }) => (
                         <Field orientation="horizontal">
-                          <Switch
+                          <Toggle
                             variant="project"
                             checked={isOrgAccess ? false : (isChecked ?? false)}
                             onCheckedChange={onChange}

@@ -8,41 +8,50 @@ PostgreSQL discovery scans a set of PostgreSQL instances, enumerates the roles t
 
 All scan traffic is tunneled through an Infisical [Gateway](/documentation/platform/gateways/overview).
 
-## How it works
+<Accordion title="How it works">
+  A PostgreSQL scan connects entirely through the Gateway:
 
-A PostgreSQL scan connects entirely through the Gateway:
+  1. Each target you list is one instance to scan. Hostnames are resolved by the gateway in the target network.
+  2. Each target is probed on the ports of your credential accounts, so unreachable ones are skipped before any login is attempted.
+  3. For each reachable host, discovery picks a credential account: it first tries an account whose stored host matches the target, otherwise it tries each account in turn until one connects.
+  4. Discovery reads the roles defined on the instance.
+  5. Each role that can log in is staged as a PostgreSQL account scoped to that instance. If two instances each have a role named `postgres`, Infisical stages each role as a separate account.
 
-1. Each target you list is one instance to scan. Hostnames are resolved by the gateway in the target network.
-2. Each target is probed on the ports of your credential accounts, so unreachable ones are skipped before any login is attempted.
-3. For each reachable host, discovery picks a credential account: it first tries an account whose stored host matches the target, otherwise it tries each account in turn until one connects.
-4. It reads the roles defined on the instance.
-5. Each role that can log in is staged as a **PostgreSQL** account scoped to that instance. `postgres` on two instances becomes two separate staged accounts.
-
-Hosts that no credential can reach or authenticate to are reported on the run and skipped; the rest of the scan still completes.
+  Hosts that no credential can reach or authenticate to are reported on the run and skipped; the rest of the scan still completes.
+</Accordion>
 
 ## Prerequisites
 
 Before creating a PostgreSQL discovery source, make sure you have:
 
 - A [Gateway](/documentation/platform/gateways/overview) (or Gateway pool) with network access to the instances you want to scan.
-- One or more [PostgreSQL accounts](/documentation/platform/pam/accounts/postgresql) in PAM to use as **credential accounts**. Discovery connects to each instance as one of these accounts, using its port, database, and TLS settings.
-- The **Product Admin** role. See [Access Control](/documentation/platform/pam/concepts/access-control).
+- One or more [PostgreSQL accounts](/documentation/platform/pam/accounts/postgresql) in PAM to use as credential accounts. Discovery connects to each instance as one of these accounts, using its port, database, and TLS settings.
+- The [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership) role on your PAM project.
 
 <Note>
-The scanning account needs no special grant or elevated privileges. Any role that can log in is enough to enumerate an instance.
+The PostgreSQL role used for the scan only needs permission to log in to the target instance. It doesn't need superuser privileges or additional grants to list the roles on that instance.
 </Note>
 
 <Warning>
-Only password authentication can drive a scan. An AWS IAM account's token is minted for one host, port, and user, so it can't be reused across the instances a source scans. IAM accounts can't be used as credential accounts.
+The PostgreSQL accounts used for scanning must authenticate with a password. AWS IAM authentication isn't supported because each token is valid only for a specific host, port, and user, so it can't be reused to scan other instances.
 </Warning>
 
-## Creating a source
+## Step 1: Create a source
 
 <Steps>
-  <Step title="Start adding a source">
-    Go to **Privileged Access Manager → Discovery** and select **Add Source**, then choose **PostgreSQL**.
+  <Step>
+    Go to **Privileged Access Manager > Discovery** and select **Add Source**.
   </Step>
-  <Step title="Configure the source">
+  <Step>
+    Choose **PostgreSQL**, then select **Next**.
+
+     <Frame>
+      <img src="/images/platform/pam/postgres-discovery-select-source.png" alt="Add Discovery Source panel with PostgreSQL selected" />
+    </Frame>
+  </Step>
+  <Step>
+    Configure the source:
+
     | Field | Description |
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `prod-databases`) |
@@ -50,37 +59,71 @@ Only password authentication can drive a scan. An AWS IAM account's token is min
     | **Gateway** | The [Gateway](/documentation/platform/gateways/overview) or Gateway pool that scan traffic tunnels through |
     | **Scan Schedule** | How often to scan automatically: **Manual**, **Daily**, or **Weekly** |
     | **Targets** | IP addresses or hostnames of the instances to scan, one per line or comma-separated. Hostnames are resolved by the gateway in the target network |
+
+    <Frame>
+      <img src="/images/platform/pam/postgres-discovery-configure-source.png" alt="PostgreSQL discovery source configuration with name, credential accounts, gateway, scan schedule, and targets fields" />
+    </Frame>
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Add Source**. The source appears in the Discovery table.
   </Step>
 </Steps>
 
-## Account filtering
-
-Discovery surfaces only roles that can log in. Group roles that exist purely to hold privileges can't open a session, so they're not accounts and are dropped, as are PostgreSQL's own built-in roles.
+<Note>
+Discovery only finds roles that can log in to the scanned instance. Group roles that exist purely to hold privileges can't open a session, so discovery doesn't consider them accounts and ignores them. Discovery also ignores PostgreSQL's own built-in roles.
 
 Roles are cluster-wide rather than per-database, so the database your credential account connects to doesn't change which roles are found.
+</Note>
 
-## Running a scan
+## Step 2: Run a scan
 
-Trigger a scan manually with **Scan Now** from the source's row menu or its detail panel. Scans run in the background, and a source can only have one scan running at a time.
+To trigger a scan manually, select **Scan Now** from the source's row menu or its detail panel. Scans run in the background, and a source can only have one scan running at a time.
 
+<Frame>
+  <img src="/images/platform/pam/postgres-discovery-scan-now.png" alt="PostgreSQL discovery source row menu showing Scan Now" />
+</Frame>
+
+<Note>
 If the source is on a **Daily** or **Weekly** schedule, Infisical also scans it automatically when its interval has elapsed. **Manual** sources are only scanned when you trigger them.
+</Note>
 
-## Importing accounts
+## Step 3: Import accounts
 
-From the **Staged Accounts** tab, select the accounts you want and select **Import Accounts**. Then choose:
+<Steps>
+  <Step>
+    In the **Discovery Sources** table, select the source to open its detail panel.
+  </Step>
+  <Step>
+    From the source's **Staged Accounts** tab, select the accounts you want and select **Import Accounts**:
 
-| Field | Description |
-|-------|-------------|
-| **Destination Folder** | The [folder](/documentation/platform/pam/folders/overview) to import the accounts into |
-| **Template** | A [PostgreSQL account template](/documentation/platform/pam/templates/overview) to apply |
+    <Frame>
+      <img src="/images/platform/pam/postgres-discovery-staged-accounts.png" alt="Staged Accounts tab with four PostgreSQL accounts selected and the Import Accounts button" />
+    </Frame>
+  </Step>
+  <Step>
+    Configure the import settings:
 
+    | Field | Description |
+    |-------|-------------|
+    | **Destination Folder** | The [folder](/documentation/platform/pam/folders/overview) to import the accounts into |
+    | **PostgreSQL Template** | A [PostgreSQL account template](/documentation/platform/pam/templates/overview) to apply |
+
+    <Frame>
+      <img src="/images/platform/pam/postgres-discovery-import-accounts.png" alt="Import 4 Accounts dialog with Production as the destination folder and PostgreSQL Standard as the template" />
+    </Frame>
+
+    Then, select **Import**.
+  </Step>
+</Steps>
+
+<Check>
 Once imported, the accounts become regular PAM PostgreSQL accounts in the chosen folder and inherit their template's rules.
+</Check>
 
 <Warning>
-Imported accounts arrive without a credential because discovery finds roles with a name but no password. Open each imported account and add a credential before connecting.
+Imported accounts don't include user credentials because the discovery scan doesn't retrieve passwords from PostgreSQL.
+
+After importing, open each account in PAM and enter the password for its PostgreSQL user. You must add the password before you can use PAM to connect to the PostgreSQL instance as that user.
 </Warning>
 
 ## Next steps

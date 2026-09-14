@@ -103,12 +103,13 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `gateway.enrollment.kubernetes.externalTokenReview` | `false` | Set true when TokenReview permission comes from outside this chart, either a token reviewer JWT configured in Infisical or a binding you manage. Required to install with `serviceAccount.createAsAuthDelegator` disabled. |
 | `gateway.enrollment.credentialsSecretRef` | `""` | Kubernetes secret with credentials injected as env vars. |
 | `gateway.relayName` | `""` | Specific relay to connect to. Empty for automatic selection. |
+| `gateway.listenAddress` | `""` | `host:port` that Infisical dials to reach the gateway, which runs it in direct listen mode. Empty for relay mode. |
 | `persistence.enabled` | `true` | Enable persistent storage. Required for token auth, optional for AWS and Kubernetes auth. |
 | `persistence.storageClass` | `""` | Storage class for the PVC. |
 | `persistence.size` | `5Gi` | PVC size. |
 | `persistence.existingClaim` | `""` | Use an existing PVC. |
 | `image.repository` | `infisical/cli` | Container image. |
-| `image.tag` | `"0.43.123"` | Image tag. |
+| `image.tag` | `"0.43.131"` | Image tag. |
 | `resources.requests.cpu` | `100m` | CPU request. |
 | `resources.requests.memory` | `128Mi` | Memory request. |
 | `resources.limits.cpu` | `500m` | CPU limit. |
@@ -122,13 +123,39 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `extraEnvFrom` | `[]` | Load environment variables from Secrets or ConfigMaps. |
 | `extraArgs` | `[]` | Extra arguments appended to the gateway container command. |
 | `extraObjects` | `[]` | Extra Kubernetes manifests to deploy with this chart. |
+| `service.type` | `ClusterIP` | Type of the Service created in direct listen mode. |
+| `service.port` | `""` | Port the Service exposes. Empty means the port from `gateway.listenAddress`. Set it only to put a different port in front of the gateway. |
+
+## Direct listen mode
+
+By default the gateway connects out to a relay. To have Infisical connect to the gateway instead, set `gateway.listenAddress` to the address Infisical dials.
+
+```bash
+helm install infisical-gateway infisical-helm-charts/infisical-gateway \
+  --namespace infisical-gateway \
+  --create-namespace \
+  --set gateway.name=<gateway-name> \
+  --set gateway.listenAddress=infisical-gateway.infisical-gateway.svc.cluster.local:8443 \
+  --set gateway.enrollment.method=token \
+  --set gateway.enrollment.token.value=<enrollment-token> \
+  --set gateway.domain=<your-infisical-domain>
+```
+
+The chart takes the container port from `gateway.listenAddress`, points the Service at it, and exposes that same port, which keeps all three in step. A `host:port` value is required, and the chart fails the render if the port is missing. Set `service.port` only if you want the Service to answer on a different port than the gateway binds, in which case the listen address has to name the Service's port.
+
+The Service is created only in direct listen mode. A relay-mode gateway accepts no connections and needs none.
+
+The address has to be one Infisical can resolve and reach. An in-cluster Service DNS name works when you self-host Infisical in the same cluster. From outside the cluster, expose the gateway through an Ingress or a `LoadBalancer` Service and register that address instead.
+
+Direct listen is only available on self-hosted Infisical.
 
 ## Default Helm values
 
+<Accordion title="values.yaml">
 ```yaml
 image:
   repository: infisical/cli
-  tag: "0.43.123"
+  tag: "0.43.131"
   pullPolicy: IfNotPresent
 
 # Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
@@ -181,6 +208,11 @@ gateway:
   # Specific relay to connect to. Leave empty for automatic selection.
   relayName: ""
 
+  # Stable host:port advertised by a gateway accepting direct connections.
+  # Requires an image.tag of 0.43.131 or newer; older images reject the flag and the pod
+  # crash-loops on startup.
+  listenAddress: ""
+
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
 
 # Persistent storage for the gateway (credentials and session recordings).
@@ -231,7 +263,9 @@ tolerations: {}
 nodeSelector: {}
 service:
   type: ClusterIP
-  port: 80
+  # Port the Service exposes. Empty means the port from gateway.listenAddress, which is the port
+  # the platform dials. Only set this to put a different port in front of the gateway.
+  port: ""
 
 ingress:
   enabled: false
@@ -260,3 +294,4 @@ extraArgs: []
 # Extra Kubernetes manifests to deploy with this chart
 extraObjects: []
 ```
+</Accordion>

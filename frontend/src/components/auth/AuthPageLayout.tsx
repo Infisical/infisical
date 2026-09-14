@@ -54,7 +54,7 @@ export const AuthPageLayout = ({
         <AuthPageHeader>{headerAction}</AuthPageHeader>
         <main
           className={cn(
-            "flex flex-1 px-5 py-10 sm:px-8 lg:px-10 xl:px-14",
+            "flex flex-1 px-5 pt-10 pb-26 sm:px-8 lg:px-10 xl:px-14",
             anchorBottomContent
               ? "min-h-0 thin-scrollbar overflow-x-hidden overflow-y-auto"
               : "items-center justify-center"

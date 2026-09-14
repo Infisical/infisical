@@ -25,6 +25,14 @@ Used to configure platform-specific security and operational settings.
   -base64 32`.
 </ParamField>
 
+<ParamField query="COOKIE_SECRET_SIGN_KEY" type="string" default="generated per instance">
+  Signs the session cookies used by the OAuth SSO, SAML, OIDC, and LDAP login flows. Left unset,
+  Infisical derives a deterministic key from the KMS root key persisted for the deployment. All
+  replicas for that deployment use the same key. Set it to a random
+  32-byte base64 string, generated with `openssl rand -base64 32`, to manage the key yourself.
+  Changing the value ends every login already in progress.
+</ParamField>
+
 <ParamField query="SITE_URL" type="string" default="none" required>
   Must be an absolute URL including the protocol (e.g.
   https://app.infisical.com).
@@ -1104,6 +1112,14 @@ If the export type is set to `otlp`, you will have to configure a value for `OTE
 
 <ParamField query="OTEL_DROP_HIGH_CARDINALITY_METERS" type="string" default="false" optional>
   When set to `true`, Infisical stops recording the high-cardinality, per-actor `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters. Nothing is measured, exported, or held in memory for them. Only bounded-cardinality `InfisicalCore` metrics are emitted. Recommended when those meters are enabled with `OTEL_EXPORT_TYPE=prometheus` and label combinations turn over often (many secret paths, source IPs, or clients), because memory then grows with uptime until the process restarts. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#available-metrics) for details.
+</ParamField>
+
+<ParamField query="OTEL_SEMCONV_STABILITY_OPT_IN" type="string" default="http" optional>
+  Which OpenTelemetry semantic conventions the HTTP metrics follow. Leave it unset and Infisical applies `http`, the stable conventions, and logs that it did so at startup.
+
+  Set it to `http/dup` to emit the old metric names alongside the stable ones while you move dashboards across. Both name sets are exported for as long as it's set, so the volume of those metrics roughly doubles. See [Monitoring & Telemetry](/self-hosting/guides/monitoring-telemetry#system-metrics) for the old and new names.
+
+  Tokens for other namespaces, such as `database`, are left alone.
 </ParamField>
 
 ## Identity auth method

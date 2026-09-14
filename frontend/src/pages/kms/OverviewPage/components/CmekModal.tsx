@@ -20,7 +20,7 @@ import {
   FieldContent,
   FieldDescription,
   FieldTitle,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
@@ -128,7 +128,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
         isError={Boolean(errors.name?.message)}
         label="Name"
       >
-        <Input autoFocus placeholder="my-secret-key" {...register("name")} />
+        <Input autoFocus placeholder="my-secret-key" {...register("name")} autoComplete="off" />
       </FormControl>
       <div className="flex w-full items-center gap-2">
         {!isUpdate && (
@@ -264,7 +264,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                   cannot be changed after the key is created.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 id="is-exportable"
                 variant="project"
                 checked={value}
@@ -285,7 +285,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                 Prevents this key from being deleted while enabled.
               </FieldDescription>
             </FieldContent>
-            <Switch
+            <Toggle
               id="has-delete-protection"
               variant="project"
               checked={value}
