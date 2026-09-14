@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { BsMicrosoftTeams } from "react-icons/bs";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MessagesSquareIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -74,7 +74,7 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
         >
           <AccordionTrigger>
             <div className="flex items-center gap-2">
-              <BsMicrosoftTeams className="text-lg" />
+              <MessagesSquareIcon />
               <div className="text-[15px] font-medium">Microsoft Teams</div>
             </div>
           </AccordionTrigger>

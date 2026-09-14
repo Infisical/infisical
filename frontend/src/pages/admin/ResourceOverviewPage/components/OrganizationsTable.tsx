@@ -1,28 +1,47 @@
 import { useMemo, useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faBuilding,
-  faEllipsisV,
-  faEnvelope,
-  faEye,
-  faMagnifyingGlass,
-  faPlus,
-  faTrash,
-  faUserCheck,
-  faUserMinus,
-  faUserPlus,
-  faUsers,
-  faUserXmark,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { CircleQuestionMarkIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  Building2Icon,
+  CircleQuestionMarkIcon,
+  EllipsisVerticalIcon,
+  EyeIcon,
+  MailIcon,
+  PlusIcon,
+  SearchIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+  UserCheckIcon,
+  UserMinusIcon,
+  UserPlusIcon,
+  UserRoundXIcon,
+  UsersIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Badge, Pagination } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Pagination,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useUser } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import {
@@ -43,6 +62,7 @@ import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { AdminDeleteActionDialog } from "@app/pages/admin/components/AdminDeleteActionDialog";
 import {
   EmptyState,
   Table,
@@ -54,19 +74,6 @@ import {
   THead,
   Tr
 } from "@app/pages/admin/components/AdminTable";
-import {
-  Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  IconButton,
-  Input,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/pages/admin/components/AdminV3Adapters";
 import { AddOrganizationModal } from "@app/pages/admin/ResourceOverviewPage/components/AddOrganizationModal";
 
 enum MembersOrderBy {
@@ -187,13 +194,17 @@ const ViewMembersModalContent = ({
 
   return (
     <>
-      <Input
-        aria-label="Search organization members"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
-      />
+      <InputGroup>
+        <InputGroupAddon>
+          <SearchIcon />
+        </InputGroupAddon>
+        <InputGroupInput
+          aria-label="Search organization members"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search members..."
+        />
+      </InputGroup>
       <TableContainer
         className={twMerge(
           "mt-4 flex flex-1 flex-col bg-container",
@@ -207,18 +218,16 @@ const ViewMembersModalContent = ({
                 <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
                   Name
                   <IconButton
-                    variant="plain"
+                    variant="ghost"
                     className={`ml-2 ${orderBy === MembersOrderBy.Name ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
+                    aria-label="Sort by name"
                     onClick={() => handleSort(MembersOrderBy.Name)}
                   >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC && orderBy === MembersOrderBy.Name
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
+                    {orderDirection === OrderByDirection.DESC && orderBy === MembersOrderBy.Name ? (
+                      <ArrowUpIcon />
+                    ) : (
+                      <ArrowDownIcon />
+                    )}
                   </IconButton>
                 </div>
               </Th>
@@ -226,18 +235,17 @@ const ViewMembersModalContent = ({
                 <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
                   Email
                   <IconButton
-                    variant="plain"
+                    variant="ghost"
                     className={`ml-2 ${orderBy === MembersOrderBy.Email ? "" : "opacity-30"}`}
-                    ariaLabel="sort"
+                    aria-label="Sort by email"
                     onClick={() => handleSort(MembersOrderBy.Email)}
                   >
-                    <FontAwesomeIcon
-                      icon={
-                        orderDirection === OrderByDirection.DESC && orderBy === MembersOrderBy.Email
-                          ? faArrowUp
-                          : faArrowDown
-                      }
-                    />
+                    {orderDirection === OrderByDirection.DESC &&
+                    orderBy === MembersOrderBy.Email ? (
+                      <ArrowUpIcon />
+                    ) : (
+                      <ArrowDownIcon />
+                    )}
                   </IconButton>
                 </div>
               </Th>
@@ -274,18 +282,17 @@ const ViewMembersModalContent = ({
                           <Button
                             isDisabled={resendOrgInvite.isPending}
                             className="ml-2 font-normal"
-                            colorSchema="primary"
-                            variant="outline_bg"
+                            variant="outline"
                             size="xs"
-                            isLoading={
+                            isPending={
                               resendOrgInvite.isPending && resendInviteId === member.membershipId
                             }
-                            leftIcon={<FontAwesomeIcon icon={faEnvelope} />}
                             onClick={(e) => {
                               onResendInvite(member.membershipId);
                               e.stopPropagation();
                             }}
                           >
+                            <MailIcon />
                             Resend Invite
                           </Button>
                         )}
@@ -293,13 +300,16 @@ const ViewMembersModalContent = ({
                   </Td>
                   <Td>
                     <div className="flex max-w-32">
-                      <Tooltip
-                        content={member.roleId ? "This member has a custom role assigned." : ""}
-                      >
-                        <Badge isTruncatable variant="neutral">
-                          <span className="capitalize">{member.role.replace("-", " ")}</span>
-                          {Boolean(member.roleId) && <CircleQuestionMarkIcon />}
-                        </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge isTruncatable variant="neutral">
+                            <span className="capitalize">{member.role.replace("-", " ")}</span>
+                            {Boolean(member.roleId) && <CircleQuestionMarkIcon />}
+                          </Badge>
+                        </TooltipTrigger>
+                        {member.roleId && (
+                          <TooltipContent>This member has a custom role assigned.</TooltipContent>
+                        )}
                       </Tooltip>
                     </div>
                   </Td>
@@ -307,13 +317,13 @@ const ViewMembersModalContent = ({
                     <div className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <IconButton ariaLabel="Options" size="xs" variant="plain">
-                            <FontAwesomeIcon icon={faEllipsisV} />
+                          <IconButton aria-label="Options" size="xs" variant="ghost">
+                            <EllipsisVerticalIcon />
                           </IconButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={2} align="end">
                           <DropdownMenuItem
-                            icon={<FontAwesomeIcon icon={faUserMinus} />}
+                            variant="danger"
                             onClick={() =>
                               handlePopUpOpen("deleteOrganizationMembership", {
                                 membershipId: member.membershipId,
@@ -323,16 +333,18 @@ const ViewMembersModalContent = ({
                               })
                             }
                           >
+                            <UserMinusIcon />
                             Remove From Organization
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            icon={<FontAwesomeIcon icon={faUserXmark} />}
+                            variant="danger"
                             onClick={() =>
                               handlePopUpOpen("deleteUser", {
                                 userId: member.user.id
                               })
                             }
                           >
+                            <UserRoundXIcon />
                             Delete User
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -352,7 +364,7 @@ const ViewMembersModalContent = ({
                 ? "No organization users match search..."
                 : "No organization users found"
             }
-            icon={faUsers}
+            icon={UsersIcon}
           />
         )}
       </TableContainer>
@@ -385,19 +397,20 @@ const ViewMembersModal = ({
   ) => void;
 }) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent
         onOpenAutoFocus={(event) => {
           event.preventDefault();
         }}
-        title="Organization Members"
-        subTitle="View the members of the organization."
-        className="max-h-[calc(100vh-2rem)] sm:max-w-4xl"
-        bodyClassName="flex flex-col overflow-hidden"
+        className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden sm:max-w-4xl"
       >
+        <DialogHeader className="text-left">
+          <DialogTitle>Organization Members</DialogTitle>
+          <DialogDescription>View the members of the organization.</DialogDescription>
+        </DialogHeader>
         <ViewMembersModalContent popUp={popUp} handlePopUpOpen={handlePopUpOpen} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -489,14 +502,17 @@ const OrganizationsPanelTable = ({
 
   return (
     <>
-      <Input
-        aria-label="Search organizations"
-        value={searchOrganizationsFilter}
-        onChange={(e) => setSearchOrganizationsFilter(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search organizations..."
-        className="flex-1"
-      />
+      <InputGroup>
+        <InputGroupAddon>
+          <SearchIcon />
+        </InputGroupAddon>
+        <InputGroupInput
+          aria-label="Search organizations"
+          value={searchOrganizationsFilter}
+          onChange={(e) => setSearchOrganizationsFilter(e.target.value)}
+          placeholder="Search organizations..."
+        />
+      </InputGroup>
       <div className="mt-4">
         <TableContainer>
           <Table>
@@ -521,7 +537,7 @@ const OrganizationsPanelTable = ({
                           {org.name ? (
                             <p className="truncate">{org.name}</p>
                           ) : (
-                            <span className="text-mineshaft-400">Not Set</span>
+                            <span className="text-muted">Not Set</span>
                           )}
                         </div>
                       </Td>
@@ -535,12 +551,11 @@ const OrganizationsPanelTable = ({
                           }
                           className="flex items-center hover:underline"
                         >
-                          <Tooltip className="text-center" content="View Members">
-                            <FontAwesomeIcon
-                              icon={faEye}
-                              className="mr-1.5 text-mineshaft-300"
-                              size="sm"
-                            />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <EyeIcon className="mr-1.5 size-4 text-muted" />
+                            </TooltipTrigger>
+                            <TooltipContent>View Members</TooltipContent>
                           </Tooltip>
                           {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
                           {!org.members.some(
@@ -548,10 +563,13 @@ const OrganizationsPanelTable = ({
                               member.role === OrgMembershipRole.Admin &&
                               member.status === OrgMembershipStatus.Accepted
                           ) && (
-                            <Tooltip content="No admins have accepted their invitations.">
-                              <div className="ml-1.5">
-                                <FontAwesomeIcon className="text-yellow" icon={faWarning} />
-                              </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <TriangleAlertIcon className="ml-1.5 size-4 text-warning" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                No admins have accepted their invitations.
+                              </TooltipContent>
                             </Tooltip>
                           )}
                         </button>
@@ -562,23 +580,19 @@ const OrganizationsPanelTable = ({
                       <Td>
                         <div className="flex items-center justify-end gap-1">
                           {isMember && (
-                            <Tooltip
-                              className="text-center"
-                              content="You are a member of this organization"
-                            >
-                              <div className="flex size-7 items-center justify-center">
-                                <FontAwesomeIcon
-                                  className="text-muted"
-                                  icon={faUserCheck}
-                                  size="sm"
-                                />
-                              </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex size-7 items-center justify-center">
+                                  <UserCheckIcon className="size-4 text-muted" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>You are a member of this organization</TooltipContent>
                             </Tooltip>
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton ariaLabel="Options" size="xs" variant="plain">
-                                <FontAwesomeIcon icon={faEllipsisV} />
+                              <IconButton aria-label="Options" size="xs" variant="ghost">
+                                <EllipsisVerticalIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
@@ -588,12 +602,13 @@ const OrganizationsPanelTable = ({
                                     e.stopPropagation();
                                     handleAccessOrg(org.id);
                                   }}
-                                  icon={<FontAwesomeIcon icon={faUserPlus} />}
                                 >
+                                  <UserPlusIcon />
                                   Join Organization
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
+                                variant="danger"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteOrganization", {
@@ -601,8 +616,8 @@ const OrganizationsPanelTable = ({
                                     orgName: org.name
                                   });
                                 }}
-                                icon={<FontAwesomeIcon icon={faTrash} />}
                               >
+                                <Trash2Icon />
                                 Delete Organization
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -614,7 +629,9 @@ const OrganizationsPanelTable = ({
                 })}
             </TBody>
           </Table>
-          {!isPending && isEmpty && <EmptyState title="No organizations found" icon={faBuilding} />}
+          {!isPending && isEmpty && (
+            <EmptyState title="No organizations found" icon={Building2Icon} />
+          )}
         </TableContainer>
         {!isPending && totalCount > 0 && (
           <Pagination
@@ -702,16 +719,13 @@ export const OrganizationsTable = () => {
     <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-medium text-mineshaft-100">Organizations</p>
-          <p className="text-sm text-bunker-300">
+          <p className="text-xl font-medium text-foreground">Organizations</p>
+          <p className="text-sm text-accent">
             Manage, join and view organizations across your instance.
           </p>
         </div>
-        <Button
-          colorSchema="secondary"
-          onClick={() => handlePopUpOpen("createOrganization")}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-        >
+        <Button variant="neutral" onClick={() => handlePopUpOpen("createOrganization")}>
+          <PlusIcon />
           Add Organization
         </Button>
       </div>
@@ -720,34 +734,34 @@ export const OrganizationsTable = () => {
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
+      <AdminDeleteActionDialog
         isOpen={popUp.deleteOrganization.isOpen}
-        deleteKey="delete"
+        confirmationKey="delete"
         title={`Are you sure you want to delete organization ${
           (popUp?.deleteOrganization?.data as { orgName: string })?.orgName || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteOrganization", isOpen)}
-        onDeleteApproved={handleDeleteOrganization}
+        onConfirm={handleDeleteOrganization}
       />
-      <DeleteActionModal
+      <AdminDeleteActionDialog
         isOpen={popUp.deleteOrganizationMembership.isOpen}
-        deleteKey="delete"
+        confirmationKey="delete"
         title={`Are you sure you want to remove ${
           (popUp?.deleteOrganizationMembership?.data as { username: string })?.username || ""
         } from organization ${
           (popUp?.deleteOrganizationMembership?.data as { orgName: string })?.orgName || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteOrganizationMembership", isOpen)}
-        onDeleteApproved={handleDeleteOrganizationMembership}
+        onConfirm={handleDeleteOrganizationMembership}
       />
-      <DeleteActionModal
+      <AdminDeleteActionDialog
         isOpen={popUp.deleteUser.isOpen}
-        deleteKey="delete"
+        confirmationKey="delete"
         title={`Are you sure you want to delete user ${
           (popUp?.deleteUser?.data as { username: string })?.username || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteUser", isOpen)}
-        onDeleteApproved={handleDeleteUser}
+        onConfirm={handleDeleteUser}
       />
       <AddOrganizationModal
         isOpen={popUp.createOrganization.isOpen}

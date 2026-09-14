@@ -1,16 +1,25 @@
 import { useState } from "react";
 import {
-  faEllipsisV,
-  faMagnifyingGlass,
-  faShieldHalved,
-  faWrench,
-  faXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { ServerCogIcon } from "lucide-react";
+  EllipsisVerticalIcon,
+  SearchIcon,
+  ServerCogIcon,
+  ShieldXIcon,
+  WrenchIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Badge, Pagination } from "@app/components/v3";
+import {
+  Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Pagination
+} from "@app/components/v3";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -20,6 +29,7 @@ import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/h
 import { useAdminRemoveIdentitySuperAdminAccess } from "@app/hooks/api/admin";
 import { useAdminGetIdentities } from "@app/hooks/api/admin/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { AdminDeleteActionDialog } from "@app/pages/admin/components/AdminDeleteActionDialog";
 import {
   EmptyState,
   Table,
@@ -31,15 +41,6 @@ import {
   THead,
   Tr
 } from "@app/pages/admin/components/AdminTable";
-import {
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  IconButton,
-  Input
-} from "@app/pages/admin/components/AdminV3Adapters";
 
 const IdentityPanelTable = ({
   handlePopUpOpen
@@ -87,14 +88,17 @@ const IdentityPanelTable = ({
   return (
     <>
       <div className="flex gap-2">
-        <Input
-          aria-label="Search machine identities"
-          value={searchIdentityFilter}
-          onChange={(e) => setSearchIdentityFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search machine identities by name..."
-          className="flex-1"
-        />
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            aria-label="Search machine identities"
+            value={searchIdentityFilter}
+            onChange={(e) => setSearchIdentityFilter(e.target.value)}
+            placeholder="Search machine identities by name..."
+          />
+        </InputGroup>
       </div>
       <div className="mt-4">
         <TableContainer>
@@ -124,12 +128,13 @@ const IdentityPanelTable = ({
                         <div className="flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton ariaLabel="Options" size="xs" variant="plain">
-                                <FontAwesomeIcon icon={faEllipsisV} />
+                              <IconButton aria-label="Options" size="xs" variant="ghost">
+                                <EllipsisVerticalIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
                               <DropdownMenuItem
+                                variant="danger"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("removeServerAdmin", {
@@ -137,17 +142,8 @@ const IdentityPanelTable = ({
                                     id
                                   });
                                 }}
-                                icon={
-                                  <div className="relative">
-                                    <FontAwesomeIcon icon={faShieldHalved} />
-                                    <FontAwesomeIcon
-                                      className="absolute -right-1 -bottom-[0.01rem]"
-                                      size="2xs"
-                                      icon={faXmark}
-                                    />
-                                  </div>
-                                }
                               >
+                                <ShieldXIcon />
                                 Remove Server Admin
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -159,7 +155,7 @@ const IdentityPanelTable = ({
                 ))}
             </TBody>
           </Table>
-          {!isPending && isEmpty && <EmptyState title="No identities found" icon={faWrench} />}
+          {!isPending && isEmpty && <EmptyState title="No identities found" icon={WrenchIcon} />}
         </TableContainer>
         {!isPending && totalCount > 0 && (
           <Pagination
@@ -201,21 +197,21 @@ export const MachineIdentitiesTable = () => {
     <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-medium text-mineshaft-100">Machine Identities</p>
-          <p className="text-sm text-bunker-300">Manage machine identities across your instance.</p>
+          <p className="text-xl font-medium text-foreground">Machine Identities</p>
+          <p className="text-sm text-accent">Manage machine identities across your instance.</p>
         </div>
       </div>
       <IdentityPanelTable handlePopUpOpen={handlePopUpOpen} />
-      <DeleteActionModal
+      <AdminDeleteActionDialog
         isOpen={popUp.removeServerAdmin.isOpen}
         title={`Are you sure you want to remove Server Admin permissions from ${
           (popUp?.removeServerAdmin?.data as { name: string })?.name || ""
         }?`}
-        subTitle=""
+        description=""
         onChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleRemoveServerAdmin}
-        buttonText="Remove Access"
+        confirmationKey="confirm"
+        onConfirm={handleRemoveServerAdmin}
+        confirmButtonText="Remove Access"
       />
     </div>
   );

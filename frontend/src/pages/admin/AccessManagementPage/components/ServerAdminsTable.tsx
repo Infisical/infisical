@@ -1,20 +1,35 @@
 import { Dispatch, SetStateAction, useState } from "react";
 import {
-  faEllipsisV,
-  faMagnifyingGlass,
-  faPlus,
-  faShieldHalved,
-  faTrash,
-  faUsers,
-  faUserXmark,
-  faXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AlertTriangleIcon } from "lucide-react";
+  AlertTriangleIcon,
+  EllipsisVerticalIcon,
+  PlusIcon,
+  SearchIcon,
+  ShieldXIcon,
+  Trash2Icon,
+  UserRoundXIcon,
+  UsersIcon
+} from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { Badge, Pagination, SelectedActionBar } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Pagination,
+  SelectedActionBar,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useSubscription, useUser } from "@app/context";
 import {
   getUserTablePreference,
@@ -31,6 +46,7 @@ import {
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { AddServerAdminModal } from "@app/pages/admin/AccessManagementPage/components/AddServerAdminModal";
+import { AdminDeleteActionDialog } from "@app/pages/admin/components/AdminDeleteActionDialog";
 import {
   EmptyState,
   Table,
@@ -42,18 +58,6 @@ import {
   THead,
   Tr
 } from "@app/pages/admin/components/AdminTable";
-import {
-  Button,
-  Checkbox,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  IconButton,
-  Input,
-  Tooltip
-} from "@app/pages/admin/components/AdminV3Adapters";
 
 const removeServerAdminUpgradePlanMessage = "Removing Server Admin permissions from user";
 
@@ -113,19 +117,19 @@ const ServerAdminsPanelTable = ({
   return (
     <>
       <div className="flex items-center gap-x-2">
-        <Input
-          aria-label="Search server admins"
-          value={searchUserFilter}
-          onChange={(e) => setSearchUserFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search admins..."
-          className="flex-1"
-        />
-        <Button
-          colorSchema="secondary"
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => handlePopUpOpen("addServerAdmin")}
-        >
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            aria-label="Search server admins"
+            value={searchUserFilter}
+            onChange={(e) => setSearchUserFilter(e.target.value)}
+            placeholder="Search admins..."
+          />
+        </InputGroup>
+        <Button variant="neutral" onClick={() => handlePopUpOpen("addServerAdmin")}>
+          <PlusIcon />
           Add Admin
         </Button>
       </div>
@@ -185,7 +189,7 @@ const ServerAdminsPanelTable = ({
                       </Td>
                       <Td className="w-5/12 max-w-0">
                         <p className="truncate">
-                          {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                          {name ?? <span className="text-muted">Not Set</span>}
                         </p>
                       </Td>
                       <Td className="w-5/12 max-w-0">
@@ -195,12 +199,13 @@ const ServerAdminsPanelTable = ({
                         <div className="flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton ariaLabel="Options" size="xs" variant="plain">
-                                <FontAwesomeIcon icon={faEllipsisV} />
+                              <IconButton aria-label="Options" size="xs" variant="ghost">
+                                <EllipsisVerticalIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
                               <DropdownMenuItem
+                                variant="danger"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("removeUser", {
@@ -208,21 +213,12 @@ const ServerAdminsPanelTable = ({
                                     id
                                   });
                                 }}
-                                icon={<FontAwesomeIcon icon={faUserXmark} />}
                               >
+                                <UserRoundXIcon />
                                 Remove User
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                icon={
-                                  <div className="relative">
-                                    <FontAwesomeIcon icon={faShieldHalved} />
-                                    <FontAwesomeIcon
-                                      className="absolute -right-1 -bottom-[0.01rem]"
-                                      size="2xs"
-                                      icon={faXmark}
-                                    />
-                                  </div>
-                                }
+                                variant="danger"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (!subscription?.instanceUserManagement) {
@@ -239,6 +235,7 @@ const ServerAdminsPanelTable = ({
                                   });
                                 }}
                               >
+                                <ShieldXIcon />
                                 Remove Server Admin
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -250,7 +247,7 @@ const ServerAdminsPanelTable = ({
                 })}
             </TBody>
           </Table>
-          {!isPending && isEmpty && <EmptyState title="No users found" icon={faUsers} />}
+          {!isPending && isEmpty && <EmptyState title="No users found" icon={UsersIcon} />}
         </TableContainer>
         {!isEmpty && (
           <Pagination
@@ -351,9 +348,7 @@ export const ServerAdminsTable = () => {
         onClearSelection={() => setSelectedUsers([])}
       >
         <Button
-          variant="outline_bg"
-          colorSchema="danger"
-          leftIcon={<FontAwesomeIcon icon={faTrash} />}
+          variant="danger"
           onClick={() => {
             if (!selectedUsers?.length) return;
 
@@ -361,6 +356,7 @@ export const ServerAdminsTable = () => {
           }}
           size="xs"
         >
+          <Trash2Icon />
           Delete
         </Button>
       </SelectedActionBar>
@@ -379,25 +375,25 @@ export const ServerAdminsTable = () => {
           handlePerPageChange={handlePerPageChange}
           totalCount={totalCount}
         />
-        <DeleteActionModal
+        <AdminDeleteActionDialog
           isOpen={popUp.removeUser.isOpen}
-          deleteKey="remove"
+          confirmationKey="remove"
           title={`Are you sure you want to delete User with username ${
             (popUp?.removeUser?.data as { id: string; username: string })?.username || ""
           }?`}
           onChange={(isOpen) => handlePopUpToggle("removeUser", isOpen)}
-          onDeleteApproved={handleRemoveUser}
+          onConfirm={handleRemoveUser}
         />
-        <DeleteActionModal
+        <AdminDeleteActionDialog
           isOpen={popUp.removeServerAdmin.isOpen}
           title={`Are you sure you want to remove Server Admin permissions from ${
             (popUp?.removeServerAdmin?.data as { id: string; username: string })?.username || ""
           }?`}
-          subTitle=""
+          description=""
           onChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={handleRemoveServerAdminAccess}
-          buttonText="Remove Access"
+          confirmationKey="confirm"
+          onConfirm={handleRemoveServerAdminAccess}
+          confirmButtonText="Remove Access"
         />
         <AddServerAdminModal
           isOpen={popUp.addServerAdmin.isOpen}
@@ -408,18 +404,16 @@ export const ServerAdminsTable = () => {
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
         />
-        <DeleteActionModal
+        <AdminDeleteActionDialog
           isOpen={popUp.removeUsers.isOpen}
           title="Are you sure you want to delete the following users?"
           onChange={(isOpen) => handlePopUpToggle("removeUsers", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() => handleRemoveUsers()}
-          buttonText="Remove"
+          confirmationKey="confirm"
+          onConfirm={() => handleRemoveUsers()}
+          confirmButtonText="Remove"
         >
-          <div className="mt-4 text-sm text-mineshaft-400">
-            The following users will be deleted:
-          </div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="mt-4 text-sm text-accent">The following users will be deleted:</div>
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-danger/25 bg-danger/5 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;
@@ -437,11 +431,16 @@ export const ServerAdminsTable = () => {
                         )}{" "}
                       </p>
                       {userId === user.id && (
-                        <Tooltip content="Are you sure you want to remove yourself from this instance?">
-                          <Badge variant="danger">
-                            <AlertTriangleIcon />
-                            Deleting Yourself
-                          </Badge>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="danger">
+                              <AlertTriangleIcon />
+                              Deleting Yourself
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Are you sure you want to remove yourself from this instance?
+                          </TooltipContent>
                         </Tooltip>
                       )}
                     </div>
@@ -450,7 +449,7 @@ export const ServerAdminsTable = () => {
               })}
             </ul>
           </div>
-        </DeleteActionModal>
+        </AdminDeleteActionDialog>
       </div>
     </>
   );

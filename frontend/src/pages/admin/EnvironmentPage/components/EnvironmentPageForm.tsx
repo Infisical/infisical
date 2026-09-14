@@ -61,10 +61,18 @@ export const GroupContainer = ({
             >
               <div className="flex max-w-lg flex-col">
                 <span className="text-sm font-medium text-foreground">
-                  <HighlightText text={field.key} highlight={search} />
+                  <HighlightText
+                    text={field.key}
+                    highlight={search}
+                    highlightClassName="bg-foreground/15"
+                  />
                 </span>
                 <span className="text-sm text-label">
-                  <HighlightText text={field.description} highlight={search} />
+                  <HighlightText
+                    text={field.description}
+                    highlight={search}
+                    highlightClassName="bg-foreground/15"
+                  />
                 </span>
               </div>
 

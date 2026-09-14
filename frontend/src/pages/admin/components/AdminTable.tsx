@@ -1,5 +1,4 @@
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { LucideIcon } from "lucide-react";
 
 import {
   Empty,
@@ -30,18 +29,18 @@ export const Table = ({ containerClassName, ...props }: React.ComponentProps<typ
 
 export const EmptyState = ({
   title,
-  icon,
+  icon: Icon,
   className
 }: {
   title: string;
-  icon?: IconDefinition;
+  icon?: LucideIcon;
   className?: string;
 }) => (
   <Empty className={cn("border-0", className)}>
     <EmptyHeader>
-      {icon && (
+      {Icon && (
         <EmptyMedia variant="icon">
-          <FontAwesomeIcon icon={icon} />
+          <Icon />
         </EmptyMedia>
       )}
       <EmptyTitle>{title}</EmptyTitle>

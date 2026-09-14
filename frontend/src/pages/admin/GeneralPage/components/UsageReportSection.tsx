@@ -1,5 +1,4 @@
-import { faDownload, faFileAlt } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { DownloadIcon, FileTextIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -32,7 +31,7 @@ export const UsageReportSection = () => {
     <Card>
       <CardHeader>
         <CardTitle>
-          <FontAwesomeIcon icon={faFileAlt} />
+          <FileTextIcon />
           Offline Usage Reports
         </CardTitle>
         <CardDescription>
@@ -45,7 +44,7 @@ export const UsageReportSection = () => {
           onClick={handleGenerateReport}
           isPending={generateUsageReport.isPending}
         >
-          <FontAwesomeIcon icon={faDownload} />
+          <DownloadIcon />
           Generate report
         </Button>
       </CardContent>

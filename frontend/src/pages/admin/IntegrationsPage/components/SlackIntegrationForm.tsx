@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { BsSlack } from "react-icons/bs";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MessageSquareTextIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -106,7 +106,7 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
         <AccordionItem value="slack-integration" className="data-[state=open]:border-none">
           <AccordionTrigger>
             <div className="flex items-center gap-2">
-              <BsSlack className="text-lg" />
+              <MessageSquareTextIcon />
               <div className="text-[15px] font-medium">Slack</div>
             </div>
           </AccordionTrigger>

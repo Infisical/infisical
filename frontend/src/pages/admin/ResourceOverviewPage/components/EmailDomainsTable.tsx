@@ -1,30 +1,31 @@
 import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import {
-  faEllipsisV,
-  faGlobe,
-  faMagnifyingGlass,
-  faPlus,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { EllipsisVerticalIcon, Globe2Icon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
-  Button as DialogButton,
+  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Field,
   FieldError,
   FieldLabel,
   FilterableSelect,
-  Input as DialogInput,
+  IconButton,
+  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination
 } from "@app/components/v3";
 import {
@@ -40,6 +41,7 @@ import {
   useAdminGetOrganizations
 } from "@app/hooks/api";
 import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
+import { AdminDeleteActionDialog } from "@app/pages/admin/components/AdminDeleteActionDialog";
 import {
   EmptyState,
   Table,
@@ -51,16 +53,6 @@ import {
   THead,
   Tr
 } from "@app/pages/admin/components/AdminTable";
-import {
-  Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  IconButton,
-  Input
-} from "@app/pages/admin/components/AdminV3Adapters";
 
 const AddEmailDomainSchema = z.object({
   organization: z.object({ id: z.string(), name: z.string() }),
@@ -142,7 +134,7 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
         render={({ field }) => (
           <Field>
             <FieldLabel htmlFor="verified-email-domain">Domain</FieldLabel>
-            <DialogInput
+            <Input
               id="verified-email-domain"
               placeholder="company.com"
               isError={Boolean(errors.domain)}
@@ -153,12 +145,12 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
         )}
       />
       <DialogFooter>
-        <DialogButton variant="ghost" type="button" onClick={onClose}>
+        <Button variant="ghost" type="button" onClick={onClose}>
           Cancel
-        </DialogButton>
-        <DialogButton variant="neutral" type="submit" isPending={isSubmitting}>
+        </Button>
+        <Button variant="neutral" type="submit" isPending={isSubmitting}>
           Add domain
-        </DialogButton>
+        </Button>
       </DialogFooter>
     </form>
   );
@@ -231,27 +223,25 @@ export const EmailDomainsTable = () => {
     <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-medium text-mineshaft-100">Email Domains</p>
-          <p className="text-sm text-bunker-300">
-            Manage verified email domains across your instance.
-          </p>
+          <p className="text-xl font-medium text-foreground">Email Domains</p>
+          <p className="text-sm text-accent">Manage verified email domains across your instance.</p>
         </div>
-        <Button
-          colorSchema="secondary"
-          onClick={() => handlePopUpOpen("addEmailDomain")}
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-        >
+        <Button variant="neutral" onClick={() => handlePopUpOpen("addEmailDomain")}>
+          <PlusIcon />
           Add Domain
         </Button>
       </div>
-      <Input
-        aria-label="Search email domains"
-        value={searchFilter}
-        onChange={(e) => setSearchFilter(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search by domain or organization name..."
-        className="flex-1"
-      />
+      <InputGroup>
+        <InputGroupAddon>
+          <SearchIcon />
+        </InputGroupAddon>
+        <InputGroupInput
+          aria-label="Search email domains"
+          value={searchFilter}
+          onChange={(e) => setSearchFilter(e.target.value)}
+          placeholder="Search by domain or organization name..."
+        />
+      </InputGroup>
       <div className="mt-4">
         <TableContainer>
           <Table>
@@ -283,13 +273,13 @@ export const EmailDomainsTable = () => {
                       <div className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <IconButton ariaLabel="Options" size="xs" variant="plain">
-                              <FontAwesomeIcon icon={faEllipsisV} />
+                            <IconButton aria-label="Options" size="xs" variant="ghost">
+                              <EllipsisVerticalIcon />
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent sideOffset={2} align="end">
                             <DropdownMenuItem
-                              icon={<FontAwesomeIcon icon={faTrash} />}
+                              variant="danger"
                               onClick={() =>
                                 handlePopUpOpen("deleteEmailDomain", {
                                   emailDomainId: ed.id,
@@ -297,6 +287,7 @@ export const EmailDomainsTable = () => {
                                 })
                               }
                             >
+                              <Trash2Icon />
                               Delete Domain
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -307,7 +298,7 @@ export const EmailDomainsTable = () => {
                 ))}
             </TBody>
           </Table>
-          {!isPending && isEmpty && <EmptyState title="No email domains found" icon={faGlobe} />}
+          {!isPending && isEmpty && <EmptyState title="No email domains found" icon={Globe2Icon} />}
         </TableContainer>
         {!isPending && totalCount > 0 && (
           <Pagination
@@ -319,14 +310,14 @@ export const EmailDomainsTable = () => {
           />
         )}
       </div>
-      <DeleteActionModal
+      <AdminDeleteActionDialog
         isOpen={popUp.deleteEmailDomain.isOpen}
-        deleteKey="delete"
+        confirmationKey="delete"
         title={`Are you sure you want to delete domain ${
           (popUp?.deleteEmailDomain?.data as { domain: string })?.domain || ""
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteEmailDomain", isOpen)}
-        onDeleteApproved={handleDelete}
+        onConfirm={handleDelete}
       />
       <AddEmailDomainModal
         isOpen={popUp.addEmailDomain.isOpen}
