@@ -764,20 +764,23 @@
           },
           {
             "item": "Agent Vault",
-            "icon": "sparkles",
+            "icon": "shield-keyhole",
             "tag": "PREVIEW",
             "pages": [
               "documentation/platform/agent-vault/overview",
               {
                 "group": "Get started",
                 "pages": [
-                  "documentation/platform/agent-vault/quickstart"
+                  "documentation/platform/agent-vault/quickstart",
+                  "documentation/platform/agent-vault/why-agent-vault",
+                  "documentation/platform/agent-vault/how-it-works"
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/services",
                   "documentation/platform/agent-vault/sessions",
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"

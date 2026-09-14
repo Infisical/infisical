@@ -1,0 +1,14 @@
+---
+title: "How it works"
+description: "The three primitives Agent Vault combines at request time, and why agents don't need code changes."
+---
+
+Agent Vault brokers access at the network boundary. Three primitives combine at request time:
+
+- **[Access bundles](/documentation/platform/agent-vault/access-bundles).** These group the services an agent needs. A service is one API: the hosts it answers on, and the credential the proxy attaches to requests bound for them.
+- **[Sessions](/documentation/platform/agent-vault/sessions).** These are what agents run with. A session is scoped to one bundle and carries a session token, which the agent uses in place of any real credential.
+- **[Proxies](/documentation/platform/agent-vault/proxies).** These run where your agent traffic leaves your network. Agents route through them by setting `HTTPS_PROXY`.
+
+You grant a bundle to whoever runs the agent, they create a session with it, and route their agent's traffic through the proxy. A request to a host no service in the bundle covers is either refused or forwarded with no credential attached, depending on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
+
+The agent's code doesn't change. `infisical agent-vault run` sets `HTTPS_PROXY` and trusts the proxy's certificate authority for you; anything that already reads those environment variables works as-is.
