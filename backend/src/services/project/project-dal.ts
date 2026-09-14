@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   AccessScope,
-  OrgMembershipStatus,
   ProjectsSchema,
   ProjectType,
   ProjectUpgradeStatus,
@@ -514,23 +513,13 @@ export const projectDALFactory = (db: TDbClient) => {
       }
 
       const conn = tx || db.replicaNode();
-      // A group-derived user counts only with an accepted org membership. user_group_membership.isPending
-      // cannot tell that apart: it is set when a user is added before accepting the invite and never cleared.
-      const acceptedOrgUserIds = conn(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
-        .where(`${TableName.Membership}.status`, OrgMembershipStatus.Accepted)
-        .whereIn(`${TableName.Membership}.actorUserId`, uniqueUserIds)
-        .select(db.ref("actorUserId").withSchema(TableName.Membership));
-
       const rows = await conn(TableName.Membership)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .leftJoin(TableName.UserGroupMembership, function joinUserGroupMembership() {
-          this.on(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`).onIn(
-            `${TableName.UserGroupMembership}.userId`,
-            db.raw("?", [acceptedOrgUserIds])
-          );
-        })
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.Membership}.actorGroupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)

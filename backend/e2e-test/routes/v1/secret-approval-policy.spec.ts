@@ -263,7 +263,7 @@ describe("Secret approval policy router", async () => {
     }
   });
 
-  test("Create policy fails when user approver is in a project group but has not accepted the org invite", async () => {
+  test("Create policy succeeds when user approver is in a project group but has not accepted the org invite", async () => {
     const db = getDb();
     const group = await seedGroup(db, { slug: "sap-group-invited-user-approver", addToProject: true });
     const user = await seedGroupOnlyUser(db, {
@@ -271,12 +271,14 @@ describe("Secret approval policy router", async () => {
       orgMembershipStatus: OrgMembershipStatus.Invited
     });
 
+    let policyId: string | undefined;
     try {
       const res = await createPolicyWithUserApprover(user.id, "/group-invited-user-approver");
 
-      expect(res.statusCode).toBe(400);
-      expect(res.json().message).toContain("not members of the project");
+      expect(res.statusCode).toBe(200);
+      policyId = res.json().approval.id;
     } finally {
+      if (policyId) await db(TableName.SecretApprovalPolicy).where({ id: policyId }).del();
       await cleanupGroupOnlyUser(db, user.id);
       await cleanupGroup(db, group.id);
     }
