@@ -39,7 +39,6 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { Kbd } from "@app/components/v3/generic/Kbd";
 import { useProject } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
@@ -287,9 +286,6 @@ export const SecretSyncsTable = ({ secretSyncs, isPending }: Props) => {
             ref={searchInputRef}
             placeholder="Search secret syncs..."
           />
-          <InputGroupAddon align="inline-end">
-            <Kbd aria-label="Press / to focus search">/</Kbd>
-          </InputGroupAddon>
         </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

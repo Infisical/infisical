@@ -31,7 +31,6 @@ import {
   Tr
 } from "@app/components/v2";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@app/components/v3";
-import { Kbd } from "@app/components/v3/generic/Kbd";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import { usePagination, usePopUp, useResetPageHelper, useSlashFocusSearch } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -226,9 +225,6 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
             ref={searchInputRef}
             placeholder="Search data sources..."
           />
-          <InputGroupAddon align="inline-end">
-            <Kbd aria-label="Press / to focus search">/</Kbd>
-          </InputGroupAddon>
         </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

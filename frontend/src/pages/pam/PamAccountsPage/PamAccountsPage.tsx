@@ -38,7 +38,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { Kbd } from "@app/components/v3/generic/Kbd";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization } from "@app/context";
 import {
@@ -238,9 +237,6 @@ export const PamAccountsPage = () => {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                 />
-                <InputGroupAddon align="inline-end">
-                  <Kbd aria-label="Press / to focus search">/</Kbd>
-                </InputGroupAddon>
               </InputGroup>
 
               <ButtonGroup>
