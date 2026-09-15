@@ -52,8 +52,8 @@ const makeConsumer = (overrides?: Partial<IEventConsumer>): IEventConsumer =>
     ...overrides
   }) as IEventConsumer;
 
-// `tx` is a sentinel: emit has to thread the caller's transaction through untouched, since a call
-// that silently opens its own connection is how the pool deadlocks.
+// Sentinel: emit has to pass the caller's tx through untouched. Silently opening a second connection
+// is how the pool deadlocks.
 const TX = { sentinel: true } as never;
 
 const buildService = (consumers: IEventConsumer[]) => {
@@ -105,8 +105,8 @@ describe("event outbox emit", () => {
     expect(inserted[0].tx).toBe(TX);
   });
 
-  // A payload the consumer can't read means a statically wrong emit site, and failing loudly beats
-  // dropping a notification over a misspelled field.
+  // An unreadable payload means a wrong emit site. Failing loudly beats dropping a notification over a
+  // misspelled field.
   test("throws when the payload does not match the consumer's schema", async () => {
     const { service, inserted } = buildService([makeConsumer()]);
 
@@ -233,7 +233,6 @@ describe("event outbox drain", () => {
     expect(commits[0].delivered).toEqual([{ ids: ["1"] }]);
   });
 
-  // A consumer that throws must not lose the batch: every row goes back for another attempt.
   test("retries the whole batch when the consumer throws", async () => {
     const { service, commits } = buildDrain({
       batches: [[makeRow()]],
@@ -248,8 +247,8 @@ describe("event outbox drain", () => {
     expect(commits[0].delivered).toEqual([]);
   });
 
-  // Otherwise a consumer that quietly returns nothing would leave rows stuck in 'processing' until
-  // the stale-claim sweeper noticed, which looks identical to a crashed worker.
+  // Otherwise rows the consumer forgot would sit in 'processing' until the sweeper noticed, looking
+  // exactly like a crashed worker.
   test("retries a row the consumer returned no result for", async () => {
     const { service, commits } = buildDrain({ batches: [[makeRow()]], handle: async () => [] });
 
@@ -271,8 +270,8 @@ describe("event outbox drain", () => {
     expect(commits[0].retriable).toEqual([]);
   });
 
-  // One UPDATE per distinct outcome, not one per row, so a batch of a hundred deliveries is a single
-  // statement. Rows on the same attempt share a retry delay, so they group too.
+  // One UPDATE per distinct outcome, so a hundred deliveries is one statement. Rows on the same attempt
+  // share a retry delay, so they group too.
   test("groups rows that share an outcome into one commit entry", async () => {
     const { service, commits } = buildDrain({
       batches: [[makeRow({ id: 1 }), makeRow({ id: 2 }), makeRow({ id: 3 }), makeRow({ id: 4 })]],
@@ -292,8 +291,8 @@ describe("event outbox drain", () => {
     expect(commits[0].retriable[0].error).toBe("slack 502");
   });
 
-  // The token the rows were claimed under is what commitResults fences on, so a claim that reports
-  // under a different one would write to whatever worker holds the rows now.
+  // commitResults fences on the claim token. Reporting under a different one would write to whatever
+  // worker holds the rows now.
   test("commits under the token the batch was claimed with", async () => {
     const { service, commits, claimTokens } = buildDrain({
       batches: [[makeRow()]],
@@ -305,8 +304,8 @@ describe("event outbox drain", () => {
     expect((commits[0] as unknown as { lockToken: string }).lockToken).toBe(claimTokens[0]);
   });
 
-  // A short settle means the sweeper handed these rows to another worker while this one was still
-  // delivering, so the batch went out twice. Nothing else in the system can see that happened.
+  // A short settle means the sweeper handed the rows to another worker mid-delivery, so the batch went
+  // out twice. This log is the only place that shows up.
   test("reports a claim that was taken away mid-delivery", async () => {
     loggerWarn.mockClear();
     const { service } = buildDrain({
@@ -333,8 +332,8 @@ describe("event outbox drain", () => {
     expect(loggerWarn).not.toHaveBeenCalled();
   });
 
-  // A batch that legitimately outlives the sweeper's threshold (a slow webhook, many rows) has to
-  // keep its claim fresh, or the sweeper hands its rows to a second worker mid-delivery.
+  // A slow batch (slow webhook, many rows) has to keep its claim fresh or the sweeper hands it to a
+  // second worker mid-delivery.
   test("extends the claim while the consumer is still handling a batch", async () => {
     vi.useFakeTimers();
     try {
@@ -372,8 +371,8 @@ describe("event outbox drain", () => {
     expect(commits).toHaveLength(0);
   });
 
-  // By this point the consumer has already sent. Letting a transient commit failure escape would leave
-  // the rows to the stale sweeper and re-notify ten minutes later, so the commit itself is retried.
+  // The consumer already sent by now. Letting a transient commit failure escape would leave the rows
+  // to the sweeper and re-notify ten minutes later.
   test("retries a failed commit before giving up on it", async () => {
     vi.useFakeTimers();
     try {
@@ -466,8 +465,8 @@ describe("event outbox stale sweep", () => {
     exhaustedMetrics.length = 0;
   });
 
-  // A row the sweeper gives up on is as lost as one a consumer gives up on. Without this the metric
-  // that promises to count every abandoned notification misses the ones caused by dead workers.
+  // A row the sweeper gives up on is just as lost as one a consumer gives up on, and the exhausted
+  // metric promises to count every one.
   test("counts events the sweeper gives up on, per consumer, on the exhausted metric", async () => {
     const { service } = buildSweep([
       {

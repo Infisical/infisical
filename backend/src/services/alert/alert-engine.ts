@@ -194,7 +194,7 @@ export const alertEngineFactory = ({
       logger.error(`Alert delivery failed on one or more channels [alertId=${alert.id}]: ${errorText}`);
     }
 
-    // Never fails the run: the channels have already sent, and a throw on the event path would re-notify.
+    // Never fails the run: channels already sent, and throwing on the event path would re-notify.
     for (let attempt = 1; attempt <= HISTORY_WRITE_ATTEMPTS; attempt += 1) {
       try {
         // eslint-disable-next-line no-await-in-loop -- retrying the same insert is the point

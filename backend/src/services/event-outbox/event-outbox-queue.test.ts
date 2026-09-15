@@ -108,8 +108,8 @@ describe("event outbox relay", () => {
     expect(queued[0].data).toEqual(KEY);
   });
 
-  // One flush per consumer at a time is what keeps drain's batches serial, and it dedupes a consumer
-  // the relay rediscovers while its flush is still queued.
+  // One flush per consumer at a time keeps drain's batches serial and dedupes a consumer the relay
+  // rediscovers while its flush is still queued.
   test("keys the job per consumer so two flushes for one consumer cannot overlap", async () => {
     const { factory, queued } = buildQueue({ keys: [KEY] });
 
@@ -136,8 +136,8 @@ describe("event outbox relay", () => {
     expect(queued).toHaveLength(0);
   });
 
-  // Every other cron in the codebase sits behind this flag, and the docs promise a secondary region
-  // runs no background jobs beyond audit logs.
+  // Every other cron sits behind this flag, and the docs promise a secondary region runs no
+  // background jobs beyond audit logs.
   test("registers its crons disabled and never starts the relay on a secondary instance", async () => {
     vi.useFakeTimers();
     config.isSecondaryInstance = true;
@@ -165,7 +165,7 @@ describe("event outbox relay", () => {
     expect(getDiscoverCalls()).toBeGreaterThan(0);
   });
 
-  // The flush job is removeOnFail with one attempt, so without this line a crashed drain leaves nothing
+  // The flush job is removeOnFail with one attempt, so without the log a crashed drain leaves nothing
   // but a counter behind.
   test("logs and rethrows when a flush crashes so the failure is visible", async () => {
     const boom = new Error("claimBatch: relation does not exist");

@@ -93,7 +93,7 @@ export type TFindDueTargetsInput = {
   asOf: Date;
 };
 
-// So a provider factory can declare which discovery method it guarantees.
+// Lets a provider factory declare which discovery method it guarantees.
 export type IScheduledAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTarget> &
   Required<Pick<IResourceAlertProvider<TTarget>, "findDueTargets">>;
 
@@ -103,7 +103,7 @@ export type IEventAlertProvider<TTarget = unknown> = IResourceAlertProvider<TTar
 export interface IResourceAlertProvider<TTarget = unknown> {
   // Dot-namespaced, e.g. "pki.certificate", "identity.ua-secret".
   resourceType: string;
-  // Event keys this provider understands, each declaring how it fires and what its condition looks like.
+  // Each event declares how it fires and what its condition looks like.
   events: TAlertEventDefinition[];
 
   // Resources currently due to alert for this alert's scope + condition. The engine handles dedup
@@ -114,10 +114,10 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // Required for any Scheduled event; the registry enforces that at boot.
   findDueTargets?(input: TFindDueTargetsInput): Promise<TTarget[]>;
 
-  // Rehydrates the targets an event named. A missing row was deleted between emit and dispatch, so it's
-  // dropped, not an error. Must read the primary: the target usually commits in the same transaction as
-  // the event, and an empty result is terminal for it.
-  // Required for any Event event; the registry enforces that at boot.
+  // Loads the targets an event named. A missing row was deleted between emit and dispatch, so drop it,
+  // don't throw. Must read the primary: the target usually commits in the same tx as the event, and an
+  // empty result is terminal.
+  // Required for any Event-triggered event; the registry enforces that at boot.
   findTargetsByIds?(input: TFindTargetsByIdsInput): Promise<TTarget[]>;
 
   // Deep link to the alert's resource, honouring its scope (org- vs project-scoped). Resolved once

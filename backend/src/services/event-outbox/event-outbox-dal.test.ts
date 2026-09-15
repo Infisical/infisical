@@ -3,9 +3,8 @@ import { TableName } from "@app/db/schemas";
 import { eventOutboxDALFactory } from "./event-outbox-dal";
 import { EventOutboxStatus } from "./event-outbox-types";
 
-// These assert query *shape*, in the style of alert-dal.test.ts. Only a real database can show that
-// two claimers never take the same row, so what a unit test protects is that the clauses buying that
-// guarantee are still there.
+// These assert query shape only. Real Postgres coverage lives in e2e-test/event-outbox.spec.ts; what
+// these protect is that the clauses buying those guarantees are still there.
 const buildDAL = (opts?: { returning?: unknown[]; updated?: number; selected?: unknown[] }) => {
   const calls = {
     where: [] as unknown[][],
@@ -23,8 +22,8 @@ const buildDAL = (opts?: { returning?: unknown[]; updated?: number; selected?: u
     groupBy: [] as unknown[][]
   };
 
-  // knex resolves an UPDATE to the affected row count and a SELECT to rows, and commitResults reads
-  // that count, so the mock has to answer each with the right shape.
+  // knex resolves an UPDATE to a row count and a SELECT to rows, so the mock has to answer each with
+  // the right shape.
   let lastOp: "select" | "update" = "select";
 
   const chain: Record<string, unknown> = {};
@@ -110,9 +109,8 @@ const buildDAL = (opts?: { returning?: unknown[]; updated?: number; selected?: u
 };
 
 describe("event outbox dal", () => {
-  // The conflict target repeats the index predicate because Postgres can't infer a *partial* unique
-  // index from a bare column list: a plain ON CONFLICT (consumer, idempotencyKey) is a 42P10 at
-  // runtime.
+  // Postgres can't infer a partial unique index from a bare column list, so the conflict target has to
+  // repeat the predicate or it's a 42P10 at runtime.
   test("insertEvents ignores a conflict on the partial idempotency index", async () => {
     const { dal, calls, tx } = buildDAL();
 
@@ -140,8 +138,8 @@ describe("event outbox dal", () => {
     expect(calls.insert).toHaveLength(0);
   });
 
-  // SKIP LOCKED is what makes concurrent relays correct by construction, and so the reason the relay
-  // doesn't need the cron manager's fleet-wide exactly-once scheduling.
+  // SKIP LOCKED is what makes concurrent relays safe, and why the relay doesn't need the cron manager's
+  // fleet-wide exactly-once scheduling.
   test("claimBatch locks rows with FOR UPDATE SKIP LOCKED", async () => {
     const { dal, calls } = buildDAL();
 
@@ -159,8 +157,8 @@ describe("event outbox dal", () => {
     expect(calls.orderBy[0]).toEqual(["id", "asc"]);
   });
 
-  // RETURNING hands rows back in whatever order the UPDATE touched them, while handle() is promised id
-  // order. Seen for real against Postgres: a 3-row claim came back 8, 7, 6.
+  // RETURNING comes back in whatever order the UPDATE touched rows. Seen for real: a 3-row claim came
+  // back 8, 7, 6.
   test("claimBatch returns the claimed rows in id order regardless of how RETURNING ordered them", async () => {
     const { dal } = buildDAL({ returning: [{ id: "8" }, { id: "6" }, { id: "10" }, { id: "7" }] });
 
@@ -179,8 +177,7 @@ describe("event outbox dal", () => {
     expect(calls.update[0].lockedAt).toBe("NOW()");
   });
 
-  // Every later statement about these rows carries the token, so it has to be the one stamped on the
-  // rows and it has to differ per claim.
+  // Every later statement on these rows fences on the token, so it has to differ per claim.
   test("claimBatch stamps a fresh lockToken and hands it back", async () => {
     const { dal, calls } = buildDAL();
     const key = { consumer: "alert" };
@@ -193,8 +190,8 @@ describe("event outbox dal", () => {
     expect(second.lockToken).not.toBe(first.lockToken);
   });
 
-  // A row the sweeper already handed back must not be pulled into 'processing' again by a late
-  // heartbeat, and a heartbeat must never refresh a claim another worker now holds.
+  // A late heartbeat must not drag a recycled row back into 'processing' or refresh a claim another
+  // worker now holds.
   test("extendClaims refreshes lockedAt only on rows this claim still holds", async () => {
     const { dal, calls } = buildDAL();
 
@@ -288,9 +285,8 @@ describe("event outbox dal", () => {
     expect(calls.update.map((patch) => patch.status)).toEqual([EventOutboxStatus.Delivered, EventOutboxStatus.Failed]);
   });
 
-  // A claim the sweeper has already handed back may belong to another worker by the time the original
-  // one reports, and 'processing' alone doesn't tell the two claims apart: the new owner's rows are
-  // 'processing' too. The token is what keeps the late result off them.
+  // By the time the original worker reports, the sweeper may have handed its rows to another worker,
+  // and that claim is 'processing' too. The token is what keeps the late result off them.
   test("commitResults only touches rows still held by this exact claim", async () => {
     const { dal, calls } = buildDAL();
 
@@ -308,7 +304,6 @@ describe("event outbox dal", () => {
     expect(calls.where.filter((args) => args[0] === "lockToken" && args[1] === "token-1")).toHaveLength(3);
   });
 
-  // What the service reads to tell a settled claim from one that was taken away mid-delivery.
   test("commitResults reports how many rows it settled", async () => {
     const { dal } = buildDAL({ updated: 2 });
 
@@ -322,8 +317,8 @@ describe("event outbox dal", () => {
     ).resolves.toBe(2);
   });
 
-  // The rows go back to whoever claims them next, so leaving the old owner's token on them would let a
-  // heartbeat that arrives even later keep refreshing a claim nobody holds.
+  // Leaving the old token on recycled rows would let an even later heartbeat keep refreshing a claim
+  // nobody holds.
   test("recoverStaleClaims clears the token along with the claim", async () => {
     const { dal, calls } = buildDAL({
       selected: [
@@ -349,8 +344,8 @@ describe("event outbox dal", () => {
     expect(calls.andWhereRaw[0][1]).toEqual([600_000]);
   });
 
-  // The transaction bounds itself rather than trusting worker concurrency to keep `processing` small,
-  // and takes the oldest claims first so a limit never starves one.
+  // Bounded so a big 'processing' backlog can't blow up one transaction, oldest first so the limit
+  // never starves a claim.
   test("recoverStaleClaims recovers a bounded batch, oldest claim first", async () => {
     const { dal, calls } = buildDAL();
 

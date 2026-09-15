@@ -59,9 +59,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  // One statement on purpose: the row locks live only as long as the UPDATE. The claim also stamps a
-  // fresh lockToken, which is what lets extendClaims and commitResults tell this claim apart from a
-  // later one over the same rows.
+  // One statement on purpose so the row locks only live as long as the UPDATE. The fresh lockToken is
+  // how extendClaims and commitResults tell this claim apart from a later one on the same rows.
   const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TOutboxClaim> => {
     const lockToken = crypto.randomUUID();
     try {
@@ -89,9 +88,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  // A batch that outlives the stale threshold has to keep lockedAt fresh or the sweeper hands its rows
-  // to another worker mid-delivery. Scoped to the caller's own claim, so a heartbeat that comes back
-  // after the sweeper recycled these rows can't refresh the new owner's lock.
+  // Keeps lockedAt fresh so the sweeper doesn't hand a slow batch to another worker mid-delivery.
+  // Scoped to this claim's token so a late heartbeat can't refresh a lock someone else now holds.
   const extendClaims = async (ids: string[], lockToken: string): Promise<void> => {
     if (ids.length === 0) return;
     try {
@@ -105,8 +103,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Returns how many rows were settled, which is short of what the caller claimed when the claim was
-  // recycled mid-delivery and the rows now belong to another worker.
+  // Returns the settled count. It comes up short when the sweeper recycled the claim mid-delivery and
+  // another worker now owns the rows.
   const commitResults = async (input: {
     lockToken: string;
     delivered: { ids: string[] }[];

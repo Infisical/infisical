@@ -148,8 +148,8 @@ describe("identity credential alert provider", () => {
     expect(schema.safeParse({}).success).toBe(true);
   });
 
-  // The auth method services emit through this helper and the provider parses the schema at delivery.
-  // This is the one place the two are checked against each other.
+  // Auth method services emit through this helper and the provider parses at delivery. This is the one
+  // place the two get checked against each other.
   test("the emitted payload is accepted by the delivery schema", async () => {
     const emitted: unknown[] = [];
     const emitter = { emit: async (event: { payload: unknown }) => void emitted.push(event.payload) };
@@ -326,7 +326,6 @@ describe("identity credential alert provider", () => {
       "https://app.infisical.com/x"
     );
     expect(payload.summary).toBe("Token Auth token 'deploy' was revoked from machine identity 'ci-runner'");
-    // No credential field when the change is to the method itself.
     const methodOnly = provider.buildPayload(
       context,
       [

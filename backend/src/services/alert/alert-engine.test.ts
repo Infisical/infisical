@@ -73,8 +73,7 @@ const makeProvider = (
     onFindDueTargets?.();
     return targets;
   },
-  // Mirrors a real provider: a target deleted between the event and its delivery drops out rather
-  // than coming back.
+  // Like a real provider, a target deleted between emit and delivery just drops out.
   findTargetsByIds: async ({ targetIds, payload }) => {
     onFindTargetsByIds?.(payload);
     return targets.filter((target) => targetIds.includes(target.id));
@@ -549,11 +548,9 @@ describe("alert engine, event path", () => {
     expect(sentMail).toHaveLength(1);
     // The provider gets the emitter's whole payload, so an event can carry more than ids.
     expect(eventPayloads).toEqual([EVENT.payload]);
-    // t2 exists but the event didn't name it.
     expect(historyWrites[0].deliveries).toEqual([
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.SUCCESS }
     ]);
-    // The event id on the row is what a retry of this same event looks up.
     expect(historyWrites[0].eventId).toBe("7");
   });
 
@@ -568,8 +565,8 @@ describe("alert engine, event path", () => {
     expect(historyWrites[0].eventId).toBeUndefined();
   });
 
-  // The whole reason the event path exists: a daily scan rediscovers the same target tomorrow and
-  // needs dedup, an event doesn't. Reintroduce the dedup lookup here and this fails.
+  // A daily scan rediscovers the same target tomorrow and needs dedup. An event doesn't. Reintroduce
+  // the dedup lookup on this path and this fails.
   test("delivers the same target again even though it was just alerted on", async () => {
     const { engine, sentMail } = buildEngine({
       targets: [{ id: "t1" }],
@@ -595,8 +592,8 @@ describe("alert engine, event path", () => {
     expect(historyWrites).toHaveLength(0);
   });
 
-  // A retry must not re-notify a channel that already succeeded. The engine reads its own history for
-  // this alert and event to know which those are, so the outbox carries no state for it.
+  // A retry must not re-notify a channel that already succeeded. The engine works that out from its
+  // own history, so the outbox carries no state for it.
   test("skips channels a previous attempt of the same event already delivered to", async () => {
     const { engine, sentMail, historyWrites, eventLookups } = buildEngine({
       targets: [{ id: "t1" }],
@@ -647,8 +644,8 @@ describe("alert engine, event path", () => {
     expect(sentMail).toHaveLength(1);
   });
 
-  // The history row is the dedup record and the event path's skip list. Once the channels have sent,
-  // a retry of the insert is the only lever left that narrows the gap a transient failure opens.
+  // The history row is both the dedup record and the event path's skip list. Once channels have sent,
+  // retrying the insert is the only thing left that narrows the gap a transient failure opens.
   test("retries a failed history write and records it on a later attempt", async () => {
     const { engine, historyWrites, getHistoryAttempts } = buildEngine({
       targets: [{ id: "t1" }],
@@ -663,8 +660,8 @@ describe("alert engine, event path", () => {
     expect(historyWrites).toHaveLength(1);
   });
 
-  // An empty channel read on the event path marks the event delivered for good, so it must not be
-  // answered by a replica that has yet to see the channel commit.
+  // An empty channel read on the event path marks the event delivered for good, so it can't come from
+  // a replica that hasn't seen the channel commit yet.
   test("reads channels from the primary on the event path and from the replica on the scheduled one", async () => {
     const { engine, channelLookups } = buildEngine({
       targets: [{ id: "t1" }],

@@ -274,8 +274,8 @@ describe("alert service", () => {
     );
   });
 
-  // triggerType comes from the provider's event definition, never from the request, so an alert on an
-  // event-triggered key is invisible to the daily scan and reachable only from an event.
+  // triggerType comes from the provider's event definition, never the request. That's what keeps
+  // event-triggered alerts out of the daily scan.
   test("stores the trigger type its event declares", async () => {
     const { service, alerts } = buildService();
 
@@ -314,8 +314,6 @@ describe("alert service", () => {
 
   test("validates the condition against the event's own schema, not a provider-wide one", async () => {
     const { service } = buildService();
-    // The event-triggered event takes no condition, so the expiry shape is rejected for it and
-    // an empty one is accepted.
     await expect(
       service.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: { alertBefore: "30d" } })
     ).rejects.toThrow(/Invalid alert condition/);

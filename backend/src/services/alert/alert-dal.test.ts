@@ -125,8 +125,8 @@ describe("alert dal", () => {
     expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
   });
 
-  // An empty result here is terminal for the event, so it must not come from a replica that has yet
-  // to see the alert commit.
+  // An empty result is terminal for the event, so it can't come from a replica that hasn't seen the
+  // alert commit yet.
   test("findEnabledForEvent reads the primary while the scheduled and list lookups keep the replica", async () => {
     const { dal, getReplicaReads } = buildDAL();
 
@@ -175,8 +175,8 @@ describe("alert dal", () => {
     expect(calls.orWhereNull).toContainEqual(`${TableName.Alert}.projectId`);
   });
 
-  // An org-level identity can be watched from any project it belongs to, so an event with no project
-  // of its own has to reach those project-scoped alerts as well as the org-scoped one.
+  // An org-level identity can be watched from any of its projects, so an event with no project has to
+  // reach those project-scoped alerts too.
   test("findEnabledForEvent matches every alert bound to the resource when given no project", async () => {
     const { dal, calls } = buildDAL();
 

@@ -22,8 +22,8 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    // Backs discovery and the claim. `id` before `nextRetryAt` so the claim's ORDER BY needs no sort
-    // node; `nextRetryAt` is there so rows still in backoff are skipped without touching the heap.
+    // Backs discovery and the claim. `id` before `nextRetryAt` so the claim's ORDER BY needs no sort;
+    // `nextRetryAt` is included so rows still in backoff are skipped without hitting the heap.
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.EventOutbox}_drain_idx"
       ON "${TableName.EventOutbox}" ("consumer", "id", "nextRetryAt")

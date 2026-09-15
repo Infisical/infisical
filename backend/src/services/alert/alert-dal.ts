@@ -42,7 +42,7 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Event path only. Reads the primary: an empty result is terminal for the event, and a replica may
+  // Event path only. Reads the primary: an empty result marks the event delivered, and a replica may
   // not have the alert yet.
   const findEnabledForEvent = async (
     filter: {

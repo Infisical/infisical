@@ -78,8 +78,8 @@ describe("alert history dal", () => {
     expect(whereCalls).toContainEqual(["hist.alertId", "alert-1"]);
   });
 
-  // A channel that failed on the first attempt must be retried, and a success on one channel must not
-  // suppress delivery on another, so the skip list is per channel and only counts successes.
+  // The skip list is per channel and only counts successes: a failed channel gets retried, and one
+  // channel's success doesn't suppress another.
   test("findDeliveredChannelIdsForEvent scopes to the alert and event and only counts successes", async () => {
     const { dal, whereCalls } = buildDAL();
 

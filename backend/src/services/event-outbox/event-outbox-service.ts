@@ -31,7 +31,7 @@ const PRUNE_MAX_BATCHES = 20;
 const STALE_SWEEP_BATCH_SIZE = 1_000;
 const STALE_SWEEP_MAX_BATCHES = 10;
 
-// A quarter of the threshold, so one missed beat doesn't let the sweeper call a live claim stale.
+// A quarter of the threshold so one missed beat doesn't get a live claim swept.
 const CLAIM_HEARTBEAT_INTERVAL_MS = STALE_CLAIM_THRESHOLD_MS / 4;
 
 const COMMIT_ATTEMPTS = 3;
@@ -72,9 +72,9 @@ export type TEventOutboxServiceFactoryDep = {
 export type TEventOutboxServiceFactory = ReturnType<typeof eventOutboxServiceFactory>;
 
 export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry }: TEventOutboxServiceFactoryDep) => {
-  // `tx` is required on purpose: the row has to commit with the business write. Nothing here reads the
-  // DB or calls into a consumer, and nothing is caught: a bad event is a bug at the emit site (so 500,
-  // not 400), and swallowing a failed insert would leave the caller with a poisoned transaction.
+  // `tx` is required so the row commits with the business write. Nothing is caught on purpose: a bad
+  // event is a bug at the emit site (500, not 400), and swallowing a failed insert would leave the
+  // caller with a poisoned transaction.
   const emit = async (event: TEventInput, tx: Knex): Promise<void> => {
     const parsed = EventInputSchema.safeParse(event);
     if (!parsed.success) {

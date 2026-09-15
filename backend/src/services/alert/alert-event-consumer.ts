@@ -40,8 +40,8 @@ export const alertEventConsumerFactory = ({
 }: TAlertEventConsumerDep): IEventConsumer<TAlertEventPayload> => {
   const subscribesTo = (eventType: string): boolean => alertProviderRegistry.eventTriggeredKeys().has(eventType);
 
-  // subscribesTo only sees the event type, so a valid event key on the wrong resourceType gets past it.
-  // Fail here, terminally and naming both, instead of marking the event delivered as "no matching alert".
+  // subscribesTo only sees the event type, so a valid key on the wrong resourceType slips through. Fail
+  // terminally here instead of quietly marking it delivered as "no matching alert".
   const $isDeclaredEvent = (eventType: string, resourceType: string): boolean =>
     Boolean(
       alertProviderRegistry

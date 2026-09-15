@@ -734,8 +734,7 @@ export enum AlertDispatchOutcome {
   NoRecipients = "no_recipients",
   // Targets matched, but every one had already been alerted inside the dedup window.
   AllDeduped = "all_deduped",
-  // Event path only: the event reached the worker with no alert configured for it. Expected in steady
-  // state, but a rate of zero everywhere means emits are wired up and alerts are not.
+  // Event path only: no alert configured for the event. Normal in steady state.
   NoMatchingAlert = "no_matching_alert"
 }
 
@@ -754,8 +753,8 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
 };
 
 // -- Event outbox (InfisicalCore meter) --------------------------------------------------------------
-// The outbox's own health, as opposed to what a consumer does with an event. The canonical canary is
-// the oldest-pending-age gauge, which lives in event-outbox-queue.ts because the relay tick feeds it.
+// Outbox health, not what consumers do with events. The main canary is the oldest-pending-age gauge
+// in event-outbox-queue.ts, fed by the relay tick.
 
 export const eventOutboxLagHistogram = infisicalCoreMeter.createHistogram("infisical.event_outbox.lag", {
   description:

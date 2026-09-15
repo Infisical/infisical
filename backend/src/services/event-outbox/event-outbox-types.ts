@@ -61,7 +61,7 @@ export type TEventEmitter = {
   emit: (event: TEventInput, tx: Knex) => Promise<void>;
 };
 
-// What a consumer sees. Lock, attempt, and status columns are the outbox's business, not the consumer's.
+// What a consumer sees. Lock, attempt and status columns are the outbox's business.
 export type TEvent = Pick<TEventOutbox, "id" | "eventType" | "payload" | "occurredAt">;
 
 export enum EventResultStatus {
@@ -92,7 +92,7 @@ export interface IEventConsumer<TPayload = unknown> {
   // wants the event is decided later, in handle().
   subscribesTo(eventType: string): boolean;
 
-  // Due events for this consumer, oldest first by id. One flush runs per consumer at a time, so
-  // within a flush a batch is ordered; across flushes nothing is promised. Must return one result per event.
+  // Events arrive oldest first by id and one flush runs per consumer at a time, so a batch is ordered
+  // but nothing is promised across flushes. Must return one result per event.
   handle(events: TEvent[]): Promise<TEventConsumerResult[]>;
 }
