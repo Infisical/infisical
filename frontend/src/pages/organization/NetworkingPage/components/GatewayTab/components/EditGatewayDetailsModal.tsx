@@ -69,7 +69,7 @@ export const EditGatewayDetailsModal = ({ gatewayDetails, onClose }: Props) => {
         name="name"
         render={({ field, fieldState: { error } }) => (
           <FormControl label="Name" isError={Boolean(error)} errorText={error?.message} isRequired>
-            <Input {...field} placeholder="db-subnet-1" />
+            <Input {...field} placeholder="db-subnet-1" autoComplete="off" name="gateway-name" />
           </FormControl>
         )}
       />

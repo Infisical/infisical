@@ -17,7 +17,7 @@ import {
   FieldGroup,
   FieldTitle,
   Separator,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
@@ -102,7 +102,7 @@ export const OrgScimSection = () => {
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Scim}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enable-scim"
                     variant="org"
                     checked={currentOrg?.scimEnabled ?? false}

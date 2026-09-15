@@ -23,7 +23,7 @@ import {
   Stepper,
   StepperList,
   StepperStep,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -413,7 +413,7 @@ export const CreatePkiSyncForm = ({
                             off to only sync manually.
                           </FieldDescription>
                         </FieldContent>
-                        <Switch
+                        <Toggle
                           id="auto-sync-enabled"
                           variant="project"
                           checked={value}

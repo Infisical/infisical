@@ -20,7 +20,7 @@ import {
   FieldGroup,
   FieldTitle,
   IconButton,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -185,7 +185,7 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 >
                   {(isAllowed) => (
                     <div>
-                      <Switch
+                      <Toggle
                         id="enable-saml-sso"
                         variant="org"
                         checked={data ? data.isActive : false}
@@ -242,7 +242,7 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 </FieldContent>
                 <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                   {(isAllowed) => (
-                    <Switch
+                    <Toggle
                       id="enable-saml-group-sync"
                       variant="org"
                       checked={data?.enableGroupSync ?? false}

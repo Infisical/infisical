@@ -3,14 +3,14 @@
  * member would apply twice.
  */
 
-/** `relayError` is never cleared, so requiring that no channel established is what bounds it. */
+/** `transportError` is never cleared, so requiring that no channel established is what bounds it. */
 export const isGatewayTransportFailure = ({
-  relayError,
+  transportError,
   establishedChannel
 }: {
-  relayError: string;
+  transportError: string;
   establishedChannel: boolean;
-}): boolean => Boolean(relayError) && !establishedChannel;
+}): boolean => Boolean(transportError) && !establishedChannel;
 
 /** An early tunnel can fail while a later one reaches the target, so a transport failure alone is not enough. */
 export const isAttemptRetryable = ({

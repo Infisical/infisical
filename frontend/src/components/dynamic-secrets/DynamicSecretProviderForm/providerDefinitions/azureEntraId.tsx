@@ -85,6 +85,7 @@ const AzureEntraIdFields = ({
                     {...field}
                     id={`azure-entra-${key}`}
                     isReadOnly={isReadOnly}
+                    isError={Boolean(error)}
                     aria-describedby={error ? `azure-entra-${key}-error` : undefined}
                   />
                   <FieldError id={`azure-entra-${key}-error`}>{error?.message}</FieldError>
@@ -127,9 +128,12 @@ const AzureEntraIdFields = ({
           name="selectedUsers"
           render={({ field, fieldState: { error } }) => (
             <Field data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="azure-entra-users">Users</FieldLabel>
+              <FieldLabel id="azure-entra-users-label" htmlFor="azure-entra-users">
+                Users
+              </FieldLabel>
               <Combobox
                 id="azure-entra-users"
+                aria-labelledby="azure-entra-users-label"
                 multiple
                 isDisabled={!isConfigured || isLoading || isError}
                 isLoading={isLoading}
@@ -139,6 +143,7 @@ const AzureEntraIdFields = ({
                 onValueChange={field.onChange}
                 getOptionLabel={(user) => `${user.name} (${user.email})`}
                 getOptionValue={(user) => user.id}
+                getOptionKeywords={(user) => [user.id]}
                 placeholder="Select users..."
                 searchPlaceholder="Search users..."
                 searchAriaLabel="Search Azure Entra ID users"

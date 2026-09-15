@@ -1,4 +1,7 @@
-import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import {
+  CertExtensionCriticality,
+  CertPolicyState
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 /**
  * A domain_component rule's values are comma-joined ordered sequences ("corp,example,com"), one per
@@ -13,6 +16,15 @@ export type TSubjectRule = {
     | "locality"
     | "organizational_unit"
     | "domain_component";
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
+};
+
+export type TCustomExtensionRule = {
+  oid: string;
+  label?: string;
+  critical?: CertExtensionCriticality;
   allowed?: string[];
   required?: string[];
   denied?: string[];
@@ -64,6 +76,7 @@ export type TCertificatePolicyRule = {
     max?: string;
   };
   basicConstraints?: TBasicConstraints;
+  customExtensions?: TCustomExtensionRule[];
 };
 
 export type TBasicConstraintsIsCAPolicy = CertPolicyState;
@@ -87,6 +100,7 @@ export type TCertificatePolicy = {
   createdAt: string;
   updatedAt: string;
   basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[] | null;
 };
 
 export type TCreateCertificatePolicyDTO = {
@@ -100,6 +114,7 @@ export type TCreateCertificatePolicyDTO = {
   algorithms?: TCertificatePolicyRule["algorithms"] | null;
   validity?: TCertificatePolicyRule["validity"] | null;
   basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[] | null;
 };
 
 export type TUpdateCertificatePolicyDTO = {
@@ -113,6 +128,7 @@ export type TUpdateCertificatePolicyDTO = {
   algorithms?: TCertificatePolicyRule["algorithms"] | null;
   validity?: TCertificatePolicyRule["validity"] | null;
   basicConstraints?: TBasicConstraints | null;
+  customExtensions?: TCustomExtensionRule[] | null;
 };
 
 export type TDeleteCertificatePolicyDTO = {

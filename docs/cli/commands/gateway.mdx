@@ -18,15 +18,22 @@ description: "Run the Infisical gateway or manage its systemd service"
 
 ## Description
 
-The Infisical gateway provides secure access to private resources using modern TCP-based SSH tunnel architecture with enhanced security and flexible deployment options.
+The Infisical gateway runs inside your network and lets Infisical reach systems that aren't exposed to the internet, such as a database in a private subnet or an on-premises appliance.
 
-The gateway system uses SSH reverse tunnels over TCP, eliminating firewall complexity and providing excellent performance for enterprise environments.
+There are two ways the gateway and Infisical reach each other:
+
+- **Direct listen.** The gateway listens on the address you set with `--listen-address`, and Infisical connects to it. No relay is needed. Self-hosted Infisical only.
+- **Relay.** The gateway opens an SSH reverse tunnel to a relay server, and Infisical reaches it back through that tunnel. No inbound ports have to be open on the gateway host.
+
+Passing `--listen-address` and `--target-relay-name` together runs both, and Infisical uses the listen address first, keeping the relay as a fallback.
+
+See [Gateway deployment](/documentation/platform/gateways/gateway-deployment) for choosing a mode and the full deployment walkthrough, and [Network architecture](/documentation/platform/gateways/network-architecture) for the ports and traffic flow of each.
 
 ## Subcommands & flags
 
 <AccordionGroup>
 <Accordion title="infisical gateway start" defaultOpen="true">
-  Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to a relay server and provides secure access to private resources within your network.
+  Run the gateway inside the network where your target resources live. It connects to Infisical over a relay or by listening for direct connections, depending on the flags below.
 
 ```bash
 infisical gateway start <gateway-name> --enroll-method=token --token=<enrollment-token> --domain=<domain>
@@ -35,16 +42,24 @@ infisical gateway start <gateway-name> --enroll-method=token --token=<enrollment
 The gateway name is provided as a positional argument.
 
 <Info>
-    By default, the gateway automatically connects to the relay with the lowest latency. To target a specific relay, use the `--target-relay-name=<relay-name>` flag.
+    With no `--listen-address` and no `--target-relay-name`, the gateway connects to the relay with the lowest latency. To target a specific relay, use `--target-relay-name=<relay-name>`. To skip relays entirely, use `--listen-address=<host:port>`.
 </Info>
 
 Once started, the gateway component will:
 
-- Automatically connect to a healthy relay with the lowest latency (unless the `--target-relay-name` flag is specified)
-- Establish outbound SSH reverse tunnel to relay server (no inbound firewall rules needed)
-- Authenticate using SSH certificates issued by Infisical
-- Automatically reconnect if the connection is lost, and fail over to a different healthy relay if the current one becomes unreachable
-- Provide access to private resources within your network
+- Authenticate using certificates issued by Infisical
+- Automatically renew its certificates
+
+In relay mode it also:
+
+- Connects to a healthy relay with the lowest latency, unless `--target-relay-name` names one
+- Establishes an outbound SSH reverse tunnel to the relay, so no inbound firewall rules are needed
+- Reconnects if the connection is lost, and fails over to a different healthy relay if the current one becomes unreachable
+
+In direct listen mode it also:
+
+- Binds the port from `--listen-address` on every interface, unless `--bind` says otherwise
+- Accepts mutually authenticated TLS connections from Infisical on that port
 
 ### Flags
 
@@ -123,14 +138,54 @@ Once started, the gateway component will:
   <Accordion title="--target-relay-name">
     The name of the relay that this gateway should connect to. The relay must be running and registered before starting the gateway.
 
-    If this flag is omitted, the gateway will automatically connect to a healthy relay with the lowest latency.
+    If this flag is omitted and no `--listen-address` is set, the gateway connects to a healthy relay with the lowest latency.
 
     ```bash
     # Example
     infisical gateway start my-gateway --target-relay-name=my-relay --enroll-method=token --token=<token> --domain=<domain>
     ```
 
-    **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
+    Can also be set with the `INFISICAL_RELAY_NAME` environment variable.
+
+    For Infisical Cloud users on instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, start a relay server first. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
+
+  </Accordion>
+
+  <Accordion title="--listen-address">
+    The `host:port` address that Infisical dials to reach this gateway. Setting it runs the gateway in direct listen mode, where Infisical opens the connection and no relay is involved.
+
+    The address has to be reachable from wherever Infisical runs, and it's written into the gateway's server certificate, so it has to be stable. An internal DNS name or a load balancer in front of the gateway both work. Changing it means re-running the command so a certificate is issued for the new address.
+
+    ```bash
+    # Example
+    infisical gateway start my-gateway --listen-address=gateway.internal:8443 --enroll-method=token --token=<token> --domain=<domain>
+    ```
+
+    Pass it alongside `--target-relay-name` to run both modes, so Infisical uses the listen address first and falls back to the relay. [Running both modes](/documentation/platform/gateways/gateway-deployment#running-both-modes) covers when to keep both, and how to use it to switch modes without an outage:
+
+    ```bash
+    infisical gateway start my-gateway --listen-address=gateway.internal:8443 --target-relay-name=my-relay --enroll-method=token --token=<token> --domain=<domain>
+    ```
+
+    Can also be set with the `INFISICAL_GATEWAY_LISTEN_ADDRESS` environment variable.
+
+    <Note>
+      Direct listen is only available on self-hosted Infisical.
+    </Note>
+
+  </Accordion>
+
+  <Accordion title="--bind">
+    The local `host:port` the gateway binds for direct connections. Defaults to every interface on the port from `--listen-address`. Reach for this flag only when the address Infisical dials differs from the socket the gateway should open.
+
+    Use it to bind a single interface, or to listen on a different local port than the one advertised, such as behind a load balancer that terminates on 8443 and forwards to 9000.
+
+    ```bash
+    # Advertise 8443, listen locally on 9000
+    infisical gateway start my-gateway --listen-address=gateway.internal:8443 --bind=0.0.0.0:9000 --enroll-method=token --token=<token> --domain=<domain>
+    ```
+
+    Can also be set with the `INFISICAL_GATEWAY_BIND_ADDRESS` environment variable. Has no effect without `--listen-address`.
 
   </Accordion>
 
@@ -211,14 +266,36 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
   <Accordion title="--target-relay-name">
     The name of the relay that this gateway should connect to. The relay must be running and registered before starting the gateway.
 
-    If this flag is omitted, the gateway will automatically connect to a healthy relay with the lowest latency.
+    If this flag is omitted and no `--listen-address` is set, the gateway connects to a healthy relay with the lowest latency.
 
     ```bash
     # Example
     sudo infisical gateway systemd install my-gateway --target-relay-name=my-relay --enroll-method=token --token=<token> --domain=<domain>
     ```
 
-    **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
+    For Infisical Cloud users on instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, start a relay server first. See the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
+
+  </Accordion>
+
+  <Accordion title="--listen-address">
+    The `host:port` address that Infisical dials to reach this gateway, which runs it in direct listen mode.
+
+    ```bash
+    # Example
+    sudo infisical gateway systemd install my-gateway --listen-address=gateway.internal:8443 --enroll-method=token --token=<token> --domain=<domain>
+    ```
+
+    Pass it alongside `--target-relay-name` to run both modes. See the `infisical gateway start` reference above for what the address has to satisfy.
+
+  </Accordion>
+
+  <Accordion title="--bind">
+    The local `host:port` the gateway binds for direct connections. Defaults to every interface on the port from `--listen-address`.
+
+    ```bash
+    # Example
+    sudo infisical gateway systemd install my-gateway --listen-address=gateway.internal:8443 --bind=0.0.0.0:9000 --enroll-method=token --token=<token> --domain=<domain>
+    ```
 
   </Accordion>
 
@@ -279,9 +356,12 @@ The gateway name is provided as a positional argument.
       Yes. The CLI stores the enrollment token locally after the first successful enrollment. If you run the same command again with the same `--token` value, it detects the token has already been used and skips enrollment, proceeding directly to start the gateway. This means you can safely use the same command (e.g., via up-arrow in your shell) without getting "token already used" or "token expired" errors.
   </Accordion>
   <Accordion title="How are relays auto-selected?">
-      If the `--target-relay-name` flag is omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available managed relays.
+      If `--target-relay-name` and `--listen-address` are both omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available managed relays.
 
       If the selected relay becomes unreachable while the gateway is running, the gateway will automatically switch to a different healthy one. Gateways started with an explicit `--target-relay-name` do not switch and will keep retrying the specified relay.
+  </Accordion>
+  <Accordion title="Which mode do I get if I pass no connection flags?">
+      Relay mode, with a relay chosen automatically. Direct listen is opt-in: the gateway only listens for connections when you pass `--listen-address`.
   </Accordion>
   <Accordion title="When restarting the gateway without a relay flag, does it select a new relay every time?">
       No. The first time the gateway starts, it selects the optimal relay (based on latency) and caches that selection. On subsequent restarts, it will prioritize connecting to the cached relay. If it's unable to connect, it will then re-evaluate and connect to the next most optimal relay available.

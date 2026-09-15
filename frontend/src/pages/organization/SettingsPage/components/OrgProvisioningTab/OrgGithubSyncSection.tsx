@@ -21,7 +21,7 @@ import {
   FieldGroup,
   FieldTitle,
   Skeleton,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import {
@@ -138,7 +138,7 @@ export const OrgGithubSyncSection = () => {
                     a={OrgPermissionSubjects.GithubOrgSync}
                   >
                     {(isAllowed) => (
-                      <Switch
+                      <Toggle
                         id="enable-sync"
                         variant="org"
                         checked={data.isActive}

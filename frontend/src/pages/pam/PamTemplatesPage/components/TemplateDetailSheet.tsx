@@ -27,8 +27,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
@@ -225,7 +225,12 @@ const ConfigurationTab = ({
                   Name<span className="text-product-pam">*</span>
                 </FieldLabel>
                 <FieldContent>
-                  <Input {...field} isError={!!fieldState.error} />
+                  <Input
+                    {...field}
+                    isError={!!fieldState.error}
+                    autoComplete="off"
+                    name="pam-template-name"
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
@@ -531,6 +536,7 @@ const SettingsTab = ({
             return (
               <Editor
                 key={p.key}
+                accountType={template.type as PamAccountType}
                 label={p.label}
                 description={p.description}
                 value={policies[p.key]}
@@ -626,7 +632,7 @@ const SettingsTab = ({
                         rotate only when triggered manually.
                       </p>
                     </div>
-                    <Switch
+                    <Toggle
                       variant="pam"
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
@@ -725,7 +731,7 @@ const SettingsTab = ({
               render={({ field }) => (
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-foreground">Check credentials</p>
-                  <Switch
+                  <Toggle
                     variant="pam"
                     checked={field.value ?? false}
                     onCheckedChange={field.onChange}

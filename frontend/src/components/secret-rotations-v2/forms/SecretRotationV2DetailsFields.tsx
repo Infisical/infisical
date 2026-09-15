@@ -23,6 +23,8 @@ export const SecretRotationV2DetailsFields = () => {
               placeholder="my-secret-rotation"
               isError={Boolean(error)}
               aria-describedby="secret-rotation-name-feedback"
+              autoComplete="off"
+              name="secret-rotation-name"
             />
             <FieldFeedback
               id="secret-rotation-name-feedback"

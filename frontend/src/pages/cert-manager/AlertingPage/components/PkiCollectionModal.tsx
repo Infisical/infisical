@@ -120,7 +120,12 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="My Certificate Collection" />
+                <Input
+                  {...field}
+                  placeholder="My Certificate Collection"
+                  autoComplete="off"
+                  name="pki-collection-name"
+                />
               </FormControl>
             )}
           />

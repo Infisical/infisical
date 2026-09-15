@@ -172,7 +172,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
                 errorText={error?.message}
                 isRequired
               >
-                <Input {...field} placeholder="My Alert" />
+                <Input {...field} placeholder="My Alert" autoComplete="off" name="pki-alert-name" />
               </FormControl>
             )}
           />

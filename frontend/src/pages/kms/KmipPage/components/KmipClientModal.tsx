@@ -113,7 +113,7 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
         isError={Boolean(errors.name?.message)}
         label="Name"
       >
-        <Input autoFocus placeholder="My KMIP Client" {...register("name")} />
+        <Input autoFocus placeholder="My KMIP Client" {...register("name")} autoComplete="off" />
       </FormControl>
       <FormControl
         label="Description (optional)"

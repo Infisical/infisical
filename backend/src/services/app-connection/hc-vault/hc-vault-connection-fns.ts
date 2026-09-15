@@ -33,7 +33,8 @@ import {
   THCVaultLdapConfig,
   THCVaultLdapRole,
   THCVaultMount,
-  THCVaultMountResponse
+  THCVaultMountResponse,
+  TResolvedKvMount
 } from "./hc-vault-connection-types";
 
 // HashiCorp Vault stores JSON data, so values can be any valid JSON type
@@ -732,6 +733,7 @@ class NamespaceHeaderNotSupportedError extends Error {
 const isRootNamespace = (namespace: string) => namespace === "/" || namespace === "root" || !namespace;
 
 const isWildcardPath = (path: string) => path.split("/").includes("+");
+const isKvMount = (mount: THCVaultMount) => mount.type === "kv" || mount.type.startsWith("kv");
 const ACL_ALLOWED_CAPABILITIES = ["read", "list"];
 
 // Fallback for restricted Vault tokens that lack permission to list a mount from its root.
@@ -948,7 +950,7 @@ export const listHCVaultSecretPaths = async (
   const mounts = await listHCVaultMounts(connection, gatewayService, gatewayV2Service, namespace);
 
   // Filter for KV mounts (kv, kv-v1, kv-v2)
-  let kvMounts = mounts.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
+  let kvMounts = mounts.filter(isKvMount);
 
   // If filterMountPath is provided, filter to only that mount
   if (filterMountPath) {
@@ -1027,10 +1029,59 @@ export const listHCVaultSecretPaths = async (
   };
 };
 
+// the caller declares which secrets engine it is reading from, so the engine is resolved once rather
+// than guessed per path. This allow secrets engine that are defined as paths
+export const resolveKvMount = (mountPath: string, mounts: THCVaultMount[]): TResolvedKvMount => {
+  const mountSegments = mountPath.split("/").filter(Boolean);
+  const normalizedMountPath = mountSegments.join("/");
+
+  const mount = mounts.find((m) => m.path.split("/").filter(Boolean).join("/") === normalizedMountPath);
+
+  if (!mount) {
+    throw new BadRequestError({
+      message: `Secrets engine '${normalizedMountPath}' was not found in HashiCorp Vault`
+    });
+  }
+
+  if (!isKvMount(mount)) {
+    throw new BadRequestError({
+      message: `Secrets engine '${normalizedMountPath}' is a '${mount.type}' engine. Only KV secrets engines hold secrets that can be imported.`
+    });
+  }
+
+  return {
+    mountSegments,
+    mountUrlPath: mountSegments.map(encodeURIComponent).join("/"),
+    kvVersion: mount.version === "2" ? "2" : "1"
+  };
+};
+
+export const resolveVaultSecretPathWithinMount = (secretPath: string, mountSegments: string[]): string => {
+  const pathSegments = secretPath.split("/").filter(Boolean);
+
+  if (!mountSegments.every((segment, idx) => pathSegments[idx] === segment)) {
+    throw new BadRequestError({
+      message: `Vault path '${secretPath}' is not inside the '${mountSegments.join("/")}' secrets engine`
+    });
+  }
+
+  const actualPath = pathSegments.slice(mountSegments.length).join("/");
+
+  if (!actualPath) {
+    throw new BadRequestError({
+      message: `Vault path '${secretPath}' points at the '${mountSegments.join(
+        "/"
+      )}' secrets engine itself. Expected a secret path inside it.`
+    });
+  }
+
+  return actualPath;
+};
+
 const fetchVaultSecretAtPath = async ({
   namespace,
   secretPath,
-  mounts,
+  kvMount,
   instanceUrl,
   accessToken,
   connection,
@@ -1040,7 +1091,7 @@ const fetchVaultSecretAtPath = async ({
 }: {
   namespace: string;
   secretPath: string;
-  mounts: Awaited<ReturnType<typeof listHCVaultMounts>>;
+  kvMount: TResolvedKvMount;
   instanceUrl: string;
   accessToken: string;
   connection: THCVaultConnection;
@@ -1049,27 +1100,8 @@ const fetchVaultSecretAtPath = async ({
   skipNamespaceHeader: boolean;
 }): Promise<Record<string, JsonValue>> => {
   try {
-    // Extract mount and path from the secretPath
-    // secretPath format: {mount}/{path}
-    const pathParts = secretPath.split("/");
-    const mountPath = pathParts[0];
-    const actualPath = pathParts.slice(1).join("/");
-
-    if (!mountPath || !actualPath) {
-      throw new BadRequestError({
-        message: "Invalid secret path format. Expected format: {mount}/{path}"
-      });
-    }
-
-    const mount = mounts.find((m) => m.path.replace(/\/$/, "") === mountPath);
-
-    if (!mount) {
-      throw new BadRequestError({
-        message: `Mount '${mountPath}' not found in HashiCorp Vault`
-      });
-    }
-
-    const kvVersion = mount.version === "2" ? "2" : "1";
+    const { mountSegments, mountUrlPath, kvVersion } = kvMount;
+    const actualPath = resolveVaultSecretPathWithinMount(secretPath, mountSegments);
 
     // Fetch secrets based on KV version
     if (kvVersion === "2") {
@@ -1085,7 +1117,7 @@ const fetchVaultSecretAtPath = async ({
           };
         };
       }>(connection, gatewayService, gatewayV2Service, {
-        url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/data/${actualPath}`,
+        url: `${instanceUrl}/v1/${mountUrlPath}/data/${actualPath}`,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -1103,7 +1135,7 @@ const fetchVaultSecretAtPath = async ({
       lease_id: string;
       renewable: boolean;
     }>(connection, gatewayService, gatewayV2Service, {
-      url: `${instanceUrl}/v1/${encodeURIComponent(mountPath)}/${actualPath}`,
+      url: `${instanceUrl}/v1/${mountUrlPath}/${actualPath}`,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
@@ -1143,6 +1175,7 @@ const fetchVaultSecretAtPath = async ({
 
 export const getHCVaultSecretsForPaths = async (
   namespace: string,
+  mountPath: string,
   secretPaths: string[],
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
@@ -1157,9 +1190,11 @@ export const getHCVaultSecretsForPaths = async (
     return [];
   }
 
+  const kvMount = resolveKvMount(mountPath, mounts);
+
   const fetchParams = {
     namespace,
-    mounts,
+    kvMount,
     instanceUrl,
     accessToken,
     connection,

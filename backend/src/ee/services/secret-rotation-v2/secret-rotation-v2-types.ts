@@ -5,7 +5,7 @@ import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
-import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
+import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -512,7 +512,7 @@ export type TRotationFactoryCheckActiveCredentials<T extends TSecretRotationV2Ge
 // When present, factories that generate passwords must satisfy these
 // constraints and ignore any user-provided passwordRequirements.
 export type TRotationPasswordValidationContext = {
-  constraints: TConstraint[];
+  constraints: TConstraints;
   ruleNames: string[];
 };
 

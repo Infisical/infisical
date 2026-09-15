@@ -1,23 +1,19 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TDatabricksSecretScope,
-  useDatabricksConnectionListSecretScopes
-} from "@app/hooks/api/appConnections/databricks";
+import { useDatabricksConnectionListSecretScopes } from "@app/hooks/api/appConnections/databricks";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -46,7 +42,10 @@ export const DatabricksSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-databricks-scope-label"
+              htmlFor="secret-sync-databricks-scope"
+            >
               Secret Scope
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -62,19 +61,22 @@ export const DatabricksSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-databricks-scope-label"
+                aria-describedby={error ? "secret-sync-databricks-scope-error" : undefined}
+                id="secret-sync-databricks-scope"
+                isError={Boolean(error)}
                 isLoading={isSecretScopesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={secretScopes.find((scope) => scope.name === value) ?? null}
-                onChange={(option) =>
-                  onChange((option as SingleValue<TDatabricksSecretScope>)?.name ?? null)
-                }
+                onValueChange={(option) => onChange(option.name ?? null)}
                 options={secretScopes}
                 placeholder="Select a secret scope..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-databricks-scope-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

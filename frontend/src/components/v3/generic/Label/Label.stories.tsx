@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Input } from "../Input";
-import { Switch } from "../Switch";
+import { Toggle } from "../Toggle";
 import { Label } from "./Label";
 
 /**
@@ -66,18 +66,18 @@ export const WithInput: Story = {
 };
 
 export const InlineWithSwitch: Story = {
-  name: "Example: Inline With Switch",
+  name: "Example: Inline With Toggle",
   parameters: {
     docs: {
       description: {
         story:
-          "Use `Label` as the inline label for a `Switch` (or `Checkbox`) when you don't need a description below — for example, settings toggle rows. Place the label and control as flex siblings; the label inherits the row's vertical alignment."
+          "Use `Label` as the inline label for a `Toggle` (or `Checkbox`) when you don't need a description below — for example, settings toggle rows. Place the label and control as flex siblings; the label inherits the row's vertical alignment."
       }
     }
   },
   render: () => (
     <div className="flex w-80 items-center gap-3">
-      <Switch id="label-mfa" />
+      <Toggle id="label-mfa" />
       <Label htmlFor="label-mfa">Require MFA on sign-in</Label>
     </div>
   )

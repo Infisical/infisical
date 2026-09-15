@@ -11,7 +11,7 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS } from "@app/hooks/api/ca";
@@ -43,7 +43,7 @@ export const DistributionStep = ({ form }: Props) => {
                 certificates. Only the custom URLs below are included.
               </FieldDescription>
             </FieldContent>
-            <Switch variant="project" checked={value} onCheckedChange={onChange} />
+            <Toggle variant="project" checked={value} onCheckedChange={onChange} />
           </Field>
         )}
       />

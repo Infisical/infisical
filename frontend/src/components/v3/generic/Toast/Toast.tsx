@@ -44,6 +44,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
+          zIndex: "var(--z-index-toast)",
           "--width": "400px",
           "--border-radius": "0.375rem",
           "--normal-bg": "var(--color-container)",

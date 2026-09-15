@@ -26,7 +26,13 @@ export const BasicsStep = ({ form }: Props) => (
             Name <span className="text-danger">*</span>
           </FieldLabel>
           <FieldContent>
-            <Input {...field} placeholder="fortanix-prod" isError={Boolean(error)} />
+            <Input
+              {...field}
+              placeholder="fortanix-prod"
+              isError={Boolean(error)}
+              autoComplete="off"
+              name="hsm-connector-name"
+            />
             <FieldDescription>
               A descriptive name so you can identify this connector later. Lowercase letters,
               numbers, and dashes.

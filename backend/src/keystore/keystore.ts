@@ -37,7 +37,8 @@ export const PgSqlLock = {
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
-  LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
+  LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
+    pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
@@ -158,6 +159,7 @@ export const KeyStorePrefixes = {
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
+  AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
@@ -176,6 +178,12 @@ export const KeyStorePrefixes = {
   // scopeId is a projectId for the per-project dashboard and an orgId for the org-wide aggregates. Both are
   // UUIDs and the endpoint segments do not overlap, so one prefix serves both without collision.
   InsightsCache: (scopeId: string, endpoint: string) => `insights-cache:${scopeId}:${endpoint}` as const,
+
+  // Braces are a Redis Cluster hash tag: the index zset and every member's payload key must land on
+  // one slot for the multi-key upsert/delete scripts.
+  WorkerHeartbeatIndex: (workerType: string) => `worker-heartbeat:{${workerType}}` as const,
+  WorkerHeartbeat: (workerType: string, instanceId: string) =>
+    `worker-heartbeat:{${workerType}}:${instanceId}` as const,
 
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
@@ -250,6 +258,7 @@ export const KeyStoreTtls = {
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 900, // 15 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
+  AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes
   // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
@@ -275,7 +284,8 @@ export const KeyStoreTtls = {
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
   SecretReplicationSuccessInSeconds: 10,
-  NativeIntegrationDeprecationNoticeInSeconds: 3888000 // 45 days - outlives one monthly cycle
+  NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
+  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
 };
 
 type TDeleteItems = {

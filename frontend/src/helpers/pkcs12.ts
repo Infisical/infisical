@@ -32,6 +32,7 @@ export type TPkcs12Entry = {
   commonName: string | null;
   altNames: string | null;
   keyAlgorithm?: string;
+  serialNumber: string;
   notAfter: string;
   fingerprintSha256: string;
   chainWarning: string | null;
@@ -433,6 +434,7 @@ const extractPkcs12Entries = async ({
     subject: cert.cert.subject.slice(0, MAX_SUBJECT_LENGTH),
     commonName: cert.cert.subjectName.getField("CN")[0]?.slice(0, MAX_SUBJECT_LENGTH) ?? null,
     altNames: readAltNames(cert.cert),
+    serialNumber: cert.cert.serialNumber,
     notAfter: cert.cert.notAfter.toISOString(),
     fingerprintSha256: cert.fingerprint,
     certificatePem: cert.pem
@@ -521,12 +523,18 @@ const pkcs12ErrorMessage = (code: TPkcs12ErrorCode, count?: number) => {
 export const readKeystore = async (
   file: ArrayBuffer,
   password: string
-): Promise<{ entries: TPkcs12Entry[]; error?: never } | { entries?: never; error: string }> => {
+): Promise<
+  | { entries: TPkcs12Entry[]; error?: never; isPasswordError?: never }
+  | { entries?: never; error: string; isPasswordError: boolean }
+> => {
   try {
     return await extractPkcs12Entries({ pkcs12: new Uint8Array(file), password });
   } catch (err) {
     if (err instanceof Pkcs12ExtractionError)
-      return { error: pkcs12ErrorMessage(err.code, err.count) };
-    return { error: "Could not read this keystore." };
+      return {
+        error: pkcs12ErrorMessage(err.code, err.count),
+        isPasswordError: err.code === Pkcs12ErrorCode.BadPassword
+      };
+    return { error: "Could not read this keystore.", isPasswordError: false };
   }
 };

@@ -1,0 +1,126 @@
+import { createMongoAbility } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
+import { describe, expect, test } from "vitest";
+
+import { ProjectMembershipRole, ProjectType, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
+import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
+import { NotFoundError } from "@app/lib/errors";
+
+import {
+  agentVaultProjectAdminPermissions,
+  applicationAuditorPermissions,
+  pamResourceAdminPermissions,
+  signerOperatorPermissions
+} from "./default-roles";
+import { buildProjectPermissionRules, resolveResourceRoleRules } from "./permission-service";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionCmekActions,
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSecretSyncActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "./project-permission";
+
+const abilityFor = (role: string, permissions?: unknown) =>
+  createMongoAbility<ProjectPermissionSet>(
+    buildProjectPermissionRules(
+      [{ role, permissions }] as Parameters<typeof buildProjectPermissionRules>[0],
+      ProjectType.AgentVault
+    ) as never
+  );
+
+describe("agent vault project roles", () => {
+  test("the admin set is written out, not aliased to the generic project admin", () => {
+    const admin = abilityFor(ProjectMembershipRole.Admin);
+
+    expect(
+      admin.can(
+        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      )
+    ).toBe(true);
+    expect(admin.can(ProjectPermissionAgentVaultProxyActions.Revoke, ProjectPermissionSub.AgentVaultProxies)).toBe(
+      true
+    );
+    expect(admin.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(true);
+
+    expect(admin.can(ProjectPermissionCmekActions.Rotate, ProjectPermissionSub.Cmek)).toBe(false);
+    expect(admin.can(ProjectPermissionSecretSyncActions.Create, ProjectPermissionSub.SecretSyncs)).toBe(false);
+    expect(admin.can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens)).toBe(false);
+  });
+
+  test("a member can mint and revoke sessions and read a proxy fingerprint, and nothing more", () => {
+    const member = abilityFor(ProjectMembershipRole.Member);
+
+    expect(member.can(ProjectPermissionAgentVaultSessionActions.Create, ProjectPermissionSub.AgentVaultSessions)).toBe(
+      true
+    );
+    expect(member.can(ProjectPermissionAgentVaultSessionActions.Revoke, ProjectPermissionSub.AgentVaultSessions)).toBe(
+      true
+    );
+    expect(member.can(ProjectPermissionAgentVaultProxyActions.Read, ProjectPermissionSub.AgentVaultProxies)).toBe(true);
+
+    expect(member.can(ProjectPermissionAgentVaultProxyActions.Create, ProjectPermissionSub.AgentVaultProxies)).toBe(
+      false
+    );
+    expect(
+      member.can(ProjectPermissionAgentVaultAccessBundleActions.Create, ProjectPermissionSub.AgentVaultAccessBundles)
+    ).toBe(false);
+    expect(
+      member.can(
+        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      )
+    ).toBe(false);
+    expect(member.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(false);
+
+    expect(member.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member)).toBe(false);
+    expect(member.can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups)).toBe(false);
+    expect(member.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)).toBe(false);
+  });
+
+  test("a custom role carrying the full admin rules still resolves to the member set", () => {
+    const custom = abilityFor(ProjectMembershipRole.Custom, packRules(agentVaultProjectAdminPermissions as never));
+
+    expect(
+      custom.can(ProjectPermissionAgentVaultAccessBundleActions.Read, ProjectPermissionSub.AgentVaultAccessBundles)
+    ).toBe(true);
+    expect(
+      custom.can(ProjectPermissionAgentVaultAccessBundleActions.Delete, ProjectPermissionSub.AgentVaultAccessBundles)
+    ).toBe(false);
+    expect(
+      custom.can(
+        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+        ProjectPermissionSub.AgentVaultAccessBundles
+      )
+    ).toBe(false);
+    expect(custom.can(ProjectPermissionAgentVaultProxyActions.Delete, ProjectPermissionSub.AgentVaultProxies)).toBe(
+      false
+    );
+    expect(custom.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(false);
+  });
+});
+
+describe("resource role dispatch", () => {
+  test("an agent vault consumer carries no rules, and an unknown slug fails loudly", () => {
+    expect(resolveResourceRoleRules(ResourceType.AgentVaultAccessBundle, AgentVaultResourceRole.Consumer)).toEqual([]);
+    expect(() => resolveResourceRoleRules(ResourceType.AgentVaultAccessBundle, "admin")).toThrow(NotFoundError);
+  });
+
+  test("the other products' arms are untouched", () => {
+    expect(resolveResourceRoleRules(ResourceType.PamFolder, PamResourceRole.Admin)).toBe(pamResourceAdminPermissions);
+    expect(resolveResourceRoleRules(ResourceType.Signer, ResourceMembershipRole.Operator)).toBe(
+      signerOperatorPermissions
+    );
+    expect(resolveResourceRoleRules(ResourceType.CertificateApplication, ResourceMembershipRole.Auditor)).toBe(
+      applicationAuditorPermissions
+    );
+  });
+});

@@ -67,16 +67,6 @@ services:
     ports:
       - "8085:8081"
 
-  db-test:
-    profiles: ["test"]
-    image: postgres:14-alpine
-    ports:
-      - "5430:5432"
-    environment:
-      POSTGRES_PASSWORD: infisical
-      POSTGRES_USER: infisical
-      POSTGRES_DB: infisical-test
-
   db-migration:
     container_name: infisical-db-migration
     depends_on:
