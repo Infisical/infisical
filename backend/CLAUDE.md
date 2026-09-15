@@ -739,6 +739,22 @@ EE routes register before community routes so they can override/extend endpoints
 
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/CLAUDE.md`](src/ee/services/agent-vault/CLAUDE.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
 
+**Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC
+transport over `@infisical/quic`, and `/api/v1/gateways`) is gone; `gateway-v2` and `gateway-pool` are the
+whole story, and `lib/gateway-v2/types.ts` owns `GatewayProxyProtocol` / `GatewayHttpProxyActions`. What
+survives is DB-only, and deliberately: the `gateways`, `org_gateway_config` and `project_gateways` tables
+and the `gatewayId` columns on `dynamic_secrets`, `identity_kubernetes_auths` and
+`identity_auth_templates` are still populated but never read or written, so the removal stays revertible.
+Those three tables' `TableName` members exist for that reason alone.
+
+Two consequences when touching a gateway dial path. Resolve the gateway with
+`gatewayV2Service.getPlatformConnectionDetailsByGatewayId`, and when it returns nothing **throw**
+(`getMissingGatewayMessage` in `lib/gateway-v2/gateway-errors.ts`) rather than continuing: every one of
+these call sites sits in front of an `if (gatewayId)` guard whose else-branch dials the target host
+directly, so falling through turns a dangling gateway reference into a silent bypass of the network
+boundary the gateway exists to enforce. And `app_connections.gatewayId` is **not** a v1 column — unlike the
+three above it never grew a `gatewayV2Id`, so that one column carries v2 ids and must stay.
+
 ### Server Plugins
 
 Key plugins in `src/server/plugins/`:

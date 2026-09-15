@@ -3,7 +3,6 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -49,7 +48,6 @@ type TIdentityAuthTemplateServiceFactoryDep = {
   identityLdapAuthDAL: Pick<TIdentityLdapAuthDALFactory, "updateByTemplateId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "updateByTemplateId">;
   identityOidcAuthDAL: Pick<TIdentityOidcAuthDALFactory, "updateByTemplateId">;
-  gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -67,7 +65,6 @@ export const identityAuthTemplateServiceFactory = ({
   identityLdapAuthDAL,
   identityKubernetesAuthDAL,
   identityOidcAuthDAL,
-  gatewayDAL,
   gatewayV2DAL,
   gatewayPoolDAL,
   permissionService,
@@ -222,22 +219,15 @@ export const identityAuthTemplateServiceFactory = ({
     gatewayPoolId?: string | null;
     orgId: string;
   }) => {
-    let resolvedGatewayId: string | null = null;
     let resolvedGatewayV2Id: string | null = null;
     if (gatewayId && !gatewayPoolId) {
-      const [[gateway], [gatewayV2]] = await Promise.all([
-        gatewayDAL.find({ id: gatewayId, orgId }),
-        gatewayV2DAL.find({ id: gatewayId, orgId })
-      ]);
-      if (gateway) {
-        resolvedGatewayId = gatewayId;
-      } else if (gatewayV2) {
-        resolvedGatewayV2Id = gatewayId;
-      } else {
+      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId });
+      if (!gatewayV2) {
         throw new BadRequestError({
           message: `Gateway with ID '${gatewayId}' was not found in this organization. Select an existing gateway for the template.`
         });
       }
+      resolvedGatewayV2Id = gatewayId;
     }
     if (gatewayPoolId) {
       const pool = await gatewayPoolDAL.findById(gatewayPoolId);
@@ -247,7 +237,7 @@ export const identityAuthTemplateServiceFactory = ({
         });
       }
     }
-    return { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId: gatewayPoolId ?? null };
+    return { resolvedGatewayV2Id, resolvedGatewayPoolId: gatewayPoolId ?? null };
   };
 
   // the gateway reference lives in columns rather than the encrypted blob so it can carry a
@@ -267,16 +257,16 @@ export const identityAuthTemplateServiceFactory = ({
   const $methodHasGatewayFields = (authMethod: string) =>
     (templateFieldPatchKeysByMethod[authMethod as IdentityAuthTemplateMethod] ?? []).includes("gatewayId");
 
-  // the API keeps one logical gatewayId covering both gateway generations, so the v1/v2
-  // column split stays an implementation detail
+  // the API exposes the gateway as a plain gatewayId, so the gatewayV2Id column name stays an
+  // implementation detail
   const $withGatewayFields = (
-    template: Pick<TIdentityAuthTemplates, "authMethod" | "gatewayId" | "gatewayV2Id" | "gatewayPoolId">,
+    template: Pick<TIdentityAuthTemplates, "authMethod" | "gatewayV2Id" | "gatewayPoolId">,
     fields: Record<string, unknown>
   ) => {
     if (!$methodHasGatewayFields(template.authMethod)) return fields;
     return {
       ...fields,
-      gatewayId: template.gatewayV2Id ?? template.gatewayId ?? null,
+      gatewayId: template.gatewayV2Id ?? null,
       gatewayPoolId: template.gatewayPoolId ?? null
     };
   };
@@ -341,14 +331,13 @@ export const identityAuthTemplateServiceFactory = ({
           plan,
           permission
         });
-        const { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId } =
-          await $resolveKubernetesTemplateGateway({
-            gatewayId: normalizedFields.gatewayId,
-            gatewayPoolId: normalizedFields.gatewayPoolId,
-            orgId: actorOrgId
-          });
+        const { resolvedGatewayV2Id, resolvedGatewayPoolId } = await $resolveKubernetesTemplateGateway({
+          gatewayId: normalizedFields.gatewayId,
+          gatewayPoolId: normalizedFields.gatewayPoolId,
+          orgId: actorOrgId
+        });
         gatewayColumns = {
-          gatewayId: resolvedGatewayId,
+          gatewayId: null,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: resolvedGatewayPoolId
         };
@@ -467,14 +456,17 @@ export const identityAuthTemplateServiceFactory = ({
           plan,
           permission
         });
-        const { resolvedGatewayId, resolvedGatewayV2Id, resolvedGatewayPoolId } =
-          await $resolveKubernetesTemplateGateway({
-            gatewayId: merged.gatewayId,
-            gatewayPoolId: merged.gatewayPoolId,
-            orgId: template.orgId
-          });
+        const { resolvedGatewayV2Id, resolvedGatewayPoolId } = await $resolveKubernetesTemplateGateway({
+          gatewayId: merged.gatewayId,
+          gatewayPoolId: merged.gatewayPoolId,
+          orgId: template.orgId
+        });
         gatewayColumnUpdate = {
-          gatewayId: resolvedGatewayId,
+          // a deliberate gateway edit clears the retired v1 pin as well, otherwise the template
+          // stays permanently unusable: identities cannot attach to a v1-pinned template and
+          // patching gatewayId to null would only clear gatewayV2Id. Templates nobody edits keep
+          // their v1 value, so the retirement stays revertible.
+          gatewayId: null,
           gatewayV2Id: resolvedGatewayV2Id,
           gatewayPoolId: resolvedGatewayPoolId
         };

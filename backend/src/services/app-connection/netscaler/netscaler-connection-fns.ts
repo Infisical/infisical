@@ -1,12 +1,11 @@
 import { AxiosRequestConfig } from "axios";
 import https from "https";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -94,7 +93,6 @@ const requestWithNetScalerGateway = async <T>(
 
 export const validateNetScalerConnectionCredentials = async (
   config: TNetScalerConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { hostname, port, username, password } = config.credentials;

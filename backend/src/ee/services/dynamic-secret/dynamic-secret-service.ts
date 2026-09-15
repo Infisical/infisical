@@ -19,7 +19,6 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
-import { TGatewayDALFactory } from "../gateway/gateway-dal";
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -46,7 +45,6 @@ type TDynamicSecretServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
@@ -90,7 +88,6 @@ export const dynamicSecretServiceFactory = ({
   dynamicSecretQueueService,
   projectDAL,
   kmsService,
-  gatewayDAL,
   gatewayV2DAL,
   gatewayPoolService,
   resourceMetadataDAL
@@ -110,7 +107,6 @@ export const dynamicSecretServiceFactory = ({
     metadata,
     usernameTemplate
   }) => {
-    let isGatewayV1 = true;
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -178,24 +174,19 @@ export const dynamicSecretServiceFactory = ({
     } else if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
       const gatewayId = inputs.gatewayId as string;
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
       const [gatewayv2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
 
-      if (!gateway && !gatewayv2) {
+      if (!gatewayv2) {
         throw new NotFoundError({
           message: `Gateway with ID ${gatewayId} not found`
         });
-      }
-
-      if (!gateway) {
-        isGatewayV1 = false;
       }
 
       const { permission: orgPermission } = await permissionService.getOrgPermission({
         scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        orgId: gateway?.orgId || gatewayv2?.orgId,
+        orgId: gatewayv2.orgId,
         actorAuthMethod,
         actorOrgId
       });
@@ -205,7 +196,7 @@ export const dynamicSecretServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
-      selectedGatewayId = gateway?.id ?? gatewayv2?.id;
+      selectedGatewayId = gatewayv2.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId });
@@ -226,8 +217,7 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           folderId: folder.id,
           name,
-          gatewayId: !selectedGatewayPoolId && isGatewayV1 ? selectedGatewayId : undefined,
-          gatewayV2Id: !selectedGatewayPoolId && !isGatewayV1 ? selectedGatewayId : undefined,
+          gatewayV2Id: !selectedGatewayPoolId ? selectedGatewayId : undefined,
           gatewayPoolId: selectedGatewayPoolId ?? undefined,
           usernameTemplate
         },
@@ -390,7 +380,6 @@ export const dynamicSecretServiceFactory = ({
 
     let selectedGatewayId: string | null = (newInput as Record<string, unknown>).gatewayId as string | null;
     let selectedGatewayPoolId: string | null = (newInput as Record<string, unknown>).gatewayPoolId as string | null;
-    let isGatewayV1 = Boolean(dynamicSecretCfg.gatewayId);
     const hasGatewayFieldInInput =
       inputs && typeof inputs === "object" && ("gatewayId" in inputs || "gatewayPoolId" in inputs);
     if (
@@ -416,22 +405,19 @@ export const dynamicSecretServiceFactory = ({
       selectedGatewayPoolId = null;
       const gatewayId = updatedInput.gatewayId as string;
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
       const [gatewayv2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
 
-      if (!gateway && !gatewayv2) {
+      if (!gatewayv2) {
         throw new NotFoundError({
           message: `Gateway with ID ${gatewayId} not found`
         });
       }
 
-      isGatewayV1 = Boolean(gateway);
-
       const { permission: orgPermission } = await permissionService.getOrgPermission({
         scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        orgId: gateway?.orgId || gatewayv2?.orgId,
+        orgId: gatewayv2.orgId,
         actorAuthMethod,
         actorOrgId
       });
@@ -441,7 +427,7 @@ export const dynamicSecretServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
-      selectedGatewayId = gateway?.id ?? gatewayv2?.id;
+      selectedGatewayId = gatewayv2.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(newInput, { projectId });
@@ -459,8 +445,7 @@ export const dynamicSecretServiceFactory = ({
           status: null,
           ...(hasGatewayFieldInInput
             ? {
-                gatewayId: !selectedGatewayPoolId && isGatewayV1 ? selectedGatewayId : null,
-                gatewayV2Id: !selectedGatewayPoolId && !isGatewayV1 ? selectedGatewayId : null,
+                gatewayV2Id: !selectedGatewayPoolId ? selectedGatewayId : null,
                 gatewayPoolId: selectedGatewayPoolId
               }
             : {}),

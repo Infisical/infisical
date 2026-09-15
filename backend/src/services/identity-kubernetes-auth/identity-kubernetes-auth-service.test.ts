@@ -129,9 +129,7 @@ const createService = ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       })
     },
-    gatewayService: {},
     gatewayV2Service: {},
-    gatewayDAL: { find: vi.fn().mockResolvedValue([]) },
     gatewayV2DAL: { find: vi.fn().mockResolvedValue([]) },
     gatewayPoolService: { pickHealthyGateway: vi.fn(), runWithPoolFailover: vi.fn() },
     gatewayPoolDAL: { findById: vi.fn().mockResolvedValue(null) },

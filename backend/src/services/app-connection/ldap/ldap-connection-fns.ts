@@ -2,13 +2,12 @@ import { isIP } from "node:net";
 
 import ldap from "@infisical/ldapjs";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -298,7 +297,6 @@ export const executeWithPotentialGateway = async <T>(
 
 export const validateLdapConnectionCredentials = async (
   config: TLdapConnectionConfig,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {
