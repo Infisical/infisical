@@ -1909,7 +1909,6 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.Application).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApplicationActions).describe(
       "Describe what action an entity can take."
     )
