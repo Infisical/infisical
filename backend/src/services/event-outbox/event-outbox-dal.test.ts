@@ -20,8 +20,7 @@ const buildDAL = (opts?: { returning?: unknown[]; updated?: number; selected?: u
     insert: [] as unknown[],
     onConflict: [] as unknown[],
     ignored: 0,
-    groupBy: [] as unknown[][],
-    orderByRaw: [] as unknown[]
+    groupBy: [] as unknown[][]
   };
 
   // knex resolves an UPDATE to the affected row count and a SELECT to rows, and commitResults reads
@@ -53,10 +52,6 @@ const buildDAL = (opts?: { returning?: unknown[]; updated?: number; selected?: u
     },
     orderBy: (...args: unknown[]) => {
       calls.orderBy.push(args.length === 1 ? args[0] : args);
-      return chain;
-    },
-    orderByRaw: (arg: unknown) => {
-      calls.orderByRaw.push(arg);
       return chain;
     },
     groupBy: (...args: unknown[]) => {
@@ -126,10 +121,8 @@ describe("event outbox dal", () => {
         {
           consumer: "alert",
           eventType: "approval.workflow.request_opened",
-          resourceType: "approval.workflow",
-          resourceId: "policy-1",
           orgId: "org-1",
-          payload: { targetIds: ["req-1"] },
+          payload: { resourceType: "approval.workflow", resourceId: "policy-1", targetIds: ["req-1"] },
           occurredAt: new Date()
         }
       ],
@@ -153,7 +146,7 @@ describe("event outbox dal", () => {
   test("claimBatch locks rows with FOR UPDATE SKIP LOCKED", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.claimBatch({ consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" }, 100);
+    await dal.claimBatch({ consumer: "alert" }, 100);
 
     expect(calls.forUpdate).toBe(1);
     expect(calls.skipLocked).toBe(1);
@@ -162,7 +155,7 @@ describe("event outbox dal", () => {
   test("claimBatch orders by id, not by a timestamp", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.claimBatch({ consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" }, 100);
+    await dal.claimBatch({ consumer: "alert" }, 100);
 
     expect(calls.orderBy[0]).toEqual(["id", "asc"]);
   });
@@ -172,10 +165,7 @@ describe("event outbox dal", () => {
   test("claimBatch returns the claimed rows in id order regardless of how RETURNING ordered them", async () => {
     const { dal } = buildDAL({ returning: [{ id: "8" }, { id: "6" }, { id: "10" }, { id: "7" }] });
 
-    const { rows } = await dal.claimBatch(
-      { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" },
-      10
-    );
+    const { rows } = await dal.claimBatch({ consumer: "alert" }, 10);
 
     expect(rows.map((row) => String(row.id))).toEqual(["6", "7", "8", "10"]);
   });
@@ -183,7 +173,7 @@ describe("event outbox dal", () => {
   test("claimBatch flips the locked rows to processing in the same statement", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.claimBatch({ consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" }, 100);
+    await dal.claimBatch({ consumer: "alert" }, 100);
 
     expect(calls.update).toHaveLength(1);
     expect(calls.update[0].status).toBe(EventOutboxStatus.Processing);
@@ -194,7 +184,7 @@ describe("event outbox dal", () => {
   // rows and it has to differ per claim.
   test("claimBatch stamps a fresh lockToken and hands it back", async () => {
     const { dal, calls } = buildDAL();
-    const key = { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" };
+    const key = { consumer: "alert" };
 
     const first = await dal.claimBatch(key, 100);
     const second = await dal.claimBatch(key, 100);
@@ -228,29 +218,28 @@ describe("event outbox dal", () => {
   test("claimBatch only takes rows whose retry time has arrived", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.claimBatch({ consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" }, 100);
+    await dal.claimBatch({ consumer: "alert" }, 100);
 
     expect(calls.whereIn[0]).toEqual(["status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry]]);
     expect(calls.andWhere[0][0]).toBe("nextRetryAt");
     expect(calls.andWhere[0][1]).toBe("<=");
   });
 
-  test("findDueFlushKeys groups by the flush key and takes the most overdue first", async () => {
+  test("findDueFlushKeys reports each consumer with due work once", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.findDueFlushKeys(200, ["alert"]);
+    await dal.findDueFlushKeys(["alert"]);
 
-    expect(calls.groupBy[0]).toEqual(["consumer", "resourceType", "resourceId"]);
-    expect(calls.orderByRaw[0]).toBe('MIN("nextRetryAt") ASC');
-    expect(calls.limit).toContain(200);
+    expect(calls.groupBy[0]).toEqual(["consumer"]);
+    expect(calls.whereIn).toContainEqual(["status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry]]);
+    expect(calls.andWhere[0][0]).toBe("nextRetryAt");
   });
 
-  // Rows for a consumer this process can't drain would otherwise sort first on every tick and, once
-  // there are more of them than the limit, hide every real key behind them.
+  // A flush for a consumer this process hasn't registered has nothing to hand the rows to.
   test("findDueFlushKeys only looks at consumers this process has registered", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.findDueFlushKeys(200, ["alert", "audit"]);
+    await dal.findDueFlushKeys(["alert", "audit"]);
 
     expect(calls.whereIn).toContainEqual(["consumer", ["alert", "audit"]]);
   });
@@ -258,7 +247,7 @@ describe("event outbox dal", () => {
   test("findDueFlushKeys issues no statement when nothing is registered", async () => {
     const { dal, calls } = buildDAL();
 
-    await expect(dal.findDueFlushKeys(200, [])).resolves.toEqual([]);
+    await expect(dal.findDueFlushKeys([])).resolves.toEqual([]);
 
     expect(calls.groupBy).toHaveLength(0);
   });

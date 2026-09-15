@@ -15,11 +15,15 @@ import { AlertTriggerType, MAX_TARGET_IDS_PER_EVENT } from "./alert-types";
 
 export const ALERT_EVENT_CONSUMER = "alert";
 
-// Emitters name targets by id and the provider rehydrates them at delivery. Keeping the payload to
-// ids is what lets one consumer serve every provider.
+// Emitters name the resource and its targets by id and the provider rehydrates them at delivery.
+// Keeping the payload to ids is what lets one consumer serve every provider.
 export const AlertEventPayloadSchema = z.object({
+  resourceType: z.string().trim().min(1).max(255),
+  resourceId: z.string().trim().min(1).max(255),
   targetIds: z.array(z.string().trim().min(1).max(255)).min(1).max(MAX_TARGET_IDS_PER_EVENT)
 });
+
+type TAlertEventPayload = z.infer<typeof AlertEventPayloadSchema>;
 
 const AlertEventProgressSchema = z.object({
   deliveredChannelIds: z.array(z.string()).default([])
@@ -37,28 +41,20 @@ export const alertEventConsumerFactory = ({
   alertDAL,
   alertEngine,
   alertProviderRegistry
-}: TAlertEventConsumerDep): IEventConsumer<z.infer<typeof AlertEventPayloadSchema>> => {
+}: TAlertEventConsumerDep): IEventConsumer<TAlertEventPayload> => {
   const subscribesTo = (eventType: string): boolean => alertProviderRegistry.eventTriggeredKeys().has(eventType);
 
   // subscribesTo only sees the event type, so a valid event key on the wrong resourceType gets past it.
   // Fail here, terminally and naming both, instead of marking the event delivered as "no matching alert".
-  const $isDeclaredEvent = (event: TEvent): boolean =>
+  const $isDeclaredEvent = (eventType: string, resourceType: string): boolean =>
     Boolean(
       alertProviderRegistry
-        .get(event.resourceType)
-        ?.events.some((declared) => declared.key === event.eventType && declared.triggerType === AlertTriggerType.Event)
+        .get(resourceType)
+        ?.events.some((declared) => declared.key === eventType && declared.triggerType === AlertTriggerType.Event)
     );
 
   const $handleEvent = async (event: TEvent, findAlerts: TAlertLookup): Promise<TEventConsumerResult> => {
     const id = String(event.id);
-
-    if (!$isDeclaredEvent(event)) {
-      return {
-        id,
-        status: EventResultStatus.Failed,
-        error: `No alert provider for resource type '${event.resourceType}' declares '${event.eventType}' as an event-triggered alert`
-      };
-    }
 
     const payload = AlertEventPayloadSchema.safeParse(event.payload);
     if (!payload.success) {
@@ -68,6 +64,15 @@ export const alertEventConsumerFactory = ({
         error: `Unreadable alert event payload: ${payload.error.issues.map((issue) => issue.message).join(", ")}`
       };
     }
+    const { resourceType, resourceId, targetIds } = payload.data;
+
+    if (!$isDeclaredEvent(event.eventType, resourceType)) {
+      return {
+        id,
+        status: EventResultStatus.Failed,
+        error: `No alert provider for resource type '${resourceType}' declares '${event.eventType}' as an event-triggered alert`
+      };
+    }
 
     const progress = AlertEventProgressSchema.safeParse(event.progress ?? {});
     const delivered = new Set(progress.success ? progress.data.deliveredChannelIds : []);
@@ -75,16 +80,13 @@ export const alertEventConsumerFactory = ({
     const alerts = await findAlerts({
       orgId: event.orgId,
       projectId: event.projectId,
-      resourceType: event.resourceType,
-      resourceId: event.resourceId,
+      resourceType,
+      resourceId,
       eventType: event.eventType
     });
 
     if (alerts.length === 0) {
-      recordAlertDispatchOutcomeMetric({
-        resourceType: event.resourceType,
-        outcome: AlertDispatchOutcome.NoMatchingAlert
-      });
+      recordAlertDispatchOutcomeMetric({ resourceType, outcome: AlertDispatchOutcome.NoMatchingAlert });
       return { id, status: EventResultStatus.Delivered };
     }
 
@@ -94,7 +96,7 @@ export const alertEventConsumerFactory = ({
       // eslint-disable-next-line no-await-in-loop -- at most a project- and an org-scoped alert
       const result = await alertEngine.runAlertForEvent(alert, {
         eventType: event.eventType,
-        targetIds: payload.data.targetIds,
+        targetIds,
         payload: (event.payload ?? {}) as Record<string, unknown>,
         skipChannelIds: [...delivered]
       });

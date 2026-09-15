@@ -44,11 +44,11 @@ export const emitIdentityAuthMethodChanged = (
   eventEmitter.emit(
     {
       eventType: IDENTITY_AUTH_METHOD_CHANGED_EVENT,
-      resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-      resourceId: membership.identity.id,
       orgId: membership.scopeOrgId,
       projectId: membership.identity.projectId,
       payload: {
+        resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+        resourceId: membership.identity.id,
         targetIds: [membership.identity.id],
         authMethod,
         change,

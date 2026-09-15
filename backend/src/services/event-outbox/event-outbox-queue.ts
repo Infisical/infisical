@@ -7,7 +7,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TEventOutboxDALFactory } from "./event-outbox-dal";
 import { TEventOutboxRegistry } from "./event-outbox-registry";
 import { TEventOutboxServiceFactory } from "./event-outbox-service";
-import { OUTBOX_RELAY_INTERVAL_MS, RELAY_DISCOVERY_LIMIT, TOutboxFlushKey } from "./event-outbox-types";
+import { OUTBOX_RELAY_INTERVAL_MS, TOutboxFlushKey } from "./event-outbox-types";
 
 const FLUSH_WORKER_CONCURRENCY = 10;
 
@@ -34,7 +34,6 @@ export const eventOutboxQueueFactory = ({
 }: TEventOutboxQueueFactoryDep) => {
   const appCfg = getConfig();
 
-  let lastDiscoveryCount = 0;
   let oldestPendingByConsumer: { consumer: string; ageSeconds: number }[] = [];
 
   const $registerGauges = () => {
@@ -51,33 +50,18 @@ export const eventOutboxQueueFactory = ({
         result.observe(ageSeconds, { "event_outbox.consumer": consumer });
       });
     });
-
-    const discoveryGauge = meter.createObservableGauge("infisical.event_outbox.discovered", {
-      description:
-        "Flush keys found on the last relay tick (capped at the discovery limit). Sustained value at the cap means the drain rate cannot keep up.",
-      unit: "{key}"
-    });
-    discoveryGauge.addCallback((result) => {
-      if (!appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) return;
-      result.observe(lastDiscoveryCount);
-    });
   };
 
   const $enqueueFlush = async (key: TOutboxFlushKey) =>
     queueService.queue(QueueName.EventOutboxFlush, QueueJobs.EventOutboxFlush, key, {
-      jobId: `outbox-flush-${key.consumer}-${key.resourceType}-${encodeURIComponent(key.resourceId)}`,
+      jobId: `outbox-flush-${key.consumer}`,
       removeOnComplete: true,
       removeOnFail: true,
       attempts: 1
     });
 
   const runRelayTick = async () => {
-    const keys = await eventOutboxDAL.findDueFlushKeys(RELAY_DISCOVERY_LIMIT, eventOutboxRegistry.names());
-    lastDiscoveryCount = keys.length;
-
-    if (keys.length === RELAY_DISCOVERY_LIMIT) {
-      logger.warn(`event-outbox: relay discovery hit its cap of ${RELAY_DISCOVERY_LIMIT} keys; a backlog is building`);
-    }
+    const keys = await eventOutboxDAL.findDueFlushKeys(eventOutboxRegistry.names());
 
     if (keys.length > 0) {
       await Promise.all(keys.map((key) => $enqueueFlush(key)));
@@ -107,15 +91,12 @@ export const eventOutboxQueueFactory = ({
     queueService.start(
       QueueName.EventOutboxFlush,
       async (job) => {
-        const { consumer, resourceType, resourceId } = job.data;
+        const { consumer } = job.data;
         try {
-          await eventOutboxService.drain({ consumer, resourceType, resourceId });
+          await eventOutboxService.drain({ consumer });
         } catch (error) {
           // The job is removeOnFail with a single attempt, so this line is the only trace it leaves.
-          logger.error(
-            error,
-            `event-outbox: flush worker crashed [consumer=${consumer}] [resourceType=${resourceType}] [resourceId=${resourceId}]`
-          );
+          logger.error(error, `event-outbox: flush worker crashed [consumer=${consumer}]`);
           throw error;
         }
       },

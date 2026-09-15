@@ -9,8 +9,6 @@ export async function up(knex: Knex): Promise<void> {
       t.bigIncrements("id").primary();
       t.string("consumer").notNullable();
       t.string("eventType").notNullable();
-      t.string("resourceType").notNullable();
-      t.string("resourceId").notNullable();
       t.uuid("orgId").notNullable();
       t.string("projectId");
       t.jsonb("payload").notNullable();
@@ -27,11 +25,11 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    // Backs discovery and the per-resource claim. `id` before `nextRetryAt` so the claim's ORDER BY
-    // needs no sort node.
+    // Backs discovery and the claim. `id` before `nextRetryAt` so the claim's ORDER BY needs no sort
+    // node; `nextRetryAt` is there so rows still in backoff are skipped without touching the heap.
     await knex.schema.raw(`
       CREATE INDEX IF NOT EXISTS "${TableName.EventOutbox}_drain_idx"
-      ON "${TableName.EventOutbox}" ("consumer", "resourceType", "resourceId", "id", "nextRetryAt")
+      ON "${TableName.EventOutbox}" ("consumer", "id", "nextRetryAt")
       WHERE status IN ('pending', 'retry')
     `);
 

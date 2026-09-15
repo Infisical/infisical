@@ -18,8 +18,6 @@ export type TOutboxClaim = {
 export type TOutboxInsertRow = {
   consumer: string;
   eventType: string;
-  resourceType: string;
-  resourceId: string;
   orgId: string;
   projectId?: string | null;
   payload: unknown;
@@ -47,7 +45,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findDueFlushKeys = async (limit: number, consumers: string[]): Promise<TOutboxFlushKey[]> => {
+  const findDueFlushKeys = async (consumers: string[]): Promise<TOutboxFlushKey[]> => {
     if (consumers.length === 0) return [];
     try {
       const rows = await db
@@ -55,10 +53,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
         .whereIn("consumer", consumers)
         .whereIn("status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry])
         .andWhere("nextRetryAt", "<=", db.fn.now())
-        .groupBy("consumer", "resourceType", "resourceId")
-        .orderByRaw('MIN("nextRetryAt") ASC')
-        .limit(limit)
-        .select<TOutboxFlushKey[]>("consumer", "resourceType", "resourceId");
+        .groupBy("consumer")
+        .select<TOutboxFlushKey[]>("consumer");
 
       return rows;
     } catch (error) {
@@ -77,7 +73,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
           void qb
             .select("id")
             .from(TableName.EventOutbox)
-            .where(key)
+            .where("consumer", key.consumer)
             .whereIn("status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry])
             .andWhere("nextRetryAt", "<=", db.fn.now())
             .orderBy("id", "asc")

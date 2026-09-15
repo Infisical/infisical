@@ -710,11 +710,9 @@ await someDAL.transaction(async (tx) => {
   await eventEmitter.emit(
     {
       eventType: "approval.workflow.request_opened",
-      resourceType: "approval.workflow",
-      resourceId: policyId,
       orgId,
       projectId,
-      payload: { targetIds: [request.id] }
+      payload: { resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
     },
     tx
   );
@@ -746,9 +744,12 @@ await someDAL.transaction(async (tx) => {
   result can't clear the new owner's lock or drop its outcome. `commitResults` returns how many rows it
   settled and `drain` logs a short settle: that count is the only signal that a batch went out twice, since
   the fence protects the bookkeeping but delivery stays at-least-once.
-- **Discovery only looks at consumers registered in this process.** Rows for any other name would sort
-  first forever and, past the limit, hide every real key. They wait and show up on the oldest-pending
-  gauge instead.
+- **The envelope carries only what the outbox queries on.** `consumer`, `eventType`, the retry and lock
+  columns, and the tenant pair (`orgId`, `projectId`) handed to every consumer. Which resource an event
+  is about lives in `payload` under a shape the consumer's `payloadSchema` declares; the outbox never
+  groups, filters or indexes on it.
+- **Discovery only looks at consumers registered in this process.** A row for any other name has nowhere
+  to go here. It waits and shows up on the oldest-pending gauge instead.
 - **Don't let one event's failure escape `handle`.** The outbox retries the whole batch when `handle`
   throws. Catch per event and report `Retry` for that event alone (see `alert-event-consumer.ts`).
 - **BullMQ owns latency, not correctness.** `attempts: 1` on the flush job is intentional; retry lives
@@ -756,11 +757,14 @@ await someDAL.transaction(async (tx) => {
 - **The relay is a `setInterval`, not a cron job.** It doesn't need exactly-once (`FOR UPDATE SKIP
   LOCKED` plus the flush `jobId` make concurrent pollers safe) and it needs a sub-minute cadence the
   cron manager can't give.
-- **Ordering is per resource and best-effort.** The flush `jobId` is keyed on
-  `(consumer, resourceType, resourceId)` so one flush per aggregate runs at a time, and `claimBatch`
-  sorts by `id` (re-sorting what `RETURNING` gives back, which is arbitrary). A row inside its backoff
-  window is skipped, so a later row can overtake it. That's deliberate: blocking an aggregate behind its
-  oldest failing row is the wrong trade for notifications. Don't promise strict ordering.
+- **Delivery is serial per consumer, and ordering is best-effort.** The flush `jobId` is the consumer
+  name, so one flush per consumer runs at a time and `drain` works through its backlog in bounded batches
+  (`MAX_BATCHES_PER_FLUSH` x `OUTBOX_CLAIM_BATCH_SIZE` per flush; the next relay tick picks up the rest).
+  `claimBatch` sorts by `id` (re-sorting what `RETURNING` gives back, which is arbitrary). A row inside
+  its backoff window is skipped, so a later row can overtake it. That's deliberate: blocking a consumer
+  behind its oldest failing row is the wrong trade for notifications. Don't promise strict ordering, and
+  don't add a partition key back until a consumer needs one: no consumer today depends on the order two
+  events for one resource arrive in, and each event is idempotent on its own through `progress`.
 - **Delivery is at-least-once.** `commitResults` is retried in-process, since by then the consumer has
   already sent; what's left is narrowed by `progress` and by the emitter's `idempotencyKey`.
 
@@ -769,9 +773,10 @@ stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, label
 new consumer gets them for free.
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
-`triggerType: AlertTriggerType.Event`, implement `findTargetsByIds`, and emit with the provider's
-`resourceType` and `payload: { targetIds, ...facts }`. A `resourceType` that doesn't declare the `eventType` fails
-the row terminally with both named, so a bad emit site shows up in the logs on its first event.
+`triggerType: AlertTriggerType.Event`, implement `findTargetsByIds`, and emit with
+`payload: { resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the provider's. A
+`resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
+emit site shows up in the logs on its first event.
 
 **The event contract belongs to the domain that emits it, not to a consumer.** The identity auth method
 event (key, resource type, change enum, payload schema, and the `emitIdentityAuthMethodChanged` helper)

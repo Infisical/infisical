@@ -14,15 +14,20 @@ const EVENT_TYPE = "approval.workflow.request_opened";
 
 const makeAlert = (id: string) => ({ id, resourceType: "approval.workflow", orgId: ORG_ID }) as never;
 
+const makePayload = (overrides?: Record<string, unknown>) => ({
+  resourceType: "approval.workflow",
+  resourceId: "policy-1",
+  targetIds: ["req-1"],
+  ...overrides
+});
+
 const makeEvent = (overrides?: Partial<TEvent>): TEvent =>
   ({
     id: 1,
     eventType: EVENT_TYPE,
-    resourceType: "approval.workflow",
-    resourceId: "policy-1",
     orgId: ORG_ID,
     projectId: null,
-    payload: { targetIds: ["req-1"] },
+    payload: makePayload(),
     occurredAt: new Date(),
     progress: null,
     ...overrides
@@ -96,7 +101,7 @@ describe("alert event consumer", () => {
     expect(result.status).toBe(EventResultStatus.Delivered);
     expect(runs[0].targetIds).toEqual(["req-1"]);
     // The provider sees everything the emitter wrote, not only the ids the consumer validated.
-    expect(runs[0].payload).toEqual({ targetIds: ["req-1"] });
+    expect(runs[0].payload).toEqual(makePayload());
     expect(result.progress).toEqual({ deliveredChannelIds: ["c-1"] });
   });
 
@@ -134,7 +139,7 @@ describe("alert event consumer", () => {
   test("fails terminally on an unreadable payload", async () => {
     const { consumer } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: { targetIds: [] } })]);
+    const [result] = await consumer.handle([makeEvent({ payload: makePayload({ targetIds: [] }) })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("Unreadable alert event payload");
@@ -160,7 +165,7 @@ describe("alert event consumer", () => {
   test("fails terminally when no provider declares the event for that resource type", async () => {
     const { consumer, runs, getLookups } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ resourceType: "pki.certificate" })]);
+    const [result] = await consumer.handle([makeEvent({ payload: makePayload({ resourceType: "pki.certificate" }) })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("pki.certificate");
@@ -201,22 +206,22 @@ describe("alert event consumer", () => {
     const { consumer, getLookups } = buildConsumer();
 
     await consumer.handle([
-      makeEvent({ id: 1, payload: { targetIds: ["req-1"] } }),
-      makeEvent({ id: 2, payload: { targetIds: ["req-2"] } }),
-      makeEvent({ id: 3, payload: { targetIds: ["req-3"] } })
+      makeEvent({ id: 1, payload: makePayload({ targetIds: ["req-1"] }) }),
+      makeEvent({ id: 2, payload: makePayload({ targetIds: ["req-2"] }) }),
+      makeEvent({ id: 3, payload: makePayload({ targetIds: ["req-3"] }) })
     ]);
 
     expect(getLookups()).toBe(1);
   });
 
-  // Events arrive in id order and share one resource, so handling them concurrently would deliver that
-  // resource's events out of order.
+  // Events arrive in id order. Handling them concurrently would fan a whole batch of notifications out
+  // at once and deliver events for one resource out of order.
   test("handles events serially, in the order given", async () => {
     const { consumer, runs } = buildConsumer();
 
     const results = await consumer.handle([
-      makeEvent({ id: 1, payload: { targetIds: ["req-1"] } }),
-      makeEvent({ id: 2, payload: { targetIds: ["req-2"] } })
+      makeEvent({ id: 1, payload: makePayload({ targetIds: ["req-1"] }) }),
+      makeEvent({ id: 2, payload: makePayload({ targetIds: ["req-2"] }) })
     ]);
 
     expect(results.map((result) => result.id)).toEqual(["1", "2"]);

@@ -31,10 +31,8 @@ const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
 const makeEvent = (overrides?: Partial<TEventInput>): TEventInput => ({
   eventType: "approval.workflow.request_opened",
-  resourceType: "approval.workflow",
-  resourceId: "policy-1",
   orgId: ORG_ID,
-  payload: { targetIds: ["req-1"] },
+  payload: { resourceType: "approval.workflow", resourceId: "policy-1", targetIds: ["req-1"] },
   ...overrides
 });
 
@@ -151,11 +149,9 @@ describe("event outbox drain", () => {
       id: 1,
       consumer: "alert",
       eventType: "approval.workflow.request_opened",
-      resourceType: "approval.workflow",
-      resourceId: "policy-1",
       orgId: ORG_ID,
       projectId: null,
-      payload: { targetIds: ["req-1"] },
+      payload: { resourceType: "approval.workflow", resourceId: "policy-1", targetIds: ["req-1"] },
       idempotencyKey: null,
       occurredAt: new Date(),
       status: EventOutboxStatus.Processing,
@@ -219,7 +215,7 @@ describe("event outbox drain", () => {
     return { service, commits, extended, claimTokens };
   };
 
-  const KEY = { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" };
+  const KEY = { consumer: "alert" };
 
   test("commits a delivered result and stops when a claim comes back empty", async () => {
     const { service, commits } = buildDrain({
@@ -227,11 +223,7 @@ describe("event outbox drain", () => {
       handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
     });
 
-    const result = await service.drain({
-      consumer: "alert",
-      resourceType: "approval.workflow",
-      resourceId: "policy-1"
-    });
+    const result = await service.drain(KEY);
 
     expect(result.handled).toBe(1);
     expect(commits[0].delivered).toEqual([{ ids: ["1"], progress: undefined }]);
@@ -246,7 +238,7 @@ describe("event outbox drain", () => {
       }
     });
 
-    await service.drain({ consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" });
+    await service.drain(KEY);
 
     expect(commits[0].retriable[0].ids).toEqual(["1"]);
     expect(commits[0].delivered).toEqual([]);
@@ -257,7 +249,7 @@ describe("event outbox drain", () => {
   test("retries a row the consumer returned no result for", async () => {
     const { service, commits } = buildDrain({ batches: [[makeRow()]], handle: async () => [] });
 
-    await service.drain({ consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" });
+    await service.drain(KEY);
 
     expect(commits[0].retriable[0].ids).toEqual(["1"]);
   });
@@ -269,7 +261,7 @@ describe("event outbox drain", () => {
       consumerName: "alert"
     });
 
-    await service.drain({ consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" });
+    await service.drain(KEY);
 
     expect(commits[0].failed[0].ids).toEqual(["1"]);
     expect(commits[0].retriable).toEqual([]);
@@ -386,11 +378,7 @@ describe("event outbox drain", () => {
   test("leaves rows untouched when no consumer is registered under the key", async () => {
     const { service, commits } = buildDrain({ batches: [[makeRow()]], handle: async () => [] });
 
-    const result = await service.drain({
-      consumer: "gone",
-      resourceType: "approval.workflow",
-      resourceId: "policy-1"
-    });
+    const result = await service.drain({ consumer: "gone" });
 
     expect(result.unknownConsumer).toBe(true);
     expect(commits).toHaveLength(0);

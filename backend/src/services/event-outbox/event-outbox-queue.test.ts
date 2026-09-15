@@ -33,7 +33,7 @@ beforeEach(() => {
   loggedErrors.length = 0;
 });
 
-const KEY: TOutboxFlushKey = { consumer: "alert", resourceType: "approval.workflow", resourceId: "policy-1" };
+const KEY: TOutboxFlushKey = { consumer: "alert" };
 
 type TFlushHandler = (job: { data: TOutboxFlushKey }) => Promise<void>;
 
@@ -64,7 +64,7 @@ const buildQueue = (opts?: {
     } as never,
     eventOutboxRegistry: { names: () => ["alert", "audit"] },
     eventOutboxDAL: {
-      findDueFlushKeys: async (_limit: number, consumers: string[]) => {
+      findDueFlushKeys: async (consumers: string[]) => {
         discoverCalls += 1;
         discoveredFor.push(consumers);
         if (opts?.onDiscover) await opts.onDiscover();
@@ -98,8 +98,8 @@ describe("event outbox relay", () => {
     expect(discoveredFor).toEqual([["alert", "audit"]]);
   });
 
-  test("enqueues one flush job per discovered key", async () => {
-    const { factory, queued } = buildQueue({ keys: [KEY, { ...KEY, resourceId: "policy-2" }] });
+  test("enqueues one flush job per consumer with due work", async () => {
+    const { factory, queued } = buildQueue({ keys: [KEY, { consumer: "audit" }] });
 
     await factory.runRelayTick();
 
@@ -108,25 +108,14 @@ describe("event outbox relay", () => {
     expect(queued[0].data).toEqual(KEY);
   });
 
-  // One flush per aggregate at a time is what keeps a resource's events in order, and it dedupes a
-  // key the relay rediscovers while its flush is still queued.
-  test("keys the job per aggregate so flushes for one resource cannot overlap", async () => {
+  // One flush per consumer at a time is what keeps drain's batches serial, and it dedupes a consumer
+  // the relay rediscovers while its flush is still queued.
+  test("keys the job per consumer so two flushes for one consumer cannot overlap", async () => {
     const { factory, queued } = buildQueue({ keys: [KEY] });
 
     await factory.runRelayTick();
 
-    expect(queued[0].jobId).toBe("outbox-flush-alert-approval.workflow-policy-1");
-  });
-
-  // BullMQ throws on a custom id containing ':', and under Promise.all that fails the whole tick, on
-  // every tick, for as long as the row sits pending.
-  test("encodes a resource id BullMQ would otherwise reject", async () => {
-    const { factory, queued } = buildQueue({ keys: [{ ...KEY, resourceId: "arn:aws:iam::123:role/x" }] });
-
-    await factory.runRelayTick();
-
-    expect(queued[0].jobId).toBe("outbox-flush-alert-approval.workflow-arn%3Aaws%3Aiam%3A%3A123%3Arole%2Fx");
-    expect(queued[0].jobId).not.toContain(":");
+    expect(queued[0].jobId).toBe("outbox-flush-alert");
   });
 
   // Retry lives on the outbox row, where it's inspectable and survives a Redis flush. BullMQ retrying
@@ -191,7 +180,7 @@ describe("event outbox relay", () => {
 
     expect(loggedErrors).toHaveLength(1);
     expect(loggedErrors[0][0]).toBe(boom);
-    expect(loggedErrors[0][1]).toContain("policy-1");
+    expect(loggedErrors[0][1]).toContain("consumer=alert");
   });
 
   test("stops cleanly when nothing was ever started", async () => {

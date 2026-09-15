@@ -16,8 +16,6 @@ export const MAX_OUTBOX_PAYLOAD_BYTES = 16 * 1024;
 
 const MAX_OUTBOX_KEY_LENGTH = 255;
 
-export const RELAY_DISCOVERY_LIMIT = 200;
-
 export const OUTBOX_RELAY_INTERVAL_MS = 10_000;
 
 export const MAX_BATCHES_PER_FLUSH = 10;
@@ -52,8 +50,6 @@ const keySchema = z
 
 export const EventInputSchema = z.object({
   eventType: keySchema,
-  resourceType: keySchema,
-  resourceId: z.string().trim().min(1).max(MAX_OUTBOX_KEY_LENGTH),
   orgId: z.string().uuid(),
   projectId: z.string().trim().min(1).max(MAX_OUTBOX_KEY_LENGTH).nullish(),
   payload: z.record(z.unknown()),
@@ -70,7 +66,7 @@ export type TEventEmitter = {
 // What a consumer sees. Lock, attempt, and status columns are the outbox's business, not the consumer's.
 export type TEvent = Pick<
   TEventOutbox,
-  "id" | "eventType" | "resourceType" | "resourceId" | "orgId" | "projectId" | "payload" | "progress" | "occurredAt"
+  "id" | "eventType" | "orgId" | "projectId" | "payload" | "progress" | "occurredAt"
 >;
 
 export enum EventResultStatus {
@@ -89,8 +85,6 @@ export type TEventConsumerResult = {
 
 export type TOutboxFlushKey = {
   consumer: string;
-  resourceType: string;
-  resourceId: string;
 };
 
 export interface IEventConsumer<TPayload = unknown> {
@@ -105,6 +99,7 @@ export interface IEventConsumer<TPayload = unknown> {
   // wants the event is decided later, in handle().
   subscribesTo(eventType: string): boolean;
 
-  // Events for a single (resourceType, resourceId), in id order. Must return one result per event.
+  // Due events for this consumer, oldest first by id. One flush runs per consumer at a time, so
+  // within a flush a batch is ordered; across flushes nothing is promised. Must return one result per event.
   handle(events: TEvent[]): Promise<TEventConsumerResult[]>;
 }

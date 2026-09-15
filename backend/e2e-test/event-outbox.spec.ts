@@ -17,15 +17,13 @@ const dal = eventOutboxDALFactory(testDb as never);
 const CONSUMER = `e2e-${randomUUID().slice(0, 8)}`;
 const ORG_ID = randomUUID();
 
-const KEY = { consumer: CONSUMER, resourceType: "e2e.resource", resourceId: "res-1" };
+const KEY = { consumer: CONSUMER };
 
 const makeRow = (overrides?: Partial<TOutboxInsertRow>): TOutboxInsertRow => ({
   consumer: CONSUMER,
   eventType: "e2e.resource.happened",
-  resourceType: KEY.resourceType,
-  resourceId: KEY.resourceId,
   orgId: ORG_ID,
-  payload: { targetIds: ["t-1"] },
+  payload: { resourceType: "e2e.resource", resourceId: "res-1", targetIds: ["t-1"] },
   occurredAt: new Date(),
   ...overrides
 });
@@ -121,22 +119,15 @@ describe("event outbox (postgres)", () => {
     expect(failed.attempts).toBe(1);
     expect(failed.lastError).toBe("bad payload");
 
-    expect(await dal.findDueFlushKeys(10, [CONSUMER])).toEqual([]);
+    expect(await dal.findDueFlushKeys([CONSUMER])).toEqual([]);
   });
 
-  test("findDueFlushKeys groups due rows per resource and ignores consumers not asked for", async () => {
-    await insert([
-      makeRow(),
-      makeRow(),
-      makeRow({ resourceId: "res-2" }),
-      makeRow({ consumer: `${CONSUMER}-other`, resourceId: "res-3" })
-    ]);
+  test("findDueFlushKeys names each consumer with due rows once and ignores consumers not asked for", async () => {
+    await insert([makeRow(), makeRow(), makeRow(), makeRow({ consumer: `${CONSUMER}-other` })]);
 
-    const keys = await dal.findDueFlushKeys(10, [CONSUMER]);
+    const keys = await dal.findDueFlushKeys([CONSUMER]);
 
-    expect(keys).toHaveLength(2);
-    expect(keys.map((key) => key.resourceId).sort()).toEqual(["res-1", "res-2"]);
-    expect(keys.every((key) => key.consumer === CONSUMER)).toBe(true);
+    expect(keys).toEqual([{ consumer: CONSUMER }]);
   });
 
   test("recoverStaleClaims backs a live-looking claim off and fails an exhausted one", async () => {

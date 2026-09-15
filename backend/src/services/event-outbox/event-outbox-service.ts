@@ -110,8 +110,6 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       return {
         consumer: consumer.name,
         eventType: validated.eventType,
-        resourceType: validated.resourceType,
-        resourceId: validated.resourceId,
         orgId: validated.orgId,
         projectId: validated.projectId ?? null,
         payload: validated.payload,
@@ -124,7 +122,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
   };
 
   const $commitWithRetry = async (
-    { consumer, resourceType, resourceId }: TOutboxFlushKey,
+    { consumer }: TOutboxFlushKey,
     input: Parameters<TEventOutboxDALFactory["commitResults"]>[0]
   ): Promise<number> => {
     for (let attempt = 1; ; attempt += 1) {
@@ -135,7 +133,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
         if (attempt >= COMMIT_ATTEMPTS) throw error;
         logger.warn(
           error,
-          `event-outbox: failed to commit results, retrying [attempt=${attempt}] [consumer=${consumer}] [resourceType=${resourceType}] [resourceId=${resourceId}]`
+          `event-outbox: failed to commit results, retrying [attempt=${attempt}] [consumer=${consumer}]`
         );
         // eslint-disable-next-line no-await-in-loop -- see above
         await sleep(COMMIT_RETRY_DELAY_MS * attempt);
@@ -204,20 +202,17 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       failed: groupByOutcome(failed, (item) => item.error ?? "")
     });
 
+    const { consumer } = rows[0];
     if (settled < rows.length) {
-      const { consumer, resourceType, resourceId } = rows[0];
       logger.warn(
-        `event-outbox: settled ${settled} of ${rows.length} row(s); the rest were no longer held by this claim [consumer=${consumer}] [resourceType=${resourceType}] [resourceId=${resourceId}]`
+        `event-outbox: settled ${settled} of ${rows.length} row(s); the rest were no longer held by this claim [consumer=${consumer}]`
       );
     }
 
     if (failed.length > 0) {
-      const { consumer, resourceType, resourceId } = rows[0];
       recordEventOutboxExhaustedMetric({ consumer, count: failed.length });
       const reasons = [...new Set(failed.map((item) => item.error ?? "unknown"))].join(" | ");
-      logger.error(
-        `event-outbox: gave up on ${failed.length} event(s) [consumer=${consumer}] [resourceType=${resourceType}] [resourceId=${resourceId}]: ${reasons}`
-      );
+      logger.error(`event-outbox: gave up on ${failed.length} event(s) [consumer=${consumer}]: ${reasons}`);
     }
   };
 
@@ -231,10 +226,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     const ids = claimed.map((row) => String(row.id));
     const heartbeat = setInterval(() => {
       eventOutboxDAL.extendClaims(ids, lockToken).catch((error) => {
-        logger.warn(
-          error,
-          `event-outbox: failed to extend a claim [consumer=${key.consumer}] [resourceType=${key.resourceType}] [resourceId=${key.resourceId}]`
-        );
+        logger.warn(error, `event-outbox: failed to extend a claim [consumer=${key.consumer}]`);
       });
     }, CLAIM_HEARTBEAT_INTERVAL_MS);
 
@@ -242,23 +234,18 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       return await consumer.handle(claimed);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      logger.error(
-        error,
-        `event-outbox: consumer '${key.consumer}' threw while handling a batch [resourceType=${key.resourceType}] [resourceId=${key.resourceId}]`
-      );
+      logger.error(error, `event-outbox: consumer '${key.consumer}' threw while handling a batch`);
       return claimed.map((row) => ({ id: String(row.id), status: EventResultStatus.Retry, error: message }));
     } finally {
       clearInterval(heartbeat);
     }
   };
 
-  // Bounded so one busy resource can't hold a worker forever; the relay's next tick picks up the rest.
+  // Bounded so a deep backlog can't hold a worker forever; the relay's next tick picks up the rest.
   const drain = async (key: TOutboxFlushKey): Promise<{ handled: number; unknownConsumer: boolean }> => {
     const consumer = eventOutboxRegistry.get(key.consumer);
     if (!consumer) {
-      logger.error(
-        `event-outbox: no consumer registered under '${key.consumer}'; leaving its events untouched [resourceType=${key.resourceType}] [resourceId=${key.resourceId}]`
-      );
+      logger.error(`event-outbox: no consumer registered under '${key.consumer}'; leaving its events untouched`);
       return { handled: 0, unknownConsumer: true };
     }
 

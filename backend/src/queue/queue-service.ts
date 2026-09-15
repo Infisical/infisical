@@ -531,7 +531,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.EventOutboxFlush]: {
     name: QueueJobs.EventOutboxFlush;
-    payload: { consumer: string; resourceType: string; resourceId: string };
+    payload: { consumer: string };
   };
   [QueueName.AuditReportGeneration]: {
     name: QueueJobs.GenerateAuditReport;
