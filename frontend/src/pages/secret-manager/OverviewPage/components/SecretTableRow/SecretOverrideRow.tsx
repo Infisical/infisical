@@ -63,6 +63,10 @@ type Props = {
   }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isSingleEnvView?: boolean;
+  // Override edits are only committed by the save button, so the virtualized parent has to know
+  // they are outstanding to avoid unmounting the row and discarding them.
+  unsavedChangeId?: string;
+  onUnsavedChange?: (id: string, hasUnsavedChanges: boolean) => void;
 };
 
 export const SecretOverrideRow = ({
@@ -78,7 +82,9 @@ export const SecretOverrideRow = ({
   onSecretCreate,
   onSecretUpdate,
   onSecretDelete,
-  isSingleEnvView
+  isSingleEnvView,
+  unsavedChangeId,
+  onUnsavedChange
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -133,6 +139,13 @@ export const SecretOverrideRow = ({
       setValue("value", overrideValueData.valueOverride ?? null);
     }
   }, [overrideValueData]);
+
+  useEffect(() => {
+    if (!unsavedChangeId || !onUnsavedChange) return undefined;
+
+    onUnsavedChange(unsavedChangeId, isDirty);
+    return () => onUnsavedChange(unsavedChangeId, false);
+  }, [isDirty, unsavedChangeId, onUnsavedChange]);
 
   const handleFormReset = () => {
     if (isCreatingOverride) {
