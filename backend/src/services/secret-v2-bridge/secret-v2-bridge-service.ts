@@ -451,6 +451,17 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
+    await $validateSecrets(
+      {
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
+      },
+      permission
+    );
+
     const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
     const allSecretReferences = nestedReferences.concat(
       localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
@@ -467,18 +478,6 @@ export const secretV2BridgeServiceFactory = ({
       ? await generateSecretBlindIndex(Buffer.from(inputSecretData.secretValue))
       : undefined;
     const secret = await secretDAL.transaction(async (tx) => {
-      await $validateSecrets(
-        {
-          projectId,
-          environment,
-          envId: folder.envId,
-          secretPath,
-          secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
-        },
-        permission,
-        tx
-      );
-
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
         orgId: actorOrgId,
@@ -743,6 +742,19 @@ export const secretV2BridgeServiceFactory = ({
 
     // Validate against secret validation rules (key rename and/or value change)
     const finalKey = inputSecret.newSecretName || secretName;
+    if (secretValue || inputSecret.newSecretName) {
+      await $validateSecrets(
+        {
+          projectId,
+          environment,
+          envId: folder.envId,
+          secretPath,
+          secrets: [{ key: finalKey, value: secretValue, secretId }]
+        },
+        permission
+      );
+    }
+
     if (secretValue) {
       const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
       const allSecretReferences = nestedReferences.concat(
@@ -777,20 +789,6 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     const updatedSecret = await secretDAL.transaction(async (tx) => {
-      if (secretValue || inputSecret.newSecretName) {
-        await $validateSecrets(
-          {
-            projectId,
-            environment,
-            envId: folder.envId,
-            secretPath,
-            secrets: [{ key: finalKey, value: secretValue, secretId }]
-          },
-          permission,
-          tx
-        );
-      }
-
       const modifiedSecretsInDB = await fnSecretBulkUpdate({
         folderId,
         orgId: actorOrgId,
@@ -2252,6 +2250,18 @@ export const secretV2BridgeServiceFactory = ({
       );
     }
 
+    await $validateSecrets(
+      {
+        projectId,
+        environment,
+        envId: folder.envId,
+        secretPath,
+        secrets: deduplicatedSecrets.map((el) => ({ key: el.secretKey, value: el.secretValue }))
+      },
+      permission,
+      providedTx
+    );
+
     // get all tags
     const sanitizedTagIds = [...new Set(deduplicatedSecrets.flatMap(({ tagIds = [] }) => tagIds))];
     const tags = sanitizedTagIds.length
@@ -2295,18 +2305,6 @@ export const secretV2BridgeServiceFactory = ({
     } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
 
     const executeBulkInsert = async (tx: Knex) => {
-      await $validateSecrets(
-        {
-          projectId,
-          environment,
-          envId: folder.envId,
-          secretPath,
-          secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
-        },
-        permission,
-        tx
-      );
-
       const inputSecretsWithBlindIndex = await Promise.all(
         deduplicatedSecrets.map(async (el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
