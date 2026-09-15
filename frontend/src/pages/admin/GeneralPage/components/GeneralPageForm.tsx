@@ -8,6 +8,10 @@ import {
   Button,
   Card,
   CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -93,9 +97,15 @@ export const GeneralPageForm = () => {
   };
 
   return (
-    <Card>
-      <CardContent>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle>Instance Configuration</CardTitle>
+          <CardDescription>
+            Configure signups, default authentication scope, and instance-wide notices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 pb-6">
           <FieldGroup>
             <div>
               <FieldTitle>Allow User Signups</FieldTitle>
@@ -264,12 +274,14 @@ export const GeneralPageForm = () => {
               control={control}
               name="pageFrameContent"
             />
-            <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
-              Save
-            </Button>
           </FieldGroup>
-        </form>
-      </CardContent>
-    </Card>
+        </CardContent>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
+            Save Changes
+          </Button>
+        </CardFooter>
+      </Card>
+    </form>
   );
 };

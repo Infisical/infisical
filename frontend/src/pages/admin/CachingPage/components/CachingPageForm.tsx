@@ -90,14 +90,14 @@ export const CachingPageForm = () => {
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
           <CardTitle>
             Secrets Cache
             {isInvalidating && (
               <Badge variant="danger">
                 <RefreshCwIcon className="animate-spin" />
-                Invalidating cache
+                Invalidating Cache
               </Badge>
             )}
           </CardTitle>
@@ -115,7 +115,7 @@ export const CachingPageForm = () => {
               }}
               isDisabled={!user.superAdmin || isInvalidating}
             >
-              Invalidate secrets cache
+              Invalidate Secrets Cache
             </Button>
           </CardAction>
         </CardHeader>
@@ -168,7 +168,7 @@ export const CachingPageForm = () => {
                 isPending={isSubmitting}
                 isDisabled={confirmation !== "confirm" || isInvalidating}
               >
-                Invalidate cache
+                Invalidate Cache
               </Button>
             </AlertDialogFooter>
           </form>

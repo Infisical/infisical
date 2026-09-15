@@ -165,7 +165,7 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
                   isPending={isSubmitting}
                   isDisabled={!isDirty}
                 >
-                  Save
+                  Save Changes
                 </Button>
               </div>
             </div>

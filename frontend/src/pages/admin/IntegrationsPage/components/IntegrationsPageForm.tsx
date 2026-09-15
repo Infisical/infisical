@@ -20,14 +20,14 @@ export const IntegrationsPageForm = () => {
   const { data: adminIntegrationsConfig } = useGetAdminIntegrationsConfig();
 
   return (
-    <Card className="min-h-64">
-      <CardHeader>
+    <Card className="min-h-64 gap-0 overflow-hidden p-0">
+      <CardHeader className="p-6">
         <CardTitle>Integrations</CardTitle>
         <CardDescription>
           Configure your instance-wide settings to enable integration with third-party services.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-6 pb-6">
         <WorkflowTab adminIntegrationsConfig={adminIntegrationsConfig!} />
       </CardContent>
     </Card>

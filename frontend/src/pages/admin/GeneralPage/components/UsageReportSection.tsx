@@ -1,12 +1,11 @@
-import { faDownload, faFileAlt } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { DownloadIcon, FileTextIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
-  CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle
 } from "@app/components/v3";
@@ -29,26 +28,26 @@ export const UsageReportSection = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="gap-0 overflow-hidden p-0">
+      <CardHeader className="p-6">
         <CardTitle>
-          <FontAwesomeIcon icon={faFileAlt} />
+          <FileTextIcon />
           Offline Usage Reports
         </CardTitle>
         <CardDescription>
           Generate secure usage reports for offline license compliance and billing verification.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
         <Button
           variant="neutral"
           onClick={handleGenerateReport}
           isPending={generateUsageReport.isPending}
         >
-          <FontAwesomeIcon icon={faDownload} />
-          Generate report
+          <DownloadIcon />
+          Generate Report
         </Button>
-      </CardContent>
+      </CardFooter>
     </Card>
   );
 };
