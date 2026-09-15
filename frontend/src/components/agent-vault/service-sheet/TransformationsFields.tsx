@@ -38,14 +38,14 @@ export const TransformationsFields = () => {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
         <div>
-          <p className="text-sm font-medium">Headers</p>
+          <p className="text-sm font-medium">Custom headers</p>
           <p className="mt-1 text-xs text-muted">
             Added to every request to this service, on top of the credential.
           </p>
         </div>
         <div className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4">
           {headers.fields.length === 0 && (
-            <p className="text-center text-sm text-muted">No headers added. Add one below.</p>
+            <p className="text-center text-sm text-muted">No custom headers added. Add one below.</p>
           )}
           {headers.fields.map((row, index) => (
             <div key={row.id} className="flex items-start gap-3">
@@ -129,7 +129,7 @@ export const TransformationsFields = () => {
             onClick={() => headers.append({ name: "", prefix: "", value: "" })}
           >
             <PlusIcon className="mr-1 size-4" />
-            Add Header
+            Add Custom Header
           </Button>
         )}
 

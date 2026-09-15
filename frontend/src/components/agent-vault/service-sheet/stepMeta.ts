@@ -41,12 +41,12 @@ export const SERVICE_STEPS: StepMeta[] = [
   {
     step: ServiceStep.Transformations,
     name: "Transformations",
-    shortDescription: "Headers and substitutions",
+    shortDescription: "Custom headers and substitutions",
     title: "Transformations",
-    subtitle: "Extra headers and placeholder swaps. Skip this if you don't need them.",
+    subtitle: "Custom headers and placeholder swaps. Skip this if you don't need them.",
     rightLabel: "TRANSFORMATIONS",
     rightDescription:
-      "Headers are added to every request to this service. A substitution swaps a placeholder your agent already sends for the real value."
+      "Custom headers are added to every request to this service. A substitution swaps a placeholder your agent already sends for the real value."
   },
   {
     step: ServiceStep.Review,
