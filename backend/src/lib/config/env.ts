@@ -65,9 +65,6 @@ export const runModesSchema = zpStr(z.string().optional())
  */
 export const SECRET_SCANNING_SCAN_OVERHEAD = ms("5m");
 
-// The `_MS` counterpart of each of these variables was the numeric form of the same timeout, and is
-// still honoured for instances that set it. `ms` reads a bare number as milliseconds, so a legacy
-// value needs no parsing of its own.
 const zodTimeoutMs = ({
   description,
   defaultValue,
