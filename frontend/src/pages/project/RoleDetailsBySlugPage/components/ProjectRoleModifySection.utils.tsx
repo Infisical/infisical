@@ -2881,7 +2881,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Read",
         value: ProjectPermissionApplicationActions.Read,
-        description: "View an application's details"
+        description:
+          "See all applications in the project. An application's details stay hidden unless you are a member of it"
       },
       {
         label: "List",
