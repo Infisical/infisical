@@ -1,6 +1,6 @@
-import { ClipboardCheckIcon, Copy, Eye, EyeOff, ForwardIcon } from "lucide-react";
+import { ClipboardCheckIcon, Copy, Eye, EyeOff } from "lucide-react";
 
-import { Button, IconButton } from "@app/components/v3";
+import { Button, InputGroup, InputGroupButton, InputGroupTextArea } from "@app/components/v3";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { TAccessSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
@@ -10,22 +10,14 @@ import { SecretShareInfo } from "./SecretShareInfo";
 type Props = {
   secret: TAccessSharedSecretResponse;
   brandingTheme?: BrandingTheme;
+  description?: string;
 };
 
-export const SecretContainer = ({ secret, brandingTheme }: Props) => {
+export const SecretContainer = ({ secret, brandingTheme, description }: Props) => {
   const [isVisible, setIsVisible] = useToggle(false);
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
-
-  const hiddenSecret = "*".repeat(secret.secretValue.length);
-
-  const panelStyle = brandingTheme
-    ? {
-        backgroundColor: brandingTheme.panelBg,
-        borderColor: brandingTheme.panelBorder
-      }
-    : undefined;
 
   const secretDisplayStyle = brandingTheme
     ? {
@@ -35,64 +27,75 @@ export const SecretContainer = ({ secret, brandingTheme }: Props) => {
       }
     : undefined;
 
-  const iconButtonStyle = brandingTheme
+  const inputGroupStyle = brandingTheme
     ? {
         backgroundColor: brandingTheme.buttonBg,
-        color: brandingTheme.textColor
+        borderColor: brandingTheme.panelBorder
       }
     : undefined;
 
   return (
-    <div style={panelStyle}>
-      <div
-        className={`flex items-start justify-between rounded-md border p-2 pl-3 text-base ${
-          brandingTheme ? "" : "border-border bg-container text-label"
-        }`}
-        style={secretDisplayStyle}
-      >
-        <p className="min-w-0 break-all whitespace-pre-wrap">
-          {isVisible ? secret.secretValue : hiddenSecret}
-        </p>
-        <div className="ml-1 flex shrink-0 items-start gap-2 self-start">
-          <IconButton
-            aria-label="copy icon"
-            variant="ghost"
-            size="sm"
+    <>
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {description && (
+          <p
+            className={brandingTheme ? "text-sm" : "text-sm text-accent"}
+            style={brandingTheme ? { color: brandingTheme.textMutedColor } : undefined}
+          >
+            {description}
+          </p>
+        )}
+        <div className="flex items-center justify-end gap-1 sm:ml-auto">
+          <InputGroupButton
+            aria-label="Copy shared secret value"
             onClick={() => {
               navigator.clipboard.writeText(secret.secretValue);
               setCopyTextSecret("Copied");
             }}
-            style={iconButtonStyle}
+            style={inputGroupStyle}
           >
             {isCopyingSecret ? (
               <ClipboardCheckIcon className="size-4" />
             ) : (
               <Copy className="size-4" />
             )}
-          </IconButton>
-          <IconButton
-            aria-label="toggle visibility"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsVisible.toggle()}
-            style={iconButtonStyle}
-          >
-            {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          </IconButton>
+          </InputGroupButton>
+          {isVisible && (
+            <InputGroupButton
+              aria-label="Hide shared secret value"
+              onClick={() => setIsVisible.toggle()}
+              style={inputGroupStyle}
+            >
+              <EyeOff className="size-4" />
+            </InputGroupButton>
+          )}
         </div>
       </div>
-      <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
-      {!brandingTheme && (
-        <Button
-          className="mt-4 w-full"
-          variant="project"
-          size="lg"
-          onClick={() => window.open("/share-secret", "_blank", "noopener")}
+      {isVisible ? (
+        <InputGroup
+          className="min-h-24 items-start"
+          style={brandingTheme ? secretDisplayStyle : undefined}
         >
-          Share Your Own Secret
-          <ForwardIcon />
+          <InputGroupTextArea
+            aria-label="Shared secret value"
+            value={secret.secretValue}
+            readOnly
+            className={`min-h-24 text-base ${brandingTheme ? "" : "text-label"}`}
+            style={brandingTheme ? secretDisplayStyle : undefined}
+          />
+        </InputGroup>
+      ) : (
+        <Button
+          className="min-h-24 w-full"
+          variant="outline"
+          onClick={() => setIsVisible.toggle()}
+          style={brandingTheme ? secretDisplayStyle : undefined}
+        >
+          <Eye className="size-4" />
+          Reveal
         </Button>
       )}
-    </div>
+      <SecretShareInfo secret={secret} brandingTheme={brandingTheme} />
+    </>
   );
 };

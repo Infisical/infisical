@@ -1,6 +1,8 @@
+import { useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ClockAlertIcon, ClockIcon, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
+import { ClockAlertIcon, ClockIcon, Copy, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   DropdownMenu,
@@ -33,6 +35,16 @@ export const ShareSecretsRow = ({
     }
   ) => void;
 }) => {
+  const subOrganization = useSearch({
+    strict: false,
+    select: (el) => el?.subOrganization
+  });
+
+  const sharedSecretUrl = new URL(`${window.location.origin}/shared/secret/${row.id}`);
+  if (subOrganization) {
+    sharedSecretUrl.searchParams.set("subOrganization", subOrganization);
+  }
+
   const lastViewedAt = row.lastViewedAt
     ? format(new Date(row.lastViewedAt), "MMM d, yyyy h:mm a")
     : undefined;
@@ -47,7 +59,7 @@ export const ShareSecretsRow = ({
   }
 
   return (
-    <TableRow key={row.id}>
+    <TableRow>
       <TableCell>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -62,10 +74,16 @@ export const ShareSecretsRow = ({
           </TooltipContent>
         </Tooltip>
       </TableCell>
-      <TableCell>{row.name || <span className="text-muted">&mdash;</span>}</TableCell>
+      <TableCell className="max-w-56 break-words whitespace-normal">
+        {row.name || <span className="text-muted">&mdash;</span>}
+      </TableCell>
 
-      <TableCell>{format(new Date(row.createdAt), "MMM d, yyyy h:mm a")}</TableCell>
-      <TableCell>{format(new Date(row.expiresAt), "MMM d, yyyy h:mm a")}</TableCell>
+      <TableCell className="text-label">
+        {format(new Date(row.createdAt), "MMM d, yyyy h:mm a")}
+      </TableCell>
+      <TableCell className="text-label">
+        {format(new Date(row.expiresAt), "MMM d, yyyy h:mm a")}
+      </TableCell>
       <TableCell>
         {row.expiresAfterViews !== null ? (
           row.expiresAfterViews
@@ -74,33 +92,51 @@ export const ShareSecretsRow = ({
         )}
       </TableCell>
       <TableCell>
-        <Badge variant={isExpired ? "danger" : "success"}>
+        <Badge className="whitespace-nowrap" variant={isExpired ? "danger" : "success"}>
           {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
           {isExpired ? "Expired" : "Active"}
         </Badge>
       </TableCell>
       <TableCell>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton variant="ghost" size="xs" aria-label="actions">
-              <Ellipsis className="size-4" />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="danger"
-              onClick={() =>
-                handlePopUpOpen("deleteSharedSecretConfirmation", {
-                  name: "delete",
-                  id: row.id
-                })
-              }
-            >
-              <Trash2 />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center justify-end gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                aria-label={`Actions for ${row.name || "shared secret"}`}
+              >
+                <Ellipsis className="size-4" />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  navigator.clipboard.writeText(sharedSecretUrl.toString());
+                  createNotification({
+                    text: "Shared secret link copied to clipboard.",
+                    type: "success"
+                  });
+                }}
+              >
+                <Copy />
+                Copy Link
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="danger"
+                onClick={() =>
+                  handlePopUpOpen("deleteSharedSecretConfirmation", {
+                    name: row.name || "shared secret",
+                    id: row.id
+                  })
+                }
+              >
+                <Trash2 />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </TableCell>
     </TableRow>
   );
