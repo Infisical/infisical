@@ -1081,6 +1081,17 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("proxies", async () => {
+    test("a create that omits the settings gets the documented defaults", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "settings-defaults" });
+      expect(created.statusCode).toBe(200);
+      const { proxy } = JSON.parse(created.payload) as {
+        proxy: { trafficPolicy: string; allowedHosts: string | null; pollInterval: number };
+      };
+      expect(proxy.trafficPolicy).toBe("any-host");
+      expect(proxy.allowedHosts).toBeNull();
+      expect(proxy.pollInterval).toBe(60);
+    });
+
     test("create and reissue both hand back the enrollment token at the top level", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "flat-token-shape" });
       expect(created.statusCode).toBe(200);
