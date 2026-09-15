@@ -90,8 +90,8 @@ export const CachingPageForm = () => {
 
   return (
     <>
-      <Card className="gap-0 overflow-hidden p-0">
-        <CardHeader className="p-6">
+      <Card>
+        <CardHeader>
           <CardTitle>
             Secrets Cache
             {isInvalidating && (

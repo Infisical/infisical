@@ -98,14 +98,14 @@ export const GeneralPageForm = () => {
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Card className="gap-0 overflow-hidden p-0">
-        <CardHeader className="p-6">
+      <Card>
+        <CardHeader>
           <CardTitle>Instance Configuration</CardTitle>
           <CardDescription>
             Configure signups, default authentication scope, and instance-wide notices.
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-6 pb-6">
+        <CardContent>
           <FieldGroup>
             <div>
               <FieldTitle>Allow User Signups</FieldTitle>
@@ -276,7 +276,7 @@ export const GeneralPageForm = () => {
             />
           </FieldGroup>
         </CardContent>
-        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+        <CardFooter className="justify-end">
           <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
             Save Changes
           </Button>

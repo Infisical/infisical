@@ -132,14 +132,14 @@ export const AuthenticationPageForm = () => {
 
   return (
     <form onSubmit={handleSubmit(onAuthFormSubmit)}>
-      <Card className="gap-0 overflow-hidden p-0">
-        <CardHeader className="p-6">
+      <Card>
+        <CardHeader>
           <CardTitle>Login Methods</CardTitle>
           <CardDescription>
             Select the login methods available to all users of this instance.
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-6 pb-6">
+        <CardContent>
           <FieldGroup>
             {loginMethods.map(({ id, label, name }) => (
               <Controller
@@ -166,7 +166,7 @@ export const AuthenticationPageForm = () => {
             ))}
           </FieldGroup>
         </CardContent>
-        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+        <CardFooter className="justify-end">
           <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
             Save Changes
           </Button>

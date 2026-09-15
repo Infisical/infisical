@@ -183,8 +183,8 @@ export const EnvironmentPageForm = () => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <Card className="gap-0 overflow-hidden p-0">
-        <CardHeader className="p-6">
+      <Card>
+        <CardHeader>
           <CardTitle>
             Overrides
             <DocumentationLinkBadge href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides" />
@@ -194,7 +194,7 @@ export const EnvironmentPageForm = () => {
             propagate to every container.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 px-6 pb-6">
+        <CardContent className="flex flex-col gap-4">
           <InputGroup>
             <InputGroupAddon>
               <Search />
@@ -215,7 +215,7 @@ export const EnvironmentPageForm = () => {
             ))}
           </Accordion>
         </CardContent>
-        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+        <CardFooter className="justify-end">
           <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
             Save Changes
           </Button>

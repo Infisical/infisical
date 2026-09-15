@@ -4,8 +4,8 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
+  CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle
 } from "@app/components/v3";
@@ -28,8 +28,8 @@ export const UsageReportSection = () => {
   };
 
   return (
-    <Card className="gap-0 overflow-hidden p-0">
-      <CardHeader className="p-6">
+    <Card>
+      <CardHeader>
         <CardTitle>
           <FileTextIcon />
           Offline Usage Reports
@@ -37,17 +37,17 @@ export const UsageReportSection = () => {
         <CardDescription>
           Generate secure usage reports for offline license compliance and billing verification.
         </CardDescription>
+        <CardAction>
+          <Button
+            variant="neutral"
+            onClick={handleGenerateReport}
+            isPending={generateUsageReport.isPending}
+          >
+            <DownloadIcon />
+            Generate Report
+          </Button>
+        </CardAction>
       </CardHeader>
-      <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
-        <Button
-          variant="neutral"
-          onClick={handleGenerateReport}
-          isPending={generateUsageReport.isPending}
-        >
-          <DownloadIcon />
-          Generate Report
-        </Button>
-      </CardFooter>
     </Card>
   );
 };

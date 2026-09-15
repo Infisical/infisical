@@ -90,15 +90,15 @@ export const EncryptionPageForm = () => {
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Card className="gap-0 overflow-hidden p-0">
-          <CardHeader className="p-6">
+        <Card>
+          <CardHeader>
             <CardTitle>KMS Encryption Strategy</CardTitle>
             <CardDescription>
               Select which type of encryption strategy you want to use for your KMS root key. HSM is
               supported on Enterprise plans.
             </CardDescription>
           </CardHeader>
-          <CardContent className="px-6 pb-6">
+          <CardContent>
             {!!rootKmsDetails && (
               <Controller
                 control={control}
@@ -130,7 +130,7 @@ export const EncryptionPageForm = () => {
               />
             )}
           </CardContent>
-          <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <CardFooter className="justify-end">
             {config.fipsEnabled && (
               <Tooltip>
                 <TooltipTrigger asChild>
