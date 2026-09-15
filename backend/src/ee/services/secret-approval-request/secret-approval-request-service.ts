@@ -69,7 +69,12 @@ import {
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import {
+  describeSecretValidationFailures,
+  SecretValidationError
+} from "@app/services/secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { TValidateSecretsDTO } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -207,13 +212,28 @@ export const secretApprovalRequestServiceFactory = ({
   queueService,
   secretValidationRuleService
 }: TSecretApprovalRequestServiceFactoryDep) => {
-  // A duplicate-value violation may only name where the value is already used when the writer can read there.
-  const $canDescribeSecretAt =
-    (permission: MongoAbility<ProjectPermissionSet>) => (environment: string, secretPath: string) =>
-      permission.can(
-        ProjectPermissionSecretActions.DescribeSecret,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
+  // Which secret already holds a duplicated value is only named to a writer who may read there, so the
+  // message is resolved against their permission rather than formatted inside validation.
+  const $validateSecrets = async (
+    dto: TValidateSecretsDTO,
+    permission: MongoAbility<ProjectPermissionSet>,
+    tx?: Knex
+  ) => {
+    try {
+      await secretValidationRuleService.validateSecrets(dto, tx);
+    } catch (error) {
+      if (!(error instanceof SecretValidationError)) throw error;
+
+      throw new BadRequestError({
+        message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
+          permission.can(
+            ProjectPermissionSecretActions.DescribeSecret,
+            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+          )
+        )
+      });
+    }
+  };
 
   const requestCount = async ({
     projectId,
@@ -936,15 +956,15 @@ export const secretApprovalRequestServiceFactory = ({
 
         if (secretsToValidate.length) {
           const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
-          await secretValidationRuleService.validateSecrets(
+          await $validateSecrets(
             {
               projectId,
               environment,
               envId: policyEnvId,
               secretPath: folderPaths?.[0]?.path || "/",
-              secrets: secretsToValidate,
-              canAccessLocation: $canDescribeSecretAt(permission)
+              secrets: secretsToValidate
             },
+            permission,
             tx
           );
         }
@@ -2514,15 +2534,15 @@ export const secretApprovalRequestServiceFactory = ({
     if (!commits.length) throw new BadRequestError({ message: "Empty commits" });
 
     if (secretsToValidate.length) {
-      await secretValidationRuleService.validateSecrets(
+      await $validateSecrets(
         {
           projectId,
           environment,
           envId: folder.envId,
           secretPath,
-          secrets: secretsToValidate,
-          canAccessLocation: $canDescribeSecretAt(permission)
+          secrets: secretsToValidate
         },
+        permission,
         providedTx
       );
     }

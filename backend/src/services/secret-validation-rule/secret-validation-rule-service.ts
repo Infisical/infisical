@@ -19,7 +19,7 @@ import { containsSecretReference, expandSecretReferencesFactory } from "../secre
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "./secret-validation-rule-constants";
-import { mergeConstraints } from "./secret-validation-rule-constraint-fns";
+import { mergeConstraints, TDuplicateSecret } from "./secret-validation-rule-constraint-fns";
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
 import { ConstraintTarget, SecretValidationRuleType } from "./secret-validation-rule-enums";
 import {
@@ -48,7 +48,7 @@ import {
   TUpdateSecretValidationRuleDTO,
   TValidateSecretsDTO
 } from "./secret-validation-rule-types";
-import { TDuplicateSecret, TStaticSecretsRuleConfig } from "./static-secrets";
+import { TStaticSecretsRuleConfig } from "./static-secrets";
 
 /** Only static-secret rules can ask for a value no other secret already holds. */
 const $preventsReuseAcrossSecrets = (config: TSecretValidationRuleConfig) =>
@@ -410,9 +410,8 @@ export const secretValidationRuleServiceFactory = ({
       secretPath,
       secrets,
       scope,
-      canAccessLocation,
       generateSecretBlindIndex
-    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets" | "canAccessLocation"> & {
+    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets"> & {
       scope: { envId?: string | null; secretPath: string };
       generateSecretBlindIndex: (value: Buffer) => Promise<string>;
     },
@@ -452,20 +451,6 @@ export const secretValidationRuleServiceFactory = ({
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, tx);
     const pathByFolderId = new Map(folderIds.map((id, idx) => [id, folderPaths[idx]?.path ?? "/"]));
 
-    const accessByLocation = new Map<string, boolean>();
-    const isHidden = (dupEnvironment: string, dupPath: string) => {
-      // A caller that cannot say what the writer may read gets the location withheld, never leaked.
-      if (!canAccessLocation) return true;
-
-      const location = `${dupEnvironment}:${dupPath}`;
-      let hidden = accessByLocation.get(location);
-      if (hidden === undefined) {
-        hidden = !canAccessLocation(dupEnvironment, dupPath);
-        accessByLocation.set(location, hidden);
-      }
-      return hidden;
-    };
-
     // The lookup spans the project, so drop the hits the rule's own path does not reach.
     const inScope = new Map<string, TDuplicateSecret>();
     existing.forEach((secret) => {
@@ -477,8 +462,7 @@ export const secretValidationRuleServiceFactory = ({
       inScope.set(secret.secretValueBlindIndex, {
         key: secret.key,
         environment: secret.environment,
-        secretPath: dupPath,
-        hidden: isHidden(secret.environment, dupPath)
+        secretPath: dupPath
       });
     });
 
@@ -493,7 +477,7 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   const validateSecrets = async (
-    { projectId, environment, envId, secretPath, secrets, canAccessLocation }: TValidateSecretsDTO,
+    { projectId, environment, envId, secretPath, secrets }: TValidateSecretsDTO,
     tx?: Knex
   ) => {
     if (!secrets.length) return;
@@ -553,7 +537,6 @@ export const secretValidationRuleServiceFactory = ({
             secretPath,
             secrets,
             scope: reuseAcrossSecretsRule.scope,
-            canAccessLocation,
             generateSecretBlindIndex
           },
           tx

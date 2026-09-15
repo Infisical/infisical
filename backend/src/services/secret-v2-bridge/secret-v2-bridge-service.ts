@@ -70,7 +70,12 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import {
+  describeSecretValidationFailures,
+  SecretValidationError
+} from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
+import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
@@ -214,13 +219,28 @@ export const secretV2BridgeServiceFactory = ({
   projectFolderGrantDAL,
   orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
-  // A duplicate-value violation may only name where the value is already used when the writer can read there.
-  const $canDescribeSecretAt =
-    (permission: MongoAbility<ProjectPermissionSet>) => (environment: string, secretPath: string) =>
-      permission.can(
-        ProjectPermissionSecretActions.DescribeSecret,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
+  // Which secret already holds a duplicated value is only named to a writer who may read there, so the
+  // message is resolved against their permission rather than formatted inside validation.
+  const $validateSecrets = async (
+    dto: TValidateSecretsDTO,
+    permission: MongoAbility<ProjectPermissionSet>,
+    tx?: Knex
+  ) => {
+    try {
+      await secretValidationRuleService.validateSecrets(dto, tx);
+    } catch (error) {
+      if (!(error instanceof SecretValidationError)) throw error;
+
+      throw new BadRequestError({
+        message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
+          permission.can(
+            ProjectPermissionSecretActions.DescribeSecret,
+            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+          )
+        )
+      });
+    }
+  };
 
   const { getSecretMetadata } = secretMetadataServiceFactory({
     permissionService,
@@ -447,15 +467,15 @@ export const secretV2BridgeServiceFactory = ({
       ? await generateSecretBlindIndex(Buffer.from(inputSecretData.secretValue))
       : undefined;
     const secret = await secretDAL.transaction(async (tx) => {
-      await secretValidationRuleService.validateSecrets(
+      await $validateSecrets(
         {
           projectId,
           environment,
           envId: folder.envId,
           secretPath,
-          secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }],
-          canAccessLocation: $canDescribeSecretAt(permission)
+          secrets: [{ key: inputSecret.secretName, value: inputSecret.secretValue }]
         },
+        permission,
         tx
       );
 
@@ -758,15 +778,15 @@ export const secretV2BridgeServiceFactory = ({
 
     const updatedSecret = await secretDAL.transaction(async (tx) => {
       if (secretValue || inputSecret.newSecretName) {
-        await secretValidationRuleService.validateSecrets(
+        await $validateSecrets(
           {
             projectId,
             environment,
             envId: folder.envId,
             secretPath,
-            secrets: [{ key: finalKey, value: secretValue, secretId }],
-            canAccessLocation: $canDescribeSecretAt(permission)
+            secrets: [{ key: finalKey, value: secretValue, secretId }]
           },
+          permission,
           tx
         );
       }
@@ -2275,15 +2295,15 @@ export const secretV2BridgeServiceFactory = ({
     } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
 
     const executeBulkInsert = async (tx: Knex) => {
-      await secretValidationRuleService.validateSecrets(
+      await $validateSecrets(
         {
           projectId,
           environment,
           envId: folder.envId,
           secretPath,
-          secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })),
-          canAccessLocation: $canDescribeSecretAt(permission)
+          secrets: deduplicatedSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue }))
         },
+        permission,
         tx
       );
 
@@ -2651,15 +2671,15 @@ export const secretV2BridgeServiceFactory = ({
         ];
         if (secretsToValidate.length) {
           // eslint-disable-next-line no-await-in-loop
-          await secretValidationRuleService.validateSecrets(
+          await $validateSecrets(
             {
               projectId,
               environment,
               envId: folder.envId,
               secretPath,
-              secrets: secretsToValidate,
-              canAccessLocation: $canDescribeSecretAt(permission)
+              secrets: secretsToValidate
             },
+            permission,
             tx
           );
         }
