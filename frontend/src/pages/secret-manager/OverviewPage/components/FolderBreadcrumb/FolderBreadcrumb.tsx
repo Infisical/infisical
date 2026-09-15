@@ -15,7 +15,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 
 type Props = {
@@ -405,15 +408,20 @@ export function FolderBreadcrumb({ secretPath = "", onManageFolderAccess }: Prop
       </Breadcrumb>
 
       {onManageFolderAccess && (
-        <IconButton
-          variant="ghost-muted"
-          size="xs"
-          className="shrink-0"
-          aria-label="Manage folder access"
-          onClick={onManageFolderAccess}
-        >
-          <UsersIcon />
-        </IconButton>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <IconButton
+              variant="ghost-muted"
+              size="xs"
+              className="shrink-0"
+              aria-label="Manage folder access"
+              onClick={onManageFolderAccess}
+            >
+              <UsersIcon />
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>Manage Folder Access</TooltipContent>
+        </Tooltip>
       )}
     </div>
   );
