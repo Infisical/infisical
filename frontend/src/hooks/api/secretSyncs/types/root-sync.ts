@@ -5,6 +5,7 @@ export type RootSyncOptions = {
   initialSyncBehavior: SecretSyncInitialSyncBehavior;
   disableSecretDeletion?: boolean;
   keySchema?: string;
+  recursive?: boolean;
 };
 
 export type TRootSecretSync = {

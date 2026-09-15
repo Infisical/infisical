@@ -6,6 +6,7 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getExternalInfisicalAccessToken } from "@app/services/app-connection/external-infisical";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TExternalInfisicalSyncWithCredentials } from "./external-infisical-sync-types";
@@ -143,8 +144,11 @@ const batchDeleteSecrets = async (
 };
 
 export const ExternalInfisicalSyncFns = {
-  syncSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials, secretMap: TSecretMap) =>
+  syncSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials, payload: TSecretSyncPayload) =>
     withExternalInfisicalErrorHandling(async () => {
+      // Key schema must never be applied for Infisical-to-Infisical syncs, or the prefixed key
+      // triggers another sync cycle on the remote project.
+      const secretMap = payload.flatten({ applySchema: false });
       const ctx = await getRemoteContext(secretSync);
       const remoteSecrets = await fetchRemoteSecrets(secretSync, ctx);
       const environmentSlug = secretSync.environment?.slug || "";
@@ -189,8 +193,9 @@ export const ExternalInfisicalSyncFns = {
       return Object.fromEntries(remoteSecrets.map((s) => [s.secretKey, { value: s.secretValue ?? "" }]));
     }),
 
-  removeSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials, secretMap: TSecretMap) =>
+  removeSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials, payload: TSecretSyncPayload) =>
     withExternalInfisicalErrorHandling(async () => {
+      const secretMap = payload.flatten({ applySchema: false });
       const ctx = await getRemoteContext(secretSync);
       const secretsToDelete = Object.keys(secretMap);
       await batchDeleteSecrets(secretSync, secretsToDelete, ctx);
