@@ -5,11 +5,7 @@ description: "Time-bound tokens that let AI agents access services without holdi
 
 A session is a time-bound token that lets an AI agent access the [services](/documentation/platform/agent-vault/services) in an [access bundle](/documentation/platform/agent-vault/access-bundles). Instead of handling real credentials, the agent uses the session token to authenticate. Then, the proxy attaches the real credentials to the agent's requests at the network boundary.
 
-Every session carries one access bundle and expires on a schedule you set. When the session expires (or you revoke it), the proxy stops attaching credentials to the agent's requests within one poll interval.
-
-<Frame>
-  <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their access bundle and expiry" />
-</Frame>
+Every session carries one access bundle and expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one poll interval.
 
 ## Create a session
 
@@ -62,7 +58,11 @@ Anyone granted at least one access bundle can create a session. Admins can creat
 
 To revoke a session before it expires, go to the **Sessions** page, open the session's menu, and select **Revoke Session**. The proxy stops applying credentials for it on its next poll.
 
-The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can audit what an agent had access to during the session.
+The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can audit what an agent had access to during the session:
+
+<Frame>
+  <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their access bundle and expiry" />
+</Frame>
 
 ## Access changes
 

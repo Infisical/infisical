@@ -123,7 +123,7 @@ A service represents one external API, such as GitHub's REST API, Slack's Web AP
 You don't hand services to an agent directly. They live inside access bundles.
 
 <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
-  Adding services, credential types, host patterns, and conflict resolution.
+  External APIs that an AI agent can securely call during a session.
 </Card>
 
 ### Access bundles
@@ -133,7 +133,7 @@ An access bundle groups a set of services under one name. A **code-review** bund
 You grant a bundle to a user, group, or machine identity. Whoever holds the grant can create sessions with it.
 
 <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
-  Creating bundles, managing services, and granting access to users and identities.
+  Lists of services that AI agents can access during a session.
 </Card>
 
 ### Sessions
@@ -145,7 +145,7 @@ When you create a session, you pick one access bundle and set an expiry. Infisic
 The session token is worthless outside the specific bundle it points at. Even if an attacker stole it, they could only reach the hosts the bundle covers, and only until the session expires or you revoke it.
 
 <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
-  Creating sessions, setting their duration, revoking them, and auditing what agents reached.
+  Time-bound tokens that let AI agents access services without holding real credentials.
 </Card>
 
 ### Proxies
@@ -155,7 +155,7 @@ A proxy runs where your agent's traffic leaves your network. It intercepts every
 The proxy is what actually enforces the boundary. The agent's HTTPS client only knows to route through it, using the `HTTPS_PROXY` environment variable.
 
 <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
-  Enrolling a proxy, setting its traffic policy, and managing certificate trust.
+  Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.
 </Card>
 
 ## Example flow: GitHub API

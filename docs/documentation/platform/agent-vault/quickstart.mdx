@@ -178,13 +178,13 @@ To confirm the proxy is brokering credentials, make a test call to your API. Pic
 
 <CardGroup cols={2}>
   <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
-    Add more services, choose credential types, and grant access bundles to your team.
+    Lists of services that AI agents can access during a session.
   </Card>
   <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
-    Choose how long a session lives and revoke one while an agent is running.
+    Time-bound tokens that let AI agents access services without holding real credentials.
   </Card>
   <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
-    Run the proxy for real, decide what happens to other hosts, and pin its certificate.
+    Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.
   </Card>
   <Card title="CLI reference" icon="terminal" href="/cli/commands/agent-vault">
     Every flag of `infisical agent-vault proxy` and `infisical agent-vault run`.
