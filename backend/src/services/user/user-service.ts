@@ -643,7 +643,7 @@ export const userServiceFactory = ({
   // context. Recovery codes bypass the org-required method at login, so the step-up
   // that gates them must challenge that same method rather than the user's personal
   // preference (which could be weaker, e.g. email while the org enforces passkeys).
-  // Mirrors login via the shared getRequiredMfaMethod: an org enforcing MFA dictates
+  // Mirrors login via the shared getRequiredMfaMethod: the root org enforcing MFA dictates
   // the method, otherwise the user's own preference applies. Reaching a step-up-gated
   // route already proves membership of this org, so no permission check is needed.
   //
@@ -662,7 +662,11 @@ export const userServiceFactory = ({
     orgId: string,
     excludeMethod?: MfaMethod
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] }> => {
-    const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+    const [user, sessionOrg] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+    const org =
+      sessionOrg?.rootOrgId && sessionOrg.rootOrgId !== sessionOrg.id
+        ? await orgDAL.findById(sessionOrg.rootOrgId)
+        : sessionOrg;
     const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
     const asRequired = { challenge: requiredMfaMethod, accepted: [requiredMfaMethod] };
     if (!user || !excludeMethod || requiredMfaMethod !== excludeMethod) return asRequired;

@@ -575,7 +575,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteWebAuthnCredential",
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       querystring: z.object({
         mfaSessionId: z.string().trim().optional()
@@ -591,7 +591,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       const { credentials } = await server.services.webAuthn.getUserWebAuthnCredentials({
         userId: req.permission.id
       });
-      if (!credentials.some((credential) => credential.id === req.params.id)) {
+      const credential = credentials.find((cred) => cred.id.toLowerCase() === req.params.id.toLowerCase());
+      if (!credential) {
         throw new NotFoundError({ message: "Credential not found" });
       }
       const isRemovingLastPasskey = credentials.length === 1;
@@ -610,7 +611,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       });
       await server.services.webAuthn.deleteWebAuthnCredential({
         userId: req.permission.id,
-        id: req.params.id
+        id: credential.id
       });
       return { success: true };
     }
