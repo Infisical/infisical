@@ -52,21 +52,23 @@ export const BlindIndexCard = () => {
             ? `Indexing the remaining ${pendingProjectCount} ${pluralizeProjects(pendingProjectCount)} for duplicate secrets detection. This may take a few minutes.`
             : "Projects without secret value indexing are excluded from duplicate secrets detection. Enable indexing for complete results."}
         </p>
-        <AlertAction>
-          <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Settings}>
-            {(isAllowed) => (
-              <Button
-                variant="warning"
-                size="xs"
-                isDisabled={!isAllowed || isRunning}
-                isPending={isRunning || startMigration.isPending}
-                onClick={handleEnable}
-              >
-                Enable on {pendingProjectCount} {pluralizeProjects(pendingProjectCount)}
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </AlertAction>
+        {!isRunning && !startMigration.isSuccess && (
+          <AlertAction>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Settings}>
+              {(isAllowed) => (
+                <Button
+                  variant="warning"
+                  size="xs"
+                  isDisabled={!isAllowed}
+                  isPending={startMigration.isPending}
+                  onClick={handleEnable}
+                >
+                  Enable on {pendingProjectCount} {pluralizeProjects(pendingProjectCount)}
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </AlertAction>
+        )}
       </AlertDescription>
     </Alert>
   );
