@@ -12,7 +12,7 @@
 //   "off"         no faking at all; on a dev stack this shows "No products available"
 // The usage
 export type PreviewMode = "cloud" | "cloud-managed" | "self-hosted" | "offline" | "off";
-export const PREVIEW_MODE: PreviewMode = "cloud";
+export const PREVIEW_MODE: PreviewMode = "self-hosted";
 
 import {
   BillingV2CatalogProduct,
@@ -21,12 +21,7 @@ import {
   BillingV2Overview
 } from "@app/hooks/api";
 
-const dim = (
-  key: string,
-  label: string,
-  noun: string,
-  used: number
-): BillingV2EntitlementDim => ({
+const dim = (key: string, label: string, noun: string, used: number): BillingV2EntitlementDim => ({
   key,
   label,
   noun,
@@ -37,6 +32,30 @@ const dim = (
   limit: null,
   committed: null,
   commitAvailable: false,
+  onDemandAmount: 0
+});
+
+// A dimension the customer is eligible to commit annually but has not: the shape commitSavingsNudge
+// looks for (dimCommittable = commitAvailable && !metered, no commitment, used > 0, both rates set).
+// Rates are chosen so the savings come out around a third, which is what the strip prints.
+const commitDim = (
+  key: string,
+  label: string,
+  noun: string,
+  used: number
+): BillingV2EntitlementDim => ({
+  key,
+  label,
+  noun,
+  unit: noun,
+  metered: false,
+  cadence: "monthly",
+  used,
+  limit: null,
+  committed: null,
+  commitAvailable: true,
+  committedRate: 40,
+  onDemandRate: 5,
   onDemandAmount: 0
 });
 
@@ -117,13 +136,15 @@ export const PREVIEW_ENTITLEMENTS: Record<string, BillingV2Entitlement> = {
     cadence: "monthly",
     dimensions: [dim("secret_identities", "Secret Identities", "secret identity", 15)]
   },
-  // Several breakdownable dimensions, so the sheet renders its unit tabs.
+  // Several breakdownable dimensions, so the sheet renders its unit tabs. internal_cas is committable
+  // here, which is also what makes this the card that shows the breakdown strip and the commit nudge
+  // at the same time — the two are independent, so review how they stack.
   pki: {
     entitled: true,
     planTier: "enterprise",
     cadence: "monthly",
     dimensions: [
-      dim("internal_cas", "Internal CAs", "internal CA", 23),
+      commitDim("internal_cas", "Internal CAs", "internal CA", 23),
       dim("active_certs", "Active Certificates", "active certificate", 134),
       dim("wildcard_certs", "Wildcard Certificates", "wildcard certificate", 23)
     ]
@@ -180,8 +201,22 @@ export const asCloudOverview = (overview: BillingV2Overview): BillingV2Overview 
     taxIds: []
   },
   invoices: [
-    { id: "in_3", number: "INV-0003", date: "September 1, 2026", amount: 1240, paid: true, pdfUrl: null },
-    { id: "in_2", number: "INV-0002", date: "August 1, 2026", amount: 1240, paid: true, pdfUrl: null },
+    {
+      id: "in_3",
+      number: "INV-0003",
+      date: "September 1, 2026",
+      amount: 1240,
+      paid: true,
+      pdfUrl: null
+    },
+    {
+      id: "in_2",
+      number: "INV-0002",
+      date: "August 1, 2026",
+      amount: 1240,
+      paid: true,
+      pdfUrl: null
+    },
     { id: "in_1", number: "INV-0001", date: "July 1, 2026", amount: 1156, paid: true, pdfUrl: null }
   ]
 });
