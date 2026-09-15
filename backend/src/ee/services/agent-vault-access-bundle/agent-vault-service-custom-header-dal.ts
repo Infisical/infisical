@@ -18,7 +18,7 @@ export const agentVaultServiceCustomHeaderDALFactory = (db: TDbClient) => {
         .orderBy("position", "asc")
         .select(selectAllTableCols(TableName.AgentVaultServiceCustomHeader))) as TAgentVaultServiceCustomHeaders[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find agent vault service headers" });
+      throw new DatabaseError({ error, name: "Find agent vault service custom headers" });
     }
   };
 
