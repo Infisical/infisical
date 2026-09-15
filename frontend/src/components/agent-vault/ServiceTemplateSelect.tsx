@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { GlobeIcon, PlusIcon, SearchIcon } from "lucide-react";
 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import {
   AGENT_VAULT_TEMPLATES,
   AgentVaultTemplate,
@@ -29,8 +30,8 @@ const TemplateCard = ({
           {hasImageError ? (
             <GlobeIcon className="size-5 text-bunker-300" />
           ) : (
-            <img
-              src={`/images/integrations/${template.image}`}
+            <ProviderIcon
+              icon={template.image}
               alt={`${template.name} logo`}
               className="size-6 object-contain"
               onError={() => setHasImageError(true)}

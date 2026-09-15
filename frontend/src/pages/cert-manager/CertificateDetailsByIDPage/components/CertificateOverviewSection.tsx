@@ -73,7 +73,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
       <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
         <Card>
           <CardContent className="flex items-center justify-center py-8">
-            <p className="text-sm text-mineshaft-400">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           </CardContent>
         </Card>
       </div>
@@ -186,7 +186,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.caName}
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 )}
                 {!showCaLink &&
@@ -215,7 +215,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.applicationName}
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
@@ -274,7 +274,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                         certificate.renewedFromCertificateId
                       ).displayName
                     }
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
@@ -296,7 +296,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                       getCertificateDisplayName(certificate, 64, certificate.renewedByCertificateId)
                         .displayName
                     }
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
