@@ -32,8 +32,6 @@ import {
 import { AzureEntraIdScimSyncSourceFields } from "./AzureEntraIdScimSyncSourceFields";
 import { TSecretSyncForm } from "./schemas";
 
-// Mirrors SECRET_SYNC_MAX_SECRETS in backend/src/services/secret-sync/secret-sync-recursive-fns.ts.
-const SECRET_SYNC_MAX_SECRETS = 100;
 const MAX_DISPLAYED_CONFLICTS = 5;
 
 const DefaultSecretSyncSourceFields = () => {
@@ -146,7 +144,7 @@ const DefaultSecretSyncSourceFields = () => {
                 <FieldDescription>
                   {importsFromDestination
                     ? "Not available when the initial sync imports secrets from the destination. There is no single folder to import them back into."
-                    : `Also sync secrets from every folder beneath this path, however deep. Secret names must be unique across all of them, and the combined total can't exceed ${SECRET_SYNC_MAX_SECRETS} secrets.`}
+                    : "Also sync secrets from every folder beneath this path, however deep. Secret names must be unique across all of them."}
                 </FieldDescription>
               </FieldContent>
               <Toggle

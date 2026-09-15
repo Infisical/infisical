@@ -33,22 +33,6 @@ export const getAncestorPaths = (path: string): string[] => {
   return segments.map((_, index) => (index === 0 ? "/" : `/${segments.slice(0, index).join("/")}`));
 };
 
-// buildSyncPayload expands secret references for every secret concurrently
-// (Promise.allSettled below), and expansion can hit the DB per secret, so this stays well under
-// what a 10-connection pool can take at once even with every slot serving one sync. Applies to
-// every sync, not just recursive ones: an oversized single folder is the same risk as an
-// oversized subtree. Raise further only once that concurrency is actually bounded.
-export const SECRET_SYNC_MAX_SECRETS = 500;
-
-export const assertWithinSecretLimit = (count: number) => {
-  if (count <= SECRET_SYNC_MAX_SECRETS) return;
-
-  throw new SecretSyncError({
-    message: `This sync covers ${count} secrets, which is above the limit of ${SECRET_SYNC_MAX_SECRETS} for a single sync. Point the sync at a narrower secret path, or split it into several syncs.`,
-    shouldRetry: false
-  });
-};
-
 export const getSyncedFolders = async ({
   folderDAL,
   projectEnvDAL,
@@ -164,8 +148,6 @@ export const buildSyncPayload = async (
       ? await secretV2BridgeDAL.findByFolderId({ folderId: folders[0].folderId })
       : await secretV2BridgeDAL.findByFolderIds({ folderIds: folders.map(({ folderId }) => folderId) });
 
-  assertWithinSecretLimit(secrets.length);
-
   const entries: TSecretPayload[] = [];
 
   await Promise.allSettled(
@@ -237,8 +219,6 @@ export const buildSyncPayload = async (
         secrets: group.secrets
       }))
     );
-
-    assertWithinSecretLimit(allEntries.length);
   }
 
   return createSecretSyncPayload(allEntries, { environment, keySchema });

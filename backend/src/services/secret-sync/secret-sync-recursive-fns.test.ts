@@ -1,10 +1,8 @@
 import {
-  assertWithinSecretLimit,
   buildSyncPayload,
   getAncestorPaths,
   getSyncedFolders,
-  mergeImportedSecrets,
-  SECRET_SYNC_MAX_SECRETS
+  mergeImportedSecrets
 } from "./secret-sync-recursive-fns";
 
 const deps = {
@@ -97,28 +95,6 @@ describe("getAncestorPaths", () => {
 
   test("returns the root for a single-segment path", () => {
     expect(getAncestorPaths("/backend")).toEqual(["/"]);
-  });
-});
-
-describe("assertWithinSecretLimit", () => {
-  test("accepts a count at the limit", () => {
-    expect(() => assertWithinSecretLimit(SECRET_SYNC_MAX_SECRETS)).not.toThrow();
-  });
-
-  test("rejects a count above the limit with a message naming both numbers", () => {
-    let error: unknown;
-    try {
-      assertWithinSecretLimit(SECRET_SYNC_MAX_SECRETS + 1);
-    } catch (err) {
-      error = err;
-    }
-
-    expect(error).toBeInstanceOf(Error);
-    const { message } = error as Error;
-    const overIndex = message.indexOf(String(SECRET_SYNC_MAX_SECRETS + 1));
-    const limitIndex = message.indexOf(String(SECRET_SYNC_MAX_SECRETS), overIndex + 1);
-    expect(overIndex).toBeGreaterThanOrEqual(0);
-    expect(limitIndex).toBeGreaterThan(overIndex);
   });
 });
 
