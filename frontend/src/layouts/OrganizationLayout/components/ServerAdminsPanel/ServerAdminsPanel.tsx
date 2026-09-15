@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Search } from "lucide-react";
 
 import {
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { useGetOrgUsers } from "@app/hooks/api";
@@ -39,25 +39,39 @@ export const ServerAdminsPanel = () => {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 px-4">
-        <Input
-          value={searchUserFilter}
-          onChange={(e) => setSearchUserFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search server admins..."
-          className="w-full"
-        />
+        <InputGroup>
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupInput
+            aria-label="Search server administrators"
+            value={searchUserFilter}
+            onChange={(e) => setSearchUserFilter(e.target.value)}
+            placeholder="Search server admins..."
+          />
+        </InputGroup>
       </div>
       <div className="flex-1 px-2">
-        <TableContainer className="flex max-h-[30vh] flex-col overflow-auto">
-          <Table className="w-full">
-            <THead className="sticky top-0 bg-bunker-800">
-              <Tr>
-                <Th className="w-1/2">Name</Th>
-                <Th className="w-1/2">Email</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && <TableSkeleton columns={2} innerKey="admins" />}
+        <div className="flex max-h-[30vh] flex-col overflow-auto rounded-md">
+          <Table containerClassName="overflow-visible">
+            <TableHeader className="sticky top-0 z-10 bg-container">
+              <TableRow>
+                <TableHead className="w-1/2">Name</TableHead>
+                <TableHead className="w-1/2">Email</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isPending &&
+                ["first", "second", "third"].map((key) => (
+                  <TableRow key={`admin-skeleton-${key}`}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-40" />
+                    </TableCell>
+                  </TableRow>
+                ))}
               {!isPending &&
                 adminUsers?.map(({ user }) => {
                   const name =
@@ -65,20 +79,22 @@ export const ServerAdminsPanel = () => {
                       ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
                       : user.username;
                   return (
-                    <Tr key={`admin-${user.id}`}>
-                      <Td className="w-1/2 break-words">{name}</Td>
-                      <Td className="w-1/2 break-words">{user.email}</Td>
-                    </Tr>
+                    <TableRow key={`admin-${user.id}`}>
+                      <TableCell className="w-1/2 break-words whitespace-normal">{name}</TableCell>
+                      <TableCell className="w-1/2 break-words whitespace-normal">
+                        {user.email}
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-            </TBody>
+            </TableBody>
           </Table>
           {isEmpty && (
-            <div className="flex h-32 items-center justify-center text-sm text-mineshaft-400">
+            <div className="flex h-32 items-center justify-center rounded-md border border-border bg-container text-sm text-muted">
               No server administrators found
             </div>
           )}
-        </TableContainer>
+        </div>
       </div>
     </div>
   );

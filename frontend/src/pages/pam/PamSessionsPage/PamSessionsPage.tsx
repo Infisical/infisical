@@ -6,8 +6,8 @@ import { format } from "date-fns";
 import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Badge,
   Button,
