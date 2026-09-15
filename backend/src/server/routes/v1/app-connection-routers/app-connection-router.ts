@@ -200,6 +200,10 @@ import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
+import {
+  PowerDnsConnectionListItemSchema,
+  SanitizedPowerDnsConnectionSchema
+} from "@app/services/app-connection/powerdns";
 import { QoveryConnectionListItemSchema, SanitizedQoveryConnectionSchema } from "@app/services/app-connection/qovery";
 import {
   RailwayConnectionListItemSchema,
@@ -349,6 +353,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
   ...SanitizedNutanixPrismCentralConnectionSchema.options,
+  ...SanitizedPowerDnsConnectionSchema.options,
   ...SanitizedSpaceliftConnectionSchema.options,
   ...SanitizedDaytonaConnectionSchema.options
 ]);
@@ -436,6 +441,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
   NutanixPrismCentralConnectionListItemSchema,
+  PowerDnsConnectionListItemSchema,
   SpaceliftConnectionListItemSchema,
   DaytonaConnectionListItemSchema
 ]);

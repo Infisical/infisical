@@ -63,6 +63,8 @@ export const KeyStorePrefixes = {
     `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
   AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
     `app-connection-command-mutex-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
+  AcmeDnsRecordLock: (connectionId: string, zoneId: string, recordName: string) =>
+    `acme-dns-record-mutex-${connectionId}-${zoneId.toLowerCase()}-${recordName.toLowerCase()}` as const,
   LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,
   LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
     `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,

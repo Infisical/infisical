@@ -1074,6 +1074,7 @@
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/ovh",
                   "integrations/app-connections/postgres",
+                  "integrations/app-connections/powerdns",
                   "integrations/app-connections/qovery",
                   "integrations/app-connections/railway",
                   "integrations/app-connections/redis",
@@ -2286,6 +2287,18 @@
                           "api-reference/endpoints/app-connections/postgres/create",
                           "api-reference/endpoints/app-connections/postgres/update",
                           "api-reference/endpoints/app-connections/postgres/delete"
+                        ]
+                      },
+                      {
+                        "group": "PowerDNS",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/powerdns/list",
+                          "api-reference/endpoints/app-connections/powerdns/available",
+                          "api-reference/endpoints/app-connections/powerdns/get-by-id",
+                          "api-reference/endpoints/app-connections/powerdns/get-by-name",
+                          "api-reference/endpoints/app-connections/powerdns/create",
+                          "api-reference/endpoints/app-connections/powerdns/update",
+                          "api-reference/endpoints/app-connections/powerdns/delete"
                         ]
                       },
                       {
