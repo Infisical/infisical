@@ -28,6 +28,13 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     </Frame>
 
     This is the way to start an agent on a machine that has no Infisical login. The token is the only thing you hand over.
+
+    To keep the token out of your shell history and out of process listings, pass it in the environment instead:
+
+    ```bash
+    export INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token>
+    infisical agent-vault run --proxy <proxy-address> -- claude
+    ```
   </Tab>
   <Tab title="CLI">
     `infisical agent-vault run` creates a session for you when you name the access bundle:
