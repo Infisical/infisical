@@ -4,7 +4,17 @@ import { agentVaultPathPrefixListSchema, matchesPathPrefix, normalizePathPrefix 
 
 describe("agent vault path prefixes", () => {
   describe("grammar", () => {
-    it.each([["/repos"], ["/repos/octo"], ["/"], ["/v1/chat/completions"], ["/repos-and-more"]])(
+    it.each([
+      ["/repos"],
+      ["/repos/octo"],
+      ["/"],
+      ["/v1/chat/completions"],
+      ["/repos-and-more"],
+      ["/a+b"],
+      ["/a,b"],
+      ["/tenants/acme:v2@edge"],
+      ["/~user/$data"]
+    ])(
       "accepts %s",
       (prefix) => {
         expect(agentVaultPathPrefixListSchema.safeParse([prefix]).success).toBe(true);
@@ -21,7 +31,11 @@ describe("agent vault path prefixes", () => {
       ["/repos\\x", "\\ is read as / by some servers"],
       ["/repos?x=1", "? ends the path"],
       ["/repos#x", "# ends the path"],
-      ["/repos x", "a space would have to be escaped"]
+      ["/repos x", "a space would have to be escaped"],
+      ["/caf\u00e9", "a non-ASCII prefix is compared against /caf%C3%A9 and could never match"],
+      ["/repos/{owner}", "braces are encoded in the request URL, so this would match nothing"],
+      ["/a[b]", "brackets survive or not depending on the rest of the path"],
+      ["/products(1)", "parentheses are encoded by the path encoder"]
     ])("rejects %s (%s)", (prefix) => {
       expect(agentVaultPathPrefixListSchema.safeParse([prefix]).success).toBe(false);
     });

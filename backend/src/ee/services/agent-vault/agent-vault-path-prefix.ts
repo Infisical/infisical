@@ -14,10 +14,16 @@ import { z } from "zod";
 export const AGENT_VAULT_MAX_PATH_PREFIX_LENGTH = 512;
 export const AGENT_VAULT_MAX_PATH_PREFIXES = 20;
 
-// '%' is excluded so the byte comparison against the escaped request path is exact. ';' and '\' are
-// excluded because servers disagree about them: Tomcat and Jetty strip `;params` per segment, IIS reads
-// '\' as '/'. '?' and '#' end the path, so neither can appear in one.
-const PATH_PREFIX_RE = new RE2(/^\/[^\s?#%;\\]*$/);
+// An allowlist rather than a blocklist, because the prefix is compared against the request's escaped path
+// and only these characters survive that encoding unchanged. Everything else is percent-encoded on the way
+// out, so a prefix carrying one could never match: `/café` is compared against `/caf%C3%A9` and a prefix
+// written `/repos/{owner}` against `/repos/%7Bowner%7D`. `[`, `]`, `!`, `'`, `(`, `)` and `*` are worse
+// still, surviving or not depending on what the rest of the request path happens to contain.
+//
+// The characters this leaves out for their own reasons: '%' so the byte comparison stays exact, ';' and
+// '\' because servers disagree about them (Tomcat and Jetty strip `;params` per segment, IIS reads '\'
+// as '/'), and '?' and '#' because both end the path.
+const PATH_PREFIX_RE = new RE2(/^\/[A-Za-z0-9\-._~$&+,/:=@]*$/);
 
 const hasTraversalSegment = (value: string) => value.split("/").some((segment) => segment === "." || segment === "..");
 
@@ -38,7 +44,7 @@ const pathPrefixError = (raw: string) => {
   if (value.includes("//")) return `"${value}" can't contain an empty path segment.`;
   if (hasTraversalSegment(value)) return `"${value}" can't contain a . or .. segment.`;
   if (!PATH_PREFIX_RE.test(value))
-    return `"${value}" can't contain a space, %, ;, \\, ? or #. Write the path exactly as it appears in the URL.`;
+    return `"${value}" can only contain letters, digits and - . _ ~ $ & + , : = @. Anything else is percent-encoded in the request URL, so a prefix carrying it would never match.`;
   return null;
 };
 

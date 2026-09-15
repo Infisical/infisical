@@ -131,7 +131,11 @@ the matching at runtime and reimplements the same rules, so a change here needs 
   judged by what it *allows*, so this is the load-bearing half: `path.Clean` on a decoded path would have
   allowed `/admin/%2e%2e/repos/x`, and a narrow `%2e`/`%2f` blacklist still let `/repos/..;/admin` through
   on Tomcat and `/repos/\..\admin` on IIS. `agent-vault-path-prefix.ts` is the grammar of record and
-  `packages/agentvault/policy.go` reimplements the match, the same split as the host grammar.
+  `packages/agentvault/policy.go` reimplements the match, the same split as the host grammar. The prefix grammar
+  is an allowlist for a second reason: a prefix is compared against the escaped path, so one carrying
+  anything Go's path encoder rewrites could never match. `/café` would be judged against `/caf%C3%A9`,
+  and `[`, `]`, `!`, `'`, `(`, `)` and `*` match or not depending on what the rest of the request path
+  happens to contain, so all of them are refused on write.
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
   so the same-bundle host conflict rule stays host-only. Two services on one host differing only by method
   is still a hard reject.
