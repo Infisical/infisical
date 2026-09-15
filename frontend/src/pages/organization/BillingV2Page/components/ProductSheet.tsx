@@ -646,6 +646,7 @@ export const ProductSheet = ({
               orgId={orgId}
               prod={prod}
               plan={upgradePlanObj}
+              fromPlan={currentTier ?? "free"}
               fromPlanName={basePlanName}
               renewsOn={renewsOn}
               selfServe={selfServe}
