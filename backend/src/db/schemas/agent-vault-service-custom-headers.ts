@@ -9,7 +9,7 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const AgentVaultServiceHeadersSchema = z.object({
+export const AgentVaultServiceCustomHeadersSchema = z.object({
   id: z.string().uuid(),
   serviceId: z.string().uuid(),
   name: z.string(),
@@ -20,8 +20,11 @@ export const AgentVaultServiceHeadersSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TAgentVaultServiceHeaders = z.infer<typeof AgentVaultServiceHeadersSchema>;
-export type TAgentVaultServiceHeadersInsert = Omit<z.input<typeof AgentVaultServiceHeadersSchema>, TImmutableDBKeys>;
-export type TAgentVaultServiceHeadersUpdate = Partial<
-  Omit<z.input<typeof AgentVaultServiceHeadersSchema>, TImmutableDBKeys>
+export type TAgentVaultServiceCustomHeaders = z.infer<typeof AgentVaultServiceCustomHeadersSchema>;
+export type TAgentVaultServiceCustomHeadersInsert = Omit<
+  z.input<typeof AgentVaultServiceCustomHeadersSchema>,
+  TImmutableDBKeys
+>;
+export type TAgentVaultServiceCustomHeadersUpdate = Partial<
+  Omit<z.input<typeof AgentVaultServiceCustomHeadersSchema>, TImmutableDBKeys>
 >;

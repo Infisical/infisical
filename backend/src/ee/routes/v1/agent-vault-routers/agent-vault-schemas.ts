@@ -14,9 +14,9 @@ import {
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix";
 import {
-  addDuplicateHeaderNameIssues,
+  addDuplicateCustomHeaderNameIssues,
   addDuplicatePlaceholderIssues,
-  AGENT_VAULT_MAX_HEADERS,
+  AGENT_VAULT_MAX_CUSTOM_HEADERS,
   AGENT_VAULT_MAX_SUBSTITUTIONS,
   AgentVaultCustomHeaderInputSchema,
   AgentVaultCustomHeaderUpdateSchema,
@@ -154,14 +154,14 @@ export const AgentVaultAllowedPathPrefixesSchema = agentVaultPathPrefixListSchem
 );
 
 export const AgentVaultCustomHeadersInputSchema = AgentVaultCustomHeaderInputSchema.array()
-  .max(AGENT_VAULT_MAX_HEADERS)
-  .superRefine(addDuplicateHeaderNameIssues)
-  .describe(AGENT_VAULT.SERVICE.headers);
+  .max(AGENT_VAULT_MAX_CUSTOM_HEADERS)
+  .superRefine(addDuplicateCustomHeaderNameIssues)
+  .describe(AGENT_VAULT.SERVICE.customHeaders);
 
 export const AgentVaultCustomHeadersUpdateSchema = AgentVaultCustomHeaderUpdateSchema.array()
-  .max(AGENT_VAULT_MAX_HEADERS)
-  .superRefine(addDuplicateHeaderNameIssues)
-  .describe(AGENT_VAULT.SERVICE.headers);
+  .max(AGENT_VAULT_MAX_CUSTOM_HEADERS)
+  .superRefine(addDuplicateCustomHeaderNameIssues)
+  .describe(AGENT_VAULT.SERVICE.customHeaders);
 
 export const AgentVaultSubstitutionsInputSchema = AgentVaultSubstitutionInputSchema.array()
   .max(AGENT_VAULT_MAX_SUBSTITUTIONS)
@@ -184,14 +184,14 @@ export const AgentVaultServiceSchema = z.object({
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
   allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),
   credential: AgentVaultCredentialSummarySchema,
-  headers: z
+  customHeaders: z
     .object({
       id: z.string().uuid().describe(AGENT_VAULT.SERVICE.headerId),
       name: z.string().describe(AGENT_VAULT.SERVICE.customHeaderName),
       prefix: z.string().describe(AGENT_VAULT.SERVICE.customHeaderPrefix)
     })
     .array()
-    .describe(AGENT_VAULT.SERVICE.headers),
+    .describe(AGENT_VAULT.SERVICE.customHeaders),
   substitutions: z
     .object({
       id: z.string().uuid().describe(AGENT_VAULT.SERVICE.substitutionId),

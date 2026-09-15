@@ -16,8 +16,8 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.AgentVaultServiceHeader))) {
-    await knex.schema.createTable(TableName.AgentVaultServiceHeader, (t) => {
+  if (!(await knex.schema.hasTable(TableName.AgentVaultServiceCustomHeader))) {
+    await knex.schema.createTable(TableName.AgentVaultServiceCustomHeader, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.uuid("serviceId").notNullable();
@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.AgentVaultServiceHeader);
+    await createOnUpdateTrigger(knex, TableName.AgentVaultServiceCustomHeader);
   }
 
   if (!(await knex.schema.hasTable(TableName.AgentVaultServiceSubstitution))) {
@@ -63,8 +63,8 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.AgentVaultServiceSubstitution);
   await dropOnUpdateTrigger(knex, TableName.AgentVaultServiceSubstitution);
 
-  await knex.schema.dropTableIfExists(TableName.AgentVaultServiceHeader);
-  await dropOnUpdateTrigger(knex, TableName.AgentVaultServiceHeader);
+  await knex.schema.dropTableIfExists(TableName.AgentVaultServiceCustomHeader);
+  await dropOnUpdateTrigger(knex, TableName.AgentVaultServiceCustomHeader);
 
   const hasAllowedMethods = await knex.schema.hasColumn(TableName.AgentVaultService, "allowedMethods");
   const hasAllowedPathPrefixes = await knex.schema.hasColumn(TableName.AgentVaultService, "allowedPathPrefixes");

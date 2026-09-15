@@ -65,7 +65,7 @@ export type TAgentVaultService = {
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
   credential: TAgentVaultCredentialSummary;
-  headers: TAgentVaultCustomHeaderSummary[];
+  customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
   createdAt: string;
 };
@@ -175,7 +175,7 @@ export type TCreateAgentVaultServiceDTO = {
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   credential: TAgentVaultCredentialInput;
-  headers?: TAgentVaultCustomHeaderInput[];
+  customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
 };
 
@@ -187,7 +187,7 @@ export type TUpdateAgentVaultServiceDTO = {
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
-  headers?: TAgentVaultCustomHeaderInput[];
+  customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
 };
 

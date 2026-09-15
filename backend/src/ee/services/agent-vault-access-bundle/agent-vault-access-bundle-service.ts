@@ -5,7 +5,7 @@ import {
   AccessScope,
   RESOURCE_SCOPE,
   ResourceType,
-  TAgentVaultServiceHeaders,
+  TAgentVaultServiceCustomHeaders,
   TAgentVaultServices,
   TAgentVaultServiceSubstitutions,
   TMemberships
@@ -54,15 +54,15 @@ import {
   TUpdateAccessBundleDTO,
   TUpdateServiceDTO
 } from "./agent-vault-access-bundle-types";
+import { TAgentVaultServiceCustomHeaderDALFactory } from "./agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceDALFactory } from "./agent-vault-service-dal";
-import { TAgentVaultServiceHeaderDALFactory } from "./agent-vault-service-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "./agent-vault-service-substitution-dal";
 import { planTransformationDiff, TTransformationWrite } from "./agent-vault-transformation-fns";
 
 type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultAccessBundleDAL: TAgentVaultAccessBundleDALFactory;
   agentVaultServiceDAL: TAgentVaultServiceDALFactory;
-  agentVaultServiceHeaderDAL: TAgentVaultServiceHeaderDALFactory;
+  agentVaultServiceCustomHeaderDAL: TAgentVaultServiceCustomHeaderDALFactory;
   agentVaultServiceSubstitutionDAL: TAgentVaultServiceSubstitutionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -84,7 +84,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const {
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
-    agentVaultServiceHeaderDAL,
+    agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
     permissionService,
     kmsService,
@@ -329,7 +329,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   // schema is later loosened.
   const projectService = (
     service: TAgentVaultServices,
-    headers: TAgentVaultServiceHeaders[],
+    customHeaders: TAgentVaultServiceCustomHeaders[],
     substitutions: TAgentVaultServiceSubstitutions[]
   ) => ({
     id: service.id,
@@ -339,7 +339,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
     allowedPathPrefixes: service.allowedPathPrefixes ?? null,
     credential: summarizeCredential(service),
-    headers: headers.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
+    customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
     substitutions: substitutions.map((substitution) => ({
       id: substitution.id,
       placeholder: substitution.placeholder,
@@ -349,11 +349,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   });
 
   const loadTransformations = async (serviceIds: string[], tx?: Knex) => {
-    const [headers, substitutions] = await Promise.all([
-      agentVaultServiceHeaderDAL.findByServiceIds(serviceIds, tx),
+    const [customHeaders, substitutions] = await Promise.all([
+      agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds, tx),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds, tx)
     ]);
-    return { headers, substitutions };
+    return { customHeaders, substitutions };
   };
 
   // The header a credential actually occupies. Basic has no header name in its config but the proxy always
@@ -369,22 +369,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
-  // Custom headers are injected after the credential, so a collision silently replaces the real token with
-  // the custom value and the agent gets an unexplained 401. Both halves of a PATCH can introduce one: a
-  // credential-only body can move the bearer onto a name a stored header already holds, and a headers-only
-  // body never reaches mergeCredential at all.
-  const assertHeadersDoNotShadowCredential = (
+  // The proxy writes the credential last, so a collision costs the custom header rather than the token.
+  // Refusing it on write is what tells the author, instead of leaving a header that silently does nothing.
+  // Both halves of a PATCH can introduce one: a credential-only body can move the bearer onto a name a
+  // stored custom header already holds, and a custom-headers-only body never reaches mergeCredential.
+  const assertCustomHeadersDoNotShadowCredential = (
     config: TAgentVaultCredentialConfig,
-    headers: { name: string }[] | undefined
+    customHeaders: { name: string }[] | undefined
   ) => {
-    if (!headers?.length) return;
+    if (!customHeaders?.length) return;
     const credentialHeader = credentialHeaderName(
       config.type,
       config.type === AgentVaultCredentialType.Bearer ? config.headerName : undefined
     );
     if (!credentialHeader) return;
 
-    const clash = headers.find((header) => header.name.toLowerCase() === credentialHeader.toLowerCase());
+    const clash = customHeaders.find((header) => header.name.toLowerCase() === credentialHeader.toLowerCase());
     if (clash) {
       throw new BadRequestError({
         message: `The ${credentialHeader} header is already set by the credential. Rename the custom header or change the credential.`
@@ -430,7 +430,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
     // Two queries for every service in the bundle rather than per service, and never a join: a join would
     // multiply the service rows by their header and substitution counts.
-    const { headers, substitutions } = await loadTransformations(services.map((service) => service.id));
+    const { customHeaders, substitutions } = await loadTransformations(services.map((service) => service.id));
     const members = isAdmin
       ? await agentVaultAccessBundleDAL.findMembers({ projectId: dto.projectId, accessBundleId: bundle.id })
       : undefined;
@@ -443,7 +443,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       services: services.map((service) =>
         projectService(
           service,
-          headers.filter((header) => header.serviceId === service.id),
+          customHeaders.filter((header) => header.serviceId === service.id),
           substitutions.filter((substitution) => substitution.serviceId === service.id)
         )
       ),
@@ -569,7 +569,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     allowedMethods,
     allowedPathPrefixes,
     credential,
-    headers,
+    customHeaders,
     substitutions,
     ...rest
   }: TCreateServiceDTO) => {
@@ -588,7 +588,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // Encrypt before the lock: KMS is a network call and the transaction has to stay short.
     const { config, secret } = splitCredential(credential);
-    assertHeadersDoNotShadowCredential(config, headers);
+    assertCustomHeadersDoNotShadowCredential(config, customHeaders);
 
     const { encryptor } = await getProjectCipher(rest.projectId);
     const seal = (value: string) => encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
@@ -596,7 +596,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const encryptedCredential = secret
       ? encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob
       : null;
-    const headerRows = (headers ?? []).map((header, position) => ({
+    const customHeaderRows = (customHeaders ?? []).map((header, position) => ({
       name: header.name,
       prefix: header.prefix ?? "",
       position,
@@ -635,9 +635,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           tx
         );
 
-        const insertedHeaders = headerRows.length
-          ? await agentVaultServiceHeaderDAL.insertMany(
-              headerRows.map((row) => ({ ...row, serviceId: created.id })),
+        const insertedCustomHeaders = customHeaderRows.length
+          ? await agentVaultServiceCustomHeaderDAL.insertMany(
+              customHeaderRows.map((row) => ({ ...row, serviceId: created.id })),
               tx
             )
           : [];
@@ -648,7 +648,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             )
           : [];
 
-        return { created, insertedHeaders, insertedSubstitutions };
+        return { created, insertedCustomHeaders, insertedSubstitutions };
       });
 
     let result;
@@ -662,7 +662,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     return {
-      service: projectService(result.created, result.insertedHeaders, result.insertedSubstitutions)
+      service: projectService(result.created, result.insertedCustomHeaders, result.insertedSubstitutions)
     };
   };
 
@@ -674,7 +674,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     credential,
     allowedMethods,
     allowedPathPrefixes,
-    headers,
+    customHeaders,
     substitutions,
     ...rest
   }: TUpdateServiceDTO) => {
@@ -736,11 +736,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // Sealing sits outside the transaction for the same reason the credential's does: KMS is a network call.
     const cipherForTransformations =
-      headers?.length || substitutions?.length ? await getProjectCipher(rest.projectId) : null;
+      customHeaders?.length || substitutions?.length ? await getProjectCipher(rest.projectId) : null;
     const seal = (value: string) =>
       cipherForTransformations!.encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
 
-    const headerWrites: TTransformationWrite<{ name: string; prefix: string }>[] | undefined = headers?.map(
+    const customHeaderWrites: TTransformationWrite<{ name: string; prefix: string }>[] | undefined = customHeaders?.map(
       (header) => ({
         id: header.id,
         naturalKey: header.name.toLowerCase(),
@@ -778,14 +778,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         }
 
         // Under the lock and on the primary, both halves of it: the stored header names, and the stored
-        // credential when a headers-only body leaves that one to the row. The service read above the
+        // credential when a custom-headers-only body leaves that one to the row. The service read above the
         // transaction came off a replica, and stale by a concurrent write that moved the credential onto a
         // new header name it would admit exactly the collision this check exists to stop. Runs whether the
-        // credential, the headers, or both arrived.
-        if (credential || headers) {
-          const effectiveHeaders =
-            headers ??
-            (await agentVaultServiceHeaderDAL.findByServiceIds([service.id], tx)).map((row) => ({
+        // credential, the custom headers, or both arrived.
+        if (credential || customHeaders) {
+          const effectiveCustomHeaders =
+            customHeaders ??
+            (await agentVaultServiceCustomHeaderDAL.findByServiceIds([service.id], tx)).map((row) => ({
               name: row.name
             }));
           if (!credential) {
@@ -793,7 +793,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             if (!current) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
             effectiveCredentialConfig = current.credentialConfig as TAgentVaultCredentialConfig;
           }
-          assertHeadersDoNotShadowCredential(effectiveCredentialConfig, effectiveHeaders);
+          assertCustomHeadersDoNotShadowCredential(effectiveCredentialConfig, effectiveCustomHeaders);
         }
 
         const hasColumnUpdate =
@@ -860,9 +860,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           );
         };
 
-        const updatedHeaders = await applyDiff(
-          agentVaultServiceHeaderDAL,
-          headerWrites,
+        const updatedCustomHeaders = await applyDiff(
+          agentVaultServiceCustomHeaderDAL,
+          customHeaderWrites,
           (row) => row.name.toLowerCase(),
           "custom header"
         );
@@ -873,7 +873,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           "substitution"
         );
 
-        return { updatedService, updatedHeaders, updatedSubstitutions };
+        return { updatedService, updatedCustomHeaders, updatedSubstitutions };
       });
 
     let result;
@@ -887,7 +887,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     return {
-      service: projectService(result.updatedService, result.updatedHeaders, result.updatedSubstitutions)
+      service: projectService(result.updatedService, result.updatedCustomHeaders, result.updatedSubstitutions)
     };
   };
 
@@ -903,9 +903,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // Read before the delete, since CASCADE takes the rows with the service. The response is a snapshot of
     // what was removed either way.
-    const { headers, substitutions } = await loadTransformations([service.id]);
+    const { customHeaders, substitutions } = await loadTransformations([service.id]);
     const deleted = await agentVaultServiceDAL.deleteById(service.id);
-    return projectService(deleted, headers, substitutions);
+    return projectService(deleted, customHeaders, substitutions);
   };
 
   const listMembers = async ({ accessBundleId, ...rest }: TListMembersDTO) => {

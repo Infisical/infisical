@@ -58,7 +58,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   allMethods: true,
   methods: [],
   pathPrefixes: [],
-  headers: [],
+  customHeaders: [],
   substitutions: []
 };
 
@@ -137,7 +137,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         methods: service.allowedMethods ?? [],
         pathPrefixes: service.allowedPathPrefixes ?? [],
         // The stored values never come back, so each row carries the sentinel until it is retyped.
-        headers: service.headers.map((header) => ({
+        customHeaders: service.customHeaders.map((header) => ({
           id: header.id,
           name: header.name,
           prefix: header.prefix,
@@ -228,7 +228,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
   // An untouched row sends no value at all, which the API reads as "keep what is stored".
   const buildTransformations = (data: TServiceForm) => ({
-    headers: data.headers.map((header) => ({
+    customHeaders: data.customHeaders.map((header) => ({
       ...(header.id ? { id: header.id } : {}),
       name: header.name,
       prefix: header.prefix,
@@ -294,7 +294,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           allowedMethods: ServiceStep.Details,
           allowedPathPrefixes: ServiceStep.Details,
           credential: ServiceStep.Credential,
-          headers: ServiceStep.Transformations,
+          customHeaders: ServiceStep.Transformations,
           substitutions: ServiceStep.Transformations
         };
 
@@ -316,9 +316,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
             return;
           }
 
-          // Index-addressed issues (headers.0.name) keep their path so the row's own field is marked.
+          // Index-addressed issues (customHeaders.0.name) keep their path so the row's own field is marked.
           const target =
-            issue.path.length > 1 && (root === "headers" || root === "substitutions")
+            issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
               ? (issue.path.join(".") as keyof TServiceForm)
               : (FORM_FIELD_OF[root] ?? (root as keyof TServiceForm));
 

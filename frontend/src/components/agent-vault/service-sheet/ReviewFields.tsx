@@ -93,8 +93,8 @@ export const ReviewFields = ({ isUpdate }: Props) => {
         </DetailGroupHeader>
         {/* One line each, so a header reads the way it goes out on the wire. */}
         <div className="flex flex-col gap-1.5 text-sm text-foreground">
-          {form.headers.length === 0 && form.substitutions.length === 0 && <p>{NONE}</p>}
-          {form.headers
+          {form.customHeaders.length === 0 && form.substitutions.length === 0 && <p>{NONE}</p>}
+          {form.customHeaders
             .filter((header) => header.name)
             .map((header) => (
               <p key={header.name}>

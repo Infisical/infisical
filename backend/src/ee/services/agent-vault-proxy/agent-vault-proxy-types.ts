@@ -55,6 +55,6 @@ export type TResolvedService = {
     | { type: "bearer"; headerName: string; headerPrefix: string; value: string }
     | { type: "basic"; username: string; password: string }
     | { type: "passthrough" };
-  headers: { name: string; prefix: string; value: string }[];
+  customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];
 };

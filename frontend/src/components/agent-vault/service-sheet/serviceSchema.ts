@@ -31,10 +31,10 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
 
 export const HTTP_METHODS = Object.values(AgentVaultHttpMethod);
 
-// Mirrors AGENT_VAULT_MAX_HEADERS / AGENT_VAULT_MAX_SUBSTITUTIONS / AGENT_VAULT_MAX_PATH_PREFIXES on the
+// Mirrors AGENT_VAULT_MAX_CUSTOM_HEADERS / AGENT_VAULT_MAX_SUBSTITUTIONS / AGENT_VAULT_MAX_PATH_PREFIXES on the
 // backend. Without these the only thing enforcing the cap is the server, and its rejection names an array
 // root that no field renders.
-export const MAX_HEADERS = 20;
+export const MAX_CUSTOM_HEADERS = 20;
 export const MAX_SUBSTITUTIONS = 20;
 export const MAX_PATH_PREFIXES = 20;
 
@@ -91,7 +91,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "pathDraft"
   ],
   [ServiceStep.Credential]: ["credentialType", "headerName", "headerPrefix", "username", "secret"],
-  [ServiceStep.Transformations]: ["headers", "substitutions"],
+  [ServiceStep.Transformations]: ["customHeaders", "substitutions"],
   [ServiceStep.Review]: []
 };
 
@@ -123,7 +123,7 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
       pathPrefixes: z
         .array(z.string())
         .max(MAX_PATH_PREFIXES, `You can add at most ${MAX_PATH_PREFIXES} path prefixes.`),
-      headers: z
+      customHeaders: z
         .array(
           z.object({
             id: z.string().optional(),
@@ -132,7 +132,7 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
             value: z.string().max(8192)
           })
         )
-        .max(MAX_HEADERS, `You can add at most ${MAX_HEADERS} headers.`),
+        .max(MAX_CUSTOM_HEADERS, `You can add at most ${MAX_CUSTOM_HEADERS} custom headers.`),
       substitutions: z
         .array(
           z.object({
@@ -198,9 +198,13 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
       }
 
       const seenHeaders = new Set<string>();
-      data.headers.forEach((header, index) => {
+      data.customHeaders.forEach((header, index) => {
         const at = (field: string, message: string) =>
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["headers", index, field], message });
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["customHeaders", index, field],
+            message
+          });
 
         if (!header.name) {
           at("name", "Required");

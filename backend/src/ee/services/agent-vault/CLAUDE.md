@@ -155,9 +155,14 @@ the matching at runtime and reimplements the same rules, so a change here needs 
 
 ## Transformations
 
-Two child tables, `agent_vault_service_headers` and `agent_vault_service_substitutions`. They share a
+Two child tables, `agent_vault_service_custom_headers` and `agent_vault_service_substitutions`. They share a
 lifecycle but not a shape, and their only common column is the sealed value, so they are not one table with
 a `kind` column the way `proxied_service_credentials` is.
+
+"Custom header" is the name in every layer: the table, the DAL, the `customHeaders` field on both the
+management API and the resolve payload, the Go struct, and the UI. Unqualified "header" in this product
+means the credential's own header, and the two names sitting one word apart is what made a custom header
+silently overwriting the credential easy to miss in review.
 
 - Every value is sealed with the project cipher, header values included. There is no non-secret header.
 - A PATCH sends the whole list and the service diffs it. A row resolves to a stored one by `id` when the

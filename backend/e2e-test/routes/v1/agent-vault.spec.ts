@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
-import { agentVaultServiceHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-header-dal";
+import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
@@ -470,7 +470,7 @@ describe("Agent Vault V1 Router", async () => {
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "passthrough" },
-        headers: [{ name: "X-Org-Id", value: "org_secret_value" }],
+        customHeaders: [{ name: "X-Org-Id", value: "org_secret_value" }],
         substitutions: [{ placeholder: "__GITHUB_PAT__", surfaces: ["header", "path"], value: "ghp_real_value" }]
       });
       expect(created.statusCode).toBe(200);
@@ -480,27 +480,27 @@ describe("Agent Vault V1 Router", async () => {
       const { service } = JSON.parse(created.payload) as {
         service: {
           id: string;
-          headers: { id: string; name: string; prefix: string }[];
+          customHeaders: { id: string; name: string; prefix: string }[];
           substitutions: { id: string; placeholder: string; surfaces: string[] }[];
         };
       };
-      expect(service.headers).toHaveLength(1);
-      expect(service.headers[0].name).toBe("X-Org-Id");
+      expect(service.customHeaders).toHaveLength(1);
+      expect(service.customHeaders[0].name).toBe("X-Org-Id");
       expect(service.substitutions[0].surfaces).toEqual(["header", "path"]);
 
       const detail = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
       expect(detail.payload).not.toContain("org_secret_value");
       expect(detail.payload).not.toContain("ghp_real_value");
 
-      const headerRow = await testDb("agent_vault_service_headers").where({ serviceId: service.id }).first();
-      expect(headerRow.encryptedValue.toString("utf-8")).not.toContain("org_secret_value");
+      const customHeaderRow = await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id }).first();
+      expect(customHeaderRow.encryptedValue.toString("utf-8")).not.toContain("org_secret_value");
 
       const removed = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`);
       expect(removed.statusCode).toBe(200);
       expect(removed.payload).not.toContain("org_secret_value");
       // The delete response still reports what was removed, read before the cascade.
-      expect(JSON.parse(removed.payload).service.headers).toHaveLength(1);
-      expect(await testDb("agent_vault_service_headers").where({ serviceId: service.id })).toHaveLength(0);
+      expect(JSON.parse(removed.payload).service.customHeaders).toHaveLength(1);
+      expect(await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id })).toHaveLength(0);
     });
 
     test("a row keeps its stored value whether it is named by id or by name", async () => {
@@ -510,51 +510,51 @@ describe("Agent Vault V1 Router", async () => {
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "passthrough" },
-        headers: [{ name: "X-Org-Id", value: "first_value" }]
+        customHeaders: [{ name: "X-Org-Id", value: "first_value" }]
       });
       const { service } = JSON.parse(created.payload) as {
-        service: { id: string; headers: { id: string }[] };
+        service: { id: string; customHeaders: { id: string }[] };
       };
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
-      const headerId = service.headers[0].id;
+      const customHeaderId = service.customHeaders[0].id;
       const sealed = async () =>
-        (await testDb("agent_vault_service_headers").where({ serviceId: service.id }).first()).encryptedValue as Buffer;
+        (await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id }).first()).encryptedValue as Buffer;
       const before = await sealed();
 
       // By id, which is what the sheet sends, and the only way to rename while keeping the secret.
-      const renamed = await inject("PATCH", url, { headers: [{ id: headerId, name: "X-Organization-Id" }] });
+      const renamed = await inject("PATCH", url, { customHeaders: [{ id: customHeaderId, name: "X-Organization-Id" }] });
       expect(renamed.statusCode).toBe(200);
-      expect(JSON.parse(renamed.payload).service.headers[0].id).toBe(headerId);
-      expect(JSON.parse(renamed.payload).service.headers[0].name).toBe("X-Organization-Id");
+      expect(JSON.parse(renamed.payload).service.customHeaders[0].id).toBe(customHeaderId);
+      expect(JSON.parse(renamed.payload).service.customHeaders[0].name).toBe("X-Organization-Id");
       expect((await sealed()).equals(before)).toBe(true);
 
       // By name, with no id at all, which is what a hand-written API call looks like.
-      const byName = await inject("PATCH", url, { headers: [{ name: "X-Organization-Id", prefix: "Token" }] });
+      const byName = await inject("PATCH", url, { customHeaders: [{ name: "X-Organization-Id", prefix: "Token" }] });
       expect(byName.statusCode).toBe(200);
-      expect(JSON.parse(byName.payload).service.headers[0].id).toBe(headerId);
-      expect(JSON.parse(byName.payload).service.headers[0].prefix).toBe("Token");
+      expect(JSON.parse(byName.payload).service.customHeaders[0].id).toBe(customHeaderId);
+      expect(JSON.parse(byName.payload).service.customHeaders[0].prefix).toBe("Token");
       expect((await sealed()).equals(before)).toBe(true);
 
       // A name nothing matches is a create, so it needs a value.
       const newRowNoValue = await inject("PATCH", url, {
-        headers: [{ name: "X-Organization-Id" }, { name: "X-New" }]
+        customHeaders: [{ name: "X-Organization-Id" }, { name: "X-New" }]
       });
       expect(newRowNoValue.statusCode).toBe(400);
 
       // The same id twice would resolve both rows to one and silently drop the first.
       const duplicateId = await inject("PATCH", url, {
-        headers: [
-          { id: headerId, name: "X-A", value: "a" },
-          { id: headerId, name: "X-B", value: "b" }
+        customHeaders: [
+          { id: customHeaderId, name: "X-A", value: "a" },
+          { id: customHeaderId, name: "X-B", value: "b" }
         ]
       });
       expect(duplicateId.statusCode).toBe(400);
 
       // A row the caller left out is removed.
-      const emptied = await inject("PATCH", url, { headers: [] });
+      const emptied = await inject("PATCH", url, { customHeaders: [] });
       expect(emptied.statusCode).toBe(200);
-      expect(JSON.parse(emptied.payload).service.headers).toHaveLength(0);
-      expect(await testDb("agent_vault_service_headers").where({ serviceId: service.id })).toHaveLength(0);
+      expect(JSON.parse(emptied.payload).service.customHeaders).toHaveLength(0);
+      expect(await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id })).toHaveLength(0);
     });
 
     test("a custom header cannot shadow the credential's own header, from either side", async () => {
@@ -564,7 +564,7 @@ describe("Agent Vault V1 Router", async () => {
         name: "clash",
         hostPattern: "api.clash.example.com",
         credential: { type: "bearer", headerName: "X-Api-Key", headerPrefix: "", value: "k" },
-        headers: [{ name: "x-api-key", value: "shadow" }]
+        customHeaders: [{ name: "x-api-key", value: "shadow" }]
       });
       expect(clash.statusCode).toBe(400);
       expect(JSON.parse(clash.payload).message).toContain("X-Api-Key");
@@ -573,14 +573,14 @@ describe("Agent Vault V1 Router", async () => {
         name: "github",
         hostPattern: "api.github.com",
         credential: { type: "bearer", headerName: "X-Api-Key", headerPrefix: "", value: "k" },
-        headers: [{ name: "X-Org-Id", value: "org" }]
+        customHeaders: [{ name: "X-Org-Id", value: "org" }]
       });
       expect(created.statusCode).toBe(200);
       const { service } = JSON.parse(created.payload) as { service: { id: string } };
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
 
       // A headers-only PATCH never reaches mergeCredential, so the check cannot live only there.
-      const headersOnly = await inject("PATCH", url, { headers: [{ name: "X-Api-Key", value: "shadow" }] });
+      const headersOnly = await inject("PATCH", url, { customHeaders: [{ name: "X-Api-Key", value: "shadow" }] });
       expect(headersOnly.statusCode).toBe(400);
 
       // And a credential-only PATCH carries no header name in the body, so the check cannot read the body.
@@ -593,7 +593,7 @@ describe("Agent Vault V1 Router", async () => {
       // Basic writes Authorization even though its config names no header.
       const basicClash = await inject("PATCH", url, {
         credential: { type: "basic", username: "u", password: "p" },
-        headers: [{ name: "Authorization", value: "shadow" }]
+        customHeaders: [{ name: "Authorization", value: "shadow" }]
       });
       expect(basicClash.statusCode).toBe(400);
     });
@@ -604,7 +604,7 @@ describe("Agent Vault V1 Router", async () => {
         name: "reserved",
         hostPattern: "api.reserved.example.com",
         credential: { type: "passthrough" },
-        headers: [{ name: "Host", value: "evil.example.com" }]
+        customHeaders: [{ name: "Host", value: "evil.example.com" }]
       });
       expect(res.statusCode).toBe(422);
     });
@@ -1105,7 +1105,7 @@ describe("Agent Vault V1 Router", async () => {
       agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
-        agentVaultServiceHeaderDAL: agentVaultServiceHeaderDALFactory(testDb),
+        agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -1125,7 +1125,7 @@ describe("Agent Vault V1 Router", async () => {
         allowedMethods: ["GET"],
         allowedPathPrefixes: ["/repos"],
         credential: { type: "passthrough" },
-        headers: [{ name: "X-Org-Id", prefix: "Org", value: "org_secret" }],
+        customHeaders: [{ name: "X-Org-Id", prefix: "Org", value: "org_secret" }],
         substitutions: [{ placeholder: "__GITHUB_PAT__", surfaces: ["header"], value: "ghp_secret" }]
       });
       expect(created.statusCode).toBe(200);
@@ -1147,7 +1147,7 @@ describe("Agent Vault V1 Router", async () => {
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
-        agentVaultServiceHeaderDAL: agentVaultServiceHeaderDALFactory(testDb),
+        agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -1170,7 +1170,7 @@ describe("Agent Vault V1 Router", async () => {
       const [service] = resolved.services;
       expect(service.allowedMethods).toEqual(["GET"]);
       expect(service.allowedPathPrefixes).toEqual(["/repos"]);
-      expect(service.headers).toEqual([{ name: "X-Org-Id", prefix: "Org", value: "unsealed" }]);
+      expect(service.customHeaders).toEqual([{ name: "X-Org-Id", prefix: "Org", value: "unsealed" }]);
       expect(service.substitutions).toEqual([
         { placeholder: "__GITHUB_PAT__", surfaces: ["header"], value: "unsealed" }
       ]);
@@ -1300,7 +1300,7 @@ describe("Agent Vault V1 Router", async () => {
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
-        agentVaultServiceHeaderDAL: agentVaultServiceHeaderDALFactory(testDb),
+        agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -1898,7 +1898,7 @@ describe("Agent Vault V1 Router", async () => {
         const resolver = agentVaultProxyServiceFactory({
           agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
-          agentVaultServiceHeaderDAL: agentVaultServiceHeaderDALFactory(testDb),
+          agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
@@ -1985,7 +1985,7 @@ describe("Agent Vault V1 Router", async () => {
         const resolver = agentVaultProxyServiceFactory({
           agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
-          agentVaultServiceHeaderDAL: agentVaultServiceHeaderDALFactory(testDb),
+          agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),

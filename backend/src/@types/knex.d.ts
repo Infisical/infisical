@@ -26,9 +26,9 @@ import {
   TAgentVaultProxies,
   TAgentVaultProxiesInsert,
   TAgentVaultProxiesUpdate,
-  TAgentVaultServiceHeaders,
-  TAgentVaultServiceHeadersInsert,
-  TAgentVaultServiceHeadersUpdate,
+  TAgentVaultServiceCustomHeaders,
+  TAgentVaultServiceCustomHeadersInsert,
+  TAgentVaultServiceCustomHeadersUpdate,
   TAgentVaultServices,
   TAgentVaultServicesInsert,
   TAgentVaultServiceSubstitutions,
@@ -1791,10 +1791,10 @@ declare module "knex/types/tables" {
       TAgentVaultServicesInsert,
       TAgentVaultServicesUpdate
     >;
-    [TableName.AgentVaultServiceHeader]: KnexOriginal.CompositeTableType<
-      TAgentVaultServiceHeaders,
-      TAgentVaultServiceHeadersInsert,
-      TAgentVaultServiceHeadersUpdate
+    [TableName.AgentVaultServiceCustomHeader]: KnexOriginal.CompositeTableType<
+      TAgentVaultServiceCustomHeaders,
+      TAgentVaultServiceCustomHeadersInsert,
+      TAgentVaultServiceCustomHeadersUpdate
     >;
     [TableName.AgentVaultServiceSubstitution]: KnexOriginal.CompositeTableType<
       TAgentVaultServiceSubstitutions,

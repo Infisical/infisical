@@ -20,7 +20,7 @@ import { AgentVaultSubstitutionSurface } from "@app/hooks/api/agentVault";
 
 import { SecretInput } from "./CredentialFields";
 import {
-  MAX_HEADERS,
+  MAX_CUSTOM_HEADERS,
   MAX_SUBSTITUTIONS,
   SURFACE_LABELS,
   TServiceForm,
@@ -31,27 +31,29 @@ const SURFACES = Object.values(AgentVaultSubstitutionSurface);
 
 export const TransformationsFields = () => {
   const { control } = useFormContext<TServiceForm>();
-  const headers = useFieldArray({ control, name: "headers" });
+  const customHeaders = useFieldArray({ control, name: "customHeaders" });
   const substitutions = useFieldArray({ control, name: "substitutions" });
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
         <div>
-          <p className="text-sm font-medium">Custom headers</p>
+          <p className="text-sm font-medium">Custom customHeaders</p>
           <p className="mt-1 text-xs text-muted">
             Added to every request to this service, on top of the credential.
           </p>
         </div>
         <div className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4">
-          {headers.fields.length === 0 && (
-            <p className="text-center text-sm text-muted">No custom headers added. Add one below.</p>
+          {customHeaders.fields.length === 0 && (
+            <p className="text-center text-sm text-muted">
+              No custom customHeaders added. Add one below.
+            </p>
           )}
-          {headers.fields.map((row, index) => (
+          {customHeaders.fields.map((row, index) => (
             <div key={row.id} className="flex items-start gap-3">
               <Controller
                 control={control}
-                name={`headers.${index}.name`}
+                name={`customHeaders.${index}.name`}
                 render={({ field, fieldState }) => (
                   <Field className="flex-1">
                     <FieldContent>
@@ -69,7 +71,7 @@ export const TransformationsFields = () => {
               />
               <Controller
                 control={control}
-                name={`headers.${index}.prefix`}
+                name={`customHeaders.${index}.prefix`}
                 render={({ field, fieldState }) => (
                   <Field className="w-28">
                     <FieldContent>
@@ -87,7 +89,7 @@ export const TransformationsFields = () => {
               />
               <Controller
                 control={control}
-                name={`headers.${index}.value`}
+                name={`customHeaders.${index}.value`}
                 render={({ field, fieldState }) => (
                   <Field className="flex-1">
                     <FieldContent>
@@ -113,7 +115,7 @@ export const TransformationsFields = () => {
                   index === 0 ? "mt-6.5" : "mt-0.5",
                   "transition-transform hover:text-danger"
                 )}
-                onClick={() => headers.remove(index)}
+                onClick={() => customHeaders.remove(index)}
               >
                 <TrashIcon className="size-4" />
               </IconButton>
@@ -121,12 +123,12 @@ export const TransformationsFields = () => {
           ))}
         </div>
 
-        {headers.fields.length < MAX_HEADERS && (
+        {customHeaders.fields.length < MAX_CUSTOM_HEADERS && (
           <Button
             variant="ghost"
             size="xs"
             className="self-start"
-            onClick={() => headers.append({ name: "", prefix: "", value: "" })}
+            onClick={() => customHeaders.append({ name: "", prefix: "", value: "" })}
           >
             <PlusIcon className="mr-1 size-4" />
             Add Custom Header
@@ -135,7 +137,7 @@ export const TransformationsFields = () => {
 
         <Controller
           control={control}
-          name="headers"
+          name="customHeaders"
           render={({ fieldState }) => <FieldError>{fieldState.error?.message}</FieldError>}
         />
       </div>

@@ -14,12 +14,9 @@ describe("agent vault path prefixes", () => {
       ["/a,b"],
       ["/tenants/acme:v2@edge"],
       ["/~user/$data"]
-    ])(
-      "accepts %s",
-      (prefix) => {
-        expect(agentVaultPathPrefixListSchema.safeParse([prefix]).success).toBe(true);
-      }
-    );
+    ])("accepts %s", (prefix) => {
+      expect(agentVaultPathPrefixListSchema.safeParse([prefix]).success).toBe(true);
+    });
 
     it.each([
       ["repos", "must start with a /"],

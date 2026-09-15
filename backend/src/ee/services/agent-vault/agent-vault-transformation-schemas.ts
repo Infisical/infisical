@@ -10,7 +10,7 @@ import {
 } from "./agent-vault-credential-schemas";
 import { AgentVaultSubstitutionSurface } from "./agent-vault-enums";
 
-export const AGENT_VAULT_MAX_HEADERS = 20;
+export const AGENT_VAULT_MAX_CUSTOM_HEADERS = 20;
 export const AGENT_VAULT_MAX_SUBSTITUTIONS = 20;
 
 // The proxy sets these itself, or strips them as hop-by-hop. Letting a service name one would either be
@@ -99,17 +99,17 @@ export const AgentVaultSubstitutionUpdateSchema = z.object({
 type TNamed = { name: string };
 type TPlaceheld = { placeholder: string };
 
-// Header names collide case-insensitively because that is how the proxy sets them; placeholders are
+// Custom header names collide case-insensitively because that is how the proxy sets them; placeholders are
 // matched literally, so they collide exactly. Both are what the update path resolves rows by, so a
 // duplicate here would make "which stored row did the caller mean" unanswerable.
-export const addDuplicateHeaderNameIssues = (headers: TNamed[], ctx: z.RefinementCtx) => {
+export const addDuplicateCustomHeaderNameIssues = (headers: TNamed[], ctx: z.RefinementCtx) => {
   const seen = new Set<string>();
   headers.forEach((header, index) => {
     const key = header.name.toLowerCase();
     if (seen.has(key)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `The header "${header.name}" is listed twice.`,
+        message: `The custom header "${header.name}" is listed twice.`,
         path: [index, "name"]
       });
     }

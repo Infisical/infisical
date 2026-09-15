@@ -66,7 +66,7 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   credential: TAgentVaultCredentialInput;
-  headers?: TAgentVaultCustomHeaderInput[];
+  customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
 };
 
@@ -80,7 +80,7 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   allowedPathPrefixes?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
   // undefined leaves the list alone; an array replaces it wholesale.
-  headers?: TAgentVaultCustomHeaderUpdate[];
+  customHeaders?: TAgentVaultCustomHeaderUpdate[];
   substitutions?: TAgentVaultSubstitutionUpdate[];
 };
 

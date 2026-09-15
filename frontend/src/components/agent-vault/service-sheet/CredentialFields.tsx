@@ -44,7 +44,7 @@ export const credentialPreview = (
 type SecretName =
   | "secret"
   | "username"
-  | `headers.${number}.value`
+  | `customHeaders.${number}.value`
   | `substitutions.${number}.value`;
 
 export const SecretInput = <TName extends SecretName>({
