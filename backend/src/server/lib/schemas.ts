@@ -2,6 +2,7 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { TemporaryPermissionMode } from "@app/db/schemas";
+import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
@@ -48,6 +49,14 @@ export const SecretNameSchema = BaseSecretNameSchema.refine(
   (el) => !el.includes(":") && !el.includes("/"),
   "Secret name cannot contain colon or forward slash."
 );
+
+export const safeDecodeURIComponent = (val: string): string => {
+  try {
+    return decodeURIComponent(val);
+  } catch {
+    throw new BadRequestError({ message: "Malformed URL encoding in query parameters" });
+  }
+};
 
 /**
  * Helper to hide a field from OpenAPI documentation while still accepting it in the API.
