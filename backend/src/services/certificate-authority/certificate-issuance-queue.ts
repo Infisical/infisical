@@ -3,6 +3,7 @@ import { UnrecoverableError } from "bullmq";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -183,6 +184,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
@@ -212,6 +214,7 @@ export const certificateIssuanceQueueFactory = ({
   apiEnrollmentConfigDAL,
   gatewayV2Service,
   gatewayPoolService,
+  keyStore,
   telemetryService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
@@ -227,7 +230,10 @@ export const certificateIssuanceQueueFactory = ({
     projectDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    certificateProfileDAL
+    certificateProfileDAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    keyStore
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({

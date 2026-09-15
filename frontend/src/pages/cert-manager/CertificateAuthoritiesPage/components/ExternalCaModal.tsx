@@ -35,6 +35,7 @@ import {
 } from "@app/hooks/api/appConnections/digicert";
 import { useDNSMadeEasyConnectionListZones } from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { usePowerDnsConnectionListZones } from "@app/hooks/api/appConnections/powerdns";
 import {
   AcmeDnsProvider,
   CaStatus,
@@ -394,6 +395,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availablePowerDnsConnections, isPending: isPowerDnsPending } =
+    useListAvailableAppConnections(AppConnection.PowerDns, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -450,7 +456,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...(availableRoute53Connections || []),
       ...(availableCloudflareConnections || []),
       ...(availableDNSMadeEasyConnections || []),
-      ...(availableAzureDNSConnections || [])
+      ...(availableAzureDNSConnections || []),
+      ...(availablePowerDnsConnections || [])
     ];
   }, [
     caType,
@@ -458,6 +465,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
+    availablePowerDnsConnections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -467,7 +475,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   ]);
 
   const isPending =
-    ((isRoute53Pending || isCloudflarePending || isDNSMadeEasyPending || isAzureDNSPending) &&
+    ((isRoute53Pending ||
+      isCloudflarePending ||
+      isDNSMadeEasyPending ||
+      isAzureDNSPending ||
+      isPowerDnsPending) &&
       caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||
@@ -494,6 +506,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: azureDnsZones = [], isPending: isAzureDNSZonesPending } =
     useAzureDNSConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.AzureDNS && !!dnsAppConnection.id
+    });
+
+  const { data: powerDnsZones = [], isPending: isPowerDnsZonesPending } =
+    usePowerDnsConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.PowerDns && !!dnsAppConnection.id
     });
 
   // Populate form with CA data when editing
@@ -955,6 +972,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
                   azureDnsZones={azureDnsZones}
                   isAzureDNSZonesPending={isAzureDNSZonesPending}
+                  powerDnsZones={powerDnsZones}
+                  isPowerDnsZonesPending={isPowerDnsZonesPending}
+                  onDnsSelectionChange={() =>
+                    setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
+                      shouldDirty: true
+                    })
+                  }
                 />
               )}
               {caType === CaType.AZURE_AD_CS && (

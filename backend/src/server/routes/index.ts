@@ -3443,7 +3443,9 @@ export const registerRoutes = async (
     pkiSyncDAL,
     pkiSyncQueue,
     internalCertificateAuthorityDAL,
-    hsmConnectorService
+    hsmConnectorService,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -3514,7 +3516,8 @@ export const registerRoutes = async (
     hsmConnectorService,
     certificateAuthoritySecretDAL,
     licenseService,
-    telemetryService
+    telemetryService,
+    keyStore
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3646,7 +3649,8 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL,
     gatewayV2Service,
     gatewayPoolService,
-    telemetryService
+    telemetryService,
+    keyStore
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
