@@ -18,6 +18,7 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
+import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
@@ -42,15 +43,23 @@ import {
   UNCHANGED_SECRET
 } from "./serviceSchema";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
+import { TransformationsFields } from "./TransformationsFields";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
   name: "",
-  hostPattern: "",
+  hosts: [],
+  hostDraft: "",
+  pathDraft: "",
   credentialType: AgentVaultCredentialType.Bearer,
   headerName: "Authorization",
   headerPrefix: "Bearer",
   username: "",
-  secret: ""
+  secret: "",
+  allMethods: true,
+  methods: [],
+  pathPrefixes: [],
+  customHeaders: [],
+  substitutions: []
 };
 
 type Props = {
@@ -69,7 +78,10 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
   const schema = useMemo(() => buildServiceSchema(service), [service]);
 
-  const formMethods = useForm<TServiceForm>({ resolver: zodResolver(schema) });
+  const formMethods = useForm<TServiceForm>({
+    defaultValues: BLANK_SERVICE_FORM,
+    resolver: zodResolver(schema)
+  });
   const {
     handleSubmit,
     reset,
@@ -104,8 +116,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     if (service) {
       const { credential } = service;
       reset({
+        ...BLANK_SERVICE_FORM,
         name: service.name,
-        hostPattern: displayHostPattern(service.hostPattern),
+        hosts: displayHostPattern(service.hostPattern).split(", "),
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
         // the same defaults a new service gets. Left undefined, the submit would send an empty
@@ -117,7 +130,23 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
         username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
-        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET
+        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
+        allMethods: service.allowedMethods === null,
+        methods: service.allowedMethods ?? [],
+        pathPrefixes: service.allowedPathPrefixes ?? [],
+        // The stored values never come back, so each row carries the sentinel until it is retyped.
+        customHeaders: service.customHeaders.map((header) => ({
+          id: header.id,
+          name: header.name,
+          prefix: header.prefix,
+          value: UNCHANGED_SECRET
+        })),
+        substitutions: service.substitutions.map((substitution) => ({
+          id: substitution.id,
+          placeholder: substitution.placeholder,
+          surfaces: substitution.surfaces,
+          value: UNCHANGED_SECRET
+        }))
       });
     } else {
       reset(BLANK_SERVICE_FORM);
@@ -129,10 +158,14 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
     if (picked) {
       const cred = picked.credential;
+      // A template placeholder like <your-tenant>.atlassian.net is not a host, so it goes into the draft.
+      const parts = picked.hostPattern.split(",").map((host) => host.trim());
+
       reset({
         ...BLANK_SERVICE_FORM,
         name: picked.key,
-        hostPattern: picked.hostPattern,
+        hosts: parts.filter((host) => !hostError(host, [])),
+        hostDraft: parts.find((host) => Boolean(hostError(host, []))) ?? "",
         credentialType: cred.type,
         ...(cred.type === AgentVaultCredentialType.Bearer && {
           headerName: cred.headerName ?? "Authorization",
@@ -185,6 +218,26 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     };
   };
 
+  const buildPolicy = (data: TServiceForm) => ({
+    allowedMethods: data.allMethods ? null : data.methods,
+    allowedPathPrefixes: data.pathPrefixes.length ? data.pathPrefixes : null
+  });
+
+  const buildTransformations = (data: TServiceForm) => ({
+    customHeaders: data.customHeaders.map((header) => ({
+      ...(header.id ? { id: header.id } : {}),
+      name: header.name,
+      prefix: header.prefix,
+      ...(header.value === UNCHANGED_SECRET ? {} : { value: header.value })
+    })),
+    substitutions: data.substitutions.map((substitution) => ({
+      ...(substitution.id ? { id: substitution.id } : {}),
+      placeholder: substitution.placeholder,
+      surfaces: substitution.surfaces,
+      ...(substitution.value === UNCHANGED_SECRET ? {} : { value: substitution.value })
+    }))
+  });
+
   const onSubmit = async (data: TServiceForm) => {
     try {
       if (service) {
@@ -192,15 +245,19 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           accessBundleId,
           serviceId: service.id,
           name: data.name,
-          hostPattern: data.hostPattern,
-          credential: buildCredentialPatch(data)
+          hostPattern: data.hosts.join(","),
+          ...buildPolicy(data),
+          credential: buildCredentialPatch(data),
+          ...buildTransformations(data)
         });
       } else {
         await createService.mutateAsync({
           accessBundleId,
           name: data.name,
-          hostPattern: data.hostPattern,
-          credential: buildCredential(data)
+          hostPattern: data.hosts.join(","),
+          ...buildPolicy(data),
+          credential: buildCredential(data),
+          ...buildTransformations(data)
         });
       }
 
@@ -219,23 +276,52 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.includes("already covers")
       ) {
-        setError("hostPattern", { type: "server", message: serverResponse.message });
+        setError("hosts", { type: "server", message: serverResponse.message });
         setStep(stepKeys.indexOf(ServiceStep.Details));
         return;
       }
 
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-        const hostIssues = serverResponse.message.filter(
-          (issue) => issue.path[0] === "hostPattern"
-        );
-        if (hostIssues.length > 0) {
-          setError("hostPattern", {
-            type: "server",
-            message: hostIssues.map((issue) => issue.message).join(" ")
-          });
-          setStep(stepKeys.indexOf(ServiceStep.Details));
-        }
-        if (hostIssues.length < serverResponse.message.length) onRequestError(error);
+        const STEP_OF_FIELD: Record<string, ServiceStep> = {
+          name: ServiceStep.Details,
+          hostPattern: ServiceStep.Details,
+          allowedMethods: ServiceStep.Details,
+          allowedPathPrefixes: ServiceStep.Details,
+          credential: ServiceStep.Credential,
+          customHeaders: ServiceStep.Transformations,
+          substitutions: ServiceStep.Transformations
+        };
+
+        const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
+          hostPattern: "hosts",
+          allowedMethods: "methods",
+          allowedPathPrefixes: "pathPrefixes",
+          credential: "secret"
+        };
+
+        let earliestStep: number | null = null;
+        let unmapped = false;
+
+        serverResponse.message.forEach((issue) => {
+          const root = String(issue.path[0]);
+          const issueStep = STEP_OF_FIELD[root];
+          if (!issueStep) {
+            unmapped = true;
+            return;
+          }
+
+          const target =
+            issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
+              ? (issue.path.join(".") as keyof TServiceForm)
+              : (FORM_FIELD_OF[root] ?? (root as keyof TServiceForm));
+
+          setError(target, { type: "server", message: issue.message });
+          const index = stepKeys.indexOf(issueStep);
+          if (index !== -1 && (earliestStep === null || index < earliestStep)) earliestStep = index;
+        });
+
+        if (earliestStep !== null) setStep(earliestStep);
+        if (unmapped) onRequestError(error);
         return;
       }
 
@@ -289,7 +375,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         requestDiscard();
       }}
     >
-      <SheetContent className="sm:max-w-6xl">
+      {/* Same width as the proxied service sheet, which this whole layout mirrors: three columns need more
+          than the Sheet default, which caps at sm:max-w-md and leaves the middle one about 445px. */}
+      <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw] xl:max-w-7xl">
         <SheetHeader>
           {isTemplateStep ? (
             <>
@@ -354,6 +442,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   {current.step === ServiceStep.Credential && (
                     <CredentialFields storedType={service?.credential.type} />
                   )}
+                  {current.step === ServiceStep.Transformations && <TransformationsFields />}
                   {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
 

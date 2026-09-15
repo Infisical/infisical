@@ -27,7 +27,9 @@ import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agen
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
+import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
@@ -1808,6 +1810,8 @@ export const registerRoutes = async (
 
   const agentVaultAccessBundleDAL = agentVaultAccessBundleDALFactory(db);
   const agentVaultServiceDAL = agentVaultServiceDALFactory(db);
+  const agentVaultServiceCustomHeaderDAL = agentVaultServiceCustomHeaderDALFactory(db);
+  const agentVaultServiceSubstitutionDAL = agentVaultServiceSubstitutionDALFactory(db);
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
@@ -1816,6 +1820,8 @@ export const registerRoutes = async (
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
+    agentVaultServiceCustomHeaderDAL,
+    agentVaultServiceSubstitutionDAL,
     permissionService,
     kmsService,
     membershipDAL,
@@ -1942,6 +1948,8 @@ export const registerRoutes = async (
   const agentVaultProxyService = agentVaultProxyServiceFactory({
     agentVaultProxyDAL,
     agentVaultResolveDAL,
+    agentVaultServiceCustomHeaderDAL,
+    agentVaultServiceSubstitutionDAL,
     agentVaultSessionDAL,
     membershipDAL,
     orgDAL,

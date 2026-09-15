@@ -1,5 +1,9 @@
 import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
-import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultHttpMethod,
+  AgentVaultSubstitutionSurface
+} from "../agent-vault/agent-vault-enums";
 
 export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Bearer; headerName?: string; headerPrefix?: string; value: string }
@@ -35,11 +39,34 @@ export type TUpdateAccessBundleDTO = TAgentVaultProjectScoped & {
 
 export type TDeleteAccessBundleDTO = TAgentVaultProjectScoped & { accessBundleId: string };
 
+export type TAgentVaultCustomHeaderInput = { name: string; prefix?: string; value: string };
+
+// `id` is optional because a row is matched by its name when the caller did not send one, and `value` is
+// optional because omitting it keeps whatever is sealed for the row that matched.
+export type TAgentVaultCustomHeaderUpdate = { id?: string; name: string; prefix?: string; value?: string };
+
+export type TAgentVaultSubstitutionInput = {
+  placeholder: string;
+  surfaces: AgentVaultSubstitutionSurface[];
+  value: string;
+};
+
+export type TAgentVaultSubstitutionUpdate = {
+  id?: string;
+  placeholder: string;
+  surfaces: AgentVaultSubstitutionSurface[];
+  value?: string;
+};
+
 export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   name: string;
   hostPattern: string;
+  allowedMethods?: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes?: string[] | null;
   credential: TAgentVaultCredentialInput;
+  customHeaders?: TAgentVaultCustomHeaderInput[];
+  substitutions?: TAgentVaultSubstitutionInput[];
 };
 
 export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
@@ -47,7 +74,11 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   serviceId: string;
   name?: string;
   hostPattern?: string;
+  allowedMethods?: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
+  customHeaders?: TAgentVaultCustomHeaderUpdate[];
+  substitutions?: TAgentVaultSubstitutionUpdate[];
 };
 
 export type TDeleteServiceDTO = TAgentVaultProjectScoped & {

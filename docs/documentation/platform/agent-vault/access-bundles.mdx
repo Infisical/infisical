@@ -31,7 +31,7 @@ Each service has a name, the hosts it covers, and a credential. Open an access b
 | ---------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | **Bearer**       | One header, `<header name>: <prefix> <value>`. Defaults to `Authorization: Bearer <value>`.          | Most APIs. Set the header name to `X-API-Key` and clear the prefix for APIs that take a bare key. |
 | **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be blank.                      | APIs behind HTTP basic auth, including ones that put the whole key in the username.         |
-| **Pass-through** | Nothing. The request is forwarded unchanged.                                                         | To make a host reachable on a proxy that allows only access bundle hosts. See [Traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). |
+| **Pass-through** | Nothing, unless the service has transformations. Otherwise the request is forwarded unchanged.       | To make a host reachable on a proxy that allows only access bundle hosts. See [Traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). |
 
 The first step offers a **Template** for common services, which fills in the hosts and the header. Choose **Custom** to set them yourself.
 
@@ -43,7 +43,7 @@ If the agent's request already carries a header with the same name, the proxy re
 
 ### Host patterns
 
-A host pattern is a comma-separated list of hosts, each with an optional port:
+A service covers one or more hosts, each with an optional port:
 
 ```text
 api.github.com, uploads.github.com
@@ -53,12 +53,62 @@ internal-api.example.com:8443
 
 - A host without a port means port `443`. Credentials are attached to HTTPS traffic only.
 - `*.` at the start matches exactly one label. `*.example.com` covers `api.example.com`, not `a.b.example.com` or `example.com`.
-- Paths aren't allowed. A service covers a host, not a route on it.
+- A host pattern names a host, not a route on it. To restrict routes, use [path prefixes](#methods-and-paths).
 
 Keep patterns as narrow as the API allows. A wildcard covers every host under it, and the credential goes to all of them. Some templates carry a placeholder such as `<your-tenant>.atlassian.net` for this reason; replace it with your own tenant before saving.
+
+### Methods and paths
+
+A service allows every HTTP method and every path on its hosts by default. You can narrow it to the methods you need, and to the routes you need by listing path prefixes.
+
+A path prefix matches whole segments, so `/repos` covers `/repos/octo/hello` but not `/repositories`. Write the path exactly as it appears in the URL.
+
+The proxy blocks a request that breaks these rules with a 403, before it leaves your network:
+
+```text
+HTTP/1.1 403 Forbidden
+
+service "github" does not allow POST: blocked by service policy
+```
+
+A path-restricted service also refuses a path that different servers would read differently, such as one containing `..` or an encoded slash, because the proxy can't tell how the upstream would resolve it. Ordinary paths are unaffected, including ones carrying a space or a non-ASCII character such as `/repos/owner/repo/contents/café.md`.
 
 ### When two services cover one host
 
 Within one access bundle, two services can't cover the same host with the same pattern. Infisical rejects the save and names the service that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one service covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first service's credential.
 
 Different access bundles can cover the same host with different credentials. An agent gets the credential from the access bundle its session carries.
+
+## Transformations
+
+A service can add two things to a request that the agent never holds: extra headers and placeholder substitutions. Both are optional, and both work with any credential type including pass-through.
+
+### Custom headers
+
+Some APIs need a header alongside the credential, such as an organization id or an API version. Add one on the **Transformations** step with a name, an optional prefix, and a value. The proxy attaches it to every request to that service.
+
+Infisical never returns a header value once it's saved, so renaming a header keeps its value and there's nothing to retype.
+
+A header can't reuse the credential's own header name, because the credential would win and the custom header would do nothing. Infisical rejects the save. Headers the proxy sets itself, such as `Host`, `Content-Length` and `Connection`, are rejected for the same reason.
+
+### Substitutions
+
+When an agent already sends a fake value, a substitution swaps it for the real one on the way out. Give the placeholder your agent sends, the real value, and where in the request to look for it: the path, the query string, a header, or the body.
+
+For example, an agent configured with `__GITHUB_PAT__` as its GitHub token sends:
+
+```text
+Authorization: Bearer __GITHUB_PAT__
+```
+
+and GitHub receives the real token. The agent never holds it.
+
+The swap is a plain find-and-replace, so pick a placeholder distinctive enough that it can't appear anywhere else in the request.
+
+A value containing a `/` stays inside one path segment rather than adding another, so a GitLab project reaches the API as `group%2Fproject` and a path rule still accepts it.
+
+The proxy doesn't rewrite a body over 10 MB, or one sent compressed with `Content-Encoding`. The placeholder goes out unchanged and the proxy logs a warning naming the service.
+
+<Warning>
+  Method rules, path rules, custom headers and substitutions all need a recent proxy. An older proxy forwards the request without them: the credential still goes out, the restrictions aren't enforced, and the upstream rejects a request that needed a custom header. Upgrade your proxies before you rely on any of these.
+</Warning>

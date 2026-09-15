@@ -10,7 +10,9 @@ import {
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { credentialPreview } from "./CredentialFields";
-import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import { CREDENTIAL_LABELS, SURFACE_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+
+const NONE = <span className="text-muted italic">None</span>;
 
 type Props = {
   isUpdate: boolean;
@@ -42,7 +44,17 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           </Detail>
           <Detail>
             <DetailLabel>Hosts</DetailLabel>
-            <DetailValue className="font-mono">{form.hostPattern}</DetailValue>
+            <DetailValue>{form.hosts.join(", ")}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Methods</DetailLabel>
+            <DetailValue>{form.allMethods ? "All" : form.methods.join(", ")}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Paths</DetailLabel>
+            <DetailValue>
+              {form.pathPrefixes.length ? form.pathPrefixes.join(", ") : "All"}
+            </DetailValue>
           </Detail>
         </div>
       </DetailGroup>
@@ -57,7 +69,7 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           {sends && (
             <Detail>
               <DetailLabel>Sends</DetailLabel>
-              <DetailValue className="font-mono">{sends}</DetailValue>
+              <DetailValue>{sends}</DetailValue>
             </Detail>
           )}
           {isBasic && (
@@ -72,6 +84,35 @@ export const ReviewFields = ({ isUpdate }: Props) => {
               <DetailValue>{outcome(form.secret, isBasic)}</DetailValue>
             </Detail>
           )}
+        </div>
+      </DetailGroup>
+
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-2">
+          Transformations
+        </DetailGroupHeader>
+        {/* One line each, so a header reads the way it goes out on the wire. */}
+        <div className="flex flex-col gap-1.5 text-sm text-foreground">
+          {form.customHeaders.length === 0 && form.substitutions.length === 0 && <p>{NONE}</p>}
+          {form.customHeaders
+            .filter((header) => header.name)
+            .map((header) => (
+              <p key={header.name}>
+                {header.name}: {header.prefix ? `${header.prefix} ` : ""}••••••••
+              </p>
+            ))}
+          {form.substitutions
+            .filter((substitution) => substitution.placeholder)
+            .map((substitution) => (
+              <p key={substitution.placeholder}>
+                {substitution.placeholder} → ••••••••
+                {substitution.surfaces.length
+                  ? ` in ${substitution.surfaces
+                      .map((surface) => SURFACE_LABELS[surface].toLowerCase())
+                      .join(", ")}`
+                  : ""}
+              </p>
+            ))}
         </div>
       </DetailGroup>
     </div>

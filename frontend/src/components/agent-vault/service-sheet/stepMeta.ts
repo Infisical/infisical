@@ -22,11 +22,12 @@ export const SERVICE_STEPS: StepMeta[] = [
   {
     step: ServiceStep.Details,
     name: "Details",
-    shortDescription: "Name and hosts",
+    shortDescription: "Name, hosts and rules",
     title: "Details",
-    subtitle: "What this service is called, and the hosts it covers.",
+    subtitle: "What this service is called, the hosts it covers, and the requests it allows.",
     rightLabel: "DETAILS",
-    rightDescription: "The credentials are only used for the hosts you list here."
+    rightDescription:
+      "The credentials are only used for the hosts you list here. Every path is allowed unless you name the ones you want."
   },
   {
     step: ServiceStep.Credential,
@@ -36,6 +37,16 @@ export const SERVICE_STEPS: StepMeta[] = [
     subtitle: "How requests to this service are authenticated.",
     rightLabel: "CREDENTIAL",
     rightDescription: "Agents reach this service without ever holding the credentials themselves."
+  },
+  {
+    step: ServiceStep.Transformations,
+    name: "Transformations",
+    shortDescription: "Custom headers and substitutions",
+    title: "Transformations",
+    subtitle: "Custom headers and placeholder swaps. Skip this if you don't need them.",
+    rightLabel: "TRANSFORMATIONS",
+    rightDescription:
+      "Custom headers are added to every request to this service. A substitution swaps a placeholder your agent already sends for the real value."
   },
   {
     step: ServiceStep.Review,

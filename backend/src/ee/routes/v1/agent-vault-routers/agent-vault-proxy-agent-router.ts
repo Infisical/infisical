@@ -144,6 +144,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               name: z.string(),
               accessBundleName: z.string(),
               hostPattern: z.string(),
+              allowedMethods: z.string().array().nullable(),
+              allowedPathPrefixes: z.string().array().nullable(),
               credential: z.discriminatedUnion("type", [
                 z.object({
                   type: z.literal("bearer"),
@@ -153,7 +155,11 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                 }),
                 z.object({ type: z.literal("basic"), username: z.string(), password: z.string() }),
                 z.object({ type: z.literal("passthrough") })
-              ])
+              ]),
+              customHeaders: z.object({ name: z.string(), prefix: z.string(), value: z.string() }).array(),
+              substitutions: z
+                .object({ placeholder: z.string(), surfaces: z.string().array(), value: z.string() })
+                .array()
             })
             .array()
         })

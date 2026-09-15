@@ -5,6 +5,14 @@ import { CheckIcon, ChevronDownIcon, Loader2Icon, XIcon } from "lucide-react";
 import { cn } from "../../utils";
 import { useScrollEdges } from "../../utils/useScrollEdges";
 import { getComboboxInputAriaLabel } from "./combobox-accessibility";
+import {
+  COMBOBOX_CHIP_CLASS,
+  COMBOBOX_CHIP_LABEL_CLASS,
+  COMBOBOX_CHIP_REMOVE_CLASS,
+  COMBOBOX_CHIPS_CLASS,
+  COMBOBOX_CHIPS_INPUT_CLASS,
+  comboboxChipsViewportClass
+} from "./combobox-chips";
 import { mergeComboboxItems } from "./combobox-items";
 
 import "../../utils/ScrollEdgeFade.css";
@@ -717,19 +725,14 @@ const MultipleCombobox = <TOption,>({
         data-disabled={isDisabled ? "" : undefined}
         data-invalid={isError}
         className={cn(
-          "flex min-h-9 w-full gap-1 rounded-md border border-border bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none",
+          COMBOBOX_CHIPS_CLASS,
           singleLine ? "items-center" : "items-start",
-          "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 hover:border-foreground/20",
-          "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           value.length > 0 ? "p-1" : "py-1 pr-2 pl-2.5",
           className
         )}
       >
         <div
-          className={cn(
-            "scroll-edge-fade flex thin-scrollbar min-w-0 flex-1 items-center gap-1",
-            singleLine ? "overflow-x-auto" : "max-h-24 flex-wrap overflow-y-auto"
-          )}
+          className={comboboxChipsViewportClass(singleLine)}
           ref={setViewportRef}
           data-scroll-edge-axis={singleLine ? "horizontal" : "vertical"}
           data-scrollable-start={scrollEdges.start}
@@ -743,13 +746,15 @@ const MultipleCombobox = <TOption,>({
                   return (
                     <ComboboxPrimitive.Chip
                       key={getOptionValue(option)}
-                      className="flex h-6 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
+                      className={COMBOBOX_CHIP_CLASS}
                     >
-                      <span className="max-w-48 truncate">{renderValue?.(option) ?? label}</span>
+                      <span className={COMBOBOX_CHIP_LABEL_CLASS}>
+                        {renderValue?.(option) ?? label}
+                      </span>
                       {!isDisabled && (
                         <ComboboxPrimitive.ChipRemove
                           aria-label={`Remove ${label}`}
-                          className="flex size-4 shrink-0 items-center justify-center rounded-xs text-muted outline-none hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                          className={COMBOBOX_CHIP_REMOVE_CLASS}
                         >
                           <XIcon className="size-3" />
                         </ComboboxPrimitive.ChipRemove>
@@ -777,7 +782,7 @@ const MultipleCombobox = <TOption,>({
               onKeyDown?.(event);
               preventComboboxFormSubmit(event);
             }}
-            className="h-6 min-w-24 flex-1 bg-transparent px-0.5 text-sm text-foreground outline-none placeholder:text-muted"
+            className={COMBOBOX_CHIPS_INPUT_CLASS}
             {...inputProps}
           />
         </div>

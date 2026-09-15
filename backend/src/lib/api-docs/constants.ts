@@ -4231,7 +4231,6 @@ export const AGENT_VAULT = {
     name: "The name of the service.",
     hostPattern:
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
-    credentialType: "How the credential is attached to the request: bearer, basic or passthrough.",
     headerName: "The header the credential is written to. Defaults to Authorization.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
@@ -4245,7 +4244,29 @@ export const AGENT_VAULT = {
     createdAt: "When the service was added to the access bundle.",
     value: "The secret. Never returned once saved.",
     password:
-      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved."
+      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved.",
+    allowedMethods:
+      "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
+    allowedPathPrefixes:
+      "The path prefixes this service allows, matched on whole segments, so '/repos' covers '/repos/octo' but not '/repositories'. Null allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
+    customHeaders:
+      "Extra headers the proxy attaches to every request to this service, on top of the credential. Send the whole list: a row is matched to a stored one by 'id' when you send one and otherwise by its name, a name matching nothing is created, and a stored custom header you leave out is deleted.",
+    customHeaderId: "The ID of the custom header. Optional: a header is matched by its name when this is omitted.",
+    customHeaderName: "The name of the header, which must not be the credential's own header.",
+    customHeaderPrefix: "Written before the header value, separated by one space. Leave empty to send the value alone.",
+    updateCustomHeaderPrefix:
+      "Written before the header value, separated by one space. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
+    customHeaderValue: "The header value. Never returned once saved.",
+    updateCustomHeaderValue: "The header value. Omit to keep the value already stored for this header.",
+    substitutions:
+      "Placeholders the proxy swaps for a real secret before forwarding. Send the whole list: a row is matched to a stored one by 'id' when you send one and otherwise by its placeholder, a placeholder matching nothing is created, and a stored substitution you leave out is deleted.",
+    substitutionId:
+      "The ID of the substitution. Optional: a substitution is matched by its placeholder when this is omitted.",
+    placeholder:
+      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing.",
+    surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
+    substitutionValue: "The real value the placeholder is replaced with. Never returned once saved.",
+    updateSubstitutionValue: "The real value the placeholder is replaced with. Omit to keep the value already stored."
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",

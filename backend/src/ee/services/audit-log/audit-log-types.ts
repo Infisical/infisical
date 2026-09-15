@@ -6201,6 +6201,11 @@ interface AgentVaultServiceCreateEvent {
     credentialType: string;
     headerName?: string;
     headerPrefix?: string;
+    allowedMethods?: string[] | null;
+    allowedPathPrefixes?: string[] | null;
+    // Names and placeholders only. A sealed value must never reach an audit row.
+    customHeaderNames?: string[];
+    substitutionPlaceholders?: string[];
   };
 }
 
@@ -6214,6 +6219,10 @@ interface AgentVaultServiceUpdateEvent {
     credentialType?: string;
     headerName?: string;
     headerPrefix?: string;
+    allowedMethods?: string[] | null;
+    allowedPathPrefixes?: string[] | null;
+    customHeaderNames?: string[];
+    substitutionPlaceholders?: string[];
     credentialReplaced: boolean;
   };
 }

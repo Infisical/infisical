@@ -4394,6 +4394,68 @@
                 ]
               },
               {
+                "group": "Agent Vault access bundles",
+                "pages": [
+                  "api-reference/endpoints/agent-vault-access-bundles/list",
+                  "api-reference/endpoints/agent-vault-access-bundles/get",
+                  "api-reference/endpoints/agent-vault-access-bundles/create",
+                  "api-reference/endpoints/agent-vault-access-bundles/update",
+                  "api-reference/endpoints/agent-vault-access-bundles/delete"
+                ]
+              },
+              {
+                "group": "Agent Vault services",
+                "pages": [
+                  "api-reference/endpoints/agent-vault-services/create",
+                  "api-reference/endpoints/agent-vault-services/update",
+                  "api-reference/endpoints/agent-vault-services/delete"
+                ]
+              },
+              {
+                "group": "Agent Vault access bundle members",
+                "pages": [
+                  "api-reference/endpoints/agent-vault-access-bundle-members/list",
+                  "api-reference/endpoints/agent-vault-access-bundle-members/add",
+                  "api-reference/endpoints/agent-vault-access-bundle-members/remove"
+                ]
+              },
+              {
+                "group": "Agent Vault members",
+                "pages": [
+                  "api-reference/endpoints/agent-vault-memberships/list-users",
+                  "api-reference/endpoints/agent-vault-memberships/add-users",
+                  "api-reference/endpoints/agent-vault-memberships/update-user-role",
+                  "api-reference/endpoints/agent-vault-memberships/remove-user",
+                  "api-reference/endpoints/agent-vault-memberships/list-groups",
+                  "api-reference/endpoints/agent-vault-memberships/add-group",
+                  "api-reference/endpoints/agent-vault-memberships/update-group-role",
+                  "api-reference/endpoints/agent-vault-memberships/remove-group",
+                  "api-reference/endpoints/agent-vault-memberships/list-identities",
+                  "api-reference/endpoints/agent-vault-memberships/add-identity",
+                  "api-reference/endpoints/agent-vault-memberships/update-identity-role",
+                  "api-reference/endpoints/agent-vault-memberships/remove-identity"
+                ]
+              },
+              {
+                "group": "Agent Vault proxies",
+                "pages": [
+                  "api-reference/endpoints/agent-vault-proxies/list",
+                  "api-reference/endpoints/agent-vault-proxies/create",
+                  "api-reference/endpoints/agent-vault-proxies/update",
+                  "api-reference/endpoints/agent-vault-proxies/delete",
+                  "api-reference/endpoints/agent-vault-proxies/generate-enrollment-token",
+                  "api-reference/endpoints/agent-vault-proxies/revoke"
+                ]
+              },
+              {
+                "group": "Agent Vault sessions",
+                "pages": [
+                  "api-reference/endpoints/agent-vault-sessions/list",
+                  "api-reference/endpoints/agent-vault-sessions/create",
+                  "api-reference/endpoints/agent-vault-sessions/revoke"
+                ]
+              },
+              {
                 "group": "KMIP servers",
                 "boost": 0.25,
                 "pages": [

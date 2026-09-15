@@ -48,8 +48,12 @@ export type TResolvedService = {
   name: string;
   accessBundleName: string;
   hostPattern: string;
+  allowedMethods: string[] | null;
+  allowedPathPrefixes: string[] | null;
   credential:
     | { type: "bearer"; headerName: string; headerPrefix: string; value: string }
     | { type: "basic"; username: string; password: string }
     | { type: "passthrough" };
+  customHeaders: { name: string; prefix: string; value: string }[];
+  substitutions: { placeholder: string; surfaces: string[]; value: string }[];
 };

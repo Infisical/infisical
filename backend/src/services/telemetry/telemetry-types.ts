@@ -2395,6 +2395,10 @@ export type TAgentVaultServiceCreatedEvent = {
     serviceId: string;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
+    allowedMethodCount: number;
+    allowedPathPrefixCount: number;
+    customHeaderCount: number;
+    substitutionCount: number;
   };
 };
 
@@ -2405,6 +2409,10 @@ export type TAgentVaultServiceUpdatedEvent = {
     serviceId: string;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
+    allowedMethodCount: number;
+    allowedPathPrefixCount: number;
+    customHeaderCount: number;
+    substitutionCount: number;
   };
 };
 
