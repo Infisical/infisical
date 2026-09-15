@@ -68,7 +68,12 @@ export const AgentVaultCredentialInputSchema = z
     }),
     z.object({
       type: z.literal(AgentVaultCredentialType.Basic),
-      username: z.string().trim().max(256).describe(AGENT_VAULT.SERVICE.username),
+      username: z
+        .string()
+        .trim()
+        .max(256)
+        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+        .describe(AGENT_VAULT.SERVICE.username),
       password: z
         .string()
         .max(8192)
@@ -102,7 +107,13 @@ export const AgentVaultCredentialUpdateSchema = z
     }),
     z.object({
       type: z.literal(AgentVaultCredentialType.Basic),
-      username: z.string().trim().max(256).optional().describe(AGENT_VAULT.SERVICE.updateUsername),
+      username: z
+        .string()
+        .trim()
+        .max(256)
+        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+        .optional()
+        .describe(AGENT_VAULT.SERVICE.updateUsername),
       password: z
         .string()
         .max(8192)
