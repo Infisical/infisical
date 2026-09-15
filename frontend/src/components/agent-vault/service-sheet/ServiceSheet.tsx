@@ -382,9 +382,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         requestDiscard();
       }}
     >
-      {/* Three columns live in here: the step rail, the form and the explainer. w-3/4 (the Sheet default)
-          left the middle one about 445px, which crammed the Transformations rows. */}
-      <SheetContent className="w-[90vw] sm:max-w-[1500px]">
+      {/* Same width as the proxied service sheet, which this whole layout mirrors: three columns need more
+          than the Sheet default, which caps at sm:max-w-md and leaves the middle one about 445px. */}
+      <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw] xl:max-w-7xl">
         <SheetHeader>
           {isTemplateStep ? (
             <>
