@@ -323,7 +323,7 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
                   onClick={() => setSort((current) => (current === "count" ? "name" : "count"))}
                 >
                   {sort === "count" ? <ArrowDownWideNarrow /> : <ArrowDownAZ />}
-                  {sort === "count" ? "Most identities" : "Alphabetical"}
+                  {sort === "count" ? "Highest usage" : "Alphabetical"}
                 </Button>
               </div>
 
