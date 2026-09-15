@@ -4,6 +4,7 @@ import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { TLicenseClientFactory } from "@app/services/license-client";
 import {
   TCatalogProduct,
@@ -440,7 +441,8 @@ export const licenseV2ServiceFactory = ({
   // cloud has per-org self-serve subscriptions.
   const isSelfHostedLicense = !envConfig.isCloud;
 
-  const canReadAcrossOrgs = (isInstanceAdmin?: boolean) => Boolean(isInstanceAdmin) && !envConfig.isCloud;
+  const canReadAcrossOrgs = (isInstanceAdmin?: boolean) =>
+    Boolean(isInstanceAdmin) && !envConfig.isCloud && !isScopeNarrowedRequest();
 
   const ensureBillingRead = async (
     orgId: string,
