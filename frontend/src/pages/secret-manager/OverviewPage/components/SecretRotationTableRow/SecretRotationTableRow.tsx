@@ -46,6 +46,7 @@ import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotati
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import { useRowHoverActions } from "../rowHoverActions";
 
 type Props = {
   secretRotationName: string;
@@ -90,6 +91,12 @@ export const SecretRotationTableRow = ({
   onCheckActiveCredentials
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
+  const isSingleEnvView = environments.length === 1;
+  // The action bar only exists in the single-environment view, where the row itself holds
+  // nothing focusable. The multi-environment row has no bar to reach.
+  const { shouldRenderActions, groupClassName, rowHoverProps } = useRowHoverActions({
+    needsRowTabStop: isSingleEnvView
+  });
   const [checkingRotationId, setCheckingRotationId] = useState<string | null>(null);
 
   const handleCheckActiveCredentials = async (secretRotation: TSecretRotationV2) => {
@@ -102,7 +109,6 @@ export const SecretRotationTableRow = ({
     }
   };
 
-  const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2; // secret key row + icon
 
   const statuses = getSecretRotationStatusesByName(secretRotationName);
@@ -123,7 +129,7 @@ export const SecretRotationTableRow = ({
         className={twMerge(
           "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
           "pointer-events-none opacity-0 transition-all duration-300",
-          "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
+          "group-focus-within:pointer-events-auto group-focus-within:gap-1 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100"
         )}
       >
         <ProjectPermissionCan
@@ -145,7 +151,7 @@ export const SecretRotationTableRow = ({
                     variant="ghost"
                     size="xs"
                     className={twMerge(
-                      "w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7",
+                      "w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7",
                       isCheckingRotation && "w-7"
                     )}
                     isDisabled={!isAllowed || Boolean(checkingRotationId)}
@@ -179,7 +185,7 @@ export const SecretRotationTableRow = ({
                 <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                   isDisabled={!isAllowed}
                   onClick={() => onViewGeneratedCredentials(secretRotation)}
                 >
@@ -206,7 +212,7 @@ export const SecretRotationTableRow = ({
                 <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                   isDisabled={!isAllowed}
                   onClick={() => onRotate(secretRotation)}
                 >
@@ -234,7 +240,7 @@ export const SecretRotationTableRow = ({
                   <IconButton
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                     isDisabled={!isAllowed}
                     onClick={() => onReconcile(secretRotation)}
                   >
@@ -264,7 +270,7 @@ export const SecretRotationTableRow = ({
                 <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7"
                   isDisabled={!isAllowed}
                   onClick={() => onEdit(secretRotation)}
                 >
@@ -291,7 +297,7 @@ export const SecretRotationTableRow = ({
                 <IconButton
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7 hover:text-danger"
                   onClick={() => onDelete(secretRotation)}
                   isDisabled={!isAllowed}
                 >
@@ -310,7 +316,8 @@ export const SecretRotationTableRow = ({
     <>
       <TableRow
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
-        className="group hover:z-10"
+        className={twMerge(groupClassName, "hover:z-10")}
+        {...rowHoverProps}
       >
         <TableCell
           className={twMerge(
@@ -379,14 +386,14 @@ export const SecretRotationTableRow = ({
                     className={twMerge(
                       "ml-auto flex items-center transition-[margin] duration-300",
                       shouldShowReconciliationButton(singleEnvRotation)
-                        ? "group-hover:mr-48"
-                        : "group-hover:mr-40"
+                        ? "group-focus-within:mr-48 group-hover:mr-48"
+                        : "group-focus-within:mr-40 group-hover:mr-40"
                     )}
                   >
                     <SecretRotationV2StatusBadge secretRotation={singleEnvRotation} />
                   </div>
                   <div className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2">
-                    {renderActionButtons(singleEnvRotation)}
+                    {shouldRenderActions && renderActionButtons(singleEnvRotation)}
                   </div>
                 </>
               )}
@@ -477,7 +484,9 @@ export const SecretRotationTableRow = ({
                               <div
                                 className={twMerge(
                                   "ml-auto flex items-center transition-[margin] duration-300",
-                                  showReconcileButton ? "group-hover:mr-48" : "group-hover:mr-40"
+                                  showReconcileButton
+                                    ? "group-focus-within:mr-48 group-hover:mr-48"
+                                    : "group-focus-within:mr-40 group-hover:mr-40"
                                 )}
                               >
                                 <SecretRotationV2StatusBadge secretRotation={secretRotation} />
