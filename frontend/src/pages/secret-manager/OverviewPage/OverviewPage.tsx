@@ -2788,6 +2788,20 @@ const OverviewPageContent = () => {
                 </AlertTitle>
               </Alert>
             ) : null)}
+          <div
+            className={twMerge(
+              "flex h-10 min-w-0 items-center border border-border bg-container px-2 whitespace-nowrap",
+              tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
+            )}
+          >
+            <FolderBreadcrumb
+              projectName={currentProject.name}
+              secretPath={secretPath}
+              onManageFolderAccess={
+                canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
+              }
+            />
+          </div>
           {tableView === "no-environments" && (
             <EmptyResourceDisplay
               variant="no-environments"
@@ -2812,23 +2826,9 @@ const OverviewPageContent = () => {
                 <Table
                   ref={tableRef}
                   className="border-separate border-spacing-0"
-                  containerClassName="overscroll-x-none"
+                  containerClassName="overscroll-x-none rounded-t-none"
                 >
                   <TableHeader>
-                    <TableRow className="h-10">
-                      <TableHead
-                        colSpan={visibleEnvs.length + 2}
-                        className="h-10 bg-container px-2"
-                      >
-                        <FolderBreadcrumb
-                          projectName={currentProject.name}
-                          secretPath={secretPath}
-                          onManageFolderAccess={
-                            canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
-                          }
-                        />
-                      </TableHead>
-                    </TableRow>
                     <TableRow className="h-10">
                       <TableHead
                         className={twMerge(
