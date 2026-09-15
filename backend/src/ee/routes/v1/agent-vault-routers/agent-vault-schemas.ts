@@ -180,7 +180,7 @@ export const AgentVaultServiceSchema = z.object({
   credential: AgentVaultCredentialSummarySchema,
   customHeaders: z
     .object({
-      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.headerId),
+      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.customHeaderId),
       name: z.string().describe(AGENT_VAULT.SERVICE.customHeaderName),
       prefix: z.string().describe(AGENT_VAULT.SERVICE.customHeaderPrefix)
     })

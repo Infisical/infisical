@@ -38,7 +38,7 @@ export const TransformationsFields = () => {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
         <div>
-          <p className="text-sm font-medium">Custom customHeaders</p>
+          <p className="text-sm font-medium">Custom headers</p>
           <p className="mt-1 text-xs text-muted">
             Added to every request to this service, on top of the credential.
           </p>
@@ -46,7 +46,7 @@ export const TransformationsFields = () => {
         <div className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4">
           {customHeaders.fields.length === 0 && (
             <p className="text-center text-sm text-muted">
-              No custom customHeaders added. Add one below.
+              No custom headers added. Add one below.
             </p>
           )}
           {customHeaders.fields.map((row, index) => (

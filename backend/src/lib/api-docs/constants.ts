@@ -4251,7 +4251,7 @@ export const AGENT_VAULT = {
       "The path prefixes this service allows, matched on whole segments, so '/repos' covers '/repos/octo' but not '/repositories'. Null allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
     customHeaders:
       "Extra headers the proxy attaches to every request to this service, on top of the credential. Send the whole list: a row is matched to a stored one by 'id' when you send one and otherwise by its name, a name matching nothing is created, and a stored custom header you leave out is deleted.",
-    headerId: "The ID of the custom header. Optional: a header is matched by its name when this is omitted.",
+    customHeaderId: "The ID of the custom header. Optional: a header is matched by its name when this is omitted.",
     customHeaderName: "The name of the header, which must not be the credential's own header.",
     customHeaderPrefix: "Written before the header value, separated by one space. Leave empty to send the value alone.",
     updateCustomHeaderPrefix:

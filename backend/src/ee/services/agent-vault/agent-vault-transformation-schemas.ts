@@ -75,7 +75,7 @@ export const AgentVaultCustomHeaderInputSchema = z.object({
 });
 
 export const AgentVaultCustomHeaderUpdateSchema = z.object({
-  id: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.headerId),
+  id: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.customHeaderId),
   name: agentVaultHeaderNameSchema.describe(AGENT_VAULT.SERVICE.customHeaderName),
   prefix: headerPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderPrefix),
   value: secretValueSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderValue)
