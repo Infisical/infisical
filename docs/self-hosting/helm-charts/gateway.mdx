@@ -126,6 +126,22 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `service.type` | `ClusterIP` | Type of the Service created in direct listen mode. |
 | `service.port` | `""` | Port the Service exposes. Empty means the port from `gateway.listenAddress`. Set it only to put a different port in front of the gateway. |
 
+## Resource limits
+
+PAM is heavier per session, so raise the chart's resource limits:
+
+```yaml
+resources:
+  requests:
+    cpu: 1
+    memory: 2Gi
+  limits:
+    cpu: 4
+    memory: 8Gi
+```
+
+Recordings share the volume with the gateway's credentials, so raise `persistence.size` above its 5Gi default if your sessions are long or numerous.
+
 ## Direct listen mode
 
 By default the gateway connects out to a relay. To have Infisical connect to the gateway instead, set `gateway.listenAddress` to the address Infisical dials.
