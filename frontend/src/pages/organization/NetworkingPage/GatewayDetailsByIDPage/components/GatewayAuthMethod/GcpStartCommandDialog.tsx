@@ -17,6 +17,7 @@ type Props = {
   gatewayId: string;
   gatewayName: string;
   gcpAuthType: "gce" | "iam";
+  allowedServiceAccounts: string;
   isDirect: boolean;
   listenAddress: string;
 };
@@ -29,6 +30,7 @@ export const GcpStartCommandContent = ({
   gatewayId,
   gatewayName,
   gcpAuthType,
+  allowedServiceAccounts,
   isDirect,
   listenAddress
 }: Props) => {
@@ -42,6 +44,11 @@ export const GcpStartCommandContent = ({
   const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
   // gce is the CLI default, so only the iam type needs the flag spelled out.
   const authTypePart = gcpAuthType === "iam" ? " --gcp-auth-type=iam" : "";
+  // Without this annotation the chart creates an unbound service account, and the pod authenticates
+  // as nothing the gateway allows. The first allowed account is the best guess available here.
+  const workloadIdentityAccount =
+    allowedServiceAccounts.split(",")[0]?.trim() ||
+    "<gsa-name>@<project-id>.iam.gserviceaccount.com";
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
@@ -69,8 +76,17 @@ helm install infisical-gateway infisical/infisical-gateway \\
   --set gateway.name=${gatewayName} \\
   --set gateway.domain=${siteURL} \\
   --set gateway.enrollment.method=gcp \\
-  --set gateway.enrollment.gcp.gatewayId=${gatewayId}${authTypeSet}${relayPart}${directPart}`;
-  }, [gatewayName, gatewayId, gcpAuthType, isDirect, listenAddress, resolvedRelayName, siteURL]);
+  --set gateway.enrollment.gcp.gatewayId=${gatewayId}${authTypeSet}${annotationSet}${relayPart}${directPart}`;
+  }, [
+    gatewayName,
+    gatewayId,
+    gcpAuthType,
+    workloadIdentityAccount,
+    isDirect,
+    listenAddress,
+    resolvedRelayName,
+    siteURL
+  ]);
 
   const startServiceCommand = `sudo systemctl start ${gatewayName}`;
 

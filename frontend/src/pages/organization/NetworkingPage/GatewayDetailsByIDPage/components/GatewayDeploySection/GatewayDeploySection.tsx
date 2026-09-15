@@ -253,6 +253,7 @@ export const GatewayDeploySection = ({
                   gatewayId={gatewayId}
                   gatewayName={gatewayName}
                   gcpAuthType={authMethod.config.type}
+                  allowedServiceAccounts={authMethod.config.allowedServiceAccounts}
                   isDirect={connectionMode === "direct"}
                   listenAddress={commandListenAddress}
                 />

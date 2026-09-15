@@ -1,3 +1,4 @@
+import { crypto } from "@app/lib/crypto";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { validateIamIdentity, validateIdTokenIdentity } from "@app/services/identity-gcp-auth/identity-gcp-auth-fns";
@@ -12,6 +13,19 @@ type TVerifyGcpTokenInput = {
   errorContext: Record<string, unknown>;
 };
 
+// Google caps a signJwt expiry at 12 hours ahead, but accepts a payload with no `exp` at all, and
+// jsonwebtoken only enforces an expiry that is present. Without this, anyone who briefly holds
+// signJwt on an allowed service account can mint a proof that outlives the revocation of that
+// permission.
+const MAX_IAM_TOKEN_LIFETIME_SECONDS = 12 * 60 * 60;
+
+export const assertIamTokenLifetime = (payload: { exp?: number } | null, nowSeconds: number) => {
+  if (!payload?.exp) return "missing_expiry" as const;
+  if (payload.exp <= nowSeconds) return "expired" as const;
+  if (payload.exp - nowSeconds > MAX_IAM_TOKEN_LIFETIME_SECONDS) return "lifetime_too_long" as const;
+  return null;
+};
+
 export const verifyGcpTokenAndExtractCaller = async ({
   type,
   jwt,
@@ -22,7 +36,14 @@ export const verifyGcpTokenAndExtractCaller = async ({
     if (type === GcpAuthType.Gce) {
       return await validateIdTokenIdentity({ audience, jwt });
     }
-    return await validateIamIdentity({ audience, jwt });
+
+    const identityDetails = await validateIamIdentity({ audience, jwt });
+    const payload = crypto.jwt().decode(jwt) as { exp?: number } | null;
+    const lifetimeProblem = assertIamTokenLifetime(payload, Math.floor(Date.now() / 1000));
+    if (lifetimeProblem) {
+      throw new Error(`signed GCP service account token ${lifetimeProblem}`);
+    }
+    return identityDetails;
   } catch (err) {
     logger.error(
       err,

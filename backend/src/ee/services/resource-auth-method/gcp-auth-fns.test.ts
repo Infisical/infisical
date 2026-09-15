@@ -1,6 +1,6 @@
 import { UnauthorizedError } from "@app/lib/errors";
 
-import { validateGcpAllowlists } from "./gcp-auth-fns";
+import { assertIamTokenLifetime, validateGcpAllowlists } from "./gcp-auth-fns";
 import { GcpAuthType } from "./resource-auth-method-fns";
 
 const SERVICE_ACCOUNT = "gateway@my-project.iam.gserviceaccount.com";
@@ -35,9 +35,42 @@ const reasonCodeOf = (fn: () => void) => {
   return undefined;
 };
 
+describe("assertIamTokenLifetime", () => {
+  const now = 1_700_000_000;
+
+  test("refuses a token with no expiry", () => {
+    expect(assertIamTokenLifetime({}, now)).toBe("missing_expiry");
+  });
+
+  test("refuses a null payload", () => {
+    expect(assertIamTokenLifetime(null, now)).toBe("missing_expiry");
+  });
+
+  test("refuses an expired token", () => {
+    expect(assertIamTokenLifetime({ exp: now - 1 }, now)).toBe("expired");
+  });
+
+  test("refuses an expiry beyond the 12 hour cap", () => {
+    expect(assertIamTokenLifetime({ exp: now + 12 * 60 * 60 + 1 }, now)).toBe("lifetime_too_long");
+  });
+
+  test("accepts an expiry inside the cap", () => {
+    expect(assertIamTokenLifetime({ exp: now + 600 }, now)).toBeNull();
+  });
+});
+
 describe("validateGcpAllowlists", () => {
   test("refuses a config with no allowlist at all", () => {
     expect(reasonCodeOf(() => validate({}))).toBe("no_allowlist_configured");
+  });
+
+  test("accepts a Compute Engine default service account", () => {
+    expect(() =>
+      validate({
+        identityDetails: { email: "846740905972-compute@developer.gserviceaccount.com" },
+        allowedServiceAccounts: "846740905972-compute@developer.gserviceaccount.com"
+      })
+    ).not.toThrow();
   });
 
   test("accepts a service account on the allowlist", () => {

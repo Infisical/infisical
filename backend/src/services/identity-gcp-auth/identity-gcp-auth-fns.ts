@@ -26,7 +26,11 @@ export const validateIdTokenIdentity = async ({ audience, jwt: identityToken }: 
   return { email: payload.email, computeEngineDetails: payload.google?.compute_engine };
 };
 
-const serviceAccountEmailRegex = new RE2(/^[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com$/);
+// Covers every Google service account domain, not only the user-managed `<project>.iam` one: the
+// Compute Engine default account lives on `developer.gserviceaccount.com` and App Engine's on
+// `appspot.gserviceaccount.com`. This is a sanity check on `sub` before the certificate fetch, so
+// widening it grants nothing: the signature check and the allowlist are the actual controls.
+const serviceAccountEmailRegex = new RE2(/^[a-z0-9][a-z0-9-]*@[a-z0-9][a-z0-9.-]*\.gserviceaccount\.com$/);
 
 /**
  * Validates that the signed JWT token for a GCP service account is valid as part of GCP IAM authentication.

@@ -2,8 +2,11 @@ import RE2 from "re2";
 import { z } from "zod";
 
 // Service accounts are matched against the token's `email` claim verbatim, so no wildcards here:
-// an entry that does not parse as a service account address can never match anything.
-const serviceAccountEntry = new RE2("^[a-z0-9-]{1,100}@[a-z0-9-]{1,100}\\.iam\\.gserviceaccount\\.com$");
+// an entry that does not parse as a service account address can never match anything. Every Google
+// service account domain is accepted, not just the user-managed `<project>.iam` one: a Compute
+// Engine default account is `<project-number>-compute@developer.gserviceaccount.com`, and App
+// Engine's is `<project-id>@appspot.gserviceaccount.com`.
+const serviceAccountEntry = new RE2("^[a-z0-9][a-z0-9-]{0,99}@[a-z0-9][a-z0-9.-]{0,99}\\.gserviceaccount\\.com$");
 const projectEntry = new RE2("^[a-z][a-z0-9-]{4,28}[a-z0-9]$");
 const zoneEntry = new RE2("^[a-z]([a-z0-9-]{0,62}[a-z0-9])?$");
 
