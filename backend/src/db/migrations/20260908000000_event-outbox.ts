@@ -9,8 +9,6 @@ export async function up(knex: Knex): Promise<void> {
       t.bigIncrements("id").primary();
       t.string("consumer").notNullable();
       t.string("eventType").notNullable();
-      t.uuid("orgId").notNullable();
-      t.string("projectId");
       t.jsonb("payload").notNullable();
       t.string("idempotencyKey");
       t.timestamp("occurredAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());

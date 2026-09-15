@@ -29,10 +29,17 @@ vi.mock("@app/lib/telemetry/metrics", () => ({
 
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
+const makePayload = (overrides?: Record<string, unknown>) => ({
+  orgId: ORG_ID,
+  resourceType: "approval.workflow",
+  resourceId: "policy-1",
+  targetIds: ["req-1"],
+  ...overrides
+});
+
 const makeEvent = (overrides?: Partial<TEventInput>): TEventInput => ({
   eventType: "approval.workflow.request_opened",
-  orgId: ORG_ID,
-  payload: { resourceType: "approval.workflow", resourceId: "policy-1", targetIds: ["req-1"] },
+  payload: makePayload(),
   ...overrides
 });
 
@@ -103,7 +110,7 @@ describe("event outbox emit", () => {
   test("throws when the payload does not match the consumer's schema", async () => {
     const { service, inserted } = buildService([makeConsumer()]);
 
-    await expect(service.emit(makeEvent({ payload: { targetIds: [] } }), TX)).rejects.toThrow(
+    await expect(service.emit(makeEvent({ payload: makePayload({ targetIds: [] }) }), TX)).rejects.toThrow(
       "the 'alert' consumer cannot accept"
     );
     expect(inserted).toHaveLength(0);
@@ -123,7 +130,7 @@ describe("event outbox emit", () => {
   test("throws on a malformed event envelope", async () => {
     const { service } = buildService([makeConsumer()]);
 
-    await expect(service.emit(makeEvent({ orgId: "not-a-uuid" }), TX)).rejects.toThrow("Invalid outbox event");
+    await expect(service.emit(makeEvent({ eventType: "Not A Key" }), TX)).rejects.toThrow("Invalid outbox event");
   });
 
   // Swallowing it would hand the caller a poisoned transaction instead of the real error.
@@ -149,9 +156,7 @@ describe("event outbox drain", () => {
       id: 1,
       consumer: "alert",
       eventType: "approval.workflow.request_opened",
-      orgId: ORG_ID,
-      projectId: null,
-      payload: { resourceType: "approval.workflow", resourceId: "policy-1", targetIds: ["req-1"] },
+      payload: makePayload(),
       idempotencyKey: null,
       occurredAt: new Date(),
       status: EventOutboxStatus.Processing,

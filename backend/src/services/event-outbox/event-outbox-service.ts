@@ -110,8 +110,6 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       return {
         consumer: consumer.name,
         eventType: validated.eventType,
-        orgId: validated.orgId,
-        projectId: validated.projectId ?? null,
         payload: validated.payload,
         idempotencyKey: validated.idempotencyKey ?? null,
         occurredAt

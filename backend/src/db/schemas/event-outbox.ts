@@ -11,8 +11,6 @@ export const EventOutboxSchema = z.object({
   id: z.coerce.number(),
   consumer: z.string(),
   eventType: z.string(),
-  orgId: z.string().uuid(),
-  projectId: z.string().nullable().optional(),
   payload: z.unknown(),
   idempotencyKey: z.string().nullable().optional(),
   occurredAt: z.date(),

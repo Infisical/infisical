@@ -15,6 +15,8 @@ const EVENT_TYPE = "approval.workflow.request_opened";
 const makeAlert = (id: string) => ({ id, resourceType: "approval.workflow", orgId: ORG_ID }) as never;
 
 const makePayload = (overrides?: Record<string, unknown>) => ({
+  orgId: ORG_ID,
+  projectId: null,
   resourceType: "approval.workflow",
   resourceId: "policy-1",
   targetIds: ["req-1"],
@@ -25,8 +27,6 @@ const makeEvent = (overrides?: Partial<TEvent>): TEvent =>
   ({
     id: 1,
     eventType: EVENT_TYPE,
-    orgId: ORG_ID,
-    projectId: null,
     payload: makePayload(),
     occurredAt: new Date(),
     progress: null,

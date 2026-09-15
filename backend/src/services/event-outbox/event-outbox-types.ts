@@ -50,8 +50,6 @@ const keySchema = z
 
 export const EventInputSchema = z.object({
   eventType: keySchema,
-  orgId: z.string().uuid(),
-  projectId: z.string().trim().min(1).max(MAX_OUTBOX_KEY_LENGTH).nullish(),
   payload: z.record(z.unknown()),
   idempotencyKey: z.string().trim().min(1).max(MAX_OUTBOX_KEY_LENGTH).optional(),
   occurredAt: z.date().optional()
@@ -64,10 +62,7 @@ export type TEventEmitter = {
 };
 
 // What a consumer sees. Lock, attempt, and status columns are the outbox's business, not the consumer's.
-export type TEvent = Pick<
-  TEventOutbox,
-  "id" | "eventType" | "orgId" | "projectId" | "payload" | "progress" | "occurredAt"
->;
+export type TEvent = Pick<TEventOutbox, "id" | "eventType" | "payload" | "progress" | "occurredAt">;
 
 export enum EventResultStatus {
   Delivered = "delivered",

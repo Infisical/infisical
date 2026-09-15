@@ -710,9 +710,7 @@ await someDAL.transaction(async (tx) => {
   await eventEmitter.emit(
     {
       eventType: "approval.workflow.request_opened",
-      orgId,
-      projectId,
-      payload: { resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
+      payload: { orgId, projectId, resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
     },
     tx
   );
@@ -744,10 +742,11 @@ await someDAL.transaction(async (tx) => {
   result can't clear the new owner's lock or drop its outcome. `commitResults` returns how many rows it
   settled and `drain` logs a short settle: that count is the only signal that a batch went out twice, since
   the fence protects the bookkeeping but delivery stays at-least-once.
-- **The envelope carries only what the outbox queries on.** `consumer`, `eventType`, the retry and lock
-  columns, and the tenant pair (`orgId`, `projectId`) handed to every consumer. Which resource an event
-  is about lives in `payload` under a shape the consumer's `payloadSchema` declares; the outbox never
-  groups, filters or indexes on it.
+- **The envelope carries only what the outbox queries on.** `consumer`, `eventType`, and the retry and
+  lock columns. Which tenant and resource an event concerns lives in `payload` under a shape the
+  consumer's `payloadSchema` declares, and that schema is where it is validated (the alert consumer
+  requires `orgId` as a UUID). The outbox never groups, filters or indexes on any of it, so don't add a
+  tenant or resource column back for a query nothing runs.
 - **Discovery only looks at consumers registered in this process.** A row for any other name has nowhere
   to go here. It waits and shows up on the oldest-pending gauge instead.
 - **Don't let one event's failure escape `handle`.** The outbox retries the whole batch when `handle`
@@ -774,7 +773,8 @@ new consumer gets them for free.
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
 `triggerType: AlertTriggerType.Event`, implement `findTargetsByIds`, and emit with
-`payload: { resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the provider's. A
+`payload: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
+provider's. A
 `resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
 emit site shows up in the logs on its first event.
 

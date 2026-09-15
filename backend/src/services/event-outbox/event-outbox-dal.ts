@@ -18,8 +18,6 @@ export type TOutboxClaim = {
 export type TOutboxInsertRow = {
   consumer: string;
   eventType: string;
-  orgId: string;
-  projectId?: string | null;
   payload: unknown;
   idempotencyKey?: string | null;
   occurredAt: Date;
@@ -34,7 +32,6 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
           rows.map((row) => ({
             ...row,
             payload: JSON.stringify(row.payload),
-            projectId: row.projectId ?? null,
             idempotencyKey: row.idempotencyKey ?? null
           }))
         )

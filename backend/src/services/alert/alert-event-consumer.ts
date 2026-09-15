@@ -15,9 +15,9 @@ import { AlertTriggerType, MAX_TARGET_IDS_PER_EVENT } from "./alert-types";
 
 export const ALERT_EVENT_CONSUMER = "alert";
 
-// Emitters name the resource and its targets by id and the provider rehydrates them at delivery.
-// Keeping the payload to ids is what lets one consumer serve every provider.
 export const AlertEventPayloadSchema = z.object({
+  orgId: z.string().uuid(),
+  projectId: z.string().trim().min(1).max(255).nullish(),
   resourceType: z.string().trim().min(1).max(255),
   resourceId: z.string().trim().min(1).max(255),
   targetIds: z.array(z.string().trim().min(1).max(255)).min(1).max(MAX_TARGET_IDS_PER_EVENT)
@@ -64,7 +64,7 @@ export const alertEventConsumerFactory = ({
         error: `Unreadable alert event payload: ${payload.error.issues.map((issue) => issue.message).join(", ")}`
       };
     }
-    const { resourceType, resourceId, targetIds } = payload.data;
+    const { orgId, projectId, resourceType, resourceId, targetIds } = payload.data;
 
     if (!$isDeclaredEvent(event.eventType, resourceType)) {
       return {
@@ -78,8 +78,8 @@ export const alertEventConsumerFactory = ({
     const delivered = new Set(progress.success ? progress.data.deliveredChannelIds : []);
 
     const alerts = await findAlerts({
-      orgId: event.orgId,
-      projectId: event.projectId,
+      orgId,
+      projectId,
       resourceType,
       resourceId,
       eventType: event.eventType
