@@ -83,7 +83,7 @@ export const NotificationDropdown = () => {
               <span className="font-medium text-foreground">Notifications</span>
               {hasCritical && (
                 <Badge variant="danger">
-                  {criticalCount > 99 ? "99+" : criticalCount} critical
+                  {criticalCount > 99 ? "99+" : criticalCount} Critical
                 </Badge>
               )}
             </div>
