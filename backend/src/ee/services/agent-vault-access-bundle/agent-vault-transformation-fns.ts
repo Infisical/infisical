@@ -21,14 +21,6 @@ export type TTransformationPlan<TColumns> = {
   deleteIds: string[];
 };
 
-/**
- * Resolves each incoming row to a stored one, by `id` when the caller sent one and otherwise by the row's
- * natural key (a header's name, a substitution's placeholder), both unique per service. That is what lets
- * a hand-written API call edit one row without first fetching the service for its ids.
- *
- * Ids are claimed in a first pass so that swapping two rows' names resolves the way the caller meant:
- * with one pass, the second row could claim the stored row the first had already been given by id.
- */
 // A shallow compare against the stored row. `encryptedValue` is only ever present here when the caller
 // supplied a new value, and a re-seal of the same plaintext produces different bytes, so its presence
 // always means "changed".
@@ -42,6 +34,14 @@ const isUnchanged = (stored: Record<string, unknown>, columns: Record<string, un
     return current === value;
   });
 
+/**
+ * Resolves each incoming row to a stored one, by `id` when the caller sent one and otherwise by the row's
+ * natural key (a header's name, a substitution's placeholder), both unique per service. That is what lets
+ * a hand-written API call edit one row without first fetching the service for its ids.
+ *
+ * Ids are claimed in a first pass so that swapping two rows' names resolves the way the caller meant:
+ * with one pass, the second row could claim the stored row the first had already been given by id.
+ */
 export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
   existing,
   incoming,
