@@ -295,8 +295,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       params: z.object({ organizationId: z.string().trim().uuid() }),
       querystring: z.object({
         search: z.string().trim().max(255).optional().describe("Match root organizations whose name contains this."),
-        limit: z.coerce.number().min(1).max(1000).default(100).describe("Maximum organizations to return."),
-        offset: z.coerce.number().min(0).default(0).describe("Number of organizations to skip.")
+        limit: z.coerce.number().int().min(1).max(1000).default(100).describe("Maximum organizations to return."),
+        offset: z.coerce.number().int().min(0).default(0).describe("Number of organizations to skip.")
       }),
       response: {
         200: z.object({
