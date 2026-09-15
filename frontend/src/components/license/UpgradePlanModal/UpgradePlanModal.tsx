@@ -140,7 +140,7 @@ export const UpgradePlanModalContent = ({
               <Link
                 to="/organizations/$orgId/billing"
                 params={{ orgId }}
-                search={offer.productId ? { product: offer.productId } : {}}
+                search={{ product: offer.productId, subOrganization: undefined }}
               >
                 {offer.primaryLabel}
               </Link>
@@ -164,7 +164,7 @@ export const UpgradePlanModalContent = ({
             <Link
               to="/organizations/$orgId/billing"
               params={{ orgId }}
-              search={offer.productId ? { product: offer.productId } : {}}
+              search={{ product: offer.productId, subOrganization: undefined }}
             >
               {offer.primaryLabel}
             </Link>

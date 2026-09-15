@@ -1,6 +1,6 @@
 import type { BillingV2CatalogProduct, BillingV2Overview } from "@app/hooks/api";
 
-import type { UpgradeFeatureKey } from "./upgrade-feature-registry";
+import { UPGRADE_FEATURE_PRODUCT_MAP, type UpgradeFeatureKey } from "./upgrade-feature-registry";
 
 export type UpgradeOfferKind =
   | "ask-admin"
@@ -73,8 +73,7 @@ export const resolveUpgradeOffer = ({
   }
 
   const productId = featureKey
-    ? (overview.featureProductMap[featureKey] ??
-      catalog.find((candidate) => candidate.plans.some((plan) => plan.feature === featureKey))?.id)
+    ? (overview.featureProductMap[featureKey] ?? UPGRADE_FEATURE_PRODUCT_MAP[featureKey])
     : undefined;
   const product = catalog.find((candidate) => candidate.id === productId);
 

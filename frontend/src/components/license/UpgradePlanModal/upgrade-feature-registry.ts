@@ -151,5 +151,45 @@ export const UPGRADE_FEATURES = {
 
 export type UpgradeFeatureKey = keyof typeof UPGRADE_FEATURES;
 
+export const UPGRADE_FEATURE_PRODUCT_MAP = {
+  audit_logs: "secrets_management",
+  audit_log_streams: "secrets_management",
+  cert_manager: "certificate_management",
+  dynamic_secret: "secrets_management",
+  environment_limit: "secrets_management",
+  enforce_google_sso: "secrets_management",
+  enforce_mfa: "secrets_management",
+  enterprise_app_connections: "secrets_management",
+  enterprise_certificate_syncs: "certificate_management",
+  enterprise_secret_syncs: "secrets_management",
+  external_kms: "secrets_management",
+  gateway_pool: "privileged_access_management",
+  github_org_sync: "secrets_management",
+  groups: "secrets_management",
+  hsm: "certificate_management",
+  honey_tokens: "secrets_management",
+  ip_allowlisting: "secrets_management",
+  kmip: "secrets_management",
+  ldap: "secrets_management",
+  max_identity_limit: "secrets_management",
+  machine_identity_auth_templates: "secrets_management",
+  oidc_sso: "secrets_management",
+  pam: "privileged_access_management",
+  pit_recovery: "secrets_management",
+  pki_acme: "certificate_management",
+  pki_est: "certificate_management",
+  project_templates: "secrets_management",
+  rbac: "secrets_management",
+  saml_sso: "secrets_management",
+  scim: "secrets_management",
+  secret_access_insights: "secrets_management",
+  secret_approval: "secrets_management",
+  secret_rotation: "secrets_management",
+  secret_scanning: "secrets_management",
+  secrets_brokering: "privileged_access_management",
+  ssh_host_groups: "privileged_access_management",
+  sub_organization: "secrets_management"
+} as const satisfies Record<UpgradeFeatureKey, string>;
+
 export const getUpgradeFeature = (featureKey?: UpgradeFeatureKey) =>
   featureKey ? UPGRADE_FEATURES[featureKey] : undefined;
