@@ -69,7 +69,8 @@ export const GcpStartCommandContent = ({
     const relayPart = resolvedRelayName
       ? ` \\\n  --set gateway.relayName=${resolvedRelayName}`
       : "";
-    const authTypeSet = gcpAuthType === "iam" ? ` \\\n  --set gateway.enrollment.gcp.type=iam` : "";
+    const authTypeSet = gcpAuthType === "iam" ? " \\\n  --set gateway.enrollment.gcp.type=iam" : "";
+    const annotationSet = ` \\\n  --set serviceAccount.annotations."iam\\.gke\\.io/gcp-service-account"=${workloadIdentityAccount}`;
     return `helm repo add infisical https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
 helm install infisical-gateway infisical/infisical-gateway \\
   --namespace infisical-gateway --create-namespace \\

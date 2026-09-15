@@ -235,7 +235,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
 
         | Field | Description |
         | --- | --- |
-        | **Type** | **GCP ID Token Auth** reads a token from the instance metadata server, which covers Compute Engine VMs and GKE pods using workload identity. **GCP IAM Auth** signs one through the IAM Credentials API, for hosts outside Compute Engine. |
+        | **Type** | **GCP ID Token Auth** reads a token from the instance metadata server, which covers Compute Engine VMs, GKE pods using workload identity, and other surfaces with a metadata server such as Cloud Run, Cloud Functions and App Engine. **GCP IAM Auth** signs one through the IAM Credentials API, for hosts outside Compute Engine. |
         | **Allowed Service Account Emails** | Service account emails that may authenticate as this gateway. |
         | **Allowed Projects** | Optional. Project IDs whose Compute Engine instances may authenticate as this gateway. |
         | **Allowed Zones** | Optional, and only a narrowing of the two above. Zones whose Compute Engine instances may authenticate as this gateway. |

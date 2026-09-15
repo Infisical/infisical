@@ -41,10 +41,17 @@ export const verifyGcpTokenAndExtractCaller = async ({
     const payload = crypto.jwt().decode(jwt) as { exp?: number } | null;
     const lifetimeProblem = assertIamTokenLifetime(payload, Math.floor(Date.now() / 1000));
     if (lifetimeProblem) {
-      throw new Error(`signed GCP service account token ${lifetimeProblem}`);
+      // Its own reason code: an operator debugging this needs to tell a token their tooling signed
+      // without a bounded expiry apart from a bad signature or a wrong audience.
+      throw new UnauthorizedError({
+        message: `Access denied: the signed GCP service account token was ${lifetimeProblem.replace("_", " ")}. It must carry an expiry no more than 12 hours ahead.`,
+        detail: { reasonCode: ResourceAuthLoginFailureReason.GcpTokenLifetimeRejected, ...errorContext }
+      });
     }
     return identityDetails;
   } catch (err) {
+    // A lifetime refusal is already a well-formed decision, not a verification failure.
+    if (err instanceof UnauthorizedError) throw err;
     logger.error(
       err,
       `Resource GCP Auth Login: token verification failed [resourceId=${String(errorContext.resourceId)}]`

@@ -212,6 +212,6 @@ describe("verifyGcpTokenAndExtractCaller", () => {
         audience: "gw-1",
         errorContext
       })
-    ).rejects.toMatchObject({ detail: { reasonCode: "gcp_token_verification_failed" } });
+    ).rejects.toMatchObject({ detail: { reasonCode: "gcp_token_lifetime_rejected" } });
   });
 });
