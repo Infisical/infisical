@@ -18,6 +18,7 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
+import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { AgentVaultTemplate } from "@app/helpers/agentVaultTemplates";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
@@ -46,7 +47,9 @@ import { TransformationsFields } from "./TransformationsFields";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
   name: "",
-  hostPattern: "",
+  hosts: [],
+  hostDraft: "",
+  pathDraft: "",
   credentialType: AgentVaultCredentialType.Bearer,
   headerName: "Authorization",
   headerPrefix: "Bearer",
@@ -54,7 +57,6 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   secret: "",
   allMethods: true,
   methods: [],
-  allPaths: true,
   pathPrefixes: [],
   headers: [],
   substitutions: []
@@ -116,8 +118,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     if (service) {
       const { credential } = service;
       reset({
+        ...BLANK_SERVICE_FORM,
         name: service.name,
-        hostPattern: displayHostPattern(service.hostPattern),
+        hosts: displayHostPattern(service.hostPattern).split(", "),
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
         // the same defaults a new service gets. Left undefined, the submit would send an empty
@@ -132,8 +135,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
         allMethods: service.allowedMethods === null,
         methods: service.allowedMethods ?? [],
-        allPaths: service.allowedPathPrefixes === null,
-        pathPrefixes: (service.allowedPathPrefixes ?? []).map((value) => ({ value })),
+        pathPrefixes: service.allowedPathPrefixes ?? [],
         // The stored values never come back, so each row carries the sentinel until it is retyped.
         headers: service.headers.map((header) => ({
           id: header.id,
@@ -158,10 +160,15 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
     if (picked) {
       const cred = picked.credential;
+      // Some templates carry a placeholder such as <your-tenant>.atlassian.net, which is not a host. A
+      // part that would be refused as a chip goes into the draft instead, ready to be replaced.
+      const parts = picked.hostPattern.split(",").map((host) => host.trim());
+
       reset({
         ...BLANK_SERVICE_FORM,
         name: picked.key,
-        hostPattern: picked.hostPattern,
+        hosts: parts.filter((host) => !hostError(host, [])),
+        hostDraft: parts.find((host) => Boolean(hostError(host, []))) ?? "",
         credentialType: cred.type,
         ...(cred.type === AgentVaultCredentialType.Bearer && {
           headerName: cred.headerName ?? "Authorization",
@@ -216,9 +223,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
   const buildPolicy = (data: TServiceForm) => ({
     allowedMethods: data.allMethods ? null : data.methods,
-    allowedPathPrefixes: data.allPaths
-      ? null
-      : data.pathPrefixes.map((prefix) => prefix.value.trim())
+    allowedPathPrefixes: data.pathPrefixes.length ? data.pathPrefixes : null
   });
 
   // An untouched row sends no value at all, which the API reads as "keep what is stored".
@@ -244,7 +249,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           accessBundleId,
           serviceId: service.id,
           name: data.name,
-          hostPattern: data.hostPattern,
+          hostPattern: data.hosts.join(","),
           ...buildPolicy(data),
           credential: buildCredentialPatch(data),
           ...buildTransformations(data)
@@ -253,7 +258,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         await createService.mutateAsync({
           accessBundleId,
           name: data.name,
-          hostPattern: data.hostPattern,
+          hostPattern: data.hosts.join(","),
           ...buildPolicy(data),
           credential: buildCredential(data),
           ...buildTransformations(data)
@@ -275,7 +280,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.includes("already covers")
       ) {
-        setError("hostPattern", { type: "server", message: serverResponse.message });
+        setError("hosts", { type: "server", message: serverResponse.message });
         setStep(stepKeys.indexOf(ServiceStep.Details));
         return;
       }
@@ -294,6 +299,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         };
 
         const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
+          hostPattern: "hosts",
           allowedMethods: "methods",
           allowedPathPrefixes: "pathPrefixes",
           credential: "secret"
@@ -376,7 +382,9 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
         requestDiscard();
       }}
     >
-      <SheetContent className="sm:max-w-6xl">
+      {/* Three columns live in here: the step rail, the form and the explainer. w-3/4 (the Sheet default)
+          left the middle one about 445px, which crammed the Transformations rows. */}
+      <SheetContent className="w-[90vw] sm:max-w-[1500px]">
         <SheetHeader>
           {isTemplateStep ? (
             <>

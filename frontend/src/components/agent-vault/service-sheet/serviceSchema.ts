@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
-import { addPathPrefixIssues } from "@app/helpers/agentVaultPathPrefix";
+import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
+import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -37,6 +37,9 @@ export const HTTP_METHODS = Object.values(AgentVaultHttpMethod);
 export const MAX_HEADERS = 20;
 export const MAX_SUBSTITUTIONS = 20;
 export const MAX_PATH_PREFIXES = 20;
+
+// The column holds every host as one comma-joined string, so this caps the join, not any single host.
+const AGENT_VAULT_MAX_HOST_PATTERN_LENGTH = 1024;
 
 export const SURFACE_LABELS: Record<AgentVaultSubstitutionSurface, string> = {
   [AgentVaultSubstitutionSurface.Path]: "Path",
@@ -80,11 +83,12 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
   [ServiceStep.Details]: [
     "name",
-    "hostPattern",
+    "hosts",
+    "hostDraft",
     "allMethods",
     "methods",
-    "allPaths",
-    "pathPrefixes"
+    "pathPrefixes",
+    "pathDraft"
   ],
   [ServiceStep.Credential]: ["credentialType", "headerName", "headerPrefix", "username", "secret"],
   [ServiceStep.Transformations]: ["headers", "substitutions"],
@@ -95,7 +99,12 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
   z
     .object({
       name: slugSchema({ max: 64, field: "Name" }),
-      hostPattern: z.string().trim().min(1, "Required").max(1024).superRefine(addHostListIssues),
+      hosts: z.array(z.string()),
+      // The half-typed value in each chip field. It lives in the form rather than in component state so
+      // that the resolver sees it: trigger() re-runs the schema and wipes anything set with setError, so a
+      // refusal held outside the form would let the step advance and take the text with it.
+      hostDraft: z.string(),
+      pathDraft: z.string(),
       credentialType: z.nativeEnum(AgentVaultCredentialType),
       headerName: z
         .string()
@@ -111,9 +120,8 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
       secret: z.string().max(8192).optional(),
       allMethods: z.boolean(),
       methods: z.array(z.nativeEnum(AgentVaultHttpMethod)),
-      allPaths: z.boolean(),
       pathPrefixes: z
-        .array(z.object({ value: z.string() }))
+        .array(z.string())
         .max(MAX_PATH_PREFIXES, `You can add at most ${MAX_PATH_PREFIXES} path prefixes.`),
       headers: z
         .array(
@@ -137,6 +145,41 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
         .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`)
     })
     .superRefine((data, ctx) => {
+      addHostIssues(data.hosts, ctx, ["hosts"]);
+      // Blur commits a valid draft, so anything still sitting here was refused and has a reason. React
+      // Hook Form surfaces the first issue per field, and that reason is more use than "add a host".
+      const hostDraft = data.hostDraft.trim();
+      if (hostDraft) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["hosts"],
+          message: hostError(hostDraft, data.hosts) ?? `Add "${hostDraft}" or clear it.`
+        });
+      } else if (data.hosts.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["hosts"],
+          message: "Add at least one host."
+        });
+      }
+
+      const pathDraft = data.pathDraft.trim();
+      if (pathDraft) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["pathPrefixes"],
+          message:
+            pathPrefixError(pathDraft, data.pathPrefixes) ?? `Add "${pathDraft}" or clear it.`
+        });
+      }
+      if (data.hosts.join(",").length > AGENT_VAULT_MAX_HOST_PATTERN_LENGTH) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["hosts"],
+          message: `These hosts come to more than ${AGENT_VAULT_MAX_HOST_PATTERN_LENGTH} characters together. Remove a few.`
+        });
+      }
+
       if (!data.allMethods && data.methods.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -145,16 +188,7 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
         });
       }
 
-      if (!data.allPaths) {
-        if (data.pathPrefixes.length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["pathPrefixes"],
-            message: "Add at least one path prefix."
-          });
-        }
-        addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
-      }
+      addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
 
       let credentialHeader: string | null = null;
       if (data.credentialType === AgentVaultCredentialType.Bearer) {

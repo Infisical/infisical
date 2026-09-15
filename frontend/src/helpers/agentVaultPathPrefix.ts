@@ -11,7 +11,8 @@ export const normalizePathPrefix = (value: string) => {
   return trimmed.replace(/\/+$/, "");
 };
 
-export const pathPrefixError = (raw: string): string | null => {
+/** `existing` must never contain the value being checked, so a duplicate is reported on the second one. */
+export const pathPrefixError = (raw: string, existing: string[] = []): string | null => {
   const value = raw.trim();
   if (!value) return "A path prefix can't be empty.";
   if (value.length > 512) return "A path prefix can be at most 512 characters.";
@@ -21,29 +22,24 @@ export const pathPrefixError = (raw: string): string | null => {
     return "A path prefix can't contain a . or .. segment.";
   if (!PATH_PREFIX_RE.test(value))
     return "A path prefix can't contain a space, %, ;, \\, ? or #. Write the path exactly as it appears in the URL.";
+
+  const normalized = normalizePathPrefix(value);
+  if (existing.some((other) => normalizePathPrefix(other) === normalized))
+    return `"${normalized}" is listed twice.`;
+
   return null;
 };
 
+/** One error slot per prefix. Each is judged against the prefixes before it, never against itself. */
+const pathPrefixErrors = (prefixes: string[]): (string | null)[] =>
+  prefixes.map((prefix, index) => pathPrefixError(prefix, prefixes.slice(0, index)));
+
 export const addPathPrefixIssues = (
-  prefixes: { value: string }[],
+  prefixes: string[],
   ctx: z.RefinementCtx,
   path: (string | number)[] = []
 ) => {
-  const seen = new Set<string>();
-  prefixes.forEach((prefix, index) => {
-    const message = pathPrefixError(prefix.value);
-    if (message) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: [...path, index, "value"] });
-      return;
-    }
-    const normalized = normalizePathPrefix(prefix.value);
-    if (seen.has(normalized)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `"${normalized}" is listed twice.`,
-        path: [...path, index, "value"]
-      });
-    }
-    seen.add(normalized);
+  pathPrefixErrors(prefixes).forEach((message, index) => {
+    if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: [...path, index] });
   });
 };

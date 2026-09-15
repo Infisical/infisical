@@ -22,11 +22,12 @@ export const SERVICE_STEPS: StepMeta[] = [
   {
     step: ServiceStep.Details,
     name: "Details",
-    shortDescription: "Name and hosts",
+    shortDescription: "Name, hosts and rules",
     title: "Details",
-    subtitle: "What this service is called, and the hosts it covers.",
+    subtitle: "What this service is called, the hosts it covers, and the requests it allows.",
     rightLabel: "DETAILS",
-    rightDescription: "The credentials are only used for the hosts you list here."
+    rightDescription:
+      "The credentials are only used for the hosts you list here. Every path is allowed unless you name the ones you want."
   },
   {
     step: ServiceStep.Credential,

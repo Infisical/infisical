@@ -44,18 +44,16 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           </Detail>
           <Detail>
             <DetailLabel>Hosts</DetailLabel>
-            <DetailValue className="font-mono">{form.hostPattern}</DetailValue>
+            <DetailValue>{form.hosts.join(", ")}</DetailValue>
           </Detail>
           <Detail>
             <DetailLabel>Methods</DetailLabel>
-            <DetailValue className={form.allMethods ? undefined : "font-mono"}>
-              {form.allMethods ? "All" : form.methods.join(", ")}
-            </DetailValue>
+            <DetailValue>{form.allMethods ? "All" : form.methods.join(", ")}</DetailValue>
           </Detail>
           <Detail>
             <DetailLabel>Paths</DetailLabel>
-            <DetailValue className={form.allPaths ? undefined : "font-mono"}>
-              {form.allPaths ? "All" : form.pathPrefixes.map((prefix) => prefix.value).join(", ")}
+            <DetailValue>
+              {form.pathPrefixes.length ? form.pathPrefixes.join(", ") : "All"}
             </DetailValue>
           </Detail>
         </div>
@@ -71,7 +69,7 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           {sends && (
             <Detail>
               <DetailLabel>Sends</DetailLabel>
-              <DetailValue className="font-mono">{sends}</DetailValue>
+              <DetailValue>{sends}</DetailValue>
             </Detail>
           )}
           {isBasic && (
@@ -93,28 +91,28 @@ export const ReviewFields = ({ isUpdate }: Props) => {
         <DetailGroupHeader className="border-b border-border pb-2">
           Transformations
         </DetailGroupHeader>
-        <div className="flex flex-wrap gap-x-8 gap-y-4">
-          <Detail>
-            <DetailLabel>Headers</DetailLabel>
-            <DetailValue className={form.headers.length ? "font-mono" : undefined}>
-              {form.headers.length ? form.headers.map((header) => header.name).join(", ") : NONE}
-            </DetailValue>
-          </Detail>
-          <Detail>
-            <DetailLabel>Substitutions</DetailLabel>
-            <DetailValue className={form.substitutions.length ? "font-mono" : undefined}>
-              {form.substitutions.length
-                ? form.substitutions
-                    .map(
-                      (substitution) =>
-                        `${substitution.placeholder} in ${substitution.surfaces
-                          .map((surface) => SURFACE_LABELS[surface].toLowerCase())
-                          .join(", ")}`
-                    )
-                    .join("; ")
-                : NONE}
-            </DetailValue>
-          </Detail>
+        {/* One line each, so a header reads the way it goes out on the wire. */}
+        <div className="flex flex-col gap-1.5 text-sm text-foreground">
+          {form.headers.length === 0 && form.substitutions.length === 0 && <p>{NONE}</p>}
+          {form.headers
+            .filter((header) => header.name)
+            .map((header) => (
+              <p key={header.name}>
+                {header.name}: {header.prefix ? `${header.prefix} ` : ""}••••••••
+              </p>
+            ))}
+          {form.substitutions
+            .filter((substitution) => substitution.placeholder)
+            .map((substitution) => (
+              <p key={substitution.placeholder}>
+                {substitution.placeholder} → ••••••••
+                {substitution.surfaces.length
+                  ? ` in ${substitution.surfaces
+                      .map((surface) => SURFACE_LABELS[surface].toLowerCase())
+                      .join(", ")}`
+                  : ""}
+              </p>
+            ))}
         </div>
       </DetailGroup>
     </div>

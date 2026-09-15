@@ -1,28 +1,24 @@
-import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
-import { TrashIcon } from "lucide-react";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { PlusIcon, TrashIcon } from "lucide-react";
 
 import {
   Button,
   Checkbox,
-  CodeBlock,
   CopyButton,
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
-  FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   IconButton,
   Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
-import { AgentVaultCredentialType, AgentVaultSubstitutionSurface } from "@app/hooks/api/agentVault";
+import { cn } from "@app/components/v3/utils";
+import { AgentVaultSubstitutionSurface } from "@app/hooks/api/agentVault";
 
-import { credentialPreview, SecretInput } from "./CredentialFields";
+import { SecretInput } from "./CredentialFields";
 import {
   MAX_HEADERS,
   MAX_SUBSTITUTIONS,
@@ -38,38 +34,21 @@ export const TransformationsFields = () => {
   const headers = useFieldArray({ control, name: "headers" });
   const substitutions = useFieldArray({ control, name: "substitutions" });
 
-  const form = useWatch({ control }) as TServiceForm;
-  const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
-  // Same placeholder the Credential step shows, so the two previews agree for basic auth.
-  const credentialLine = credentialPreview(
-    form,
-    isBasic ? "base64(<username>:<password>)" : "<token>"
-  );
-  const sends = [
-    credentialLine,
-    ...form.headers
-      .filter((header) => header.name)
-      .map((header) => `${header.name}: ${header.prefix ? `${header.prefix} ` : ""}••••••••`),
-    ...form.substitutions
-      .filter((substitution) => substitution.placeholder && substitution.surfaces.length)
-      .map(
-        (substitution) =>
-          `${substitution.placeholder} → •••••••• in ${substitution.surfaces
-            .map((surface) => SURFACE_LABELS[surface].toLowerCase())
-            .join(", ")}`
-      )
-  ].filter(Boolean);
-
   return (
     <div className="flex flex-col gap-5">
-      <FieldSet>
-        <FieldLegend>Headers</FieldLegend>
-        <FieldDescription>
-          Added to every request to this service, on top of the credential.
-        </FieldDescription>
-        <FieldGroup>
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="text-sm font-medium">Headers</p>
+          <p className="mt-1 text-xs text-muted">
+            Added to every request to this service, on top of the credential.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4">
+          {headers.fields.length === 0 && (
+            <p className="text-center text-sm text-muted">No headers added. Add one below.</p>
+          )}
           {headers.fields.map((row, index) => (
-            <div key={row.id} className="flex items-start gap-2">
+            <div key={row.id} className="flex items-start gap-3">
               <Controller
                 control={control}
                 name={`headers.${index}.name`}
@@ -81,7 +60,6 @@ export const TransformationsFields = () => {
                         {...field}
                         aria-label="Header name"
                         placeholder="X-Org-Id"
-                        className="font-mono"
                         isError={Boolean(fieldState.error)}
                       />
                       <FieldError>{fieldState.error?.message}</FieldError>
@@ -99,6 +77,7 @@ export const TransformationsFields = () => {
                       <Input
                         {...field}
                         aria-label="Header prefix"
+                        placeholder="Token"
                         isError={Boolean(fieldState.error)}
                       />
                       <FieldError>{fieldState.error?.message}</FieldError>
@@ -129,39 +108,53 @@ export const TransformationsFields = () => {
               <IconButton
                 aria-label={`Remove header ${index + 1}`}
                 variant="ghost"
-                className={index === 0 ? "mt-6.5" : "mt-0.5"}
+                size="xs"
+                className={cn(
+                  index === 0 ? "mt-6.5" : "mt-0.5",
+                  "transition-transform hover:text-danger"
+                )}
                 onClick={() => headers.remove(index)}
               >
-                <TrashIcon />
+                <TrashIcon className="size-4" />
               </IconButton>
             </div>
           ))}
+        </div>
 
-          {headers.fields.length < MAX_HEADERS && (
-            <Button
-              size="xs"
-              variant="outline"
-              className="self-start"
-              onClick={() => headers.append({ name: "", prefix: "", value: "" })}
-            >
-              Add Header
-            </Button>
+        {headers.fields.length < MAX_HEADERS && (
+          <Button
+            variant="ghost"
+            size="xs"
+            className="self-start"
+            onClick={() => headers.append({ name: "", prefix: "", value: "" })}
+          >
+            <PlusIcon className="mr-1 size-4" />
+            Add Header
+          </Button>
+        )}
+
+        <Controller
+          control={control}
+          name="headers"
+          render={({ fieldState }) => <FieldError>{fieldState.error?.message}</FieldError>}
+        />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="text-sm font-medium">Substitutions</p>
+          <p className="mt-1 text-xs text-muted">
+            Your agent sends a placeholder. The proxy swaps it for the real value before forwarding.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3">
+          {substitutions.fields.length === 0 && (
+            <div className="rounded-md border border-border bg-container/50 p-4">
+              <p className="text-center text-sm text-muted">
+                No substitutions added. Add one below.
+              </p>
+            </div>
           )}
-
-          <Controller
-            control={control}
-            name="headers"
-            render={({ fieldState }) => <FieldError>{fieldState.error?.message}</FieldError>}
-          />
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet>
-        <FieldLegend>Substitutions</FieldLegend>
-        <FieldDescription>
-          Your agent sends a placeholder; the proxy swaps it for the real value before forwarding.
-        </FieldDescription>
-        <FieldGroup>
           {substitutions.fields.map((row, index) => (
             <div
               key={row.id}
@@ -179,8 +172,7 @@ export const TransformationsFields = () => {
                           <InputGroupInput
                             {...field}
                             aria-label="Placeholder"
-                            placeholder="__GITHUB_PAT__"
-                            className="font-mono"
+                            placeholder="__API_TOKEN__"
                             isError={Boolean(fieldState.error)}
                           />
                           {Boolean(field.value) && (
@@ -221,10 +213,11 @@ export const TransformationsFields = () => {
                 <IconButton
                   aria-label={`Remove substitution ${index + 1}`}
                   variant="ghost"
-                  className="mt-6.5"
+                  size="xs"
+                  className="mt-6.5 transition-transform hover:text-danger"
                   onClick={() => substitutions.remove(index)}
                 >
-                  <TrashIcon />
+                  <TrashIcon className="size-4" />
                 </IconButton>
               </div>
 
@@ -265,8 +258,8 @@ export const TransformationsFields = () => {
 
           {substitutions.fields.length < MAX_SUBSTITUTIONS && (
             <Button
+              variant="ghost"
               size="xs"
-              variant="outline"
               className="self-start"
               onClick={() =>
                 substitutions.append({
@@ -276,6 +269,7 @@ export const TransformationsFields = () => {
                 })
               }
             >
+              <PlusIcon className="mr-1 size-4" />
               Add Substitution
             </Button>
           )}
@@ -285,10 +279,8 @@ export const TransformationsFields = () => {
             name="substitutions"
             render={({ fieldState }) => <FieldError>{fieldState.error?.message}</FieldError>}
           />
-        </FieldGroup>
-      </FieldSet>
-
-      {sends.length > 0 && <CodeBlock label="Sends" isCopyable={false} value={sends.join("\n")} />}
+        </div>
+      </div>
     </div>
   );
 };

@@ -17,7 +17,6 @@ import {
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   Card,
   CardAction,
@@ -83,56 +82,6 @@ type Props = {
 // Two hosts is what the column fits comfortably; the rest go behind the count so the table keeps its
 // width no matter how many a service covers.
 const HOSTS_SHOWN = 2;
-
-const countLabel = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-
-// Reads as "Bearer · 2 headers · 1 substitution", so a bundle's shape is visible without opening a service.
-const CredentialCell = ({ service }: { service: TAgentVaultService }) => {
-  const extras = [
-    service.headers.length ? countLabel(service.headers.length, "header") : null,
-    service.substitutions.length ? countLabel(service.substitutions.length, "substitution") : null
-  ].filter(Boolean);
-
-  return (
-    <div className="flex items-center gap-1.5 text-sm">
-      <span>{CREDENTIAL_LABELS[service.credential.type]}</span>
-      {extras.length > 0 && <span className="text-muted">· {extras.join(" · ")}</span>}
-    </div>
-  );
-};
-
-const PolicyBadges = ({ service }: { service: TAgentVaultService }) => {
-  const { allowedMethods, allowedPathPrefixes } = service;
-  if (!allowedMethods && !allowedPathPrefixes) return null;
-
-  return (
-    <div className="flex shrink-0 items-center gap-1">
-      {allowedMethods && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge
-              variant="outline"
-              className={allowedMethods.length <= 2 ? "font-mono" : undefined}
-            >
-              {allowedMethods.length <= 2
-                ? allowedMethods.join(", ")
-                : countLabel(allowedMethods.length, "method")}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>Only {allowedMethods.join(", ")} are allowed</TooltipContent>
-        </Tooltip>
-      )}
-      {allowedPathPrefixes && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="outline">{countLabel(allowedPathPrefixes.length, "path")}</Badge>
-          </TooltipTrigger>
-          <TooltipContent>Only {allowedPathPrefixes.join(", ")} are allowed</TooltipContent>
-        </Tooltip>
-      )}
-    </div>
-  );
-};
 
 const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
   const hosts = displayHostPattern(hostPattern).split(", ");
@@ -302,13 +251,10 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
                   </div>
                 </TableCell>
                 <TableCell>
-                  <CredentialCell service={service} />
+                  <span className="text-sm">{CREDENTIAL_LABELS[service.credential.type]}</span>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <HostsCell hostPattern={service.hostPattern} />
-                    <PolicyBadges service={service} />
-                  </div>
+                  <HostsCell hostPattern={service.hostPattern} />
                 </TableCell>
                 <TableCell>
                   <Tooltip>

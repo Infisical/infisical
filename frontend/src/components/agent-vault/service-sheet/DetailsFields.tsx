@@ -1,29 +1,23 @@
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { TrashIcon } from "lucide-react";
+import { Controller, useFormContext } from "react-hook-form";
 
 import {
-  Button,
   Checkbox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
-  IconButton,
   Input,
-  TextArea
+  TagsInput
 } from "@app/components/v3";
+import { hostError } from "@app/helpers/agentVaultHostPattern";
+import { pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 
-import { HTTP_METHODS, MAX_PATH_PREFIXES, TServiceForm } from "./serviceSchema";
+import { HTTP_METHODS, TServiceForm } from "./serviceSchema";
 
 export const DetailsFields = () => {
-  const { control, watch, setValue } = useFormContext<TServiceForm>();
+  const { control, watch, setValue, trigger, clearErrors } = useFormContext<TServiceForm>();
   const allMethods = watch("allMethods");
-  const allPaths = watch("allPaths");
-
-  const pathPrefixes = useFieldArray({ control, name: "pathPrefixes" });
 
   return (
     <div className="flex flex-col gap-5">
@@ -44,28 +38,51 @@ export const DetailsFields = () => {
 
       <Controller
         control={control}
-        name="hostPattern"
+        name="hosts"
         render={({ field, fieldState }) => (
           <Field>
             <FieldLabel>Hosts</FieldLabel>
             <FieldContent>
-              <TextArea
-                {...field}
-                rows={3}
-                placeholder="api.datadoghq.com"
-                isError={Boolean(fieldState.error)}
+              <Controller
+                control={control}
+                name="hostDraft"
+                render={({ field: draft }) => (
+                  <TagsInput
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    inputValue={draft.value}
+                    onInputValueChange={(next) => {
+                      draft.onChange(next);
+                      if (fieldState.error) clearErrors("hosts");
+                    }}
+                    validateTag={hostError}
+                    // The schema already turns a stuck draft into the reason it was refused, so running
+                    // it is cheaper than keeping a second copy of the message in component state. Only on
+                    // a refusal: a successful commit clears the draft a render later, and validating in
+                    // between would read the value that just became a chip.
+                    onValidationError={(reason) =>
+                      reason ? trigger("hosts") : clearErrors("hosts")
+                    }
+                    isError={Boolean(fieldState.error)}
+                    aria-label="Hosts"
+                    placeholder="api.datadoghq.com"
+                  />
+                )}
               />
               <FieldDescription>
-                Comma separated. Wildcards like *.example.com are allowed.
+                The credential is only sent to these hosts. Wildcards like *.example.com are
+                allowed.
               </FieldDescription>
-              <FieldError>{fieldState.error?.message}</FieldError>
+              <FieldError
+                errors={Array.isArray(fieldState.error) ? fieldState.error : [fieldState.error]}
+              />
             </FieldContent>
           </Field>
         )}
       />
 
-      <FieldSet>
-        <FieldLegend>Methods</FieldLegend>
+      <Field>
+        <FieldLabel>Methods</FieldLabel>
         <FieldContent>
           <Controller
             control={control}
@@ -87,112 +104,85 @@ export const DetailsFields = () => {
             )}
           />
 
-          {!allMethods && (
-            <Controller
-              control={control}
-              name="methods"
-              render={({ field, fieldState }) => (
-                <FieldContent>
-                  <div className="flex flex-wrap gap-x-5 gap-y-2">
-                    {HTTP_METHODS.map((method) => (
-                      <Field key={method} orientation="horizontal" className="w-auto">
-                        <Checkbox
-                          id={`method-${method}`}
-                          isChecked={field.value.includes(method)}
-                          onCheckedChange={(checked) =>
-                            field.onChange(
-                              checked === true
-                                ? [...field.value, method]
-                                : field.value.filter((value) => value !== method)
-                            )
-                          }
-                        />
-                        <FieldLabel htmlFor={`method-${method}`} className="font-mono">
-                          {method}
-                        </FieldLabel>
-                      </Field>
-                    ))}
-                  </div>
-                  <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              )}
-            />
-          )}
-        </FieldContent>
-      </FieldSet>
-
-      <FieldSet>
-        <FieldLegend>Paths</FieldLegend>
-        <FieldContent>
           <Controller
             control={control}
-            name="allPaths"
-            render={({ field }) => (
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="all-paths"
-                  isChecked={field.value}
-                  onCheckedChange={(checked) => {
-                    field.onChange(checked === true);
-                    if (checked === true) setValue("pathPrefixes", [], { shouldDirty: true });
-                    else if (pathPrefixes.fields.length === 0) pathPrefixes.append({ value: "" });
-                  }}
-                />
-                <FieldLabel htmlFor="all-paths">All Paths</FieldLabel>
-              </Field>
+            name="methods"
+            render={({ field, fieldState }) => (
+              <FieldContent>
+                {/* Indented under the checkbox label so the seven read as what "All Methods" governs.
+                    Fixed columns line the boxes up; w-fit keeps them hugging the labels rather than
+                    stretching across the width of the sheet. */}
+                <div
+                  role="group"
+                  aria-label="Methods"
+                  className="mt-2 ml-6 grid w-fit grid-cols-4 gap-x-8 gap-y-2"
+                >
+                  {HTTP_METHODS.map((method) => (
+                    <Field key={method} orientation="horizontal" className="w-auto">
+                      <Checkbox
+                        id={`method-${method}`}
+                        isChecked={allMethods || field.value.includes(method)}
+                        isDisabled={allMethods}
+                        onCheckedChange={(checked) =>
+                          field.onChange(
+                            checked === true
+                              ? [...field.value, method]
+                              : field.value.filter((value) => value !== method)
+                          )
+                        }
+                      />
+                      <FieldLabel htmlFor={`method-${method}`}>{method}</FieldLabel>
+                    </Field>
+                  ))}
+                </div>
+                <FieldError>{fieldState.error?.message}</FieldError>
+              </FieldContent>
             )}
           />
+        </FieldContent>
+      </Field>
 
-          {!allPaths && (
+      <Controller
+        control={control}
+        name="pathPrefixes"
+        render={({ field, fieldState }) => (
+          <Field>
+            <FieldLabel>Paths</FieldLabel>
             <FieldContent>
-              {pathPrefixes.fields.map((row, index) => (
-                <Controller
-                  key={row.id}
-                  control={control}
-                  name={`pathPrefixes.${index}.value`}
-                  render={({ field, fieldState }) => (
-                    <Field>
-                      <FieldContent>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            {...field}
-                            placeholder="/repos"
-                            className="font-mono"
-                            isError={Boolean(fieldState.error)}
-                          />
-                          <IconButton
-                            aria-label="Remove path prefix"
-                            variant="ghost"
-                            onClick={() => pathPrefixes.remove(index)}
-                          >
-                            <TrashIcon />
-                          </IconButton>
-                        </div>
-                        <FieldError>{fieldState.error?.message}</FieldError>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-              ))}
-              {pathPrefixes.fields.length < MAX_PATH_PREFIXES && (
-                <Button
-                  size="xs"
-                  variant="outline"
-                  className="self-start"
-                  onClick={() => pathPrefixes.append({ value: "" })}
-                >
-                  Add Path Prefix
-                </Button>
-              )}
               <Controller
                 control={control}
-                name="pathPrefixes"
-                render={({ fieldState }) => <FieldError>{fieldState.error?.message}</FieldError>}
+                name="pathDraft"
+                render={({ field: draft }) => (
+                  <TagsInput
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    inputValue={draft.value}
+                    onInputValueChange={(next) => {
+                      draft.onChange(next);
+                      if (fieldState.error) clearErrors("pathPrefixes");
+                    }}
+                    // A comma is legal inside a path, so only Enter, Tab and blur commit here.
+                    separators={[]}
+                    validateTag={pathPrefixError}
+                    onValidationError={(reason) =>
+                      reason ? trigger("pathPrefixes") : clearErrors("pathPrefixes")
+                    }
+                    isError={Boolean(fieldState.error)}
+                    aria-label="Path prefixes"
+                    placeholder="/api/v1"
+                  />
+                )}
+              />
+              <FieldDescription>
+                A prefix matches whole segments, so /api/v1 covers /api/v1/users but not /api/v10.
+              </FieldDescription>
+              <FieldError
+                errors={Array.isArray(fieldState.error) ? fieldState.error : [fieldState.error]}
               />
             </FieldContent>
-          )}
-        </FieldContent>
-      </FieldSet>
+          </Field>
+        )}
+      />
     </div>
   );
 };
