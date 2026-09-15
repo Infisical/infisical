@@ -80,6 +80,8 @@ const product = (
       selfServe: false,
       salesLed: true,
       trialable: false,
+      upgradeable: false,
+      trialDays: 0,
       dims: []
     }
   ]
