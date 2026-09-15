@@ -7,7 +7,6 @@ import {
   ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -424,10 +423,6 @@ export const secretValidationRuleServiceFactory = ({
         secret.value !== undefined && !containsSecretReference(secret.value)
     );
     if (!candidates.length) return {};
-
-    // Two writes of the same value would each find no duplicate and both land. The lock makes this
-    // check and the write that follows it atomic, so the second one sees the first.
-    if (tx) await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretValueReuseCheck(projectId)]);
 
     const blindIndexes = await Promise.all(
       candidates.map((secret) => generateSecretBlindIndex(Buffer.from(secret.value)))
