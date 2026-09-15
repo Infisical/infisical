@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 
 import {
   EmailDomainsTable,

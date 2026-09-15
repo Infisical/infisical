@@ -414,7 +414,13 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
   ) => (
     <Field data-invalid={Boolean(error)}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input {...field} {...inputProps} id={id} aria-invalid={Boolean(error)} />
+      <Input
+        {...field}
+        {...inputProps}
+        id={id}
+        aria-invalid={Boolean(error)}
+        {...(field.name === "name" ? { autoComplete: "off", name: id } : {})}
+      />
       <FieldError errors={[error]} />
     </Field>
   );

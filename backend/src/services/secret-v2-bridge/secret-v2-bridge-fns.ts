@@ -622,7 +622,9 @@ export const reshapeBridgeSecret = (
     rotationId?: string;
     secretReminderRecipients?: TSecretReminderRecipient[];
   },
-  secretValueHidden: boolean
+  secretValueHidden: boolean,
+  // a personal override is only ever readable by its owner, so unmasking one requires proving who is asking
+  actorUserId?: string | null
 ) => ({
   secretKey: secret.key,
   secretPath,
@@ -658,7 +660,10 @@ export const reshapeBridgeSecret = (
   secretReminderRecipients: secret.secretReminderRecipients || [],
   ...(secretValueHidden
     ? {
-        secretValue: secret.type === SecretType.Personal ? secret.value : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+        secretValue:
+          secret.type === SecretType.Personal && Boolean(actorUserId) && secret.userId === actorUserId
+            ? secret.value
+            : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
         secretValueHidden: true
       }
     : {

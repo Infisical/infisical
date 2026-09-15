@@ -528,7 +528,13 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 render={({ field, fieldState: { error } }) => (
                   <Field className="mb-4">
                     <FieldLabel>Name</FieldLabel>
-                    <Input {...field} autoFocus placeholder="Machine Identity 1" />
+                    <Input
+                      {...field}
+                      autoFocus
+                      placeholder="Machine Identity 1"
+                      autoComplete="off"
+                      name="project-template-identity-name"
+                    />
                     {error?.message && <FieldError>{error.message}</FieldError>}
                   </Field>
                 )}

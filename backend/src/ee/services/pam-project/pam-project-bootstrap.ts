@@ -134,6 +134,14 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
+  },
+  {
+    name: "snowflake",
+    type: PamAccountType.Snowflake,
+    settings: {
+      recordingEnabled: true,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
+    }
   }
 ];
 

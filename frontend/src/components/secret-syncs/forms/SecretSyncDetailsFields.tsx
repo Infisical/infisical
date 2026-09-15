@@ -29,6 +29,8 @@ export const SecretSyncDetailsFields = () => {
               placeholder="my-secret-sync"
               isError={Boolean(error)}
               autoFocus
+              autoComplete="off"
+              name="sync-name"
             />
             {!error && <FieldDescription>Must be slug-friendly.</FieldDescription>}
             <FieldError errors={[error]} />

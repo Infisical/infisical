@@ -225,7 +225,12 @@ const ConfigurationTab = ({
                   Name<span className="text-product-pam">*</span>
                 </FieldLabel>
                 <FieldContent>
-                  <Input {...field} isError={!!fieldState.error} />
+                  <Input
+                    {...field}
+                    isError={!!fieldState.error}
+                    autoComplete="off"
+                    name="pam-template-name"
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
@@ -531,6 +536,7 @@ const SettingsTab = ({
             return (
               <Editor
                 key={p.key}
+                accountType={template.type as PamAccountType}
                 label={p.label}
                 description={p.description}
                 value={policies[p.key]}

@@ -3,6 +3,7 @@ import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 import { TFeatureCounterFn, TLimitFeatureDescriptor } from "../feature";
 import {
   ActiveCerts,
+  AgentVaultIdentities,
   IdentitiesMeter,
   InternalCas,
   PamIdentities,
@@ -28,6 +29,7 @@ const METERED_FEATURES = [
   WildcardCerts,
   SecretIdentities,
   PamIdentities,
+  AgentVaultIdentities,
   UserIdentities
 ] as const;
 
@@ -87,6 +89,10 @@ export const buildMeteredFeatures = ({
   {
     feature: PamIdentities,
     count: (orgId) => usageCounterDAL.countPamIdentities(isCloud ? orgId : undefined)
+  },
+  {
+    feature: AgentVaultIdentities,
+    count: (orgId) => usageCounterDAL.countAgentVaultIdentities(isCloud ? orgId : undefined)
   },
   {
     // Human users only (org members), never machine identities. Legacy per-user plans.

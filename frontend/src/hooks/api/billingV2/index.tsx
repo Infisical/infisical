@@ -9,7 +9,8 @@ export {
   useRefreshBillingV2Entitlements,
   useRemoveBillingV2Product,
   useResumeBillingV2Subscription,
-  useStartBillingV2Trial
+  useStartBillingV2Trial,
+  useUpgradeBillingV2Product
 } from "./mutations";
 export {
   billingV2Keys,
@@ -37,7 +38,10 @@ export type {
   BillingV2Preview,
   BillingV2PreviewLine,
   BillingV2SubState,
+  BillingV2Trial,
+  BillingV2TrialOutcome,
   BillingV2TrialResult,
+  BillingV2UpgradeResult,
   BillingV2UsageBreakdown
 } from "./types";
 export { BillingV2BreakdownDimension } from "./types";

@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { useGetServerConfig } from "@app/hooks/api/admin";
 
 import { GeneralPageForm, UsageReportSection } from "./components";

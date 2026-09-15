@@ -46,6 +46,12 @@
     box-shadow: 0 0 0 1000px var(--autofill-background, var(--color-background)) inset !important;
   }
 
+  input[data-slot="input-group-control"]:-webkit-autofill {
+    background-clip: text;
+    -webkit-text-fill-color: currentColor;
+    box-shadow: none !important;
+  }
+
   [data-slot="dialog-content"],
   [data-slot="sheet-content"] {
     --autofill-background: var(--color-popover);
@@ -68,6 +74,16 @@
 }
 
 @theme {
+  --z-index-sticky: 10;
+  --z-index-action: 40;
+  --z-index-backdrop: 50;
+  --z-index-modal: 50;
+  --z-index-dropdown: 50;
+  --z-index-popover: 50;
+  --z-index-combobox: 60;
+  --z-index-tooltip: 70;
+  --z-index-toast: 999999999;
+
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
@@ -99,6 +115,7 @@
   --color-product-kms: #34edbf;
   --color-product-ss: #b056f0;
   --color-product-pam: #ff3568;
+  --color-product-av: #a1d434;
   --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
