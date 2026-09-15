@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeftIcon } from "lucide-react";
 
+import { BILLING_EVENTS, organizationTelemetryProperties } from "@app/components/analytics/events";
 import { createNotification } from "@app/components/notifications";
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { Badge, Button, SheetFooter, SheetHeader, SheetTitle } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import {
@@ -117,6 +119,7 @@ export const ActivateView = ({
 
   const preview = usePreviewBillingV2Change();
   const buyProduct = useBuyBillingV2Product();
+  const telemetry = new Telemetry().getInstance();
 
   // Yearly sends the buyer-chosen commitment quantities; monthly sends nothing (the server seeds the
   // recurring quantities from present usage).
@@ -213,6 +216,13 @@ export const ActivateView = ({
         returnPath
       });
       if (result.outcome === "subscription_updated") {
+        telemetry.capture(BILLING_EVENTS.SubscriptionUpdated, {
+          ...organizationTelemetryProperties(orgId),
+          productId: prod.id,
+          plan: plan.tier,
+          cadence,
+          subscriptionId: result.subscriptionId
+        });
         createNotification({
           type: "success",
           text: `${prod.name} activated. It may take a moment to update here.`
@@ -221,6 +231,12 @@ export const ActivateView = ({
         return;
       }
       if (result.checkoutUrl) {
+        telemetry.capture(BILLING_EVENTS.CheckoutStarted, {
+          ...organizationTelemetryProperties(orgId),
+          productId: prod.id,
+          plan: plan.tier,
+          cadence
+        });
         window.location.href = result.checkoutUrl;
         return;
       }

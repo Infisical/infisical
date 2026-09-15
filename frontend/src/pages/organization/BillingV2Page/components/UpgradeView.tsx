@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, ChevronLeftIcon } from "lucide-react";
 
+import { BILLING_EVENTS, organizationTelemetryProperties } from "@app/components/analytics/events";
 import { createNotification } from "@app/components/notifications";
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Alert,
   AlertDescription,
@@ -53,6 +55,7 @@ export const UpgradeView = ({
 }: Props) => {
   const preview = usePreviewBillingV2Change();
   const upgrade = useUpgradeBillingV2Product();
+  const telemetry = new Telemetry().getInstance();
   const [pricedAt, setPricedAt] = useState(0);
 
   const { mutate: runPreview } = preview;
@@ -113,12 +116,20 @@ export const UpgradeView = ({
     }
 
     try {
-      await upgrade.mutateAsync({
+      const result = await upgrade.mutateAsync({
         orgId,
         productId: prod.id,
         plan: plan.tier,
         expectedPlanVersionId: priced.toPlanVersionId,
         prorationDate: priced.prorationDate ?? undefined
+      });
+      telemetry.capture(BILLING_EVENTS.SubscriptionUpgraded, {
+        ...organizationTelemetryProperties(orgId),
+        productId: prod.id,
+        fromPlan: result.fromPlanKey ?? fromPlanName,
+        toPlan: result.toPlanKey ?? plan.tier,
+        subscriptionId: result.subscriptionId,
+        isTrialConversion
       });
       createNotification({
         type: "success",

@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { SparklesIcon } from "lucide-react";
 
+import { organizationTelemetryProperties, PAYWALL_EVENTS } from "@app/components/analytics/events";
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
   Dialog,
@@ -23,9 +26,34 @@ type Props = {
   isEnterpriseFeature?: boolean;
 };
 
-export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Element => {
+export const UpgradePlanModal = ({
+  text,
+  isOpen,
+  onOpenChange,
+  isEnterpriseFeature
+}: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
   const scopeVariant = useScopeVariant();
+  const telemetry = new Telemetry().getInstance();
+
+  const eventProperties = {
+    ...organizationTelemetryProperties(currentOrg.id),
+    paywallText: text,
+    sourcePath: window.location.pathname,
+    isEnterpriseFeature: Boolean(isEnterpriseFeature)
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      telemetry.capture(PAYWALL_EVENTS.Viewed, eventProperties);
+    }
+    // The event should fire once per closed-to-open transition, not when copy or route context changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const handleUpgradeClick = () => {
+    telemetry.capture(PAYWALL_EVENTS.UpgradeClicked, eventProperties);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -48,7 +76,9 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
             Cancel
           </Button>
           <Link to="/organizations/$orgId/billing" params={{ orgId: currentOrg.id }}>
-            <Button variant={scopeVariant}>Upgrade Plan</Button>
+            <Button variant={scopeVariant} onClick={handleUpgradeClick}>
+              Upgrade Plan
+            </Button>
           </Link>
         </DialogFooter>
       </DialogContent>
