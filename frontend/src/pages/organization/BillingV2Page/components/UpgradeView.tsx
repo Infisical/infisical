@@ -32,6 +32,7 @@ type Props = {
   orgId: string;
   prod: BillingV2CatalogProduct;
   plan: BillingV2Plan;
+  fromPlan: string;
   fromPlanName: string;
   renewsOn: string | null;
   selfServe: boolean;
@@ -46,6 +47,7 @@ export const UpgradeView = ({
   orgId,
   prod,
   plan,
+  fromPlan,
   fromPlanName,
   renewsOn,
   selfServe,
@@ -126,7 +128,7 @@ export const UpgradeView = ({
       telemetry.capture(BILLING_EVENTS.SubscriptionUpgraded, {
         ...organizationTelemetryProperties(orgId),
         productId: prod.id,
-        fromPlan: result.fromPlanKey ?? fromPlanName,
+        fromPlan: result.fromPlanKey ?? fromPlan,
         toPlan: result.toPlanKey ?? plan.tier,
         subscriptionId: result.subscriptionId,
         isTrialConversion
