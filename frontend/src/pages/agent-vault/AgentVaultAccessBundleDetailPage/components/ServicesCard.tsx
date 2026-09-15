@@ -250,9 +250,7 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
                     {service.name}
                   </div>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm">{CREDENTIAL_LABELS[service.credential.type]}</span>
-                </TableCell>
+                <TableCell>{CREDENTIAL_LABELS[service.credential.type]}</TableCell>
                 <TableCell>
                   <HostsCell hostPattern={service.hostPattern} />
                 </TableCell>
