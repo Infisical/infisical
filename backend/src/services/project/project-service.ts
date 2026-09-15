@@ -289,6 +289,21 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
+    let projectTemplate: Awaited<ReturnType<typeof projectTemplateService.findProjectTemplateByName>> | null = null;
+
+    switch (template) {
+      case InfisicalProjectTemplate.Default:
+        projectTemplate = null;
+        break;
+      default:
+        projectTemplate = await projectTemplateService.findProjectTemplateByName(template, {
+          id: actorId,
+          orgId: organization.id,
+          type: actor,
+          authMethod: actorAuthMethod
+        });
+    }
+
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
@@ -323,21 +338,6 @@ export const projectServiceFactory = ({
             message: "Only an external KMS key can be assigned to a project"
           });
         }
-      }
-
-      let projectTemplate: Awaited<ReturnType<typeof projectTemplateService.findProjectTemplateByName>> | null = null;
-
-      switch (template) {
-        case InfisicalProjectTemplate.Default:
-          projectTemplate = null;
-          break;
-        default:
-          projectTemplate = await projectTemplateService.findProjectTemplateByName(template, {
-            id: actorId,
-            orgId: organization.id,
-            type: actor,
-            authMethod: actorAuthMethod
-          });
       }
 
       const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
@@ -404,9 +404,12 @@ export const projectServiceFactory = ({
 
         if (projectTemplate.users?.length) {
           const templateUsernames = projectTemplate.users.map((u) => u.username.toLowerCase());
-          const users = await userDAL.find({
-            $in: { username: templateUsernames }
-          });
+          const users = await userDAL.find(
+            {
+              $in: { username: templateUsernames }
+            },
+            { tx }
+          );
 
           // If template has an admin, include the creator in template users, otherwise exclude them
           const usersToProcess = templateHasAdmin ? users : users.filter((u) => u.id !== actorId);
@@ -483,10 +486,13 @@ export const projectServiceFactory = ({
         // Add template groups to the project
         if (projectTemplate.groups?.length) {
           const templateGroupSlugs = projectTemplate.groups.map((g) => g.groupSlug.toLowerCase());
-          const groups = await groupDAL.find({
-            orgId: project.orgId,
-            $in: { slug: templateGroupSlugs }
-          });
+          const groups = await groupDAL.find(
+            {
+              orgId: project.orgId,
+              $in: { slug: templateGroupSlugs }
+            },
+            { tx }
+          );
 
           if (groups.length) {
             const groupSlugToRoles = new Map(projectTemplate.groups.map((g) => [g.groupSlug.toLowerCase(), g.roles]));
@@ -541,10 +547,13 @@ export const projectServiceFactory = ({
         // Add template (org owned) identities to the project
         if (projectTemplate.identities?.length) {
           const templateIdentityIds = projectTemplate.identities.map((i) => i.identityId);
-          const orgIdentities = await identityDAL.find({
-            orgId: project.orgId,
-            $in: { id: templateIdentityIds }
-          });
+          const orgIdentities = await identityDAL.find(
+            {
+              orgId: project.orgId,
+              $in: { id: templateIdentityIds }
+            },
+            { tx }
+          );
 
           if (orgIdentities.length) {
             const identityIdToRoles = new Map(projectTemplate.identities.map((i) => [i.identityId, i.roles]));
@@ -675,7 +684,7 @@ export const projectServiceFactory = ({
       // Skip this if the creator was already added via template with their configured roles
       if (actor === ActorType.USER && !creatorAddedViaTemplate) {
         // Find public key of user
-        const user = await userDAL.findUserEncKeyByUserId(actorId);
+        const user = await userDAL.findUserEncKeyByUserId(actorId, tx);
 
         if (!user) {
           throw new Error("User not found");
