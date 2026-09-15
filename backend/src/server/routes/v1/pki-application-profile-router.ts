@@ -69,6 +69,8 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         profileIds: req.body.profileIds
       });
 
+      const applicationName = await server.services.pkiApplication.getApplicationNameById(req.params.applicationId);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -76,6 +78,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
           type: EventType.ATTACH_PKI_APPLICATION_PROFILES,
           metadata: {
             applicationId: req.params.applicationId,
+            ...(applicationName && { applicationName }),
             profileIds: req.body.profileIds
           }
         }
@@ -128,6 +131,8 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         profileId: req.params.profileId
       });
 
+      const applicationName = await server.services.pkiApplication.getApplicationNameById(result.applicationId);
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -135,6 +140,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
           type: EventType.DETACH_PKI_APPLICATION_PROFILE,
           metadata: {
             applicationId: result.applicationId,
+            ...(applicationName && { applicationName }),
             profileId: result.profileId
           }
         }

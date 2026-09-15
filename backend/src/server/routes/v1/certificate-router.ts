@@ -246,6 +246,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           removeRootsFromChain: requestBody.removeRootsFromChain
         });
 
+        const applicationName = requestBody.applicationId
+          ? await server.services.pkiApplication.getApplicationNameById(requestBody.applicationId)
+          : undefined;
+
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           projectId: data.projectId,
@@ -253,8 +257,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             type: EventType.ORDER_CERTIFICATE_FROM_PROFILE,
             metadata: {
               certificateProfileId: requestBody.profileId,
+              certificateRequestId: data.certificateRequestId,
+              commonName: data.commonName || attributes?.commonName || "",
               profileName: data.profileName,
-              ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
+              status: data.status,
+              ...(data.serialNumber && { serialNumber: data.serialNumber }),
+              ...(requestBody.applicationId && { applicationId: requestBody.applicationId }),
+              ...(applicationName && { applicationName })
             }
           }
         });
@@ -299,6 +308,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           basicConstraints: attributes?.basicConstraints
         });
 
+        const applicationName = requestBody.applicationId
+          ? await server.services.pkiApplication.getApplicationNameById(requestBody.applicationId)
+          : undefined;
+
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           projectId: data.projectId,
@@ -307,9 +320,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             metadata: {
               certificateProfileId: requestBody.profileId,
               certificateId: data.certificateId || "",
+              certificateRequestId: data.certificateRequestId,
               profileName: data.profileName,
               commonName: extractedCsrData.commonName || "",
-              ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
+              status: data.status,
+              ...(data.serialNumber && { serialNumber: data.serialNumber }),
+              ...(requestBody.applicationId && { applicationId: requestBody.applicationId }),
+              ...(applicationName && { applicationName })
             }
           }
         });
@@ -381,6 +398,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         removeRootsFromChain: requestBody.removeRootsFromChain
       });
 
+      const applicationName = requestBody.applicationId
+        ? await server.services.pkiApplication.getApplicationNameById(requestBody.applicationId)
+        : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: data.projectId,
@@ -389,9 +410,13 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             certificateProfileId: requestBody.profileId,
             certificateId: data.certificateId || "",
-            commonName: attributes?.commonName || "",
+            certificateRequestId: data.certificateRequestId,
+            commonName: attributes?.commonName || data.commonName || "",
             profileName: data.profileName,
-            ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
+            status: data.status,
+            ...(data.serialNumber && { serialNumber: data.serialNumber }),
+            ...(requestBody.applicationId && { applicationId: requestBody.applicationId }),
+            ...(applicationName && { applicationName })
           }
         }
       });
@@ -474,7 +499,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.GET_CERTIFICATE_REQUEST,
           metadata: {
-            certificateRequestId: req.params.requestId
+            certificateRequestId: req.params.requestId,
+            commonName: certificateRequest.commonName ?? undefined,
+            status: certificateRequest.status,
+            serialNumber: certificateRequest.serialNumber ?? undefined
           }
         }
       });
@@ -820,6 +848,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           type: EventType.CANCEL_CERTIFICATE_REQUEST,
           metadata: {
             certificateRequestId: req.params.requestId,
+            commonName: certificateRequest?.commonName ?? undefined,
             cancelled,
             previousStatus,
             previousPendingMessage
@@ -929,8 +958,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             certificateProfileId: req.body.profileId,
             certificateId: data.certificateId || "",
+            certificateRequestId: data.certificateRequestId,
             commonName: req.body.commonName || "",
-            profileName: data.profileName
+            profileName: data.profileName,
+            status: data.status,
+            ...(data.serialNumber && { serialNumber: data.serialNumber })
           }
         }
       });
@@ -1028,8 +1060,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             certificateProfileId: req.body.profileId,
             certificateId: data.certificateId || "",
+            certificateRequestId: data.certificateRequestId,
             profileName: data.profileName,
-            commonName: certificateRequestData.commonName || ""
+            commonName: certificateRequestData.commonName || "",
+            status: data.status,
+            ...(data.serialNumber && { serialNumber: data.serialNumber })
           }
         }
       });
@@ -1136,7 +1171,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           type: EventType.ORDER_CERTIFICATE_FROM_PROFILE,
           metadata: {
             certificateProfileId: req.body.profileId,
-            profileName: data.profileName
+            certificateRequestId: data.certificateRequestId,
+            commonName: data.commonName || req.body.commonName || "",
+            profileName: data.profileName,
+            status: data.status,
+            ...(data.serialNumber && { serialNumber: data.serialNumber })
           }
         }
       });
@@ -1205,8 +1244,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             originalCertificateId: req.params.id,
             newCertificateId: data.certificateId || "",
+            certificateRequestId: data.certificateRequestId,
             profileName: data.profileName,
             commonName: data.commonName || "",
+            ...(data.serialNumber && { serialNumber: data.serialNumber }),
             renewalKeySource: req.body?.renewalKeySource ?? CertificateRenewalKeySource.New,
             changedAttributes: data.changedAttributes ?? []
           }
@@ -1756,7 +1797,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           metadata: {
             certId: cert.id,
             cn: cert.commonName,
-            serialNumber: cert.serialNumber
+            serialNumber: cert.serialNumber,
+            revocationReason: req.body.revocationReason
           }
         }
       });

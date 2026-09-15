@@ -73,6 +73,10 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         projectId: req.internalCertManagerProjectId
       });
 
+      const applicationName = alert.applicationId
+        ? await server.services.pkiApplication.getApplicationNameById(alert.applicationId)
+        : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -83,7 +87,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             name: alert.name,
             eventType: alert.eventType,
             alertBefore: alert.alertBefore,
-            ...(alert.applicationId && { applicationId: alert.applicationId })
+            ...(alert.applicationId && { applicationId: alert.applicationId }),
+            ...(applicationName && { applicationName })
           }
         }
       });
@@ -218,6 +223,10 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
+      const applicationName = alert.applicationId
+        ? await server.services.pkiApplication.getApplicationNameById(alert.applicationId)
+        : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: alert.projectId,
@@ -225,7 +234,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
           type: EventType.GET_PKI_ALERT,
           metadata: {
             pkiAlertId: alert.id,
-            ...(alert.applicationId && { applicationId: alert.applicationId })
+            ...(alert.applicationId && { applicationId: alert.applicationId }),
+            ...(applicationName && { applicationName })
           }
         }
       });
@@ -289,6 +299,10 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         ...req.body
       });
 
+      const applicationName = alert.applicationId
+        ? await server.services.pkiApplication.getApplicationNameById(alert.applicationId)
+        : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: alert.projectId,
@@ -299,7 +313,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             name: alert.name,
             eventType: alert.eventType,
             alertBefore: alert.alertBefore,
-            ...(alert.applicationId && { applicationId: alert.applicationId })
+            ...(alert.applicationId && { applicationId: alert.applicationId }),
+            ...(applicationName && { applicationName })
           }
         }
       });
@@ -361,6 +376,10 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
+      const applicationName = alert.applicationId
+        ? await server.services.pkiApplication.getApplicationNameById(alert.applicationId)
+        : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: alert.projectId,
@@ -368,7 +387,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
           type: EventType.DELETE_PKI_ALERT,
           metadata: {
             pkiAlertId: alert.id,
-            ...(alert.applicationId && { applicationId: alert.applicationId })
+            ...(alert.applicationId && { applicationId: alert.applicationId }),
+            ...(applicationName && { applicationName })
           }
         }
       });

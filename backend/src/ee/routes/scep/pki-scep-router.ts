@@ -185,6 +185,8 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
+      const applicationName = await server.services.pkiApplication.getApplicationNameById(applicationId);
+
       void server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: result.projectId,
@@ -194,7 +196,8 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
             profileId,
             profileSlug: result.profileSlug,
             expiresAt: result.expiresAt,
-            applicationId
+            applicationId,
+            ...(applicationName && { applicationName })
           }
         }
       });
