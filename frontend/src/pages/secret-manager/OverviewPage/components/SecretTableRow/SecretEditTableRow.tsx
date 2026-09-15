@@ -108,7 +108,6 @@ import {
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME
 } from "../tableRowActionStyles";
-import { DuplicateSecretModal } from "./DuplicateSecretModal";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretMetadataForm } from "./SecretMetadataForm";
@@ -181,6 +180,7 @@ type Props = {
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
   revokedProjectFolderGrant?: boolean;
+  onCopySecret?: () => void;
 };
 
 export const SecretEditTableRow = ({
@@ -218,13 +218,13 @@ export const SecretEditTableRow = ({
   hasPendingChange,
   hasPendingValueChange,
   pendingKeyName,
-  revokedProjectFolderGrant
+  revokedProjectFolderGrant,
+  onCopySecret
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
     "accessInsightsUpgrade",
-    "createSharedSecret",
-    "duplicateSecret"
+    "createSharedSecret"
   ] as const);
 
   const { currentProject } = useProject();
@@ -1745,11 +1745,17 @@ export const SecretEditTableRow = ({
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5"
-                    onClick={() => handlePopUpOpen("duplicateSecret")}
-                    isDisabled={isPendingBatchChange || isManagedSecret || isCreatable || !secretId}
+                    onClick={onCopySecret}
+                    isDisabled={
+                      isPendingBatchChange ||
+                      isManagedSecret ||
+                      isCreatable ||
+                      !secretId ||
+                      !onCopySecret
+                    }
                   >
                     <CopyPlus />
-                    Duplicate Secret
+                    Copy Secret
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
@@ -1758,10 +1764,10 @@ export const SecretEditTableRow = ({
                     : isCreatable
                       ? "Create Secret First"
                       : isHoneyTokenSecret
-                        ? "Cannot Duplicate Honey Token Secret"
+                        ? "Cannot Copy Honey Token Secret"
                         : isRotatedSecret
-                          ? "Cannot Duplicate Rotated Secret"
-                          : "Duplicate Secret"}
+                          ? "Cannot Copy Rotated Secret"
+                          : "Copy Secret"}
                 </TooltipContent>
               </Tooltip>
 
@@ -1955,14 +1961,6 @@ export const SecretEditTableRow = ({
         </AlertDialogContent>
       </AlertDialog>
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DuplicateSecretModal
-        isOpen={popUp.duplicateSecret.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("duplicateSecret", open)}
-        secrets={secretId ? [{ id: secretId, name: secretName }] : []}
-        secretPath={secretPath}
-        sourceEnvironment={{ slug: environment, name: environmentName }}
-        canCopySecretValue={!secretValueHidden}
-      />
     </>
   );
 

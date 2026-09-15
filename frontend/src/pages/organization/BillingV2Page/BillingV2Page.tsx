@@ -181,7 +181,6 @@ export const BillingV2Page = () => {
           initialView={flow.view}
           returnPath={window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
-          trialUsed={overview?.trialedProductKeys.includes(flow.prodId) ?? false}
           selfServe={overview?.selfServe ?? true}
           onClose={close}
           onRemove={setRemoveProdId}

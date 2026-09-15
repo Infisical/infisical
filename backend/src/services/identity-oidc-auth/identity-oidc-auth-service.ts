@@ -53,6 +53,7 @@ import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
+import { splitCommaSeparatedPolicyValues } from "../identity/identity-auth-policy-values";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
@@ -412,9 +413,9 @@ export const identityOidcAuthServiceFactory = ({
 
       if (identityOidcAuth.boundAudiences) {
         if (
-          !identityOidcAuth.boundAudiences
-            .split(", ")
-            .some((policyValue) => doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue))
+          !splitCommaSeparatedPolicyValues(identityOidcAuth.boundAudiences).some((policyValue) =>
+            doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue)
+          )
         ) {
           throw new UnauthorizedError({
             message: "Access denied: OIDC audience not allowed.",
@@ -446,7 +447,11 @@ export const identityOidcAuthServiceFactory = ({
           }
 
           // handle both single and multi-valued claims
-          if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(value, claimEntry))) {
+          if (
+            !splitCommaSeparatedPolicyValues(claimValue).some((claimEntry) =>
+              doesFieldValueMatchOidcPolicy(value, claimEntry)
+            )
+          ) {
             throw new UnauthorizedError({
               message: "Access denied: OIDC claim not allowed.",
               detail: {

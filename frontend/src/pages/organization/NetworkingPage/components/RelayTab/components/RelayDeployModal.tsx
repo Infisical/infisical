@@ -99,6 +99,8 @@ export const RelayDeployModal = ({ isOpen, onOpenChange }: Props) => {
                   placeholder="my-relay"
                   isError={Boolean(error)}
                   autoFocus
+                  autoComplete="off"
+                  name="relay-name"
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>

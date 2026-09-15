@@ -56,7 +56,7 @@ export const SupportedScopes: Story = {
   render: () => (
     <div className="flex flex-col gap-10">
       {SCOPES.map(({ label, scope }) => (
-        <PageHeader key={scope} scope={scope} title={label} className="mb-0" />
+        <PageHeader key={scope} scope={scope} title={label} />
       ))}
     </div>
   ),

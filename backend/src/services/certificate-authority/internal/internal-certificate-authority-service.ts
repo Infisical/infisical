@@ -32,6 +32,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common/certificate-constants";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
@@ -61,6 +62,7 @@ import {
   PKI_TEXT_COLUMN_MAX_LENGTH,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "../../certificate-common/certificate-constants";
+import { appendCustomExtensions } from "../../certificate-common/certificate-extension-fns";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
@@ -1867,6 +1869,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     friendlyName,
     commonName,
     altNames,
+    altNameEntries,
     ttl,
     notBefore,
     notAfter,
@@ -1881,6 +1884,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     isFromProfile,
     internal = false,
     basicConstraints,
+    customExtensions,
     pathLength,
     organization,
     country,
@@ -2155,7 +2159,12 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     let altNamesArray: TAltNameMapping[] = [];
 
-    if (altNames) {
+    if (altNameEntries?.length) {
+      altNamesArray = altNameEntries.map(({ type, value }) => ({
+        type: CERT_SUBJECT_ALTERNATIVE_NAMES[type].generalNameType,
+        value
+      }));
+    } else if (altNames) {
       altNamesArray = altNames
         .split(",")
         .map((name) => name.trim())
@@ -2166,11 +2175,15 @@ export const internalCertificateAuthorityServiceFactory = ({
           }
           return altNameType;
         });
+    }
 
+    if (altNamesArray.length) {
       // RFC 5280 4.1.2.6: subjectAltName must be marked critical when the subject is an empty sequence
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, leafDn.trim().length === 0);
       extensions.push(altNamesExtension);
     }
+
+    appendCustomExtensions(extensions, customExtensions);
 
     if (certificateTemplate) {
       validateCertificateDetailsAgainstTemplate(
@@ -2230,7 +2243,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const executeIssueCertOperations = async (transaction: Knex) => {
       // Extract certificate fields for storage
       const certificatePem = leafCert.toString("pem");
-      const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+      const parsedFields = extractCertificateFields(Buffer.from(certificatePem), customExtensions);
 
       const cert = await certificateDAL.create(
         {
@@ -2337,6 +2350,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       basicConstraints,
       pathLength,
       subjectOverride,
+      customExtensions,
       tx
     } = dto;
 
@@ -2676,6 +2690,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       extensions.push(altNamesExtension);
     }
 
+    appendCustomExtensions(extensions, customExtensions);
+
     if (certificateTemplate) {
       validateCertificateDetailsAgainstTemplate(
         {
@@ -2723,7 +2739,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const createSignedCert = async (transaction: Knex) => {
       // Extract certificate fields for storage
       const certificatePem = leafCert.toString("pem");
-      const parsedFields = extractCertificateFields(Buffer.from(certificatePem));
+      const parsedFields = extractCertificateFields(Buffer.from(certificatePem), customExtensions);
 
       const newCert = await certificateDAL.create(
         {

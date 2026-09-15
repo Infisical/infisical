@@ -208,6 +208,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
               project ? [project.id] : []
             )}
             grantPamAccess={selectedProducts.includes(ProjectType.PAM)}
+            grantAgentVaultAccess={selectedProducts.includes(ProjectType.AgentVault)}
             onComplete={handleInviteComplete}
           />
         );
@@ -279,6 +280,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
       </Helmet>
       <OnboardingStepTransition step={section}>
         {section === SignupSection.VerifyCode ||
+        section === SignupSection.UserInfo ||
         section === SignupSection.ProductSelect ||
         section === SignupSection.Complete ? (
           <div className="w-full">{renderView()}</div>

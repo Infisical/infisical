@@ -82,7 +82,12 @@ export const EditInstallationModal = ({ isOpen, onClose, projectId, installation
                 helperText="Optional friendly name for this installation"
                 errorText={errors.name?.message}
               >
-                <Input {...field} placeholder="My Web Server" />
+                <Input
+                  {...field}
+                  placeholder="My Web Server"
+                  autoComplete="off"
+                  name="certificate-installation-name"
+                />
               </FormControl>
             )}
           />

@@ -45,7 +45,7 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -143,6 +143,7 @@ export const Page = () => {
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const canAssumePrivileges = !isCertManager && supportsAssumePrivileges(currentProject.type);
   let memberDisplayName = "Unnamed User";
   if (membershipDetails) {
     const { firstName, lastName, email, username } = membershipDetails.user;
@@ -151,22 +152,6 @@ export const Page = () => {
         ? `${firstName ?? ""} ${lastName ?? ""}`.trim()
         : email || username || membershipDetails.inviteEmail || "Unnamed User";
   }
-
-  const usersBackLink = (
-    <Link
-      to={`${getProjectBaseURL(currentProject.type)}/access-management`}
-      params={{
-        projectId: currentProject.id,
-        orgId: currentOrg.id
-      }}
-      search={{
-        selectedTab: ProjectAccessControlTabs.Member
-      }}
-    >
-      <ChevronLeftIcon aria-hidden className="size-4" />
-      {isCertManager ? "Users" : "Project Users"}
-    </Link>
-  );
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col gap-8">
@@ -180,7 +165,21 @@ export const Page = () => {
                 ? "Configure and manage certificate manager access control"
                 : "Configure and manage project access control"
             }
-            backLink={usersBackLink}
+            backLink={
+              <Link
+                to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+                params={{
+                  projectId: currentProject.id,
+                  orgId: currentOrg.id
+                }}
+                search={{
+                  selectedTab: ProjectAccessControlTabs.Member
+                }}
+              >
+                <ChevronLeftIcon aria-hidden className="size-4" />
+                {isCertManager ? "Users" : "Project Users"}
+              </Link>
+            }
           >
             <div className="flex items-center gap-2">
               {!isCertManager && (
@@ -222,7 +221,7 @@ export const Page = () => {
                     >
                       Copy User ID
                     </DropdownMenuItem>
-                    {!isCertManager && (
+                    {canAssumePrivileges && (
                       <ProjectPermissionCan
                         I={ProjectPermissionMemberActions.AssumePrivileges}
                         a={ProjectPermissionSub.Member}
@@ -346,17 +345,14 @@ export const Page = () => {
           )}
         </>
       ) : (
-        <>
-          <PageHeader scope={currentProject.type} title="User not found" backLink={usersBackLink} />
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>User not found</EmptyTitle>
-              <EmptyDescription>
-                This membership may have been removed or is no longer available.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        </>
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>User not found</EmptyTitle>
+            <EmptyDescription>
+              This membership may have been removed or is no longer available.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
     </div>
   );

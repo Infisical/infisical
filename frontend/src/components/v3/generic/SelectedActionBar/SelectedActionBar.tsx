@@ -77,7 +77,7 @@ function SelectedActionBar({
     <div
       data-slot="selected-action-bar-positioner"
       className={cn(
-        "pointer-events-none fixed inset-x-4 bottom-8 z-40 flex justify-center",
+        "pointer-events-none fixed inset-x-4 bottom-8 z-[var(--z-index-action)] flex justify-center",
         "transition-[opacity,translate,filter,scale] ease-out motion-reduce:transition-none",
         isVisible
           ? "translate-y-0 scale-100 opacity-100 blur-none duration-200"

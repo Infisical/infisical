@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -77,7 +77,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import {
+  useDebounce,
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useSlashFocusSearch
+} from "@app/hooks";
 import {
   useGetMyPendingProjectAccessRequests,
   useGetUserProjects,
@@ -246,6 +252,17 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, orgId, navigate]);
 
+  // An org-scoped product has one implicit project, so listing it here would offer a project view we
+  // hide everywhere else, plus a create button the backend refuses.
+  useEffect(() => {
+    if (projectType === ProjectType.AgentVault) {
+      navigate({
+        to: "/organizations/$orgId/agent-vault/sessions",
+        params: { orgId }
+      });
+    }
+  }, [projectType, orgId, navigate]);
+
   if (projectType === ProjectType.CertificateManager) {
     return (
       <CertManagerNotConfiguredModal
@@ -263,7 +280,7 @@ export const ProjectTypePage = () => {
     );
   }
 
-  if (projectType === ProjectType.PAM) {
+  if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
     return null;
   }
 
@@ -1083,88 +1100,94 @@ const Toolbar = ({
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
-}) => (
-  <div className="flex w-full flex-wrap items-center justify-between gap-2">
-    <div className="flex min-w-72 flex-1 items-center gap-2">
-      <InputGroup className="min-w-48 flex-1">
-        <InputGroupAddon align="inline-start">
-          <SearchIcon />
-        </InputGroupAddon>
-        <InputGroupInput
-          placeholder="Search by project name..."
-          value={searchFilter}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-      </InputGroup>
-      {!hideProjectListToggle && (
-        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
-      )}
-    </div>
-    <div className="flex items-center gap-2">
-      <ButtonGroup>
-        {isGridDisabled ? (
-          <Tooltip>
-            <TooltipTrigger tabIndex={-1} asChild>
-              <span className="cursor-not-allowed">
-                <IconButton
-                  variant="outline"
-                  size="sm"
-                  aria-label="Grid view"
-                  className="rounded-r-none"
-                  isDisabled
-                >
-                  <LayoutGridIcon />
-                </IconButton>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Disabled across All Project view.</TooltipContent>
-          </Tooltip>
-        ) : (
+}) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
+
+  return (
+    <div className="flex w-full flex-wrap items-center justify-between gap-2">
+      <div className="flex min-w-72 flex-1 items-center gap-2">
+        <InputGroup className="min-w-48 flex-1">
+          <InputGroupAddon align="inline-start">
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            ref={searchInputRef}
+            placeholder="Search by project name..."
+            value={searchFilter}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+        </InputGroup>
+        {!hideProjectListToggle && (
+          <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <ButtonGroup>
+          {isGridDisabled ? (
+            <Tooltip>
+              <TooltipTrigger tabIndex={-1} asChild>
+                <span className="cursor-not-allowed">
+                  <IconButton
+                    variant="outline"
+                    size="sm"
+                    aria-label="Grid view"
+                    className="rounded-r-none"
+                    isDisabled
+                  >
+                    <LayoutGridIcon />
+                  </IconButton>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Disabled across All Project view.</TooltipContent>
+            </Tooltip>
+          ) : (
+            <IconButton
+              variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
+              size="sm"
+              aria-label="Grid view"
+              className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
+              onClick={() => onViewModeChange(ProjectsViewMode.GRID)}
+            >
+              <LayoutGridIcon />
+            </IconButton>
+          )}
           <IconButton
-            variant={projectsViewMode === ProjectsViewMode.GRID ? "project" : "outline"}
+            variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
             size="sm"
-            aria-label="Grid view"
-            className={projectsViewMode === ProjectsViewMode.GRID ? "z-10" : ""}
-            onClick={() => onViewModeChange(ProjectsViewMode.GRID)}
+            aria-label="List view"
+            onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
           >
-            <LayoutGridIcon />
+            <ListIcon />
           </IconButton>
-        )}
-        <IconButton
-          variant={projectsViewMode === ProjectsViewMode.LIST ? "project" : "outline"}
-          size="sm"
-          aria-label="List view"
-          onClick={() => onViewModeChange(ProjectsViewMode.LIST)}
-        >
-          <ListIcon />
-        </IconButton>
-      </ButtonGroup>
-      <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-        {(isOldProjectV1Allowed) => (
-          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-            {(isAllowed) => (
-              <Button
-                isDisabled={!isAllowed && !isOldProjectV1Allowed}
-                size="sm"
-                variant="project"
-                onClick={() => {
-                  if (isAddingProjectsAllowed) {
-                    onAddNewProject();
-                  } else {
-                    onUpgradePlan();
-                  }
-                }}
-              >
-                <PlusIcon />
-                New Project
-              </Button>
-            )}
-          </OrgPermissionCan>
-        )}
-      </OrgPermissionCan>
+        </ButtonGroup>
+        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+          {(isOldProjectV1Allowed) => (
+            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
+                  size="sm"
+                  variant="project"
+                  onClick={() => {
+                    if (isAddingProjectsAllowed) {
+                      onAddNewProject();
+                    } else {
+                      onUpgradePlan();
+                    }
+                  }}
+                >
+                  <PlusIcon />
+                  New Project
+                </Button>
+              )}
+            </OrgPermissionCan>
+          )}
+        </OrgPermissionCan>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const EmptyState = ({
   projectType,

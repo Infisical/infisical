@@ -12,6 +12,7 @@ export enum SessionEndReason {
   IdleTimeout = "Session closed due to inactivity",
   SessionLimitReached = "Maximum concurrent sessions reached",
   ApprovalRevoked = "Your approved access is no longer active",
+  Terminated = "This session was terminated",
   ReplyTooLarge = "The reply was too large to read safely. Use the Infisical CLI for data this size"
 }
 

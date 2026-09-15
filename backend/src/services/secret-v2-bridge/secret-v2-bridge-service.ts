@@ -71,6 +71,7 @@ import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
+import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
   MAX_SECRET_CACHE_BYTES,
@@ -167,6 +168,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
+    | "getItemPrimary"
     | "getItem"
     | "getItemBuffer"
     | "setExpiry"
@@ -212,6 +214,14 @@ export const secretV2BridgeServiceFactory = ({
   projectFolderGrantDAL,
   orgDAL
 }: TSecretV2BridgeServiceFactoryDep) => {
+  const { getSecretMetadata } = secretMetadataServiceFactory({
+    permissionService,
+    folderDAL,
+    projectEnvDAL,
+    projectDAL,
+    secretDAL,
+    keyStore
+  });
   const $validateSecretReferences = async (
     projectId: string,
     permission: MongoAbility<ProjectPermissionSet>,
@@ -867,7 +877,8 @@ export const secretV2BridgeServiceFactory = ({
         comment: inputSecret.secretComment || "",
         secretMetadata: undefined
       },
-      secretValueHidden
+      secretValueHidden,
+      actorId
     );
   };
 
@@ -1015,7 +1026,8 @@ export const secretV2BridgeServiceFactory = ({
             ? secretManagerDecryptor({ cipherTextBlob: deletedSecret[0].encryptedComment }).toString()
             : ""
         },
-        secretValueHidden
+        secretValueHidden,
+        actorId
       );
     } catch (err) {
       // deferred errors aren't return as DatabaseError
@@ -1195,7 +1207,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden,
+          userId
         );
       });
 
@@ -1535,7 +1548,6 @@ export const secretV2BridgeServiceFactory = ({
           });
 
         const isValueMasked = secretValueHidden && !isPersonalSecret;
-        const isValueDiscarded = isValueMasked && secret.type !== SecretType.Personal;
 
         return reshapeBridgeSecret(
           projectId,
@@ -1550,10 +1562,8 @@ export const secretV2BridgeServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
                 : el.value || ""
             })),
-            // reshapeBridgeSecret still surfaces the real plaintext for Personal secrets even when
-            // masking, so the decrypt is only skippable when the value is certain to be discarded.
             value:
-              !isValueDiscarded && secret.encryptedValue
+              !isValueMasked && secret.encryptedValue
                 ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
                 : "",
             comment: secret.encryptedComment
@@ -1888,7 +1898,7 @@ export const secretV2BridgeServiceFactory = ({
           [`${TableName.SecretV2}.userId` as "userId"]: secretType === SecretType.Personal ? actorId : null
         })
       : secretVersionDAL
-          .findOne({
+          .findOneWithTags({
             folderId,
             version,
             type: secretType,
@@ -1897,16 +1907,24 @@ export const secretV2BridgeServiceFactory = ({
           })
           .then((el) =>
             el
-              ? SecretsV2Schema.extend({
-                  tags: z
-                    .object({ slug: z.string(), name: z.string(), id: z.string(), color: z.string() })
-                    .array()
-                    .default([])
-                    .optional()
-                }).parse({
-                  ...el,
-                  id: el.secretId
-                })
+              ? {
+                  ...SecretsV2Schema.extend({
+                    tags: z
+                      .object({
+                        slug: z.string(),
+                        name: z.string(),
+                        id: z.string(),
+                        color: z.string().nullable().optional()
+                      })
+                      .array()
+                      .default([])
+                      .optional()
+                  }).parse({
+                    ...el,
+                    id: el.secretId
+                  }),
+                  secretMetadata: undefined
+                }
               : undefined
           ));
 
@@ -2070,16 +2088,13 @@ export const secretV2BridgeServiceFactory = ({
       path,
       {
         ...secret,
-        secretMetadata:
-          "secretMetadata" in secret
-            ? secret.secretMetadata?.map((el) => ({
-                isEncrypted: Boolean(el.encryptedValue),
-                key: el.key,
-                value: el.encryptedValue
-                  ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-                  : el.value || ""
-              }))
-            : undefined,
+        secretMetadata: secret.secretMetadata?.map((el) => ({
+          isEncrypted: Boolean(el.encryptedValue),
+          key: el.key,
+          value: el.encryptedValue
+            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
+            : el.value || ""
+        })),
         value: secretValue,
         comment: secret.encryptedComment
           ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
@@ -2347,7 +2362,8 @@ export const secretV2BridgeServiceFactory = ({
           value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
           comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
         },
-        secretValueHidden
+        secretValueHidden,
+        actorId
       );
     });
   };
@@ -2847,7 +2863,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden,
+          actorId
         )
       };
     });
@@ -2986,7 +3003,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden,
+          actorId
         );
       });
     } catch (err) {
@@ -3045,6 +3063,10 @@ export const secretV2BridgeServiceFactory = ({
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 
+    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+      throw new ForbiddenRequestError({ message: "You are not allowed to access this secret" });
+    }
+
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: folder.projectId
@@ -3085,7 +3107,8 @@ export const secretV2BridgeServiceFactory = ({
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
               : ""
           },
-          secretValueHidden
+          secretValueHidden,
+          actorId
         ),
         redactedByActor: el.isRedacted
           ? {
@@ -3983,6 +4006,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretsByFolderMappings,
     getSecretById,
     getAccessibleSecrets,
+    getSecretMetadata,
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,
     $validateSecretReferences,
