@@ -192,7 +192,7 @@ describe("alert event consumer", () => {
     expect(runs.map((run) => run.alertId)).toEqual(["alert-1", "alert-3"]);
   });
 
-  test("resolves the matching alerts once per event type within a batch", async () => {
+  test("resolves the matching alerts once per resource and event type within a batch", async () => {
     const { consumer, getLookups } = buildConsumer();
 
     await consumer.handle([
@@ -202,6 +202,20 @@ describe("alert event consumer", () => {
     ]);
 
     expect(getLookups()).toBe(1);
+  });
+
+  // The lookup is filtered by resource, so two resources in one org must not share a result: the second
+  // would otherwise be delivered to the first resource's recipients.
+  test("does not reuse one resource's alerts for another resource in the same batch", async () => {
+    const { consumer, getLookups } = buildConsumer();
+
+    await consumer.handle([
+      makeEvent({ id: 1, payload: makePayload({ resourceId: "policy-1", targetIds: ["req-1"] }) }),
+      makeEvent({ id: 2, payload: makePayload({ resourceId: "policy-2", targetIds: ["req-2"] }) }),
+      makeEvent({ id: 3, payload: makePayload({ resourceId: "policy-1", targetIds: ["req-3"] }) })
+    ]);
+
+    expect(getLookups()).toBe(2);
   });
 
   // Handling events concurrently would fan a whole batch out at once and deliver one resource's events

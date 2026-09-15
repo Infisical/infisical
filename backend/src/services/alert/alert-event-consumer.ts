@@ -107,13 +107,19 @@ export const alertEventConsumerFactory = ({
   };
 
   const handle = async (events: TEvent[]): Promise<TEventConsumerResult[]> => {
-    const alertsByScope = new Map<string, ReturnType<TAlertLookup>>();
+    const alertsByFilter = new Map<string, ReturnType<TAlertLookup>>();
     const findAlerts: TAlertLookup = (filter) => {
-      const key = `${filter.orgId}|${filter.projectId ?? ""}|${filter.eventType}`;
-      let lookup = alertsByScope.get(key);
+      const key = JSON.stringify([
+        filter.orgId,
+        filter.projectId ?? null,
+        filter.resourceType,
+        filter.resourceId,
+        filter.eventType
+      ]);
+      let lookup = alertsByFilter.get(key);
       if (!lookup) {
         lookup = alertDAL.findEnabledForEvent(filter);
-        alertsByScope.set(key, lookup);
+        alertsByFilter.set(key, lookup);
       }
       return lookup;
     };
