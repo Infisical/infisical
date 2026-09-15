@@ -560,16 +560,18 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       // file and the trial was NOT granted, so folding it into a "Trial Started" would overcount
       // trials. The actual grant for that branch happens on the License Server after the card-setup
       // checkout completes, which this service never observes, so neither event tracks conversion.
-      void server.services.telemetry.sendPostHogEvents({
-        event:
-          result.outcome === "trial_started" ? PostHogEventTypes.TrialStarted : PostHogEventTypes.TrialCardRequired,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.params.organizationId,
-        properties: {
-          productId: req.body.productId,
-          plan: req.body.plan
-        }
-      });
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event:
+            result.outcome === "trial_started" ? PostHogEventTypes.TrialStarted : PostHogEventTypes.TrialCardRequired,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.params.organizationId,
+          properties: {
+            productId: req.body.productId,
+            plan: req.body.plan
+          }
+        })
+        .catch(() => {});
 
       return result;
     }
