@@ -25,7 +25,7 @@ export const ResourceOverviewPage = () => {
         <title>{t("common.head-title", { title: "Resource Overview" })}</title>
       </Helmet>
       <div className="mx-auto flex flex-col justify-between">
-        <div className="mx-auto mb-6 w-full max-w-8xl">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope="instance"
             title="Resource Overview"
