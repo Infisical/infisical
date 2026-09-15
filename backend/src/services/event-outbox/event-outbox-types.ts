@@ -62,7 +62,7 @@ export type TEventEmitter = {
 };
 
 // What a consumer sees. Lock, attempt, and status columns are the outbox's business, not the consumer's.
-export type TEvent = Pick<TEventOutbox, "id" | "eventType" | "payload" | "progress" | "occurredAt">;
+export type TEvent = Pick<TEventOutbox, "id" | "eventType" | "payload" | "occurredAt">;
 
 export enum EventResultStatus {
   Delivered = "delivered",
@@ -74,8 +74,6 @@ export type TEventConsumerResult = {
   id: string;
   status: EventResultStatus;
   error?: string;
-  // Opaque to the outbox; handed back on the next attempt so a retry can skip what already landed.
-  progress?: Record<string, unknown> | null;
 };
 
 export type TOutboxFlushKey = {

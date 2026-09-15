@@ -728,7 +728,10 @@ await someDAL.transaction(async (tx) => {
 **How delivery works:**
 
 - **The row owns retry state** (`attempts`, `nextRetryAt`, backoff, terminal `failed`); the consumer
-  owns what "delivered" means and reports `Delivered` / `Retry` / `Failed` plus `progress` per event.
+  owns what "delivered" means and reports `Delivered` / `Retry` / `Failed` per event. The outbox keeps
+  no per-event state for a consumer: what a retry should skip is recorded wherever the consumer already
+  keeps delivery records, keyed by `TEvent.id` (stable across attempts). The alert consumer files each
+  run under that id in `alert_history.eventId` and the engine skips channels already recorded there.
   Backoff is exponential with jitter from 30s, and `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an
   hour after the first, because a `failed` row is a notification nobody will receive. To replay failed
   rows by hand: `status = 'retry', attempts = 0, nextRetryAt = now()`.
@@ -763,9 +766,10 @@ await someDAL.transaction(async (tx) => {
   its backoff window is skipped, so a later row can overtake it. That's deliberate: blocking a consumer
   behind its oldest failing row is the wrong trade for notifications. Don't promise strict ordering, and
   don't add a partition key back until a consumer needs one: no consumer today depends on the order two
-  events for one resource arrive in, and each event is idempotent on its own through `progress`.
+  events for one resource arrive in, and each event is idempotent on its own through alert history.
 - **Delivery is at-least-once.** `commitResults` is retried in-process, since by then the consumer has
-  already sent; what's left is narrowed by `progress` and by the emitter's `idempotencyKey`.
+  already sent; what's left is narrowed by the consumer's own delivery records and by the emitter's
+  `idempotencyKey`.
 
 **Watch `infisical.event_outbox.oldest_pending_age`.** It catches a dead relay, a wedged consumer and a
 stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, labelled by consumer, so a

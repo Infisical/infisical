@@ -96,7 +96,7 @@ describe("event outbox (postgres)", () => {
 
     const settled = await dal.commitResults({
       lockToken,
-      delivered: [{ ids: [String(d.id)], progress: { deliveredChannelIds: ["c-1"] } }],
+      delivered: [{ ids: [String(d.id)] }],
       retriable: [{ ids: [String(r.id)], nextRetryDelayMs: 30 * 60_000, error: "slack 502" }],
       failed: [{ ids: [String(f.id)], error: "bad payload" }]
     });
@@ -106,7 +106,6 @@ describe("event outbox (postgres)", () => {
     expect(delivered.status).toBe(EventOutboxStatus.Delivered);
     expect(delivered.lockedAt).toBeNull();
     expect(delivered.lockToken).toBeNull();
-    expect(delivered.progress).toEqual({ deliveredChannelIds: ["c-1"] });
 
     expect(retry.status).toBe(EventOutboxStatus.Retry);
     expect(retry.attempts).toBe(1);

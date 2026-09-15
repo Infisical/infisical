@@ -29,23 +29,22 @@ const makeEvent = (overrides?: Partial<TEvent>): TEvent =>
     eventType: EVENT_TYPE,
     payload: makePayload(),
     occurredAt: new Date(),
-    progress: null,
     ...overrides
   }) as TEvent;
 
 const buildConsumer = (opts?: {
   alerts?: unknown[];
-  results?: { outcome: AlertDispatchOutcome; deliveredChannelIds: string[] }[];
+  results?: AlertDispatchOutcome[];
   eventKeys?: string[];
   findAlerts?: () => Promise<unknown[]>;
 }) => {
   const runs: {
     alertId: string;
+    eventId: string;
     targetIds: string[];
     payload?: Record<string, unknown>;
-    skipChannelIds?: string[];
   }[] = [];
-  const results = opts?.results ?? [{ outcome: AlertDispatchOutcome.DeliverySuccess, deliveredChannelIds: ["c-1"] }];
+  const results = opts?.results ?? [AlertDispatchOutcome.DeliverySuccess];
   let runIdx = 0;
   let lookups = 0;
   const eventKeys = opts?.eventKeys ?? [EVENT_TYPE];
@@ -60,14 +59,9 @@ const buildConsumer = (opts?: {
     alertEngine: {
       runAlertForEvent: async (
         alert: { id: string },
-        input: { targetIds: string[]; payload: Record<string, unknown>; skipChannelIds?: string[] }
+        input: { eventId: string; targetIds: string[]; payload: Record<string, unknown> }
       ) => {
-        runs.push({
-          alertId: alert.id,
-          targetIds: input.targetIds,
-          payload: input.payload,
-          skipChannelIds: input.skipChannelIds
-        });
+        runs.push({ alertId: alert.id, eventId: input.eventId, targetIds: input.targetIds, payload: input.payload });
         const result = results[Math.min(runIdx, results.length - 1)];
         runIdx += 1;
         return result;
@@ -102,7 +96,16 @@ describe("alert event consumer", () => {
     expect(runs[0].targetIds).toEqual(["req-1"]);
     // The provider sees everything the emitter wrote, not only the ids the consumer validated.
     expect(runs[0].payload).toEqual(makePayload());
-    expect(result.progress).toEqual({ deliveredChannelIds: ["c-1"] });
+  });
+
+  // The outbox row id is what the engine files each channel's outcome under, and it is the same on
+  // every attempt, so it is the only key a retry can use to find what already went out.
+  test("hands the engine the event id so a retry can skip channels that already delivered", async () => {
+    const { consumer, runs } = buildConsumer();
+
+    await consumer.handle([makeEvent({ id: 42 })]);
+
+    expect(runs[0].eventId).toBe("42");
   });
 
   // The alert was deleted or disabled between the gate and the worker, so nobody is owed a
@@ -116,23 +119,13 @@ describe("alert event consumer", () => {
     expect(runs).toHaveLength(0);
   });
 
-  test("retries and records what already delivered when a channel fails", async () => {
-    const { consumer } = buildConsumer({
-      results: [{ outcome: AlertDispatchOutcome.DeliveryPartial, deliveredChannelIds: ["c-1"] }]
-    });
+  test("retries the event when a channel fails", async () => {
+    const { consumer } = buildConsumer({ results: [AlertDispatchOutcome.DeliveryPartial] });
 
     const [result] = await consumer.handle([makeEvent()]);
 
     expect(result.status).toBe(EventResultStatus.Retry);
-    expect(result.progress).toEqual({ deliveredChannelIds: ["c-1"] });
-  });
-
-  test("skips the channels a previous attempt already delivered to", async () => {
-    const { consumer, runs } = buildConsumer();
-
-    await consumer.handle([makeEvent({ progress: { deliveredChannelIds: ["c-1"] } })]);
-
-    expect(runs[0].skipChannelIds).toEqual(["c-1"]);
+    expect(result.error).toContain(AlertDispatchOutcome.DeliveryPartial);
   });
 
   // Retrying can't fix a payload the consumer can't read, so don't burn every attempt on it first.
@@ -148,16 +141,13 @@ describe("alert event consumer", () => {
   test("runs every matching alert in a scope", async () => {
     const { consumer, runs } = buildConsumer({
       alerts: [makeAlert("alert-project"), makeAlert("alert-org")],
-      results: [
-        { outcome: AlertDispatchOutcome.DeliverySuccess, deliveredChannelIds: ["c-1"] },
-        { outcome: AlertDispatchOutcome.DeliverySuccess, deliveredChannelIds: ["c-2"] }
-      ]
+      results: [AlertDispatchOutcome.DeliverySuccess, AlertDispatchOutcome.DeliverySuccess]
     });
 
     const [result] = await consumer.handle([makeEvent()]);
 
     expect(runs.map((run) => run.alertId)).toEqual(["alert-project", "alert-org"]);
-    expect(result.progress).toEqual({ deliveredChannelIds: ["c-1", "c-2"] });
+    expect(result.status).toBe(EventResultStatus.Delivered);
   });
 
   // Marking a mismatched pair delivered would hide the misconfigured emit site. Failing terminally

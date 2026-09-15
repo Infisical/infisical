@@ -18,7 +18,6 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamp("nextRetryAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
       t.timestamp("lockedAt", { useTz: true });
       t.uuid("lockToken");
-      t.jsonb("progress");
       t.text("lastError");
       t.timestamps(true, true, true);
     });

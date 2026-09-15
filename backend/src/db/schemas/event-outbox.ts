@@ -19,7 +19,6 @@ export const EventOutboxSchema = z.object({
   nextRetryAt: z.date(),
   lockedAt: z.date().nullable().optional(),
   lockToken: z.string().uuid().nullable().optional(),
-  progress: z.unknown().nullable().optional(),
   lastError: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

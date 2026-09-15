@@ -25,10 +25,6 @@ export const AlertEventPayloadSchema = z.object({
 
 type TAlertEventPayload = z.infer<typeof AlertEventPayloadSchema>;
 
-const AlertEventProgressSchema = z.object({
-  deliveredChannelIds: z.array(z.string()).default([])
-});
-
 export type TAlertEventConsumerDep = {
   alertDAL: Pick<TAlertDALFactory, "findEnabledForEvent">;
   alertEngine: Pick<TAlertEngine, "runAlertForEvent">;
@@ -74,9 +70,6 @@ export const alertEventConsumerFactory = ({
       };
     }
 
-    const progress = AlertEventProgressSchema.safeParse(event.progress ?? {});
-    const delivered = new Set(progress.success ? progress.data.deliveredChannelIds : []);
-
     const alerts = await findAlerts({
       orgId,
       projectId,
@@ -94,28 +87,23 @@ export const alertEventConsumerFactory = ({
 
     for (const alert of alerts) {
       // eslint-disable-next-line no-await-in-loop -- at most a project- and an org-scoped alert
-      const result = await alertEngine.runAlertForEvent(alert, {
+      const outcome = await alertEngine.runAlertForEvent(alert, {
+        eventId: id,
         eventType: event.eventType,
         targetIds,
-        payload: (event.payload ?? {}) as Record<string, unknown>,
-        skipChannelIds: [...delivered]
+        payload: (event.payload ?? {}) as Record<string, unknown>
       });
-      result.deliveredChannelIds.forEach((channelId) => delivered.add(channelId));
-      recordAlertDispatchOutcomeMetric({ resourceType: alert.resourceType, outcome: result.outcome });
+      recordAlertDispatchOutcomeMetric({ resourceType: alert.resourceType, outcome });
 
-      if (
-        result.outcome === AlertDispatchOutcome.DeliveryFailed ||
-        result.outcome === AlertDispatchOutcome.DeliveryPartial
-      ) {
-        errors.push(`alert ${alert.id}: ${result.outcome}`);
+      if (outcome === AlertDispatchOutcome.DeliveryFailed || outcome === AlertDispatchOutcome.DeliveryPartial) {
+        errors.push(`alert ${alert.id}: ${outcome}`);
       }
     }
 
-    const outcome = { id, progress: { deliveredChannelIds: [...delivered] } };
     if (errors.length > 0) {
-      return { ...outcome, status: EventResultStatus.Retry, error: errors.join("; ") };
+      return { id, status: EventResultStatus.Retry, error: errors.join("; ") };
     }
-    return { ...outcome, status: EventResultStatus.Delivered };
+    return { id, status: EventResultStatus.Delivered };
   };
 
   const handle = async (events: TEvent[]): Promise<TEventConsumerResult[]> => {

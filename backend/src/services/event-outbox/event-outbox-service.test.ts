@@ -163,7 +163,6 @@ describe("event outbox drain", () => {
       attempts: 0,
       nextRetryAt: new Date(),
       lockedAt: new Date(),
-      progress: null,
       lastError: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -180,7 +179,7 @@ describe("event outbox drain", () => {
     registry.register(makeConsumer({ name: opts.consumerName ?? "alert", handle: opts.handle }));
 
     const commits: {
-      delivered: { ids: string[]; progress?: unknown }[];
+      delivered: { ids: string[] }[];
       retriable: { ids: string[]; nextRetryDelayMs: number; error?: string }[];
       failed: { ids: string[]; error?: string }[];
     }[] = [];
@@ -231,7 +230,7 @@ describe("event outbox drain", () => {
     const result = await service.drain(KEY);
 
     expect(result.handled).toBe(1);
-    expect(commits[0].delivered).toEqual([{ ids: ["1"], progress: undefined }]);
+    expect(commits[0].delivered).toEqual([{ ids: ["1"] }]);
   });
 
   // A consumer that throws must not lose the batch: every row goes back for another attempt.
@@ -287,26 +286,10 @@ describe("event outbox drain", () => {
 
     await service.drain(KEY);
 
-    expect(commits[0].delivered).toEqual([{ ids: ["1", "2"], progress: undefined }]);
+    expect(commits[0].delivered).toEqual([{ ids: ["1", "2"] }]);
     expect(commits[0].retriable).toHaveLength(1);
     expect(commits[0].retriable[0].ids).toEqual(["3", "4"]);
     expect(commits[0].retriable[0].error).toBe("slack 502");
-  });
-
-  test("keeps rows with different progress in separate commit entries", async () => {
-    const { service, commits } = buildDrain({
-      batches: [[makeRow({ id: 1 }), makeRow({ id: 2 })]],
-      handle: async (rows) =>
-        rows.map((row) => ({
-          id: String(row.id),
-          status: EventResultStatus.Delivered,
-          progress: { deliveredChannelIds: [`c-${row.id}`] }
-        }))
-    });
-
-    await service.drain(KEY);
-
-    expect(commits[0].delivered.map((group) => group.ids)).toEqual([["1"], ["2"]]);
   });
 
   // The token the rows were claimed under is what commitResults fences on, so a claim that reports

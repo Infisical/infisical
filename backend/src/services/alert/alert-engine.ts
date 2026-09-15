@@ -31,11 +31,6 @@ type TChannelWork = {
   due: { target: unknown; id: string }[];
 };
 
-export type TDispatchResult = {
-  outcome: AlertDispatchOutcome;
-  deliveredChannelIds: string[];
-};
-
 type TChannelDispatchResult = {
   channelId: string;
   channelType: string;
@@ -49,7 +44,10 @@ type TChannelDispatchResult = {
 export type TAlertEngineDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "findByChannelIds">;
-  alertHistoryDAL: Pick<TAlertHistoryDALFactory, "createWithTargets" | "findRecentlyAlertedTargets">;
+  alertHistoryDAL: Pick<
+    TAlertHistoryDALFactory,
+    "createWithTargets" | "findRecentlyAlertedTargets" | "findDeliveredChannelIdsForEvent"
+  >;
   alertProviderRegistry: TAlertProviderRegistry;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -70,8 +68,9 @@ export const alertEngineFactory = ({
   const $dispatchChannelWork = async (
     alert: TAlerts,
     provider: IResourceAlertProvider,
-    channelWork: TChannelWork[]
-  ): Promise<TDispatchResult> => {
+    channelWork: TChannelWork[],
+    eventId?: string
+  ): Promise<AlertDispatchOutcome> => {
     const alertContext: TAlertContext = {
       id: alert.id,
       name: alert.name,
@@ -171,7 +170,7 @@ export const alertEngineFactory = ({
     );
 
     const dispatched = channelResults.filter((result) => !result.skipped);
-    if (dispatched.length === 0) return { outcome: AlertDispatchOutcome.NoRecipients, deliveredChannelIds: [] };
+    if (dispatched.length === 0) return AlertDispatchOutcome.NoRecipients;
 
     const deliveries = dispatched.flatMap((result) => {
       const perTarget = new Map<string, boolean>((result.targetResults ?? []).map((t) => [t.targetId, t.success]));
@@ -199,7 +198,7 @@ export const alertEngineFactory = ({
     for (let attempt = 1; attempt <= HISTORY_WRITE_ATTEMPTS; attempt += 1) {
       try {
         // eslint-disable-next-line no-await-in-loop -- retrying the same insert is the point
-        await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
+        await alertHistoryDAL.createWithTargets(alert.id, { status, eventId }, deliveries);
         break;
       } catch (err) {
         if (attempt === HISTORY_WRITE_ATTEMPTS) {
@@ -212,16 +211,10 @@ export const alertEngineFactory = ({
       }
     }
 
-    const deliveredChannelIds = dispatched.filter((result) => result.success).map((result) => result.channelId);
-
-    if (status === AlertRunStatus.SUCCESS) {
-      return { outcome: AlertDispatchOutcome.DeliverySuccess, deliveredChannelIds };
-    }
-    return {
-      outcome:
-        status === AlertRunStatus.PARTIAL ? AlertDispatchOutcome.DeliveryPartial : AlertDispatchOutcome.DeliveryFailed,
-      deliveredChannelIds
-    };
+    if (status === AlertRunStatus.SUCCESS) return AlertDispatchOutcome.DeliverySuccess;
+    return status === AlertRunStatus.PARTIAL
+      ? AlertDispatchOutcome.DeliveryPartial
+      : AlertDispatchOutcome.DeliveryFailed;
   };
 
   const $buildChannelWork = (
@@ -297,22 +290,23 @@ export const alertEngineFactory = ({
     const channelWork = $buildChannelWork(alert, channels, targets, alertedSet);
     if (channelWork.length === 0) return AlertDispatchOutcome.AllDeduped;
 
-    const { outcome } = await $dispatchChannelWork(alert, provider, channelWork);
-    return outcome;
+    return $dispatchChannelWork(alert, provider, channelWork);
   };
 
   const runAlertForEvent = async (
     alert: TAlerts,
-    input: { eventType: string; targetIds: string[]; payload: Record<string, unknown>; skipChannelIds?: string[] }
-  ): Promise<TDispatchResult> => {
+    input: { eventId: string; eventType: string; targetIds: string[]; payload: Record<string, unknown> }
+  ): Promise<AlertDispatchOutcome> => {
     const provider = $getProvider(alert, "findTargetsByIds");
-    if (!provider?.findTargetsByIds) return { outcome: AlertDispatchOutcome.NoProvider, deliveredChannelIds: [] };
+    if (!provider?.findTargetsByIds) return AlertDispatchOutcome.NoProvider;
 
-    const skip = new Set(input.skipChannelIds ?? []);
-    const channels = (await alertChannelDAL.findByAlertId(alert.id, { enabled: true, readFromPrimary: true })).filter(
-      (channel) => !skip.has(channel.id)
-    );
-    if (channels.length === 0) return { outcome: AlertDispatchOutcome.NoChannels, deliveredChannelIds: [] };
+    const [enabledChannels, alreadyDelivered] = await Promise.all([
+      alertChannelDAL.findByAlertId(alert.id, { enabled: true, readFromPrimary: true }),
+      alertHistoryDAL.findDeliveredChannelIdsForEvent(alert.id, input.eventId)
+    ]);
+    const skip = new Set(alreadyDelivered);
+    const channels = enabledChannels.filter((channel) => !skip.has(channel.id));
+    if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
 
     const resolved = await provider.findTargetsByIds({
       orgId: alert.orgId,
@@ -323,11 +317,11 @@ export const alertEngineFactory = ({
       targetIds: input.targetIds,
       payload: input.payload
     });
-    if (resolved.length === 0) return { outcome: AlertDispatchOutcome.NoDueTargets, deliveredChannelIds: [] };
+    if (resolved.length === 0) return AlertDispatchOutcome.NoDueTargets;
 
     const targets = resolved.map((target) => ({ target, id: provider.targetId(target) }));
 
-    return $dispatchChannelWork(alert, provider, $buildChannelWork(alert, channels, targets));
+    return $dispatchChannelWork(alert, provider, $buildChannelWork(alert, channels, targets), input.eventId);
   };
 
   return { runAlert, runAlertForEvent };

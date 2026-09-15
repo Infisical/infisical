@@ -109,8 +109,8 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
   // recycled mid-delivery and the rows now belong to another worker.
   const commitResults = async (input: {
     lockToken: string;
-    delivered: { ids: string[]; progress?: Record<string, unknown> | null }[];
-    retriable: { ids: string[]; nextRetryDelayMs: number; progress?: Record<string, unknown> | null; error?: string }[];
+    delivered: { ids: string[] }[];
+    retriable: { ids: string[]; nextRetryDelayMs: number; error?: string }[];
     failed: { ids: string[]; error?: string }[];
   }): Promise<number> => {
     const total =
@@ -130,12 +130,9 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             .update({ lockedAt: null, lockToken: null, ...values });
         };
 
-        const progressOf = (group: { progress?: Record<string, unknown> | null }) =>
-          group.progress !== undefined ? { progress: JSON.stringify(group.progress) } : {};
-
         for (const group of input.delivered) {
           // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes are serial
-          await settle(group.ids, { status: EventOutboxStatus.Delivered, lastError: null, ...progressOf(group) });
+          await settle(group.ids, { status: EventOutboxStatus.Delivered, lastError: null });
         }
 
         for (const group of input.retriable) {
@@ -144,8 +141,7 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
             status: EventOutboxStatus.Retry,
             attempts: db.raw('"attempts" + 1'),
             nextRetryAt: db.raw(`NOW() + (? || ' milliseconds')::INTERVAL`, [group.nextRetryDelayMs]),
-            lastError: group.error ?? null,
-            ...progressOf(group)
+            lastError: group.error ?? null
           });
         }
 

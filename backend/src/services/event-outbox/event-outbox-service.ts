@@ -147,13 +147,8 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     const byId = new Map(results.map((result) => [result.id, result]));
     const now = Date.now();
 
-    const delivered: { id: string; progress?: Record<string, unknown> | null }[] = [];
-    const retriable: {
-      id: string;
-      nextRetryDelayMs: number;
-      progress?: Record<string, unknown> | null;
-      error?: string;
-    }[] = [];
+    const delivered: { id: string }[] = [];
+    const retriable: { id: string; nextRetryDelayMs: number; error?: string }[] = [];
     const failed: { id: string; error?: string }[] = [];
     const backoffByAttempt = new Map<number, number>();
 
@@ -170,7 +165,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       let finalStatus: EventOutboxStatus;
       if (result.status === EventResultStatus.Delivered) {
         finalStatus = EventOutboxStatus.Delivered;
-        delivered.push({ id, progress: result.progress });
+        delivered.push({ id });
       } else if (result.status === EventResultStatus.Failed || attempts >= MAX_OUTBOX_ATTEMPTS) {
         finalStatus = EventOutboxStatus.Failed;
         failed.push({ id, error: result.error });
@@ -181,7 +176,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
           nextRetryDelayMs = computeBackoffMs(attempts);
           backoffByAttempt.set(attempts, nextRetryDelayMs);
         }
-        retriable.push({ id, nextRetryDelayMs, progress: result.progress, error: result.error });
+        retriable.push({ id, nextRetryDelayMs, error: result.error });
       }
 
       recordEventOutboxLagMetric({
@@ -193,10 +188,8 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
 
     const settled = await $commitWithRetry(rows[0], {
       lockToken,
-      delivered: groupByOutcome(delivered, (item) => JSON.stringify(item.progress ?? null)),
-      retriable: groupByOutcome(retriable, (item) =>
-        JSON.stringify([item.nextRetryDelayMs, item.error ?? null, item.progress ?? null])
-      ),
+      delivered: groupByOutcome(delivered, () => ""),
+      retriable: groupByOutcome(retriable, (item) => JSON.stringify([item.nextRetryDelayMs, item.error ?? null])),
       failed: groupByOutcome(failed, (item) => item.error ?? "")
     });
 

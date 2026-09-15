@@ -118,6 +118,7 @@ const buildEngine = (opts: {
   targets: TTarget[];
   channels: Array<{ id: string; channelType: string; encryptedConfig: Buffer; enabled: boolean }>;
   recentlyAlerted?: Array<{ channelId: string; targetId: string }>;
+  deliveredForEvent?: string[];
   recipients?: Array<{ userId: string; email: string; firstName?: string | null }>;
   failEmail?: boolean;
   failEmailFor?: string;
@@ -138,7 +139,8 @@ const buildEngine = (opts: {
   );
 
   const sentMail: Array<{ recipients: string[] }> = [];
-  const historyWrites: Array<{ deliveries: TDelivery[]; status: string }> = [];
+  const historyWrites: Array<{ deliveries: TDelivery[]; status: string; eventId?: string }> = [];
+  const eventLookups: Array<{ alertId: string; eventId: string }> = [];
   const channelLookups: Array<{ enabled?: boolean; readFromPrimary?: boolean } | undefined> = [];
   let historyAttempts = 0;
   // Tracks the peak number of overlapping sendMail calls so a test can assert the
@@ -170,12 +172,20 @@ const buildEngine = (opts: {
     },
     alertHistoryDAL: {
       findRecentlyAlertedTargets: async () => opts.recentlyAlerted ?? [],
-      createWithTargets: async (_alertId: string, options: { status: string }, deliveries: TDelivery[]) => {
+      findDeliveredChannelIdsForEvent: async (alertId: string, eventId: string) => {
+        eventLookups.push({ alertId, eventId });
+        return opts.deliveredForEvent ?? [];
+      },
+      createWithTargets: async (
+        _alertId: string,
+        options: { status: string; eventId?: string },
+        deliveries: TDelivery[]
+      ) => {
         historyAttempts += 1;
         if (opts.failHistoryWrite || historyAttempts <= (opts.failHistoryWriteTimes ?? 0)) {
           throw new Error("history table unavailable");
         }
-        historyWrites.push({ deliveries, status: options.status });
+        historyWrites.push({ deliveries, status: options.status, eventId: options.eventId });
         return {} as never;
       }
     },
@@ -210,6 +220,7 @@ const buildEngine = (opts: {
     sentMail,
     historyWrites,
     channelLookups,
+    eventLookups,
     eventPayloads,
     getHistoryAttempts: () => historyAttempts,
     getPeakConcurrentSends: () => peakConcurrentSends,
@@ -519,18 +530,22 @@ describe("alert engine", () => {
 
 describe("alert engine, event path", () => {
   const eventAlert = () => ({ ...makeAlert(), triggerType: "event", eventType: "test.resource.opened" });
-  const EVENT = { eventType: "test.resource.opened", targetIds: ["t1"], payload: { targetIds: ["t1"], note: "x" } };
+  const EVENT = {
+    eventId: "7",
+    eventType: "test.resource.opened",
+    targetIds: ["t1"],
+    payload: { targetIds: ["t1"], note: "x" }
+  };
 
-  test("delivers the targets the event named", async () => {
+  test("delivers the targets the event named and files the run under the event id", async () => {
     const { engine, sentMail, historyWrites, eventPayloads } = buildEngine({
       targets: [{ id: "t1" }, { id: "t2" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
     });
 
-    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+    const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
-    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
-    expect(result.deliveredChannelIds).toEqual(["c-email"]);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(sentMail).toHaveLength(1);
     // The provider gets the emitter's whole payload, so an event can carry more than ids.
     expect(eventPayloads).toEqual([EVENT.payload]);
@@ -538,6 +553,19 @@ describe("alert engine, event path", () => {
     expect(historyWrites[0].deliveries).toEqual([
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.SUCCESS }
     ]);
+    // The event id on the row is what a retry of this same event looks up.
+    expect(historyWrites[0].eventId).toBe("7");
+  });
+
+  test("leaves the event id off history for scheduled runs", async () => {
+    const { engine, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
+    });
+
+    await engine.runAlert(makeAlert());
+
+    expect(historyWrites[0].eventId).toBeUndefined();
   });
 
   // The whole reason the event path exists: a daily scan rediscovers the same target tomorrow and
@@ -549,9 +577,9 @@ describe("alert engine, event path", () => {
       recentlyAlerted: [{ channelId: "c-email", targetId: "t1" }]
     });
 
-    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+    const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
-    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(sentMail).toHaveLength(1);
   });
 
@@ -561,18 +589,18 @@ describe("alert engine, event path", () => {
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
     });
 
-    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+    const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
-    expect(result.outcome).toBe(AlertDispatchOutcome.NoDueTargets);
-    expect(result.deliveredChannelIds).toEqual([]);
+    expect(outcome).toBe(AlertDispatchOutcome.NoDueTargets);
     expect(historyWrites).toHaveLength(0);
   });
 
-  // A retry must not re-notify a channel that already succeeded. That's what makes retrying an event
-  // safe with no dedup behind it.
-  test("skips channels a previous attempt already delivered to", async () => {
-    const { engine, sentMail, historyWrites } = buildEngine({
+  // A retry must not re-notify a channel that already succeeded. The engine reads its own history for
+  // this alert and event to know which those are, so the outbox carries no state for it.
+  test("skips channels a previous attempt of the same event already delivered to", async () => {
+    const { engine, sentMail, historyWrites, eventLookups } = buildEngine({
       targets: [{ id: "t1" }],
+      deliveredForEvent: ["c-email"],
       channels: [
         { id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true },
         {
@@ -584,10 +612,10 @@ describe("alert engine, event path", () => {
       ]
     });
 
-    const result = await engine.runAlertForEvent(eventAlert(), { ...EVENT, skipChannelIds: ["c-email"] });
+    const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
-    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
-    expect(result.deliveredChannelIds).toEqual(["c-slack"]);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(eventLookups).toEqual([{ alertId: "alert-1", eventId: "7" }]);
     expect(sentMail).toHaveLength(0);
     expect(historyWrites[0].deliveries.map((d) => d.channelId)).toEqual(["c-slack"]);
   });
@@ -595,12 +623,13 @@ describe("alert engine, event path", () => {
   test("returns NoChannels when every channel was already delivered to", async () => {
     const { engine } = buildEngine({
       targets: [{ id: "t1" }],
+      deliveredForEvent: ["c-email"],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
     });
 
-    const result = await engine.runAlertForEvent(eventAlert(), { ...EVENT, skipChannelIds: ["c-email"] });
+    const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
-    expect(result.outcome).toBe(AlertDispatchOutcome.NoChannels);
+    expect(outcome).toBe(AlertDispatchOutcome.NoChannels);
   });
 
   // A history write that fails after the sends must not turn a delivered event into a retry, or the
@@ -612,9 +641,9 @@ describe("alert engine, event path", () => {
       failHistoryWrite: true
     });
 
-    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+    const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
-    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(sentMail).toHaveLength(1);
   });
 
@@ -627,9 +656,9 @@ describe("alert engine, event path", () => {
       failHistoryWriteTimes: 1
     });
 
-    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+    const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
-    expect(result.outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(getHistoryAttempts()).toBe(2);
     expect(historyWrites).toHaveLength(1);
   });
@@ -649,16 +678,15 @@ describe("alert engine, event path", () => {
     expect(channelLookups[1]).toEqual({ enabled: true });
   });
 
-  test("reports failure and no delivered channels when every channel fails", async () => {
+  test("reports failure when every channel fails", async () => {
     const { engine } = buildEngine({
       targets: [{ id: "t1" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
       failEmail: true
     });
 
-    const result = await engine.runAlertForEvent(eventAlert(), EVENT);
+    const outcome = await engine.runAlertForEvent(eventAlert(), EVENT);
 
-    expect(result.outcome).toBe(AlertDispatchOutcome.DeliveryFailed);
-    expect(result.deliveredChannelIds).toEqual([]);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliveryFailed);
   });
 });
