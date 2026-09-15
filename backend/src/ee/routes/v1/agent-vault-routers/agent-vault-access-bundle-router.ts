@@ -197,7 +197,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           description: AccessBundleDescriptionSchema.nullable().optional()
         })
         .refine(
-          (body) => body.name !== undefined || body.description !== undefined,
+          (body) => Object.values(body).some((value) => value !== undefined),
           "Provide at least one of 'name' or 'description' to update"
         ),
       response: { 200: z.object({ accessBundle: AccessBundleSchema }) }
@@ -496,7 +496,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }),
       response: { 200: z.object({ members: AgentVaultMemberSchema.array() }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const members = await server.services.agentVaultAccessBundle.listMembers({
         projectId: req.internalAgentVaultProjectId,
