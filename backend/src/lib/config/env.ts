@@ -9,7 +9,7 @@ import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal
 
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
-import { CustomLogger, logger } from "../logger/logger";
+import { CustomLogger, logger as rootLogger } from "../logger/logger";
 import { ms } from "../ms";
 import { zpStr } from "../zod";
 
@@ -86,7 +86,7 @@ const zodTimeoutMs = ({
         const legacyValue = legacyMsEnvVar ? process.env[legacyMsEnvVar]?.trim() || undefined : undefined;
         // the singleton logger is undefined on the first parse, which happens during telemetry setup
         if (legacyValue) {
-          (logger ?? console).warn(`${legacyMsEnvVar} is deprecated, use ${envVar} instead`);
+          (rootLogger ?? console).warn(`${legacyMsEnvVar} is deprecated, use ${envVar} instead`);
         }
 
         const raw = val ?? legacyValue ?? defaultValue;
