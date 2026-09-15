@@ -114,6 +114,28 @@ export const CredentialFields = ({ storedType }: Props) => {
     if (isUsernameUntouched) setValue("username", "");
   }, [isUntouched, isUsernameUntouched, credentialType, storedType, setValue]);
 
+  const secretField = (
+    <Controller
+      control={control}
+      name="secret"
+      render={({ field, fieldState }) => (
+        <Field className="flex-1">
+          <FieldLabel>{isBasic ? "Password" : "Token"}</FieldLabel>
+          <FieldContent>
+            <SecretInput
+              field={field}
+              label={isBasic ? "Password" : "Token"}
+              placeholder={isBasic ? "Enter the password" : "Enter the token"}
+              isError={Boolean(fieldState.error)}
+              isUntouched={isUntouched}
+            />
+            <FieldError>{fieldState.error?.message}</FieldError>
+          </FieldContent>
+        </Field>
+      )}
+    />
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <Controller
@@ -140,13 +162,15 @@ export const CredentialFields = ({ storedType }: Props) => {
         )}
       />
 
+      {/* One row, laid out like the custom header row on the Transformations step, and in the order the
+          three parts appear on the wire. */}
       {credentialType === AgentVaultCredentialType.Bearer && (
-        <>
+        <div className="flex items-start gap-3">
           <Controller
             control={control}
             name="headerName"
             render={({ field, fieldState }) => (
-              <Field>
+              <Field className="flex-1">
                 <FieldLabel>Header Name</FieldLabel>
                 <FieldContent>
                   <Input
@@ -163,7 +187,7 @@ export const CredentialFields = ({ storedType }: Props) => {
             control={control}
             name="headerPrefix"
             render={({ field, fieldState }) => (
-              <Field>
+              <Field className="w-28">
                 <FieldLabel>Prefix</FieldLabel>
                 <FieldContent>
                   <Input {...field} placeholder="Bearer" isError={Boolean(fieldState.error)} />
@@ -172,51 +196,33 @@ export const CredentialFields = ({ storedType }: Props) => {
               </Field>
             )}
           />
-        </>
+          {secretField}
+        </div>
       )}
 
       {credentialType === AgentVaultCredentialType.Basic && (
-        <Controller
-          control={control}
-          name="username"
-          render={({ field, fieldState }) => (
-            <Field>
-              <FieldLabel>Username</FieldLabel>
-              <FieldContent>
-                <SecretInput
-                  field={field}
-                  label="Username"
-                  placeholder="Enter the username"
-                  isError={Boolean(fieldState.error)}
-                  isUntouched={isUsernameUntouched}
-                />
-                <FieldError>{fieldState.error?.message}</FieldError>
-              </FieldContent>
-            </Field>
-          )}
-        />
-      )}
-
-      {credentialType !== AgentVaultCredentialType.Passthrough && (
-        <Controller
-          control={control}
-          name="secret"
-          render={({ field, fieldState }) => (
-            <Field>
-              <FieldLabel>{isBasic ? "Password" : "Token"}</FieldLabel>
-              <FieldContent>
-                <SecretInput
-                  field={field}
-                  label={isBasic ? "Password" : "Token"}
-                  placeholder={isBasic ? "Enter the password" : "Enter the token"}
-                  isError={Boolean(fieldState.error)}
-                  isUntouched={isUntouched}
-                />
-                <FieldError>{fieldState.error?.message}</FieldError>
-              </FieldContent>
-            </Field>
-          )}
-        />
+        <div className="flex items-start gap-3">
+          <Controller
+            control={control}
+            name="username"
+            render={({ field, fieldState }) => (
+              <Field className="flex-1">
+                <FieldLabel>Username</FieldLabel>
+                <FieldContent>
+                  <SecretInput
+                    field={field}
+                    label="Username"
+                    placeholder="Enter the username"
+                    isError={Boolean(fieldState.error)}
+                    isUntouched={isUsernameUntouched}
+                  />
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
+          {secretField}
+        </div>
       )}
 
       {credentialType !== AgentVaultCredentialType.Passthrough && (
