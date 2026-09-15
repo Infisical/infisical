@@ -234,6 +234,7 @@ SendGrid
 SocketLabs
 Mailgun
 Mailhog
+Twilio
 Zoho
 Tailscale
 1Password
