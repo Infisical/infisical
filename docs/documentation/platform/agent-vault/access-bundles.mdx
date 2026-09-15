@@ -91,7 +91,7 @@ Some APIs need a header alongside the credential, such as an organization id or 
 
 Infisical never returns a header value once it's saved, so renaming a header keeps its value and there's nothing to retype.
 
-A header can't reuse the credential's own header name: the custom value would overwrite the credential, and the agent would get a 401 it can't explain. The proxy also sets some headers itself, such as `Host`, `Content-Length` and `Connection`, and rejects those names too.
+A header can't reuse the credential's own header name: the credential is written last and wins, so the custom header would never reach the upstream. Infisical rejects the save rather than let you configure a header that does nothing. The proxy also sets some headers itself, such as `Host`, `Content-Length` and `Connection`, and rejects those names too.
 
 ### Substitutions
 
@@ -106,6 +106,8 @@ Authorization: Bearer __GITHUB_PAT__
 and GitHub receives the real token. The agent never holds it.
 
 The swap is a plain find-and-replace, so pick a placeholder distinctive enough that it can't appear anywhere else in the request.
+
+A value substituted into the path is escaped, so a value containing a `/` stays within one path segment instead of adding another. A GitLab project reaches the API as `group%2Fproject`, and a path rule accepts it.
 
 The proxy leaves the body alone in two cases:
 

@@ -777,15 +777,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern, excludeServiceId: service.id }, tx);
         }
 
-        // Under the lock and on the primary. A replica read here could be stale enough to admit exactly
-        // the collision this check exists to stop, and it is the only thing between a custom header and a
-        // silently overwritten credential. Runs whether the credential, the headers, or both arrived.
+        // Under the lock and on the primary, both halves of it: the stored header names, and the stored
+        // credential when a headers-only body leaves that one to the row. The service read above the
+        // transaction came off a replica, and stale by a concurrent write that moved the credential onto a
+        // new header name it would admit exactly the collision this check exists to stop. Runs whether the
+        // credential, the headers, or both arrived.
         if (credential || headers) {
           const effectiveHeaders =
             headers ??
             (await agentVaultServiceHeaderDAL.findByServiceIds([service.id], tx)).map((row) => ({
               name: row.name
             }));
+          if (!credential) {
+            const current = await agentVaultServiceDAL.findById(service.id, tx);
+            if (!current) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
+            effectiveCredentialConfig = current.credentialConfig as TAgentVaultCredentialConfig;
+          }
           assertHeadersDoNotShadowCredential(effectiveCredentialConfig, effectiveHeaders);
         }
 
