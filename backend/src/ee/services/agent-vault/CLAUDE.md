@@ -77,11 +77,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `--access-bundle` and the single-select Create Session sheet. The mint body stays a list, the junction table
   keeps `position`, resolve orders by position then name, and the Go matcher breaks ties by slice order, so
   lifting the cap is those three places plus the copy that says one (the api-docs string, the service's cap
-  message, the sheet and sessions page, the CLI help and the docs), not a migration. It now also needs a
-  decision `bestMatch` does not currently make: it picks by host specificity alone, so with two bundles on
-  one host a method- or path-restricted winner hard-403s a request the other bundle's unrestricted service
-  would have served. Cross-bundle host overlap used to decide only *which credential*; it would then decide
-  *whether the request goes at all*.
+  message, the sheet and sessions page, the CLI help and the docs), not a migration. It also needs a
+  decision `bestMatch` does not make: it picks by host specificity alone, so a restricted winner would 403
+  a request the other bundle's unrestricted service would have served.
 - The bundle on a session is a ceiling fixed at mint and intersected with live reachability on every resolve.
   It can shrink and grow back, never past what was minted.
 - Grants are read fresh on every resolve. The actor's role comes through the platform's permission cache
@@ -120,31 +118,21 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 the matching at runtime and reimplements the same rules, so a change here needs the same change there.
 
 - Paths are rejected *in a host pattern*: the matcher would compare the decoded path while the upstream
-  gets the escaped one. A service's `allowedPathPrefixes` is a separate filter and sidesteps that by never
-  decoding. It compares the prefix against `EscapedPath()` byte for byte at a segment boundary, and a
-  path-restricted service refuses outright any request whose path would have to be normalised to judge: a
-  `.` or `..` segment, an empty segment, `;`, `\`, or a `%` escape decoding to one of those, to a control
-  byte, or to bytes that are not valid UTF-8. The UTF-8 test is what distinguishes the overlong `%c0%ae`
-  (a `.` to some servers, refused) from a legitimate `%c3%a9` (allowed): a blanket refusal of every byte
-  >= 0x80 would also break every API carrying a filename or a user string in its path. `..%00` and the
-  double-encoded `%252e` fall out of the decoded-byte switch. Prefixes carry none of those characters by grammar, so the comparison is exact. A filter is
-  judged by what it *allows*, so this is the load-bearing half: `path.Clean` on a decoded path would have
-  allowed `/admin/%2e%2e/repos/x`, and a narrow `%2e`/`%2f` blacklist still let `/repos/..;/admin` through
-  on Tomcat and `/repos/\..\admin` on IIS. `agent-vault-path-prefix.ts` is the grammar of record and
-  `packages/agentvault/policy.go` reimplements the match, the same split as the host grammar. The prefix grammar
-  is an allowlist for a second reason: a prefix is compared against the escaped path, so one carrying
-  anything Go's path encoder rewrites could never match. `/café` would be judged against `/caf%C3%A9`,
-  and `[`, `]`, `!`, `'`, `(`, `)` and `*` match or not depending on what the rest of the request path
-  happens to contain, so all of them are refused on write.
+  gets the escaped one. `allowedPathPrefixes` sidesteps that by never decoding, comparing against
+  `EscapedPath()` byte for byte at a segment boundary. A filter is judged by what it *allows*, so the
+  refusals are the load-bearing half: `path.Clean` on a decoded path would have allowed
+  `/admin/%2e%2e/repos/x`, and a narrow `%2e`/`%2f` blacklist still let `/repos/..;/admin` through on
+  Tomcat and `/repos/\..\admin` on IIS. The prefix grammar is an allowlist for a second reason too: a
+  prefix is compared against the escaped path, so one carrying anything Go's path encoder rewrites could
+  never match anything. `agent-vault-path-prefix.ts` is the grammar of record and
+  `packages/agentvault/policy.go` reimplements the match, the same split as the host grammar.
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
   so the same-bundle host conflict rule stays host-only. Two services on one host differing only by method
   is still a hard reject.
 - A violation is a 403 from the proxy, not a withheld credential, and the check sits above the plaintext
   refusal so it holds on plain http too. `NULL` is the only "unrestricted"; an empty array is never stored.
 - There is no version negotiation with the proxy. A binary predating this drops the new resolve fields and
-  enforces nothing while the UI shows the rules. Accepted while the product is in preview. The docs say a
-  proxy predating the feature ignores the rules rather than naming a version: a number that turns out to be
-  lower than the release this ships in would tell a reader their restriction is enforced when it is not.
+  enforces nothing while the UI shows the rules. Settled: accepted while the product is in preview.
 - A portless pattern means 443. An explicit port is allowed, `:80` included, so the proxy must also refuse
   to inject over plaintext, and it does.
 - A wildcard is the leftmost label only and matches exactly one label. This is what makes every pattern pair
@@ -159,46 +147,38 @@ Two child tables, `agent_vault_service_custom_headers` and `agent_vault_service_
 lifecycle but not a shape, and their only common column is the sealed value, so they are not one table with
 a `kind` column the way `proxied_service_credentials` is.
 
-"Custom header" is the name in every layer: the table, the DAL, the `customHeaders` field on both the
-management API and the resolve payload, the Go struct, and the UI. Unqualified "header" in this product
-means the credential's own header, and the two names sitting one word apart is what made a custom header
-silently overwriting the credential easy to miss in review.
+"Custom header" is the name in every layer: the table, the DAL, the `customHeaders` field on both APIs,
+the Go struct and the UI. Unqualified "header" means the credential's own, and the two sitting one word
+apart is what made a custom header silently overwriting the credential easy to miss.
 
 - Every value is sealed with the project cipher, header values included. There is no non-secret header.
-- A PATCH sends the whole list and the service diffs it. A row resolves to a stored one by `id` when the
-  caller sends one, and otherwise by its name (headers) or placeholder (substitutions), both unique per
-  service. That is what lets a hand-written API call edit one row without first fetching the service for
-  its ids, while the sheet keeps sending ids so a rename can keep the stored secret. Ids are claimed in a
-  first pass, so swapping two rows' names resolves the way the caller meant.
-- Name and placeholder uniqueness per service is enforced in the list-level refine and by the bundle lock
-  serialising writes, **not** by a unique index, and it has to stay that way: a rename that swaps two rows'
-  names emits the two UPDATEs in sequence, so a `UNIQUE (serviceId, lower(name))` would fail the first one
-  against the second row's current value. Adding one needs deferred constraints or a delete-then-insert.
-- Omitting a row's `value` keeps what is sealed; a row that resolves to nothing needs one. Every other
-  field is replace-semantics, `prefix` included, and that asymmetry is deliberate: a prefix comes back in
-  the response so a caller can resend it, while a sealed value can never be read back. A duplicate `id` in
-  one list is rejected, because both rows would resolve to the same stored row and the first would vanish,
-  which the name check cannot catch. Rows the caller did not reference are deleted. The stored rows are read **inside** the transaction, after the bundle
-  lock, or two concurrent PATCHes both pass the ownership check and the loser's writes no-op.
-- A custom header may not equal the credential's effective header, checked on every write carrying a
-  credential **or** headers, against `mergeCredential`'s output rather than the request body. A
-  credential-only PATCH can move the bearer onto a name a stored header holds, and a headers-only PATCH
-  never reaches `mergeCredential` at all. Either way the custom header is injected last and would silently
-  overwrite the real token. Basic has no header name in its config but the proxy always writes
-  `Authorization`, so it is hardcoded in that check.
+- A PATCH sends the whole list and the service diffs it, resolving a row by `id` when the caller sends one
+  and otherwise by name or placeholder, which is what lets a hand-written call edit one row without first
+  fetching the service for its ids. Ids are claimed in a first pass, so swapping two rows' names resolves
+  the way the caller meant; a duplicate `id` is rejected, because both rows would resolve to the same
+  stored one and the first would vanish where the name check cannot see it.
+- Name and placeholder uniqueness is enforced in the list-level refine and by the bundle lock, **not** by a
+  unique index, and it has to stay that way: a rename that swaps two rows emits the two UPDATEs in
+  sequence, so `UNIQUE (serviceId, lower(name))` would fail the first against the second row's current
+  value. Adding one needs deferred constraints or a delete-then-insert.
+- Omitting a row's `value` keeps what is sealed. Every other field replaces, `prefix` included, because a
+  prefix comes back in the response and a sealed value never can.
+- Stored rows are read **inside** the transaction, after the bundle lock, or two concurrent PATCHes both
+  pass the ownership check and the loser's writes no-op. The credential is read there too when the body
+  carries custom headers alone, for the same reason.
+- A custom header may not equal the credential's effective header, checked against `mergeCredential`'s
+  output rather than the request body, on every write carrying either. The proxy writes the credential
+  **last**, so a pairing that got in some other way costs the custom header rather than the token; this
+  check is what tells the author instead of leaving a header that silently does nothing.
+- In the proxy: substitutions, then custom headers, then the credential, https only. Substitutions run
+  first so an injected real value can never itself be rewritten, the credential last so nothing overwrites
+  it. A path substitution rewrites the path after the policy check, so a path-restricted service re-checks
+  it, accepting the proxy's own escaping but still refusing traversal, `;` and `\` included.
 - A refusal after substitution must never quote the path: by then it carries the real credential, and the
-  error text is both the 403 body and the log line. Every other refusal in `proxy.go` is fixed text for the
-  same reason.
-- In the proxy: substitutions, then the credential, then custom headers, https only. Substitutions run
-  first so an injected real value can never itself be rewritten. A path-surface substitution rewrites the
-  path after the policy check, so a path-restricted service re-checks the rewritten path.
-- `decisionBrokered` in the proxy log now means anything was injected or substituted, so a pass-through
-  service carrying headers logs at info like a bearer one. The line also carries `substituted` naming the
-  surfaces actually rewritten: the logged `path` is always the agent's own (captured before `forward`
-  runs), so without that field a substitution that matched nothing reads exactly like one that fired.
-- The body is read only when some substitution names the `body` surface, so every other service keeps
-  streaming. An encoded or oversize body is forwarded with the placeholder still in it, and that is logged
-  at warn: the agent would otherwise see only a third-party 401 (Agent Proxy has this hole; this does not).
+  error text is both the 403 body and the log line.
+- The body is read only when a substitution names the `body` surface. One that declares itself over the cap
+  is never read, and one that breaks mid-read is refused rather than forwarded, because a relabelled
+  partial body reads to the upstream as a complete smaller request.
 
 ## Credentials at rest
 
