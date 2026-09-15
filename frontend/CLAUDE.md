@@ -62,6 +62,12 @@ When adding new queries, consider whether the default 60s staleTime is appropria
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
 - For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
 
+### Product Analytics
+
+Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.
+
+Read [`src/lib/analytics/README.md`](src/lib/analytics/README.md) before adding or changing an event. It defines naming, property cardinality and privacy rules, lifecycle semantics, and when an outcome belongs on the backend instead of in the browser.
+
 ### State Management
 
 - **Server state**: TanStack React Query (query key factories in each API domain)
