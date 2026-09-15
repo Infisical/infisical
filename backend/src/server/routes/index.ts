@@ -27,8 +27,8 @@ import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agen
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
-import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
+import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
