@@ -23,11 +23,12 @@ export type OverviewProps = {
   onUpgrade: (productId: string) => void;
   onSetCommitment: (productId: string) => void;
   onViewBreakdown: (productId: string) => void;
-  // Root-org picker for the usage breakdown. Only rendered on self-hosted, where one licence spans
-  // every organization on the instance; on cloud the breakdown is bounded to the logged-in root org.
   rootOrgs: BillingV2Organization[];
+  rootOrgCount: number;
+  isRootOrgsLoading: boolean;
   selectedOrgId: string;
   onSelectOrg: (orgId: string) => void;
+  onSearchOrgs: (search: string) => void;
   showOrgFilter: boolean;
   onUpdatePayment: () => void;
   onEditDetails: () => void;
@@ -48,8 +49,11 @@ export const Overview = ({
   onSetCommitment,
   onViewBreakdown,
   rootOrgs,
+  rootOrgCount,
+  isRootOrgsLoading,
   selectedOrgId,
   onSelectOrg,
+  onSearchOrgs,
   showOrgFilter,
   onUpdatePayment,
   onEditDetails,
@@ -57,10 +61,15 @@ export const Overview = ({
   onRetry,
   canManageBilling
 }: OverviewProps) => {
-  // Rendered before the early returns: a failing organization must not take the control that chose it
-  // off the screen, or the only way back is a page reload.
   const orgFilter = showOrgFilter ? (
-    <RootOrgFilter orgs={rootOrgs} value={selectedOrgId} onChange={onSelectOrg} />
+    <RootOrgFilter
+      orgs={rootOrgs}
+      totalCount={rootOrgCount}
+      isLoading={isRootOrgsLoading}
+      value={selectedOrgId}
+      onChange={onSelectOrg}
+      onSearchChange={onSearchOrgs}
+    />
   ) : null;
 
   if (subState === "loading") {

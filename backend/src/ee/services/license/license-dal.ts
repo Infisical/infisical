@@ -12,14 +12,8 @@ export type TLicenseDALFactory = ReturnType<typeof licenseDALFactory>;
 // direct or inherited through a group.
 const COUNTED_PROJECT_TYPES = [ProjectType.SecretManager, ProjectType.KMS];
 
-// One machine identity's billable seat, resolved to where the identity was created: the project that
-// owns it, or the org itself when it is org-owned (identities.projectId is null).
 export type TBillableIdentityOwnershipRow = { orgId: string; projectId: string | null; count: number };
 
-// The scope CTEs every billable-actor query starts from. Extracted so the seat counter and the usage
-// breakdown resolve "which actors are in scope" from one definition — a breakdown that disagreed with
-// the meter would show the customer a total that isn't the one they are billed on.
-// Attaches: orgs, counted_projects, all_projects, org_users, org_identities.
 const $withBillableScopes = (knex: Knex, orgId: string | null) => {
   const orgIds = orgId
     ? knex
@@ -32,7 +26,6 @@ const $withBillableScopes = (knex: Knex, orgId: string | null) => {
   return (
     knex
       .with("orgs", orgIds)
-      // Projects whose members count toward a seat (Secret Manager + KMS), excluding soft-deleted ones.
       .with("counted_projects", (qb) => {
         void qb
           .from(TableName.Project)
@@ -41,7 +34,6 @@ const $withBillableScopes = (knex: Knex, orgId: string | null) => {
           .whereIn("orgId", knex.select("id").from("orgs"))
           .select("id");
       })
-      // Every live project in scope, used to decide whether an actor is projectless.
       .with("all_projects", (qb) => {
         void qb
           .from(TableName.Project)
@@ -49,7 +41,6 @@ const $withBillableScopes = (knex: Knex, orgId: string | null) => {
           .whereIn("orgId", knex.select("id").from("orgs"))
           .select("id");
       })
-      // Real (accepted, non-ghost) org-member users in scope, deduped across orgs.
       .with("org_users", (qb) => {
         void qb
           .from({ m: TableName.Membership })

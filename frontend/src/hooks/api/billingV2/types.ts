@@ -311,7 +311,6 @@ export type TBillingV2LifecycleDTO = {
   orgId: string;
 };
 
-// The metered dimensions the usage breakdown can explain. Values are the license-server dimension keys.
 export enum BillingV2BreakdownDimension {
   Identities = "identities",
   UserIdentities = "user_identities",
@@ -328,9 +327,6 @@ export type BillingV2BreakdownProject = {
   count: number;
 };
 
-// One organization in the billing tree and the metered units attributed to it. orgLevelCount plus every
-// project count equals count. Names are shown for organizations and projects the reader may not have
-// access to, so they render as plain text and never as links.
 export type BillingV2BreakdownScope = {
   orgId: string;
   name: string;
@@ -340,23 +336,22 @@ export type BillingV2BreakdownScope = {
   projects: BillingV2BreakdownProject[];
 };
 
-// Where one metered dimension's usage comes from. total is counted live from the same predicates that
-// feed the meter, so it can differ from the overview's billed `used` by a reporting cycle.
 export type BillingV2UsageBreakdown = {
   dimensionKey: string;
   total: number;
   userCount: number;
-  machineCount: number;
-  // false for the PKI dimensions, whose units cannot be attributed to a single project.
+  scopedCount: number;
   hasProjectDetail: boolean;
   unit: string;
   scopes: BillingV2BreakdownScope[];
 };
 
-// A root organization the signed-in caller may read billing for. A self-hosted instance admin gets
-// every organization on the instance, because one licence covers them all; everyone else gets only
-// their own, so the picker collapses to a single entry and the UI hides it.
 export type BillingV2Organization = {
   id: string;
   name: string;
+};
+
+export type BillingV2OrganizationsPage = {
+  organizations: BillingV2Organization[];
+  totalCount: number;
 };

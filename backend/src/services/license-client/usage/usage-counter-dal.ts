@@ -28,21 +28,25 @@ export const usageCounterDALFactory = (db: TDbClient) => {
   // orgId omitted means instance-wide: self-hosted is one licence over the whole database and reports
   // under an identity that is not an org id, so the org filter has to come off rather than be handed a
   // non-uuid.
+  const $internalCas = (orgId?: string) => {
+    const qb = db
+      .replicaNode()(TableName.CertificateAuthority)
+      .join(
+        TableName.InternalCertificateAuthority,
+        `${TableName.CertificateAuthority}.id`,
+        `${TableName.InternalCertificateAuthority}.caId`
+      )
+      .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`);
+
+    if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId));
+
+    return qb;
+  };
+
   const countInternalCas = async (orgId?: string): Promise<number> => {
     try {
-      const qb = db
-        .replicaNode()(TableName.CertificateAuthority)
-        .join(
-          TableName.InternalCertificateAuthority,
-          `${TableName.CertificateAuthority}.id`,
-          `${TableName.InternalCertificateAuthority}.caId`
-        )
-        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .whereNull(`${TableName.Project}.deleteAfter`);
-
-      if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId));
-
-      const row = await qb.count(`${TableName.CertificateAuthority}.id as count`).first();
+      const row = await $internalCas(orgId).count(`${TableName.CertificateAuthority}.id as count`).first();
       return toCount(row);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count internal CAs for usage" });
@@ -257,8 +261,6 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     return toCount(row);
   };
 
-  // The same actors countProjectIdentities meters, split by actor type. The meter bills one number for
-  // both; the breakdown sheet shows the human/machine split behind it.
   const countProjectIdentitiesByKind = async (
     projectType: ProjectType,
     orgId?: string
@@ -331,21 +333,9 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Mirrors countInternalCas exactly, including its lack of a status filter: a disabled or
-  // pending-certificate CA is metered, so the breakdown counts it too or it would not add up to the
-  // number the customer is billed on.
   const getInternalCaOrgBreakdown = async (orgId: string): Promise<TOrgUnitCountRow[]> => {
     try {
-      const rows = (await db
-        .replicaNode()(TableName.CertificateAuthority)
-        .join(
-          TableName.InternalCertificateAuthority,
-          `${TableName.CertificateAuthority}.id`,
-          `${TableName.InternalCertificateAuthority}.caId`
-        )
-        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId))
+      const rows = (await $internalCas(orgId)
         .groupBy(`${TableName.Project}.orgId`)
         .select({ orgId: `${TableName.Project}.orgId` })
         .count(`${TableName.CertificateAuthority}.id as count`)) as {

@@ -44,6 +44,7 @@ import {
   TGetBillingV2CatalogDTO,
   TGetBillingV2OverviewDTO,
   TGetBillingV2UsageBreakdownDTO,
+  TListBillableOrganizationsDTO,
   TPreviewBillingV2ChangeDTO,
   TRemoveBillingV2ProductDTO,
   TStartBillingV2TrialDTO
@@ -53,8 +54,6 @@ type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  // The usage breakdown reads its counts through the same DALs the meters report from, so it explains
-  // the billed figure rather than recomputing it a second way.
   licenseDAL: Pick<TLicenseDALFactory, "countBillableOrgActors" | "getBillableIdentityOwnershipBreakdown">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
@@ -417,10 +416,6 @@ export const licenseV2ServiceFactory = ({
   // cloud has per-org self-serve subscriptions.
   const isSelfHostedLicense = !envConfig.isCloud;
 
-  // A self-hosted licence covers every organization on the instance, so an instance admin is
-  // accountable for usage that spans all of them and may read any org's billing. Cloud bills per root
-  // org, so the exception never applies there. Everyone else is held to their own org by
-  // getOrgPermission, which refuses a token scoped elsewhere before any ability is evaluated.
   const canReadAcrossOrgs = (isInstanceAdmin?: boolean) => Boolean(isInstanceAdmin) && !envConfig.isCloud;
 
   const ensureBillingRead = async (
@@ -822,24 +817,31 @@ export const licenseV2ServiceFactory = ({
     return { overview };
   };
 
-  // Assembles the org/project rows a breakdown query returned into the scope tree the UI renders. The
-  // root org is always present, even at zero, so the customer can see it holds nothing; a sub-org is
+  // Assembles the org/project rows a breakdown query returned into the scope tree. The
+  // root org is always present, even at zero, so the user can see it holds nothing; a sub-org is
   // listed only once it contributes, since an org tree can carry far more sub-orgs than a product uses.
   const $buildScopes = (
     orgs: TScopeOrgRow[],
     projectsById: Map<string, TScopeProjectRow>,
     rows: { orgId: string; projectId: string | null; count: number }[]
   ): BillingV2BreakdownScope[] => {
-    const byOrg = new Map<string, { orgLevelCount: number; projects: BillingV2BreakdownProject[] }>();
-    orgs.forEach((org) => byOrg.set(org.id, { orgLevelCount: 0, projects: [] }));
+    type TScopeAccumulator = {
+      name: string;
+      isRoot: boolean;
+      orgLevelCount: number;
+      projects: BillingV2BreakdownProject[];
+    };
+    const byOrg = new Map<string, TScopeAccumulator>();
+    orgs.forEach((org) => byOrg.set(org.id, { name: org.name, isRoot: org.isRoot, orgLevelCount: 0, projects: [] }));
 
     rows.forEach((row) => {
-      const scope = byOrg.get(row.orgId);
-      // An identity whose org left the tree between the count and this read has nowhere to be shown.
-      // Dropping it would make the parts stop summing to the total, so attribute it to the root.
-      const target = scope ?? byOrg.get(orgs.find((org) => org.isRoot)?.id ?? "");
+      let target = byOrg.get(row.orgId);
       if (!target) {
-        return;
+        // An organization that left the tree between the count and this read still holds metered
+        // units. Folding them into the root would inflate the figure the root org's own usage view
+        // shows, so the scope keeps its own row
+        target = { name: "Deleted organization", isRoot: false, orgLevelCount: 0, projects: [] };
+        byOrg.set(row.orgId, target);
       }
       if (!row.projectId) {
         target.orgLevelCount += row.count;
@@ -855,15 +857,14 @@ export const licenseV2ServiceFactory = ({
       });
     });
 
-    return orgs
-      .map((org) => {
-        const scope = byOrg.get(org.id) ?? { orgLevelCount: 0, projects: [] };
+    return [...byOrg.entries()]
+      .map(([orgId, scope]) => {
         const projects = scope.projects.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
         const count = scope.orgLevelCount + projects.reduce((sum, project) => sum + project.count, 0);
         return {
-          orgId: org.id,
-          name: org.name,
-          isRoot: org.isRoot,
+          orgId,
+          name: scope.name,
+          isRoot: scope.isRoot,
           count,
           orgLevelCount: scope.orgLevelCount,
           projects
@@ -873,9 +874,6 @@ export const licenseV2ServiceFactory = ({
       .sort((a, b) => Number(b.isRoot) - Number(a.isRoot) || b.count - a.count || a.name.localeCompare(b.name));
   };
 
-  // Where one metered dimension's usage comes from. Every count here is read through the same DAL the
-  // usage meter reports from, so the breakdown explains the billed figure instead of offering a second
-  // opinion on it. It is a read: it never consults the plan, so a downgrade cannot change the answer.
   const getUsageBreakdown = async ({ orgId, actor, dimensionKey, isInstanceAdmin }: TGetBillingV2UsageBreakdownDTO) => {
     await ensureBillingRead(orgId, actor, isInstanceAdmin);
 
@@ -884,16 +882,9 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
-    // ensureBillingRead already refuses a child org, so this normally resolves to orgId itself. It stays
-    // because every meter counts and reports at the root: reading the tree from anywhere else would
-    // answer with a subset of the figure the customer is billed on.
     const rootOrgId = await usageCounterDAL.resolveRootOrgId(orgId);
-
     const orgs = await breakdownDAL.findOrgTreeNames(rootOrgId);
 
-    // withProjectDetail false collapses each organization's rows into a single org total, so the scope
-    // list stops at the organization and no project is named. PAM is reported that way: the project a
-    // PAM identity happens to be created in is not a distinction the product draws.
     const buildIdentityBreakdown = async (
       counts: { users: number; identities: number },
       rows: { orgId: string; projectId: string | null; count: number }[],
@@ -912,7 +903,7 @@ export const licenseV2ServiceFactory = ({
         dimensionKey,
         total: counts.users + counts.identities,
         userCount: counts.users,
-        machineCount: counts.identities,
+        scopedCount: counts.identities,
         hasProjectDetail: withProjectDetail,
         unit: "machine identity",
         scopes: $buildScopes(orgs, projectsById, attributed)
@@ -926,7 +917,7 @@ export const licenseV2ServiceFactory = ({
         rows.map((row) => ({ orgId: row.orgId, projectId: null, count: row.count }))
       );
       const total = scopes.reduce((sum, scope) => sum + scope.count, 0);
-      return { dimensionKey, total, userCount: 0, machineCount: total, hasProjectDetail: false, unit, scopes };
+      return { dimensionKey, total, userCount: 0, scopedCount: total, hasProjectDetail: false, unit, scopes };
     };
 
     switch (dimensionKey) {
@@ -954,15 +945,13 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.UserIdentities: {
-        // Human seats only. Users hold no creation scope the way an identity does (a person can be a
-        // member of many orgs in the tree), so this dimension has a total and no scope tree.
         const { users } = await licenseDAL.countBillableOrgActors(rootOrgId);
         return {
           breakdown: {
             dimensionKey,
             total: users,
             userCount: users,
-            machineCount: 0,
+            scopedCount: 0,
             hasProjectDetail: false,
             unit: "user identity",
             scopes: []
@@ -970,8 +959,6 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.InternalCas: {
-        // Deliberately unfiltered by CA status, exactly as the meter counts it: a disabled or
-        // pending-certificate CA is billed, so excluding it here would leave the parts short of the total.
         const rows = await usageCounterDAL.getInternalCaOrgBreakdown(rootOrgId);
         return { breakdown: buildOrgOnlyBreakdown(rows, "internal CA") };
       }
@@ -986,32 +973,43 @@ export const licenseV2ServiceFactory = ({
           )
         };
       }
-      default:
+      default: {
+        const unhandled: never = dimensionKey;
         throw new BadRequestError({
-          message: `'${dimensionKey}' is not a usage dimension that can be broken down by scope.`
+          message: `'${String(unhandled)}' is not a usage dimension that can be broken down by scope.`
         });
+      }
     }
   };
 
-  // Organizations whose billing this caller may read, for the billing page's organization picker. An
-  // instance admin on self-hosted gets every root org, because one licence covers them all; everyone
-  // else gets only their own, so the picker resolves to a single entry and the UI hides it. Returning a
-  // list either way keeps the "may I switch org" decision on the server rather than in the client.
-  const getBillableOrganizations = async ({ orgId, actor, isInstanceAdmin }: TGetBillingV2OverviewDTO) => {
+  const getBillableOrganizations = async ({
+    orgId,
+    actor,
+    isInstanceAdmin,
+    search,
+    limit,
+    offset
+  }: TListBillableOrganizationsDTO) => {
     await ensureBillingRead(orgId, actor, isInstanceAdmin);
 
+    // ensureBillingRead checks with ParentOrganization scope, which refuses a child org, so orgId is
+    // already the root and the list collapses to that single entry.
     if (!canReadAcrossOrgs(isInstanceAdmin)) {
       const organization = await orgDAL.findById(orgId);
       if (!organization) {
         throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
       }
-      const rootOrgId = await usageCounterDAL.resolveRootOrgId(orgId);
-      const self = await breakdownDAL.findOrgTreeNames(rootOrgId);
-      const root = self.find((org) => org.isRoot);
-      return { organizations: root ? [{ id: root.id, name: root.name }] : [] };
+
+      const matches = search ? organization.name.toLowerCase().includes(search.toLowerCase()) : true;
+      const organizations = matches ? [{ id: organization.id, name: organization.name }] : [];
+      return {
+        organizations: organizations.slice(offset, offset + limit),
+        totalCount: organizations.length
+      };
     }
 
-    return { organizations: await breakdownDAL.findAllRootOrgs() };
+    const { orgs, totalCount } = await breakdownDAL.findAllRootOrgs({ search, limit, offset });
+    return { organizations: orgs, totalCount };
   };
 
   // Force-refresh entitlements: ask the license server to recompute and drop the local cache, so the

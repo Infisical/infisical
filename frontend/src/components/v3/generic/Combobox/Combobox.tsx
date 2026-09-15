@@ -17,6 +17,8 @@ type ComboboxSharedProps<TOption> = {
   getOptionLabel: (option: TOption) => string;
   getOptionKeywords?: (option: TOption) => readonly string[];
   isOptionDisabled?: (option: TOption) => boolean;
+  onSearchChange?: (search: string) => void;
+  listFooter?: React.ReactNode;
   renderOption?: (option: TOption, state: ComboboxRenderOptionState) => React.ReactNode;
   renderValue?: (option: TOption) => React.ReactNode;
   clearAriaLabel?: string;
@@ -80,7 +82,8 @@ const preventComboboxFormSubmit = (event: React.KeyboardEvent<HTMLInputElement>)
 const useComboboxItems = <TOption,>(
   options: readonly TOption[],
   selectedOptions: readonly TOption[],
-  getOptionValue: (option: TOption) => string
+  getOptionValue: (option: TOption) => string,
+  keepUnlistedSelection: boolean
 ) =>
   React.useMemo(() => {
     const selectedByValue = new Map(
@@ -93,12 +96,14 @@ const useComboboxItems = <TOption,>(
       return selectedByValue.get(optionValue) ?? option;
     });
 
-    selectedOptions.forEach((option) => {
-      if (!optionValues.has(getOptionValue(option))) stableOptions.push(option);
-    });
+    if (keepUnlistedSelection) {
+      selectedOptions.forEach((option) => {
+        if (!optionValues.has(getOptionValue(option))) stableOptions.push(option);
+      });
+    }
 
     return stableOptions;
-  }, [getOptionValue, options, selectedOptions]);
+  }, [getOptionValue, keepUnlistedSelection, options, selectedOptions]);
 
 type ComboboxListProps<TOption> = Pick<
   ComboboxSharedProps<TOption>,
@@ -167,6 +172,10 @@ const ComboboxList = <TOption,>({
       {isLoading ? loadingMessage : emptyMessage}
     </ComboboxPrimitive.Empty>
   </>
+);
+
+const ComboboxListFooter = ({ children }: { children: React.ReactNode }) => (
+  <div className="border-t border-border px-3 py-2 text-xs text-muted">{children}</div>
 );
 
 type ComboboxSelectAllProps = {
@@ -268,6 +277,8 @@ const SingleCombobox = <TOption,>({
   getOptionLabel,
   getOptionKeywords,
   isOptionDisabled,
+  onSearchChange,
+  listFooter,
   renderOption,
   renderValue,
   onClear,
@@ -291,17 +302,30 @@ const SingleCombobox = <TOption,>({
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = React.useState(false);
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
-  const items = useComboboxItems(options, selectedOptions, getOptionValue);
-  const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
+  const items = useComboboxItems(options, selectedOptions, getOptionValue, !onSearchChange);
+  const localFilter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
+
+  const filter = onSearchChange ? null : localFilter;
   const selectedValues = React.useMemo(
     () => new Set(value == null ? [] : [getOptionValue(value)]),
     [getOptionValue, value]
   );
 
+  const stableValueRef = React.useRef<TOption | null>(null);
+  if (value == null) {
+    stableValueRef.current = null;
+  } else if (
+    stableValueRef.current == null ||
+    getOptionValue(stableValueRef.current) !== getOptionValue(value)
+  ) {
+    stableValueRef.current = value;
+  }
+  const selectedValue = onSearchChange ? stableValueRef.current : (value ?? null);
+
   return (
     <ComboboxPrimitive.Root<TOption, false>
       items={items}
-      value={value ?? null}
+      value={selectedValue}
       onValueChange={(nextValue, eventDetails) => {
         if (nextValue == null) {
           if (eventDetails.reason === "clear-press") onClear?.();
@@ -311,6 +335,11 @@ const SingleCombobox = <TOption,>({
       }}
       open={open}
       onOpenChange={setOpen}
+      onInputValueChange={(nextSearch, eventDetails) => {
+        if (eventDetails.reason === "input-change" || eventDetails.reason === "input-clear") {
+          onSearchChange?.(nextSearch);
+        }
+      }}
       itemToStringLabel={getOptionLabel}
       itemToStringValue={getOptionValue}
       isItemEqualToValue={(option, selectedOption) =>
@@ -319,7 +348,7 @@ const SingleCombobox = <TOption,>({
       filter={filter}
       disabled={isDisabled}
       modal={modal}
-      autoHighlight
+      autoHighlight={!onSearchChange}
     >
       <div className="relative w-full">
         <ComboboxPrimitive.Input
@@ -400,6 +429,7 @@ const SingleCombobox = <TOption,>({
           selectedValues={selectedValues}
           maxHeight={SINGLE_LIST_MAX_HEIGHT}
         />
+        {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
       </ComboboxPopup>
     </ComboboxPrimitive.Root>
   );
@@ -413,6 +443,8 @@ const MultipleCombobox = <TOption,>({
   getOptionLabel,
   getOptionKeywords,
   isOptionDisabled,
+  onSearchChange,
+  listFooter,
   renderOption,
   renderValue,
   onClear,
@@ -443,18 +475,26 @@ const MultipleCombobox = <TOption,>({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
-  const items = useComboboxItems(options, selectedOptions, getOptionValue);
-  const filter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
+  const items = useComboboxItems(options, selectedOptions, getOptionValue, !onSearchChange);
+  const localFilter = useComboboxFilter({ getOptionKeywords, getOptionLabel });
+  const filter = onSearchChange ? null : localFilter;
+  const updateSearch = (nextSearch: string) => {
+    setSearch(nextSearch);
+    onSearchChange?.(nextSearch);
+  };
   const selectedValues = React.useMemo(
     () => new Set(value.map(getOptionValue)),
     [getOptionValue, value]
   );
   // Select all only covers the options matching the current search, so a filtered
-  // list toggles what is on screen instead of the entire option set.
+  // list toggles what is on screen instead of the entire option set. Under a caller-owned
+  // search the fetched options are already that set.
   const selectAllOptions = React.useMemo(
     () =>
       isSelectAll
-        ? items.filter((option) => !isOptionDisabled?.(option) && filter(option, search))
+        ? items.filter(
+            (option) => !isOptionDisabled?.(option) && (filter == null || filter(option, search))
+          )
         : [],
     [filter, isOptionDisabled, isSelectAll, items, search]
   );
@@ -483,7 +523,7 @@ const MultipleCombobox = <TOption,>({
       onValueChange={(nextValue, eventDetails) => {
         if (eventDetails.reason === "item-press") {
           eventDetails.cancel();
-          setSearch("");
+          updateSearch("");
           setOpen(true);
           window.requestAnimationFrame(() => inputRef.current?.focus());
         }
@@ -498,10 +538,10 @@ const MultipleCombobox = <TOption,>({
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        if (!nextOpen) setSearch("");
+        if (!nextOpen) updateSearch("");
       }}
       inputValue={search}
-      onInputValueChange={setSearch}
+      onInputValueChange={updateSearch}
       itemToStringLabel={getOptionLabel}
       itemToStringValue={getOptionValue}
       isItemEqualToValue={(option, selectedOption) =>
@@ -510,7 +550,7 @@ const MultipleCombobox = <TOption,>({
       filter={filter}
       disabled={isDisabled}
       modal={modal}
-      autoHighlight
+      autoHighlight={!onSearchChange}
     >
       <ComboboxPrimitive.Chips
         ref={chipsRef}
@@ -626,6 +666,7 @@ const MultipleCombobox = <TOption,>({
           selectedValues={selectedValues}
           maxHeight={MULTIPLE_LIST_MAX_HEIGHT}
         />
+        {listFooter && <ComboboxListFooter>{listFooter}</ComboboxListFooter>}
       </ComboboxPopup>
     </ComboboxPrimitive.Root>
   );
@@ -634,6 +675,8 @@ const MultipleCombobox = <TOption,>({
 /**
  * Searchable object select built on Base UI. Use `multiple` for the chips-based
  * multi-select contract while legacy `FilterableSelect` consumers migrate incrementally.
+ * Options are filtered in the browser unless `onSearchChange` is passed, which hands
+ * filtering to the caller so the list can be fetched a page at a time.
  */
 function Combobox<TOption>(props: ComboboxProps<TOption>) {
   const { multiple } = props;

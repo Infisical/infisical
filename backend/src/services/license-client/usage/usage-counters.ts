@@ -21,9 +21,7 @@ export type TMeteredFeature = {
   resolveReportOrgId?: (orgId: string) => Promise<string>;
 };
 
-// Static list of every metered dimension key (no DAL needed). For callers that only need the keys, not
-// the count fns — e.g. background reconciliation emitting one event per dimension for an org.
-export const METERED_DIMENSION_KEYS: string[] = [
+const METERED_FEATURES = [
   IdentitiesMeter,
   InternalCas,
   ActiveCerts,
@@ -31,7 +29,11 @@ export const METERED_DIMENSION_KEYS: string[] = [
   SecretIdentities,
   PamIdentities,
   UserIdentities
-].map((feature) => feature.key);
+] as const;
+
+export type TMeteredDimensionKey = (typeof METERED_FEATURES)[number]["key"];
+
+export const METERED_DIMENSION_KEYS: TMeteredDimensionKey[] = METERED_FEATURES.map((feature) => feature.key);
 
 type TBuildMeteredFeaturesDep = {
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities" | "countOfOrgMembers">;

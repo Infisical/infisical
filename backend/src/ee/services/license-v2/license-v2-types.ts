@@ -1,4 +1,5 @@
 import { OrgServiceActor } from "@app/lib/types";
+import type { TMeteredDimensionKey } from "@app/services/license-client/usage/usage-counters";
 
 export type BillingV2SubState = "active" | "trialing" | "past-due" | "suspended" | "no-subscription";
 
@@ -205,6 +206,12 @@ export type TGetBillingV2OverviewDTO = {
   isInstanceAdmin?: boolean;
 };
 
+export type TListBillableOrganizationsDTO = TGetBillingV2OverviewDTO & {
+  search?: string;
+  limit: number;
+  offset: number;
+};
+
 export type TGetBillingV2CatalogDTO = {
   orgId: string;
   actor: OrgServiceActor;
@@ -310,28 +317,26 @@ export type TBillingV2SubscriptionLifecycleDTO = {
 };
 
 // The metered dimensions the usage breakdown can explain. Values are license-server dimension keys and
-// must match the descriptors in services/license-client/features.ts; license-v2-breakdown.test.ts fails
-// when they drift.
-export enum BillingV2BreakdownDimension {
-  Identities = "identities",
-  UserIdentities = "user_identities",
-  SecretIdentities = "secret_identities",
-  PamIdentities = "pam_identities",
-  InternalCas = "internal_cas",
-  ActiveCerts = "active_certs",
-  WildcardCerts = "wildcard_certs"
-}
+// must match the descriptors in services/license-client/features.ts
+export const BillingV2BreakdownDimension = {
+  Identities: "identities",
+  UserIdentities: "user_identities",
+  SecretIdentities: "secret_identities",
+  PamIdentities: "pam_identities",
+  InternalCas: "internal_cas",
+  ActiveCerts: "active_certs",
+  WildcardCerts: "wildcard_certs"
+} as const satisfies Record<string, TMeteredDimensionKey>;
 
-// One project a metered dimension's units were created in. Named even when the reader has no access to
-// the project, so a billed total is always explainable; the UI renders the name as plain text.
+export type TBillingV2BreakdownDimension =
+  (typeof BillingV2BreakdownDimension)[keyof typeof BillingV2BreakdownDimension];
+
 export type BillingV2BreakdownProject = {
   id: string;
   name: string;
   count: number;
 };
 
-// One organization in the billing tree (the root org or one of its sub-orgs) and the metered units
-// attributed to it. orgLevelCount plus every project count equals count.
 export type BillingV2BreakdownScope = {
   orgId: string;
   name: string;
@@ -343,19 +348,13 @@ export type BillingV2BreakdownScope = {
   projects: BillingV2BreakdownProject[];
 };
 
-// Where one metered dimension's usage comes from, counted live from the same predicates that feed the
-// meter. The overview's `used` is the figure the customer is billed on and is reported to the license
-// server asynchronously, so the two can differ by a reporting cycle.
 export type BillingV2UsageBreakdown = {
   dimensionKey: string;
   total: number;
-  // Humans in the metered set. The identity meters bill users and machine identities together; the PKI
-  // meters count neither, so this is 0 for them.
+  // Humans in the metered set. The identity meters bill users and machine identities together
   userCount: number;
-  // The part of the total the scopes partition.
-  machineCount: number;
-  // false for the PKI dimensions: the meter dedupes certificates by name across the whole tree, so a
-  // certificate cannot be attributed to one project without the parts summing past the billed total.
+  // The part of the total the scope tree accounts for: total minus userCount for the identity meters.
+  scopedCount: number;
   hasProjectDetail: boolean;
   // Singular noun for what is counted ("machine identity", "internal CA"), for the UI's labels.
   unit: string;
@@ -365,6 +364,6 @@ export type BillingV2UsageBreakdown = {
 export type TGetBillingV2UsageBreakdownDTO = {
   orgId: string;
   actor: OrgServiceActor;
-  dimensionKey: string;
+  dimensionKey: TBillingV2BreakdownDimension;
   isInstanceAdmin?: boolean;
 };

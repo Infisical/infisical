@@ -63,8 +63,6 @@ const sentenceCase = (value: string) => value.charAt(0).toUpperCase() + value.sl
 type CountShareProps = {
   count: number;
   total: number;
-  // Named on the top-level scope rows so the percentage says what it is a percentage of; omitted on
-  // the nested rows, where the parent row has just established it.
   unitLabel?: string;
 };
 
@@ -86,22 +84,13 @@ const Meter = ({ className, width, height = "h-1.5" }: MeterProps) => (
 
 type ScopeRowProps = {
   scope: BillingV2BreakdownScope;
-  // Total across every scope, so each row's bar is drawn to the same scale.
-  machineCount: number;
+  scopedCount: number;
   unitLabel: string;
   hasProjectDetail: boolean;
 };
 
-// One organization's contribution. Expanding it says where inside that org the units were created: on
-// the org itself, or in one of its projects. Built on the shared Accordion so it opens with the same
-// motion and hover colours as every other expandable row in the product.
-const ScopeRow = ({ scope, machineCount, unitLabel, hasProjectDetail }: ScopeRowProps) => {
-  // 85% is the strength DimensionMeter already uses for a filled meter, so a bar reads as a bar rather
-  // than as a solid scope-coloured block next to it.
+const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowProps) => {
   const scopeTint = scope.isRoot ? "bg-org/85" : "bg-sub-org/85";
-  // The org's own share sits directly under the org's bar at a different length. In the scope colour the
-  // two read as the same measurement drawn twice, so it takes the neutral tint and leaves the scope
-  // colour to mean "this is the whole organization".
   const orgLevelTint = "bg-neutral/85";
   const canExpand = hasProjectDetail && scope.count > 0;
   const projectLabel = `${scope.projects.length} ${scope.projects.length === 1 ? "project" : "projects"}`;
@@ -116,9 +105,9 @@ const ScopeRow = ({ scope, machineCount, unitLabel, hasProjectDetail }: ScopeRow
           <span className="truncate">{scope.name}</span>
           {scope.isRoot && <Badge variant="org">Root org</Badge>}
         </span>
-        <CountShare count={scope.count} total={machineCount} unitLabel={unitLabel} />
+        <CountShare count={scope.count} total={scopedCount} unitLabel={unitLabel} />
       </div>
-      <Meter className={scopeTint} width={pct(scope.count, machineCount)} />
+      <Meter className={scopeTint} width={pct(scope.count, scopedCount)} />
     </div>
   );
 
@@ -143,7 +132,6 @@ const ScopeRow = ({ scope, machineCount, unitLabel, hasProjectDetail }: ScopeRow
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2 text-xs text-accent">
-                    {/* A swatch rather than an icon: this row is the parent org itself, not a resource. */}
                     <span className={cn("size-2.5 shrink-0 rounded-xs", orgLevelTint)} />
                     <span className="truncate">{scope.isRoot ? "Org" : "Sub-Org"}</span>
                   </span>
@@ -165,7 +153,6 @@ const ScopeRow = ({ scope, machineCount, unitLabel, hasProjectDetail }: ScopeRow
             {scope.projects.map((project) => (
               <div key={project.id} className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-3">
-                  {/* Plain text, never a link: the breakdown names projects the reader may not open. */}
                   <span className="flex min-w-0 items-center gap-2 text-xs text-accent">
                     <Box className="size-3 shrink-0 text-project" />
                     <span className="truncate">{project.name}</span>
@@ -199,18 +186,13 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOrder>("count");
 
-  const { total, userCount, machineCount, unit, hasProjectDetail, scopes } = breakdown;
+  const { total, userCount, scopedCount, unit, hasProjectDetail, scopes } = breakdown;
   const unitLabel = pluralizeUnit(unit);
-  // The identity meters bill people and machines as one figure, so the headline counts both and cannot
-  // borrow the scope label, which names machines only. A dimension that counts a single kind keeps its
-  // own noun.
   const totalLabel = userCount > 0 ? "unique identities" : unitLabel;
   const rootScope = scopes.find((scope) => scope.isRoot);
   const subOrgScopes = useMemo(() => scopes.filter((scope) => !scope.isRoot), [scopes]);
   const subOrgCount = subOrgScopes.reduce((sum, scope) => sum + scope.count, 0);
 
-  // Counts only the orgs and projects that actually hold units of this dimension, which is what the
-  // scope list already contains. Truthful here and free, because the breakdown is loaded.
   const projectCount = scopes.reduce((sum, scope) => sum + scope.projects.length, 0);
   const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
   const spanSummary = [
@@ -242,8 +224,6 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
           <span className="text-xs text-muted">{totalLabel}</span>
         </div>
         {userCount > 0 && (
-          // The identity meters bill people and machines together, so the split is what makes the
-          // headline figure legible. No colour keys: nothing on this sheet is keyed to them yet.
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-accent">
             <span>
               <span className="font-semibold text-foreground">{userCount.toLocaleString()}</span>{" "}
@@ -251,14 +231,14 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
             </span>
             <span className="text-border">·</span>
             <span>
-              <span className="font-semibold text-foreground">{machineCount.toLocaleString()}</span>{" "}
+              <span className="font-semibold text-foreground">{scopedCount.toLocaleString()}</span>{" "}
               {unitLabel}
             </span>
           </div>
         )}
       </div>
 
-      {machineCount === 0 ? (
+      {scopedCount === 0 ? (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>Nothing counted yet</EmptyTitle>
@@ -280,19 +260,18 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-semibold text-foreground tabular-nums">
-                  {machineCount.toLocaleString()}
+                  {scopedCount.toLocaleString()}
                 </span>
                 <span className="text-xs text-muted">{unitLabel}</span>
               </div>
               <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-xs bg-background">
                 <div
                   className="animate-bar-grow h-full rounded-xs bg-org/85"
-                  style={{ width: pct(rootScope.count, machineCount) }}
+                  style={{ width: pct(rootScope.count, scopedCount) }}
                 />
-                {/* Staggered so the two segments read as one bar filling left to right, not two racing. */}
                 <div
                   className="animate-bar-grow h-full rounded-xs bg-sub-org/85"
-                  style={{ width: pct(subOrgCount, machineCount), animationDelay: "60ms" }}
+                  style={{ width: pct(subOrgCount, scopedCount), animationDelay: "60ms" }}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-accent">
@@ -317,7 +296,7 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
           {rootScope && (
             <ScopeRow
               scope={rootScope}
-              machineCount={machineCount}
+              scopedCount={scopedCount}
               unitLabel={unitLabel}
               hasProjectDetail={hasProjectDetail}
             />
@@ -337,8 +316,6 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
                     aria-label="Search sub-organizations"
                   />
                 </InputGroup>
-                {/* md matches the search field's height; the fixed width keeps the control from
-                    resizing as the label changes between the two sort orders. */}
                 <Button
                   variant="outline"
                   size="md"
@@ -373,7 +350,7 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
                     <ScopeRow
                       key={scope.orgId}
                       scope={scope}
-                      machineCount={machineCount}
+                      scopedCount={scopedCount}
                       unitLabel={unitLabel}
                       hasProjectDetail={hasProjectDetail}
                     />
@@ -395,9 +372,6 @@ type UsageBreakdownSheetProps = {
   onClose: () => void;
 };
 
-// Explains where one product's metered usage comes from: which organization in the billing tree, and
-// which project inside it, each unit was created in. Counted live from the same predicates that feed the
-// meter, so it explains the billed figure rather than offering a second opinion on it.
 export const UsageBreakdownSheet = ({
   orgId,
   prod,

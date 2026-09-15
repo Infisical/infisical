@@ -85,7 +85,6 @@ const ActiveProductCard = ({
   // Bar-bearing dims first so the block reads bars, then bare cost lines, then the shared legend.
   const sortedDims = [...dims].sort((a, b) => Number(dimHasCeiling(b)) - Number(dimHasCeiling(a)));
 
-  // Only offer the breakdown for dimensions we can attribute to an org and project.
   const hasBreakdown = breakdownableDimensions(entitlement).length > 0;
 
   // Cadence and renewal (or trial / deprecation) as one muted subline under the product name.
@@ -170,8 +169,6 @@ const ActiveProductCard = ({
         </div>
       )}
       {hasBreakdown && (
-        // Full-bleed strip on the card's bottom edge. Sits above the commit nudge so the card ends on
-        // the action that costs money rather than on a read.
         <button
           type="button"
           onClick={() => onViewBreakdown(prod.id)}
@@ -180,9 +177,6 @@ const ActiveProductCard = ({
             commitNudge && "mb-0"
           )}
         >
-          {/* No counts here. A truthful "across N sub-orgs" means counting which orgs actually
-              contribute to this dimension, which costs a full usage breakdown per product on every page
-              load. The sheet says it instead, where that data is already loaded. */}
           <span className="text-xs text-muted">Break this down by organization usage</span>
           <span className="flex shrink-0 items-center gap-1 text-xs text-accent transition-colors group-hover:text-foreground">
             View breakdown
@@ -192,7 +186,14 @@ const ActiveProductCard = ({
       )}
       {commitNudge && (
         // Full-bleed strip at the card's bottom edge nudging the monthly subscriber to commit annually.
-        <div className="-mx-4 mt-1 -mb-4 flex items-center justify-between gap-3 border-t border-border bg-warning/5 px-4 py-2.5">
+        <div
+          className={cn(
+            "-mx-4 -mb-4 flex items-center justify-between gap-3 border-t border-border bg-warning/5 px-4 py-2.5",
+            // Sitting under the breakdown strip, -mt-3 cancels the card's gap-3 so the two full-bleed
+            // strips meet on one divider and read as a single footer instead of two floating bars.
+            hasBreakdown ? "-mt-3" : "mt-1"
+          )}
+        >
           <span className="flex items-center gap-2.5 text-xs text-muted">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-warning/40 text-warning">
               <DollarSign className="size-3.5" />

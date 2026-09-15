@@ -194,7 +194,9 @@ const BillingV2UsageBreakdownSchema = z.object({
   dimensionKey: z.string().describe("The metered dimension this breakdown explains."),
   total: z.number().describe("Live total for the dimension, counted the same way the meter counts it."),
   userCount: z.number().describe("Human seats in the metered set; 0 for dimensions that count no users."),
-  machineCount: z.number().describe("The part of the total the scopes partition."),
+  scopedCount: z
+    .number()
+    .describe("The part of the total the scope tree accounts for; equals total for dimensions with no users."),
   hasProjectDetail: z.boolean().describe("Whether units can be attributed to individual projects."),
   unit: z.string().describe("Singular noun for what is counted, e.g. 'machine identity'."),
   scopes: BillingV2BreakdownScopeSchema.array().describe("Organizations the total is drawn from, largest first.")
@@ -270,6 +272,11 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       description:
         "List the root organizations whose billing the caller may read. A self-hosted instance admin gets every organization on the instance, because one licence covers them all; everyone else gets only their own.",
       params: z.object({ organizationId: z.string().trim().uuid() }),
+      querystring: z.object({
+        search: z.string().trim().optional().describe("Match root organizations whose name contains this."),
+        limit: z.coerce.number().min(1).max(1000).default(100).describe("Maximum organizations to return."),
+        offset: z.coerce.number().min(0).default(0).describe("Number of organizations to skip.")
+      }),
       response: {
         200: z.object({
           organizations: z
@@ -277,7 +284,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
               id: z.string().describe("ID of the root organization."),
               name: z.string().describe("Display name of the root organization.")
             })
-            .array()
+            .array(),
+          totalCount: z.number().describe("Root organizations matching the search, across every page.")
         })
       }
     },
@@ -286,14 +294,17 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       return server.services.licenseV2.getBillableOrganizations({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
-        isInstanceAdmin: isSuperAdmin(req.auth)
+        isInstanceAdmin: isSuperAdmin(req.auth),
+        search: req.query.search,
+        limit: req.query.limit,
+        offset: req.query.offset
       });
     }
   });
 
   server.route({
     method: "GET",
-    url: "/:organizationId/billing/v2/usage/:dimensionKey/breakdown",
+    url: "/:organizationId/billing/v2/breakdowns/:dimensionKey",
     config: {
       rateLimit: readLimit
     },

@@ -1,6 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { orgTreeIds } from "@app/lib/knex";
 
 export type TLicenseV2BreakdownDALFactory = ReturnType<typeof licenseV2BreakdownDALFactory>;
@@ -8,17 +9,8 @@ export type TLicenseV2BreakdownDALFactory = ReturnType<typeof licenseV2Breakdown
 export type TScopeOrgRow = { id: string; name: string; isRoot: boolean };
 export type TRootOrgRow = { id: string; name: string };
 
-// An instance admin picks from this list, and a self-hosted instance is not a multi-tenant estate, so
-// the count is in the tens. Capped anyway so a pathological instance cannot return an unbounded list;
-// the picker filters client-side, so a cap that hides orgs would be invisible, hence the log.
-const ROOT_ORG_LIMIT = 500;
 export type TScopeProjectRow = { id: string; name: string; orgId: string };
 
-// Scope names for the usage breakdown. Billing is answered at the root org, so a billing admin reading
-// it is shown every sub-org and project the metered total was drawn from, including ones they are not a
-// member of: a total the customer is billed on that cannot be explained is worse than naming a project
-// they already pay for. Names only, deliberately, and the UI does not link them — nothing here exposes
-// a project's contents, and this DAL must not grow fields that would.
 export const licenseV2BreakdownDALFactory = (db: TDbClient) => {
   const findOrgTreeNames = async (orgId: string): Promise<TScopeOrgRow[]> => {
     try {
@@ -40,8 +32,6 @@ export const licenseV2BreakdownDALFactory = (db: TDbClient) => {
     }
 
     try {
-      // Soft-deleted projects are excluded from every meter, so one reaching here would be a bug in the
-      // count rather than a project to name; leaving it unnamed keeps the two consistent.
       return (await db
         .replicaNode()(TableName.Project)
         .whereIn("id", projectIds)
@@ -52,16 +42,23 @@ export const licenseV2BreakdownDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Every root organization on the instance. Only ever reached for an instance admin on self-hosted,
-  // where one licence covers them all; the service is what enforces that.
-  const findAllRootOrgs = async (): Promise<TRootOrgRow[]> => {
+  const findAllRootOrgs = async (dto: {
+    search?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ orgs: TRootOrgRow[]; totalCount: number }> => {
     try {
-      return (await db
-        .replicaNode()(TableName.Organization)
-        .whereNull("rootOrgId")
-        .orderBy("name", "asc")
-        .limit(ROOT_ORG_LIMIT)
-        .select("id", "name")) as TRootOrgRow[];
+      const baseQuery = db.replicaNode()(TableName.Organization).whereNull("rootOrgId");
+      if (dto.search) {
+        void baseQuery.whereILike("name", `%${sanitizeSqlLikeString(dto.search)}%`);
+      }
+
+      const [totalResult, orgs] = await Promise.all([
+        baseQuery.clone().count({ count: "*" }).first(),
+        baseQuery.clone().orderBy("name", "asc").limit(dto.limit).offset(dto.offset).select("id", "name")
+      ]);
+
+      return { orgs: orgs as TRootOrgRow[], totalCount: Number(totalResult?.count ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all root organizations for billing" });
     }
