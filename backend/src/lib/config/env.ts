@@ -9,7 +9,7 @@ import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal
 
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
-import { CustomLogger } from "../logger/logger";
+import { CustomLogger, logger as rootLogger } from "../logger/logger";
 import { ms } from "../ms";
 import { zpStr } from "../zod";
 
@@ -63,7 +63,88 @@ export const runModesSchema = zpStr(z.string().optional())
  * headroom when validating the stuck-scan threshold so the reaper can't reach a healthy scan, and
  * as the scan lock TTL headroom so the lock outlives any scan the reaper would consider healthy.
  */
-export const SECRET_SCANNING_SCAN_OVERHEAD_MS = 5 * 60 * 1000;
+export const SECRET_SCANNING_SCAN_OVERHEAD = ms("5m");
+
+const zodTimeoutMs = ({
+  envVar,
+  description,
+  defaultValue,
+  legacyMsEnvVar
+}: {
+  envVar: string;
+  description: string;
+  defaultValue: string;
+  // only for a timeout that predates this helper; a new one has no deprecated spelling to honour
+  legacyMsEnvVar?: string;
+}) =>
+  zpStr(
+    z
+      .string()
+      .optional()
+      .describe(description)
+      .transform((val, ctx) => {
+        const legacyValue = legacyMsEnvVar ? process.env[legacyMsEnvVar]?.trim() || undefined : undefined;
+        // the singleton logger is undefined on the first parse, which happens during telemetry setup
+        if (legacyValue) {
+          (rootLogger ?? console).warn(
+            `Warning: The environment variable ${legacyMsEnvVar} has been deprecated. Please use ${envVar} instead.`
+          );
+        }
+
+        const raw = val ?? legacyValue ?? defaultValue;
+
+        const duration = ms(raw);
+        if (duration === undefined || duration < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              raw === legacyValue
+                ? `Invalid value "${raw}" in ${legacyMsEnvVar}. Expected a positive number of milliseconds.`
+                : `Invalid duration "${raw}" in ${envVar}. Expected a positive duration string such as "30s", "10m" or "6h".`
+          });
+          return z.NEVER;
+        }
+
+        return duration;
+      })
+  );
+
+export const secretScanningTimeoutsSchema = z.object({
+  SECRET_SCANNING_SCAN_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_SCAN_TIMEOUT",
+    description: "Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed",
+    defaultValue: "10m",
+    legacyMsEnvVar: "SECRET_SCANNING_SCAN_TIMEOUT_MS"
+  }),
+  SECRET_SCANNING_CLONE_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_CLONE_TIMEOUT",
+    description: "Wall-clock ceiling for a single `git clone` invocation before its process group is killed",
+    defaultValue: "10m",
+    legacyMsEnvVar: "SECRET_SCANNING_CLONE_TIMEOUT_MS"
+  }),
+  SECRET_SCANNING_STUCK_SCAN_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT",
+    description:
+      "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined.",
+    defaultValue: "1h",
+    legacyMsEnvVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"
+  })
+});
+
+export const validateSecretScanningTimeouts = (
+  data: z.infer<typeof secretScanningTimeoutsSchema>,
+  ctx: z.RefinementCtx
+) => {
+  const scanBudgetMs =
+    data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+  if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT <= scanBudgetMs) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT"],
+      message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus ${SECRET_SCANNING_SCAN_OVERHEAD}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
+    });
+  }
+};
 
 const databaseReadReplicaSchema = z
   .object({
@@ -371,18 +452,7 @@ const envSchema = z
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
-    SECRET_SCANNING_SCAN_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(10 * 60 * 1000)
-      .describe("Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed"),
-    SECRET_SCANNING_CLONE_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(10 * 60 * 1000)
-      .describe("Wall-clock ceiling for a single `git clone` invocation before its process group is killed"),
+    ...secretScanningTimeoutsSchema.shape,
     SECRET_SCANNING_MEMORY_LIMIT_MB: z.coerce
       .number()
       .int()
@@ -405,14 +475,6 @@ const envSchema = z
       .min(0)
       .default(5120)
       .describe("Repositories larger than this are rejected before/after cloning. Set to 0 to disable."),
-    SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .default(60 * 60 * 1000)
-      .describe(
-        "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined."
-      ),
     // LICENSE
     // The License Server host. Serves both the self-hosted token endpoint and the entitlement API.
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
@@ -633,15 +695,7 @@ const envSchema = z
       }
     });
 
-    const scanBudgetMs =
-      data.SECRET_SCANNING_CLONE_TIMEOUT_MS + data.SECRET_SCANNING_SCAN_TIMEOUT_MS + SECRET_SCANNING_SCAN_OVERHEAD_MS;
-    if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS <= scanBudgetMs) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"],
-        message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT_MS + SECRET_SCANNING_SCAN_TIMEOUT_MS plus ${SECRET_SCANNING_SCAN_OVERHEAD_MS}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
-      });
-    }
+    validateSecretScanningTimeouts(data, ctx);
   })
   .transform((data) => ({
     ...data,
