@@ -59,7 +59,7 @@ Keep patterns as narrow as the API allows. A wildcard covers every host under it
 
 ### Methods and paths
 
-A service allows every HTTP method and every path on its hosts by default. You can narrow it to the methods you need, and to the routes you need by listing up to 20 path prefixes.
+A service allows every HTTP method and every path on its hosts by default. You can narrow it to the methods you need, and to the routes you need by listing path prefixes.
 
 A path prefix matches whole segments, so `/repos` covers `/repos/octo/hello` but not `/repositories`. Write the path exactly as it appears in the URL.
 
@@ -81,7 +81,7 @@ Different access bundles can cover the same host with different credentials. An 
 
 ## Transformations
 
-A service can add two things to a request that the agent never holds: extra headers and placeholder substitutions. Both are optional, both work with any credential type including pass-through, and you can add up to 20 of each.
+A service can add two things to a request that the agent never holds: extra headers and placeholder substitutions. Both are optional, and both work with any credential type including pass-through.
 
 ### Custom headers
 
