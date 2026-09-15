@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { agentVaultPathPrefixListSchema, matchesPathPrefix, normalizePathPrefix } from "./agent-vault-path-prefix";
+import { agentVaultPathPrefixListSchema, normalizePathPrefix } from "./agent-vault-path-prefix";
 
 describe("agent vault path prefixes", () => {
   describe("grammar", () => {
@@ -62,26 +62,6 @@ describe("agent vault path prefixes", () => {
 
     it("leaves a bare / alone, since stripping it would empty the prefix", () => {
       expect(normalizePathPrefix("/")).toBe("/");
-    });
-  });
-
-  describe("matching", () => {
-    it.each([
-      ["/repos", "/repos"],
-      ["/repos", "/repos/"],
-      ["/repos", "/repos/octo/hello"],
-      ["/", "/anything/at/all"]
-    ])("prefix %s matches %s", (prefix, path) => {
-      expect(matchesPathPrefix(prefix, path)).toBe(true);
-    });
-
-    it.each([
-      ["/repos", "/repositories"],
-      ["/repos", "/repo"],
-      ["/repos", "/admin"],
-      ["/repos/octo", "/repos/octopus"]
-    ])("prefix %s does not match %s", (prefix, path) => {
-      expect(matchesPathPrefix(prefix, path)).toBe(false);
     });
   });
 });

@@ -48,10 +48,11 @@ const pathPrefixError = (raw: string) => {
   return null;
 };
 
+// No `.max()` here: pathPrefixError already measures the length and says so in the product's own words,
+// and Zod's check would fire alongside it, answering an over-long prefix with two messages.
 export const pathPrefixSchema = z
   .string()
   .trim()
-  .max(AGENT_VAULT_MAX_PATH_PREFIX_LENGTH)
   .superRefine((raw, ctx) => {
     const message = pathPrefixError(raw);
     if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
@@ -75,12 +76,3 @@ export const agentVaultPathPrefixListSchema = z
     });
   })
   .nullable();
-
-// Exported for the test that pins the boundary rule. The proxy refuses an ambiguous path before it gets
-// here, so this only ever sees a path it can compare literally.
-export const matchesPathPrefix = (prefix: string, escapedPath: string) => {
-  if (prefix === "/") return true;
-  if (!escapedPath.startsWith(prefix)) return false;
-  const rest = escapedPath.slice(prefix.length);
-  return rest === "" || rest.startsWith("/");
-};
