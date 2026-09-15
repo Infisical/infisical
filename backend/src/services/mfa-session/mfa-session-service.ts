@@ -60,10 +60,9 @@ export const mfaSessionServiceFactory = ({
   // re-implementing the checks, so a session minted for one resource (e.g. a
   // low-value PAM account) can never be replayed against another (e.g. recovery
   // codes). verifyMfaSession only flips PENDING -> ACTIVE; the resource binding
-  // is enforced here at the point of use. Callers whose challenge method varies
-  // per action within one resource pass `acceptedMfaMethods`, so a session proven
-  // with a factor one action fell back to cannot be replayed against another action
-  // that would never have challenged that factor.
+  // is enforced here at the point of use. `acceptedMfaMethods` narrows it further where
+  // the challenged factor varies per action, so a proof of a fallback factor can't be
+  // replayed on an action that would never have asked for it.
   const isMfaSessionActive = async ({
     mfaSessionId,
     userId,
@@ -278,10 +277,7 @@ export const mfaSessionServiceFactory = ({
     await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
   };
 
-  // True when THIS session (tokenVersionId) completed a full MFA login or management
-  // step-up recently with one of `acceptedMfaMethods` (or a recovery code), so an
-  // MFA-management step-up can be skipped within the grace window (see
-  // recordRecentMfaAuth). Session-scoped, never user-scoped.
+  // Session-scoped grace after a login or management step-up, see recordRecentMfaAuth.
   const hasRecentMfaAuth = async (
     userId: string,
     tokenVersionId: string,

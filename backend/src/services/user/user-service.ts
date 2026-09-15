@@ -256,10 +256,10 @@ export const userServiceFactory = ({
     }
   };
 
-  // With MFA required nowhere, login is password-only, so challenging here protects
-  // nothing: the same session could just enrol and enable its own factor instead.
-  // Every org is checked, not only the current one, so switching to a non-enforcing
-  // org is not a way to strip a factor another org relies on.
+  // If nothing requires MFA, login is password-only and a step-up here protects nothing:
+  // the same session could just enrol and enable its own factor. Every org counts, not
+  // just the current one, so switching to a non-enforcing org can't strip a factor
+  // another org relies on.
   const isStepUpMfaRequired = async (userId: string) => {
     const user = await userDAL.findById(userId);
     if (user?.isMfaEnabled) return true;
@@ -647,17 +647,16 @@ export const userServiceFactory = ({
   // the method, otherwise the user's own preference applies. Reaching a step-up-gated
   // route already proves membership of this org, so no permission check is needed.
   //
-  // Removing a factor is never gated on that same factor, since the usual reason to
-  // remove one is that it was lost. Another configured factor stands in, falling back
-  // to the required method when nothing else is set up (e.g. no SMTP on a self-hosted
-  // instance). The exception is a factor some accepted org enforces: that org has ruled
-  // the alternatives insufficient, so the factor itself is still challenged and a lost
-  // device is recovered via recovery-code login instead. Every org is checked, not only
-  // the current context, so org switching cannot bypass it.
+  // Removing a factor never challenges that same factor, it's usually the lost one.
+  // Another configured factor stands in, or the required method if there's nothing else
+  // (e.g. no SMTP on self-hosted). Exception: a factor one of the user's orgs enforces is
+  // still challenged, that org already ruled the alternatives out, and a lost device goes
+  // through recovery-code login instead. All orgs are checked so org switching can't
+  // bypass it.
   //
-  // `accepted` lists every method a prior proof may carry for this action: the required
-  // method always, plus the substitute when one is challenged. A proof of the substitute
-  // must not be honoured by actions that would never have challenged it.
+  // `accepted` is every factor a prior proof may carry for this action: the required
+  // method, plus the substitute when one is challenged. Other actions never accept the
+  // substitute.
   const getStepUpMfaMethod = async (
     userId: string,
     orgId: string,

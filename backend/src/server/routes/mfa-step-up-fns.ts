@@ -19,28 +19,20 @@ export const getStepUpSessionId = (req: FastifyRequest): string => {
 };
 
 /**
- * Enforces that the caller has completed a fresh MFA challenge before a sensitive
- * action, reusing the Redis-backed step-up MFA session primitive (mirrors the PAM
- * account-access flow).
+ * Gates a sensitive action behind a fresh MFA challenge, on the same Redis step-up
+ * primitive PAM uses.
  *
- * A verified session is reusable for the remainder of its TTL (5 min) and is bound
- * to `resourceId` and to the factor it proved, so it cannot be replayed against a
- * different action, nor against one that would not have challenged that factor.
+ * A verified session lives for its TTL (5 min) and is tied to the resource and to the
+ * factor it proved, so it can't be replayed on another action, or on one that would
+ * never have asked for that factor. Without a usable proof we mint a pending session
+ * (emailing the code when that's the method) and throw SESSION_MFA_REQUIRED with the
+ * session id and method, so the client runs the challenge and retries.
  *
- * - With a valid, verified session for this user + resource whose proven factor is
- *   one this action would challenge: returns immediately.
- * - Otherwise (no session id, or one that is missing/expired/unverified/foreign, or
- *   proving a factor this action does not accept): mints a fresh pending session
- *   (emailing the code when the required method is email) and throws
- *   `SESSION_MFA_REQUIRED` carrying the new session id + method so the client can
- *   drive the challenge and retry.
- *
- * By default the challenged method is the one the current org context requires (the
- * enforced method, or the user's preference otherwise). Pass `mfaMethod` to override
- * this when the action dictates the method independently of org enforcement — e.g.
- * enabling MFA challenges the factor being enabled, not a stronger org-enforced one.
- * Pass `excludeMfaMethod` when the action removes a factor, so the challenge never
- * demands the factor being removed (which is usually the one the user has lost).
+ * The challenged method is what the current org context requires: the enforced method,
+ * else the user's preference. `mfaMethod` overrides that when the action itself picks
+ * the factor, e.g. enabling MFA challenges the factor being enabled. `excludeMfaMethod`
+ * is for removing a factor: never ask for the one being removed, it's usually the one
+ * that got lost.
  */
 export const ensureStepUpMfa = async (
   server: FastifyZodProvider,
@@ -68,9 +60,8 @@ export const ensureStepUpMfa = async (
 
   if (isMfaManagement && !(await server.services.user.isStepUpMfaRequired(userId))) return;
 
-  // Resolved before honouring any prior proof: a factor-removal action falls back to a
-  // substitute factor, and a proof of that substitute must not satisfy the other
-  // management actions, which would never have challenged it.
+  // Resolve the method first: a removal action may fall back to a substitute factor,
+  // and a proof of that substitute must not unlock the other management actions.
   const { challenge: mfaMethod, accepted: acceptedMfaMethods } = mfaMethodOverride
     ? { challenge: mfaMethodOverride, accepted: [mfaMethodOverride] }
     : await server.services.user.getStepUpMfaMethod(userId, orgId, excludeMfaMethod);

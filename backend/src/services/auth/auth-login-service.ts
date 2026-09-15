@@ -741,8 +741,8 @@ export const authLoginServiceFactory = ({
     // Open the grace window for THIS session only (the one that just proved MFA), so
     // MFA-management step-up isn't re-prompted right after login - including recovery-code
     // logins, which is what lets a user with a lost factor still manage their MFA. Keyed
-    // by the new session's tokenVersionId so no other session inherits it. The factor
-    // proven is the required one (anything else was rejected above), so record that.
+    // by the new session's tokenVersionId so no other session inherits it. A non-recovery
+    // login can only have proven the required method.
     await mfaLockoutService.recordRecentMfaAuth(
       user.id,
       token.tokenVersionId,

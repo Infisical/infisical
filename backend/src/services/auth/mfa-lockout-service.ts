@@ -196,16 +196,12 @@ export const mfaLockoutServiceFactory = ({
     await keyStore.deleteItem(KeyStorePrefixes.UserStepUpMfaLockout(userId));
   };
 
-  // Records that a specific login SESSION just proved a second factor, either at login
-  // or in an MFA-management step-up, together with the factor it proved. Within this
-  // window an MFA-management step-up on that same session is skipped when the recorded
-  // factor is one the route would itself challenge (see isMfaProofAccepted). A
-  // recovery-code login is accepted by every route, which is what lets a user who lost
-  // their only configured factor still reach their MFA settings to disable it or switch
-  // the preferred method. Keyed by userId + tokenVersionId (the session), NOT the user
-  // alone, so proving MFA in one session never authorizes another (older/stolen) session;
-  // the userId prefix namespaces the session id to its owner. Self-clears on TTL; if the
-  // window lapses, another login on that session re-opens it.
+  // Marks that THIS login session just proved a second factor, and which one. Management
+  // step-ups on the same session skip the challenge while the marker lives, as long as the
+  // recorded factor is one they'd have asked for (isMfaProofAccepted). Recovery-code logins
+  // pass everywhere; that's how a user who lost their only factor still reaches MFA
+  // settings. Keyed by session, never by user alone, so one session's proof never unlocks
+  // an older or stolen one.
   const recordRecentMfaAuth = async (userId: string, tokenVersionId: string, assurance: TMfaAssurance) => {
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.RecentMfaAuth(userId, tokenVersionId),
