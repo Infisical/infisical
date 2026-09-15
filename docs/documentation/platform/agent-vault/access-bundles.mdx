@@ -59,7 +59,7 @@ Keep patterns as narrow as the API allows. A wildcard covers every host under it
 
 ### Methods and paths
 
-A service allows every HTTP method and every path on its hosts by default. Clear **All Methods** to pick the methods it allows. To restrict routes, list the path prefixes it allows. While that list is empty, every path is allowed. You can add up to 20 path prefixes.
+A service allows every HTTP method and every path on its hosts by default. Turn off **All Methods** to choose which ones it allows. To limit routes, add the path prefixes it allows; leave that list empty and every path is allowed. You can add up to 20.
 
 A path prefix matches whole segments, so `/repos` covers `/repos/octo/hello` but not `/repositories`. Write the path exactly as it appears in the URL.
 
