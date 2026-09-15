@@ -3,7 +3,7 @@ title: "Access bundles"
 description: "Lists of services that AI agents can access during a session."
 ---
 
-An access bundle defines the list of [services](/documentation/platform/agent-vault/services) (external APIs) that an AI agent can access during a [session](/documentation/platform/agent-vault/session).
+An access bundle defines the list of [services](/documentation/platform/agent-vault/services) (external APIs) that an AI agent can access during a [session](/documentation/platform/agent-vault/sessions).
 
 You can reuse access bundles across as many sessions as you like. This makes them useful for scoping what services an agent can access depending on its task. For example, you might have:
 
@@ -14,8 +14,6 @@ You can reuse access bundles across as many sessions as you like. This makes the
 <Frame>
   <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing four access bundles with their services and member counts" />
 </Frame>
-
-When you create a session for an agent, it can only access the external APIs provided by the session's access bundle. This keeps the agent's work scoped to the current task and prevents it from making unwanted requests.
 
 ## Create an access bundle
 
@@ -33,7 +31,7 @@ To create a new access bundle:
   </Step>
 </Steps>
 
-Now you can [add services](fixthisplaceholder) to the access bundle so agents using it can make authenticated requests.
+Now you can [add services](/documentation/platform/agent-vault/services#add-a-service) to the access bundle so agents using it can make authenticated requests.
 
 ## Manage access to access bundles
 
@@ -57,4 +55,4 @@ To allow a user, group, or machine identity to create sessions for a given acces
 
 ### Revoke access
 
-To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access** > **Delete Access Bundles**. Any of their running agents lose the bundle's credentials within one poll interval of the proxy.
+To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Open the member's actions menu and select **Revoke Access**. Any of their running agents lose the bundle's credentials within one poll interval of the proxy.
