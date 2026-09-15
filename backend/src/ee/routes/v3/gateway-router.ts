@@ -82,14 +82,11 @@ const GcpAuthMethodInputSchema = z
   // Zones are deliberately not sufficient on their own: the zone namespace is global, so any GCP
   // customer can put an instance in us-central1-a and satisfy a zone-only config. Only service
   // accounts and projects name something inside this organization.
-  .refine(
-    (data) => data.allowedServiceAccounts.trim().length > 0 || data.allowedProjects.trim().length > 0,
-    {
-      message:
-        "At least one of allowedServiceAccounts or allowedProjects must be set. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone.",
-      path: ["allowedServiceAccounts"]
-    }
-  )
+  .refine((data) => data.allowedServiceAccounts.trim().length > 0 || data.allowedProjects.trim().length > 0, {
+    message:
+      "At least one of allowedServiceAccounts or allowedProjects must be set. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone.",
+    path: ["allowedServiceAccounts"]
+  })
   // An IAM-signed JWT carries no instance details, so a project or zone allowlist on it would never
   // be checkable and every login would be refused.
   .refine((data) => data.type !== GcpAuthType.Iam || (!data.allowedProjects.trim() && !data.allowedZones.trim()), {
