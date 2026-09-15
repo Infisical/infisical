@@ -46,6 +46,7 @@ type TBuildMeteredFeaturesDep = {
     | "countActiveCertificateQuotaKeysByOrg"
     | "countSecretManagementIdentities"
     | "countPamIdentities"
+    | "countAgentVaultIdentities"
   >;
   // Cloud meters per org; self-hosted meters the whole instance (a single license covers the DB).
   isCloud: boolean;

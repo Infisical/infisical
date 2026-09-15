@@ -221,7 +221,7 @@ const ComboboxList = <TOption,>({
         className={() =>
           cn(
             "thin-scrollbar scroll-py-1 overflow-y-auto overscroll-contain p-1 outline-none",
-            (isLoading || isEmpty) && "hidden"
+            isEmpty && "hidden"
           )
         }
         style={{ maxHeight }}
@@ -237,20 +237,19 @@ const ComboboxList = <TOption,>({
             )
           : renderItem}
       </ComboboxPrimitive.List>
-      {isLoading ? (
-        <div
-          role="status"
-          className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
-        >
-          <span>{loadingMessage}</span>
-        </div>
-      ) : (
-        isEmpty && (
+      {isEmpty &&
+        (isLoading ? (
+          <div
+            role="status"
+            className="flex min-h-16 items-center justify-center px-3 py-4 text-sm text-muted"
+          >
+            <span>{loadingMessage}</span>
+          </div>
+        ) : (
           <div role="status" className="py-6 text-center text-sm text-muted">
             {emptyMessage}
           </div>
-        )
-      )}
+        ))}
     </>
   );
 };
