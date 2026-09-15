@@ -388,6 +388,9 @@ export const usageCounterDALFactory = (db: TDbClient) => {
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Get active certificate breakdown for usage" });
+    }
+  };
+
   const countAgentVaultIdentities = async (orgId?: string): Promise<number> => {
     try {
       return await countProjectIdentities(ProjectType.AgentVault, orgId);

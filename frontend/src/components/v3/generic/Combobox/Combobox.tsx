@@ -391,14 +391,17 @@ const SingleCombobox = <TOption,>({
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => (value == null ? [] : [value]), [value]);
-  // `onSearchChange` hands the query to the caller, so the local matcher must not filter
-  // the page it sends back, and a selection absent from that page is not a match to show.
-  const isLocalFilterEnabled = shouldFilter && !onSearchChange;
+  // A caller-owned search returns one already-filtered page after a debounce and a round trip.
+  // The local matcher must not filter that page again, a selection missing from it is not a
+  // match to list, and neither the initial highlight nor Enter may commit a row the user has
+  // not seen yet.
+  const isSearchOwnedByCaller = Boolean(onSearchChange);
+  const isLocalFilterEnabled = shouldFilter && !isSearchOwnedByCaller;
   const items = useComboboxItems(
     options,
     selectedOptions,
     getOptionValue,
-    includeMissingSelectedOptions && !onSearchChange
+    includeMissingSelectedOptions && !isSearchOwnedByCaller
   );
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
@@ -479,7 +482,7 @@ const SingleCombobox = <TOption,>({
       filter={isLocalFilterEnabled ? primitiveFilter : null}
       disabled={isDisabled}
       modal={modal}
-      autoHighlight={!onSearchChange}
+      autoHighlight={!isSearchOwnedByCaller}
     >
       <div className="relative w-full">
         <ComboboxPrimitive.Input
@@ -501,6 +504,7 @@ const SingleCombobox = <TOption,>({
               event.key === "Enter" &&
               open &&
               !isLoading &&
+              !isSearchOwnedByCaller &&
               !hasHighlightedOption &&
               selectableOptions[0]
             ) {
@@ -633,14 +637,16 @@ const MultipleCombobox = <TOption,>({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const selectedOptions = React.useMemo(() => [...value], [value]);
-  // `onSearchChange` hands the query to the caller, so the local matcher must not filter
-  // the page it sends back, and a selection absent from that page is not a match to show.
-  const isLocalFilterEnabled = shouldFilter && !onSearchChange;
+  // A caller-owned search returns one already-filtered page after a debounce and a round trip.
+  // The local matcher must not filter that page again, a selection missing from it is not a
+  // match to list, and the initial highlight may not land on a row the user has not seen yet.
+  const isSearchOwnedByCaller = Boolean(onSearchChange);
+  const isLocalFilterEnabled = shouldFilter && !isSearchOwnedByCaller;
   const items = useComboboxItems(
     options,
     selectedOptions,
     getOptionValue,
-    includeMissingSelectedOptions && !onSearchChange
+    includeMissingSelectedOptions && !isSearchOwnedByCaller
   );
   const { itemsByValue, rootItems } = usePrimitiveComboboxItems(
     items,
@@ -733,7 +739,7 @@ const MultipleCombobox = <TOption,>({
       filter={isLocalFilterEnabled ? primitiveFilter : null}
       disabled={isDisabled}
       modal={modal}
-      autoHighlight={!onSearchChange}
+      autoHighlight={!isSearchOwnedByCaller}
     >
       <ComboboxPrimitive.Chips
         ref={chipsRef}
