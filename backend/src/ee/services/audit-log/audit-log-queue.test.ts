@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { logger } from "@app/lib/logger";
 import { QueueName } from "@app/queue";
 
 import { auditLogQueueServiceFactory } from "./audit-log-queue";
@@ -91,7 +92,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
   };
   const licenseService = {
-    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number }>>(async () => ({
+    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number; auditLogs?: boolean }>>(async () => ({
       auditLogsRetentionDays: 30
     }))
   };
@@ -221,6 +222,17 @@ describe("audit-log-queue pushToLog", () => {
     await service.pushToLog(dto({ orgId: "org-zero" }) as never);
 
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  test("warns when the plan grants auditLogs but retention is unset", async () => {
+    const { service, keyStore, licenseService } = await createHarness();
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: 0, auditLogs: true });
+
+    await service.pushToLog(dto({ orgId: "org-misconfigured" }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("[orgId=org-misconfigured]"));
   });
 
   test("never throws when streamAdd fails", async () => {
