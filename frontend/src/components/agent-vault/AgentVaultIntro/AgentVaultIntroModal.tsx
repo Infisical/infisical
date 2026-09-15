@@ -32,7 +32,7 @@ type Props = {
 export const AgentVaultIntroModal = ({ isOpen, onOpenChange }: Props) => (
   <Dialog open={isOpen} onOpenChange={onOpenChange}>
     <DialogContent
-      className="max-w-xl gap-0 overflow-hidden p-0"
+      className="max-w-xl gap-0 p-0"
       showCloseButton={false}
       onOpenAutoFocus={(event) => {
         // PreviewBadge is focusable so keyboard users can reach its tooltip, which also makes it
