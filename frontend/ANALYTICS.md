@@ -1,8 +1,9 @@
 # Frontend analytics
 
 Use `@app/lib/analytics` for new product analytics. The event catalog in
-`events.ts` is the contract between application code and PostHog dashboards:
-every event has one canonical name and a typed property shape.
+`src/lib/analytics/events.ts` is the contract between application code and
+PostHog dashboards: every event has one canonical name and a typed property
+shape.
 
 ## Capture an organization event
 
