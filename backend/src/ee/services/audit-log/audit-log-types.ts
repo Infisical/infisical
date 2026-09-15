@@ -7285,6 +7285,7 @@ interface ResourceAuthMethodLoginEvent {
   metadata: {
     resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
+    resourceName?: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
     principalArn?: string;
@@ -7303,6 +7304,7 @@ interface ResourceAuthMethodLoginFailedEvent {
   metadata: {
     resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
+    resourceName?: string;
     method: ResourceAuthMethodKind;
     reasonCode: string;
     message: string;
@@ -7321,6 +7323,7 @@ interface ResourceAuthMethodUpdateEvent {
   metadata: {
     resourceType: ResourceAuthMethodResourceType;
     resourceId: string;
+    resourceName?: string;
     method: ResourceAuthMethodKind;
     methodConfigId: string;
     stsEndpoint?: string;

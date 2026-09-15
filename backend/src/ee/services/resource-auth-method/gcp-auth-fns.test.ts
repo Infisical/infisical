@@ -1,6 +1,7 @@
 import { UnauthorizedError } from "@app/lib/errors";
+import { validateIamIdentity, validateIdTokenIdentity } from "@app/services/identity-gcp-auth/identity-gcp-auth-fns";
 
-import { assertIamTokenLifetime, validateGcpAllowlists } from "./gcp-auth-fns";
+import { assertIamTokenLifetime, validateGcpAllowlists, verifyGcpTokenAndExtractCaller } from "./gcp-auth-fns";
 import { GcpAuthType } from "./resource-auth-method-fns";
 
 const SERVICE_ACCOUNT = "gateway@my-project.iam.gserviceaccount.com";
@@ -147,5 +148,70 @@ describe("validateGcpAllowlists", () => {
         allowedServiceAccounts: SERVICE_ACCOUNT
       })
     ).not.toThrow();
+  });
+});
+
+vi.mock("@app/services/identity-gcp-auth/identity-gcp-auth-fns", () => ({
+  validateIdTokenIdentity: vi.fn(),
+  validateIamIdentity: vi.fn()
+}));
+
+// Neither the logger nor the crypto layer is initialised in the unit environment.
+vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+vi.mock("@app/lib/crypto", () => ({
+  crypto: {
+    jwt: () => ({
+      decode: (token: string) =>
+        JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()) as Record<string, unknown>
+    })
+  }
+}));
+
+describe("verifyGcpTokenAndExtractCaller", () => {
+  const errorContext = { resourceId: "gw-1", orgId: "org-1" };
+  const futureExp = Math.floor(Date.now() / 1000) + 600;
+  // Header and signature are irrelevant: the mocked validators stand in for the real verification,
+  // and only the payload is decoded here for the lifetime check.
+  const jwtWith = (payload: object) => `x.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.y`;
+
+  beforeEach(() => {
+    vi.mocked(validateIdTokenIdentity).mockReset();
+    vi.mocked(validateIamIdentity).mockReset();
+  });
+
+  test("dispatches the gce type to the ID token validator", async () => {
+    vi.mocked(validateIdTokenIdentity).mockResolvedValue({ email: SERVICE_ACCOUNT, computeEngineDetails: undefined });
+    await verifyGcpTokenAndExtractCaller({ type: "gce", jwt: "t", audience: "gw-1", errorContext });
+    expect(validateIdTokenIdentity).toHaveBeenCalledWith({ audience: "gw-1", jwt: "t" });
+    expect(validateIamIdentity).not.toHaveBeenCalled();
+  });
+
+  test("dispatches the iam type to the signed JWT validator", async () => {
+    vi.mocked(validateIamIdentity).mockResolvedValue({ email: SERVICE_ACCOUNT });
+    const jwt = jwtWith({ sub: SERVICE_ACCOUNT, aud: "gw-1", exp: futureExp });
+    await verifyGcpTokenAndExtractCaller({ type: "iam", jwt, audience: "gw-1", errorContext });
+    expect(validateIamIdentity).toHaveBeenCalledWith({ audience: "gw-1", jwt });
+    expect(validateIdTokenIdentity).not.toHaveBeenCalled();
+  });
+
+  test("wraps a verification failure as an unauthorized error carrying the resource id", async () => {
+    vi.mocked(validateIdTokenIdentity).mockRejectedValue(new Error("bad signature"));
+    await expect(
+      verifyGcpTokenAndExtractCaller({ type: "gce", jwt: "t", audience: "gw-1", errorContext })
+    ).rejects.toMatchObject({
+      detail: { reasonCode: "gcp_token_verification_failed", resourceId: "gw-1" }
+    });
+  });
+
+  test("refuses a verified iam token whose payload has no expiry", async () => {
+    vi.mocked(validateIamIdentity).mockResolvedValue({ email: SERVICE_ACCOUNT });
+    await expect(
+      verifyGcpTokenAndExtractCaller({
+        type: "iam",
+        jwt: jwtWith({ sub: SERVICE_ACCOUNT, aud: "gw-1" }),
+        audience: "gw-1",
+        errorContext
+      })
+    ).rejects.toMatchObject({ detail: { reasonCode: "gcp_token_verification_failed" } });
   });
 });

@@ -623,6 +623,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                 metadata: {
                   resourceType: "gateway",
                   resourceId: result.resourceId,
+                  resourceName: result.resourceName,
                   method: ResourceAuthMethodType.Gcp,
                   methodConfigId: result.configId,
                   gcpServiceAccountEmail: result.serviceAccountEmail,
@@ -668,6 +669,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                   metadata: {
                     resourceType: "gateway",
                     resourceId: error.detail.resourceId as string,
+                    resourceName: error.detail.resourceName as string | undefined,
                     method: ResourceAuthMethodType.Gcp,
                     reasonCode: error.detail.reasonCode as string,
                     message: error.message,
