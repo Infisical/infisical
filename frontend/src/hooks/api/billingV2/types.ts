@@ -358,3 +358,48 @@ export type BillingV2TrialCancelResult = {
 export type TBillingV2LifecycleDTO = {
   orgId: string;
 };
+
+export enum BillingV2BreakdownDimension {
+  Identities = "identities",
+  UserIdentities = "user_identities",
+  SecretIdentities = "secret_identities",
+  PamIdentities = "pam_identities",
+  InternalCas = "internal_cas",
+  ActiveCerts = "active_certs",
+  WildcardCerts = "wildcard_certs"
+}
+
+export type BillingV2BreakdownProject = {
+  id: string;
+  name: string;
+  count: number;
+};
+
+export type BillingV2BreakdownScope = {
+  orgId: string;
+  name: string;
+  isRoot: boolean;
+  count: number;
+  orgLevelCount: number;
+  projects: BillingV2BreakdownProject[];
+};
+
+export type BillingV2UsageBreakdown = {
+  dimensionKey: string;
+  total: number;
+  userCount: number;
+  scopedCount: number;
+  hasProjectDetail: boolean;
+  unit: string;
+  scopes: BillingV2BreakdownScope[];
+};
+
+export type BillingV2Organization = {
+  id: string;
+  name: string;
+};
+
+export type BillingV2OrganizationsPage = {
+  organizations: BillingV2Organization[];
+  totalCount: number;
+};

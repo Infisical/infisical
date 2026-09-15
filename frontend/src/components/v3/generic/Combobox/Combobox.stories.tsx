@@ -1,6 +1,8 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
+
+import { useDebounce } from "@app/hooks";
 
 import { Button } from "../Button";
 import {
@@ -145,6 +147,91 @@ const DefaultRender = () => {
  */
 export const Default: Story = {
   render: () => <DefaultRender />
+};
+
+const ALL_ORGANIZATIONS = Array.from({ length: 2_000 }, (_, index) => ({
+  id: `org-${index + 1}`,
+  name: `Organization ${index + 1}`
+}));
+
+const PAGE_SIZE = 25;
+
+// Stands in for a paginated list endpoint: matches server-side and returns only the first page.
+const fetchOrganizations = (search: string) =>
+  new Promise<{ organizations: typeof ALL_ORGANIZATIONS; totalCount: number }>((resolve) => {
+    setTimeout(() => {
+      const query = search.trim().toLocaleLowerCase();
+      const matches = ALL_ORGANIZATIONS.filter((org) =>
+        org.name.toLocaleLowerCase().includes(query)
+      );
+      resolve({ organizations: matches.slice(0, PAGE_SIZE), totalCount: matches.length });
+    }, 400);
+  });
+
+const ServerSearchRender = () => {
+  const [value, setValue] = useState<(typeof ALL_ORGANIZATIONS)[number] | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const [organizations, setOrganizations] = useState<typeof ALL_ORGANIZATIONS>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isCurrent = true;
+    setIsLoading(true);
+    fetchOrganizations(debouncedSearch).then((page) => {
+      if (!isCurrent) return;
+      setOrganizations(page.organizations);
+      setTotalCount(page.totalCount);
+      setIsLoading(false);
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [debouncedSearch]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="combobox-server-search">Organization</FieldLabel>
+      <StoryCombobox
+        id="combobox-server-search"
+        options={organizations}
+        value={value}
+        onValueChange={setValue}
+        onClear={() => setValue(null)}
+        onSearchChange={setSearch}
+        isLoading={isLoading}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        placeholder="Select organization..."
+        searchPlaceholder="Search organizations..."
+        searchAriaLabel="Search organizations"
+        emptyMessage="No organizations match that search."
+        listFooter={
+          totalCount > organizations.length
+            ? `Showing ${organizations.length} of ${totalCount.toLocaleString()} — type to search the rest`
+            : null
+        }
+      />
+    </Field>
+  );
+};
+
+/**
+ * Passing `onSearchChange` hands filtering to the caller: the internal matcher is switched off
+ * and `options` renders exactly as given. Use it when the option set is too large to send in
+ * full, so the popup shows one page of server results and typing fetches the next one. Debounce
+ * the query on your side, and pair it with `isLoading` so the popup says it is still working.
+ *
+ * It also turns off the auto-highlight that local filtering uses: the list arrives after a debounce
+ * and a round trip, so highlighting the top match would put it on a row the user has not seen yet and
+ * Enter would commit it. Pair the prop with `listFooter` to say that the list is only one page.
+ *
+ * This story searches 2,000 organizations through a fake endpoint that returns 25 at a time.
+ * Without `onSearchChange` the component would only ever match within those 25.
+ */
+export const ServerSearch: Story = {
+  render: () => <ServerSearchRender />
 };
 
 const RichOptionsRender = () => {

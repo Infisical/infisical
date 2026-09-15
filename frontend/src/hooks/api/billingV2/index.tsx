@@ -12,8 +12,16 @@ export {
   useStartBillingV2Trial,
   useUpgradeBillingV2Product
 } from "./mutations";
-export { billingV2Keys, useGetBillingV2Catalog, useGetBillingV2Overview } from "./queries";
+export {
+  billingV2Keys,
+  useGetBillingV2Catalog,
+  useGetBillingV2Organizations,
+  useGetBillingV2Overview,
+  useGetBillingV2UsageBreakdown
+} from "./queries";
 export type {
+  BillingV2BreakdownProject,
+  BillingV2BreakdownScope,
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2CommitmentChange,
@@ -23,6 +31,7 @@ export type {
   BillingV2Entitlement,
   BillingV2EntitlementDim,
   BillingV2Invoice,
+  BillingV2Organization,
   BillingV2Overview,
   BillingV2PaymentMethod,
   BillingV2Plan,
@@ -32,5 +41,7 @@ export type {
   BillingV2Trial,
   BillingV2TrialOutcome,
   BillingV2TrialResult,
-  BillingV2UpgradeResult
+  BillingV2UpgradeResult,
+  BillingV2UsageBreakdown
 } from "./types";
+export { BillingV2BreakdownDimension } from "./types";

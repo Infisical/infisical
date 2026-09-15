@@ -2,7 +2,7 @@ import { TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { BillingV2CatalogProduct, BillingV2Overview } from "@app/hooks/api";
+import { BillingV2CatalogProduct, BillingV2Organization, BillingV2Overview } from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
 import { BillingHeaderCard } from "./cards/BillingHeaderCard";
@@ -13,6 +13,7 @@ import { ProductsCard } from "./cards/ProductsCard";
 import { ErrorPanel } from "./states/ErrorPanel";
 import { OverviewSkeleton } from "./states/OverviewSkeleton";
 import { Banner } from "./Banner";
+import { RootOrgFilter } from "./RootOrgFilter";
 import { TrialBanners } from "./TrialBanners";
 
 export type OverviewProps = {
@@ -22,6 +23,14 @@ export type OverviewProps = {
   onManageSubscription: () => void;
   onUpgrade: (productId: string) => void;
   onSetCommitment: (productId: string) => void;
+  onViewBreakdown: (productId: string) => void;
+  rootOrgs: BillingV2Organization[];
+  rootOrgCount: number;
+  isRootOrgsLoading: boolean;
+  selectedOrgId: string;
+  onSelectOrg: (orgId: string) => void;
+  onSearchOrgs: (search: string) => void;
+  showOrgFilter: boolean;
   onUpdatePayment: () => void;
   onEditDetails: () => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
@@ -37,19 +46,44 @@ export const Overview = ({
   onManageSubscription,
   onUpgrade,
   onSetCommitment,
+  onViewBreakdown,
+  rootOrgs,
+  rootOrgCount,
+  isRootOrgsLoading,
+  selectedOrgId,
+  onSelectOrg,
+  onSearchOrgs,
+  showOrgFilter,
   onUpdatePayment,
   onEditDetails,
   onContact,
   onRetry,
   canManageBilling
 }: OverviewProps) => {
+  const orgFilter = showOrgFilter ? (
+    <RootOrgFilter
+      orgs={rootOrgs}
+      totalCount={rootOrgCount}
+      isLoading={isRootOrgsLoading}
+      value={selectedOrgId}
+      onChange={onSelectOrg}
+      onSearchChange={onSearchOrgs}
+    />
+  ) : null;
+
   if (subState === "loading") {
-    return <OverviewSkeleton />;
+    return (
+      <div className="flex flex-col gap-4">
+        {orgFilter}
+        <OverviewSkeleton />
+      </div>
+    );
   }
 
   if (subState === "error" || !overview) {
     return (
       <div className="flex flex-col gap-4">
+        {orgFilter}
         <ErrorPanel onRetry={onRetry} />
       </div>
     );
@@ -123,12 +157,14 @@ export const Overview = ({
           onUpdatePayment={onUpdatePayment}
           onManageSubscription={onManageSubscription}
         />
+        {orgFilter}
         <ProductsCard
           overview={overview}
           catalog={catalog}
           readOnly={productsReadOnly}
           onManage={onUpgrade}
           onSetCommitment={onSetCommitment}
+          onViewBreakdown={onViewBreakdown}
           onContact={onContact}
         />
         {hasBillingHistory && billingSection}
@@ -162,12 +198,14 @@ export const Overview = ({
         onContact={onContact}
       />
       <BillingHeaderCard overview={overview} catalog={catalog} />
+      {orgFilter}
       <ProductsCard
         overview={overview}
         catalog={catalog}
         readOnly={productsReadOnly}
         onManage={onUpgrade}
         onSetCommitment={onSetCommitment}
+        onViewBreakdown={onViewBreakdown}
         onContact={onContact}
       />
       {billingSection}
