@@ -197,6 +197,20 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
         credentialHeader = "Authorization";
       }
 
+      // The same reserved names the custom headers below are held to. Basic always writes Authorization,
+      // which is not one of them, so only a bearer credential can name one.
+      if (
+        data.credentialType === AgentVaultCredentialType.Bearer &&
+        data.headerName &&
+        RESERVED_HEADER_NAMES.has(data.headerName.toLowerCase())
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["headerName"],
+          message: "This header is set by the proxy and can't be overridden."
+        });
+      }
+
       const seenHeaders = new Set<string>();
       data.customHeaders.forEach((header, index) => {
         const at = (field: string, message: string) =>

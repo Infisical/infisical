@@ -31,7 +31,11 @@ const RESERVED_HEADER_NAMES = new Set([
 
 export const AGENT_VAULT_RESERVED_HEADER_MESSAGE = "This header is set by the proxy and can't be overridden.";
 
-export const customHeaderNameSchema = z
+// Shared with the bearer credential's own header name, which is set on the request the same way and so
+// has the same reserved names. Written once because it drifted when it was written twice: the credential
+// copy never grew the reserved check, so a credential could sit on Content-Length while a custom header
+// could not.
+export const agentVaultHeaderNameSchema = z
   .string()
   .trim()
   .min(1)
@@ -71,14 +75,14 @@ const surfacesSchema = z
 // API call edit one header without first fetching the service for its row ids. `value` is therefore
 // optional on update: omitting it keeps whatever is sealed, and a row that resolves to nothing needs one.
 export const AgentVaultCustomHeaderInputSchema = z.object({
-  name: customHeaderNameSchema.describe(AGENT_VAULT.SERVICE.customHeaderName),
+  name: agentVaultHeaderNameSchema.describe(AGENT_VAULT.SERVICE.customHeaderName),
   prefix: headerPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.customHeaderPrefix),
   value: secretValueSchema.describe(AGENT_VAULT.SERVICE.customHeaderValue)
 });
 
 export const AgentVaultCustomHeaderUpdateSchema = z.object({
   id: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.headerId),
-  name: customHeaderNameSchema.describe(AGENT_VAULT.SERVICE.customHeaderName),
+  name: agentVaultHeaderNameSchema.describe(AGENT_VAULT.SERVICE.customHeaderName),
   prefix: headerPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderPrefix),
   value: secretValueSchema.optional().describe(AGENT_VAULT.SERVICE.updateCustomHeaderValue)
 });

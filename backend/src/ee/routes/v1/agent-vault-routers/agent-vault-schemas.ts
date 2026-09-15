@@ -1,8 +1,6 @@
 import { z } from "zod";
 
 import {
-  AGENT_VAULT_HEADER_NAME_MESSAGE,
-  AGENT_VAULT_HEADER_NAME_RE,
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
@@ -20,6 +18,7 @@ import {
   AGENT_VAULT_MAX_SUBSTITUTIONS,
   AgentVaultCustomHeaderInputSchema,
   AgentVaultCustomHeaderUpdateSchema,
+  agentVaultHeaderNameSchema,
   AgentVaultSubstitutionInputSchema,
   AgentVaultSubstitutionUpdateSchema
 } from "@app/ee/services/agent-vault/agent-vault-transformation-schemas";
@@ -52,14 +51,7 @@ export const AgentVaultCredentialInputSchema = z
   .discriminatedUnion("type", [
     z.object({
       type: z.literal(AgentVaultCredentialType.Bearer),
-      headerName: z
-        .string()
-        .trim()
-        .min(1)
-        .max(128)
-        .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
-        .optional()
-        .describe(AGENT_VAULT.SERVICE.headerName),
+      headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
       headerPrefix: z
         .string()
         .trim()
@@ -92,14 +84,7 @@ export const AgentVaultCredentialUpdateSchema = z
   .discriminatedUnion("type", [
     z.object({
       type: z.literal(AgentVaultCredentialType.Bearer),
-      headerName: z
-        .string()
-        .trim()
-        .min(1)
-        .max(128)
-        .regex(AGENT_VAULT_HEADER_NAME_RE, AGENT_VAULT_HEADER_NAME_MESSAGE)
-        .optional()
-        .describe(AGENT_VAULT.SERVICE.headerName),
+      headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
       headerPrefix: z
         .string()
         .trim()
