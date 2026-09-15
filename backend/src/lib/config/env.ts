@@ -691,7 +691,7 @@ const envSchema = z
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
       Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET),
-    isSecretScanningV2Configured:
+    isGithubRadarConfigured:
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) &&
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY) &&
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_SLUG) &&
