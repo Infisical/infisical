@@ -8,6 +8,7 @@ import {
   Button,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect,
@@ -28,6 +29,11 @@ import {
   NetworkingAuthMethodSingleValue
 } from "./NetworkingAuthMethodLabel";
 
+const GCP_AUTH_TYPE_OPTIONS = [
+  { value: "gce" as const, label: "GCP ID Token Auth (Recommended)" },
+  { value: "iam" as const, label: "GCP IAM Auth" }
+];
+
 const REVIEW_MODE_OPTIONS = [
   { value: "gateway" as const, label: "Gateway as Reviewer" },
   { value: "api" as const, label: "Manual Token Reviewer JWT (API)" }
@@ -35,10 +41,14 @@ const REVIEW_MODE_OPTIONS = [
 
 const schema = z
   .object({
-    method: z.enum(["aws", "kubernetes", "token"]),
+    method: z.enum(["aws", "gcp", "kubernetes", "token"]),
     stsEndpoint: z.string(),
     allowedPrincipalArns: z.string(),
     allowedAccountIds: z.string(),
+    gcpAuthType: z.enum(["gce", "iam"]),
+    allowedServiceAccounts: z.string(),
+    allowedProjects: z.string(),
+    allowedZones: z.string(),
     kubernetesHost: z.string(),
     caCertificate: z.string(),
     tokenReviewerJwt: z.string(),
@@ -73,6 +83,21 @@ const schema = z
         path: ["allowedAccountIds"],
         message
       });
+    }
+
+    if (data.method === "gcp") {
+      // Zones alone restrict nothing: the zone namespace is global, so any GCP customer can put an
+      // instance in one. Projects are not offered on the iam type, so the message narrows there.
+      const isIam = data.gcpAuthType === "iam";
+      if (!data.allowedServiceAccounts.trim() && (isIam || !data.allowedProjects.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["allowedServiceAccounts"],
+          message: isIam
+            ? "Allowed service account emails is required."
+            : "Set allowed service account emails or allowed projects. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone."
+        });
+      }
     }
 
     if (data.method === "kubernetes") {
@@ -127,6 +152,19 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
     };
   }
 
+  if (form.method === "gcp") {
+    // Projects and zones are hidden on the iam type, so a value left over from a previous gce
+    // config must be dropped rather than submitted against a field the user can no longer see.
+    const isIam = form.gcpAuthType === "iam";
+    return {
+      method: "gcp" as const,
+      type: form.gcpAuthType,
+      allowedServiceAccounts: form.allowedServiceAccounts,
+      allowedProjects: isIam ? "" : form.allowedProjects,
+      allowedZones: isIam ? "" : form.allowedZones
+    };
+  }
+
   if (form.method === "kubernetes") {
     const isGatewayReviewer = form.tokenReviewMode === "gateway";
     return {
@@ -156,6 +194,15 @@ type AuthMethod =
         stsEndpoint: string;
         allowedPrincipalArns: string;
         allowedAccountIds: string;
+      };
+    }
+  | {
+      method: "gcp";
+      config: {
+        type: "gce" | "iam";
+        allowedServiceAccounts: string;
+        allowedProjects: string;
+        allowedZones: string;
       };
     }
   | {
@@ -200,6 +247,7 @@ export const NetworkingAuthMethodForm = ({
   const { isSubOrganization } = useOrganization();
   const initialMethod: NetworkingAuthMethod = currentMethod.method;
   const initialAws = currentMethod.method === "aws" ? currentMethod.config : undefined;
+  const initialGcp = currentMethod.method === "gcp" ? currentMethod.config : undefined;
   const initialKubernetes =
     currentMethod.method === "kubernetes" ? currentMethod.config : undefined;
   const methodOptions = NETWORKING_AUTH_METHOD_OPTIONS.filter(({ value }) =>
@@ -210,6 +258,10 @@ export const NetworkingAuthMethodForm = ({
     stsEndpoint: initialAws?.stsEndpoint ?? "https://sts.amazonaws.com/",
     allowedPrincipalArns: initialAws?.allowedPrincipalArns ?? "",
     allowedAccountIds: initialAws?.allowedAccountIds ?? "",
+    gcpAuthType: initialGcp?.type ?? "gce",
+    allowedServiceAccounts: initialGcp?.allowedServiceAccounts ?? "",
+    allowedProjects: initialGcp?.allowedProjects ?? "",
+    allowedZones: initialGcp?.allowedZones ?? "",
     kubernetesHost: initialKubernetes?.kubernetesHost ?? "",
     caCertificate: initialKubernetes?.caCertificate ?? "",
     tokenReviewerJwt: "",
@@ -244,6 +296,10 @@ export const NetworkingAuthMethodForm = ({
     initialAws?.stsEndpoint,
     initialAws?.allowedPrincipalArns,
     initialAws?.allowedAccountIds,
+    initialGcp?.type,
+    initialGcp?.allowedServiceAccounts,
+    initialGcp?.allowedProjects,
+    initialGcp?.allowedZones,
     initialKubernetes?.kubernetesHost,
     initialKubernetes?.allowedNamespaces,
     initialKubernetes?.allowedNames,
@@ -259,6 +315,7 @@ export const NetworkingAuthMethodForm = ({
   const method = watch("method");
   const isSaving = isSubmitting || isPending;
   const verifyTlsCertificate = watch("verifyTlsCertificate");
+  const gcpAuthType = watch("gcpAuthType");
   const tokenReviewMode = watch("tokenReviewMode");
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
@@ -362,6 +419,148 @@ export const NetworkingAuthMethodForm = ({
               </Field>
             )}
           />
+        </>
+      )}
+
+      {method === "gcp" && (
+        <>
+          <Controller
+            control={control}
+            name="gcpAuthType"
+            render={({ field }) => (
+              <Field>
+                <FieldLabel className="inline-flex items-center gap-1.5">
+                  Type
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      GCP ID Token Auth reads an identity token from the instance metadata server,
+                      which covers Compute Engine VMs and GKE workload identity. GCP IAM Auth signs
+                      a token through the IAM Credentials API, for hosts outside Compute Engine.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <FilterableSelect
+                    value={GCP_AUTH_TYPE_OPTIONS.find((option) => option.value === field.value)}
+                    onChange={(option) => {
+                      const next = option as { value: "gce" | "iam" } | null;
+                      if (next) field.onChange(next.value);
+                    }}
+                    options={GCP_AUTH_TYPE_OPTIONS}
+                    isDisabled={isDisabled || isSaving}
+                    isSearchable={false}
+                    isClearable={false}
+                    getOptionLabel={(option) => option.label}
+                    getOptionValue={(option) => option.value}
+                  />
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="allowedServiceAccounts"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel className="inline-flex items-center gap-1.5">
+                  Allowed Service Account Emails (optional)
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      A comma-separated list of service account emails. A login is accepted when the
+                      service account in the token matches one of them.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    {...field}
+                    disabled={isDisabled || isSaving}
+                    isError={Boolean(error)}
+                    placeholder="test@project.iam.gserviceaccount.com, 12345-compute@developer.gserviceaccount.com"
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+          />
+          {gcpAuthType === "gce" && (
+            <>
+              <Controller
+                control={control}
+                name="allowedProjects"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel className="inline-flex items-center gap-1.5">
+                      Allowed Projects (optional)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          A comma-separated list of GCP project IDs whose Compute Engine instances
+                          may authenticate as this gateway. Every instance in the project is
+                          trusted, so prefer a service account where you can.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        disabled={isDisabled || isSaving}
+                        isError={Boolean(error)}
+                        placeholder="my-gcp-project, ..."
+                      />
+                      <FieldDescription>
+                        Checked against the Compute Engine details in the token. A GKE workload
+                        identity token does not carry them, so leave this empty for GKE.
+                      </FieldDescription>
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="allowedZones"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel className="inline-flex items-center gap-1.5">
+                      Allowed Zones (optional)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          A comma-separated list of GCP zones whose Compute Engine instances may
+                          authenticate as this gateway.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        disabled={isDisabled || isSaving}
+                        isError={Boolean(error)}
+                        placeholder="us-west2-a, us-central1-a, ..."
+                      />
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </>
+          )}
+          <p className="text-xs text-muted">
+            {gcpAuthType === "gce"
+              ? "Allowed service account emails or allowed projects is required. Zones only narrow one of those."
+              : "Allowed service account emails is required."}
+          </p>
         </>
       )}
 

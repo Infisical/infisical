@@ -38,6 +38,7 @@ import { useMintGatewayToken } from "@app/hooks/api/gateways-v2";
 import { GatewayAuthMethodView, TGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2/types";
 
 import { AwsStartCommandContent } from "../GatewayAuthMethod/AwsStartCommandDialog";
+import { GcpStartCommandContent } from "../GatewayAuthMethod/GcpStartCommandDialog";
 import { EnrollmentTokenContent } from "../GatewayAuthMethod/EnrollmentTokenDialog";
 import { KubernetesStartCommandContent } from "../GatewayAuthMethod/KubernetesStartCommandDialog";
 
@@ -80,6 +81,7 @@ export const GatewayDeploySection = ({
 }: Props) => {
   const isCloud = isInfisicalCloud();
   const isKubernetes = authMethod.method === "kubernetes";
+  const isGcp = authMethod.method === "gcp";
   // Relay only for Cloud, which cannot route inward, and for a gateway already running relay alone.
   const isRelayOnlyGateway = Boolean(relayId) && !directAddress;
   const [connectionMode, setConnectionMode] = useState<"relay" | "direct">(
@@ -107,10 +109,14 @@ export const GatewayDeploySection = ({
 
   if (authMethod.method === "identity") return null;
 
-  const showDeploymentControls = authMethod.method === "aws" || isKubernetes || Boolean(enrollment);
+  const showDeploymentControls =
+    authMethod.method === "aws" || isKubernetes || isGcp || Boolean(enrollment);
 
   // Derived, so switching auth method can't leave a tab selected that the new method lacks.
-  const deploymentTabs = isKubernetes ? ["helm", "cli"] : ["cli", "systemd"];
+  let deploymentTabs = ["cli", "systemd"];
+  if (isKubernetes) deploymentTabs = ["helm", "cli"];
+  // A GCP gateway runs on a Compute Engine VM or in GKE, so it gets every target.
+  if (isGcp) deploymentTabs = ["cli", "systemd", "helm"];
   const activeTab = deploymentTabs.includes(deploymentMethod)
     ? deploymentMethod
     : deploymentTabs[0];
@@ -152,15 +158,17 @@ export const GatewayDeploySection = ({
           {canEditGateway && showDeploymentControls && (
             <CardAction>
               <TabsList variant="filled" aria-label="Deployment method">
-                {isKubernetes ? (
+                {isKubernetes && (
                   <>
                     <TabsTrigger value="helm">Helm</TabsTrigger>
                     <TabsTrigger value="cli">Container command</TabsTrigger>
                   </>
-                ) : (
+                )}
+                {!isKubernetes && (
                   <>
                     <TabsTrigger value="cli">CLI</TabsTrigger>
                     <TabsTrigger value="systemd">System service</TabsTrigger>
+                    {isGcp && <TabsTrigger value="helm">Helm</TabsTrigger>}
                   </>
                 )}
               </TabsList>
@@ -235,6 +243,17 @@ export const GatewayDeploySection = ({
                 <AwsStartCommandContent
                   gatewayId={gatewayId}
                   gatewayName={gatewayName}
+                  isDirect={connectionMode === "direct"}
+                  listenAddress={commandListenAddress}
+                />
+              )}
+
+              {authMethod.method === "gcp" && (
+                <GcpStartCommandContent
+                  gatewayId={gatewayId}
+                  gatewayName={gatewayName}
+                  gcpAuthType={authMethod.config.type}
+                  allowedServiceAccounts={authMethod.config.allowedServiceAccounts}
                   isDirect={connectionMode === "direct"}
                   listenAddress={commandListenAddress}
                 />

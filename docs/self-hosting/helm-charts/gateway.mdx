@@ -49,6 +49,32 @@ For a full overview of how gateways work, see the [Gateway documentation](/docum
         ```
       </Tab>
 
+      <Tab title="GCP Auth">
+        ```bash
+        helm install infisical-gateway infisical-helm-charts/infisical-gateway \
+          --namespace infisical-gateway \
+          --create-namespace \
+          --set gateway.name=<gateway-name> \
+          --set gateway.enrollment.method=gcp \
+          --set gateway.enrollment.gcp.gatewayId=<gateway-id> \
+          --set gateway.domain=https://app.infisical.com \
+          --set serviceAccount.annotations."iam\.gke\.io/gcp-service-account"=<gsa-name>@<project-id>.iam.gserviceaccount.com
+        ```
+
+        The gateway reads an identity token from the GKE metadata server, so no credential has to be
+        distributed to the cluster.
+
+        <Warning>
+          The Google service account in that annotation is the identity Infisical sees, so its email
+          must be in the gateway's allowed service account emails. Its IAM policy also needs a
+          `roles/iam.workloadIdentityUser` binding for the Kubernetes service account the chart
+          creates. A workload identity token carries no Compute Engine instance details, so a login
+          is refused while the gateway has an allowed projects or zones list. See
+          [Gateway Deployment](/documentation/platform/gateways/gateway-deployment) for the full
+          configuration.
+        </Warning>
+      </Tab>
+
       <Tab title="Kubernetes Auth">
         ```bash
         helm install infisical-gateway infisical-helm-charts/infisical-gateway \
@@ -93,11 +119,14 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 |-----------|---------|-------------|
 | `gateway.name` | `""` | Name of the gateway as created in the Infisical UI. |
 | `gateway.domain` | `""` | Infisical instance URL (e.g., `https://app.infisical.com`). |
-| `gateway.enrollment.method` | `""` | Enrollment method: `token`, `aws`, or `kubernetes`. |
+| `gateway.enrollment.method` | `""` | Enrollment method: `token`, `aws`, `gcp`, or `kubernetes`. |
 | `gateway.enrollment.token.value` | `""` | Inline enrollment token. Mutually exclusive with `existingSecretRef`. |
 | `gateway.enrollment.token.existingSecretRef` | `""` | Kubernetes secret containing the enrollment token. |
 | `gateway.enrollment.token.secretKey` | `"enrollment-token"` | Key in the secret that holds the token. |
 | `gateway.enrollment.aws.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for AWS auth. |
+| `gateway.enrollment.gcp.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for GCP auth. |
+| `gateway.enrollment.gcp.type` | `""` | How the identity is proven: `gce` reads a token from the metadata server, `iam` signs one through the IAM Credentials API. Empty means `gce`. |
+| `gateway.enrollment.gcp.serviceAccountKeyFilePath` | `""` | Only for `type: iam` on a pod with no workload identity. Path to a service account key file you mount yourself. |
 | `gateway.enrollment.kubernetes.gatewayId` | `""` | Gateway ID from the Infisical UI. Required for Kubernetes auth. |
 | `gateway.enrollment.kubernetes.serviceAccountTokenPath` | `""` | Override the projected service account token path. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`. |
 | `gateway.enrollment.kubernetes.externalTokenReview` | `false` | Set true when TokenReview permission comes from outside this chart, either a token reviewer JWT configured in Infisical or a binding you manage. Required to install with `serviceAccount.createAsAuthDelegator` disabled. |
@@ -188,6 +217,18 @@ gateway:
     aws:
       # Required when method=aws. Gateway ID from the Infisical UI.
       gatewayId: ""
+
+    # GCP enrollment settings (method=gcp)
+    gcp:
+      # Required when method=gcp. Gateway ID from the Infisical UI.
+      gatewayId: ""
+      # How the gateway proves its GCP identity: "gce" reads an identity token from the instance
+      # metadata server, which covers GKE workload identity; "iam" signs a JWT through the IAM
+      # Credentials API. Leave empty for the CLI default of "gce".
+      type: ""
+      # Only for type=iam, and only when the pod has no workload identity to sign with. Path to a
+      # service account key file, which you must mount yourself.
+      serviceAccountKeyFilePath: ""
 
     # Kubernetes enrollment settings (method=kubernetes).
     kubernetes:
