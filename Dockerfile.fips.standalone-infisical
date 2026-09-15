@@ -189,8 +189,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && test -n "$INFISICAL_CLI_VERSION" \
     && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
     # Patch CVEs in base image packages (pinned versions for reproducibility).
-    # Re-check these against apt-cache policy each release: a pin left behind a
-    # published security revision holds the package at the vulnerable version.
+    # Re-check each release; a stale pin holds the vulnerable version.
     && apt-get install -y --only-upgrade \
     libgnutls30t64=3.8.9-3+deb13u4 \
     libc6=2.41-12+deb13u4 \
