@@ -39,7 +39,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
 | General use | 2 vCPU, 1 GB memory |
 | PAM | 4 vCPU, 8 GB memory |
 
-General use is the gateway acting as a network path to a private resource, such as a database reached through an app connection or a dynamic secret, a secret rotation target, or an ADCS or HSM server. PAM asks more of the gateway, because the session protocols and session recording both run there, and it scales on the number of sessions open at once. With recording enabled, the gateway also needs disk for recordings it hasn't uploaded yet.
+General use is the gateway acting as a network path to a private resource, such as a database reached through an app connection or a dynamic secret, a secret rotation target, or an ADCS or HSM server. For PAM, the gateway runs the session protocols and records the sessions, so its CPU, memory, and disk use grow with the number of sessions open at once. Recordings stay on disk until the gateway uploads them.
 
 ## Deployment steps
 

@@ -133,12 +133,14 @@ PAM is heavier per session, so raise the chart's resource limits:
 ```yaml
 resources:
   requests:
-    cpu: 1
-    memory: 2Gi
+    cpu: 4
+    memory: 8Gi
   limits:
     cpu: 4
     memory: 8Gi
 ```
+
+Kubernetes schedules on requests, so requests below the minimum can place the gateway on a node that can't supply it.
 
 Recordings share the volume with the gateway's credentials, so raise `persistence.size` above its 5Gi default if your sessions are long or numerous.
 
