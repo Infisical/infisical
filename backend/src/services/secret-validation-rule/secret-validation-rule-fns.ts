@@ -13,6 +13,7 @@ import {
   SecretRotationRuleProvider,
   SecretValidationRuleType
 } from "./secret-validation-rule-enums";
+import { SecretValidationError, TSecretValidationFailure } from "./secret-validation-rule-errors";
 import { SECRET_VALIDATION_RULE_NAME_MAP } from "./secret-validation-rule-maps";
 import { TValueConstraints } from "./secret-validation-rule-schemas";
 import { TGeneratedCredentialProvider, TSecretValidationRuleConfig } from "./secret-validation-rule-types";
@@ -141,14 +142,14 @@ export type TRuleToEnforce = {
   config: TStaticSecretsRuleConfig;
 };
 
+// Whether a rule scoped to `rulePath` reaches a secret sitting at `secretPath`
+export const doesRulePathCover = (rulePath: string, secretPath: string) =>
+  picomatch.isMatch(secretPath, rulePath, { strictSlashes: false });
+
 export const findRulesCoveringScope = <T extends { envId?: string | null; secretPath: string }>(
   rules: T[],
   { envId, secretPath }: { envId: string; secretPath: string }
-) =>
-  rules.filter(
-    (rule) =>
-      (!rule.envId || rule.envId === envId) && picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })
-  );
+) => rules.filter((rule) => (!rule.envId || rule.envId === envId) && doesRulePathCover(rule.secretPath, secretPath));
 
 export const enforceSecretValidationRules = ({
   rules,
@@ -157,21 +158,17 @@ export const enforceSecretValidationRules = ({
   rules: TRuleToEnforce[];
   secrets: (TSecretToValidate & { previousValues?: string[] })[];
 }): void => {
-  const failures: string[] = [];
+  const failures: TSecretValidationFailure[] = [];
 
   for (const rule of rules) {
     for (const secret of secrets) {
       for (const violation of evaluateStaticSecretConstraints(rule.config, secret)) {
-        failures.push(
-          `Secret "${secret.key}": ${violation.message} (rule: "${rule.name}", constraint: ${violation.label})`
-        );
+        failures.push({ secretKey: secret.key, ruleName: rule.name, violation });
       }
     }
   }
 
-  if (failures.length) {
-    throw new BadRequestError({ message: `Secret validation failed:\n${failures.join("\n\n")}` });
-  }
+  if (failures.length) throw new SecretValidationError(failures);
 };
 
 // Runtime provider types that validation rules can constrain. Anything unmapped returns null, which
