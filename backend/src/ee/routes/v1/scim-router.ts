@@ -375,17 +375,17 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         orgMembershipId: z.string().trim()
       }),
       response: {
-        200: z.object({})
+        204: z.null()
       }
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
-    handler: async (req) => {
-      const user = await req.server.services.scim.deleteScimUser({
+    handler: async (req, res) => {
+      await req.server.services.scim.deleteScimUser({
         orgMembershipId: req.params.orgMembershipId,
         orgId: req.permission.orgId
       });
 
-      return user;
+      void res.status(204);
     }
   });
 
@@ -682,17 +682,17 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         groupId: z.string().trim()
       }),
       response: {
-        200: z.object({})
+        204: z.null()
       }
     },
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
-    handler: async (req) => {
-      const group = await req.server.services.scim.deleteScimGroup({
+    handler: async (req, res) => {
+      await req.server.services.scim.deleteScimGroup({
         groupId: req.params.groupId,
         orgId: req.permission.orgId
       });
 
-      return group;
+      void res.status(204);
     }
   });
 };

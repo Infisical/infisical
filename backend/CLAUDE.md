@@ -433,6 +433,18 @@ Four invariants, each load-bearing:
   their alias, so one request can name the same person twice. Undeduped, that violates
   `membership_unique_user_org` and surfaces as a 500.
 
+Nothing constrains a user to one alias per `(orgId, aliasType)`, and SSO login mints a new one
+whenever the asserted subject differs from what SCIM last wrote, so **a SCIM read must match a
+`userName` against every one of a user's aliases, not the newest**. Matching only the newest made a
+provisioned user vanish from `GET /Users?filter=userName eq "..."` the first time they logged in
+under a different subject, and the IdP answered that empty lookup by provisioning them again. It was
+intermittent because `replaceScimUser` rewrites `externalId` on *all* of a user's aliases, so the
+next PUT healed it until the next login. `$buildScimMembershipQuery` (`org-dal.ts`) therefore joins
+every alias and collapses the fan-out with `DISTINCT ON` *after* the filter has run, which keeps the
+alias the caller asked for when it filtered and the newest one when it did not. The list query also
+carries a total order, because an IdP walking `startIndex`/`count` over an unordered result loses
+users the same way.
+
 A related case sits on the login side: provisioning can name someone before they have ever logged
 in, leaving a placeholder account keyed on the identifier instead of the mailbox.
 `adoptProvisionedShadowUser` (same file, wired into `oidcLogin`'s no-alias branch) adopts that row
