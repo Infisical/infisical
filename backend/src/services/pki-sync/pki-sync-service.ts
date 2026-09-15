@@ -823,7 +823,8 @@ export const pkiSyncServiceFactory = ({
       );
     }
 
-    return pkiSyncDAL.deleteById(id);
+    const deleted = await pkiSyncDAL.deleteById(id);
+    return { ...deleted, applicationName: pkiSync.applicationName };
   };
 
   const listPkiSyncsByProjectId = async (
@@ -1189,7 +1190,13 @@ export const pkiSyncServiceFactory = ({
     actor: OrgServiceActor
   ): Promise<{
     addedCertificates: TCertificateSyncs[];
-    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
+    pkiSyncInfo: {
+      projectId: string;
+      destination: string;
+      name: string;
+      applicationId?: string | null;
+      applicationName?: string | null;
+    };
   }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
@@ -1243,7 +1250,8 @@ export const pkiSyncServiceFactory = ({
         projectId: pkiSync.projectId,
         destination: pkiSync.destination,
         name: pkiSync.name,
-        applicationId: pkiSync.applicationId
+        applicationId: pkiSync.applicationId,
+        applicationName: pkiSync.applicationName
       }
     };
   };
@@ -1253,7 +1261,13 @@ export const pkiSyncServiceFactory = ({
     actor: OrgServiceActor
   ): Promise<{
     removedCount: number;
-    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
+    pkiSyncInfo: {
+      projectId: string;
+      destination: string;
+      name: string;
+      applicationId?: string | null;
+      applicationName?: string | null;
+    };
   }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
@@ -1289,7 +1303,8 @@ export const pkiSyncServiceFactory = ({
         projectId: pkiSync.projectId,
         destination: pkiSync.destination,
         name: pkiSync.name,
-        applicationId: pkiSync.applicationId
+        applicationId: pkiSync.applicationId,
+        applicationName: pkiSync.applicationName
       }
     };
   };
@@ -1300,7 +1315,13 @@ export const pkiSyncServiceFactory = ({
   ): Promise<{
     certificates: TPkiSyncCertificate[];
     totalCount: number;
-    pkiSyncInfo: { projectId: string; destination: string; name: string; applicationId?: string | null };
+    pkiSyncInfo: {
+      projectId: string;
+      destination: string;
+      name: string;
+      applicationId?: string | null;
+      applicationName?: string | null;
+    };
   }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
@@ -1357,7 +1378,8 @@ export const pkiSyncServiceFactory = ({
         projectId: pkiSync.projectId,
         destination: pkiSync.destination,
         name: pkiSync.name,
-        applicationId: pkiSync.applicationId
+        applicationId: pkiSync.applicationId,
+        applicationName: pkiSync.applicationName
       }
     };
   };
@@ -1365,7 +1387,10 @@ export const pkiSyncServiceFactory = ({
   const setCertificateAsDefault = async (
     { pkiSyncId, certificateId }: Omit<TSetCertificateAsDefaultDTO, "auditLogInfo">,
     actor: OrgServiceActor
-  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null } }> => {
+  ): Promise<{
+    message: string;
+    pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null; applicationName?: string | null };
+  }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -1403,14 +1428,22 @@ export const pkiSyncServiceFactory = ({
 
     return {
       message: "Certificate set as default",
-      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name, applicationId: pkiSync.applicationId }
+      pkiSyncInfo: {
+        projectId: pkiSync.projectId,
+        name: pkiSync.name,
+        applicationId: pkiSync.applicationId,
+        applicationName: pkiSync.applicationName
+      }
     };
   };
 
   const clearDefaultCertificate = async (
     { pkiSyncId }: Omit<TClearDefaultCertificateDTO, "auditLogInfo">,
     actor: OrgServiceActor
-  ): Promise<{ message: string; pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null } }> => {
+  ): Promise<{
+    message: string;
+    pkiSyncInfo: { projectId: string; name: string; applicationId?: string | null; applicationName?: string | null };
+  }> => {
     const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
@@ -1435,7 +1468,12 @@ export const pkiSyncServiceFactory = ({
 
     return {
       message: "Default certificate cleared",
-      pkiSyncInfo: { projectId: pkiSync.projectId, name: pkiSync.name, applicationId: pkiSync.applicationId }
+      pkiSyncInfo: {
+        projectId: pkiSync.projectId,
+        name: pkiSync.name,
+        applicationId: pkiSync.applicationId,
+        applicationName: pkiSync.applicationName
+      }
     };
   };
 

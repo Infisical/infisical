@@ -3241,6 +3241,7 @@ interface CreatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     applicationId?: string;
+    applicationName?: string;
     name: string;
     alertBefore?: string;
     eventType: PkiAlertEventType;
@@ -3252,6 +3253,7 @@ interface GetPkiAlert {
   metadata: {
     pkiAlertId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3261,6 +3263,7 @@ interface UpdatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     applicationId?: string;
+    applicationName?: string;
     name?: string;
     alertBefore?: string;
     eventType?: PkiAlertEventType;
@@ -3272,6 +3275,7 @@ interface DeletePkiAlert {
   metadata: {
     pkiAlertId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3339,6 +3343,7 @@ interface CreateCertificateInventoryView {
     columns?: string[];
     isShared?: boolean;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3351,6 +3356,7 @@ interface UpdateCertificateInventoryView {
     columns?: string[];
     isShared?: boolean;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3360,6 +3366,7 @@ interface DeleteCertificateInventoryView {
     viewId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3747,6 +3754,7 @@ interface AttachPkiApplicationProfiles {
   type: EventType.ATTACH_PKI_APPLICATION_PROFILES;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     profileIds: string[];
   };
 }
@@ -3755,6 +3763,7 @@ interface DetachPkiApplicationProfile {
   type: EventType.DETACH_PKI_APPLICATION_PROFILE;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     profileId: string;
   };
 }
@@ -3818,6 +3827,7 @@ interface GetPkiApplicationEnrollment {
   type: EventType.GET_PKI_APPLICATION_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3826,6 +3836,7 @@ interface SetPkiApplicationApiEnrollment {
   type: EventType.SET_PKI_APPLICATION_API_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     autoRenew: boolean;
     renewBeforeDays: number | null;
@@ -3836,6 +3847,7 @@ interface ClearPkiApplicationApiEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_API_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3844,6 +3856,7 @@ interface SetPkiApplicationEstEnrollment {
   type: EventType.SET_PKI_APPLICATION_EST_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     disableBootstrapCaValidation: boolean;
   };
@@ -3853,6 +3866,7 @@ interface ClearPkiApplicationEstEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_EST_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3861,6 +3875,7 @@ interface SetPkiApplicationAcmeEnrollment {
   type: EventType.SET_PKI_APPLICATION_ACME_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     skipDnsOwnershipVerification: boolean;
     skipEabBinding: boolean;
@@ -3871,6 +3886,7 @@ interface ClearPkiApplicationAcmeEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_ACME_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3879,6 +3895,7 @@ interface RevealPkiApplicationAcmeEabSecret {
   type: EventType.REVEAL_PKI_APPLICATION_ACME_EAB_SECRET;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3887,6 +3904,7 @@ interface RotatePkiApplicationAcmeEabSecret {
   type: EventType.ROTATE_PKI_APPLICATION_ACME_EAB_SECRET;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3895,6 +3913,7 @@ interface SetPkiApplicationScepEnrollment {
   type: EventType.SET_PKI_APPLICATION_SCEP_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     challengeType: string;
     signRaWithCa: boolean;
@@ -3907,6 +3926,7 @@ interface ClearPkiApplicationScepEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -4044,6 +4064,7 @@ interface IssueCertificateFromProfile {
     status: CertificateRequestStatus;
     serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4058,6 +4079,7 @@ interface SignCertificateFromProfile {
     status: CertificateRequestStatus;
     serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4071,6 +4093,7 @@ interface OrderCertificateFromProfile {
     status: CertificateRequestStatus;
     serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4611,6 +4634,7 @@ interface GetPkiSyncEvent {
     destination: string;
     syncId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4622,6 +4646,7 @@ interface GetPkiSyncCertificatesEvent {
     certificateIds: string[];
     destination: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4632,6 +4657,7 @@ interface CreatePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    applicationName?: string;
     connectionId?: string;
     connectionName?: string;
     targetHost?: string;
@@ -4647,6 +4673,7 @@ interface UpdatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
     destination?: string;
     connectionId?: string;
     connectionName?: string;
@@ -4663,6 +4690,7 @@ interface DeletePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4727,6 +4755,7 @@ interface PkiSyncSetDefaultCertificateEvent {
     name: string;
     certificateId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4736,6 +4765,7 @@ interface PkiSyncClearDefaultCertificateEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -7120,6 +7150,7 @@ interface ScepDynamicChallengeGeneratedEvent {
     profileSlug: string;
     expiresAt: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 

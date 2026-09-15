@@ -236,6 +236,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           removeRootsFromChain: requestBody.removeRootsFromChain
         });
 
+        const applicationName = requestBody.applicationId
+          ? await server.services.pkiApplication.getApplicationNameById(requestBody.applicationId)
+          : undefined;
+
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           projectId: data.projectId,
@@ -248,7 +252,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               profileName: data.profileName,
               status: data.status,
               ...(data.serialNumber && { serialNumber: data.serialNumber }),
-              ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
+              ...(requestBody.applicationId && { applicationId: requestBody.applicationId }),
+              ...(applicationName && { applicationName })
             }
           }
         });
@@ -293,6 +298,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           basicConstraints: attributes?.basicConstraints
         });
 
+        const applicationName = requestBody.applicationId
+          ? await server.services.pkiApplication.getApplicationNameById(requestBody.applicationId)
+          : undefined;
+
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           projectId: data.projectId,
@@ -306,7 +315,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               commonName: extractedCsrData.commonName || "",
               status: data.status,
               ...(data.serialNumber && { serialNumber: data.serialNumber }),
-              ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
+              ...(requestBody.applicationId && { applicationId: requestBody.applicationId }),
+              ...(applicationName && { applicationName })
             }
           }
         });
@@ -377,6 +387,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         removeRootsFromChain: requestBody.removeRootsFromChain
       });
 
+      const applicationName = requestBody.applicationId
+        ? await server.services.pkiApplication.getApplicationNameById(requestBody.applicationId)
+        : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: data.projectId,
@@ -390,7 +404,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             profileName: data.profileName,
             status: data.status,
             ...(data.serialNumber && { serialNumber: data.serialNumber }),
-            ...(requestBody.applicationId && { applicationId: requestBody.applicationId })
+            ...(requestBody.applicationId && { applicationId: requestBody.applicationId }),
+            ...(applicationName && { applicationName })
           }
         }
       });

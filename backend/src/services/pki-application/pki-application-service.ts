@@ -217,6 +217,11 @@ export const pkiApplicationServiceFactory = ({
     return application;
   };
 
+  const getApplicationNameById = async (applicationId: string) => {
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name;
+  };
+
   const getApplicationByName = async ({
     name,
     projectId,
@@ -576,6 +581,7 @@ export const pkiApplicationServiceFactory = ({
     createApplication,
     getApplicationById,
     getApplicationByName,
+    getApplicationNameById,
     listApplications,
     updateApplication,
     deleteApplication,
