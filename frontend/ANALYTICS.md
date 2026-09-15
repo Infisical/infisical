@@ -29,7 +29,7 @@ not add those fields at call sites.
 4. Update the PostHog insight or dashboard that consumes it.
 
 Event names describe completed facts in title case, such as `Paywall Viewed`
-or `Billing Checkout Started`. Use stable machine-readable values for IDs,
+or `Billing Checkout Redirected`. Use stable machine-readable values for IDs,
 plans, products, and other breakdowns; do not use display labels as
 identifiers.
 
@@ -38,9 +38,19 @@ errors, arbitrary URLs, or unbounded user-entered content. Define an event's
 firing condition precisely so lifecycle events such as viewed, clicked,
 started, completed, failed, and canceled cannot overlap accidentally.
 
-Browser events are appropriate for UI exposure and intent. Commercial,
-security, and other authoritative outcomes should be emitted by the backend or
-webhook processor when possible.
+Each event has one owning producer. Do not emit the same event name from the
+frontend and backend: doing so mixes browser observations with domain outcomes
+and overcounts activity that originated from the web application.
+
+The frontend owns UI exposure, navigation, and intent, such as a modal being
+viewed, a button being selected, or the browser returning from a hosted flow.
+Name these events after what the browser actually observed; for example,
+`Billing Checkout Success Return Viewed` rather than `Checkout Completed`.
+
+The backend owns accepted, succeeded, failed, and other decisive product
+outcomes across web, CLI, machine identities, and every other client. Before
+adding a frontend event, check the backend event catalog and capture only the
+UI context that its route telemetry cannot provide.
 
 Legacy frontend telemetry still uses `Telemetry` directly. Migrate it through
 the shared API rather than copying that pattern into new code. PLATFOR-817

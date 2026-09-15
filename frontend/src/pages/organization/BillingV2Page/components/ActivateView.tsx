@@ -204,6 +204,12 @@ export const ActivateView = ({
   }, [plan]);
 
   const handleActivate = async () => {
+    analytics.captureForOrganization(AnalyticsEvent.BillingProductActivationClicked, orgId, {
+      productId: prod.id,
+      plan: plan.tier,
+      cadence
+    });
+
     try {
       const result = await buyProduct.mutateAsync({
         orgId,
@@ -214,12 +220,6 @@ export const ActivateView = ({
         returnPath
       });
       if (result.outcome === "subscription_updated") {
-        analytics.captureForOrganization(AnalyticsEvent.BillingSubscriptionUpdated, orgId, {
-          productId: prod.id,
-          plan: plan.tier,
-          cadence,
-          subscriptionId: result.subscriptionId
-        });
         createNotification({
           type: "success",
           text: `${prod.name} activated. It may take a moment to update here.`
@@ -228,7 +228,7 @@ export const ActivateView = ({
         return;
       }
       if (result.checkoutUrl) {
-        analytics.captureForOrganization(AnalyticsEvent.BillingCheckoutStarted, orgId, {
+        analytics.captureForOrganization(AnalyticsEvent.BillingCheckoutRedirected, orgId, {
           productId: prod.id,
           plan: plan.tier,
           cadence

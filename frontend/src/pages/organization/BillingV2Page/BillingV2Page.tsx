@@ -56,14 +56,22 @@ export const BillingV2Page = () => {
       return;
     }
     if (checkout === "success") {
-      analytics.captureForOrganization(AnalyticsEvent.BillingCheckoutCompleted, orgId, {});
+      analytics.captureForOrganization(
+        AnalyticsEvent.BillingCheckoutSuccessReturnViewed,
+        orgId,
+        {}
+      );
       createNotification({
         type: "success",
         text: "Subscription started. It may take a moment to appear here."
       });
       refetch();
     } else if (checkout === "canceled") {
-      analytics.captureForOrganization(AnalyticsEvent.BillingCheckoutCanceled, orgId, {});
+      analytics.captureForOrganization(
+        AnalyticsEvent.BillingCheckoutCanceledReturnViewed,
+        orgId,
+        {}
+      );
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
     window.history.replaceState({}, "", window.location.pathname);

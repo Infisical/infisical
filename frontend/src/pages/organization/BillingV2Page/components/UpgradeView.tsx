@@ -87,6 +87,13 @@ export const UpgradeView = ({
     });
 
   const handleUpgrade = async () => {
+    analytics.captureForOrganization(AnalyticsEvent.BillingPlanUpgradeClicked, orgId, {
+      productId: prod.id,
+      fromPlan,
+      toPlan: plan.tier,
+      isTrialConversion
+    });
+
     let priced = preview.data;
     if (Date.now() - pricedAt > PREVIEW_MAX_AGE_MS) {
       const fresh = await rePreview();
@@ -116,19 +123,12 @@ export const UpgradeView = ({
     }
 
     try {
-      const result = await upgrade.mutateAsync({
+      await upgrade.mutateAsync({
         orgId,
         productId: prod.id,
         plan: plan.tier,
         expectedPlanVersionId: priced.toPlanVersionId,
         prorationDate: priced.prorationDate ?? undefined
-      });
-      analytics.captureForOrganization(AnalyticsEvent.BillingSubscriptionUpgraded, orgId, {
-        productId: prod.id,
-        fromPlan: result.fromPlanKey ?? fromPlan,
-        toPlan: result.toPlanKey ?? plan.tier,
-        subscriptionId: result.subscriptionId,
-        isTrialConversion
       });
       createNotification({
         type: "success",
