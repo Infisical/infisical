@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, ChevronLeftIcon } from "lucide-react";
 
-import { BILLING_EVENTS, organizationTelemetryProperties } from "@app/components/analytics/events";
 import { createNotification } from "@app/components/notifications";
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Alert,
   AlertDescription,
@@ -19,6 +17,7 @@ import {
   usePreviewBillingV2Change,
   useUpgradeBillingV2Product
 } from "@app/hooks/api";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { fmtMoney } from "../billing-v2-format";
 import { ChargeBreakdown } from "./ChargeBreakdown";
@@ -57,7 +56,6 @@ export const UpgradeView = ({
 }: Props) => {
   const preview = usePreviewBillingV2Change();
   const upgrade = useUpgradeBillingV2Product();
-  const telemetry = new Telemetry().getInstance();
   const [pricedAt, setPricedAt] = useState(0);
 
   const { mutate: runPreview } = preview;
@@ -125,8 +123,7 @@ export const UpgradeView = ({
         expectedPlanVersionId: priced.toPlanVersionId,
         prorationDate: priced.prorationDate ?? undefined
       });
-      telemetry.capture(BILLING_EVENTS.SubscriptionUpgraded, {
-        ...organizationTelemetryProperties(orgId),
+      analytics.captureForOrganization(AnalyticsEvent.BillingSubscriptionUpgraded, orgId, {
         productId: prod.id,
         fromPlan: result.fromPlanKey ?? fromPlan,
         toPlan: result.toPlanKey ?? plan.tier,

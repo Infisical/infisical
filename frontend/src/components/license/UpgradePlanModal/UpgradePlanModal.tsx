@@ -2,8 +2,6 @@ import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { SparklesIcon } from "lucide-react";
 
-import { organizationTelemetryProperties, PAYWALL_EVENTS } from "@app/components/analytics/events";
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
   Dialog,
@@ -16,6 +14,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useScopeVariant } from "@app/hooks";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 type Props = {
   isOpen?: boolean;
@@ -34,10 +33,8 @@ export const UpgradePlanModal = ({
 }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
   const scopeVariant = useScopeVariant();
-  const telemetry = new Telemetry().getInstance();
 
   const eventProperties = {
-    ...organizationTelemetryProperties(currentOrg.id),
     paywallText: text,
     sourcePath: window.location.pathname,
     isEnterpriseFeature: Boolean(isEnterpriseFeature)
@@ -45,14 +42,22 @@ export const UpgradePlanModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      telemetry.capture(PAYWALL_EVENTS.Viewed, eventProperties);
+      analytics.captureForOrganization(
+        AnalyticsEvent.PaywallViewed,
+        currentOrg.id,
+        eventProperties
+      );
     }
     // The event should fire once per closed-to-open transition, not when copy or route context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleUpgradeClick = () => {
-    telemetry.capture(PAYWALL_EVENTS.UpgradeClicked, eventProperties);
+    analytics.captureForOrganization(
+      AnalyticsEvent.PaywallUpgradeClicked,
+      currentOrg.id,
+      eventProperties
+    );
   };
 
   return (

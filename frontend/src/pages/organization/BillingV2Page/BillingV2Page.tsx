@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
-import { BILLING_EVENTS, organizationTelemetryProperties } from "@app/components/analytics/events";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { PageHeader } from "@app/components/v2";
 import {
   OrgPermissionBillingActions,
@@ -19,6 +17,7 @@ import {
   useGetBillingV2Catalog,
   useGetBillingV2Overview
 } from "@app/hooks/api";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
@@ -46,7 +45,6 @@ export const BillingV2Page = () => {
   const { data: catalog = [] } = useGetBillingV2Catalog(orgId);
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
-  const telemetry = new Telemetry().getInstance();
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
@@ -58,18 +56,14 @@ export const BillingV2Page = () => {
       return;
     }
     if (checkout === "success") {
-      telemetry.capture(BILLING_EVENTS.CheckoutCompleted, {
-        ...organizationTelemetryProperties(orgId)
-      });
+      analytics.captureForOrganization(AnalyticsEvent.BillingCheckoutCompleted, orgId, {});
       createNotification({
         type: "success",
         text: "Subscription started. It may take a moment to appear here."
       });
       refetch();
     } else if (checkout === "canceled") {
-      telemetry.capture(BILLING_EVENTS.CheckoutCanceled, {
-        ...organizationTelemetryProperties(orgId)
-      });
+      analytics.captureForOrganization(AnalyticsEvent.BillingCheckoutCanceled, orgId, {});
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
     window.history.replaceState({}, "", window.location.pathname);
