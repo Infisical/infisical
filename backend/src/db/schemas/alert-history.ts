@@ -12,9 +12,9 @@ export const AlertHistorySchema = z.object({
   alertId: z.string().uuid(),
   triggeredAt: z.date().nullable().optional(),
   status: z.string(),
-  eventId: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  eventId: z.string().nullable().optional()
 });
 
 export type TAlertHistory = z.infer<typeof AlertHistorySchema>;
