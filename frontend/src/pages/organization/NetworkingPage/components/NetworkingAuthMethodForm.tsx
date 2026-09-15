@@ -87,23 +87,15 @@ const schema = z
 
     if (data.method === "gcp") {
       // Zones alone restrict nothing: the zone namespace is global, so any GCP customer can put an
-      // instance in one.
-      if (!data.allowedServiceAccounts.trim() && !data.allowedProjects.trim()) {
+      // instance in one. Projects are not offered on the iam type, so the message narrows there.
+      const isIam = data.gcpAuthType === "iam";
+      if (!data.allowedServiceAccounts.trim() && (isIam || !data.allowedProjects.trim())) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["allowedServiceAccounts"],
-          message:
-            "Set allowed service account emails or allowed projects. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone."
-        });
-      }
-      // An IAM-signed JWT carries no instance details, so a project or zone allowlist on it could
-      // never be checked and every login would be refused.
-      if (data.gcpAuthType === "iam" && (data.allowedProjects.trim() || data.allowedZones.trim())) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["allowedProjects"],
-          message:
-            "Allowed projects and zones only apply to the Compute Engine token type. Restrict by service account instead."
+          message: isIam
+            ? "Allowed service account emails is required."
+            : "Set allowed service account emails or allowed projects. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone."
         });
       }
     }
@@ -161,12 +153,15 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
   }
 
   if (form.method === "gcp") {
+    // Projects and zones are hidden on the iam type, so a value left over from a previous gce
+    // config must be dropped rather than submitted against a field the user can no longer see.
+    const isIam = form.gcpAuthType === "iam";
     return {
       method: "gcp" as const,
       type: form.gcpAuthType,
       allowedServiceAccounts: form.allowedServiceAccounts,
-      allowedProjects: form.allowedProjects,
-      allowedZones: form.allowedZones
+      allowedProjects: isIam ? "" : form.allowedProjects,
+      allowedZones: isIam ? "" : form.allowedZones
     };
   }
 
