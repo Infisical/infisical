@@ -122,7 +122,7 @@ export const DeleteProjectSection = () => {
       size="sm"
       isPending={isLeaving}
       isDisabled={!isDirectMember}
-      variant="danger"
+      variant="neutral"
       onClick={() => handlePopUpOpen("leaveWorkspace")}
     >
       {`Leave ${currentProject?.name}`}
