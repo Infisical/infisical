@@ -492,7 +492,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(detail.payload).not.toContain("org_secret_value");
       expect(detail.payload).not.toContain("ghp_real_value");
 
-      const customHeaderRow = await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id }).first();
+      const customHeaderRow = await testDb("agent_vault_service_custom_headers")
+        .where({ serviceId: service.id })
+        .first();
       expect(customHeaderRow.encryptedValue.toString("utf-8")).not.toContain("org_secret_value");
 
       const removed = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`);
@@ -518,11 +520,14 @@ describe("Agent Vault V1 Router", async () => {
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
       const customHeaderId = service.customHeaders[0].id;
       const sealed = async () =>
-        (await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id }).first()).encryptedValue as Buffer;
+        (await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id }).first())
+          .encryptedValue as Buffer;
       const before = await sealed();
 
       // By id, which is what the sheet sends, and the only way to rename while keeping the secret.
-      const renamed = await inject("PATCH", url, { customHeaders: [{ id: customHeaderId, name: "X-Organization-Id" }] });
+      const renamed = await inject("PATCH", url, {
+        customHeaders: [{ id: customHeaderId, name: "X-Organization-Id" }]
+      });
       expect(renamed.statusCode).toBe(200);
       expect(JSON.parse(renamed.payload).service.customHeaders[0].id).toBe(customHeaderId);
       expect(JSON.parse(renamed.payload).service.customHeaders[0].name).toBe("X-Organization-Id");
@@ -598,7 +603,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(basicClash.statusCode).toBe(400);
     });
 
-    test("a header the proxy controls is refused", async () => {
+    test("a header the proxy controls is refused, from either side", async () => {
       const bundle = await createAccessBundle("reserved-headers");
       const res = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "reserved",
@@ -607,6 +612,15 @@ describe("Agent Vault V1 Router", async () => {
         customHeaders: [{ name: "Host", value: "evil.example.com" }]
       });
       expect(res.statusCode).toBe(422);
+
+      // The credential's own header name is held to the same list. It was not, for a while: the two
+      // validations were written out separately and only the custom header one grew the check.
+      const asCredential = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        name: "reserved-credential",
+        hostPattern: "api.reserved-credential.example.com",
+        credential: { type: "bearer", headerName: "Content-Length", value: "t" }
+      });
+      expect(asCredential.statusCode).toBe(422);
     });
   });
 
