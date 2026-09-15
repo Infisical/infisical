@@ -134,8 +134,3 @@ export const addDuplicatePlaceholderIssues = (substitutions: TPlaceheld[], ctx: 
     seen.add(substitution.placeholder);
   });
 };
-
-export type TAgentVaultCustomHeaderInput = z.infer<typeof AgentVaultCustomHeaderInputSchema>;
-export type TAgentVaultCustomHeaderUpdate = z.infer<typeof AgentVaultCustomHeaderUpdateSchema>;
-export type TAgentVaultSubstitutionInput = z.infer<typeof AgentVaultSubstitutionInputSchema>;
-export type TAgentVaultSubstitutionUpdate = z.infer<typeof AgentVaultSubstitutionUpdateSchema>;
