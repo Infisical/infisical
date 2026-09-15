@@ -51,6 +51,11 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { splitCommaSeparatedPolicyValues } from "../identity/identity-auth-policy-values";
@@ -88,6 +93,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuthServiceFactory>;
@@ -103,7 +109,8 @@ export const identityOidcAuthServiceFactory = ({
   identityAccessTokenDAL,
   kmsService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityOidcAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: oidcJwt, organizationSlug }: TLoginOidcAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -772,6 +779,17 @@ export const identityOidcAuthServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OIDC_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
@@ -977,7 +995,21 @@ export const identityOidcAuthServiceFactory = ({
       updateQuery.encryptedCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
     }
 
-    const updatedOidcAuth = await identityOidcAuthDAL.updateById(identityOidcAuth.id, updateQuery);
+    const updatedOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
+      const doc = await identityOidcAuthDAL.updateById(identityOidcAuth.id, updateQuery, tx);
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OIDC_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
+    });
     const updatedCACert = updatedOidcAuth.encryptedCaCertificate
       ? decryptor({ cipherTextBlob: updatedOidcAuth.encryptedCaCertificate }).toString()
       : "";
@@ -1150,6 +1182,17 @@ export const identityOidcAuthServiceFactory = ({
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OIDC_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OIDC_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedOidcAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 

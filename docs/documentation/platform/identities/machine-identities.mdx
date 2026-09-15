@@ -16,7 +16,7 @@ Key Features:
 
 - Role Assignment: Identities must be assigned [roles](/documentation/platform/access-controls/role-based-access-controls). These roles determine the scope of access to resources, either at the organization level or project level.
 - Auth/Token Configuration: Identities must be configured with corresponding authentication methods and access token properties to securely interact with the Infisical API.
-- Expiry Alerting: Identities with expiring credentials can notify your team ahead of time via [Credential Expiry Alerts](#credential-expiry-alerts).
+- Alerting: An identity can notify your team before a credential expires or whenever one of its auth methods changes via [Alerts](#alerts).
 
 ## Scopes
 
@@ -87,11 +87,20 @@ Once revoked, the token is rejected on subsequent authenticated requests and can
   If you need a revocation to take effect with no propagation delay even under those conditions, rotate the underlying credential (delete the Universal Auth client secret) or delete the identity, both of which invalidate the affected tokens regardless of cache state.
 </Note>
 
-## Credential expiry alerts
+## Alerts
 
-A machine identity whose credential expires unnoticed takes your workload down with it. Expiry alerts watch the credentials attached to an identity and notify your team a configurable number of days before they expire, so the credential gets rotated before anything breaks.
+An alert on a machine identity notifies your team through the channels you pick. Each alert watches one event, chosen when you create it:
 
-Alerts currently cover **Universal Auth client secrets that have a TTL**. A client secret is only monitored when its TTL is greater than `0`, since one created with the default TTL of `0` never expires and has nothing to alert on. Revoked client secrets are skipped.
+| Event | When it fires |
+|-------|---------------|
+| **Client Secret Expiration** | A set number of days before a Universal Auth client secret expires, checked once a day |
+| **Auth Method or Credential Change** | Right after an auth method is added, updated, or removed, or a Universal Auth client secret or Token Auth token is created, updated, or revoked |
+
+### Client secret expiration
+
+A machine identity whose credential expires unnoticed takes your workload down with it. This alert watches the Universal Auth client secrets attached to the identity and notifies your team a configurable number of days before they expire, so the credential gets rotated before anything breaks.
+
+A client secret is only monitored when its TTL is greater than `0`, since one created with the default TTL of `0` never expires and has nothing to alert on. Revoked client secrets are skipped.
 
 <Note>
   The alert watches the **client secret**, not the access tokens minted from it. Access tokens are
@@ -100,9 +109,17 @@ Alerts currently cover **Universal Auth client secrets that have a TTL**. A clie
   Client Secret TTL, Access Token TTL, and Access Token Max TTL.
 </Note>
 
+### Auth method or credential change
+
+Changing how a machine identity authenticates changes who can act as it. This alert fires every time any of the identity's auth methods is added, updated, or removed, whether through the dashboard, the API, or Terraform. It covers all auth methods, from Universal Auth and Token Auth to the cloud, Kubernetes, OIDC, JWT, LDAP, SPIFFE, and TLS certificate methods.
+
+It also fires when a credential inside a method changes: a Universal Auth client secret is created or revoked, or a Token Auth token is created, renamed, or revoked. Access tokens minted by logging in with a credential aren't credentials themselves and don't fire it.
+
+Each notification names the auth method, the kind of change, the credential where one is involved, who made the change (a user's email or a machine identity's name), and when. It takes no condition and has no daily run: the notification is sent as soon as the change is saved.
+
 ### Create an alert
 
-Open the machine identity you want to monitor and select **Alert** in the top-right of the page to create one.
+Open the machine identity you want to monitor and select **Alert** in the top-right of the page to create one. An identity holds one alert, so pick the event you care about most.
 
 ![Create Machine Identity Alert](/images/platform/organization/mi-create-alert.png)
 
@@ -110,11 +127,12 @@ Open the machine identity you want to monitor and select **Alert** in the top-ri
 |-------|-------------|
 | **Name** | A name for the alert, e.g. `ua-secret-expiry` |
 | **Description** | Optional context about this alert |
-| **Condition** | How many days before expiration to notify, as a whole number from `1` to `90` |
-| **Daily Reminder** | If enabled, repeats the alert every day from the threshold until the credential expires |
+| **Event** | **Client Secret Expiration** or **Auth Method or Credential Change**. The event can't be changed after the alert is created; remove the alert and create a new one instead. |
+| **Condition** | For **Client Secret Expiration** only: how many days before expiration to notify, as a whole number from `1` to `90` |
+| **Daily Reminder** | For **Client Secret Expiration** only: if enabled, repeats the alert every day from the threshold until the credential expires |
 | **Enabled** | Turn the alert off without deleting it |
 
-With **Daily Reminder** off, each credential triggers the alert once. Turn it on for credentials you can't afford to miss, and you'll get one notification per day until the credential expires or is rotated.
+With **Daily Reminder** off, each credential triggers the expiration alert once. Turn it on for credentials you can't afford to miss, and you'll get one notification per day until the credential expires or is rotated.
 
 ### Notification channels
 
@@ -124,12 +142,12 @@ An alert delivers through one or more channels, up to 10 per alert. Add at least
 |---------|---------------|
 | **Email** | Pick recipients from the organization's users and groups, up to 20 per channel. Group membership is expanded at send time. |
 | **Slack** | An [Incoming Webhook](https://api.slack.com/messaging/webhooks) URL. Must be an HTTPS `hooks.slack.com` URL. |
-| **PagerDuty** | An [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview) integration key (32-character hex string). Triggers one incident per expiring credential, deduplicated by credential. |
+| **PagerDuty** | An [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview) integration key (32-character hex string). Triggers one incident per expiring credential, deduplicated by credential. For auth method changes, repeated changes of the same kind to the same method land on one open incident. |
 | **Webhook** | Any HTTPS endpoint, with an optional signing secret for verification. |
 
 ### Webhook payload
 
-Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents with the type `com.infisical.identity.authentication.expiration`. Every credential due for this run is listed in `data.items`:
+Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents. The `type` names the event: `com.infisical.identity.authentication.expiration` for a client secret expiration and `com.infisical.identity.authentication.auth-method-changed` for an auth method change. Every credential due for this run, or the change that fired, is listed in `data.items`:
 
 ```json
 {
@@ -155,6 +173,43 @@ Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents
           { "label": "Secret Name", "value": "github-actions" },
           { "label": "Secret Type", "value": "Universal Auth Client Secret" },
           { "label": "Expires", "value": "August 23, 2026 at 04:15 PM UTC" }
+        ]
+      }
+    ],
+    "metadata": {
+      "totalItems": 1,
+      "viewUrl": "https://app.infisical.com/organizations/18b65352-ad1e-43d5-830f-65c72245c3a3/identities/c6002a8c-4571-4660-b169-f891f4734851"
+    }
+  }
+}
+```
+
+An auth method or credential change carries one item whose fields name the method, the change, the credential when one is involved, who made the change, and when. The `Change` field is one of `Added`, `Updated`, `Removed`, `Credential Added`, `Credential Updated`, or `Credential Revoked`:
+
+```json
+{
+  "specversion": "1.0",
+  "type": "com.infisical.identity.authentication.auth-method-changed",
+  "source": "/alerts/6c1e5a9b-2f4d-4b7e-8a3c-1d9e0f2b5c7a",
+  "id": "a7d3e1f9-4b2c-4e8d-9f01-3c5b7a9d2e4f",
+  "time": "2026-09-10T10:00:01.204Z",
+  "datacontenttype": "application/json",
+  "subject": "identity.authentication.auth-method-changed",
+  "data": {
+    "alert": {
+      "id": "6c1e5a9b-2f4d-4b7e-8a3c-1d9e0f2b5c7a",
+      "name": "auth-method-change",
+      "resourceType": "identity.authentication"
+    },
+    "items": [
+      {
+        "id": "auth-method-change:c6002a8c-4571-4660-b169-f891f4734851:universal-auth:added",
+        "title": "ci-deploy-bot",
+        "fields": [
+          { "label": "Auth Method", "value": "Universal Auth" },
+          { "label": "Change", "value": "Added" },
+          { "label": "Changed By", "value": "alice@example.com (user)" },
+          { "label": "Changed At", "value": "September 10, 2026 at 10:00 AM UTC" }
         ]
       }
     ],
@@ -205,5 +260,8 @@ You can learn more about how to do this in the CLI quickstart [here](/cli/usage)
 </Accordion>
 <Accordion title="What happens to an alert after I rotate the credential?">
   The new client secret is evaluated on its own TTL, and the old one drops out of the alert once it's revoked or expires. No change to the alert is needed.
+</Accordion>
+<Accordion title="Does the auth method or credential change alert fire when I rotate a client secret?">
+  Yes. Creating the new client secret sends one notification and revoking the old one sends another, each naming the secret by its description or prefix. Logging in with a client secret to mint an access token doesn't fire it.
 </Accordion>
 </AccordionGroup>

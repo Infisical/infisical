@@ -233,6 +233,7 @@ import { alertChannelServiceFactory } from "@app/services/alert/alert-channel-se
 import { alertChannelTestServiceFactory } from "@app/services/alert/alert-channel-test-service";
 import { alertDALFactory } from "@app/services/alert/alert-dal";
 import { alertEngineFactory } from "@app/services/alert/alert-engine";
+import { alertEventConsumerFactory } from "@app/services/alert/alert-event-consumer";
 import { alertHistoryDALFactory } from "@app/services/alert/alert-history-dal";
 import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider-registry";
 import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
@@ -322,6 +323,10 @@ import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { scepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
+import { eventOutboxDALFactory } from "@app/services/event-outbox/event-outbox-dal";
+import { eventOutboxQueueFactory } from "@app/services/event-outbox/event-outbox-queue";
+import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
+import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -1073,6 +1078,24 @@ export const registerRoutes = async (
     alertProviderRegistry,
     alertEngine
   });
+  const eventOutboxDAL = eventOutboxDALFactory(db);
+  const eventOutboxRegistry = eventOutboxRegistryFactory();
+  eventOutboxRegistry.register(
+    alertEventConsumerFactory({
+      alertDAL,
+      alertEngine,
+      alertProviderRegistry
+    })
+  );
+  const eventOutboxService = eventOutboxServiceFactory({ eventOutboxDAL, eventOutboxRegistry });
+  const eventOutboxQueue = eventOutboxQueueFactory({
+    queueService,
+    cronJob,
+    eventOutboxRegistry,
+    eventOutboxDAL,
+    eventOutboxService
+  });
+
   const alertChannelService = alertChannelServiceFactory({
     alertChannelDAL,
     alertChannelRecipientDAL,
@@ -2681,6 +2704,7 @@ export const registerRoutes = async (
   });
 
   const identityTokenAuthService = identityTokenAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     permissionService,
@@ -2692,6 +2716,7 @@ export const registerRoutes = async (
   });
 
   const identityUaService = identityUaServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     permissionService,
     identityUaClientSecretDAL,
@@ -2704,6 +2729,7 @@ export const registerRoutes = async (
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityKubernetesAuthDAL,
     identityAuthTemplateDAL,
@@ -2723,6 +2749,7 @@ export const registerRoutes = async (
     identityAccessTokenService
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityGcpAuthDAL,
     orgDAL,
@@ -2735,6 +2762,7 @@ export const registerRoutes = async (
   });
 
   const identityAliCloudAuthService = identityAliCloudAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityAccessTokenDAL,
     orgDAL,
@@ -2747,6 +2775,7 @@ export const registerRoutes = async (
   });
 
   const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityAccessTokenDAL,
     identityTlsCertAuthDAL,
@@ -2760,6 +2789,7 @@ export const registerRoutes = async (
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityAccessTokenDAL,
     orgDAL,
@@ -2772,6 +2802,7 @@ export const registerRoutes = async (
   });
 
   const identityAzureAuthService = identityAzureAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityAzureAuthDAL,
     orgDAL,
@@ -2784,6 +2815,7 @@ export const registerRoutes = async (
   });
 
   const identityOciAuthService = identityOciAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityAccessTokenDAL,
     orgDAL,
@@ -2811,6 +2843,7 @@ export const registerRoutes = async (
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityOidcAuthDAL,
     identityAuthTemplateDAL,
@@ -2825,6 +2858,7 @@ export const registerRoutes = async (
   });
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identityJwtAuthDAL,
     orgDAL,
@@ -2838,6 +2872,7 @@ export const registerRoutes = async (
   });
 
   const identitySpiffeAuthService = identitySpiffeAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityDAL,
     identitySpiffeAuthDAL,
     orgDAL,
@@ -2851,6 +2886,7 @@ export const registerRoutes = async (
   });
 
   const identityLdapAuthService = identityLdapAuthServiceFactory({
+    eventEmitter: eventOutboxService,
     identityLdapAuthDAL,
     orgDAL,
     permissionService,
@@ -4124,6 +4160,7 @@ export const registerRoutes = async (
   usageEventQueue.init();
   healthAlert.init();
   alertQueue.init();
+  eventOutboxQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pkiSyncHealthCheckQueue.init();
@@ -4520,6 +4557,7 @@ export const registerRoutes = async (
     cronJobs.forEach((job) => job.stop());
     await cronJob.stop();
     await workerHeartbeat.stop();
+    await eventOutboxQueue.shutdown();
     await telemetryService.flushAll();
     await eventBusService.close();
     await projectEventsSSEService.close();
