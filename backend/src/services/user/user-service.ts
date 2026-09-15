@@ -648,24 +648,34 @@ export const userServiceFactory = ({
   // route already proves membership of this org, so no permission check is needed.
   //
   // Removing a factor is never gated on that same factor, since the usual reason to
-  // remove one is that it was lost. The strongest other configured factor stands in,
-  // falling back to the required method when nothing else is set up (e.g. no SMTP on
-  // a self-hosted instance). The exception is a factor some accepted org enforces:
-  // that org has ruled the alternatives insufficient, so the factor itself is still
-  // challenged and a lost device is recovered via recovery-code login instead. Every
-  // org is checked, not only the current context, so org switching cannot bypass it.
-  const getStepUpMfaMethod = async (userId: string, orgId: string, excludeMethod?: MfaMethod): Promise<MfaMethod> => {
+  // remove one is that it was lost. Another configured factor stands in, falling back
+  // to the required method when nothing else is set up (e.g. no SMTP on a self-hosted
+  // instance). The exception is a factor some accepted org enforces: that org has ruled
+  // the alternatives insufficient, so the factor itself is still challenged and a lost
+  // device is recovered via recovery-code login instead. Every org is checked, not only
+  // the current context, so org switching cannot bypass it.
+  //
+  // `accepted` lists every method a prior proof may carry for this action: the required
+  // method always, plus the substitute when one is challenged. A proof of the substitute
+  // must not be honoured by actions that would never have challenged it.
+  const getStepUpMfaMethod = async (
+    userId: string,
+    orgId: string,
+    excludeMethod?: MfaMethod
+  ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] }> => {
     const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
     const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
-    if (!user || !excludeMethod) return requiredMfaMethod;
+    const asRequired = { challenge: requiredMfaMethod, accepted: [requiredMfaMethod] };
+    if (!user || !excludeMethod || requiredMfaMethod !== excludeMethod) return asRequired;
 
     const enforcingOrgs = await findMfaEnforcingOrgs(userId);
     if (enforcingOrgs.some((enforcingOrg) => (enforcingOrg.selectedMfaMethod ?? MfaMethod.EMAIL) === excludeMethod)) {
-      return excludeMethod;
+      return asRequired;
     }
-    if (requiredMfaMethod !== excludeMethod) return requiredMfaMethod;
 
-    return (await findReplacementMfaMethod(user, excludeMethod)) ?? requiredMfaMethod;
+    const replacement = await findReplacementMfaMethod(user, excludeMethod);
+    if (!replacement) return asRequired;
+    return { challenge: replacement, accepted: [requiredMfaMethod, replacement] };
   };
 
   const deleteUser = async (userId: string) => {
