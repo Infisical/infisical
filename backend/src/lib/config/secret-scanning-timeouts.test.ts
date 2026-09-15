@@ -161,7 +161,7 @@ describe("deprecation warning", () => {
     parse({});
 
     expect(warn).toHaveBeenCalledWith(
-      "SECRET_SCANNING_SCAN_TIMEOUT_MS is deprecated, use SECRET_SCANNING_SCAN_TIMEOUT instead"
+      "Warning: The environment variable SECRET_SCANNING_SCAN_TIMEOUT_MS has been deprecated. Please use SECRET_SCANNING_SCAN_TIMEOUT instead."
     );
   });
 

@@ -86,7 +86,9 @@ const zodTimeoutMs = ({
         const legacyValue = legacyMsEnvVar ? process.env[legacyMsEnvVar]?.trim() || undefined : undefined;
         // the singleton logger is undefined on the first parse, which happens during telemetry setup
         if (legacyValue) {
-          (rootLogger ?? console).warn(`${legacyMsEnvVar} is deprecated, use ${envVar} instead`);
+          (rootLogger ?? console).warn(
+            `Warning: The environment variable ${legacyMsEnvVar} has been deprecated. Please use ${envVar} instead.`
+          );
         }
 
         const raw = val ?? legacyValue ?? defaultValue;
