@@ -68,7 +68,6 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
 
     const tags = React.useMemo(() => [...value], [value]);
 
-    // Returns false when the value was refused, so the caller can keep focus where it is.
     const commit = (raw: string) => {
       const tag = raw.trim();
       if (!tag) {
@@ -138,8 +137,6 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         return;
       }
 
-      // Everything from the refusal onward goes back into the draft rather than being dropped. A field
-      // with no separator has nothing to rejoin on, so a space keeps them visible and un-committable.
       setDraft(parts.slice(refusedFrom).join(separators[0] ?? " "));
     };
 
@@ -149,8 +146,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         items={NO_ITEMS}
         value={tags}
         onValueChange={onValueChange}
-        // The popup parts are never rendered, but the open state still drives aria-expanded and
-        // floating-ui's dismiss handlers, and it is what makes Base UI swallow Enter.
+        // No popup is rendered, but the open state still drives aria-expanded and makes Base UI swallow Enter.
         open={false}
         onOpenChange={() => {}}
         openOnInputClick={false}
@@ -165,7 +161,6 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
           className={cn(
             COMBOBOX_CHIPS_CLASS,
             "items-start",
-            // No trailing control to leave room for, unlike Combobox's clear button and chevron.
             tags.length > 0 ? "p-1" : "px-2.5 py-1",
             className
           )}
@@ -183,9 +178,8 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
                 {!isDisabled && (
                   <ComboboxPrimitive.ChipRemove
                     aria-label={`Remove ${tag}`}
-                    // Removal is Base UI's: ChipRemove filters the value and the controlled Root calls
-                    // onValueChange. Doing it here too would fire the caller's handler twice for one
-                    // click. Adding is ours, in `commit`, because there is no options list to select from.
+                    // Removal is Base UI's, through the controlled Root. Doing it here too would fire the
+                    // caller's handler twice. Adding is ours, in `commit`, since there is no options list.
                     onClick={() => onValidationError?.(null)}
                     className={COMBOBOX_CHIP_REMOVE_CLASS}
                   >

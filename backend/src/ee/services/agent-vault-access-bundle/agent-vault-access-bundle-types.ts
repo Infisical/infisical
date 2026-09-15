@@ -62,7 +62,6 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   name: string;
   hostPattern: string;
-  // null and undefined both mean unrestricted on create; the column stores null.
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   credential: TAgentVaultCredentialInput;
@@ -75,11 +74,9 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   serviceId: string;
   name?: string;
   hostPattern?: string;
-  // undefined leaves the restriction alone, null clears it.
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
-  // undefined leaves the list alone; an array replaces it wholesale.
   customHeaders?: TAgentVaultCustomHeaderUpdate[];
   substitutions?: TAgentVaultSubstitutionUpdate[];
 };

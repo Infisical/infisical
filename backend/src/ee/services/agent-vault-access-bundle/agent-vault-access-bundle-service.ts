@@ -324,9 +324,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
-  // Every service route answers with this shape. Building it by hand rather than spreading the row is what
-  // keeps `encryptedCredential` and the sealed transformation values off the wire even if the response
-  // schema is later loosened.
+  // Built by hand rather than spread, so the sealed columns stay off the wire even if the response schema is
+  // later loosened.
   const projectService = (
     service: TAgentVaultServices,
     customHeaders: TAgentVaultServiceCustomHeaders[],
@@ -356,8 +355,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return { customHeaders, substitutions };
   };
 
-  // The header a credential actually occupies. Basic has no header name in its config but the proxy always
-  // writes Authorization, so a custom header there would overwrite the credential just the same.
+  // Basic has no header name in its config, but the proxy always writes Authorization.
   const credentialHeaderName = (credentialType: AgentVaultCredentialType, headerName?: string): string | null => {
     switch (credentialType) {
       case AgentVaultCredentialType.Bearer:
@@ -369,10 +367,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
-  // The proxy writes the credential last, so a collision costs the custom header rather than the token.
-  // Refusing it on write is what tells the author, instead of leaving a header that silently does nothing.
-  // Both halves of a PATCH can introduce one: a credential-only body can move the bearer onto a name a
-  // stored custom header already holds, and a custom-headers-only body never reaches mergeCredential.
+  // The proxy writes the credential last, so a collision costs the header rather than the token; refusing it
+  // on write is what tells the author. Either half of a PATCH can introduce one, which is why both are read.
   const assertCustomHeadersDoNotShadowCredential = (
     config: TAgentVaultCredentialConfig,
     customHeaders: { name: string }[] | undefined
@@ -428,8 +424,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
 
     const services = await agentVaultServiceDAL.findByAccessBundleId(bundle.id);
-    // Two queries for every service in the bundle rather than per service, and never a join: a join would
-    // multiply the service rows by their header and substitution counts.
     const { customHeaders, substitutions } = await loadTransformations(services.map((service) => service.id));
     const members = isAdmin
       ? await agentVaultAccessBundleDAL.findMembers({ projectId: dto.projectId, accessBundleId: bundle.id })
@@ -734,7 +728,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       effectiveCredentialConfig = config;
     }
 
-    // Sealing sits outside the transaction for the same reason the credential's does: KMS is a network call.
     const cipherForTransformations =
       customHeaders?.length || substitutions?.length ? await getProjectCipher(rest.projectId) : null;
     const seal = (value: string) =>
@@ -745,9 +738,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         id: header.id,
         naturalKey: header.name.toLowerCase(),
         label: header.name,
-        // Unlike `value`, an omitted prefix is cleared rather than kept. A prefix is readable in the
-        // response, so a caller editing one row can resend it; a sealed value cannot be read back at all,
-        // which is the only reason that one needs keep-if-omitted.
+        // An omitted prefix is cleared, not kept: it comes back in the response so a caller can resend it,
+        // which is the thing a sealed value can never do.
         columns: { name: header.name, prefix: header.prefix ?? "" },
         encryptedValue: header.value === undefined ? undefined : seal(header.value)
       })
@@ -777,11 +769,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           await checkHostPatternConflicts({ accessBundleId: bundle.id, hostPattern, excludeServiceId: service.id }, tx);
         }
 
-        // Under the lock and on the primary, both halves of it: the stored header names, and the stored
-        // credential when a custom-headers-only body leaves that one to the row. The service read above the
-        // transaction came off a replica, and stale by a concurrent write that moved the credential onto a
-        // new header name it would admit exactly the collision this check exists to stop. Runs whether the
-        // credential, the custom headers, or both arrived.
+        // Both halves read under the lock and on the primary. The service read above the transaction came off
+        // a replica, and stale it would admit the very collision this check exists to stop.
         if (credential || customHeaders) {
           const effectiveCustomHeaders =
             customHeaders ??
@@ -818,8 +807,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             )
           : service;
 
-        // Read the stored rows under the lock. Outside it, two concurrent PATCHes would both pass the
-        // ownership check and the loser's updates would silently no-op.
+        // Outside the lock, two concurrent PATCHes both pass the ownership check and the loser's writes no-op.
         const applyDiff = async <TRow extends { id: string; encryptedValue: Buffer }, TColumns>(
           dal: {
             findByServiceIds: (ids: string[], tx?: Knex) => Promise<TRow[]>;
@@ -848,8 +836,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             ? await dal.insertMany(plan.creates.map((row) => ({ ...row, serviceId: service.id })) as never[], tx)
             : [];
 
-          // Built from the plan rather than re-read. The plan is what was just written, and a second
-          // SELECT per list is two more statements held under the bundle lock for nothing.
           const updatedById = new Map(plan.updates.map((update) => [update.id, update.columns]));
           const survivors = existing
             .filter((row) => !plan.deleteIds.includes(row.id))
@@ -901,8 +887,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const service = await agentVaultServiceDAL.findOne({ id: serviceId, accessBundleId: bundle.id });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
-    // Read before the delete, since CASCADE takes the rows with the service. The response is a snapshot of
-    // what was removed either way.
+    // Read before the delete, since CASCADE takes these rows with the service.
     const { customHeaders, substitutions } = await loadTransformations([service.id]);
     const deleted = await agentVaultServiceDAL.deleteById(service.id);
     return projectService(deleted, customHeaders, substitutions);

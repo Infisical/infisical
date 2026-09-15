@@ -1,34 +1,20 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-// The grammar is mirrored in the CLI (packages/agentvault/policy.go), which does the matching at runtime.
-// A change to the rules here needs the same change there.
-//
-// A prefix is compared against the request's escaped path, byte for byte, and never against a decoded one.
-// `agent-vault-host-pattern.ts` rejects paths in a host pattern because the matcher would compare the
-// decoded path while the upstream receives the escaped one; that objection still stands, and this filter
-// sidesteps it by not decoding. What makes that safe is the second half of the rule, in the proxy: a
-// path-restricted service refuses outright any request whose path would have to be normalised to judge.
-// So the filter never allows a path whose meaning depends on the upstream's decoder.
+// The grammar of record. packages/agentvault/policy.go does the matching at runtime and reimplements these
+// rules, so a change here needs the same change there.
 
 export const AGENT_VAULT_MAX_PATH_PREFIX_LENGTH = 512;
 export const AGENT_VAULT_MAX_PATH_PREFIXES = 20;
 
-// An allowlist rather than a blocklist, because the prefix is compared against the request's escaped path
-// and only these characters survive that encoding unchanged. Everything else is percent-encoded on the way
-// out, so a prefix carrying one could never match: `/café` is compared against `/caf%C3%A9` and a prefix
-// written `/repos/{owner}` against `/repos/%7Bowner%7D`. `[`, `]`, `!`, `'`, `(`, `)` and `*` are worse
-// still, surviving or not depending on what the rest of the request path happens to contain.
-//
-// The characters this leaves out for their own reasons: '%' so the byte comparison stays exact, ';' and
-// '\' because servers disagree about them (Tomcat and Jetty strip `;params` per segment, IIS reads '\'
-// as '/'), and '?' and '#' because both end the path.
+// An allowlist, because a prefix is compared against the escaped path and only these survive that encoding:
+// `/café` would be judged against `/caf%C3%A9` and could never match. '%' is left out so the comparison stays
+// exact, ';' and '\' because servers disagree about them, '?' and '#' because both end the path.
 const PATH_PREFIX_RE = new RE2(/^\/[A-Za-z0-9\-._~$&+,/:=@]*$/);
 
 const hasTraversalSegment = (value: string) => value.split("/").some((segment) => segment === "." || segment === "..");
 
-// '/' is the one prefix that keeps its trailing slash: stripping it would leave an empty string, which
-// violates the grammar and would no longer mean "every path".
+// '/' keeps its trailing slash: stripping it would leave an empty string, which means nothing.
 export const normalizePathPrefix = (value: string) => {
   const trimmed = value.trim();
   if (trimmed === "/") return trimmed;
@@ -48,8 +34,7 @@ const pathPrefixError = (raw: string) => {
   return null;
 };
 
-// No `.max()` here: pathPrefixError already measures the length and says so in the product's own words,
-// and Zod's check would fire alongside it, answering an over-long prefix with two messages.
+// No `.max()`: pathPrefixError measures the length itself, and Zod's check would fire alongside it.
 export const pathPrefixSchema = z
   .string()
   .trim()
@@ -59,9 +44,8 @@ export const pathPrefixSchema = z
   })
   .transform(normalizePathPrefix);
 
-// NULL is the only "every path": an empty array would be a second representation of it, and the proxy
-// would have to treat the two the same. `.nullable()` without `.optional()` so a PATCH omitting the field
-// leaves the column alone while an explicit null clears it.
+// NULL is the only "every path", so the proxy never has two representations to treat alike. `.nullable()`
+// without `.optional()`, so a PATCH omitting the field leaves the column alone and an explicit null clears it.
 export const agentVaultPathPrefixListSchema = z
   .array(pathPrefixSchema)
   .min(1, "Add at least one path prefix, or leave this unset to allow every path.")

@@ -390,8 +390,6 @@ export const agentVaultProxyServiceFactory = ({
     ]);
 
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
-    // a kms_keys read (or an external KMS round trip) per resolve for nothing. Transformations are always
-    // sealed, so one of them is reason enough on its own.
     const hasSealedValue =
       rows.some((row) => row.encryptedCredential) || customHeaderRows.length > 0 || substitutionRows.length > 0;
     const decryptor = hasSealedValue

@@ -79,8 +79,6 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
   const schema = useMemo(() => buildServiceSchema(service), [service]);
 
   const formMethods = useForm<TServiceForm>({
-    // Without these every value is undefined until the open effect resets, and the repeating lists read
-    // .includes() on mount.
     defaultValues: BLANK_SERVICE_FORM,
     resolver: zodResolver(schema)
   });
@@ -160,8 +158,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
 
     if (picked) {
       const cred = picked.credential;
-      // Some templates carry a placeholder such as <your-tenant>.atlassian.net, which is not a host. A
-      // part that would be refused as a chip goes into the draft instead, ready to be replaced.
+      // A template placeholder like <your-tenant>.atlassian.net is not a host, so it goes into the draft.
       const parts = picked.hostPattern.split(",").map((host) => host.trim());
 
       reset({
@@ -226,7 +223,6 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
     allowedPathPrefixes: data.pathPrefixes.length ? data.pathPrefixes : null
   });
 
-  // An untouched row sends no value at all, which the API reads as "keep what is stored".
   const buildTransformations = (data: TServiceForm) => ({
     customHeaders: data.customHeaders.map((header) => ({
       ...(header.id ? { id: header.id } : {}),
@@ -286,8 +282,6 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
       }
 
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
-        // A server issue whose path names a field maps back onto that field and jumps to its step, so the
-        // user sees what to fix instead of a toast with the form parked on Review.
         const STEP_OF_FIELD: Record<string, ServiceStep> = {
           name: ServiceStep.Details,
           hostPattern: ServiceStep.Details,
@@ -316,7 +310,6 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
             return;
           }
 
-          // Index-addressed issues (customHeaders.0.name) keep their path so the row's own field is marked.
           const target =
             issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
               ? (issue.path.join(".") as keyof TServiceForm)

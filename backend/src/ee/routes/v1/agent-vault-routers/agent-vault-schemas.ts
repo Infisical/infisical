@@ -138,8 +138,6 @@ export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
 export const AgentVaultAllowedMethodsSchema = z
   .array(z.nativeEnum(AgentVaultHttpMethod))
   .min(1, "Pick at least one method, or leave this unset to allow every method.")
-  // The enum bounds the distinct values, not the array length, and every element is validated before
-  // the dedupe below runs.
   .max(Object.keys(AgentVaultHttpMethod).length)
   .transform((methods) => [...new Set(methods)])
   .nullable()

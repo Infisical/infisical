@@ -1,9 +1,7 @@
 /**
- * The chips-field shell, shared by `Combobox`'s multiple mode and `TagsInput`.
- *
- * Both are composed from the same Base UI combobox parts, so the moment these class strings live in
- * two files the two fields start drifting apart. Layout that is genuinely per-consumer — the container
- * padding, which depends on whether a trailing control is rendered — stays at the call site.
+ * The chips-field shell, shared by `Combobox`'s multiple mode and `TagsInput`. Both are built from the same
+ * Base UI parts, so the two drift apart the moment these strings live in two files. Per-consumer layout, the
+ * container padding, stays at the call site.
  */
 
 export const COMBOBOX_CHIPS_CLASS = [

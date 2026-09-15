@@ -2,10 +2,7 @@ import { BadRequestError } from "@app/lib/errors";
 
 type TStoredRow = { id: string; encryptedValue: Buffer };
 
-/**
- * One incoming row, already validated and with its secret sealed. `encryptedValue` is undefined when the
- * caller omitted the value, which means "keep whatever is stored".
- */
+/** `encryptedValue` is undefined when the caller omitted the value, which means "keep whatever is stored". */
 export type TTransformationWrite<TColumns> = {
   id?: string;
   naturalKey: string;
@@ -21,9 +18,7 @@ export type TTransformationPlan<TColumns> = {
   deleteIds: string[];
 };
 
-// A shallow compare against the stored row. `encryptedValue` is only ever present here when the caller
-// supplied a new value, and a re-seal of the same plaintext produces different bytes, so its presence
-// always means "changed".
+// A re-seal of the same plaintext produces different bytes, so the presence of encryptedValue means changed.
 const isUnchanged = (stored: Record<string, unknown>, columns: Record<string, unknown>) =>
   Object.entries(columns).every(([key, value]) => {
     if (key === "encryptedValue") return false;
@@ -35,12 +30,9 @@ const isUnchanged = (stored: Record<string, unknown>, columns: Record<string, un
   });
 
 /**
- * Resolves each incoming row to a stored one, by `id` when the caller sent one and otherwise by the row's
- * natural key (a header's name, a substitution's placeholder), both unique per service. That is what lets
- * a hand-written API call edit one row without first fetching the service for its ids.
- *
- * Ids are claimed in a first pass so that swapping two rows' names resolves the way the caller meant:
- * with one pass, the second row could claim the stored row the first had already been given by id.
+ * Resolves each incoming row to a stored one by `id`, and otherwise by its natural key, which is what lets a
+ * hand-written call edit one row without first fetching the service for its ids. Ids are claimed in a first
+ * pass, or swapping two rows' names would let the second claim the row the first was already given.
  */
 export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
   existing,
@@ -60,8 +52,6 @@ export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
   incoming.forEach((row, index) => {
     if (!row.id) return;
     const stored = byId.get(row.id);
-    // A cross-service id is a 404-shaped mistake, but the caller is editing a service they can already
-    // reach, so naming the row is the useful error rather than a leak.
     if (!stored) {
       throw new BadRequestError({ message: `No ${subject} with ID '${row.id}' belongs to this service` });
     }
@@ -97,8 +87,6 @@ export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
         position: index,
         ...(row.encryptedValue ? { encryptedValue: row.encryptedValue } : {})
       };
-      // A row nobody changed still costs a statement inside the bundle lock, and the common edit touches
-      // one row out of however many the service has.
       if (!isUnchanged(stored, columns)) plan.updates.push({ id: stored.id, columns });
       return;
     }

@@ -100,9 +100,8 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
     .object({
       name: slugSchema({ max: 64, field: "Name" }),
       hosts: z.array(z.string()),
-      // The half-typed value in each chip field. It lives in the form rather than in component state so
-      // that the resolver sees it: trigger() re-runs the schema and wipes anything set with setError, so a
-      // refusal held outside the form would let the step advance and take the text with it.
+      // In the form rather than component state so the resolver sees it: trigger() wipes anything set with
+      // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
       pathDraft: z.string(),
       credentialType: z.nativeEnum(AgentVaultCredentialType),
@@ -146,8 +145,6 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
     })
     .superRefine((data, ctx) => {
       addHostIssues(data.hosts, ctx, ["hosts"]);
-      // Blur commits a valid draft, so anything still sitting here was refused and has a reason. React
-      // Hook Form surfaces the first issue per field, and that reason is more use than "add a host".
       const hostDraft = data.hostDraft.trim();
       if (hostDraft) {
         ctx.addIssue({
@@ -197,8 +194,7 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
         credentialHeader = "Authorization";
       }
 
-      // The same reserved names the custom headers below are held to. Basic always writes Authorization,
-      // which is not one of them, so only a bearer credential can name one.
+      // Basic always writes Authorization, which is not reserved, so only bearer can name one.
       if (
         data.credentialType === AgentVaultCredentialType.Bearer &&
         data.headerName &&

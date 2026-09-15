@@ -427,7 +427,6 @@ describe("Agent Vault V1 Router", async () => {
         service: { id: string; allowedMethods: string[]; allowedPathPrefixes: string[] };
       };
       expect(service.allowedMethods).toEqual(["GET", "HEAD"]);
-      // A trailing slash is normalised away so /repos/ and /repos are one prefix.
       expect(service.allowedPathPrefixes).toEqual(["/repos", "/user"]);
 
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
@@ -440,7 +439,6 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(cleared.payload).service.allowedMethods).toBeNull();
       expect(JSON.parse(cleared.payload).service.allowedPathPrefixes).toBeNull();
 
-      // NULL is the only "unrestricted", so an empty list is refused rather than stored as a second one.
       expect((await inject("PATCH", url, { allowedMethods: [] })).statusCode).toBe(422);
       expect((await inject("PATCH", url, { allowedPathPrefixes: [] })).statusCode).toBe(422);
     });
@@ -500,7 +498,6 @@ describe("Agent Vault V1 Router", async () => {
       const removed = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`);
       expect(removed.statusCode).toBe(200);
       expect(removed.payload).not.toContain("org_secret_value");
-      // The delete response still reports what was removed, read before the cascade.
       expect(JSON.parse(removed.payload).service.customHeaders).toHaveLength(1);
       expect(await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id })).toHaveLength(0);
     });
@@ -524,7 +521,6 @@ describe("Agent Vault V1 Router", async () => {
           .encryptedValue as Buffer;
       const before = await sealed();
 
-      // By id, which is what the sheet sends, and the only way to rename while keeping the secret.
       const renamed = await inject("PATCH", url, {
         customHeaders: [{ id: customHeaderId, name: "X-Organization-Id" }]
       });
@@ -533,20 +529,17 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(renamed.payload).service.customHeaders[0].name).toBe("X-Organization-Id");
       expect((await sealed()).equals(before)).toBe(true);
 
-      // By name, with no id at all, which is what a hand-written API call looks like.
       const byName = await inject("PATCH", url, { customHeaders: [{ name: "X-Organization-Id", prefix: "Token" }] });
       expect(byName.statusCode).toBe(200);
       expect(JSON.parse(byName.payload).service.customHeaders[0].id).toBe(customHeaderId);
       expect(JSON.parse(byName.payload).service.customHeaders[0].prefix).toBe("Token");
       expect((await sealed()).equals(before)).toBe(true);
 
-      // A name nothing matches is a create, so it needs a value.
       const newRowNoValue = await inject("PATCH", url, {
         customHeaders: [{ name: "X-Organization-Id" }, { name: "X-New" }]
       });
       expect(newRowNoValue.statusCode).toBe(400);
 
-      // The same id twice would resolve both rows to one and silently drop the first.
       const duplicateId = await inject("PATCH", url, {
         customHeaders: [
           { id: customHeaderId, name: "X-A", value: "a" },
@@ -555,7 +548,6 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(duplicateId.statusCode).toBe(400);
 
-      // A row the caller left out is removed.
       const emptied = await inject("PATCH", url, { customHeaders: [] });
       expect(emptied.statusCode).toBe(200);
       expect(JSON.parse(emptied.payload).service.customHeaders).toHaveLength(0);
@@ -584,18 +576,15 @@ describe("Agent Vault V1 Router", async () => {
       const { service } = JSON.parse(created.payload) as { service: { id: string } };
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
 
-      // A headers-only PATCH never reaches mergeCredential, so the check cannot live only there.
       const headersOnly = await inject("PATCH", url, { customHeaders: [{ name: "X-Api-Key", value: "shadow" }] });
       expect(headersOnly.statusCode).toBe(400);
 
-      // And a credential-only PATCH carries no header name in the body, so the check cannot read the body.
       const credentialOnly = await inject("PATCH", url, {
         credential: { type: "bearer", headerName: "X-Org-Id" }
       });
       expect(credentialOnly.statusCode).toBe(400);
       expect(JSON.parse(credentialOnly.payload).message).toContain("X-Org-Id");
 
-      // Basic writes Authorization even though its config names no header.
       const basicClash = await inject("PATCH", url, {
         credential: { type: "basic", username: "u", password: "p" },
         customHeaders: [{ name: "Authorization", value: "shadow" }]
@@ -613,8 +602,6 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(res.statusCode).toBe(422);
 
-      // The credential's own header name is held to the same list. It was not, for a while: the two
-      // validations were written out separately and only the custom header one grew the check.
       const asCredential = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         name: "reserved-credential",
         hostPattern: "api.reserved-credential.example.com",
@@ -1157,7 +1144,6 @@ describe("Agent Vault V1 Router", async () => {
       expect(proxyRes.statusCode).toBe(200);
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
 
-      // The envelope every sealed value uses, so one stub serves the credential and both transformations.
       const resolver = agentVaultProxyServiceFactory({
         agentVaultProxyDAL: agentVaultProxyDALFactory(testDb),
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),

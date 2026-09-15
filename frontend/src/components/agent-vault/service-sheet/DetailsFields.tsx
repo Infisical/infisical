@@ -56,10 +56,6 @@ export const DetailsFields = () => {
                       if (fieldState.error) clearErrors("hosts");
                     }}
                     validateTag={hostError}
-                    // The schema already turns a stuck draft into the reason it was refused, so running
-                    // it is cheaper than keeping a second copy of the message in component state. Only on
-                    // a refusal: a successful commit clears the draft a render later, and validating in
-                    // between would read the value that just became a chip.
                     onValidationError={(reason) =>
                       reason ? trigger("hosts") : clearErrors("hosts")
                     }

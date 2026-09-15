@@ -48,7 +48,6 @@ export type TResolvedService = {
   name: string;
   accessBundleName: string;
   hostPattern: string;
-  // null means unrestricted. The proxy enforces both and answers a violation with a 403.
   allowedMethods: string[] | null;
   allowedPathPrefixes: string[] | null;
   credential:
