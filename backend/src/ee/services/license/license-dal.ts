@@ -191,8 +191,9 @@ export const licenseDALFactory = (db: TDbClient) => {
   // created. Seats are held by membership (an identity can sit in many projects), so grouping on
   // membership would count one identity several times; identities.projectId is a single column, so
   // grouping on ownership partitions the billed total exactly once across the tree.
+  // orgId null means the whole instance, matching countBillableOrgActors and the meter it feeds.
   const getBillableIdentityOwnershipBreakdown = async (
-    orgId: string,
+    orgId: string | null,
     tx?: Knex
   ): Promise<TBillableIdentityOwnershipRow[]> => {
     try {

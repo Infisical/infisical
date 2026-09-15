@@ -391,9 +391,15 @@ export type BillingV2UsageBreakdown = {
   scopes: BillingV2BreakdownScope[];
 };
 
+export enum BillingV2BreakdownScopeKind {
+  Instance = "instance",
+  Organization = "organization"
+}
+
 export type TGetBillingV2UsageBreakdownDTO = {
   orgId: string;
   actor: OrgServiceActor;
   dimensionKey: TBillingV2BreakdownDimension;
   isInstanceAdmin?: boolean;
+  scope?: BillingV2BreakdownScopeKind;
 };

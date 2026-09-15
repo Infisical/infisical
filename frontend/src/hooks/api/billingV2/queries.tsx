@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
+  BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2OrganizationsPage,
   BillingV2Overview,
@@ -14,8 +15,8 @@ type BillingV2OrganizationsParams = { search?: string; limit?: number; offset?: 
 export const billingV2Keys = {
   overview: (orgId: string) => [{ orgId }, "billing-v2-overview"] as const,
   catalog: (orgId: string) => [{ orgId }, "billing-v2-catalog"] as const,
-  usageBreakdown: (orgId: string, dimensionKey: string) =>
-    [{ orgId, dimensionKey }, "billing-v2-usage-breakdown"] as const,
+  usageBreakdown: (orgId: string, dimensionKey: string, scope: BillingV2BreakdownScopeKind) =>
+    [{ orgId, dimensionKey, scope }, "billing-v2-usage-breakdown"] as const,
   organizations: (orgId: string, { search, ...rest }: BillingV2OrganizationsParams) =>
     [{ orgId, search: search || undefined, ...rest }, "billing-v2-organizations"] as const
 };
@@ -52,14 +53,19 @@ export const useGetBillingV2Catalog = (orgId: string) => {
   });
 };
 
-export const useGetBillingV2UsageBreakdown = (orgId: string, dimensionKey: string | null) => {
+export const useGetBillingV2UsageBreakdown = (
+  orgId: string,
+  dimensionKey: string | null,
+  scope: BillingV2BreakdownScopeKind = "organization"
+) => {
   return useQuery({
-    queryKey: billingV2Keys.usageBreakdown(orgId, dimensionKey ?? ""),
+    queryKey: billingV2Keys.usageBreakdown(orgId, dimensionKey ?? "", scope),
     queryFn: async () => {
       const {
         data: { breakdown }
       } = await apiRequest.get<{ breakdown: BillingV2UsageBreakdown }>(
-        `/api/v1/organizations/${orgId}/billing/v2/breakdowns/${dimensionKey}`
+        `/api/v1/organizations/${orgId}/billing/v2/breakdowns/${dimensionKey}`,
+        { params: { scope } }
       );
 
       return breakdown;

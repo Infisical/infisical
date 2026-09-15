@@ -30,6 +30,7 @@ import { cn } from "@app/components/v3/utils";
 import {
   BillingV2BreakdownDimension,
   BillingV2BreakdownScope,
+  BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2Entitlement,
   BillingV2UsageBreakdown,
@@ -182,13 +183,21 @@ const BreakdownSkeleton = () => (
   </div>
 );
 
-const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) => {
+const BreakdownBody = ({
+  breakdown,
+  scopeKind
+}: {
+  breakdown: BillingV2UsageBreakdown;
+  scopeKind: BillingV2BreakdownScopeKind;
+}) => {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOrder>("count");
 
   const { total, userCount, scopedCount, unit, hasProjectDetail, scopes } = breakdown;
   const unitLabel = pluralizeUnit(unit);
-  const totalLabel = userCount > 0 ? "unique identities" : unitLabel;
+  const isInstanceScope = scopeKind === "instance";
+  const totalNoun = userCount > 0 ? "unique identities" : unitLabel;
+  const totalLabel = isInstanceScope ? totalNoun : `${totalNoun} from this organization`;
   const rootScope = scopes.find((scope) => scope.isRoot);
   const subOrgScopes = useMemo(() => scopes.filter((scope) => !scope.isRoot), [scopes]);
   const subOrgCount = subOrgScopes.reduce((sum, scope) => sum + scope.count, 0);
@@ -367,6 +376,7 @@ const BreakdownBody = ({ breakdown }: { breakdown: BillingV2UsageBreakdown }) =>
 
 type UsageBreakdownSheetProps = {
   orgId: string;
+  scope: BillingV2BreakdownScopeKind;
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
   onClose: () => void;
@@ -374,6 +384,7 @@ type UsageBreakdownSheetProps = {
 
 export const UsageBreakdownSheet = ({
   orgId,
+  scope,
   prod,
   entitlement,
   onClose
@@ -386,7 +397,7 @@ export const UsageBreakdownSheet = ({
     data: breakdown,
     isPending,
     isError
-  } = useGetBillingV2UsageBreakdown(orgId, activeDim?.key ?? null);
+  } = useGetBillingV2UsageBreakdown(orgId, activeDim?.key ?? null, scope);
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
@@ -426,7 +437,7 @@ export const UsageBreakdownSheet = ({
             </Empty>
           )}
 
-          {breakdown && !isError && <BreakdownBody breakdown={breakdown} />}
+          {breakdown && !isError && <BreakdownBody breakdown={breakdown} scopeKind={scope} />}
         </div>
 
         <SheetFooter className="flex-row items-center justify-end border-t">

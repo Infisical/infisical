@@ -1,7 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { BillingV2BreakdownDimension } from "@app/ee/services/license-v2/license-v2-types";
+import { BillingV2BreakdownDimension, BillingV2BreakdownScopeKind } from "@app/ee/services/license-v2/license-v2-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -337,6 +337,14 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         organizationId: z.string().trim().uuid(),
         dimensionKey: z.nativeEnum(BillingV2BreakdownDimension).describe("The metered dimension to break down.")
       }),
+      querystring: z.object({
+        scope: z
+          .nativeEnum(BillingV2BreakdownScopeKind)
+          .default(BillingV2BreakdownScopeKind.Organization)
+          .describe(
+            "'instance' explains usage across the entire self-hosted licence; 'organization' explains one root organization's share of it."
+          )
+      }),
       response: {
         200: z.object({ breakdown: BillingV2UsageBreakdownSchema })
       }
@@ -347,7 +355,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         dimensionKey: req.params.dimensionKey,
         actor: buildActor(req.permission),
-        isInstanceAdmin: isSuperAdmin(req.auth)
+        isInstanceAdmin: isSuperAdmin(req.auth),
+        scope: req.query.scope
       });
     }
   });

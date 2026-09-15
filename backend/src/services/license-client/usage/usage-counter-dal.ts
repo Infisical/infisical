@@ -282,7 +282,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
   // identities.projectId is a single column and partitions the metered total exactly once.
   const getProjectIdentityOwnershipBreakdown = async (
     projectType: ProjectType,
-    orgId: string
+    orgId?: string
   ): Promise<TIdentityOwnershipRow[]> => {
     const rows = (await db
       .replicaNode()({ i: TableName.Identity })
@@ -317,7 +317,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countProjectIdentitiesByKindFor = async (projectType: ProjectType, orgId: string) => {
+  const countProjectIdentitiesByKindFor = async (projectType: ProjectType, orgId?: string) => {
     try {
       return await countProjectIdentitiesByKind(projectType, orgId);
     } catch (error) {
@@ -325,7 +325,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getProjectIdentityBreakdown = async (projectType: ProjectType, orgId: string) => {
+  const getProjectIdentityBreakdown = async (projectType: ProjectType, orgId?: string) => {
     try {
       return await getProjectIdentityOwnershipBreakdown(projectType, orgId);
     } catch (error) {
@@ -333,7 +333,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getInternalCaOrgBreakdown = async (orgId: string): Promise<TOrgUnitCountRow[]> => {
+  const getInternalCaOrgBreakdown = async (orgId?: string): Promise<TOrgUnitCountRow[]> => {
     try {
       const rows = (await $internalCas(orgId)
         .groupBy(`${TableName.Project}.orgId`)
@@ -353,7 +353,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
   // orgs is a single billable unit. Splitting that by org therefore needs each quotaKey attributed to
   // exactly one of them, else the parts sum past the billed total. The earliest issuance wins (org id
   // breaks a tie) so the attribution is stable between reads rather than shifting with row order.
-  const getActiveCertificateOrgBreakdown = async (orgId: string): Promise<TCertificateOrgUnitRow[]> => {
+  const getActiveCertificateOrgBreakdown = async (orgId?: string): Promise<TCertificateOrgUnitRow[]> => {
     try {
       const attributed = $activeQuotaCertificates(orgId)
         .whereNotNull(`${TableName.Certificate}.quotaKey`)

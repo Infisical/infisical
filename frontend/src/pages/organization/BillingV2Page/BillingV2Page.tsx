@@ -13,6 +13,7 @@ import {
 } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
+  BillingV2BreakdownScopeKind,
   useAddBillingV2PaymentMethod,
   useCreateBillingV2PortalSession,
   useGetBillingV2Catalog,
@@ -23,6 +24,7 @@ import {
 import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { RemoveProductModal } from "./components/RemoveProductModal";
+import { ALL_ORGS_VALUE } from "./components/RootOrgFilter";
 import { UsageBreakdownSheet } from "./components/UsageBreakdownSheet";
 import { catalogById } from "./billing-v2-format";
 // LOCAL PREVIEW ONLY — DO NOT COMMIT (see billing-v2-local-preview.ts).
@@ -56,11 +58,13 @@ export const BillingV2Page = () => {
     OrgPermissionSubjects.Billing
   );
 
+  const [breakdownScope, setBreakdownScope] = useState<BillingV2BreakdownScopeKind>("instance");
   const [selectedOrgId, setSelectedOrgId] = useState(orgId);
   const [lastOrgId, setLastOrgId] = useState(orgId);
   if (orgId !== lastOrgId) {
     setLastOrgId(orgId);
     setSelectedOrgId(orgId);
+    setBreakdownScope("instance");
   }
   // The picker searches server-side: the instance's root organizations are listed a page at a time,
   // so an organization past the page is reachable only by name. Short enough that the popup does not
@@ -254,8 +258,15 @@ export const BillingV2Page = () => {
               rootOrgs={pickerOrgs}
               rootOrgCount={rootOrgCount}
               isRootOrgsLoading={isRootOrgsFetching}
-              selectedOrgId={selectedOrgId}
-              onSelectOrg={setSelectedOrgId}
+              selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
+              onSelectOrg={(nextId) => {
+                if (nextId === ALL_ORGS_VALUE) {
+                  setBreakdownScope("instance");
+                  return;
+                }
+                setBreakdownScope("organization");
+                setSelectedOrgId(nextId);
+              }}
               onSearchOrgs={setOrgSearch}
               showOrgFilter={showOrgFilter}
               onUpdatePayment={onUpdatePayment}
@@ -290,6 +301,7 @@ export const BillingV2Page = () => {
       {flow?.type === "breakdown" && catalogById(catalog, flow.prodId) && (
         <UsageBreakdownSheet
           orgId={selectedOrgId}
+          scope={showOrgFilter ? breakdownScope : "organization"}
           prod={catalogById(catalog, flow.prodId)!}
           entitlement={overview?.entitlements[flow.prodId]}
           onClose={close}

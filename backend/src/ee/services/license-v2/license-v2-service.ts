@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { TLicenseClientFactory } from "@app/services/license-client";
@@ -25,6 +25,7 @@ import {
   BillingV2BreakdownDimension,
   BillingV2BreakdownProject,
   BillingV2BreakdownScope,
+  BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
   BillingV2CompareRow,
   BillingV2Deprecation,
@@ -917,16 +918,32 @@ export const licenseV2ServiceFactory = ({
       .sort((a, b) => Number(b.isRoot) - Number(a.isRoot) || b.count - a.count || a.name.localeCompare(b.name));
   };
 
-  const getUsageBreakdown = async ({ orgId, actor, dimensionKey, isInstanceAdmin }: TGetBillingV2UsageBreakdownDTO) => {
+  const getUsageBreakdown = async ({
+    orgId,
+    actor,
+    dimensionKey,
+    isInstanceAdmin,
+    scope: scopeKind = BillingV2BreakdownScopeKind.Organization
+  }: TGetBillingV2UsageBreakdownDTO) => {
     await ensureBillingRead(orgId, actor, isInstanceAdmin);
+
+    const isInstanceScope = scopeKind === BillingV2BreakdownScopeKind.Instance;
+    if (isInstanceScope && !canReadAcrossOrgs(isInstanceAdmin)) {
+      throw new ForbiddenRequestError({
+        message: "Instance-wide usage can only be read by an instance admin on a self-hosted instance."
+      });
+    }
 
     const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
-    const rootOrgId = await usageCounterDAL.resolveRootOrgId(orgId);
-    const orgs = await breakdownDAL.findOrgTreeNames(rootOrgId);
+    const rootOrgId = isInstanceScope ? null : await usageCounterDAL.resolveRootOrgId(orgId);
+    const scopeOrgId = rootOrgId ?? undefined;
+    const orgs = isInstanceScope
+      ? await breakdownDAL.findAllOrgNames()
+      : await breakdownDAL.findOrgTreeNames(rootOrgId as string);
 
     const buildIdentityBreakdown = async (
       counts: { users: number; identities: number },
@@ -976,8 +993,8 @@ export const licenseV2ServiceFactory = ({
         const projectType =
           dimensionKey === BillingV2BreakdownDimension.SecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
         const [counts, rows] = await Promise.all([
-          usageCounterDAL.countProjectIdentitiesByKindFor(projectType, rootOrgId),
-          usageCounterDAL.getProjectIdentityBreakdown(projectType, rootOrgId)
+          usageCounterDAL.countProjectIdentitiesByKindFor(projectType, scopeOrgId),
+          usageCounterDAL.getProjectIdentityBreakdown(projectType, scopeOrgId)
         ]);
         return {
           breakdown: await buildIdentityBreakdown(
@@ -1002,12 +1019,12 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.InternalCas: {
-        const rows = await usageCounterDAL.getInternalCaOrgBreakdown(rootOrgId);
+        const rows = await usageCounterDAL.getInternalCaOrgBreakdown(scopeOrgId);
         return { breakdown: buildOrgOnlyBreakdown(rows, "internal CA") };
       }
       case BillingV2BreakdownDimension.ActiveCerts:
       case BillingV2BreakdownDimension.WildcardCerts: {
-        const rows = await usageCounterDAL.getActiveCertificateOrgBreakdown(rootOrgId);
+        const rows = await usageCounterDAL.getActiveCertificateOrgBreakdown(scopeOrgId);
         const isWildcard = dimensionKey === BillingV2BreakdownDimension.WildcardCerts;
         return {
           breakdown: buildOrgOnlyBreakdown(

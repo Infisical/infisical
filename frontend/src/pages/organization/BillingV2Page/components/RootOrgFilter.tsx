@@ -11,6 +11,10 @@ import {
 } from "@app/components/v3";
 import { BillingV2Organization } from "@app/hooks/api";
 
+// The pinned row's id. Not a real organization, so it never collides with one and the page keys its
+// scope off it rather than off a parallel boolean the picker could drift from.
+export const ALL_ORGS_VALUE = "__all__";
+
 type RootOrgFilterProps = {
   orgs: BillingV2Organization[];
   value: string;
@@ -31,8 +35,11 @@ export const RootOrgFilter = ({
   totalCount,
   isLoading
 }: RootOrgFilterProps) => {
+  const allOrgsOption: BillingV2Organization = { id: ALL_ORGS_VALUE, name: "All organizations" };
+  const options = [allOrgsOption, ...orgs];
+
   const [lastSelected, setLastSelected] = useState<BillingV2Organization | null>(null);
-  const orgInPage = orgs.find((org) => org.id === value) ?? null;
+  const orgInPage = options.find((org) => org.id === value) ?? null;
   if (orgInPage && orgInPage.id !== lastSelected?.id) {
     setLastSelected(orgInPage);
   }
@@ -57,8 +64,9 @@ export const RootOrgFilter = ({
           searchPlaceholder="Search organizations..."
           searchAriaLabel="Search root organizations"
           isLoading={isLoading}
-          options={orgs}
+          options={options}
           value={selectedOrg}
+          getOptionGroup={(option) => (option.id === ALL_ORGS_VALUE ? "" : "Organizations")}
           onValueChange={(option) => onChange(option.id)}
           onSearchChange={onSearchChange}
           getOptionValue={(option) => option.id}

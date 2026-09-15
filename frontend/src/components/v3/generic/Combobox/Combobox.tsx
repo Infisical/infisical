@@ -228,10 +228,19 @@ const ComboboxList = <TOption,>({
       >
         {getOptionGroup
           ? (group: ComboboxGroup<TOption>) => (
-              <ComboboxPrimitive.Group key={group.value} items={group.items}>
-                <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
-                  {group.value}
-                </ComboboxPrimitive.GroupLabel>
+              <ComboboxPrimitive.Group
+                key={group.value}
+                items={group.items}
+                className={cn(
+                  group.value === "" && "border-b border-border pb-1",
+                  group.value === "" && "mb-1"
+                )}
+              >
+                {group.value !== "" && (
+                  <ComboboxPrimitive.GroupLabel className="px-2 py-1.5 text-xs font-medium text-muted">
+                    {group.value}
+                  </ComboboxPrimitive.GroupLabel>
+                )}
                 <ComboboxPrimitive.Collection>{renderItem}</ComboboxPrimitive.Collection>
               </ComboboxPrimitive.Group>
             )

@@ -22,6 +22,7 @@ export {
 export type {
   BillingV2BreakdownProject,
   BillingV2BreakdownScope,
+  BillingV2BreakdownScopeKind,
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2CommitmentChange,

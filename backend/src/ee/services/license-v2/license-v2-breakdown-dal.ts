@@ -26,6 +26,23 @@ export const licenseV2BreakdownDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Every organization on the instance, for the instance-wide breakdown. On self-hosted the meters
+  // count the whole database rather than one tree (usage-counters passes no org when !isCloud), so a
+  // tree-scoped roster would leave the parts short of the figure the customer is billed on.
+  const findAllOrgNames = async (): Promise<TScopeOrgRow[]> => {
+    try {
+      const rows = (await db.replicaNode()(TableName.Organization).select("id", "name", "rootOrgId")) as {
+        id: string;
+        name: string;
+        rootOrgId: string | null;
+      }[];
+
+      return rows.map((row) => ({ id: row.id, name: row.name, isRoot: !row.rootOrgId }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all org names for usage breakdown" });
+    }
+  };
+
   const findProjectNames = async (projectIds: string[]): Promise<TScopeProjectRow[]> => {
     if (!projectIds.length) {
       return [];
@@ -64,5 +81,5 @@ export const licenseV2BreakdownDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findOrgTreeNames, findProjectNames, findAllRootOrgs };
+  return { findOrgTreeNames, findAllOrgNames, findProjectNames, findAllRootOrgs };
 };
