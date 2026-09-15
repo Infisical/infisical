@@ -30,6 +30,7 @@ import { registerDevinConnectionRouter } from "./devin-connection-router";
 import { registerDigiCertConnectionRouter } from "./digicert-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
 import { registerDNSMadeEasyConnectionRouter } from "./dns-made-easy-connection-router";
+import { registerEasyDNSConnectionRouter } from "./easydns-connection-router";
 import { registerDopplerConnectionRouter } from "./doppler-connection-router";
 import { registerExternalInfisicalConnectionRouter } from "./external-infisical-connection-router";
 import { registerF5BigIpConnectionRouter } from "./f5-big-ip-connection-router";
@@ -124,6 +125,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
     [AppConnection.DNSMadeEasy]: registerDNSMadeEasyConnectionRouter,
+    [AppConnection.EasyDNS]: registerEasyDNSConnectionRouter,
     [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,
