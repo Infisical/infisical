@@ -5,11 +5,17 @@ import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-t
 import { gatewayTransports } from "@app/ee/services/gateway-v2/gateway-v2-transport-fns";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import {
+  validateAllowedProjects,
+  validateAllowedServiceAccounts,
+  validateAllowedZones
+} from "@app/ee/services/resource-auth-method/gcp-auth-validators";
+import {
   validateAllowedNames,
   validateAllowedNamespaces,
   validateKubernetesHost
 } from "@app/ee/services/resource-auth-method/kubernetes-auth-validators";
 import {
+  GcpAuthType,
   KubernetesTokenReviewMode,
   ResourceAuthMethodType
 } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
@@ -63,6 +69,33 @@ const AwsAuthMethodInputSchema = z
   .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
     message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",
     path: ["allowedPrincipalArns"]
+  });
+
+const GcpAuthMethodInputSchema = z
+  .object({
+    method: z.literal(ResourceAuthMethodType.Gcp),
+    type: z.nativeEnum(GcpAuthType).default(GcpAuthType.Gce).describe(GATEWAYS.AUTH_METHOD.gcpAuthType),
+    allowedServiceAccounts: validateAllowedServiceAccounts.describe(GATEWAYS.AUTH_METHOD.allowedServiceAccounts),
+    allowedProjects: validateAllowedProjects.describe(GATEWAYS.AUTH_METHOD.allowedProjects),
+    allowedZones: validateAllowedZones.describe(GATEWAYS.AUTH_METHOD.allowedZones)
+  })
+  // Zones are deliberately not sufficient on their own: the zone namespace is global, so any GCP
+  // customer can put an instance in us-central1-a and satisfy a zone-only config. Only service
+  // accounts and projects name something inside this organization.
+  .refine(
+    (data) => data.allowedServiceAccounts.trim().length > 0 || data.allowedProjects.trim().length > 0,
+    {
+      message:
+        "At least one of allowedServiceAccounts or allowedProjects must be set. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone.",
+      path: ["allowedServiceAccounts"]
+    }
+  )
+  // An IAM-signed JWT carries no instance details, so a project or zone allowlist on it would never
+  // be checkable and every login would be refused.
+  .refine((data) => data.type !== GcpAuthType.Iam || (!data.allowedProjects.trim() && !data.allowedZones.trim()), {
+    message:
+      "Allowed projects and zones only apply to the Compute Engine token type. Restrict an IAM service account token by service account instead.",
+    path: ["allowedProjects"]
   });
 
 const KubernetesAuthMethodInputSchema = z
@@ -123,6 +156,7 @@ const TokenAuthMethodInputSchema = z.object({
 // Settable methods only — `identity` is read-only and never accepted as input.
 const SettableAuthMethodInputSchema = z.union([
   AwsAuthMethodInputSchema,
+  GcpAuthMethodInputSchema,
   KubernetesAuthMethodInputSchema,
   TokenAuthMethodInputSchema
 ]);
@@ -138,6 +172,17 @@ const toCreateAuthMethodArg = (input: TSettableAuthMethodInput) => {
         stsEndpoint: input.stsEndpoint,
         allowedPrincipalArns: input.allowedPrincipalArns,
         allowedAccountIds: input.allowedAccountIds
+      }
+    } as const;
+  }
+  if (input.method === ResourceAuthMethodType.Gcp) {
+    return {
+      method: ResourceAuthMethodType.Gcp,
+      config: {
+        type: input.type,
+        allowedServiceAccounts: input.allowedServiceAccounts,
+        allowedProjects: input.allowedProjects,
+        allowedZones: input.allowedZones
       }
     } as const;
   }
@@ -168,6 +213,15 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
       stsEndpoint: input.stsEndpoint,
       allowedPrincipalArns: input.allowedPrincipalArns,
       allowedAccountIds: input.allowedAccountIds
+    } as const;
+  }
+  if (input.method === ResourceAuthMethodType.Gcp) {
+    return {
+      method: ResourceAuthMethodType.Gcp,
+      type: input.type,
+      allowedServiceAccounts: input.allowedServiceAccounts,
+      allowedProjects: input.allowedProjects,
+      allowedZones: input.allowedZones
     } as const;
   }
   if (input.method === ResourceAuthMethodType.Kubernetes) {
@@ -296,9 +350,11 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             metadata: {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
-              method: result.method as "aws" | "kubernetes" | "token",
+              method: result.method as "aws" | "gcp" | "kubernetes" | "token",
               methodConfigId:
-                result.method === ResourceAuthMethodType.Aws || result.method === ResourceAuthMethodType.Kubernetes
+                result.method === ResourceAuthMethodType.Aws ||
+                result.method === ResourceAuthMethodType.Gcp ||
+                result.method === ResourceAuthMethodType.Kubernetes
                   ? result.config.id
                   : req.params.gatewayId,
               ...(result.method === ResourceAuthMethodType.Aws
@@ -306,6 +362,14 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                     stsEndpoint: result.config.stsEndpoint,
                     allowedPrincipalArns: result.config.allowedPrincipalArns,
                     allowedAccountIds: result.config.allowedAccountIds
+                  }
+                : {}),
+              ...(result.method === ResourceAuthMethodType.Gcp
+                ? {
+                    gcpAuthType: result.config.type,
+                    allowedServiceAccounts: result.config.allowedServiceAccounts,
+                    allowedProjects: result.config.allowedProjects,
+                    allowedZones: result.config.allowedZones
                   }
                 : {}),
               ...(result.method === ResourceAuthMethodType.Kubernetes
@@ -329,7 +393,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
               orgId: req.permission.orgId,
-              method: result.method as "aws" | "kubernetes" | "token"
+              method: result.method as "aws" | "gcp" | "kubernetes" | "token"
             }
           })
           .catch((err) => {
@@ -396,7 +460,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       response: {
         200: z.object({
-          method: z.enum(["aws", "kubernetes", "token"])
+          method: z.enum(["aws", "gcp", "kubernetes", "token"])
         })
       }
     },
@@ -434,7 +498,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "loginGateway",
       tags: [ApiDocsTags.GatewaysV3],
-      description: "Gateway login. Body discriminates on `method` for AWS, Kubernetes, or token authentication.",
+      description: "Gateway login. Body discriminates on `method` for AWS, GCP, Kubernetes, or token authentication.",
       body: z.discriminatedUnion("method", [
         z.object({
           method: z.literal(ResourceAuthMethodType.Aws),
@@ -442,6 +506,11 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           iamHttpRequestMethod: z.string().default("POST").describe(GATEWAYS.LOGIN.iamHttpRequestMethod),
           iamRequestBody: z.string().describe(GATEWAYS.LOGIN.iamRequestBody),
           iamRequestHeaders: z.string().describe(GATEWAYS.LOGIN.iamRequestHeaders)
+        }),
+        z.object({
+          method: z.literal(ResourceAuthMethodType.Gcp),
+          gatewayId: z.string().trim().uuid().describe(GATEWAYS.LOGIN.gatewayId),
+          jwt: z.string().trim().min(1).max(8192).describe(GATEWAYS.LOGIN.gcpJwt)
         }),
         z.object({
           method: z.literal(ResourceAuthMethodType.Kubernetes),
@@ -529,6 +598,85 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
                     message: error.message,
                     principalArn: error.detail.principalArn as string | undefined,
                     accountId: error.detail.accountId as string | undefined
+                  }
+                },
+                ipAddress: req.ip,
+                userAgent: req.headers["user-agent"] ?? "",
+                userAgentType: UserAgentType.OTHER
+              })
+              .catch(() => {});
+          }
+          throw error;
+        }
+      }
+
+      if (req.body.method === ResourceAuthMethodType.Gcp) {
+        try {
+          const result = await server.services.resourceAuthMethod.loginWithGcp({
+            resource: { type: "gateway", id: req.body.gatewayId },
+            jwt: req.body.jwt
+          });
+
+          await server.services.auditLog
+            .createAuditLog({
+              orgId: result.orgId,
+              actor: { type: ActorType.GATEWAY, metadata: { gatewayId: result.resourceId } },
+              event: {
+                type: EventType.RESOURCE_AUTH_METHOD_LOGIN,
+                metadata: {
+                  resourceType: "gateway",
+                  resourceId: result.resourceId,
+                  method: ResourceAuthMethodType.Gcp,
+                  methodConfigId: result.configId,
+                  gcpServiceAccountEmail: result.serviceAccountEmail,
+                  gcpProjectId: result.projectId,
+                  gcpZone: result.zone
+                }
+              },
+              ipAddress: req.ip,
+              userAgent: req.headers["user-agent"] ?? "",
+              userAgentType: UserAgentType.OTHER
+            })
+            .catch(() => {});
+
+          void server.services.telemetry
+            .sendPostHogEvents({
+              event: PostHogEventTypes.ResourceAuthMethodLogin,
+              distinctId: `gateway-${result.resourceId}`,
+              organizationId: result.orgId,
+              properties: {
+                resourceType: "gateway",
+                resourceId: result.resourceId,
+                orgId: result.orgId,
+                method: ResourceAuthMethodType.Gcp
+              }
+            })
+            .catch((err) => {
+              logger.error(err, `Failed to send telemetry [gatewayId=${result.resourceId}]`);
+            });
+
+          return {
+            accessToken: result.accessToken,
+            gatewayId: result.resourceId,
+            tokenType: "Bearer" as const
+          };
+        } catch (error) {
+          if (error instanceof UnauthorizedError && error.detail?.resourceId) {
+            await server.services.auditLog
+              .createAuditLog({
+                orgId: error.detail.orgId as string,
+                actor: { type: ActorType.GATEWAY, metadata: { gatewayId: error.detail.resourceId as string } },
+                event: {
+                  type: EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED,
+                  metadata: {
+                    resourceType: "gateway",
+                    resourceId: error.detail.resourceId as string,
+                    method: ResourceAuthMethodType.Gcp,
+                    reasonCode: error.detail.reasonCode as string,
+                    message: error.message,
+                    gcpServiceAccountEmail: error.detail.serviceAccountEmail as string | undefined,
+                    gcpProjectId: error.detail.projectId as string | undefined,
+                    gcpZone: error.detail.zone as string | undefined
                   }
                 },
                 ipAddress: req.ip,

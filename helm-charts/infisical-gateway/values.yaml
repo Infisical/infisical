@@ -17,7 +17,7 @@ gateway:
   domain: ""
 
   enrollment:
-    # Enrollment method: "token", "aws", or "kubernetes".
+    # Enrollment method: "token", "aws", "gcp", or "kubernetes".
     # Leave empty to use the legacy machine identity flow (env vars from secret.name).
     method: ""
 
@@ -34,6 +34,18 @@ gateway:
     aws:
       # Required when method=aws. Gateway ID from the Infisical UI.
       gatewayId: ""
+
+    # GCP enrollment settings (method=gcp)
+    gcp:
+      # Required when method=gcp. Gateway ID from the Infisical UI.
+      gatewayId: ""
+      # How the gateway proves its GCP identity: "gce" reads an identity token from the instance
+      # metadata server, which covers GKE workload identity; "iam" signs a JWT through the IAM
+      # Credentials API. Leave empty for the CLI default of "gce".
+      type: ""
+      # Only for type=iam, and only when the pod has no workload identity to sign with. Path to a
+      # service account key file, which you must mount yourself.
+      serviceAccountKeyFilePath: ""
 
     # Kubernetes enrollment settings (method=kubernetes).
     kubernetes:
@@ -63,7 +75,7 @@ gateway:
 
 # Persistent storage for the gateway (credentials and session recordings).
 # Required when enrollment.method=token so credentials survive pod restarts.
-# Optional when enrollment.method=aws or enrollment.method=kubernetes, since both re-authenticate
+# Optional when enrollment.method is aws, gcp or kubernetes, since all three re-authenticate
 # on every start.
 # For legacy machine-identity installs (no enrollment.method), persistence only takes effect
 # when existingClaim is provided.

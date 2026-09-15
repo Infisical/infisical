@@ -171,7 +171,12 @@ export const ResourceAuthLoginFailureReason = {
   NamespaceNotAllowed: "namespace_not_allowed",
   NameNotAllowed: "name_not_allowed",
   AudienceNotAllowed: "audience_not_allowed",
-  GatewayProxyUnavailable: "gateway_proxy_unavailable"
+  GatewayProxyUnavailable: "gateway_proxy_unavailable",
+  GcpTokenVerificationFailed: "gcp_token_verification_failed",
+  ServiceAccountNotAllowed: "service_account_not_allowed",
+  ComputeEngineDetailsMissing: "compute_engine_details_missing",
+  ProjectNotAllowed: "project_not_allowed",
+  ZoneNotAllowed: "zone_not_allowed"
 } as const;
 
 // Who performs the TokenReview. Api means Infisical does, using the configured reviewer token.
@@ -186,10 +191,20 @@ export type TKubernetesTokenReviewMode = (typeof KubernetesTokenReviewMode)[keyo
 
 export const ResourceAuthMethodType = {
   Aws: "aws",
+  Gcp: "gcp",
   Kubernetes: "kubernetes",
   Token: "token",
   Identity: "identity"
 } as const;
+
+// "gce" verifies an ID token minted by the metadata server, "iam" a JWT the service account signed
+// through iamcredentials. Mirrors the machine identity GCP auth types.
+export const GcpAuthType = {
+  Gce: "gce",
+  Iam: "iam"
+} as const;
+
+export type TGcpAuthType = (typeof GcpAuthType)[keyof typeof GcpAuthType];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export type ResourceAuthMethodType = (typeof ResourceAuthMethodType)[keyof typeof ResourceAuthMethodType];

@@ -7277,7 +7277,7 @@ interface GatewayConnectEvent {
   };
 }
 
-type ResourceAuthMethodKind = "aws" | "kubernetes" | "token";
+type ResourceAuthMethodKind = "aws" | "gcp" | "kubernetes" | "token";
 type ResourceAuthMethodResourceType = "gateway" | "relay" | "kmip";
 
 interface ResourceAuthMethodLoginEvent {
@@ -7292,6 +7292,9 @@ interface ResourceAuthMethodLoginEvent {
     enrollmentTokenId?: string;
     kubernetesNamespace?: string;
     kubernetesServiceAccountName?: string;
+    gcpServiceAccountEmail?: string;
+    gcpProjectId?: string;
+    gcpZone?: string;
   };
 }
 
@@ -7307,6 +7310,9 @@ interface ResourceAuthMethodLoginFailedEvent {
     accountId?: string;
     kubernetesNamespace?: string;
     kubernetesServiceAccountName?: string;
+    gcpServiceAccountEmail?: string;
+    gcpProjectId?: string;
+    gcpZone?: string;
   };
 }
 
@@ -7324,6 +7330,10 @@ interface ResourceAuthMethodUpdateEvent {
     allowedNamespaces?: string;
     allowedNames?: string;
     allowedAudience?: string;
+    gcpAuthType?: string;
+    allowedServiceAccounts?: string;
+    allowedProjects?: string;
+    allowedZones?: string;
   };
 }
 

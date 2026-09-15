@@ -65,7 +65,7 @@ In direct listen mode it also:
 
   <AccordionGroup>
   <Accordion title="--enroll-method">
-    How the gateway authenticates with Infisical. Must match the auth method configured on the gateway in the Infisical UI. One of `token`, `aws`, or `kubernetes`.
+    How the gateway authenticates with Infisical. Must match the auth method configured on the gateway in the Infisical UI. One of `token`, `aws`, `gcp`, or `kubernetes`.
 
     <Tabs>
       <Tab title="token">
@@ -105,6 +105,34 @@ In direct listen mode it also:
         ```bash
         infisical gateway start my-gateway --enroll-method=aws --gateway-id=<gateway-id> --domain=https://app.infisical.com
         ```
+      </Tab>
+      <Tab title="gcp">
+        The gateway proves which GCP service account it runs as, and re-authenticates on every start. No token is stored on disk. The token carries the gateway ID as its audience.
+
+        <ParamField query="Flags">
+        <Expandable title="properties">
+            <ParamField query="gateway-id" type="string" required>
+              The gateway ID from the Infisical UI.
+            </ParamField>
+            <ParamField query="domain" type="string" required>
+              The URL of your Infisical instance.
+            </ParamField>
+            <ParamField query="gcp-auth-type" type="string">
+              How the identity is proven. `gce` reads a token from the instance metadata server, which covers Compute Engine VMs and GKE pods using workload identity. `iam` signs one through the IAM Credentials API. Defaults to `gce`.
+            </ParamField>
+            <ParamField query="service-account-key-file-path" type="string">
+              Only for `--gcp-auth-type=iam`, and only when the host has no credentials of its own. Path to a service account key file to sign with.
+            </ParamField>
+        </Expandable>
+        </ParamField>
+
+        ```bash
+        infisical gateway start my-gateway --enroll-method=gcp --gateway-id=<gateway-id> --domain=https://app.infisical.com
+        ```
+
+        The `iam` type needs the IAM Service Account Credentials API enabled and `roles/iam.serviceAccountTokenCreator` on the service account being signed as.
+
+        See [Gateway Deployment](/documentation/platform/gateways/gateway-deployment) for the allowlist configuration this method needs.
       </Tab>
       <Tab title="kubernetes">
         The gateway authenticates with the projected service account token of the pod it runs in, so no credential has to be distributed to the cluster. Infisical verifies the token against your cluster's TokenReview API and re-authenticates on every start. No token is stored on disk.
@@ -229,7 +257,7 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
 
   <AccordionGroup>
   <Accordion title="--enroll-method">
-    How the gateway authenticates with Infisical. One of `token` or `aws`.
+    How the gateway authenticates with Infisical. One of `token`, `aws`, or `gcp`.
 
     ```bash
     # Enrollment token
@@ -237,6 +265,9 @@ sudo infisical gateway systemd install my-gateway --enroll-method=token --token=
 
     # AWS auth, re-authenticated on every service start
     sudo infisical gateway systemd install my-gateway --enroll-method=aws --gateway-id=<gateway-id> --domain=<domain>
+
+    # GCP auth, re-authenticated on every service start
+    sudo infisical gateway systemd install my-gateway --enroll-method=gcp --gateway-id=<gateway-id> --domain=<domain>
     ```
 
     `kubernetes` is not available here. In-cluster gateways are not managed by systemd, so run `infisical gateway start --enroll-method=kubernetes` as the container command instead.

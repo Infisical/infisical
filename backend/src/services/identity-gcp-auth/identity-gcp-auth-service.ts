@@ -106,14 +106,14 @@ export const identityGcpAuthServiceFactory = ({
       switch (identityGcpAuth.type) {
         case "gce": {
           gcpIdentityDetails = await validateIdTokenIdentity({
-            identityId,
+            audience: identityId,
             jwt: gcpJwt
           });
           break;
         }
         case "iam": {
           gcpIdentityDetails = await validateIamIdentity({
-            identityId,
+            audience: identityId,
             jwt: gcpJwt
           });
           break;

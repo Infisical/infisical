@@ -10,6 +10,15 @@
     {{- end }}
   {{- end }}
 {{- end }}
+{{- if eq .Values.gateway.enrollment.method "gcp" }}
+  {{- $gcpType := .Values.gateway.enrollment.gcp.type | default "gce" }}
+  {{- if not (has $gcpType (list "gce" "iam")) }}
+    {{- fail (printf "gateway.enrollment.gcp.type must be 'gce' or 'iam', got '%s'." $gcpType) }}
+  {{- end }}
+  {{- if and .Values.gateway.enrollment.gcp.serviceAccountKeyFilePath (ne $gcpType "iam") }}
+    {{- fail "gateway.enrollment.gcp.serviceAccountKeyFilePath only applies when gateway.enrollment.gcp.type is 'iam'. The gce type reads its token from the instance metadata server." }}
+  {{- end }}
+{{- end }}
 {{- if eq .Values.gateway.enrollment.method "token" }}
   {{- if not .Values.persistence.enabled }}
     {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
@@ -114,6 +123,15 @@ spec:
             {{- end }}
             {{- if eq .Values.gateway.enrollment.method "aws" }}
             - --gateway-id={{ required "gateway.enrollment.aws.gatewayId is required when gateway.enrollment.method is 'aws'" .Values.gateway.enrollment.aws.gatewayId }}
+            {{- end }}
+            {{- if eq .Values.gateway.enrollment.method "gcp" }}
+            - --gateway-id={{ required "gateway.enrollment.gcp.gatewayId is required when gateway.enrollment.method is 'gcp'" .Values.gateway.enrollment.gcp.gatewayId }}
+            {{- if .Values.gateway.enrollment.gcp.type }}
+            - --gcp-auth-type={{ .Values.gateway.enrollment.gcp.type }}
+            {{- end }}
+            {{- if .Values.gateway.enrollment.gcp.serviceAccountKeyFilePath }}
+            - --service-account-key-file-path={{ .Values.gateway.enrollment.gcp.serviceAccountKeyFilePath }}
+            {{- end }}
             {{- end }}
             {{- if eq .Values.gateway.enrollment.method "kubernetes" }}
             - --gateway-id={{ required "gateway.enrollment.kubernetes.gatewayId is required when gateway.enrollment.method is 'kubernetes'" .Values.gateway.enrollment.kubernetes.gatewayId }}
