@@ -10,8 +10,10 @@ services:
     volumes:
       - ./nginx/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
 
   db:
     image: postgres:14-alpine
@@ -172,6 +174,12 @@ services:
       # /node_modules/.vite/deps/chunk-*.js ("error loading dynamically imported module").
       - frontend_vite_cache:/app/node_modules/.vite
     env_file: .env
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000/"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   backend-go:
     container_name: infisical-dev-api-go
