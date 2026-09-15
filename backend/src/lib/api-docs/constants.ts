@@ -4221,7 +4221,7 @@ export const AGENT_VAULT = {
     allowedMethods:
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
-      "The path prefixes this service allows, matched on whole segments, so '/repos' covers '/repos/octo' but not '/repositories'. Null allows every path. A path-restricted service refuses, rather than normalises, a request whose path contains a '.' or '..' segment, an empty segment, a ';', a '\\', or a percent-escape decoding to one of those, to a control character, or to bytes that are not valid UTF-8 (so an overlong encoding such as %c0%ae is refused, while a correctly encoded non-ASCII path such as /repos/caf%C3%A9.md is allowed).",
+      "The path prefixes this service allows, matched on whole segments, so '/repos' covers '/repos/octo' but not '/repositories'. Null allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
     customHeaders:
       "Extra headers the proxy attaches to every request to this service, on top of the credential. Send the whole list: a row is matched to a stored one by 'id' when you send one and otherwise by its name, a name matching nothing is created, and a stored custom header you leave out is deleted.",
     headerId: "The ID of the custom header. Optional: a header is matched by its name when this is omitted.",
