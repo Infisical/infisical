@@ -1,6 +1,12 @@
-import { FileText, IdCard, Package, Route, Shield } from "lucide-react";
+import { FileText, IdCard, Info, Package, Route, Shield } from "lucide-react";
 
-import { SidebarCollapsibleGroup } from "@app/components/v3";
+import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
+import {
+  SidebarCollapsibleGroup,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem
+} from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -9,6 +15,7 @@ import type { NavItem, Submenu } from "./types";
 
 export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
   const { hasProjectRole } = useProjectPermission();
+  const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const accessItems: NavItem[] = [
@@ -41,6 +48,19 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       <SidebarCollapsibleGroup label="Infrastructure">
         <ProjectNavList items={infrastructureItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            size="lg"
+            closeOnMobile
+            tooltip="About Agent Vault"
+            onClick={() => setIsIntroOpen(true)}
+          >
+            <Info className="size-4" />
+            <span>About Agent Vault</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
     </>
   );
 };
