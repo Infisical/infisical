@@ -196,6 +196,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
                       ?.filter(([_, value]) => {
                         if (selectedKeyUsage === KmsKeyUsage.ENCRYPT_DECRYPT) {
+                          if(value === AsymmetricKeyAlgorithm.RSA_4096) return true
                           return Object.values(SymmetricKeyAlgorithm).includes(
                             value as unknown as SymmetricKeyAlgorithm
                           );

@@ -10,6 +10,10 @@ export enum SymmetricKeySize {
   Bits256 = "256-bits"
 }
 
+export enum HybridSigningAlgorithm {
+  RSAES_OEAP_SHA256 = "RSAES_OEAP_SHA256"
+}
+
 export type TDecryptSymmetricInput =
   | {
       ciphertext: string;
@@ -37,6 +41,18 @@ export type TEncryptSymmetricInput =
       key: string | Buffer;
       keySize: SymmetricKeySize.Bits128;
     };
+
+export type TEncryptHybridInput = {
+  plainText: string | Buffer;
+  publicKey: string | Buffer;
+  algorithm: HybridSigningAlgorithm;
+};
+
+export type TDecryptHybridInput = {
+  cipherText: string | Buffer;
+  privateKey: string | Buffer;
+  algorithm: HybridSigningAlgorithm;
+};
 
 export type TDecryptAsymmetricInput = {
   ciphertext: string;
