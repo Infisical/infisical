@@ -188,8 +188,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
     && test -n "$INFISICAL_CLI_VERSION" \
     && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
-    # Patch CVEs in base image packages (pinned versions for reproducibility).
-    # Re-check each release; a stale pin holds the vulnerable version.
+    # Upgrade base-image packages that apt will not move on its own. Only packages
+    # preinstalled in the base belong here; anything pulled in as a dependency
+    # already installs at the candidate version. Re-check each release; a stale
+    # pin holds the vulnerable version, and a withdrawn one fails the build.
     && apt-get install -y --only-upgrade \
     libgnutls30t64=3.8.9-3+deb13u4 \
     libc6=2.41-12+deb13u4 \
@@ -214,11 +216,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libudev1=257.13-1~deb13u1 \
     liblzma5=5.8.1-1+deb13u1 \
     sed=4.9-2+deb13u1 \
-    libssh2-1t64=1.11.1-1+deb13u2 \
-    perl=5.40.1-6+deb13u1 \
-    perl-base=5.40.1-6+deb13u1 \
-    perl-modules-5.40=5.40.1-6+deb13u1 \
-    libperl5.40=5.40.1-6+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
