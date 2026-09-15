@@ -51,7 +51,7 @@ export const BillingV2Page = () => {
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
   const orgId = currentOrg?.id ?? "";
-  const canManageBilling = permission.can(
+  const hasManageBillingPermission = permission.can(
     OrgPermissionBillingActions.ManageBilling,
     OrgPermissionSubjects.Billing
   );
@@ -72,7 +72,8 @@ export const BillingV2Page = () => {
     limit: ORG_PAGE_SIZE
   });
   const rootOrgs = orgPage?.organizations ?? [];
-  const { data: unsearchedOrgPage } = useGetBillingV2Organizations(orgId, { limit: ORG_PAGE_SIZE });
+  const { data: unsearchedOrgPage, isPending: isRootOrgCountPending } =
+    useGetBillingV2Organizations(orgId, { limit: ORG_PAGE_SIZE });
 
   const {
     data: serverOverview,
@@ -142,9 +143,17 @@ export const BillingV2Page = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // An instance admin can point the page at an organization they are not a member of, which the
+  // permission above says nothing about; ensureManageBilling grants them no bypass, so every mutation
+  // would 403.
+  const isViewingOtherOrg = selectedOrgId !== orgId;
+  const canManageBilling = hasManageBillingPermission && !isViewingOtherOrg;
+
   let subState: BillingV2RenderState = "loading";
   if (isError) {
     subState = "error";
+  } else if (isRootOrgCountPending) {
+    subState = "loading";
   } else if (overview) {
     subState = overview.subState;
   } else if (isPending) {
@@ -158,7 +167,7 @@ export const BillingV2Page = () => {
   const redirectToPortal = async () => {
     try {
       const url = await createPortalSession.mutateAsync({
-        orgId,
+        orgId: selectedOrgId,
         returnPath: window.location.pathname
       });
       window.location.href = url;
@@ -191,7 +200,7 @@ export const BillingV2Page = () => {
   const onUpdatePayment = async () => {
     try {
       const url = await addPaymentMethod.mutateAsync({
-        orgId,
+        orgId: selectedOrgId,
         returnPath: window.location.pathname
       });
       window.location.href = url;
@@ -261,7 +270,7 @@ export const BillingV2Page = () => {
 
       {flow?.type === "sheet" && (
         <ProductSheet
-          orgId={orgId}
+          orgId={selectedOrgId}
           prod={catalogById(catalog, flow.prodId)}
           entitlement={overview?.entitlements[flow.prodId]}
           hasActiveSubscription={hasActiveSubscription}
@@ -290,7 +299,7 @@ export const BillingV2Page = () => {
 
       {removeProd && (
         <RemoveProductModal
-          orgId={orgId}
+          orgId={selectedOrgId}
           product={removeProd}
           onClose={() => setRemoveProdId(null)}
           onRemoved={() => {

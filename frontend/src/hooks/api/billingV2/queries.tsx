@@ -16,8 +16,8 @@ export const billingV2Keys = {
   catalog: (orgId: string) => [{ orgId }, "billing-v2-catalog"] as const,
   usageBreakdown: (orgId: string, dimensionKey: string) =>
     [{ orgId, dimensionKey }, "billing-v2-usage-breakdown"] as const,
-  organizations: (orgId: string, params: BillingV2OrganizationsParams) =>
-    [{ orgId, ...params }, "billing-v2-organizations"] as const
+  organizations: (orgId: string, { search, ...rest }: BillingV2OrganizationsParams) =>
+    [{ orgId, search: search || undefined, ...rest }, "billing-v2-organizations"] as const
 };
 
 export const useGetBillingV2Overview = (orgId: string) => {
