@@ -4394,12 +4394,6 @@
                 ]
               },
               {
-                "group": "Agent Vault project",
-                "pages": [
-                  "api-reference/endpoints/agent-vault-project/get"
-                ]
-              },
-              {
                 "group": "Agent Vault access bundles",
                 "pages": [
                   "api-reference/endpoints/agent-vault-access-bundles/list",
