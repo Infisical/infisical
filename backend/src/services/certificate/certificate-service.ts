@@ -67,6 +67,7 @@ import {
   getCaCertChains,
   rebuildCaCrl
 } from "../certificate-authority/certificate-authority-fns";
+import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
   detectSanType,
@@ -1239,6 +1240,7 @@ export const certificateServiceFactory = ({
     const certificateBuffer = Buffer.from(certificatePem);
     const certificateFields = extractCertificateFields(certificateBuffer);
     const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
+    const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
 
     await linkage?.verifyCertificate({
       serialNumber,
@@ -1319,7 +1321,8 @@ export const certificateServiceFactory = ({
             ...certificateFields,
             // Issuance records these from what it was asked to produce. An imported certificate has
             // no such request, so they come from the certificate itself.
-            ...certificateAlgorithms
+            ...certificateAlgorithms,
+            customExtensions: importedCustomExtensions.length ? JSON.stringify(importedCustomExtensions) : null
           },
           tx
         );

@@ -512,15 +512,14 @@ export const projectDALFactory = (db: TDbClient) => {
         };
       }
 
-      const rows = await (tx || db.replicaNode())(TableName.Membership)
+      const conn = tx || db.replicaNode();
+      const rows = await conn(TableName.Membership)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .leftJoin(TableName.UserGroupMembership, function joinUserGroupMembership() {
-          this.on(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`).andOn(
-            `${TableName.UserGroupMembership}.isPending`,
-            "=",
-            (tx || db).raw("?", [false])
-          );
-        })
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.Membership}.actorGroupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
