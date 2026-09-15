@@ -304,6 +304,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE]: "View Secrets Management Usage Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS]:
     "View Secrets Management Project Warnings Insights",
+  [EventType.START_ORG_SECRET_BLIND_INDEX_MIGRATION]:
+    "Start Organization Secret Blind Index Migration",
 
   [EventType.CREATE_ORG_AUDIT_REPORT]: "Create Organization Audit Report",
   [EventType.GET_ORG_AUDIT_REPORTS]: "List Organization Audit Reports",

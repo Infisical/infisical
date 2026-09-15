@@ -220,3 +220,12 @@ export type TOrgStaticSecretUsage = {
 export type TOrgSecretAccessVolume = {
   days: { date: string; total: number }[];
 };
+
+export type TOrgBlindIndexMigrationStatus = {
+  pendingProjectCount: number;
+  isRunning: boolean;
+};
+
+export type TStartOrgBlindIndexMigrationResponse = {
+  pendingProjectCount: number;
+};
