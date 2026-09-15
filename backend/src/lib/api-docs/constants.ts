@@ -4203,7 +4203,6 @@ export const AGENT_VAULT = {
     name: "The name of the service.",
     hostPattern:
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
-    credentialType: "How the credential is attached to the request: bearer, basic or passthrough.",
     headerName: "The header the credential is written to. Defaults to Authorization.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
