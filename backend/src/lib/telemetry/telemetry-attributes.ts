@@ -9,6 +9,9 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   // Bounded enums
   "infisical.auth.method",
   "infisical.auth.result",
+  // why an attempt failed, so a policy rejection is distinguishable from a bad credential.
+  // Bounded by AUTH_ATTEMPT_REASONS in metrics.ts, which folds anything unlisted into "other"
+  "infisical.auth.failure_reason",
   "queue.name",
   "queue.state",
   "job.name",
