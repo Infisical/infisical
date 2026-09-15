@@ -23,6 +23,7 @@ type TagsInputProps = Omit<
   React.ComponentPropsWithoutRef<"input">,
   "children" | "disabled" | "onChange" | "type" | "value"
 > & {
+  /** Tags are keyed by their text, so `validateTag` has to refuse a duplicate for the list to render. */
   value?: readonly string[];
   onValueChange: (next: string[]) => void;
   isDisabled?: boolean;
@@ -142,11 +143,6 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
       setDraft(parts.slice(refusedFrom).join(separators[0] ?? " "));
     };
 
-    const removeAt = (index: number) => {
-      onValidationError?.(null);
-      onValueChange(tags.filter((_, position) => position !== index));
-    };
-
     return (
       <ComboboxPrimitive.Root
         multiple
@@ -181,13 +177,16 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
             data-scrollable-start={scrollEdges.start}
             data-scrollable-end={scrollEdges.end}
           >
-            {tags.map((tag, index) => (
+            {tags.map((tag) => (
               <ComboboxPrimitive.Chip key={tag} className={COMBOBOX_CHIP_CLASS}>
                 <span className={COMBOBOX_CHIP_LABEL_CLASS}>{tag}</span>
                 {!isDisabled && (
                   <ComboboxPrimitive.ChipRemove
                     aria-label={`Remove ${tag}`}
-                    onClick={() => removeAt(index)}
+                    // Removal is Base UI's: ChipRemove filters the value and the controlled Root calls
+                    // onValueChange. Doing it here too would fire the caller's handler twice for one
+                    // click. Adding is ours, in `commit`, because there is no options list to select from.
+                    onClick={() => onValidationError?.(null)}
                     className={COMBOBOX_CHIP_REMOVE_CLASS}
                   >
                     <XIcon className="size-3" />
