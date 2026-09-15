@@ -102,6 +102,40 @@ const zodTimeoutMs = ({
       })
   );
 
+export const secretScanningTimeoutsSchema = z.object({
+  SECRET_SCANNING_SCAN_TIMEOUT: zodTimeoutMs({
+    description: "Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed",
+    defaultValue: "10m",
+    legacyMsEnvVar: "SECRET_SCANNING_SCAN_TIMEOUT_MS"
+  }),
+  SECRET_SCANNING_CLONE_TIMEOUT: zodTimeoutMs({
+    description: "Wall-clock ceiling for a single `git clone` invocation before its process group is killed",
+    defaultValue: "10m",
+    legacyMsEnvVar: "SECRET_SCANNING_CLONE_TIMEOUT_MS"
+  }),
+  SECRET_SCANNING_STUCK_SCAN_TIMEOUT: zodTimeoutMs({
+    description:
+      "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined.",
+    defaultValue: "1h",
+    legacyMsEnvVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"
+  })
+});
+
+export const validateSecretScanningTimeouts = (
+  data: z.infer<typeof secretScanningTimeoutsSchema>,
+  ctx: z.RefinementCtx
+) => {
+  const scanBudgetMs =
+    data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+  if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT <= scanBudgetMs) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT"],
+      message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus ${SECRET_SCANNING_SCAN_OVERHEAD}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
+    });
+  }
+};
+
 const databaseReadReplicaSchema = z
   .object({
     DB_CONNECTION_URI: z.string().describe("Postgres read replica database connection string"),
@@ -408,16 +442,7 @@ const envSchema = z
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
-    SECRET_SCANNING_SCAN_TIMEOUT: zodTimeoutMs({
-      description: "Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed",
-      defaultValue: "10m",
-      legacyMsEnvVar: "SECRET_SCANNING_SCAN_TIMEOUT_MS"
-    }),
-    SECRET_SCANNING_CLONE_TIMEOUT: zodTimeoutMs({
-      description: "Wall-clock ceiling for a single `git clone` invocation before its process group is killed",
-      defaultValue: "10m",
-      legacyMsEnvVar: "SECRET_SCANNING_CLONE_TIMEOUT_MS"
-    }),
+    ...secretScanningTimeoutsSchema.shape,
     SECRET_SCANNING_MEMORY_LIMIT_MB: z.coerce
       .number()
       .int()
@@ -440,12 +465,6 @@ const envSchema = z
       .min(0)
       .default(5120)
       .describe("Repositories larger than this are rejected before/after cloning. Set to 0 to disable."),
-    SECRET_SCANNING_STUCK_SCAN_TIMEOUT: zodTimeoutMs({
-      description:
-        "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined.",
-      defaultValue: "1h",
-      legacyMsEnvVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"
-    }),
     // LICENSE
     // The License Server host. Serves both the self-hosted token endpoint and the entitlement API.
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
@@ -666,15 +685,7 @@ const envSchema = z
       }
     });
 
-    const scanBudgetMs =
-      data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
-    if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT <= scanBudgetMs) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT"],
-        message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT + SECRET_SCANNING_SCAN_TIMEOUT plus ${SECRET_SCANNING_SCAN_OVERHEAD}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
-      });
-    }
+    validateSecretScanningTimeouts(data, ctx);
   })
   .transform((data) => ({
     ...data,
