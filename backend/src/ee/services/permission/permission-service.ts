@@ -77,7 +77,6 @@ import {
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
   fetchFolderScopedPrivileges,
-  filterOverriddenFolderScopedDenyRules,
   getProjectPermissionFingerprint,
   interpolatePermissionRules,
   interpolateStoredIdentityRules,
@@ -1192,7 +1191,7 @@ export const permissionServiceFactory = ({
         isTemporary: Boolean(priv.isTemporary),
         temporaryAccessStartTime: privilegeById[priv.id]?.temporaryAccessStartTime?.toISOString(),
         temporaryAccessEndTime: priv.temporaryAccessEndTime?.toISOString(),
-        permissions: packRules(filterOverriddenFolderScopedDenyRules(buildFolderScopedPrivilegeRules([priv])))
+        permissions: packRules(buildFolderScopedPrivilegeRules([priv]))
       });
     });
 
