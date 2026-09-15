@@ -9,7 +9,7 @@ import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal
 
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
-import { CustomLogger } from "../logger/logger";
+import { CustomLogger, logger } from "../logger/logger";
 import { ms } from "../ms";
 import { zpStr } from "../zod";
 
@@ -66,13 +66,16 @@ export const runModesSchema = zpStr(z.string().optional())
 export const SECRET_SCANNING_SCAN_OVERHEAD = ms("5m");
 
 const zodTimeoutMs = ({
+  envVar,
   description,
   defaultValue,
   legacyMsEnvVar
 }: {
+  envVar: string;
   description: string;
   defaultValue: string;
-  legacyMsEnvVar: string;
+  // only for a timeout that predates this helper; a new one has no deprecated spelling to honour
+  legacyMsEnvVar?: string;
 }) =>
   zpStr(
     z
@@ -80,7 +83,12 @@ const zodTimeoutMs = ({
       .optional()
       .describe(description)
       .transform((val, ctx) => {
-        const legacyValue = process.env[legacyMsEnvVar]?.trim() || undefined;
+        const legacyValue = legacyMsEnvVar ? process.env[legacyMsEnvVar]?.trim() || undefined : undefined;
+        // the singleton logger is undefined on the first parse, which happens during telemetry setup
+        if (legacyValue) {
+          (logger ?? console).warn(`${legacyMsEnvVar} is deprecated, use ${envVar} instead`);
+        }
+
         const raw = val ?? legacyValue ?? defaultValue;
 
         const duration = ms(raw);
@@ -88,9 +96,9 @@ const zodTimeoutMs = ({
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message:
-              val === undefined
+              raw === legacyValue
                 ? `Invalid value "${raw}" in ${legacyMsEnvVar}. Expected a positive number of milliseconds.`
-                : `Invalid duration "${raw}". Expected a positive duration string such as "30s", "10m" or "6h".`
+                : `Invalid duration "${raw}" in ${envVar}. Expected a positive duration string such as "30s", "10m" or "6h".`
           });
           return z.NEVER;
         }
@@ -101,16 +109,19 @@ const zodTimeoutMs = ({
 
 export const secretScanningTimeoutsSchema = z.object({
   SECRET_SCANNING_SCAN_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_SCAN_TIMEOUT",
     description: "Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed",
     defaultValue: "10m",
     legacyMsEnvVar: "SECRET_SCANNING_SCAN_TIMEOUT_MS"
   }),
   SECRET_SCANNING_CLONE_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_CLONE_TIMEOUT",
     description: "Wall-clock ceiling for a single `git clone` invocation before its process group is killed",
     defaultValue: "10m",
     legacyMsEnvVar: "SECRET_SCANNING_CLONE_TIMEOUT_MS"
   }),
   SECRET_SCANNING_STUCK_SCAN_TIMEOUT: zodTimeoutMs({
+    envVar: "SECRET_SCANNING_STUCK_SCAN_TIMEOUT",
     description:
       "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined.",
     defaultValue: "1h",

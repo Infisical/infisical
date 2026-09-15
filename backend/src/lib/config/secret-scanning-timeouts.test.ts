@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { secretScanningTimeoutsSchema, validateSecretScanningTimeouts } from "./env";
 
@@ -48,7 +48,7 @@ describe("secret scanning timeouts", () => {
 
   test("rejects a duration it cannot parse", () => {
     expect(issuesFor(parse({ SECRET_SCANNING_SCAN_TIMEOUT: "banana" }), "SECRET_SCANNING_SCAN_TIMEOUT")).toEqual([
-      'Invalid duration "banana". Expected a positive duration string such as "30s", "10m" or "6h".'
+      'Invalid duration "banana" in SECRET_SCANNING_SCAN_TIMEOUT. Expected a positive duration string such as "30s", "10m" or "6h".'
     ]);
   });
 
@@ -137,5 +137,56 @@ describe("secret scanning timeouts", () => {
 
       expect(result.success).toBe(false);
     });
+  });
+});
+
+describe("deprecation warning", () => {
+  // unit tests never call initLogger, so the warning lands on console
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  // the spy is installed at collection time, so it carries calls from the tests above
+  beforeEach(() => {
+    warn.mockClear();
+  });
+
+  test("stays quiet when no legacy variable is set", () => {
+    parse({});
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  test("names the legacy variable and its replacement", () => {
+    vi.stubEnv("SECRET_SCANNING_SCAN_TIMEOUT_MS", "600000");
+
+    parse({});
+
+    expect(warn).toHaveBeenCalledWith(
+      "SECRET_SCANNING_SCAN_TIMEOUT_MS is deprecated, use SECRET_SCANNING_SCAN_TIMEOUT instead"
+    );
+  });
+
+  test("warns for each legacy variable that is set", () => {
+    vi.stubEnv("SECRET_SCANNING_SCAN_TIMEOUT_MS", "600000");
+    vi.stubEnv("SECRET_SCANNING_CLONE_TIMEOUT_MS", "600000");
+
+    parse({});
+
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  test("ignores a blank legacy variable", () => {
+    vi.stubEnv("SECRET_SCANNING_CLONE_TIMEOUT_MS", "   ");
+
+    parse({});
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  test("warns even when the replacement is set, because the legacy value is then dead weight", () => {
+    vi.stubEnv("SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS", "3600000");
+
+    parse({ SECRET_SCANNING_STUCK_SCAN_TIMEOUT: "2h" });
+
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });
