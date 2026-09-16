@@ -86,7 +86,7 @@ export type TInsightsServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "countByProject">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "countOrgProjectsPendingSecretBlindIndex">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "countMissingBlindIndexProjects">;
   userDAL: Pick<TUserDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
@@ -776,7 +776,7 @@ export const insightsServiceFactory = ({
     await assertOrgInsightsRead(dto);
 
     const [pendingProjectCount, isRunning] = await Promise.all([
-      projectDAL.countOrgProjectsPendingSecretBlindIndex(dto.orgId),
+      projectDAL.countMissingBlindIndexProjects(dto.orgId),
       projectQueue.isSecretBlindIndexMigrationRunningForOrg(dto.orgId)
     ]);
 
@@ -801,7 +801,7 @@ export const insightsServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
     await assertInsightsPlanEnabled(licenseService, orgId);
 
-    const pendingProjectCount = await projectDAL.countOrgProjectsPendingSecretBlindIndex(orgId);
+    const pendingProjectCount = await projectDAL.countMissingBlindIndexProjects(orgId);
     if (!pendingProjectCount) {
       return { pendingProjectCount: 0 };
     }

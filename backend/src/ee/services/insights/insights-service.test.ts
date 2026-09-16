@@ -66,7 +66,7 @@ const projectScopedDepStubs: Pick<
   },
   projectDAL: {
     findById: unreachable("projectDAL.findById"),
-    countOrgProjectsPendingSecretBlindIndex: unreachable("projectDAL.countOrgProjectsPendingSecretBlindIndex")
+    countMissingBlindIndexProjects: unreachable("projectDAL.countMissingBlindIndexProjects")
   },
   userDAL: {
     find: unreachable("userDAL.find")

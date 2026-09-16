@@ -21,9 +21,11 @@ const setup = () => {
     })
   };
   const projectDAL = { findUserProjects: vi.fn().mockResolvedValue([]) };
+  const projectQueue = { startSecretBlindIndexMigrationPerOrg: vi.fn() };
   const service = projectServiceFactory({
     orgDAL,
-    projectDAL
+    projectDAL,
+    projectQueue
   } as unknown as Parameters<typeof projectServiceFactory>[0]);
 
   return { service, orgDAL, projectDAL, memberships };

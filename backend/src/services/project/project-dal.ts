@@ -1011,7 +1011,8 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countOrgProjectsPendingSecretBlindIndex = async (orgId: string, tx?: Knex) => {
+  // only secret manager projects have blind index
+  const countMissingBlindIndexProjects = async (orgId: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.Project)
         .where({
@@ -1053,7 +1054,7 @@ export const projectDALFactory = (db: TDbClient) => {
 
   return {
     ...projectOrm,
-    countOrgProjectsPendingSecretBlindIndex,
+    countMissingBlindIndexProjects,
     findById,
     findOne,
     find,
