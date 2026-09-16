@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createFolder } from "e2e-test/testUtils/folders";
+import { addIdentityToProject, createIdentityActor, grantIdentityFolderAccess } from "e2e-test/testUtils/identities";
 import {
   createAwsAppConnection,
   createSecretSync,
@@ -14,20 +15,10 @@ import {
   waitForSyncRun
 } from "e2e-test/testUtils/secret-syncs";
 import { createSecretV2 } from "e2e-test/testUtils/secrets";
-import jwt from "jsonwebtoken";
 
-import {
-  AccessScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  ProjectMembershipRole,
-  SecretFolderRole,
-  TableName
-} from "@app/db/schemas";
-import { getConfig, initEnvConfig } from "@app/lib/config/env";
+import { ProjectMembershipRole, SecretFolderRole } from "@app/db/schemas";
+import { initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 
 const ENV = "dev";
@@ -49,9 +40,7 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
   let adminToken: string;
   let cleanupOrg: () => Promise<void>;
   let connectionId: string;
-  let actorUserId: string;
-  let actorJwt: string;
-  const actorSessionId = randomUUID();
+  let actorToken: string;
 
   const newSync = (dto: { name: string; recursive: boolean; expectStatusCode?: number }) =>
     createSecretSync({
@@ -65,7 +54,7 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
       initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
       recursive: dto.recursive,
       isAutoSyncEnabled: false,
-      authToken: actorJwt,
+      authToken: actorToken,
       expectStatusCode: dto.expectStatusCode
     });
 
@@ -111,76 +100,31 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
       });
     }
 
-    const username = `sync-recursive-perms-${alphaNumericNanoId(8)}@example.com`.toLowerCase();
-    const [user] = await testDb(TableName.Users)
-      .insert({ username, email: username, isGhost: false, isAccepted: true, authMethods: [AuthMethod.EMAIL] })
-      .returning("*");
-    actorUserId = user.id;
+    const actor = await createIdentityActor({ orgId, authToken: adminToken });
+    actorToken = actor.authToken;
 
-    const [orgMembership] = await testDb(TableName.Membership)
-      .insert({
-        scope: AccessScope.Organization,
-        scopeOrgId: orgId,
-        actorUserId,
-        status: OrgMembershipStatus.Accepted,
-        isActive: true
-      })
-      .returning("*");
-    await testDb(TableName.MembershipRole).insert({ membershipId: orgMembership.id, role: OrgMembershipRole.Member });
-
-    const [projectMembership] = await testDb(TableName.Membership)
-      .insert({
-        scope: AccessScope.Project,
-        scopeOrgId: orgId,
-        scopeProjectId: projectId,
-        actorUserId
-      })
-      .returning("*");
     // The base role grants nothing, so every folder the grant below does not name is denied.
-    await testDb(TableName.MembershipRole).insert({
-      membershipId: projectMembership.id,
-      role: ProjectMembershipRole.NoAccess
+    await addIdentityToProject({
+      projectId,
+      identityId: actor.identityId,
+      role: ProjectMembershipRole.NoAccess,
+      authToken: adminToken
     });
-
-    await testDb(TableName.AuthTokenSession).insert({
-      id: actorSessionId,
-      userId: actorUserId,
-      ip: "127.0.0.1",
-      userAgent: "e2e-secret-sync-recursive-perms",
-      accessVersion: 1,
-      refreshVersion: 1,
-      lastUsed: new Date()
-    } as never);
-
-    actorJwt = jwt.sign(
-      {
-        authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: actorUserId,
-        tokenVersionId: actorSessionId,
-        authMethod: AuthMethod.EMAIL,
-        organizationId: orgId,
-        accessVersion: 1
-      },
-      getConfig().AUTH_SECRET,
-      { expiresIn: 3600 }
-    );
 
     // Manage is the lowest tier carrying secret sync create, and a folder grant applies to the
     // named folder only, so "/backend/api" falls back to the no-access base role.
-    const grantRes = await testServer.inject({
-      method: "POST",
-      url: `/api/v1/projects/${projectId}/users/${actorUserId}/secret-folder-access`,
-      headers: { authorization: `Bearer ${adminToken}` },
-      body: { environmentSlug: ENV, permission: SecretFolderRole.Manage, secretPath: "/backend" }
+    await grantIdentityFolderAccess({
+      projectId,
+      identityId: actor.identityId,
+      environmentSlug: ENV,
+      secretPath: "/backend",
+      permission: SecretFolderRole.Manage,
+      authToken: adminToken
     });
-    expect(grantRes.statusCode).toBe(200);
   });
 
   afterAll(async () => {
     await cleanupOrg();
-    // The org delete cascades its memberships and the actor's session, but the user row itself
-    // is global rather than org-scoped, so it has to go separately.
-    await testDb(TableName.Users).where({ id: actorUserId }).del();
   });
 
   test("creating a sync that includes subfolders is refused, naming the folder that is denied", async () => {
@@ -217,7 +161,7 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
     const { error } = await updateSecretSync({
       syncId: secretSync!.id,
       body: { destinationConfig: { region: REGION, path: "/actor-controlled/" } },
-      authToken: actorJwt,
+      authToken: actorToken,
       expectStatusCode: 403
     });
 
@@ -235,7 +179,7 @@ describe("A secret sync is refused when it would read a folder the actor cannot"
           recursive: true
         }
       },
-      authToken: actorJwt,
+      authToken: actorToken,
       expectStatusCode: 403
     });
 
