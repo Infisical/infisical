@@ -8,6 +8,10 @@ import {
   Button,
   Card,
   CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -24,7 +28,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Separator,
   TextArea,
   Toggle
 } from "@app/components/v3";
@@ -93,16 +96,16 @@ export const GeneralPageForm = () => {
   };
 
   return (
-    <Card>
-      <CardContent>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form className="space-y-6" onSubmit={handleSubmit(onFormSubmit)}>
+      <Card>
+        <CardHeader>
+          <CardTitle>User Signups</CardTitle>
+          <CardDescription>
+            Choose whether users can sign up for this Infisical instance.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <FieldGroup>
-            <div>
-              <FieldTitle>Allow User Signups</FieldTitle>
-              <FieldDescription>
-                Choose whether users can sign up for this Infisical instance.
-              </FieldDescription>
-            </div>
             <Controller
               control={control}
               name="signUpMode"
@@ -152,16 +155,24 @@ export const GeneralPageForm = () => {
                 )}
               />
             )}
+          </FieldGroup>
+        </CardContent>
+        <CardFooter className="justify-end border-t">
+          <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
+            Save
+          </Button>
+        </CardFooter>
+      </Card>
 
-            <Separator />
-            <div>
-              <FieldTitle>Default Organization</FieldTitle>
-              <FieldDescription>
-                Select the default organization you want to set for SAML/LDAP/OIDC/Github logins.
-                When selected, user logins will be automatically scoped to the selected
-                organization.
-              </FieldDescription>
-            </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Authentication Defaults</CardTitle>
+          <CardDescription>
+            Configure the default organization and LDAP email verification behavior.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
             <Controller
               control={control}
               name="defaultAuthOrgId"
@@ -192,8 +203,6 @@ export const GeneralPageForm = () => {
                 </Field>
               )}
             />
-
-            <Separator />
             <Controller
               control={control}
               name="trustLdapEmails"
@@ -218,16 +227,25 @@ export const GeneralPageForm = () => {
                 </Field>
               )}
             />
+          </FieldGroup>
+        </CardContent>
+        <CardFooter className="justify-end border-t">
+          <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
+            Save
+          </Button>
+        </CardFooter>
+      </Card>
 
-            <Separator />
-            <div>
-              <FieldTitle>Notices</FieldTitle>
-              <FieldDescription>
-                Configure system-wide notification banners and security messages. These settings
-                control the text displayed during authentication and throughout a user&apos;s
-                session.
-              </FieldDescription>
-            </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Notices</CardTitle>
+          <CardDescription>
+            Configure system-wide notification banners and security messages. These settings control
+            the text displayed during authentication and throughout a user&apos;s session.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
             <Controller
               render={({ field, fieldState: { error } }) => (
                 <Field>
@@ -264,12 +282,14 @@ export const GeneralPageForm = () => {
               control={control}
               name="pageFrameContent"
             />
-            <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
-              Save
-            </Button>
           </FieldGroup>
-        </form>
-      </CardContent>
-    </Card>
+        </CardContent>
+        <CardFooter className="justify-end border-t">
+          <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
+            Save
+          </Button>
+        </CardFooter>
+      </Card>
+    </form>
   );
 };
