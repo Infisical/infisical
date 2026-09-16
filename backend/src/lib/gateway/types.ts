@@ -16,7 +16,8 @@ export enum GatewayProxyProtocol {
   Adcs = "adcs",
   Discovery = "discovery",
   ConnectionTest = "connection-test",
-  WinRm = "winrm"
+  WinRm = "winrm",
+  Sql = "sql"
 }
 
 export enum GatewayHttpProxyActions {
