@@ -3,7 +3,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { addSeconds, formatISO } from "date-fns";
 import { z } from "zod";
 
-import { captureSignupCompleted } from "@app/components/analytics/signupExperiment";
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { createNotification } from "@app/components/notifications";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { SessionStorageKeys } from "@app/const";
@@ -58,9 +58,8 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         window.dataLayer.push({ event: "signup_completed" });
       }
 
-      // posthog-js never initializes on the signup path, so the anonymous marketing-site visitor
-      // is never merged into the new account. Identify on user.username, the distinct id the
-      // backend captures signup events with.
+      // Identify on user.username, the distinct id the backend captures signup events with, before
+      // recording the provider-verified conversion.
       try {
         const user = await context.queryClient.ensureQueryData({
           queryKey: userKeys.getUser,

@@ -7,7 +7,7 @@ import { LoaderCircle } from "lucide-react";
 import {
   SignupFlowVariant,
   useSignupFlowVariant
-} from "@app/components/analytics/signupExperiment";
+} from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
@@ -21,6 +21,7 @@ import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import { createNotification } from "@app/components/notifications";
 import { useServerConfig } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
@@ -51,7 +52,7 @@ export interface SignUpPageProps {
 
 export const SignUpPage = ({ invite }: SignUpPageProps) => {
   const isInvite = Boolean(invite);
-  const signupFlowVariant = useSignupFlowVariant(!isInvite);
+  const signupFlowVariant = useSignupFlowVariant(!isInvite && isInfisicalCloud());
   const [email, setEmail] = useState(invite?.email ?? "");
   const [pendingEmailVerification, setPendingEmailVerification] =
     useState<PendingEmailVerification | null>(null);

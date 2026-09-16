@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
+import { isInfisicalCloud } from "@app/helpers/platform";
 
-import { getPostHog, isPostHogEnabled } from "./posthog";
+import { getPostHog, isPostHogEnabled } from "../../posthog";
 import {
   resolveSignupFlowVariant,
   SIGNUP_COMPLETED_EVENT,
@@ -13,6 +14,7 @@ import {
 export { SignupFlowVariant } from "./signupExperimentConfig";
 
 const SIGNUP_FLOW_VARIANT_SESSION_KEY = "infisical-signup-flow-variant";
+const SIGNUP_FLOW_VARIANT_COOKIE_KEY = "infisical_signup_flow_variant";
 const SIGNUP_FLOW_VARIANT_QUERY_PARAM = "signupFlow";
 const FEATURE_FLAG_TIMEOUT_MS = 2500;
 
@@ -31,16 +33,35 @@ const persistSignupFlowVariant = (variant: SignupFlowVariant) => {
   } catch {
     // The assigned variant still applies for this render when storage is unavailable.
   }
+
+  if (isInfisicalCloud()) {
+    document.cookie = `${SIGNUP_FLOW_VARIANT_COOKIE_KEY}=${variant}; Path=/; Domain=.infisical.com; SameSite=Lax; Secure`;
+  }
 };
 
 const getPersistedSignupFlowVariant = () => {
+  let sessionVariant: string | null = null;
   try {
-    const variant = window.sessionStorage.getItem(SIGNUP_FLOW_VARIANT_SESSION_KEY);
-    const resolvedVariant = resolveSignupFlowVariant(variant);
-    return resolvedVariant.shouldPersist ? resolvedVariant.variant : undefined;
+    sessionVariant = window.sessionStorage.getItem(SIGNUP_FLOW_VARIANT_SESSION_KEY);
   } catch {
-    return undefined;
+    sessionVariant = null;
   }
+
+  const cookieVariant = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${SIGNUP_FLOW_VARIANT_COOKIE_KEY}=`))
+    ?.split("=")[1];
+  const resolvedVariant = resolveSignupFlowVariant(sessionVariant ?? cookieVariant);
+
+  if (!sessionVariant && resolvedVariant.shouldPersist) {
+    try {
+      window.sessionStorage.setItem(SIGNUP_FLOW_VARIANT_SESSION_KEY, resolvedVariant.variant);
+    } catch {
+      // The cookie assignment still applies when session storage is unavailable.
+    }
+  }
+
+  return resolvedVariant.shouldPersist ? resolvedVariant.variant : undefined;
 };
 
 export const useSignupFlowVariant = (enabled = true) => {
@@ -64,34 +85,42 @@ export const useSignupFlowVariant = (enabled = true) => {
     }
 
     let isSettled = false;
+    let unsubscribe: (() => void) | undefined;
+    let timeout: number | undefined;
     const settle = (nextVariant: SignupFlowVariant, shouldPersist = false) => {
       if (isSettled) return;
       isSettled = true;
+      window.clearTimeout(timeout);
+      unsubscribe?.();
       if (shouldPersist) persistSignupFlowVariant(nextVariant);
       setVariant(nextVariant);
     };
 
-    const unsubscribe = client.onFeatureFlags((_flags, _variants, context) => {
-      try {
-        const flagValue = context?.errorsLoading
-          ? undefined
-          : client.getFeatureFlag(SIGNUP_FLOW_FEATURE_FLAG, {
-              fresh: true
-            });
-        const resolvedVariant = resolveSignupFlowVariant(flagValue);
-        settle(resolvedVariant.variant, resolvedVariant.shouldPersist);
-      } catch {
-        settle(SignupFlowVariant.Control);
-      }
-    });
-    const timeout = window.setTimeout(
-      () => settle(SignupFlowVariant.Control),
-      FEATURE_FLAG_TIMEOUT_MS
-    );
+    timeout = window.setTimeout(() => settle(SignupFlowVariant.Control), FEATURE_FLAG_TIMEOUT_MS);
+    try {
+      unsubscribe = client.onFeatureFlags((_flags, _variants, context) => {
+        if (isSettled) return;
+
+        try {
+          const flagValue = context?.errorsLoading
+            ? undefined
+            : client.getFeatureFlag(SIGNUP_FLOW_FEATURE_FLAG, {
+                fresh: true
+              });
+          const resolvedVariant = resolveSignupFlowVariant(flagValue);
+          settle(resolvedVariant.variant, resolvedVariant.shouldPersist);
+        } catch {
+          settle(SignupFlowVariant.Control);
+        }
+      });
+      if (isSettled) unsubscribe();
+    } catch {
+      settle(SignupFlowVariant.Control);
+    }
 
     return () => {
       window.clearTimeout(timeout);
-      unsubscribe();
+      unsubscribe?.();
     };
   }, [enabled, variant]);
 
@@ -99,9 +128,11 @@ export const useSignupFlowVariant = (enabled = true) => {
 };
 
 export const captureSignupCompleted = (signupMethod: "email" | "sso") => {
+  if (!isInfisicalCloud()) return;
+
   const telemetry = new Telemetry().getInstance();
   telemetry.capture(SIGNUP_COMPLETED_EVENT, {
     signup_method: signupMethod,
-    signup_flow_variant: getPersistedSignupFlowVariant() ?? SignupFlowVariant.Control
+    signup_flow_variant: getPersistedSignupFlowVariant() ?? "unassigned"
   });
 };
