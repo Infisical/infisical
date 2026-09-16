@@ -42,6 +42,7 @@ import {
   CommandList,
   CommandSeparator,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -827,7 +828,9 @@ export const Navbar = () => {
             <DialogTitle>Server Administrators</DialogTitle>
             <DialogDescription>View all server administrators</DialogDescription>
           </DialogHeader>
-          <ServerAdminsPanel />
+          <DialogBody className="flex flex-col overflow-visible">
+            <ServerAdminsPanel />
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -24,77 +28,79 @@ export const ServerAdminsPanel = () => {
 
   const { data: orgUsers, isPending } = useGetOrgUsers(currentOrg?.id || "");
 
-  const adminUsers = orgUsers?.filter((orgUser) => {
-    const isSuperAdmin = orgUser.user.superAdmin;
-    const matchesSearch = debouncedSearchTerm
-      ? orgUser.user.email?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        orgUser.user.firstName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        orgUser.user.lastName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-      : true;
-    return isSuperAdmin && matchesSearch;
+  const serverAdmins = orgUsers?.filter((orgUser) => orgUser.user.superAdmin) ?? [];
+
+  const adminUsers = serverAdmins.filter((orgUser) => {
+    if (!debouncedSearchTerm) return true;
+    const term = debouncedSearchTerm.toLowerCase();
+    return (
+      orgUser.user.email?.toLowerCase().includes(term) ||
+      orgUser.user.firstName?.toLowerCase().includes(term) ||
+      orgUser.user.lastName?.toLowerCase().includes(term)
+    );
   });
 
-  const isEmpty = !isPending && (!adminUsers || adminUsers.length === 0);
+  const isEmpty = !isPending && adminUsers.length === 0;
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="mb-4 px-4">
-        <InputGroup>
-          <InputGroupAddon>
-            <Search />
-          </InputGroupAddon>
-          <InputGroupInput
-            aria-label="Search server administrators"
-            value={searchUserFilter}
-            onChange={(e) => setSearchUserFilter(e.target.value)}
-            placeholder="Search server admins..."
-          />
-        </InputGroup>
-      </div>
-      <div className="flex-1 px-2">
-        <div className="flex max-h-[30vh] flex-col overflow-auto rounded-md">
-          <Table containerClassName="overflow-visible">
-            <TableHeader className="sticky top-0 z-10 bg-container">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <InputGroup>
+        <InputGroupAddon>
+          <SearchIcon />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={searchUserFilter}
+          onChange={(e) => setSearchUserFilter(e.target.value)}
+          placeholder="Search server admins..."
+        />
+      </InputGroup>
+      <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto">
+        {isPending && (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <Skeleton key={`server-admins-skeleton-${idx}`} className="h-10 w-full" />
+            ))}
+          </div>
+        )}
+        {isEmpty && (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>
+                {serverAdmins.length ? "No server admins match your search" : "No server admins"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {serverAdmins.length
+                  ? "Try a different name or email."
+                  : "Promote a user to server admin in the Admin Console to see them listed here."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+        {!isPending && adminUsers.length > 0 && (
+          <Table>
+            <TableHeader>
               <TableRow>
                 <TableHead className="w-1/2">Name</TableHead>
                 <TableHead className="w-1/2">Email</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isPending &&
-                ["first", "second", "third"].map((key) => (
-                  <TableRow key={`admin-skeleton-${key}`}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-40" />
-                    </TableCell>
+              {adminUsers.map(({ user }) => {
+                const name =
+                  user.firstName || user.lastName
+                    ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
+                    : user.username;
+                return (
+                  <TableRow key={`admin-${user.id}`}>
+                    <TableCell className="w-1/2 break-words">{name}</TableCell>
+                    <TableCell className="w-1/2 break-words">{user.email}</TableCell>
                   </TableRow>
-                ))}
-              {!isPending &&
-                adminUsers?.map(({ user }) => {
-                  const name =
-                    user.firstName || user.lastName
-                      ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
-                      : user.username;
-                  return (
-                    <TableRow key={`admin-${user.id}`}>
-                      <TableCell className="w-1/2 break-words whitespace-normal">{name}</TableCell>
-                      <TableCell className="w-1/2 break-words whitespace-normal">
-                        {user.email}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                );
+              })}
             </TableBody>
           </Table>
-          {isEmpty && (
-            <div className="flex h-32 items-center justify-center rounded-md border border-border bg-container text-sm text-muted">
-              No server administrators found
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
