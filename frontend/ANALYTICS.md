@@ -11,8 +11,9 @@ shape.
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, orgId, {
+  paywallKey,
   paywallText,
-  sourcePath,
+  route,
   isEnterpriseFeature
 });
 ```
