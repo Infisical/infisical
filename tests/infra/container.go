@@ -20,7 +20,11 @@ type ContainerSpec struct {
 	Command []string
 	Env     map[string]string
 	Ports   []int
-	Alias   string // network alias, which becomes the Internal host
+	Alias   string // primary network alias, which becomes the Internal host
+
+	// Aliases are extra network aliases. WireMock uses them to answer for hostnames
+	// that cloud SDKs hardcode and would otherwise never send through a proxy.
+	Aliases []string
 	Files   []File
 	Labels  map[string]string
 	Ready   ReadyFunc

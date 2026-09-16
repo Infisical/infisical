@@ -11,7 +11,6 @@ func TestContainerName(t *testing.T) {
 
 	for _, tc := range []struct {
 		name string
-		why  string
 		in   NameParts
 		want string
 	}{
@@ -22,21 +21,16 @@ func TestContainerName(t *testing.T) {
 		},
 		{
 			name: "ok/a Named instance is distinct from the default",
-			why:  "The rotation suites need a target database separate from the app's own.",
 			in:   NameParts{Scope: Shared, Module: "postgres", Instance: "rotation"},
 			want: "inf-shared-postgres-rotation",
 		},
 		{
 			name: "ok/infisical carries its image id",
-			why: `A stale app container runs your previous code and every test still passes, ` +
-				`so this is the one place staleness is silent and needs a fingerprint.`,
 			in:   NameParts{Scope: Shared, Module: "infisical", Fingerprint: "9f8e7d6c"},
 			want: "inf-shared-infisical-9f8e7d6c",
 		},
 		{
 			name: "ok/package scope is qualified by package path",
-			why: `Two Isolated packages running under -p 4 must not adopt each other's ` +
-				`containers, which is the precise opposite of what Isolated means.`,
 			in:   NameParts{Scope: Package, ScopeID: "suites/instance", Module: "postgres"},
 			want: "inf-pkg-suites-instance-postgres",
 		},
@@ -47,14 +41,12 @@ func TestContainerName(t *testing.T) {
 		},
 		{
 			name: "ok/unsafe characters fold to hyphens",
-			why:  "Docker accepts [a-zA-Z0-9][a-zA-Z0-9_.-]* only, so a package path has to fold.",
 			in:   NameParts{Scope: Package, ScopeID: "Suites/PKI v2", Module: "postgres"},
 			want: "inf-pkg-suites-pki-v2-postgres",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			spec.Why(t, tc.why)
 			if got := ContainerName(tc.in); got != tc.want {
 				t.Fatalf("ContainerName() = %q, want %q", got, tc.want)
 			}
