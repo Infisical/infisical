@@ -50,7 +50,7 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -311,7 +311,7 @@ export const projectServiceFactory = ({
         );
 
         if (existingSecretScanningProject) {
-          throw new BadRequestError({
+          throw new ConflictError({
             message: "Secret Scanning is limited to one project per organization at this time."
           });
         }
