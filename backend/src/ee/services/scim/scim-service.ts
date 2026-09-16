@@ -14,11 +14,14 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -140,6 +143,8 @@ type TScimServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -170,7 +175,9 @@ export const scimServiceFactory = ({
   scimEventsDAL,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService
+  usageMeteringService,
+  pamSessionDAL,
+  gatewayV2Service
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -790,6 +797,8 @@ export const scimServiceFactory = ({
       emailDomainDAL
     });
 
+    let sendPamCancellations = () => {};
+
     try {
       await userDAL.transaction(async (tx) => {
         await membershipUserDAL.updateById(
@@ -799,6 +808,16 @@ export const scimServiceFactory = ({
           },
           tx
         );
+
+        if (!scimUser.active) {
+          sendPamCancellations = await terminatePamSessionsForUsers({
+            orgIds: [orgId],
+            userIds: [membership.actorUserId as string],
+            pamSessionDAL,
+            gatewayV2Service,
+            tx
+          });
+        }
         await userDAL.updateById(
           membership.actorUserId as string,
           {
@@ -837,6 +856,8 @@ export const scimServiceFactory = ({
     } catch (err) {
       throw $toScimEmailConflictError(err, newEmail);
     }
+
+    sendPamCancellations();
 
     return scimUser;
   };
@@ -907,6 +928,8 @@ export const scimServiceFactory = ({
       emailDomainDAL
     });
 
+    let sendPamCancellations = () => {};
+
     try {
       await userDAL.transaction(async (tx) => {
         await membershipUserDAL.updateById(
@@ -916,6 +939,16 @@ export const scimServiceFactory = ({
           },
           tx
         );
+
+        if (!active) {
+          sendPamCancellations = await terminatePamSessionsForUsers({
+            orgIds: [orgId],
+            userIds: [membership.actorUserId as string],
+            pamSessionDAL,
+            gatewayV2Service,
+            tx
+          });
+        }
         await userDAL.updateById(
           membership.actorUserId!,
           {
@@ -962,6 +995,8 @@ export const scimServiceFactory = ({
       throw $toScimEmailConflictError(err, newEmail);
     }
 
+    sendPamCancellations();
+
     return buildScimUser({
       orgMembershipId: membership.id,
       username: externalId || user.username,
@@ -1005,7 +1040,9 @@ export const scimServiceFactory = ({
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
       approvalPolicyDAL,
-      alertChannelRecipientDAL
+      alertChannelRecipientDAL,
+      pamSessionDAL,
+      gatewayV2Service
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.

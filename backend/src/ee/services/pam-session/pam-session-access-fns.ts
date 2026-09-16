@@ -11,7 +11,7 @@ import { getResourceIdsWithActionsForActors, pamActorKey } from "../pam/pam-perm
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
-import { terminatePamSessions } from "./pam-session-fns";
+import { LIVE_PAM_SESSION_STATUSES, sendPamSessionCancellationSignal, terminatePamSessions } from "./pam-session-fns";
 
 // Users and machine identities can both hold PAM sessions, and the two are tracked in separate columns
 // (`userId` / `identityId` on the session, `actorUserId` / `actorIdentityId` on the membership). Carrying
@@ -152,4 +152,51 @@ export const terminatePamSessionsWithoutLaunchAccess = async ({
     gatewayV2Service,
     tx
   });
+};
+
+type TTerminatePamSessionsForUsersDTO = {
+  orgIds: string[];
+  userIds: string[];
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  tx?: Knex;
+};
+
+// Same transaction contract as `terminatePamSessions`: the row update rolls back with the caller's
+// transaction, the cancellation signals cannot, so the caller fires the returned callback after COMMIT.
+export const terminatePamSessionsForUsers = async ({
+  orgIds,
+  userIds,
+  pamSessionDAL,
+  gatewayV2Service,
+  tx
+}: TTerminatePamSessionsForUsersDTO): Promise<() => void> => {
+  const noop = () => {};
+  if (userIds.length === 0) return noop;
+
+  const sessions = await pamSessionDAL.findLiveByOrgAndUserIds(orgIds, userIds, tx);
+  if (sessions.length === 0) return noop;
+
+  await pamSessionDAL.update(
+    { $in: { id: sessions.map((session) => session.id), status: LIVE_PAM_SESSION_STATUSES } },
+    { status: PamSessionStatus.Terminated, endedAt: new Date() },
+    tx
+  );
+
+  return () => {
+    for (const session of sessions) {
+      if (session.gatewayId) {
+        const sessionActor = resolveSessionActor(session);
+        sendPamSessionCancellationSignal({
+          sessionId: session.id,
+          gatewayId: session.gatewayId,
+          accountType: session.accountType,
+          actorId: sessionActor?.id ?? "",
+          actorType: sessionActor?.type,
+          actorEmail: session.actorEmail || session.actorName,
+          gatewayV2Service
+        });
+      }
+    }
+  };
 };
