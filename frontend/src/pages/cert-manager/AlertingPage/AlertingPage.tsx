@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
@@ -23,6 +23,19 @@ export const AlertingPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
   const [selectedTab, setSelectedTab] = useState("rule-based");
+  const [tabsOrientation, setTabsOrientation] = useState<"horizontal" | "vertical">(() =>
+    window.matchMedia("(min-width: 80rem)").matches ? "vertical" : "horizontal"
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 80rem)");
+    const updateOrientation = () =>
+      setTabsOrientation(mediaQuery.matches ? "vertical" : "horizontal");
+
+    mediaQuery.addEventListener("change", updateOrientation);
+
+    return () => mediaQuery.removeEventListener("change", updateOrientation);
+  }, []);
 
   const { data: v1AlertsData } = useListWorkspacePkiAlerts({
     projectId: currentProject?.id || ""
@@ -58,36 +71,17 @@ export const AlertingPage = () => {
               <PkiAlertsV2Page hideContainer />
             </div>
           ) : (
-            <Tabs
-              orientation="vertical"
-              value={selectedTab}
-              onValueChange={setSelectedTab}
-              className="max-xl:flex-col xl:gap-x-12"
-            >
-              <TabsList
-                variant="project"
-                aria-label="Alerting sections"
-                className="max-xl:gap-0 max-xl:border-b max-xl:border-border max-xl:data-[orientation=vertical]:h-11 max-xl:data-[orientation=vertical]:flex-row xl:data-[orientation=vertical]:gap-y-6 xl:data-[style=underline]:w-fit"
-              >
-                <TabsTrigger
-                  value="rule-based"
-                  className="max-xl:data-[orientation=vertical]:h-11 max-xl:data-[orientation=vertical]:w-auto max-xl:data-[orientation=vertical]:justify-center max-xl:data-[orientation=vertical]:px-3 max-xl:data-[orientation=vertical]:py-0.5 max-xl:data-[orientation=vertical]:after:inset-x-0 max-xl:data-[orientation=vertical]:after:inset-y-auto max-xl:data-[orientation=vertical]:after:bottom-0 max-xl:data-[orientation=vertical]:after:h-0.5 max-xl:data-[orientation=vertical]:after:w-auto xl:data-[orientation=vertical]:h-5 xl:data-[orientation=vertical]:py-0"
-                >
-                  Certificate Alerts
-                </TabsTrigger>
-                <TabsTrigger
-                  value="legacy"
-                  className="max-xl:data-[orientation=vertical]:h-11 max-xl:data-[orientation=vertical]:w-auto max-xl:data-[orientation=vertical]:justify-center max-xl:data-[orientation=vertical]:px-3 max-xl:data-[orientation=vertical]:py-0.5 max-xl:data-[orientation=vertical]:after:inset-x-0 max-xl:data-[orientation=vertical]:after:inset-y-auto max-xl:data-[orientation=vertical]:after:bottom-0 max-xl:data-[orientation=vertical]:after:h-0.5 max-xl:data-[orientation=vertical]:after:w-auto xl:data-[orientation=vertical]:h-5 xl:data-[orientation=vertical]:py-0"
-                >
-                  Collection Alerts (Legacy)
-                </TabsTrigger>
+            <Tabs orientation={tabsOrientation} value={selectedTab} onValueChange={setSelectedTab}>
+              <TabsList variant="project" aria-label="Alerting sections">
+                <TabsTrigger value="rule-based">Certificate Alerts</TabsTrigger>
+                <TabsTrigger value="legacy">Collection Alerts (Legacy)</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="rule-based" className="mt-0 py-5 xl:overflow-x-hidden xl:py-0">
+              <TabsContent value="rule-based">
                 <PkiAlertsV2Page />
               </TabsContent>
 
-              <TabsContent value="legacy" className="mt-0 py-5 xl:overflow-x-hidden xl:py-0">
+              <TabsContent value="legacy">
                 <div className="space-y-6">
                   <PkiAlertsSection />
                   <PkiCollectionSection />
