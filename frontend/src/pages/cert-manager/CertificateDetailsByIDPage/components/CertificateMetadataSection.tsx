@@ -126,7 +126,7 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
-          <p className="text-sm text-mineshaft-400">Loading...</p>
+          <p className="text-sm text-muted">Loading...</p>
         </CardContent>
       </Card>
     );
@@ -175,7 +175,7 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
               )}
             </div>
           ) : (
-            <p className="text-sm text-mineshaft-400">No metadata attached to this certificate.</p>
+            <p className="text-sm text-muted">No metadata attached to this certificate.</p>
           )}
         </CardContent>
       </Card>

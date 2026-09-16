@@ -2,6 +2,7 @@ import { useLocation, useNavigate, useParams, useRouteContext } from "@tanstack/
 import {
   BlocksIcon,
   BuildingIcon,
+  CheckIcon,
   CogIcon,
   CreditCardIcon,
   DatabaseIcon,
@@ -12,11 +13,13 @@ import {
   KeyIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
+  MoonIcon,
   SearchIcon,
   ServerCogIcon,
   SettingsIcon,
   ShieldCheckIcon,
   ShieldIcon,
+  SunIcon,
   UserIcon,
   UsersIcon
 } from "lucide-react";
@@ -29,6 +32,7 @@ import {
   type GlobalCommandMenuSearchStatus
 } from "@app/components/v3/generic/Command";
 import { OrgIcon, ProjectIcon, SubOrgIcon } from "@app/components/v3/platform/ScopeIcons";
+import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import {
   OrgPermissionActions,
   OrgPermissionAuditLogsActions,
@@ -306,11 +310,15 @@ const useEntityCommandGroups = ({
 const getNestedCommandGroup = ({
   projectItems,
   organizationItems,
-  teamItems
+  teamItems,
+  theme,
+  setTheme
 }: {
   projectItems: GlobalCommandMenuItem[];
   organizationItems: GlobalCommandMenuItem[];
   teamItems: GlobalCommandMenuItem[];
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 }): GlobalCommandMenuGroup => ({
   heading: "Explore",
   items: [
@@ -344,7 +352,40 @@ const getNestedCommandGroup = ({
             drilldownPlaceholder: "Search teams..."
           }
         ]
-      : [])
+      : []),
+    {
+      id: "command-change-theme",
+      label: "Change Theme…",
+      breadcrumb: "Global / Appearance",
+      icon: theme === "dark" ? MoonIcon : SunIcon,
+      keywords: ["dark", "light", "appearance"],
+      children: [
+        {
+          heading: "Theme",
+          items: [
+            {
+              id: "theme-dark",
+              label: "Dark",
+              breadcrumb: `Appearance / ${theme === "dark" ? "Current theme" : "Theme"}`,
+              icon: theme === "dark" ? CheckIcon : MoonIcon,
+              keywords: ["theme"],
+              isDisabled: theme === "dark",
+              onSelect: () => setTheme("dark")
+            },
+            {
+              id: "theme-light",
+              label: "Light",
+              breadcrumb: `Appearance / ${theme === "light" ? "Current theme" : "Theme"}`,
+              icon: theme === "light" ? CheckIcon : SunIcon,
+              keywords: ["theme"],
+              isDisabled: theme === "light",
+              onSelect: () => setTheme("light")
+            }
+          ]
+        }
+      ],
+      drilldownPlaceholder: "Choose a theme..."
+    }
   ]
 });
 
@@ -380,6 +421,7 @@ const getAccountItems = (navigate: ReturnType<typeof useNavigate>): GlobalComman
 ];
 
 const PersonalSettingsCommandMenu = () => {
+  const { theme, setTheme } = useTheme();
   const organizationId = useRouteContext({
     from: "/_authenticate",
     select: (context) => context.organizationId
@@ -387,7 +429,7 @@ const PersonalSettingsCommandMenu = () => {
   const navigate = useNavigate();
   const accountItems = getAccountItems(navigate).map((item) => ({ ...item, priority: 30 }));
   const entityGroups = useEntityCommandGroups({ currentOrganizationId: organizationId });
-  const nestedGroup = getNestedCommandGroup(entityGroups);
+  const nestedGroup = getNestedCommandGroup({ ...entityGroups, theme, setTheme });
 
   return (
     <NavigationCommandMenu
@@ -403,6 +445,7 @@ const PersonalSettingsCommandMenu = () => {
 };
 
 const AdminCommandMenu = () => {
+  const { theme, setTheme } = useTheme();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const accountItems = getAccountItems(navigate);
@@ -451,7 +494,7 @@ const AdminCommandMenu = () => {
       browseGroups={[
         { heading: "Server Console", items: adminItems },
         { heading: "Global", items: accountItems.slice(0, 1) },
-        getNestedCommandGroup(entityGroups)
+        getNestedCommandGroup({ ...entityGroups, theme, setTheme })
       ]}
       searchGroups={[
         { heading: "Pages & Settings", items: [...adminItems, ...accountItems] },
@@ -1034,6 +1077,7 @@ const CurrentProjectCommandMenu = ({ content }: { content: CommandContent }) => 
 };
 
 const OrganizationCommandMenu = () => {
+  const { theme, setTheme } = useTheme();
   const { projectId } = useParams({ strict: false }) as { projectId?: string };
   const orgScopedProduct = useImplicitProduct();
   const { currentOrg, isRootOrganization } = useOrganization();
@@ -1097,7 +1141,7 @@ const OrganizationCommandMenu = () => {
     browseGroups: [
       { heading: currentOrg.name, items: organizationItems.slice(0, 3) },
       { heading: "Global", items: globalItems.slice(0, user.superAdmin ? 2 : 1) },
-      getNestedCommandGroup(entityGroups)
+      getNestedCommandGroup({ ...entityGroups, theme, setTheme })
     ],
     searchGroups: [
       { heading: "Pages & Settings", items: [...organizationItems, ...globalItems] },

@@ -73,7 +73,7 @@ const Page = () => {
       : "Installation");
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
           backLink={
