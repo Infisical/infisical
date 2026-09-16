@@ -23,14 +23,25 @@ export const validateIdTokenIdentity = async ({
 }) => {
   const oAuth2Client = new OAuth2Client();
   const response = await oAuth2Client.getFederatedSignonCerts();
-  const ticket = await oAuth2Client.verifySignedJwtWithCertsAsync(
-    identityToken,
-    response.certs,
-    identityId, // audience
-    ["https://accounts.google.com"]
-  );
-  const payload = ticket.getPayload() as TGcpIdTokenPayload;
-  if (!payload || !payload.email) throw new UnauthorizedError();
+
+  let payload: TGcpIdTokenPayload | undefined;
+  try {
+    const ticket = await oAuth2Client.verifySignedJwtWithCertsAsync(
+      identityToken,
+      response.certs,
+      identityId, // audience
+      ["https://accounts.google.com"]
+    );
+    payload = ticket.getPayload() as TGcpIdTokenPayload;
+  } catch {
+    // google-auth-library puts the whole token in its error messages, so the cause is dropped
+    // rather than attached to an error that gets logged.
+    throw new UnauthorizedError({ message: "Invalid GCP ID token" });
+  }
+
+  if (!payload || !payload.email) {
+    throw new UnauthorizedError({ message: "GCP ID token is missing an email claim" });
+  }
 
   return { email: payload.email, computeEngineDetails: payload.google?.compute_engine };
 };
@@ -51,7 +62,15 @@ export const validateIamIdentity = async ({
   identityId: string;
   jwt: string;
 }) => {
-  const decodedJwt = crypto.jwt().decode(serviceAccountJwt, { complete: true }) as TDecodedGcpIamAuthJwt;
+  let decodedJwt: TDecodedGcpIamAuthJwt;
+  try {
+    decodedJwt = crypto.jwt().decode(serviceAccountJwt, { complete: true }) as TDecodedGcpIamAuthJwt;
+  } catch {
+    throw new UnauthorizedError({ message: "Invalid GCP IAM token" });
+  }
+  if (!decodedJwt?.payload || !decodedJwt?.header?.kid) {
+    throw new UnauthorizedError({ message: "Invalid GCP IAM token" });
+  }
   const { sub, aud } = decodedJwt.payload;
 
   if (!sub || !serviceAccountEmailRegex.test(sub)) {
@@ -67,10 +86,17 @@ export const validateIamIdentity = async ({
   } = await request.get(`https://www.googleapis.com/service_accounts/v1/metadata/x509/${encodeURIComponent(sub)}`);
 
   const publicKey = data[decodedJwt.header.kid];
+  if (!publicKey) {
+    throw new UnauthorizedError({ message: "No matching signing key found for the GCP IAM token" });
+  }
 
-  crypto.jwt().verify(serviceAccountJwt, publicKey, {
-    algorithms: ["RS256"]
-  });
+  try {
+    crypto.jwt().verify(serviceAccountJwt, publicKey, {
+      algorithms: ["RS256"]
+    });
+  } catch {
+    throw new UnauthorizedError({ message: "Invalid GCP IAM token signature" });
+  }
 
   if (aud !== identityId) throw new UnauthorizedError({ message: "Invalid audience in GCP IAM Token" });
   return { email: sub };
