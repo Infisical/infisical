@@ -28,7 +28,7 @@ type TagsInputProps = Omit<
   onValueChange: (next: string[]) => void;
   isDisabled?: boolean;
   isError?: boolean;
-  /** Characters that commit the draft, and that a pasted string is split on. Newline always splits. */
+  /** A newline always splits pasted text, even with `separators={[]}`. */
   separators?: readonly string[];
   /** Returning a reason refuses the commit. `existing` never contains the value being checked. */
   validateTag?: (tag: string, existing: string[]) => string | null;
