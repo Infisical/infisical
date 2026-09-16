@@ -1,23 +1,23 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
-import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { getAgentVaultProjectAuthority, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { generateActivityKey, wrapActivityKey } from "../agent-vault-activity/agent-vault-activity-secrets";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory } from "./agent-vault-session-dal";
-import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
+import { deriveSessionStatus, generateSessionToken, isSessionOwnedBy } from "./agent-vault-session-fns";
 import { TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-vault-session-types";
 
 // V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
@@ -34,9 +34,8 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
-
-const SESSION_RETENTION_DAYS = 30;
 
 export type TAgentVaultSessionServiceFactory = ReturnType<typeof agentVaultSessionServiceFactory>;
 
@@ -45,7 +44,8 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultSessionAccessBundleDAL,
   agentVaultAccessBundleDAL,
   membershipDAL,
-  permissionService
+  permissionService,
+  kmsService
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
     if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
@@ -91,6 +91,11 @@ export const agentVaultSessionServiceFactory = ({
     const expiresAt = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : new Date(Date.now() + ms(ttl));
     const { token, tokenHash } = generateSessionToken();
 
+    // Always minted, even while activity logging is off, so turning it on later covers sessions that are
+    // already running. Deriving the project data key is a KMS round trip, so it stays outside the
+    // transaction below.
+    const encryptedActivityKey = await wrapActivityKey({ projectId, activityKey: generateActivityKey() }, kmsService);
+
     const session = await agentVaultSessionDAL.transaction(async (tx) => {
       const created = await agentVaultSessionDAL.create(
         {
@@ -100,7 +105,8 @@ export const agentVaultSessionServiceFactory = ({
           actorName,
           actorEmail,
           tokenHash,
-          expiresAt
+          expiresAt,
+          encryptedActivityKey
         },
         tx
       );
@@ -133,20 +139,8 @@ export const agentVaultSessionServiceFactory = ({
     };
   };
 
-  const getSessionAuthority = async ({ projectId, ctx }: { projectId: string; ctx: TListSessionsDTO["ctx"] }) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      actionProjectType: ActionProjectType.AgentVault
-    });
-    return { permission, isAdmin: hasRole(ProjectMembershipRole.Admin) };
-  };
-
   const listSessions = async ({ projectId, ctx, scope, status, search, limit, offset }: TListSessionsDTO) => {
-    const { permission, isAdmin } = await getSessionAuthority({ projectId, ctx });
+    const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionSub.AgentVaultSessions
@@ -174,7 +168,7 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
-    const { permission, isAdmin } = await getSessionAuthority({ projectId, ctx });
+    const { permission, isAdmin } = await getAgentVaultProjectAuthority({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Revoke,
       ProjectPermissionSub.AgentVaultSessions
@@ -183,11 +177,7 @@ export const agentVaultSessionServiceFactory = ({
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    // The CASL action alone would let any member revoke another member's session.
-    const isOwner =
-      (ctx.actor === ActorType.USER && session.userId === ctx.actorId) ||
-      (ctx.actor === ActorType.IDENTITY && session.identityId === ctx.actorId);
-    if (!isOwner && !isAdmin) {
+    if (!isSessionOwnedBy(ctx, session) && !isAdmin) {
       throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }
 
@@ -216,17 +206,9 @@ export const agentVaultSessionServiceFactory = ({
     return { session: withStatus(current ?? session), revokedNow: false };
   };
 
-  // Expiry needs no sweep: it is enforced against the clock on every resolve and derived per row on read.
-  const sweepRetiredSessions = async () => {
-    const cutoff = new Date(Date.now() - SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    const pruned = await agentVaultSessionDAL.pruneRetiredBefore(cutoff);
-    logger.info(`agent-vault: session sweep pruned ${pruned} retired session(s)`);
-  };
-
   return {
     mintSession,
     listSessions,
-    revokeSession,
-    sweepRetiredSessions
+    revokeSession
   };
 };

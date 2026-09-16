@@ -1,13 +1,22 @@
 import { z } from "zod";
 
 import { AgentVaultTrafficPolicy } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AgentVaultActivityChunkCreateResponseSchema,
+  AgentVaultActivityChunkCreateSchema
+} from "@app/ee/services/agent-vault-activity/agent-vault-activity-schemas";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { logger } from "@app/lib/logger";
-import { agentVaultHeartbeatLimit, agentVaultResolveLimit, writeLimit } from "@app/server/config/rateLimiter";
+import {
+  agentVaultActivityChunkLimit,
+  agentVaultHeartbeatLimit,
+  agentVaultResolveLimit,
+  writeLimit
+} from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -134,6 +143,14 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .describe(AGENT_VAULT.PROXY.sessionToken)
         })
         .passthrough(),
+      // Nullish rather than optional: a proxy predating activity logging sends no body at all, which
+      // arrives as null, and .optional() only admits undefined. Getting this wrong 422s every proxy
+      // already in the field the moment this ships.
+      body: z
+        .object({
+          hasActivityKey: z.boolean().default(false).describe(AGENT_VAULT.ACTIVITY.hasActivityKey)
+        })
+        .nullish(),
       response: {
         200: z.object({
           sessionId: z.string().uuid(),
@@ -165,7 +182,12 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                 .object({ placeholder: z.string(), surfaces: z.string().array(), value: z.string() })
                 .array()
             })
-            .array()
+            .array(),
+          activity: z.object({
+            enabled: z.boolean().describe(AGENT_VAULT.ACTIVITY.enabled),
+            sessionKey: z.string().nullable().describe(AGENT_VAULT.ACTIVITY.sessionKey),
+            projectId: z.string().describe("The project the session belongs to. Part of the sealing context.")
+          })
         })
       }
     },
@@ -175,7 +197,32 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       return server.services.agentVaultProxy.resolveSession({
         proxyId: req.permission.id,
         orgId: req.permission.orgId,
-        sessionToken: req.headers[SESSION_HEADER]
+        sessionToken: req.headers[SESSION_HEADER],
+        hasActivityKey: req.body?.hasActivityKey ?? false
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/sessions/:sessionId/activity/chunks",
+    config: { rateLimit: agentVaultActivityChunkLimit },
+    schema: {
+      operationId: "createAgentVaultActivityChunk",
+      description:
+        "Record one sealed chunk of session activity and get a presigned URL to upload it to. The row is written before the object exists, so a failed upload is a visible gap rather than a silent one. Re-sending the same chunkId is idempotent.",
+      tags: [ApiDocsTags.AgentVaultActivity],
+      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      body: AgentVaultActivityChunkCreateSchema,
+      response: { 200: AgentVaultActivityChunkCreateResponseSchema }
+    },
+    onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      // Unaudited for the same reason as resolve: once a minute per session per proxy.
+      return server.services.agentVaultActivity.recordChunk({
+        proxyId: req.permission.id,
+        sessionId: req.params.sessionId,
+        chunk: req.body
       });
     }
   });

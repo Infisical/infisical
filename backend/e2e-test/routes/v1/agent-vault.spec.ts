@@ -2,15 +2,14 @@ import crypto from "node:crypto";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { agentVaultActivityConfigDALFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-config-dal";
+import { agentVaultActivitySweepServiceFactory } from "@app/ee/services/agent-vault-activity/agent-vault-activity-sweep-service";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
-import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
-import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -1528,6 +1527,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1569,6 +1569,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1582,7 +1583,8 @@ describe("Agent Vault V1 Router", async () => {
       const resolved = await resolver.resolveSession({
         proxyId: proxy.id,
         orgId: seedData1.organization.id,
-        sessionToken: session.token
+        sessionToken: session.token,
+        hasActivityKey: false
       });
 
       expect(resolved.services).toHaveLength(1);
@@ -1619,7 +1621,8 @@ describe("Agent Vault V1 Router", async () => {
         resolver.resolveSession({
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
-          sessionToken: session.token
+          sessionToken: session.token,
+          hasActivityKey: false
         });
 
       const membership = await testDb("memberships")
@@ -1656,7 +1659,8 @@ describe("Agent Vault V1 Router", async () => {
         buildResolver().resolveSession({
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
-          sessionToken: session.token
+          sessionToken: session.token,
+          hasActivityKey: false
         });
 
       const [doomed] = (await testDb("users")
@@ -1686,7 +1690,8 @@ describe("Agent Vault V1 Router", async () => {
         buildResolver().resolveSession({
           proxyId: proxy.id,
           orgId: seedData1.organization.id,
-          sessionToken: session.token
+          sessionToken: session.token,
+          hasActivityKey: false
         });
 
       const identity = await createOrgIdentity(`doomed-${crypto.randomUUID()}`);
@@ -1722,6 +1727,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         permissionService: buildPermissionService(),
@@ -1731,7 +1737,12 @@ describe("Agent Vault V1 Router", async () => {
         resourceAuthMethodService: {} as never
       });
       const resolve = () =>
-        resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+        resolver.resolveSession({
+          proxyId: proxy.id,
+          orgId: seedData1.organization.id,
+          sessionToken: session.token,
+          hasActivityKey: false
+        });
 
       const membership = await testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
@@ -1880,12 +1891,14 @@ describe("Agent Vault V1 Router", async () => {
       await testDb("agent_vault_sessions")
         .where({ id: recentlyExpired })
         .update({ expiresAt: new Date(Date.now() - 60 * 60 * 1000) });
-      const sweeper = agentVaultSessionServiceFactory({
+      // The sweep moved to its own service and its own cron, so it no longer runs inside the shared
+      // daily cleanup. These sessions hold no activity chunks, so they take the bulk prune path.
+      const sweeper = agentVaultActivitySweepServiceFactory({
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
-        agentVaultSessionAccessBundleDAL: agentVaultSessionAccessBundleDALFactory(testDb),
-        agentVaultAccessBundleDAL: agentVaultAccessBundleDALFactory(testDb),
-        membershipDAL: membershipDALFactory(testDb),
-        permissionService: { getProjectPermission: () => Promise.reject(new Error("not used by the sweep")) }
+        agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
+        appConnectionDAL: {} as never,
+        kmsService: {} as never,
+        cronJob: { register: () => {} } as never
       });
       await sweeper.sweepRetiredSessions();
 
@@ -2389,6 +2402,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+          agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           permissionService: buildPermissionService(),
@@ -2398,7 +2412,12 @@ describe("Agent Vault V1 Router", async () => {
           resourceAuthMethodService: {} as never
         });
         const resolve = () =>
-          resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+          resolver.resolveSession({
+            proxyId: proxy.id,
+            orgId: seedData1.organization.id,
+            sessionToken: session.token,
+            hasActivityKey: false
+          });
 
         expect((await resolve()).services).toHaveLength(1);
 
@@ -2480,6 +2499,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+          agentVaultActivityConfigDAL: agentVaultActivityConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           permissionService: buildPermissionService(),
@@ -2489,7 +2509,12 @@ describe("Agent Vault V1 Router", async () => {
           resourceAuthMethodService: {} as never
         });
         const resolve = () =>
-          resolver.resolveSession({ proxyId: proxy.id, orgId: seedData1.organization.id, sessionToken: session.token });
+          resolver.resolveSession({
+            proxyId: proxy.id,
+            orgId: seedData1.organization.id,
+            sessionToken: session.token,
+            hasActivityKey: false
+          });
         expect((await resolve()).services).toHaveLength(1);
 
         const groupMembership = await testDb("memberships")

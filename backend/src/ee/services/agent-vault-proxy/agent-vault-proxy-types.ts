@@ -47,6 +47,8 @@ export type TResolveSessionDTO = {
   proxyId: string;
   orgId: string;
   sessionToken: string;
+  /** The proxy already holds this session's activity key, so the unwrap can be skipped. */
+  hasActivityKey: boolean;
 };
 
 export type TResolvedService = {

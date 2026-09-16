@@ -54,6 +54,28 @@ export const findReachableAccessBundleIds = async (
   return [...new Set(reachable.map((row) => row.scopeResourceId!))];
 };
 
+/**
+ * The permission object plus whether the actor is an Agent Vault administrator. Admin is a role check on
+ * this module's own convention, never a CASL subject.
+ *
+ * Separate from getAgentVaultReachability because the session and activity paths are scoped by session
+ * ownership rather than by bundle, so they would pay for a membership query they never read.
+ */
+export const getAgentVaultProjectAuthority = async (
+  { permissionService }: { permissionService: TPermissionDep },
+  { projectId, ctx }: { projectId: string; ctx: TAgentVaultActorContext }
+): Promise<{ permission: TProjectPermissionResult["permission"]; isAdmin: boolean }> => {
+  const { permission, hasRole } = await permissionService.getProjectPermission({
+    actor: ctx.actor,
+    actorId: ctx.actorId,
+    projectId,
+    actorAuthMethod: ctx.actorAuthMethod,
+    actorOrgId: ctx.actorOrgId,
+    actionProjectType: ActionProjectType.AgentVault
+  });
+  return { permission, isAdmin: hasRole(ProjectMembershipRole.Admin) };
+};
+
 // A service-layer filter rather than a CASL condition: conditions interpolate only identity.id,
 // username and metadata.
 export const getAgentVaultReachability = async (

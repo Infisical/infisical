@@ -264,20 +264,44 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The three retirement classes, in one place so the bulk prune and the activity sweep can never drift.
+  // recordChunk applies the same three when it decides whether a late chunk is still acceptable.
+  const retiredBefore = (qb: Knex.QueryBuilder, cutoff: Date) => {
+    void qb
+      .where(`${TableName.AgentVaultSession}.revokedAt`, "<", cutoff)
+      .orWhere((inner) => {
+        void inner
+          .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
+          .where(`${TableName.AgentVaultSession}.expiresAt`, "<", cutoff);
+      })
+      // An ownerless session stopped working the moment its actor was deleted, and nothing stamps
+      // that moment, so it goes by age: a never session would otherwise outlive the 30 days for good.
+      .orWhere((inner) => {
+        void inner
+          .whereNull(`${TableName.AgentVaultSession}.userId`)
+          .whereNull(`${TableName.AgentVaultSession}.identityId`)
+          .where(`${TableName.AgentVaultSession}.createdAt`, "<", cutoff);
+      });
+  };
+
   const pruneRetiredBefore = async (cutoff: Date, tx?: Knex) => {
     try {
       return await (tx || db)(TableName.AgentVaultSession)
-        .where((qb) => {
+        .where((qb) => retiredBefore(qb, cutoff))
+        // Sessions holding activity chunks are left for the activity sweep. A bulk delete would cascade
+        // the chunk rows away inside one statement, destroying every objectKey before anything could
+        // delete the objects: the bucket would keep them forever and storedRecordCount could never be
+        // decremented, turning the org ceiling into a one-way ratchet.
+        .whereNotExists((qb) => {
           void qb
-            .where("revokedAt", "<", cutoff)
-            .orWhere((inner) => {
-              void inner.whereNull("revokedAt").where("expiresAt", "<", cutoff);
-            })
-            // An ownerless session stopped working the moment its actor was deleted, and nothing stamps
-            // that moment, so it goes by age: a never session would otherwise outlive the 30 days for good.
-            .orWhere((inner) => {
-              void inner.whereNull("userId").whereNull("identityId").where("createdAt", "<", cutoff);
-            });
+            .select(db.raw("1"))
+            .from(TableName.AgentVaultActivityChunk)
+            .whereRaw(`??.?? = ??.??`, [
+              TableName.AgentVaultActivityChunk,
+              "sessionId",
+              TableName.AgentVaultSession,
+              "id"
+            ]);
         })
         .del();
     } catch (error) {
@@ -285,5 +309,68 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, pruneRetiredBefore };
+  /**
+   * Retired sessions that still hold activity chunks, with the org that owns them and how many records
+   * they account for, so the sweep can delete the objects and correct the counter before the rows go.
+   *
+   * The exclusion lists matter: without them one project whose storage is broken re-selects the same
+   * rows on every iteration and burns the whole run making no progress.
+   */
+  const findRetiredWithChunksBefore = async (
+    {
+      cutoff,
+      limit,
+      excludeSessionIds,
+      excludeProjectIds
+    }: { cutoff: Date; limit: number; excludeSessionIds: string[]; excludeProjectIds: string[] },
+    tx?: Knex
+  ): Promise<{ sessionId: string; projectId: string; orgId: string; recordCount: number }[]> => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.AgentVaultSession)
+        .join(
+          TableName.AgentVaultActivityChunk,
+          `${TableName.AgentVaultActivityChunk}.sessionId`,
+          `${TableName.AgentVaultSession}.id`
+        )
+        .join(TableName.Project, `${TableName.AgentVaultSession}.projectId`, `${TableName.Project}.id`)
+        .where((qb) => retiredBefore(qb, cutoff))
+        .groupBy(
+          `${TableName.AgentVaultSession}.id`,
+          `${TableName.AgentVaultSession}.projectId`,
+          `${TableName.Project}.orgId`
+        )
+        .orderBy(`${TableName.AgentVaultSession}.id`, "asc")
+        .limit(limit)
+        .select(
+          db.ref("id").withSchema(TableName.AgentVaultSession).as("sessionId"),
+          db.ref("projectId").withSchema(TableName.AgentVaultSession),
+          db.ref("orgId").withSchema(TableName.Project),
+          db.raw(`COALESCE(SUM(??.??), 0)::bigint as "recordCount"`, [TableName.AgentVaultActivityChunk, "recordCount"])
+        );
+
+      if (excludeSessionIds.length) void query.whereNotIn(`${TableName.AgentVaultSession}.id`, excludeSessionIds);
+      if (excludeProjectIds.length) {
+        void query.whereNotIn(`${TableName.AgentVaultSession}.projectId`, excludeProjectIds);
+      }
+
+      const rows = (await query) as unknown as {
+        sessionId: string;
+        projectId: string;
+        orgId: string;
+        recordCount: string;
+      }[];
+      return rows.map((row) => ({ ...row, recordCount: Number(row.recordCount) }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find retired Agent Vault sessions with activity" });
+    }
+  };
+
+  return {
+    ...orm,
+    findByTokenHash,
+    findForList,
+    revokeIfActive,
+    pruneRetiredBefore,
+    findRetiredWithChunksBefore
+  };
 };

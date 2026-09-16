@@ -68,6 +68,20 @@ export const agentVaultResolveLimit: RateLimitOptions = {
   }
 };
 
+// Keyed on the proxy identity for the same reason as resolve: the generic writeLimit is keyed on
+// req.realIp at 200/min, so a proxy fleet behind one NAT would share a bucket and a single proxy with a
+// hundred sessions would exhaust it alone. One POST per session per flush, so 600 covers a proxy holding
+// 600 sessions at the 60s flush interval, or fewer sessions flushing more often under load.
+export const agentVaultActivityChunkLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-activity:${actorId}` : req.realIp;
+  }
+};
+
 export const agentVaultHeartbeatLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",

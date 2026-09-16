@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import { ActorType } from "@app/services/auth/auth-type";
+
 import { AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 
 export const AGENT_VAULT_SESSION_TOKEN_PREFIX = "agv_";
@@ -16,6 +18,17 @@ export const generateSessionToken = () => {
 // a session; the status says the same, or the list would show it Active with nobody left to revoke it.
 export const isOwnerlessSession = (session: { userId?: string | null; identityId?: string | null }) =>
   !session.userId && !session.identityId;
+
+/**
+ * The CASL read and revoke actions alone would let any member reach another member's session, so every
+ * per-session path pairs its action check with this and answers 404 rather than 403 when it fails.
+ */
+export const isSessionOwnedBy = (
+  ctx: { actor: ActorType; actorId: string },
+  session: { userId?: string | null; identityId?: string | null }
+) =>
+  (ctx.actor === ActorType.USER && session.userId === ctx.actorId) ||
+  (ctx.actor === ActorType.IDENTITY && session.identityId === ctx.actorId);
 
 export const deriveSessionStatus = (
   session: { expiresAt: Date | null; revokedAt: Date | null; userId?: string | null; identityId?: string | null },

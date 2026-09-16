@@ -16,6 +16,7 @@ export const CronJobName = {
   DailyAuditLogCleanup: "daily-audit-log-cleanup",
   DailyResourceNotification: "daily-resource-notification",
   FrequentResourceCleanup: "frequent-resource-cleanup",
+  AgentVaultSessionSweep: "agent-vault-session-sweep",
   CertificateCleanup: "certificate-cleanup",
   CertificateV3AutoRenewal: "certificate-v3-auto-renewal",
   CaDailyAutoRenewal: "ca-daily-auto-renewal",

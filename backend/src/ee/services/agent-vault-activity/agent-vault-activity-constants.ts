@@ -1,0 +1,35 @@
+export const AGENT_VAULT_ACTIVITY_MAX_CHUNK_RECORDS = 1000;
+
+// "[]" plus a 16-byte GCM tag is the smallest thing the proxy can legitimately seal.
+export const AGENT_VAULT_ACTIVITY_MIN_CHUNK_BYTES = 18;
+export const AGENT_VAULT_ACTIVITY_MAX_CHUNK_BYTES = 8 * 1024 * 1024;
+
+export const AGENT_VAULT_ACTIVITY_PRESIGN_EXPIRY_SECONDS = 300;
+
+/**
+ * A floor on how much ciphertext a chunk must carry per record it claims. The record's JSON keys alone
+ * run past 120 bytes before any value, so this is very slack; it exists because recordCount is what moves
+ * the organization's ceiling, and without it a modified proxy could claim 1000 records per 18-byte chunk
+ * and exhaust the ceiling for every session in the org in minutes.
+ */
+export const AGENT_VAULT_ACTIVITY_MIN_BYTES_PER_RECORD = 60;
+
+/** A storage client is reused for this long rather than rebuilt per request. See the write path. */
+export const AGENT_VAULT_ACTIVITY_STORAGE_CACHE_MS = 5 * 60_000;
+
+export const AGENT_VAULT_ACTIVITY_CLOCK_SKEW_MS = 5 * 60_000;
+export const AGENT_VAULT_ACTIVITY_LATE_CHUNK_GRACE_MS = 24 * 60 * 60_000;
+export const AGENT_VAULT_ACTIVITY_MAX_CHUNK_AGE_MS = 30 * 24 * 60 * 60_000;
+
+export const AGENT_VAULT_ACTIVITY_CEILING_WARN_RATIO = 0.8;
+
+export const AGENT_VAULT_ACTIVITY_SWEEP_BATCH = 500;
+export const AGENT_VAULT_ACTIVITY_MAX_PAGE_LIMIT = 100;
+export const AGENT_VAULT_ACTIVITY_DEFAULT_PAGE_LIMIT = 50;
+
+// The Go proxy reads these off APIError.Name to decide whether to pause or drop. Changing a value is a
+// wire-contract change and needs the same change in cli/packages/agentvault/activity.go.
+export const AgentVaultActivityErrorName = {
+  CeilingReached: "AgentVaultActivityCeilingReached",
+  Disabled: "AgentVaultActivityDisabled"
+} as const;

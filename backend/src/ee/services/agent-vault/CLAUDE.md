@@ -19,9 +19,10 @@ never in anything the agent holds.
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-member/          product membership (list, add, role, remove)
-agent-vault-session/         mint, revoke, list, retention sweep
+agent-vault-session/         mint, revoke, list
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           login (enrollment), heartbeat, resolve
+agent-vault-activity/        storage settings, chunk ingest, playback, the retention sweep
 ```
 
 Routes: `ee/routes/v1/agent-vault-routers/`, prefix `/api/v1/agent-vault`. CLI: `packages/cmd/agent_vault*.go`
@@ -94,8 +95,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list, the status filter and the sweep, so they agree with resolve refusing
-  it. Expiry is enforced against the clock on every resolve. `sweepRetiredSessions` exists only for the 30 day hard delete; there is no expiry audit
-  event, matching every other product.
+  it. Expiry is enforced against the clock on every resolve. The 30 day hard delete lives in
+  `agent-vault-activity/`'s sweep, since it has to delete the session's activity objects first; there is
+  no expiry audit event, matching every other product.
 
 ## Proxies
 
@@ -168,6 +170,51 @@ header" is the name in every layer; unqualified "header" means the credential's 
 - The sealed secret has three write states: a value re-seals, `null` clears it (passthrough), `undefined`
   leaves it alone. `$decryptCredential` reads NULL as passthrough, so a bearer row that lost its secret would
   silently stop attaching a credential.
+
+## Activity
+
+Per-session log of every request that reached the proxy: method, host, path, status, decision. Metadata
+only, never bodies or headers, and never the query string (the proxy builds the path from
+`EscapedPath()`, so that one is true by construction).
+
+- **A customer S3 bucket is required.** There is no Postgres payload path and no second provider: an
+  org without an AWS app connection cannot use the feature, and the tab says so. Infisical stores an
+  index row per chunk; the bytes go straight from proxy to bucket and back to the browser.
+- **Records are batched into chunks**, 1000 records or 60s, whichever comes first. One chunk is one S3
+  object and one row. Per-request rows would be millions.
+- **Two keys, do not confuse them.** The project data key (`KmsDataKey.SecretManager`, the same one
+  protecting service credentials) wraps a per-session 32-byte activity key stored on the session row.
+  Only the session key leaves the backend: to the proxy at resolve, to the browser at playback.
+- **The key is minted at session create, always**, even while logging is off, so turning it on covers
+  running sessions. A session minted before this shipped has no key and resolves with
+  `activity.enabled = false` forever; there is no backfill.
+- **Resolve sends the key once, not every poll.** The proxy reports `hasActivityKey`, and unwrapping is
+  what forces the project-data-key derivation the resolve path otherwise avoids. The config row is read
+  on every resolve, so turning logging off reaches a running proxy within one poll.
+- **Chunk ids are ULIDs minted by the proxy**, unique per session, not globally. A proxy-side counter
+  would reset on every cache eviction and then collide for the rest of the session's life. They sort by
+  time, so the read cursor is a plain `chunkId <` comparison.
+- **`agent_vault_activity_chunks.proxyId` has no foreign key, deliberately.** It is an input to the
+  encryption AAD, so `SET NULL` on proxy deletion would make every chunk that proxy wrote permanently
+  undecryptable. `proxyName` is denormalised for the same reason.
+- **The AAD is `SHA-256("{projectId}|{sessionId}|{proxyId}|{chunkId}|v1")`**, and the sealed layout is
+  AES-256-GCM with a 12-byte IV and the tag appended. Implemented in the Go proxy and in the browser;
+  Infisical seals and opens nothing, so the reference vector lives in
+  `agent-vault-activity-crypto.test.ts` and both implementations are checked against it.
+- **The write endpoint inserts the row, then returns a presigned PUT.** Row before object, so a failed
+  upload is a visible gap rather than a silent one; re-POSTing the same chunk id replays idempotently.
+  The presign runs after commit: no network under the config row's lock.
+- **The org ceiling is a config constant** (`AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS`). At the wall the
+  endpoint refuses rather than dropping the oldest, because drop-oldest is an evidence-eviction
+  primitive. The counter is moved with `UPDATE ... SET x = x + ?`, never read-modify-write.
+- **Cleanup happens only when a session is hard-deleted**, 30 days after it retires. There is no
+  retention concept of its own, so a live session (including `never`) keeps everything. The sweep has
+  its own cron, not the shared daily cleanup, because its S3 pass is network-bound and would time the
+  whole run out. `pruneRetiredBefore` skips sessions holding chunks for exactly that reason.
+- **Changing the bucket or prefix bumps `configVersion` and orphans prior history**, which the UI
+  detects and reports rather than presigning URLs that 404. Swapping the connection or the region does
+  not bump: those leave every object exactly where it is.
+- Settings are admin-only by `hasRole(Admin)`, as everything else here is. No new CASL subject.
 
 ## The CLI
 

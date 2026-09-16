@@ -790,6 +790,7 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_ACTIVITY_CONFIG_UPDATE = "agent-vault-activity-config-update",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -6300,6 +6301,20 @@ interface AgentVaultProxyDeleteEvent {
   };
 }
 
+interface AgentVaultActivityConfigUpdateEvent {
+  type: EventType.AGENT_VAULT_ACTIVITY_CONFIG_UPDATE;
+  metadata: {
+    enabled: boolean;
+    appConnectionId: string | null;
+    bucket: string | null;
+    region: string | null;
+    keyPrefix: string | null;
+    configVersion: number;
+    // True when the destination moved, which leaves previously written activity unreadable.
+    relocated: boolean;
+  };
+}
+
 interface AgentVaultAccessBundleCreateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
   metadata: {
@@ -8324,6 +8339,7 @@ export type Event =
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
   | AgentVaultProxyDeleteEvent
+  | AgentVaultActivityConfigUpdateEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

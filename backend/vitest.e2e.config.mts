@@ -78,6 +78,14 @@ export default defineConfig({
       {
         find: "./aws-connection-fns",
         replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
+      },
+      // Agent Vault activity writes its chunks to a customer's S3 bucket, which the specs replace with
+      // an in-memory one. "./agent-vault-activity-storage" is imported only by the activity service and
+      // its sweep, the two modules that build an S3 client; the proxy service reaches the same file by a
+      // longer specifier and so keeps the real, pure resolveStorageConfig.
+      {
+        find: "./agent-vault-activity-storage",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/agent-vault-activity-storage")
       }
     ]
   },

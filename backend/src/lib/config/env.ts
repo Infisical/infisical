@@ -569,6 +569,12 @@ const envSchema = z
     PAM_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
     /* ----------------------------------------------------------------------------- */
 
+    /* Agent Vault ----------------------------------------------------------------------------- */
+    // Ceiling on activity records indexed per organization. What this bounds is our row count and our
+    // presign calls, not the customer's bucket. A config constant so ops can raise it without a release.
+    AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS: z.coerce.number().int().min(1).default(10_000_000),
+    /* ----------------------------------------------------------------------------- */
+
     /* App Connections ----------------------------------------------------------------------------- */
     ALLOW_INTERNAL_IP_CONNECTIONS: zodStrBool.default("false"),
 

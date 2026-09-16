@@ -106,6 +106,7 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
+  AgentVaultActivity = "Agent Vault Activity",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
 }
@@ -4360,6 +4361,44 @@ export const AGENT_VAULT = {
     pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
     sessionToken: "The session an agent is running with. A selector, not a second credential.",
     createdAt: "When the proxy was registered."
+  },
+  ACTIVITY: {
+    chunkId: "The ID of the activity chunk, a ULID minted by the proxy. Unique per session and ordered by time.",
+    proxyId: "The ID of the proxy that recorded the chunk.",
+    proxyName: "The name the proxy had when it recorded the chunk.",
+    startedAt: "When the first request in the chunk was recorded.",
+    endedAt: "When the last request in the chunk was recorded.",
+    firstSeq: "The sequence number of the first record in the chunk, counted per proxy.",
+    lastSeq: "The sequence number of the last record in the chunk, counted per proxy.",
+    recordCount: "How many records the chunk holds.",
+    droppedCount:
+      "How many records the proxy discarded before this chunk, because its buffer filled or logging was paused. A gap in the sequence numbers.",
+    configVersion:
+      "The version of the project's storage configuration the chunk was written under. A chunk written under an earlier version lives in a bucket that is no longer configured.",
+    ciphertextBytes: "The exact size of the encrypted chunk, in bytes.",
+    iv: "The AES-GCM initialisation vector, base64 encoded.",
+    objectKey: "Where the encrypted chunk lives in the configured bucket.",
+    uploadUrl: "A presigned URL to PUT the encrypted chunk to. Accepts exactly ciphertextBytes bytes.",
+    presignedGetUrl:
+      "A presigned URL to GET the encrypted chunk from. Null when the chunk was written under an earlier storage configuration and is no longer reachable.",
+    expiresInSeconds: "How long the presigned URL stays valid.",
+    sessionKey:
+      "The session's activity key, base64 encoded. Decrypts every chunk in this response. Held only for the life of the view.",
+    nextCursor: "Pass as `before` to fetch the next, older page. Null when there are no older chunks.",
+    limit: "The maximum number of chunks to return.",
+    before: "Return only chunks older than this chunk ID.",
+    enabled: "Whether activity logging is on for this project.",
+    configEnabled:
+      "Turn activity logging on or off. Turning it off stops new records being accepted; it deletes nothing.",
+    appConnectionId: "The AWS connection whose credentials write to and read from the bucket.",
+    bucket: "The S3 bucket activity is stored in.",
+    region: "The region the bucket lives in.",
+    keyPrefix: "An optional prefix every object key is written under.",
+    corsProbeUrl:
+      "A presigned URL the browser fetches to check the bucket allows cross-origin reads. Points at an object that is never written: S3 returns the CORS headers on a 404 when a rule matches.",
+    storedRecordCount: "How many activity records the organization currently has indexed.",
+    ceiling: "The maximum number of activity records the organization may store.",
+    hasActivityKey: "Whether the proxy already holds this session's activity key. When true the key is not sent again."
   },
   SESSION: {
     sessionId: "The ID of the session.",

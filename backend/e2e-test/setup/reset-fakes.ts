@@ -1,3 +1,4 @@
+import { fakeActivityStorage } from "e2e-test/fakes/agent-vault-activity-storage";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 
@@ -14,4 +15,5 @@ import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns"
 beforeAll(() => {
   fakeParameterStore.reset();
   fakeAwsConnection.reset();
+  fakeActivityStorage.reset();
 });
