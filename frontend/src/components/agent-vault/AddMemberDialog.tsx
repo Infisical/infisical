@@ -125,7 +125,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
       });
 
       if (!granted.length) {
-        createNotification({ text: "They already had this access bundle", type: "info" });
+        createNotification({ text: "This member already has this access bundle", type: "info" });
       } else {
         const grantedText =
           granted.length === 1 && selected.length === 1
@@ -148,7 +148,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
         <DialogHeader>
           <DialogTitle>Grant Access</DialogTitle>
           <DialogDescription>
-            Whoever holds this bundle can mint a session over it. They must already be a member of
+            Whoever has access to this bundle can create sessions with it. They must already be a member of
             Agent Vault.
           </DialogDescription>
         </DialogHeader>
@@ -170,7 +170,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
               emptyMessage={
                 options.length
                   ? "No matches."
-                  : "Nobody left to grant. Add them under Access Control first."
+                  : "No one left to add. Add them under Access Control first."
               }
               clearAriaLabel="Clear all grantees"
               modal

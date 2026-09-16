@@ -187,7 +187,7 @@ export const GroupsTab = () => {
           if (!isOpen) setGroupToRemove(null);
         }}
         title={`Remove "${groupToRemove?.name ?? ""}"`}
-        description="Everyone in the group loses access, along with every bundle granted to it."
+        description="Everyone in the group loses Agent Vault access, along with every access bundle granted to the group."
         confirmKey={groupToRemove?.name ?? ""}
         confirmLabel="Remove"
         isPending={removeMember.isPending}

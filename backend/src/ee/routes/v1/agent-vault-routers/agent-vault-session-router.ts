@@ -116,14 +116,14 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             if (typeof parsed !== "number" || Number.isNaN(parsed) || parsed < 60 * 1000) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "TTL must be a duration of at least 1 minute, such as 30m, 8h or 7d, or never"
+                message: "TTL must be a duration of at least 1 minute, such as 30m, 8h, 7d, or never"
               });
               return;
             }
             if (parsed > AGENT_VAULT_SESSION_MAX_TTL_MS) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "TTL must be at most 100 years. Use never for a session that does not expire"
+                message: "TTL must be at most 100 years. Use never for a session that doesn't expire"
               });
             }
           })

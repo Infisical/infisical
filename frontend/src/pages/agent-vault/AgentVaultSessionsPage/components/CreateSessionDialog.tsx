@@ -133,8 +133,8 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
         <DialogHeader>
           <DialogTitle>Create Session</DialogTitle>
           <DialogDescription>
-            An agent running with this session reaches the hosts in this access bundle and nothing
-            else.
+            An agent running with this session can reach the hosts in the access bundle it carries,
+            and nothing else.
           </DialogDescription>
         </DialogHeader>
 
@@ -214,9 +214,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
                 </>
               )}
               {ttlPreset === NEVER_TTL && (
-                <FieldDescription>
-                  This session keeps working until someone revokes it.
-                </FieldDescription>
+                <FieldDescription>This session runs until someone revokes it.</FieldDescription>
               )}
             </FieldContent>
           </Field>

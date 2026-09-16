@@ -220,7 +220,7 @@ export const AgentVaultProxiesPage = () => {
         scope={ProjectType.AgentVault}
         icon={RouteIcon}
         title="Proxies"
-        description="Manage the proxies your agents route through."
+        description="Manage the proxies your agents route their requests through."
       />
 
       <Card>
