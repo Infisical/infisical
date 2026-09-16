@@ -72,7 +72,8 @@ export const ProxyEnrollmentDialog = ({ enrollment, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle>Enrollment Token</DialogTitle>
           <DialogDescription>
-            Run this wherever agents&apos; requests leave your network. The proxy enrolls once, then keeps its own certificate.
+            Run this wherever agents&apos; requests leave your network. The proxy enrolls once, then
+            keeps its own certificate.
           </DialogDescription>
         </DialogHeader>
 

@@ -228,8 +228,8 @@ export const CredentialFields = ({ storedType }: Props) => {
         <Alert variant="info">
           <AlertTitle>No credential is attached</AlertTitle>
           <AlertDescription>
-            The proxy forwards requests to these hosts unchanged. Use this when you need a host to be
-            reachable through a proxy that would otherwise block it.
+            The proxy forwards requests to these hosts unchanged. Use this when you need a host to
+            be reachable through a proxy that would otherwise block it.
           </AlertDescription>
         </Alert>
       )}

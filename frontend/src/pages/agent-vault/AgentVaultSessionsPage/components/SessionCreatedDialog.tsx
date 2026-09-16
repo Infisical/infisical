@@ -34,8 +34,8 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
       <DialogHeader>
         <DialogTitle>Session Created</DialogTitle>
         <DialogDescription>
-          Run this where your agent runs. The agent's traffic goes through the proxy, which attaches the
-          credentials this session carries.
+          Run this where your agent runs. The agent&apos;s traffic goes through the proxy, which
+          attaches the credentials this session carries.
         </DialogDescription>
       </DialogHeader>
 

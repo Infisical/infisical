@@ -226,8 +226,8 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                         <InfoIcon />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
-                        How often the proxy refreshes its configuration, in seconds. This determines how long
-                        a change in these settings takes to reach a running agent.
+                        How often the proxy refreshes its configuration, in seconds. This determines
+                        how long a change in these settings takes to reach a running agent.
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>

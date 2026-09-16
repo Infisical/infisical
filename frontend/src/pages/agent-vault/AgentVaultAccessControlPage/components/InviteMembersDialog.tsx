@@ -173,8 +173,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
             {/* AlertDescription is a grid, so a bare text node would land on its own row */}
             <AlertDescription>
               <span>
-                Assign a role to give access to requesting user{" "}
-                <b>{requesterStatus.userLabel}</b>.
+                Assign a role to give access to requesting user <b>{requesterStatus.userLabel}</b>.
               </span>
             </AlertDescription>
           </Alert>

@@ -148,8 +148,8 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
         <DialogHeader>
           <DialogTitle>Grant Access</DialogTitle>
           <DialogDescription>
-            Whoever has access to this bundle can create sessions with it. They must already be a member of
-            Agent Vault.
+            Whoever has access to this bundle can create sessions with it. They must already be a
+            member of Agent Vault.
           </DialogDescription>
         </DialogHeader>
 
