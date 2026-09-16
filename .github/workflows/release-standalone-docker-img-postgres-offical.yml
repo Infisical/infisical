@@ -6,6 +6,10 @@ on:
             - "v0.*.*-nightly-*"
             - "v0.*.*-nightly-*.*"
 
+env:
+    # Pinned separately from the action, which carries its own older default.
+    TRIVY_VERSION: v0.74.0
+
 jobs:
     infisical-tests:
         name: Run tests before deployment
@@ -19,6 +23,7 @@ jobs:
         permissions:
             id-token: write # OIDC, to assume the ECR Public publish role
             contents: read
+            security-events: write # upload the Trivy SARIF report to code scanning
         env:
             # Surfaced so the ECR mirror steps can be skipped when the role is
             # not configured, decoupling them from the Docker Hub release.
@@ -58,6 +63,7 @@ jobs:
               run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
 
             - name: 📦 Build backend and push to Docker Hub
+              id: build
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
@@ -120,11 +126,65 @@ jobs:
                 image: infisical/infisical:${{ steps.extract_version.outputs.version }}
                 command: monitor
                 args: --file=Dockerfile.standalone-infisical --project-name="infisical-core-docker-image"
+            # Reports through code scanning, never through the job status: the image
+            # is already published by the time this runs.
+            - name: 🔍 Scan infisical/infisical with Trivy
+              id: trivy_infisical_core
+              continue-on-error: true
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, Apr 22, 2026
+              env:
+                  # The GHCR default rate-limits anonymous pulls from Actions egress IPs.
+                  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+                  # The digest is a manifest list, so pick an arch rather than letting the
+                  # runner decide. arm64 is published but deliberately not scanned: the OS
+                  # packages are pinned to the same versions for both arches and Debian
+                  # advisories match on version, not arch, so its findings are amd64's.
+                  TRIVY_PLATFORM: linux/amd64
+              with:
+                  scan-type: image
+                  image-ref: infisical/infisical@${{ steps.build.outputs.digest }}
+                  version: ${{ env.TRIVY_VERSION }}
+                  scanners: vuln
+                  severity: CRITICAL,HIGH
+                  limit-severities-for-sarif: true
+                  # Not actionable at release time; the Debian pins in
+                  # Dockerfile.standalone-infisical cover what is.
+                  ignore-unfixed: true
+                  format: sarif
+                  output: trivy-infisical-core.sarif
+                  timeout: 15m
+                  exit-code: "0"
+            - name: 📤 Upload Trivy results for infisical/infisical
+              id: trivy_upload_infisical_core
+              if: steps.trivy_infisical_core.outcome == 'success'
+              continue-on-error: true
+              uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+              with:
+                  sarif_file: trivy-infisical-core.sarif
+                  # Code scanning reconciles per (ref, category): a newer analysis closes
+                  # any alert it omits. Nightlies share this trigger and this ref, so
+                  # without the suffix tonight's build would close the alerts describing
+                  # the stable image users are actually running.
+                  category: trivy-infisical-core${{ contains(github.ref_name, '-nightly-') && '-nightly' || '' }}
+                  # This workflow only runs on tag pushes, and the alerts UI is scoped to
+                  # branches: left on refs/tags/* the results would be uploaded where
+                  # nobody reads them. Assumes release tags are cut from main; one that
+                  # is not gets rejected, and the guard step below reports it.
+                  ref: refs/heads/main
+                  sha: ${{ github.sha }}
+            # A scan that breaks is otherwise indistinguishable from a clean one, since
+            # both leave the job green with no new alerts.
+            - name: Flag an incomplete Trivy scan of infisical/infisical
+              if: steps.trivy_infisical_core.outcome == 'failure' || steps.trivy_upload_infisical_core.outcome == 'failure'
+              run: echo "::warning::Trivy did not report on infisical/infisical for this release. No alerts does not mean no findings."
 
     infisical-fips-standalone:
         name: Build infisical standalone image postgres
         runs-on: ubuntu-latest
         needs: [infisical-tests]
+        permissions:
+            contents: read
+            security-events: write # upload the Trivy SARIF report to code scanning
         steps:
             - name: Extract version from tag
               id: extract_version
@@ -160,6 +220,7 @@ jobs:
               run: grep -E '^[A-Z_]+=' build-versions.env >> "$GITHUB_ENV"
 
             - name: 📦 Build backend and export to Docker
+              id: build_fips
               uses: depot/build-push-action@5f3b3c2e5a00f0093de47f657aeaefcedff27d18 # Main / v1, Mar 10, 2026
               with:
                   project: 64mmf0n610
@@ -189,6 +250,57 @@ jobs:
                 image: infisical/infisical-fips:${{ steps.extract_version.outputs.version }}
                 command: monitor
                 args: --file=Dockerfile.fips.standalone-infisical --project-name="infisical-fips-docker-image"
+            # Reports through code scanning, never through the job status: the image
+            # is already published by the time this runs.
+            - name: 🔍 Scan infisical/infisical-fips with Trivy
+              id: trivy_infisical_fips
+              continue-on-error: true
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, Apr 22, 2026
+              env:
+                  # The GHCR default rate-limits anonymous pulls from Actions egress IPs.
+                  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+                  # The digest is a manifest list, so pick an arch rather than letting the
+                  # runner decide. arm64 is published but deliberately not scanned: the OS
+                  # packages are pinned to the same versions for both arches and Debian
+                  # advisories match on version, not arch, so its findings are amd64's.
+                  TRIVY_PLATFORM: linux/amd64
+              with:
+                  scan-type: image
+                  image-ref: infisical/infisical-fips@${{ steps.build_fips.outputs.digest }}
+                  version: ${{ env.TRIVY_VERSION }}
+                  scanners: vuln
+                  severity: CRITICAL,HIGH
+                  limit-severities-for-sarif: true
+                  # Not actionable at release time; the Debian pins in
+                  # Dockerfile.fips.standalone-infisical cover what is.
+                  ignore-unfixed: true
+                  format: sarif
+                  output: trivy-infisical-fips.sarif
+                  timeout: 15m
+                  exit-code: "0"
+            - name: 📤 Upload Trivy results for infisical/infisical-fips
+              id: trivy_upload_infisical_fips
+              if: steps.trivy_infisical_fips.outcome == 'success'
+              continue-on-error: true
+              uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+              with:
+                  sarif_file: trivy-infisical-fips.sarif
+                  # Code scanning reconciles per (ref, category): a newer analysis closes
+                  # any alert it omits. Nightlies share this trigger and this ref, so
+                  # without the suffix tonight's build would close the alerts describing
+                  # the stable image users are actually running.
+                  category: trivy-infisical-fips${{ contains(github.ref_name, '-nightly-') && '-nightly' || '' }}
+                  # This workflow only runs on tag pushes, and the alerts UI is scoped to
+                  # branches: left on refs/tags/* the results would be uploaded where
+                  # nobody reads them. Assumes release tags are cut from main; one that
+                  # is not gets rejected, and the guard step below reports it.
+                  ref: refs/heads/main
+                  sha: ${{ github.sha }}
+            # A scan that breaks is otherwise indistinguishable from a clean one, since
+            # both leave the job green with no new alerts.
+            - name: Flag an incomplete Trivy scan of infisical/infisical-fips
+              if: steps.trivy_infisical_fips.outcome == 'failure' || steps.trivy_upload_infisical_fips.outcome == 'failure'
+              run: echo "::warning::Trivy did not report on infisical/infisical-fips for this release. No alerts does not mean no findings."
     trigger-binary-release:
       runs-on: ubuntu-latest
       needs: [infisical-tests]
