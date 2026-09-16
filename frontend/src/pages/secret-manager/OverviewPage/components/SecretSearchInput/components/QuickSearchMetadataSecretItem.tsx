@@ -12,6 +12,8 @@ import {
 import { TMetadataMatchedSecret } from "@app/hooks/api/dashboard/types";
 
 import { QuickSearchSelection } from "./quickSearchTypes";
+import { QuickSearchSecretCopyButton } from "./QuickSearchSecretCopyButton";
+import { QuickSearchSecretDetails } from "./QuickSearchSecretDetails";
 
 type Props = {
   secret: TMetadataMatchedSecret;
@@ -93,7 +95,16 @@ export const QuickSearchMetadataSecretItem = ({
               </TooltipContent>
             </Tooltip>
           )}
-          <ChevronRightIcon className="ml-auto size-4 shrink-0 text-muted" />
+          <div className="ml-auto flex items-center gap-1">
+            <QuickSearchSecretDetails tags={secret.tags} />
+            <QuickSearchSecretCopyButton
+              environment={envSlug}
+              secretPath={secret.secretPath}
+              secretKey={secret.secretKey}
+              secretValueHidden={secret.secretValueHidden}
+            />
+            <ChevronRightIcon className="size-4 shrink-0 text-muted" />
+          </div>
         </div>
       </TableCell>
     </TableRow>

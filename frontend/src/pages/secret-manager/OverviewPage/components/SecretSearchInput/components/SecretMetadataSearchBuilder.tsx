@@ -28,6 +28,8 @@ type Props = {
   conditions: MetadataSearchCondition[];
   match: MetadataMatchType;
   matchingCount: number;
+  isSearchLimitReached: boolean;
+  searchLimit: number;
   isPending: boolean;
   hasActiveConditions: boolean;
   onChangeMatch: (match: MetadataMatchType) => void;
@@ -45,6 +47,8 @@ export const SecretMetadataSearchBuilder = ({
   conditions,
   match,
   matchingCount,
+  isSearchLimitReached,
+  searchLimit,
   isPending,
   hasActiveConditions,
   onChangeMatch,
@@ -157,7 +161,12 @@ export const SecretMetadataSearchBuilder = ({
               <span className="font-semibold text-foreground">
                 {isPending ? "…" : matchingCount}
               </span>{" "}
-              matching {matchingCount === 1 && !isPending ? "secret" : "secrets"}
+              matching {matchingCount === 1 && !isPending ? "secret" : "secrets"} shown
+              {!isPending && isSearchLimitReached && (
+                <span className="mt-1 block text-warning">
+                  {`Search reached its ${searchLimit}-candidate limit. More matches may exist. Narrow your search by environment, folder path, tags, or metadata.`}
+                </span>
+              )}
             </span>
           ) : (
             <span>Add a condition to search</span>

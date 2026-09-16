@@ -1,22 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
-import { CheckIcon, ChevronRightIcon, CopyIcon, KeyIcon, SearchIcon } from "lucide-react";
+import { ChevronRightIcon, KeyIcon, SearchIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Badge,
-  IconButton,
   TableCell,
   TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
-import { useTimedReset } from "@app/hooks";
-import { fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 import { QuickSearchSelection } from "./quickSearchTypes";
+import { QuickSearchSecretCopyButton } from "./QuickSearchSecretCopyButton";
+import { QuickSearchSecretDetails } from "./QuickSearchSecretDetails";
 
 type Props = {
   secret: SecretV3RawSanitized;
@@ -38,11 +35,6 @@ export const QuickSearchSecretItem = ({
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
-  const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
-    initialState: false
-  });
-
-  const { currentProject } = useProject();
 
   const handleNavigate = () => {
     onSelectResult({ search: secret.key, tags });
@@ -57,31 +49,6 @@ export const QuickSearchSecretItem = ({
       })
     });
     onClose(false);
-  };
-
-  const handleCopy = async () => {
-    try {
-      const data = await fetchSecretValue({
-        environment: secret.env,
-        secretPath: secret.path!,
-        secretKey: secret.key,
-        projectId: currentProject.id
-      });
-
-      navigator.clipboard.writeText(data.valueOverride ?? data.value!);
-      createNotification({
-        type: "info",
-        title: "Secret value copied.",
-        text: ""
-      });
-      setIsUrlCopied(true);
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        type: "error",
-        text: "Error fetching secret value"
-      });
-    }
   };
 
   const tagMatch =
@@ -115,6 +82,7 @@ export const QuickSearchSecretItem = ({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
+          <QuickSearchSecretDetails tags={secret.tags} metadata={secret.secretMetadata} />
           {tagMatch && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -137,28 +105,12 @@ export const QuickSearchSecretItem = ({
               <TooltipContent>Search matched metadata</TooltipContent>
             </Tooltip>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <IconButton
-                variant="ghost"
-                className="mr-2"
-                size="xs"
-                isDisabled={secret.secretValueHidden}
-                aria-label="Copy secret value"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopy();
-                }}
-              >
-                {isUrlCopied ? <CheckIcon /> : <CopyIcon />}
-              </IconButton>
-            </TooltipTrigger>
-            <TooltipContent>
-              {secret.secretValueHidden
-                ? "You do not have permission to view this secret value"
-                : "Copy secret value"}
-            </TooltipContent>
-          </Tooltip>
+          <QuickSearchSecretCopyButton
+            environment={secret.env}
+            secretPath={secret.path ?? "/"}
+            secretKey={secret.key}
+            secretValueHidden={secret.secretValueHidden}
+          />
           <ChevronRightIcon className="size-4 text-muted" />
         </div>
       </TableCell>

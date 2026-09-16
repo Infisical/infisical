@@ -8,6 +8,7 @@ import {
   useState
 } from "react";
 import {
+  ChevronDownIcon,
   FilterIcon,
   FingerprintIcon,
   FolderIcon,
@@ -17,14 +18,22 @@ import {
 } from "lucide-react";
 
 import {
+  Button,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Field,
+  FieldDescription,
+  FieldLabel,
   IconButton,
+  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -183,6 +192,13 @@ const Content = ({
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(QUICK_SEARCH_PER_PAGE_OPTIONS[0]);
   const [filterTags, setFilterTags] = useState<Record<string, boolean>>({});
+  const [selectedEnvironments, setSelectedEnvironments] = useState<string[]>([]);
+  const [folderPath, setFolderPath] = useState("");
+  const [debouncedFolderPath] = useDebounce(folderPath);
+  const secretPath = `/${debouncedFolderPath.trim().replace(/^\/+|\/+$/g, "")}`;
+  const environmentSlugs = selectedEnvironments.length
+    ? selectedEnvironments
+    : environments.map((env) => env.slug);
   const [showFilter, setShowFilter] = useState<Record<ResourceType, boolean>>({
     [RowType.Secret]: false,
     [RowType.Folder]: false,
@@ -232,6 +248,8 @@ const Content = ({
   } = useSearchSecretsByMetadata(
     {
       projectId,
+      environments: environmentSlugs,
+      secretPath,
       operator:
         metadataMatch === "all"
           ? SecretMetadataSearchLogicalOperator.And
@@ -247,8 +265,8 @@ const Content = ({
 
   const { data, isPending: isDeepSearchPending } = useGetProjectSecretsQuickSearch(
     {
-      secretPath: "/",
-      environments: environments.map((env) => env.slug),
+      secretPath,
+      environments: environmentSlugs,
       projectId,
       search: debouncedSearch,
       tags: filterTags,
@@ -335,7 +353,7 @@ const Content = ({
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filterTags, showFilter]);
+  }, [debouncedSearch, filterTags, showFilter, secretPath, selectedEnvironments]);
 
   // a background refetch can shrink the counts and leave the current offset past the data
   useResetPageHelper({
@@ -570,7 +588,7 @@ const Content = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <IconButton variant={hasActiveFilters ? "project" : "outline"}>
+                <IconButton aria-label="Search filters" variant={hasActiveFilters ? "project" : "outline"}>
                   <FilterIcon />
                 </IconButton>
               </DropdownMenuTrigger>
@@ -605,6 +623,59 @@ const Content = ({
         </InputGroup>
       </div>
 
+      <div className="flex flex-wrap gap-3 border-b border-border py-3">
+        {environments.length > 1 && (
+          <Field className="w-56">
+            <FieldLabel htmlFor="quick-search-environments">Environments</FieldLabel>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button id="quick-search-environments" variant="outline" className="justify-between">
+                  {selectedEnvironments.length === 0
+                    ? "All Environments"
+                    : `${selectedEnvironments.length} Selected`}
+                  <ChevronDownIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {environments.map((env) => (
+                  <DropdownMenuCheckboxItem
+                    key={env.id}
+                    checked={selectedEnvironments.includes(env.slug)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setSelectedEnvironments((previous) =>
+                        previous.includes(env.slug)
+                          ? previous.filter((slug) => slug !== env.slug)
+                          : [...previous, env.slug]
+                      );
+                    }}
+                  >
+                    {env.name}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setSelectedEnvironments([])}>
+                  All Environments
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Field>
+        )}
+        <Field className="min-w-56 flex-1">
+          <FieldLabel htmlFor="quick-search-folder-path">Folder Path</FieldLabel>
+          <Input
+            id="quick-search-folder-path"
+            placeholder="/"
+            value={folderPath}
+            onChange={(event) => setFolderPath(event.target.value)}
+            aria-describedby="quick-search-folder-help"
+          />
+          <FieldDescription id="quick-search-folder-help">
+            Includes subfolders. Leave empty to search all folders.
+          </FieldDescription>
+        </Field>
+      </div>
+
       <ScrollableContent
         aria-label="Search results"
         edgeBehavior="fade"
@@ -619,6 +690,8 @@ const Content = ({
             conditions={metadataConditions}
             match={metadataMatch}
             matchingCount={metadataResultCount}
+            isSearchLimitReached={metadataData?.isSearchLimitReached ?? false}
+            searchLimit={metadataData?.searchLimit ?? 100}
             isPending={isMetadataFetching}
             hasActiveConditions={isMetadataMode}
             onChangeMatch={setMetadataMatch}
