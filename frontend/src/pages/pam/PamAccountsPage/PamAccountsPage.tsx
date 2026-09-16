@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
@@ -56,6 +56,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
 import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
 import { RequestAccessSheet } from "../components/RequestAccessSheet";
@@ -77,6 +78,8 @@ export const PamAccountsPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   // Every role sees the same folder/account structure; permissions only disable actions on a row,
   // never hide it. Capabilities just drive the create affordances and the empty-state copy.
@@ -229,6 +232,7 @@ export const PamAccountsPage = () => {
                   <Search />
                 </InputGroupAddon>
                 <InputGroupInput
+                  ref={searchInputRef}
                   placeholder="Search accounts..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}

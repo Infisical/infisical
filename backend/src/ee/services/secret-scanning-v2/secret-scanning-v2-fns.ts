@@ -150,7 +150,7 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
 
   await execFileBounded("git", [...getGitThreadLimitArgs(), "clone", cloneUrl, repoPath, "--bare"], {
     phase: SecretScanningExecPhase.Clone,
-    timeoutMs: getConfig().SECRET_SCANNING_CLONE_TIMEOUT_MS,
+    timeoutMs: getConfig().SECRET_SCANNING_CLONE_TIMEOUT,
     env: GIT_PROCESS_ENV
   });
 };
@@ -164,7 +164,7 @@ export async function scanDirectory(inputPath: string, outputPath: string, confi
   await execFileBounded("infisical", args, {
     phase: SecretScanningExecPhase.Scan,
     cwd: inputPath,
-    timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT_MS,
+    timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT,
     env: getScannerProcessEnv(),
     successExitCodes: [0, SCAN_FINDINGS_EXIT_CODE]
   });
@@ -179,7 +179,7 @@ export async function scanFile(inputPath: string, configPath?: string): Promise<
   try {
     await execFileBounded("infisical", args, {
       phase: SecretScanningExecPhase.Scan,
-      timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT_MS,
+      timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT,
       env: getScannerProcessEnv(),
       successExitCodes: [0]
     });

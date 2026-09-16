@@ -210,19 +210,24 @@ const Page = () => {
               </DropdownMenu>
             )}
           </PageHeader>
-          {isCertManager && isCustomRole && (
-            <Alert variant="info" className="mb-4">
-              <InfoIcon />
-              <AlertTitle>Custom roles act as Member in Certificate Manager</AlertTitle>
-              <AlertDescription>
-                In the new Certificate Manager flow, access is granted through Application
-                memberships (Admin or Member). Permissions defined here only apply to legacy
-                endpoints — users with this role are treated as Member at the project level and only
-                see resources inside Applications they are explicitly added to.
-              </AlertDescription>
-            </Alert>
-          )}
-          <RolePermissionsSection roleSlug={roleSlug} isDisabled={!isCustomRole || !canEditRole} />
+          <div className="flex flex-col gap-4">
+            {isCertManager && isCustomRole && (
+              <Alert variant="info">
+                <InfoIcon />
+                <AlertTitle>Custom roles act as Member in Certificate Manager</AlertTitle>
+                <AlertDescription>
+                  In the new Certificate Manager flow, access is granted through Application
+                  memberships (Admin or Member). Permissions defined here only apply to legacy
+                  endpoints — users with this role are treated as Member at the project level and
+                  only see resources inside Applications they are explicitly added to.
+                </AlertDescription>
+              </Alert>
+            )}
+            <RolePermissionsSection
+              roleSlug={roleSlug}
+              isDisabled={!isCustomRole || !canEditRole}
+            />
+          </div>
         </div>
       )}
       <EditProjectRoleDialog

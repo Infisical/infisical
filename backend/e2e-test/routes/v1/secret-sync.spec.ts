@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
+import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createSecretImport } from "e2e-test/testUtils/secret-imports";
 import {
   createAwsAppConnection,
@@ -41,12 +42,14 @@ describe("Secret syncs", async () => {
   vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
   let projectId: string;
+  let authToken: string;
+  let cleanupOrg: () => Promise<void>;
   let connectionId: string;
   let createdSyncIds: string[] = [];
 
   const newFolder = (parentPath: string, name: string) =>
     createFolder({
-      authToken: jwtAuthToken,
+      authToken,
       workspaceId: projectId,
       environmentSlug: ENV,
       secretPath: parentPath,
@@ -54,14 +57,14 @@ describe("Secret syncs", async () => {
     });
 
   const addSecret = (secretPath: string, key: string, value: string) =>
-    createSecretV2({ authToken: jwtAuthToken, workspaceId: projectId, environmentSlug: ENV, secretPath, key, value });
+    createSecretV2({ authToken, workspaceId: projectId, environmentSlug: ENV, secretPath, key, value });
 
   const removeSecret = (secretPath: string, key: string) =>
-    deleteSecretV2({ authToken: jwtAuthToken, workspaceId: projectId, environmentSlug: ENV, secretPath, key });
+    deleteSecretV2({ authToken, workspaceId: projectId, environmentSlug: ENV, secretPath, key });
 
   const secretKeysAt = async (secretPath: string) => {
     const { secrets } = await getSecretsV2({
-      authToken: jwtAuthToken,
+      authToken,
       workspaceId: projectId,
       environmentSlug: ENV,
       secretPath
@@ -80,7 +83,7 @@ describe("Secret syncs", async () => {
       environmentSlug: ENV,
       region: REGION,
       destinationPath: pathFor(name),
-      authToken: jwtAuthToken,
+      authToken,
       ...overrides
     });
 
@@ -95,25 +98,17 @@ describe("Secret syncs", async () => {
   // another's writes or teardown. That matters more than usual for secret syncs: auto sync reacts
   // to any write at a sync's source path, secret imports outlive the test that made them, and an
   // app connection is org-scoped rather than project-scoped, so sharing one would leave a single
-  // row that every test's syncs hang off.
+  // row that every test's syncs hang off. A fresh org per test (not just a fresh project) closes
+  // that off completely rather than relying on the shared seeded org staying tidy.
   beforeEach(async () => {
     fakeParameterStore.reset();
     createdSyncIds = [];
 
-    const suffix = randomUUID().slice(0, 8);
-
-    const projectRes = await testServer.inject({
-      method: "POST",
-      url: "/api/v1/projects",
-      headers: { authorization: `Bearer ${jwtAuthToken}` },
-      body: { projectName: `secret-sync-e2e-${suffix}` }
-    });
-    expect(projectRes.statusCode).toBe(200);
-    projectId = projectRes.json().project.id as string;
+    ({ projectId, authToken, cleanup: cleanupOrg } = await createIsolatedOrgAndProject("secret-sync-e2e"));
 
     connectionId = await createAwsAppConnection({
-      name: `secret-sync-e2e-${suffix}`,
-      authToken: jwtAuthToken
+      name: `secret-sync-e2e-${randomUUID().slice(0, 8)}`,
+      authToken
     });
 
     await newFolder("/", "services");
@@ -126,15 +121,11 @@ describe("Secret syncs", async () => {
     // constraint if the syncs went second.
     for (const syncId of createdSyncIds) {
       // eslint-disable-next-line no-await-in-loop
-      await deleteSecretSync({ syncId, authToken: jwtAuthToken });
+      await deleteSecretSync({ syncId, authToken });
     }
 
-    await deleteAppConnection({ connectionId, authToken: jwtAuthToken });
-    await testServer.inject({
-      method: "DELETE",
-      url: `/api/v1/projects/${projectId}`,
-      headers: { authorization: `Bearer ${jwtAuthToken}` }
-    });
+    await deleteAppConnection({ connectionId, authToken });
+    await cleanupOrg();
   });
 
   describe("A sync sends the secrets of its own source environment and secret path", () => {
@@ -146,7 +137,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("sends-source-path"),
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(sync.syncStatus).toBe(SecretSyncStatus.Succeeded);
@@ -166,7 +157,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("excludes-child-paths"),
-        authToken: jwtAuthToken
+        authToken
       });
 
       const delivered = fakeParameterStore.at(REGION, pathFor("excludes-child-paths")).read();
@@ -183,7 +174,7 @@ describe("Secret syncs", async () => {
       await addSecret("/", "SHARED_KEY", "shared-value");
       await addSecret("/services", "OWN_KEY", "own-value");
       await createSecretImport({
-        authToken: jwtAuthToken,
+        authToken,
         workspaceId: projectId,
         environmentSlug: ENV,
         secretPath: "/services",
@@ -196,7 +187,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("includes-imports"),
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(fakeParameterStore.at(REGION, pathFor("includes-imports")).read()).toEqual({
@@ -230,7 +221,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath,
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({
@@ -255,7 +246,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("overwrite-destination"),
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(fakeParameterStore.at(REGION, pathFor("overwrite-destination")).read()).toEqual({
@@ -277,7 +268,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("prioritize-source"),
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(fakeParameterStore.at(REGION, pathFor("prioritize-source")).read()).toEqual({
@@ -300,7 +291,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("prioritize-destination"),
-        authToken: jwtAuthToken
+        authToken
       });
 
       // The import writes back into the project, which is the surprising half of this option.
@@ -323,7 +314,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("first-run-only"),
-        authToken: jwtAuthToken
+        authToken
       });
 
       // Arrives at the destination outside Infisical, after the first run has happened.
@@ -333,7 +324,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("first-run-only"),
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(await secretKeysAt("/services")).toEqual({ API_KEY: "api-value" });
@@ -349,7 +340,7 @@ describe("Secret syncs", async () => {
       await addSecret("/services", "OLD_KEY", "old-value");
 
       const { secretSync } = await newSync("deletes-removed", { secretPath: "/services" });
-      const address = { region: REGION, destinationPath: pathFor("deletes-removed"), authToken: jwtAuthToken };
+      const address = { region: REGION, destinationPath: pathFor("deletes-removed"), authToken };
       await triggerSecretSync({ syncId: secretSync!.id, ...address });
 
       await removeSecret("/services", "OLD_KEY");
@@ -368,7 +359,7 @@ describe("Secret syncs", async () => {
         secretPath: "/services",
         disableSecretDeletion: true
       });
-      const address = { region: REGION, destinationPath: pathFor("keeps-removed"), authToken: jwtAuthToken };
+      const address = { region: REGION, destinationPath: pathFor("keeps-removed"), authToken };
       await triggerSecretSync({ syncId: secretSync!.id, ...address });
 
       await removeSecret("/services", "OLD_KEY");
@@ -391,7 +382,7 @@ describe("Secret syncs", async () => {
       const { secretSync: imported } = await importSecretsForSync({
         syncId: secretSync!.id,
         importBehavior: "prioritize-source",
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(imported!.importStatus).toBe(SecretSyncStatus.Succeeded);
@@ -408,7 +399,7 @@ describe("Secret syncs", async () => {
       await importSecretsForSync({
         syncId: secretSync!.id,
         importBehavior: "prioritize-destination",
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(await secretKeysAt("/services")).toEqual({ API_KEY: "destination-value" });
@@ -425,7 +416,7 @@ describe("Secret syncs", async () => {
       const { secretSync: imported } = await importSecretsForSync({
         syncId: secretSync!.id,
         importBehavior: "prioritize-source",
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(imported!.importStatus).toBe(SecretSyncStatus.Failed);
@@ -443,11 +434,11 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath: pathFor("remove-clears"),
-        authToken: jwtAuthToken
+        authToken
       });
       expect(fakeParameterStore.at(REGION, pathFor("remove-clears")).read()).toEqual({ API_KEY: "api-value" });
 
-      const removed = await removeSecretsForSync({ syncId: secretSync!.id, authToken: jwtAuthToken });
+      const removed = await removeSecretsForSync({ syncId: secretSync!.id, authToken });
 
       expect(removed.removeStatus).toBe(SecretSyncStatus.Succeeded);
       expect(fakeParameterStore.at(REGION, pathFor("remove-clears")).read()).toEqual({});
@@ -466,7 +457,7 @@ describe("Secret syncs", async () => {
         secretPath: "/services",
         isAutoSyncEnabled: false
       });
-      await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken: jwtAuthToken });
+      await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken });
 
       // No explicit trigger: the write alone has to cause the run, which is the behaviour
       // under test.
@@ -491,7 +482,7 @@ describe("Secret syncs", async () => {
       await addSecret("/services", "PARENT_KEY", "parent-value");
 
       // Enabling auto sync queues a run; wait for the parent's secret to arrive.
-      await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken: jwtAuthToken });
+      await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken });
       await waitForDestinationSecrets({
         region: REGION,
         destinationPath,
@@ -531,7 +522,7 @@ describe("Secret syncs", async () => {
         syncId: secretSync!.id,
         region: REGION,
         destinationPath,
-        authToken: jwtAuthToken
+        authToken
       });
 
       expect(sync.syncStatus).toBe(SecretSyncStatus.Failed);
@@ -544,7 +535,7 @@ describe("Secret syncs", async () => {
     test("A sync whose source secret path no longer exists fails with a message naming the source", async () => {
       const destinationPath = pathFor("source-path-gone");
       const folder = await createFolder({
-        authToken: jwtAuthToken,
+        authToken,
         workspaceId: projectId,
         environmentSlug: ENV,
         secretPath: "/",
@@ -553,10 +544,10 @@ describe("Secret syncs", async () => {
       await addSecret("/doomed", "API_KEY", "api-value");
 
       const { secretSync } = await newSync("source-path-gone", { secretPath: "/doomed" });
-      await triggerSecretSync({ syncId: secretSync!.id, region: REGION, destinationPath, authToken: jwtAuthToken });
+      await triggerSecretSync({ syncId: secretSync!.id, region: REGION, destinationPath, authToken });
 
       await deleteFolder({
-        authToken: jwtAuthToken,
+        authToken,
         workspaceId: projectId,
         environmentSlug: ENV,
         secretPath: "/",
@@ -566,7 +557,7 @@ describe("Secret syncs", async () => {
       const res = await testServer.inject({
         method: "POST",
         url: `/api/v1/secret-syncs/aws-parameter-store/${secretSync!.id}/sync-secrets`,
-        headers: { authorization: `Bearer ${jwtAuthToken}` }
+        headers: { authorization: `Bearer ${authToken}` }
       });
 
       // The source folder is gone, so the trigger itself refuses rather than queueing a run
