@@ -4433,6 +4433,7 @@ export const registerRoutes = async (
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getServerStatus",
       response: {
         200: z.object({
           date: z.date(),

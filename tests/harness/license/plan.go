@@ -22,8 +22,8 @@ type Product struct {
 // OSS default, which is what a downgraded customer actually gets.
 var Free = Plan{Slug: "", Features: map[string]any{}}
 
-// Enterprise turns on everything in the generated mapping.
-//
+const RateLimitCeiling = 1_000_000
+
 // It has to enumerate rather than send a wildcard: projectV2ToFeatureSet layers
 // entitlements over getDefaultOnPremFeatures(), so a feature the stub omits stays
 // off. Limit features get a large number rather than true, since their value is a cap.
@@ -31,6 +31,11 @@ func Enterprise() Plan {
 	features := make(map[string]any, len(All))
 	for _, f := range All {
 		features[f.V2] = valueFor(f)
+	}
+	// Explicit rather than left to valueFor's name heuristic, because these three
+	// decide whether a parallel suite runs at all.
+	for _, f := range []Feature{ReadRateLimit, WriteRateLimit, SecretsRateLimit} {
+		features[f.V2] = RateLimitCeiling
 	}
 	return Plan{
 		Slug:     "enterprise",

@@ -103,6 +103,7 @@ services:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
       - TELEMETRY_ENABLED=false
+      - OPENAPI_FULL_SPEC=true
       # Dev-only: lets the backend accept PingFederate's self-signed cert when testing
       # OIDC locally via `make up-dev-pingfed`. NEVER set this in production.
       # - NODE_TLS_REJECT_UNAUTHORIZED=0

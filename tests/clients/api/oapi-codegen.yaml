@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/oapi-codegen/oapi-codegen/HEAD/configuration-schema.json
+package: api
+output: clients/api/api.gen.go
+
+generate:
+  models: true
+  client: true
+
+output-options:
+  # Only what the suite calls. Add an id here when a test reaches for a new endpoint.
+  #
+  # The route must also be in the spec, which needs OPENAPI_FULL_SPEC on the instance
+  # being generated from: half the routes are hidden by default, and a route with no
+  # operationId gets a name derived from its path that changes when the path does.
+  include-operation-ids:
+    - adminBootstrap
+    - updateAdminConfig
+    - getServerStatus
+    - loginV3
+    - selectOrganizationV3
+    - refreshAuthToken
+    - createOrganization
+    - deleteOrganization
+    - createProject
+    - getOrganizationPlan

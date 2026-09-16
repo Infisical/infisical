@@ -18,6 +18,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getOrganizationPlan",
       params: z.object({ organizationId: z.string().trim() }),
       querystring: z.object({
         refreshCache: z

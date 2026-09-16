@@ -1,13 +1,14 @@
 package infisical
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"time"
+	"strings"
+
+	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Credentials the harness bootstraps an instance with.
@@ -23,8 +24,7 @@ const (
 
 // Root is what bootstrapping an instance yields.
 //
-// Three principals come out of one call, and they are deliberately used for
-// different things:
+// Three principals come out of one call, deliberately used for different things:
 //
 //   - The USER is the only one that can create an organization, because
 //     POST /api/v2/organizations checks req.auth.actor !== ActorType.USER. The
@@ -35,29 +35,12 @@ const (
 //     level suites get.
 //   - The organization it creates is incidental. Tenants make their own.
 type Root struct {
-	UserID        string
+	UserID        uuid.UUID
 	Email         string
 	Password      string
-	OrgID         string
-	IdentityID    string
+	OrgID         uuid.UUID
+	IdentityID    uuid.UUID
 	IdentityToken string
-}
-
-type bootstrapResponse struct {
-	User struct {
-		ID       string `json:"id"`
-		Username string `json:"username"`
-	} `json:"user"`
-	Organization struct {
-		ID   string `json:"id"`
-		Slug string `json:"slug"`
-	} `json:"organization"`
-	Identity struct {
-		ID          string `json:"id"`
-		Credentials struct {
-			Token string `json:"token"`
-		} `json:"credentials"`
-	} `json:"identity"`
 }
 
 // Bootstrap prepares a freshly migrated instance.
@@ -66,124 +49,84 @@ type bootstrapResponse struct {
 // serverCfg.initialized is set. An adopted container is therefore already
 // bootstrapped, and the second caller logs in instead.
 func Bootstrap(ctx context.Context, baseURL string) (Root, error) {
-	c := &http.Client{Timeout: 30 * time.Second}
-
-	var out bootstrapResponse
-	code, body, err := post(ctx, c, baseURL+"/api/v1/admin/bootstrap", "", map[string]string{
-		"email":        RootEmail,
-		"password":     RootPassword,
-		"organization": RootOrgName,
-	}, &out)
+	c, err := NewClient(baseURL)
 	if err != nil {
 		return Root{}, err
 	}
 
-	switch {
-	case code == http.StatusOK:
-	case alreadyBootstrapped(code, body):
-		return adopt(ctx, c, baseURL)
-	default:
-		return Root{}, fmt.Errorf("infisical: bootstrap returned %d: %s", code, trunc(body))
+	res, err := c.AdminBootstrapWithResponse(ctx, api.AdminBootstrapJSONRequestBody{
+		Email:        openapi_types.Email(RootEmail),
+		Password:     RootPassword,
+		Organization: RootOrgName,
+	})
+	if err != nil {
+		return Root{}, fmt.Errorf("infisical: bootstrap: %w", err)
 	}
 
+	switch {
+	case res.StatusCode() == http.StatusOK && res.JSON200 != nil:
+	case alreadyBootstrapped(res.StatusCode(), res.Body):
+		// An adopted instance. The credentials are constants, so this is recoverable
+		// rather than fatal: log in and carry on with what the first caller created.
+		return adopt(ctx, c)
+	default:
+		return Root{}, apiError("bootstrap", res.StatusCode(), res.Body)
+	}
+
+	body := res.JSON200
 	root := Root{
-		UserID:        out.User.ID,
+		UserID:        body.User.Id,
 		Email:         RootEmail,
 		Password:      RootPassword,
-		OrgID:         out.Organization.ID,
-		IdentityID:    out.Identity.ID,
-		IdentityToken: out.Identity.Credentials.Token,
+		OrgID:         body.Organization.Id,
+		IdentityID:    body.Identity.Id,
+		IdentityToken: body.Identity.Credentials.Token,
 	}
 
 	// bootstrapInstance sets allowSignUp:false whenever the instance is not cloud.
-	// Without turning it back on, creating a second real user is impossible, and
-	// that is the only path to a non-administrator principal.
-	if err := allowSignUp(ctx, c, baseURL, root.IdentityToken); err != nil {
+	// Without turning it back on, creating a second real user is impossible, and that
+	// is the only path to a non-administrator principal.
+	if err := allowSignUp(ctx, baseURL, root.IdentityToken); err != nil {
 		return Root{}, err
 	}
 	return root, nil
 }
 
-func adopt(ctx context.Context, c *http.Client, baseURL string) (Root, error) {
-	var login struct {
-		AccessToken string `json:"accessToken"`
-	}
-	code, body, err := post(ctx, c, baseURL+"/api/v3/auth/login", "", map[string]string{
-		"email":    RootEmail,
-		"password": RootPassword,
-	}, &login)
+func adopt(ctx context.Context, c *api.ClientWithResponses) (Root, error) {
+	res, err := c.LoginV3WithResponse(ctx, api.LoginV3JSONRequestBody{
+		Email:    RootEmail,
+		Password: RootPassword,
+	})
 	if err != nil {
-		return Root{}, err
+		return Root{}, fmt.Errorf("infisical: logging in as the harness root: %w", err)
 	}
-	if code != http.StatusOK {
+	if res.StatusCode() != http.StatusOK {
 		return Root{}, fmt.Errorf(
-			"infisical: this instance is already bootstrapped but the harness root cannot log in (%d: %s).\n"+
-				"It was probably bootstrapped by something other than the harness. Run `inf down` and retry.",
-			code, trunc(body))
+			"infisical: this instance is already bootstrapped but the harness root cannot log in (%d).\n"+
+				"It was probably bootstrapped by something other than the harness, so run `inf down` and retry",
+			res.StatusCode())
 	}
 	return Root{Email: RootEmail, Password: RootPassword}, nil
 }
 
-func allowSignUp(ctx context.Context, c *http.Client, baseURL, token string) error {
-	code, body, err := patch(ctx, c, baseURL+"/api/v1/admin/config", token, map[string]any{
-		"allowSignUp": true,
-	})
+func allowSignUp(ctx context.Context, baseURL, token string) error {
+	c, err := NewClient(baseURL, BearerAuth(token))
 	if err != nil {
 		return err
 	}
-	if code != http.StatusOK {
-		return fmt.Errorf("infisical: re-enabling signup returned %d: %s", code, trunc(body))
+	res, err := c.UpdateAdminConfigWithResponse(ctx, api.UpdateAdminConfigJSONRequestBody{
+		AllowSignUp: new(true),
+	})
+	if err != nil {
+		return fmt.Errorf("infisical: re-enabling signup: %w", err)
+	}
+	if res.StatusCode() != http.StatusOK {
+		return apiError("re-enabling signup", res.StatusCode(), res.Body)
 	}
 	return nil
 }
 
 // alreadyBootstrapped recognises the one failure that is expected and recoverable.
-func alreadyBootstrapped(code int, body string) bool {
-	return code == http.StatusBadRequest && bytes.Contains([]byte(body), []byte("already"))
-}
-
-func post(ctx context.Context, c *http.Client, url, token string, in, out any) (int, string, error) {
-	return do(ctx, c, http.MethodPost, url, token, in, out)
-}
-
-func patch(ctx context.Context, c *http.Client, url, token string, in any) (int, string, error) {
-	return do(ctx, c, http.MethodPatch, url, token, in, nil)
-}
-
-func do(ctx context.Context, c *http.Client, method, url, token string, in, out any) (int, string, error) {
-	buf, err := json.Marshal(in)
-	if err != nil {
-		return 0, "", err
-	}
-	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(buf))
-	if err != nil {
-		return 0, "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	// completeAccount rejects a request without one, so send it everywhere.
-	req.Header.Set("User-Agent", "infisical-harness")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return 0, "", fmt.Errorf("infisical: %s %s: %w", method, url, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, _ := io.ReadAll(resp.Body)
-	if out != nil && resp.StatusCode == http.StatusOK {
-		if err := json.Unmarshal(body, out); err != nil {
-			return resp.StatusCode, string(body), fmt.Errorf("infisical: decoding %s: %w", url, err)
-		}
-	}
-	return resp.StatusCode, string(body), nil
-}
-
-func trunc(s string) string {
-	if len(s) > 400 {
-		return s[:400] + "..."
-	}
-	return s
+func alreadyBootstrapped(status int, body []byte) bool {
+	return status == http.StatusBadRequest && strings.Contains(string(body), "already")
 }

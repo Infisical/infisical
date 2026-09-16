@@ -38,6 +38,19 @@ func TestPlan_Payload(t *testing.T) {
 		}
 	})
 
+	t.Run("ok/the entitled rate limits are raised, not merely enabled", func(t *testing.T) {
+		t.Parallel()
+		p := Enterprise()
+		for _, f := range []Feature{ReadRateLimit, WriteRateLimit, SecretsRateLimit} {
+			got, ok := p.Features[f.V2].(int)
+			if !ok || got < 100_000 {
+				t.Errorf("%s entitled as %v; the limiter registers whenever the license "+
+					"stub is on, so a default-height limit would throttle the suite",
+					f.V2, p.Features[f.V2])
+			}
+		}
+	})
+
 	t.Run("ok/Without leaves the original untouched", func(t *testing.T) {
 		t.Parallel()
 		base := Enterprise()

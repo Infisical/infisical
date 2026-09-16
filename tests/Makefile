@@ -3,7 +3,7 @@
 # the toolchain's own.
 GOFMT := $(shell go env GOROOT)/bin/gofmt
 
-.PHONY: fmt lint test test-unit test-docker down status
+.PHONY: fmt lint test test-unit test-docker down status generate-client
 
 fmt:
 	$(GOFMT) -w .
@@ -12,6 +12,7 @@ lint:
 	@out="$$($(GOFMT) -l .)"; \
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
 	go vet ./...
+	go tool staticcheck ./harness/... ./infra/... ./internal/...
 
 # Unit tests only: no Docker, no containers, runs in under a second.
 test-unit:
@@ -28,3 +29,13 @@ down:
 
 status:
 	go run ./cmd/inf status
+
+# Generate the API client from a running Infisical. Bring one up first (`make up-dev`
+# from the repo root); it must have OPENAPI_FULL_SPEC set, which docker-compose.dev.yml
+# does, or half the routes are missing from the spec and no test can reach them.
+#
+# oapi-codegen reads the URL directly, so there is no spec snapshot to keep in sync.
+INFISICAL_OPENAPI_URL ?= http://localhost:8080
+
+generate-client:
+	go tool oapi-codegen -config clients/api/oapi-codegen.yaml $(INFISICAL_OPENAPI_URL)/api/docs/json
