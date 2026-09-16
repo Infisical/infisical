@@ -258,7 +258,7 @@ export function FolderBreadcrumb({ projectName, secretPath = "", onManageFolderA
       >
         <span
           data-measure="root"
-          className="inline-flex max-w-48 items-center gap-1.5 px-1.5 text-sm"
+          className="inline-flex max-w-48 items-center gap-6 pr-1.5 pl-3 text-sm"
         >
           <FolderIcon className="size-4" />
           <span className="truncate">{projectName}</span>
@@ -284,13 +284,13 @@ export function FolderBreadcrumb({ projectName, secretPath = "", onManageFolderA
       </div>
 
       {/* Visible breadcrumb (shrinks/clips on its own so the access button is never clipped) */}
-      <Breadcrumb className="min-w-0 flex-1 overflow-hidden">
+      <Breadcrumb className="min-w-0 overflow-hidden">
         <BreadcrumbList className="flex-nowrap">
           {/* Root folder */}
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
               <Link
-                className={`${breadcrumbLinkClassName} max-w-48 gap-1.5`}
+                className={`${breadcrumbLinkClassName} max-w-48 gap-6 pr-1.5 pl-3`}
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                 to="."
                 search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
