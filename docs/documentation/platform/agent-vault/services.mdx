@@ -106,10 +106,6 @@ Wildcards match exactly one label. The pattern below matches `api.atlassian.net`
 *.atlassian.net
 ```
 
-### Paths/routes
-
-You can't configure a specific path/route on a host. Patterns like `api.github.com/repos` aren't supported. To restrict a service to certain routes, use [path prefixes](#methods-and-paths) instead.
-
 ## Methods and paths
 
 By default, a service allows every HTTP method and every path on its hosts. When configuring a service, you have the option to narrow it to only the methods and routes your agent needs.
