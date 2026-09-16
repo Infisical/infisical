@@ -167,10 +167,11 @@ To confirm the proxy is attaching credentials, make a test call to a service you
     The session token was missing from the request. Confirm you passed `--session-token`, or that the token appears as the userinfo in your `HTTPS_PROXY` URL (like `http://x-agent-vault:<session-token>@<proxy-address>`).
   </Accordion>
   <Accordion title="403 from the proxy">
-    This could be for two reasons:
+    This could be for a few reasons:
 
     - The session was revoked or has expired. Check the Sessions page in Infisical, and create a new one if needed.
     - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host you called. Add a service that does, or use a pass-through service.
+    - The service covers the host, but the request uses a method or a path it doesn't allow. The message names the service and the method. Check the service's [methods and paths](/documentation/platform/agent-vault/services#methods-and-paths).
   </Accordion>
 </AccordionGroup>
 
