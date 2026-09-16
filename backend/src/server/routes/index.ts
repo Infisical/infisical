@@ -1359,7 +1359,9 @@ export const registerRoutes = async (
     mfaRecoveryCodeService,
     usageMeteringService,
     alertChannelRecipientDAL,
-    emailDomainDAL
+    emailDomainDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const totpService = totpServiceFactory({
@@ -1585,7 +1587,9 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({

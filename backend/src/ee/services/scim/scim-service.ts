@@ -810,8 +810,9 @@ export const scimServiceFactory = ({
         );
 
         if (!scimUser.active) {
+          const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx });
           sendPamCancellations = await terminatePamSessionsForUsers({
-            orgIds: [orgId],
+            orgIds: [orgId, ...childOrgs.map((el) => el.id)],
             userIds: [membership.actorUserId as string],
             pamSessionDAL,
             gatewayV2Service,
@@ -941,8 +942,9 @@ export const scimServiceFactory = ({
         );
 
         if (!active) {
+          const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx });
           sendPamCancellations = await terminatePamSessionsForUsers({
-            orgIds: [orgId],
+            orgIds: [orgId, ...childOrgs.map((el) => el.id)],
             userIds: [membership.actorUserId as string],
             pamSessionDAL,
             gatewayV2Service,

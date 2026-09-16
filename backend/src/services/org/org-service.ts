@@ -1005,8 +1005,9 @@ export const orgServiceFactory = ({
       }
 
       if (isActive === false && updatedOrgMembership.actorUserId) {
+        const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx });
         sendPamCancellations = await terminatePamSessionsForUsers({
-          orgIds: [orgId],
+          orgIds: [orgId, ...childOrgs.map((el) => el.id)],
           userIds: [updatedOrgMembership.actorUserId],
           pamSessionDAL,
           gatewayV2Service,
