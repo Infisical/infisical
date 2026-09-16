@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 import { z } from "zod";
 
-import { captureSignupCompleted } from "@app/components/analytics/signupExperiment";
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
