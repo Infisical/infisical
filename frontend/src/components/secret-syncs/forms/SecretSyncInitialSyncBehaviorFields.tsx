@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { ArrowDown, TriangleAlert } from "lucide-react";
+import { ArrowDown, Info, TriangleAlert } from "lucide-react";
 
 import {
   Alert,
@@ -344,6 +344,7 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
   const currentInitialBehavior = watch("syncOptions.initialSyncBehavior");
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
   const keySchema = watch("syncOptions.keySchema");
+  const recursive = Boolean(watch("syncOptions.recursive"));
 
   // Vercel "sensitive" secrets cannot be read back, so importing destination secrets is impossible.
   // Force the initial sync behavior to OverwriteDestination whenever sensitive is enabled.
@@ -359,14 +360,27 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
     }
   }, [vercelSensitive, currentInitialBehavior, setValue]);
 
-  const importAvailable = Boolean(syncOption?.canImportSecrets) && !vercelSensitive;
+  // A sync that includes subfolders has no single folder to import destination secrets back into,
+  // so overwrite is its only option. The source step sets that when the toggle goes on; this keeps
+  // the choice from being offered again here.
+  const importAvailable = Boolean(syncOption?.canImportSecrets) && !vercelSensitive && !recursive;
   const behaviorKeys = importAvailable
     ? BEHAVIOR_ORDER
     : [SecretSyncInitialSyncBehavior.OverwriteDestination];
 
   return (
     <>
-      {!vercelSensitive && !syncOption?.canImportSecrets && (
+      {recursive && syncOption?.canImportSecrets && (
+        <Alert className="mb-3" variant="info">
+          <Info />
+          <AlertTitle>Importing secrets is not supported with subfolders</AlertTitle>
+          <AlertDescription>
+            This sync includes secrets from subfolders, so there is no single folder to import
+            destination secrets into. Turn off subfolders on the source step to import instead.
+          </AlertDescription>
+        </Alert>
+      )}
+      {!vercelSensitive && !recursive && !syncOption?.canImportSecrets && (
         <Alert className="mb-3" variant="warning">
           <TriangleAlert />
           <AlertTitle>Importing secrets is not supported</AlertTitle>

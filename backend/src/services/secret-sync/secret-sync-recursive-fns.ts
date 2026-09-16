@@ -12,6 +12,7 @@ import {
   TSecretPayload,
   TSecretSyncPayload
 } from "@app/services/secret-sync/secret-sync-payload";
+import { TSecretSync } from "@app/services/secret-sync/secret-sync-types";
 import { expandSecretReferencesFactory } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
@@ -31,22 +32,6 @@ export const getAncestorPaths = (path: string): string[] => {
   const segments = path.split("/").filter(Boolean);
 
   return segments.map((_, index) => (index === 0 ? "/" : `/${segments.slice(0, index).join("/")}`));
-};
-
-// buildSyncPayload expands secret references for every secret concurrently
-// (Promise.allSettled below), and expansion can hit the DB per secret, so this stays well under
-// what a 10-connection pool can take at once even with every slot serving one sync. Applies to
-// every sync, not just recursive ones: an oversized single folder is the same risk as an
-// oversized subtree. Raise further only once that concurrency is actually bounded.
-export const SECRET_SYNC_MAX_SECRETS = 500;
-
-export const assertWithinSecretLimit = (count: number) => {
-  if (count <= SECRET_SYNC_MAX_SECRETS) return;
-
-  throw new SecretSyncError({
-    message: `This sync covers ${count} secrets, which is above the limit of ${SECRET_SYNC_MAX_SECRETS} for a single sync. Point the sync at a narrower secret path, or split it into several syncs.`,
-    shouldRetry: false
-  });
 };
 
 export const getSyncedFolders = async ({
@@ -120,28 +105,28 @@ export const mergeImportedSecrets = (
 // throws on it by default, and payload.dedupeConflicts() is how the one caller that needs to
 // tolerate it (removal) gets a payload that won't.
 export const buildSyncPayload = async (
-  deps: {
-    folderDAL: Pick<TSecretFolderDALFactory, "find" | "findByManySecretPath">;
-    projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-    secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderId" | "findByFolderIds" | "find">;
-    secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
-    expandSecretReferences: TExpandSecretReferences;
-    decryptSecretValue: (value?: Buffer | null) => string;
-    fnSecretsV2FromImportsDeps: TFnSecretsV2FromImportsDeps;
-  },
   args: {
     projectId: string;
     environment: string;
     sourcePath: string;
     sourceFolderId: string;
-    recursive: boolean;
-    keySchema?: string;
+    syncOptions: Pick<TSecretSync["syncOptions"], "recursive" | "keySchema"> | undefined;
     includeImports: boolean;
+  },
+  deps: {
+    folderDAL: Pick<TSecretFolderDALFactory, "find" | "findByManySecretPath">;
+    projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+    secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds" | "find">;
+    secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
+    expandSecretReferences: TExpandSecretReferences;
+    decryptSecretValue: (value?: Buffer | null) => string;
+    fnSecretsV2FromImportsDeps: TFnSecretsV2FromImportsDeps;
   }
 ): Promise<TSecretSyncPayload> => {
   const { folderDAL, projectEnvDAL, secretV2BridgeDAL, secretImportDAL, expandSecretReferences, decryptSecretValue } =
     deps;
-  const { projectId, environment, sourcePath, sourceFolderId, recursive, keySchema, includeImports } = args;
+  const { projectId, environment, sourcePath, sourceFolderId, syncOptions, includeImports } = args;
+  const { recursive, keySchema } = syncOptions ?? {};
 
   const folders = await getSyncedFolders({
     folderDAL,
@@ -150,21 +135,12 @@ export const buildSyncPayload = async (
     environment,
     sourcePath,
     sourceFolderId,
-    recursive
+    recursive: Boolean(recursive)
   });
 
   const pathByFolderId = new Map(folders.map(({ folderId, path }) => [folderId, path]));
 
-  // findByFolderIds joins tags, metadata, rotation, honey token, reminder, recipients and users
-  // plus a DENSE_RANK window, so it costs far more than the three narrow queries findByFolderId
-  // runs. Every non-recursive sync (the vast majority today) hits this path, so it keeps using
-  // the cheaper single-folder read; only a genuinely multi-folder subtree pays for the join.
-  const secrets =
-    folders.length === 1
-      ? await secretV2BridgeDAL.findByFolderId({ folderId: folders[0].folderId })
-      : await secretV2BridgeDAL.findByFolderIds({ folderIds: folders.map(({ folderId }) => folderId) });
-
-  assertWithinSecretLimit(secrets.length);
+  const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: folders.map(({ folderId }) => folderId) });
 
   const entries: TSecretPayload[] = [];
 
@@ -237,8 +213,6 @@ export const buildSyncPayload = async (
         secrets: group.secrets
       }))
     );
-
-    assertWithinSecretLimit(allEntries.length);
   }
 
   return createSecretSyncPayload(allEntries, { environment, keySchema });

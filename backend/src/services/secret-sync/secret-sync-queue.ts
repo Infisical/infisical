@@ -54,6 +54,7 @@ import {
   TQueueSecretSyncSyncSecretsByIdDTO,
   TQueueSendSecretSyncActionFailedNotificationsDTO,
   TSecretMap,
+  TSecretSync,
   TSecretSyncImportSecretsDTO,
   TSecretSyncRaw,
   TSecretSyncRemoveSecretsDTO,
@@ -283,7 +284,6 @@ export const secretSyncQueueFactory = ({
       projectId
     });
     const actorOrgId = secretSync.connection.orgId;
-    const syncOptions = secretSync.syncOptions as { recursive?: boolean; keySchema?: string } | undefined;
 
     const decryptSecretValue = (value?: Buffer | undefined | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
@@ -303,6 +303,14 @@ export const secretSyncQueueFactory = ({
 
     return buildSyncPayload(
       {
+        projectId,
+        environment: environment.slug,
+        sourcePath: folder.path,
+        sourceFolderId: folderId,
+        syncOptions: secretSync.syncOptions as TSecretSync["syncOptions"],
+        includeImports
+      },
+      {
         folderDAL,
         projectEnvDAL,
         secretV2BridgeDAL,
@@ -315,15 +323,6 @@ export const secretSyncQueueFactory = ({
           orgDAL,
           kmsService
         }
-      },
-      {
-        projectId,
-        environment: environment.slug,
-        sourcePath: folder.path,
-        sourceFolderId: folderId,
-        recursive: Boolean(syncOptions?.recursive),
-        keySchema: syncOptions?.keySchema,
-        includeImports
       }
     );
   };
@@ -1070,7 +1069,7 @@ export const secretSyncQueueFactory = ({
     // ancestor folder only matches when it is recursive, so a non-recursive sync rooted above
     // this path is never triggered by a write it was never configured to cover.
     const secretSyncs = candidateSyncs.filter(
-      (sync) => sync.folderId === folder.id || Boolean((sync.syncOptions as { recursive?: boolean } | null)?.recursive)
+      (sync) => sync.folderId === folder.id || Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.recursive)
     );
 
     await secretSyncDAL.update(

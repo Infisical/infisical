@@ -67,10 +67,6 @@ import {
 } from "./secret-sync-maps";
 import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 
-// secretSyncDAL rows carry syncOptions as an untyped jsonb column, not the destination-specific
-// shape TSecretSync narrows it to elsewhere, so reading a field back out needs a cast.
-type TRawSyncOptions = { recursive?: boolean; keySchema?: string };
-
 type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
   secretImportDAL: TSecretImportDALFactory;
@@ -186,31 +182,16 @@ export const secretSyncServiceFactory = ({
         if (!(error instanceof ForbiddenError)) throw error;
 
         throw new ForbiddenRequestError({
-          message:
-            path === sourcePath
-              ? `You do not have permission to read secrets at path "${path}" in environment "${environment}".`
-              : `You do not have permission to read secrets at path "${path}" in environment "${environment}". This sync includes subfolders, so it reads every folder beneath "${sourcePath}".`
+          message: `You do not have permission to read secrets at path "${path}" in environment "${environment}".`
         });
       }
-    }
-  };
-
-  // A SecretSyncError is written for the end user already (see secret-sync-payload.ts); every
-  // caller that can surface one directly just needs it translated to the house error envelope.
-  const $rethrowSecretSyncErrorsAsBadRequest = async <T>(fn: () => T | Promise<T>): Promise<T> => {
-    try {
-      return await fn();
-    } catch (error) {
-      if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
-
-      throw error;
     }
   };
 
   // Shared by $assertSyncedSecretsAreFlattenable and findRecursiveConflicts: both need the same
   // decrypt-and-expand payload for the full recursive subtree, and differ only in what they do
   // with it once built (throw on the first conflict vs. report every conflict back).
-  const $buildRecursiveSyncPayload = ({
+  const $buildRecursiveSyncPayload = async ({
     projectId,
     actorOrgId,
     environment,
@@ -224,30 +205,38 @@ export const secretSyncServiceFactory = ({
     sourcePath: string;
     sourceFolderId: string;
     keySchema?: string;
-  }) =>
-    $rethrowSecretSyncErrorsAsBadRequest(async () => {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+  }) => {
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
 
-      const decryptSecretValue = (value?: Buffer | null) =>
-        value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
+    const decryptSecretValue = (value?: Buffer | null) =>
+      value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
 
-      const { expandSecretReferences } = expandSecretReferencesFactory({
-        decryptSecretValue,
-        secretDAL: secretV2BridgeDAL,
-        folderDAL,
-        projectId,
-        canExpandValue: () => true,
-        actorOrgId,
-        orgDAL,
-        projectFolderGrantDAL,
-        projectDAL,
-        kmsService
-      });
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      decryptSecretValue,
+      secretDAL: secretV2BridgeDAL,
+      folderDAL,
+      projectId,
+      canExpandValue: () => true,
+      actorOrgId,
+      orgDAL,
+      projectFolderGrantDAL,
+      projectDAL,
+      kmsService
+    });
 
-      return buildSyncPayload(
+    try {
+      return await buildSyncPayload(
+        {
+          projectId,
+          environment,
+          sourcePath,
+          sourceFolderId,
+          syncOptions: { recursive: true, keySchema },
+          includeImports: true
+        },
         {
           folderDAL,
           projectEnvDAL,
@@ -261,18 +250,16 @@ export const secretSyncServiceFactory = ({
             orgDAL,
             kmsService
           }
-        },
-        {
-          projectId,
-          environment,
-          sourcePath,
-          sourceFolderId,
-          recursive: true,
-          keySchema,
-          includeImports: true
         }
       );
-    });
+    } catch (error) {
+      // A SecretSyncError is already written for the end user (see secret-sync-payload.ts), so it
+      // only needs translating to the house error envelope.
+      if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
+
+      throw error;
+    }
+  };
 
   // Flattening a subtree onto a destination that holds one flat list can produce two secrets with
   // the same destination key. flatten() is what detects that, and the job runs it on every sync, so
@@ -303,7 +290,13 @@ export const secretSyncServiceFactory = ({
       keySchema
     });
 
-    await $rethrowSecretSyncErrorsAsBadRequest(() => payload.flatten());
+    try {
+      payload.flatten();
+    } catch (error) {
+      if (error instanceof SecretSyncError) throw new BadRequestError({ message: error.message });
+
+      throw error;
+    }
   };
 
   // Lets the frontend check for duplicate-name conflicts while the user is still on the Source
@@ -324,9 +317,13 @@ export const secretSyncServiceFactory = ({
       projectId
     });
 
+    // Create rather than Read: the only reason to call this is to configure a sync at this source,
+    // and the check is subject-scoped so it still holds for an actor whose sync permission is
+    // narrowed to particular paths. Update is enforced separately in updateSecretSync, which has a
+    // sync to name in the subject; this route does not.
     ForbiddenError.from(projectPermission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Read,
-      ProjectPermissionSub.SecretSyncs
+      ProjectPermissionSecretSyncActions.Create,
+      subject(ProjectPermissionSub.SecretSyncs, { environment, secretPath })
     );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -656,7 +653,7 @@ export const secretSyncServiceFactory = ({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
 
-    const requestedSyncOptions = params.syncOptions as TRawSyncOptions | undefined;
+    const requestedSyncOptions = params.syncOptions;
     const isRecursive = Boolean(requestedSyncOptions?.recursive);
 
     await $assertCanReadSyncedFolders(projectPermission, {
@@ -867,33 +864,53 @@ export const secretSyncServiceFactory = ({
       (Boolean(secretPath) && secretPath !== secretSync.folder?.path) ||
       (Boolean(environment) && environment !== secretSync.environment?.slug);
 
-    const existingSyncOptions = secretSync.syncOptions as TRawSyncOptions | undefined;
-    const requestedSyncOptions = params.syncOptions as TRawSyncOptions | undefined;
+    const updatedEnvironment = environment ?? secretSync.environment?.slug;
+    const updatedSecretPath = secretPath ?? secretSync.folder?.path;
 
-    const wasRecursive = Boolean(existingSyncOptions?.recursive);
-    const isRecursive = Boolean(requestedSyncOptions?.recursive ?? wasRecursive);
+    if (isSourceChanged) {
+      if (!updatedEnvironment || !updatedSecretPath)
+        throw new BadRequestError({ message: "Must specify both source environment and secret path" });
+
+      const newFolder = await folderDAL.findBySecretPath(secretSync.projectId, updatedEnvironment, updatedSecretPath);
+
+      if (!newFolder)
+        throw new BadRequestError({
+          message: `Could not find folder with path "${updatedSecretPath}" in environment "${updatedEnvironment}" for project with ID "${secretSync.projectId}"`
+        });
+
+      folderId = newFolder.id;
+    }
+
+    // preSaveTransformSyncOptions is the only place that knows how a destination folds the
+    // requested options into the stored ones: most replace them outright, Azure Entra ID SCIM
+    // merges. It returns nothing when the request carries no syncOptions at all, in which case the
+    // row keeps what it has.
+    const resolvedSyncOptions = folderId
+      ? await preSaveTransformSyncOptions(
+          destination,
+          {
+            syncOptions: params.syncOptions as Record<string, unknown> | undefined,
+            existingSyncOptions: secretSync.syncOptions as Record<string, unknown> | undefined,
+            folderId
+          },
+          preSaveTransformDeps
+        )
+      : (params.syncOptions as Record<string, unknown> | undefined);
+
+    // What the row will hold once this update lands. The checks below and the write both read it,
+    // so the gate cannot authorize one sync while the row ends up describing another.
+    const updatedSyncOptions = resolvedSyncOptions ?? (secretSync.syncOptions as Record<string, unknown> | undefined);
+
+    const { recursive, keySchema } = (updatedSyncOptions ?? {}) as NonNullable<TSecretSync["syncOptions"]>;
+    const isRecursive = Boolean(recursive);
 
     // Every update to a recursive sync re-authorizes the whole subtree, because an actor holding
     // Edit on the source folder can otherwise repoint an existing recursive sync at a destination
     // they control and read descendants they were never granted. A non-recursive sync covers only
     // its source folder, so it re-authorizes when that source actually changes.
     if (isSourceChanged || isRecursive) {
-      const updatedEnvironment = environment ?? secretSync.environment?.slug;
-      const updatedSecretPath = secretPath ?? secretSync.folder?.path;
-
       if (!updatedEnvironment || !updatedSecretPath)
         throw new BadRequestError({ message: "Must specify both source environment and secret path" });
-
-      if (isSourceChanged) {
-        const newFolder = await folderDAL.findBySecretPath(secretSync.projectId, updatedEnvironment, updatedSecretPath);
-
-        if (!newFolder)
-          throw new BadRequestError({
-            message: `Could not find folder with path "${updatedSecretPath}" in environment "${updatedEnvironment}" for project with ID "${secretSync.projectId}"`
-          });
-
-        folderId = newFolder.id;
-      }
 
       if (!folderId)
         throw new BadRequestError({
@@ -915,24 +932,12 @@ export const secretSyncServiceFactory = ({
           environment: updatedEnvironment,
           sourcePath: updatedSecretPath,
           sourceFolderId: folderId,
-          keySchema: requestedSyncOptions?.keySchema ?? existingSyncOptions?.keySchema
+          keySchema
         });
       }
     }
 
     const isAutoSyncEnabled = params.isAutoSyncEnabled ?? secretSync.isAutoSyncEnabled;
-
-    const resolvedSyncOptions = folderId
-      ? await preSaveTransformSyncOptions(
-          destination,
-          {
-            syncOptions: params.syncOptions as Record<string, unknown> | undefined,
-            existingSyncOptions: secretSync.syncOptions as Record<string, unknown> | undefined,
-            folderId
-          },
-          preSaveTransformDeps
-        )
-      : (params.syncOptions as Record<string, unknown> | undefined);
 
     const connectionIdForEnrich = params.connectionId ?? secretSync.connectionId;
 
@@ -950,7 +955,7 @@ export const secretSyncServiceFactory = ({
     try {
       const updatedSecretSync = await secretSyncDAL.updateById(syncId, {
         ...params,
-        ...(resolvedSyncOptions && { syncOptions: resolvedSyncOptions }),
+        ...(updatedSyncOptions && { syncOptions: updatedSyncOptions }),
         ...(enrichedDestinationConfig && { destinationConfig: enrichedDestinationConfig }),
         ...(isAutoSyncEnabled && folderId && { syncStatus: SecretSyncStatus.Pending }),
         folderId

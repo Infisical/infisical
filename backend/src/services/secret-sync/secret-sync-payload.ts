@@ -123,12 +123,11 @@ export const createSecretSyncPayload = (
 ): TSecretSyncPayload => ({
   secrets,
   environment,
-  // A destination whose sync targets can't carry the configured key schema (eg a many-to-one
-  // JSON body whose fields are app-facing variable names, or an Infisical-to-Infisical sync,
-  // where a schema-renamed key would look like a new secret and retrigger a sync cycle) calls
-  // flatten({ applySchema: false }) to get the raw-key view instead. Either way flatten() still
-  // groups by the resulting destination key and rejects collisions, so duplicate-name detection
-  // never depends on whether the schema was applied.
+  // A destination whose sync targets can't carry the configured key schema (eg a many-to-one JSON
+  // body whose fields are app-facing variable names) calls flatten({ applySchema: false }) to get
+  // the raw-key view instead. Either way flatten() still groups by the resulting destination key
+  // and rejects collisions, so duplicate-name detection never depends on whether the schema was
+  // applied.
   flatten: ({ applySchema = true }: { applySchema?: boolean } = {}) => {
     const conflicts = findFlattenConflicts({ secrets, environment, keySchema }, { applySchema });
 

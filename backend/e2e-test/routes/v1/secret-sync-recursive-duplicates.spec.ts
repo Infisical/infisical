@@ -51,6 +51,55 @@ describe("A recursive secret sync is refused when two folders use the same secre
     return result;
   };
 
+  // Creating a recursive sync over an existing collision is refused, so the only way a sync can be
+  // holding one is for the second name to have appeared after it was saved. Every update test below
+  // needs a sync in that state, so they all build it the same way.
+  const recursiveSyncWithLateCollision = async (dto: { name: string; folder: string }) => {
+    await createFolder({
+      authToken: jwtAuthToken,
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/",
+      name: dto.folder
+    });
+    await createFolder({
+      authToken: jwtAuthToken,
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: `/${dto.folder}`,
+      name: "child"
+    });
+
+    const { secretSync } = await createSecretSync({
+      name: dto.name,
+      projectId,
+      connectionId,
+      environmentSlug: ENV,
+      secretPath: `/${dto.folder}`,
+      region: REGION,
+      destinationPath: `/${dto.name}/`,
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
+      recursive: true,
+      isAutoSyncEnabled: false,
+      authToken: jwtAuthToken
+    });
+    createdSyncIds.push(secretSync!.id);
+
+    for (const secretPath of [`/${dto.folder}`, `/${dto.folder}/child`]) {
+      // eslint-disable-next-line no-await-in-loop
+      await createSecretV2({
+        authToken: jwtAuthToken,
+        workspaceId: projectId,
+        environmentSlug: ENV,
+        secretPath,
+        key: "LATE_KEY",
+        value: `value-for-${secretPath}`
+      });
+    }
+
+    return secretSync!;
+  };
+
   beforeAll(async () => {
     initLogger();
     await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
@@ -136,6 +185,53 @@ describe("A recursive secret sync is refused when two folders use the same secre
     const { secretSync } = await newSync({ name: "non-recursive-duplicate", recursive: false });
 
     expect(secretSync).toEqual(expect.objectContaining({ name: "non-recursive-duplicate" }));
+  });
+
+  // Both tests below pin the same rule from opposite sides: the checks read the options the update
+  // is about to store. Reading the request alone misses that an absent syncOptions leaves the stored
+  // ones in place; reading the stored row alone misses that a supplied syncOptions replaces them.
+
+  test("turning subfolders off is allowed even though the subtree collides", async () => {
+    const secretSync = await recursiveSyncWithLateCollision({
+      name: "recursive-turned-off-later",
+      folder: "reports"
+    });
+
+    const res = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/secret-syncs/aws-parameter-store/${secretSync.id}`,
+      headers: adminHeaders,
+      body: {
+        syncOptions: {
+          initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination
+        }
+      }
+    });
+
+    expect(res.statusCode).toBe(200);
+
+    const [row] = await testDb(TableName.SecretSync).where({ id: secretSync.id });
+
+    expect((row.syncOptions as { recursive?: boolean }).recursive).toBeFalsy();
+  });
+
+  test("an update that leaves the sync options alone is still checked as recursive", async () => {
+    const secretSync = await recursiveSyncWithLateCollision({
+      name: "recursive-left-alone",
+      folder: "metrics"
+    });
+
+    const res = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/secret-syncs/aws-parameter-store/${secretSync.id}`,
+      headers: adminHeaders,
+      body: { name: "recursive-left-alone-renamed" }
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("LATE_KEY");
+    expect(res.json().message).toContain("/metrics");
+    expect(res.json().message).toContain("/metrics/child");
   });
 
   test("turning subfolders on for an existing sync is refused", async () => {

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { CheckCircle2, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
 
 import {
   Alert,
@@ -26,14 +26,13 @@ import {
 import {
   SecretSync,
   SecretSyncInitialSyncBehavior,
-  useRecursiveConflictsCheck
+  useRecursiveConflictsCheck,
+  useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
 
 import { AzureEntraIdScimSyncSourceFields } from "./AzureEntraIdScimSyncSourceFields";
 import { TSecretSyncForm } from "./schemas";
 
-// Mirrors SECRET_SYNC_MAX_SECRETS in backend/src/services/secret-sync/secret-sync-recursive-fns.ts.
-const SECRET_SYNC_MAX_SECRETS = 100;
 const MAX_DISPLAYED_CONFLICTS = 5;
 
 const DefaultSecretSyncSourceFields = () => {
@@ -45,13 +44,10 @@ const DefaultSecretSyncSourceFields = () => {
   const destination = watch("destination");
   const selectedEnvironment = watch("environment");
   const selectedSecretPath = watch("secretPath");
-  const initialSyncBehavior = watch("syncOptions.initialSyncBehavior");
   const recursive = watch("syncOptions.recursive");
   const keySchema = watch("syncOptions.keySchema");
 
-  const importsFromDestination =
-    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource ||
-    initialSyncBehavior === SecretSyncInitialSyncBehavior.ImportPrioritizeDestination;
+  const { syncOption } = useSecretSyncOption(destination);
 
   const { conflicts, isChecking, isClear } = useRecursiveConflictsCheck({
     destination,
@@ -59,7 +55,7 @@ const DefaultSecretSyncSourceFields = () => {
     environment: selectedEnvironment?.slug,
     secretPath: selectedSecretPath,
     keySchema,
-    recursive: Boolean(recursive) && !importsFromDestination
+    recursive: Boolean(recursive)
   });
 
   useEffect(() => {
@@ -84,12 +80,6 @@ const DefaultSecretSyncSourceFields = () => {
       clearErrors("secretPath");
     }
   }, [selectedEnvironment, selectedSecretPath]);
-
-  useEffect(() => {
-    if (importsFromDestination && recursive) {
-      setValue("syncOptions.recursive", false);
-    }
-  }, [importsFromDestination, recursive, setValue]);
 
   return (
     <FieldGroup>
@@ -142,22 +132,41 @@ const DefaultSecretSyncSourceFields = () => {
           <Field>
             <Field orientation="horizontal">
               <FieldContent>
-                <Label htmlFor="recursive">Recursively sync secrets</Label>
+                <Label htmlFor="recursive">Include secrets from subfolders</Label>
                 <FieldDescription>
-                  {importsFromDestination
-                    ? "Not available when the initial sync imports secrets from the destination. There is no single folder to import them back into."
-                    : `Also sync secrets from every folder beneath this path, however deep. Secret names must be unique across all of them, and the combined total can't exceed ${SECRET_SYNC_MAX_SECRETS} secrets.`}
+                  Also sync secrets from every folder beneath this path, however deep. Secret names
+                  must be unique across all of them.
                 </FieldDescription>
               </FieldContent>
               <Toggle
                 id="recursive"
                 variant="project"
-                checked={Boolean(value) && !importsFromDestination}
-                disabled={importsFromDestination}
-                onCheckedChange={onChange}
+                checked={Boolean(value)}
+                onCheckedChange={(checked) => {
+                  onChange(checked);
+
+                  // There is no single folder to import a subtree back into, so the backend rejects
+                  // the combination. Move the user off it here rather than failing them on save.
+                  if (checked) {
+                    setValue(
+                      "syncOptions.initialSyncBehavior",
+                      SecretSyncInitialSyncBehavior.OverwriteDestination
+                    );
+                  }
+                }}
               />
             </Field>
             <FieldError errors={[error]} />
+            {Boolean(value) && syncOption?.canImportSecrets && (
+              <Alert variant="info">
+                <Info />
+                <AlertTitle>Initial sync is set to overwrite the destination</AlertTitle>
+                <AlertDescription>
+                  A sync that includes subfolders cannot import secrets from the destination into
+                  Infisical, because there is no single folder to import them into.
+                </AlertDescription>
+              </Alert>
+            )}
             {isChecking && (
               <p className="text-sm text-muted">Checking for naming conflicts across folders...</p>
             )}

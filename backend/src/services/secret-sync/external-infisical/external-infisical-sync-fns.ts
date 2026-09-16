@@ -146,9 +146,7 @@ const batchDeleteSecrets = async (
 export const ExternalInfisicalSyncFns = {
   syncSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials, payload: TSecretSyncPayload) =>
     withExternalInfisicalErrorHandling(async () => {
-      // Key schema must never be applied for Infisical-to-Infisical syncs, or the prefixed key
-      // triggers another sync cycle on the remote project.
-      const secretMap = payload.flatten({ applySchema: false });
+      const secretMap = payload.flatten();
       const ctx = await getRemoteContext(secretSync);
       const remoteSecrets = await fetchRemoteSecrets(secretSync, ctx);
       const environmentSlug = secretSync.environment?.slug || "";
@@ -195,7 +193,7 @@ export const ExternalInfisicalSyncFns = {
 
   removeSecrets: async (secretSync: TExternalInfisicalSyncWithCredentials, payload: TSecretSyncPayload) =>
     withExternalInfisicalErrorHandling(async () => {
-      const secretMap = payload.flatten({ applySchema: false });
+      const secretMap = payload.flatten();
       const ctx = await getRemoteContext(secretSync);
       const secretsToDelete = Object.keys(secretMap);
       await batchDeleteSecrets(secretSync, secretsToDelete, ctx);

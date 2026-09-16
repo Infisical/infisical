@@ -1,10 +1,8 @@
 import {
-  assertWithinSecretLimit,
   buildSyncPayload,
   getAncestorPaths,
   getSyncedFolders,
-  mergeImportedSecrets,
-  SECRET_SYNC_MAX_SECRETS
+  mergeImportedSecrets
 } from "./secret-sync-recursive-fns";
 
 const deps = {
@@ -97,28 +95,6 @@ describe("getAncestorPaths", () => {
 
   test("returns the root for a single-segment path", () => {
     expect(getAncestorPaths("/backend")).toEqual(["/"]);
-  });
-});
-
-describe("assertWithinSecretLimit", () => {
-  test("accepts a count at the limit", () => {
-    expect(() => assertWithinSecretLimit(SECRET_SYNC_MAX_SECRETS)).not.toThrow();
-  });
-
-  test("rejects a count above the limit with a message naming both numbers", () => {
-    let error: unknown;
-    try {
-      assertWithinSecretLimit(SECRET_SYNC_MAX_SECRETS + 1);
-    } catch (err) {
-      error = err;
-    }
-
-    expect(error).toBeInstanceOf(Error);
-    const { message } = error as Error;
-    const overIndex = message.indexOf(String(SECRET_SYNC_MAX_SECRETS + 1));
-    const limitIndex = message.indexOf(String(SECRET_SYNC_MAX_SECRETS), overIndex + 1);
-    expect(overIndex).toBeGreaterThanOrEqual(0);
-    expect(limitIndex).toBeGreaterThan(overIndex);
   });
 });
 
@@ -242,16 +218,19 @@ describe("buildSyncPayload", () => {
           })
         }
       }
-    } as unknown as Parameters<typeof buildSyncPayload>[0];
+    } as unknown as Parameters<typeof buildSyncPayload>[1];
 
-    const payload = await buildSyncPayload(buildDeps, {
-      projectId: "proj-1",
-      environment: "dev",
-      sourcePath: "/",
-      sourceFolderId: "root",
-      recursive: true,
-      includeImports: true
-    });
+    const payload = await buildSyncPayload(
+      {
+        projectId: "proj-1",
+        environment: "dev",
+        sourcePath: "/",
+        sourceFolderId: "root",
+        syncOptions: { recursive: true },
+        includeImports: true
+      },
+      buildDeps
+    );
 
     const paths = payload.secrets.map((entry) => entry.path).sort();
 
@@ -299,21 +278,21 @@ describe("buildSyncPayload cross-folder duplicates", () => {
         })
       }
     }
-  } as unknown as Parameters<typeof buildSyncPayload>[0];
+  } as unknown as Parameters<typeof buildSyncPayload>[1];
 
   const args = {
     projectId: "proj-1",
     environment: "dev",
     sourcePath: "/",
     sourceFolderId: "root",
-    recursive: true,
+    syncOptions: { recursive: true },
     includeImports: true
-  };
+  } as Parameters<typeof buildSyncPayload>[0];
 
   // Pins the sync-path requirement from the same bug: a name used in two folders must still fail
   // loudly on this path, since only the remove path may look past it.
   test("a cross-folder duplicate name still throws by default", async () => {
-    const payload = await buildSyncPayload(dedupeDeps, args);
+    const payload = await buildSyncPayload(args, dedupeDeps);
 
     expect(() => payload.flatten()).toThrow(/DB_URL/);
   });
@@ -321,7 +300,7 @@ describe("buildSyncPayload cross-folder duplicates", () => {
   // A sync whose secrets collide across folders would otherwise be stuck: it fails to sync, and
   // until dedupeConflicts() existed, it also failed to remove, which is the only way to delete it.
   test("dedupeConflicts() lets the remove path complete despite the same duplicate", async () => {
-    const payload = await buildSyncPayload(dedupeDeps, args);
+    const payload = await buildSyncPayload(args, dedupeDeps);
     const deduped = payload.dedupeConflicts();
 
     expect(() => deduped.flatten()).not.toThrow();
