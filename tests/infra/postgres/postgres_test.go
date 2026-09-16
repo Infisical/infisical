@@ -8,7 +8,6 @@ import (
 
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/postgres"
-	"github.com/Infisical/infisical/tests/internal/spec"
 )
 
 // These need Docker. Skipped when INFRA_DOCKER_TESTS is unset so `make test-unit`
@@ -49,12 +48,9 @@ func TestPostgres_Start(t *testing.T) {
 	requireDocker(t)
 	t.Parallel()
 
-	t.Run("ok/is accepting connections once Start returns", func(t *testing.T) {
+	t.Run("ok/accepts connections by the time Start returns, not merely running", func(t *testing.T) {
 		requireDocker(t)
 		t.Parallel()
-		spec.Why(t, `The container being "running" is not the same as Postgres accepting
-			connections, which is why readiness is pg_isready rather than a port check.`)
-
 		pg := start(t)
 		if got := pg.Endpoint(infra.External).Port; got == 0 || got == 5432 {
 			t.Fatalf("external port should be an ephemeral mapping, got %d", got)
@@ -64,10 +60,6 @@ func TestPostgres_Start(t *testing.T) {
 	t.Run("ok/internal and external addresses differ", func(t *testing.T) {
 		requireDocker(t)
 		t.Parallel()
-		spec.Why(t, `Handing an Internal address to the test process, or an External one to
-			another container, is the most common way to misuse a container harness. The two
-			must be distinguishable at every call site.`)
-
 		pg := start(t)
 		in, ex := pg.Endpoint(infra.Internal), pg.Endpoint(infra.External)
 		if in.Port != 5432 {
@@ -84,9 +76,6 @@ func TestPostgres_Start(t *testing.T) {
 	t.Run("ok/a Named instance is a separate container", func(t *testing.T) {
 		requireDocker(t)
 		t.Parallel()
-		spec.Why(t, `The rotation suites rotate credentials against a target database that
-			must not be the application's own.`)
-
 		app := start(t)
 		target := start(t, postgres.Named("rotation"), postgres.WithDatabase("rotation_target"))
 

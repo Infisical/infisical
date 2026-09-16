@@ -90,7 +90,8 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 		if alias == "" {
 			alias = spec.Name
 		}
-		opts = append(opts, network.WithNetworkName([]string{alias}, r.netName))
+		aliases := append([]string{alias}, spec.Aliases...)
+		opts = append(opts, network.WithNetworkName(aliases, r.netName))
 	}
 	for _, f := range spec.Files {
 		mode := f.Mode
@@ -103,6 +104,14 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 			FileMode:          mode,
 		}))
 	}
+
+	// Serialize on the container name. Four binaries starting at once all find no
+	// container and all try to create it, which is the race reuse-by-name has.
+	release, err := Lock("container-" + spec.Name)
+	if err != nil {
+		return Container{}, err
+	}
+	defer release()
 
 	dc, err := testcontainers.Run(ctx, spec.Image, opts...)
 	if err != nil {

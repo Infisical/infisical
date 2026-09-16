@@ -3,7 +3,7 @@
 # the toolchain's own.
 GOFMT := $(shell go env GOROOT)/bin/gofmt
 
-.PHONY: fmt lint test test-unit
+.PHONY: fmt lint test test-unit test-docker down status
 
 fmt:
 	$(GOFMT) -w .
@@ -24,5 +24,7 @@ test-docker:
 	INFRA_DOCKER_TESTS=1 go test ./infra/... -count=1
 
 down:
-	@docker rm -f $$(docker ps -aq --filter label=inf.scope) 2>/dev/null || true
-	@docker network rm inf-net 2>/dev/null || true
+	go run ./cmd/inf down
+
+status:
+	go run ./cmd/inf status

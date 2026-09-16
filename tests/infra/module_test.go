@@ -50,9 +50,6 @@ func TestResolve(t *testing.T) {
 
 	t.Run("ok/an optional dependency that is absent is not an error", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `Infisical consumes wiremock and smtp if present and ignores them if not,
-			which is what lets a suite opt out of stubbing without a second code path.`)
-
 		_, err := Resolve(
 			mods(fakeModule{key: "infisical", optional: []Key{"wiremock"}}),
 			map[Key]Scope{"infisical": Shared},
@@ -62,11 +59,8 @@ func TestResolve(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid/a missing required dependency names the fix", func(t *testing.T) {
+	t.Run("invalid/a missing required dependency fails before any container starts", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `This has to fail before any container starts. Otherwise it surfaces as a
-			connection timeout ninety seconds later, pointing at the wrong thing.`)
-
 		_, err := Resolve(
 			mods(fakeModule{key: "infisical", requires: []Key{"postgres"}}),
 			map[Key]Scope{"infisical": Shared},
@@ -102,11 +96,8 @@ func TestResolve(t *testing.T) {
 		}
 	})
 
-	t.Run("ok/a shorter lived module may depend on a longer lived one", func(t *testing.T) {
+	t.Run("ok/a package scoped module may depend on a shared one", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `An Isolated package starts its own Infisical but still adopts the shared
-			Mailpit, which is the whole reason mixed scopes inside one package must work.`)
-
 		_, err := Resolve(
 			mods(
 				fakeModule{key: "infisical", optional: []Key{"mailpit"}},
@@ -160,10 +151,6 @@ func TestDepsGet(t *testing.T) {
 
 	t.Run("notfound/an absent optional module reports false rather than panicking", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `Optional dependencies are the whole reason a suite can opt out of WireMock
-			or SMTP without a second code path. If an absent one panicked, every consumer would
-			need a nil check and the option would stop being optional.`)
-
 		if _, ok := deps.Get[pgHandle]("redis"); ok {
 			t.Fatal("absent module reported as present")
 		}
