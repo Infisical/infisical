@@ -304,6 +304,19 @@ export const projectServiceFactory = ({
         }
       }
 
+      if (type === ProjectType.SecretScanning) {
+        const [existingSecretScanningProject] = await projectDAL.find(
+          { orgId: organization.id, type: ProjectType.SecretScanning },
+          { limit: 1, tx }
+        );
+
+        if (existingSecretScanningProject) {
+          throw new BadRequestError({
+            message: "Secret Scanning is limited to one project per organization at this time."
+          });
+        }
+      }
+
       if (kmsKeyId) {
         if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
           throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
