@@ -137,7 +137,7 @@ type ShareResult =
 
 const describeResult = (result: ShareResult) => {
   if (result.kind === "link") {
-    return "The link is copied to your clipboard. It cannot be recovered from the secret value again.";
+    return "Save the link below before leaving this page.";
   }
 
   const plural = result.recipientCount === 1 ? "" : "s";

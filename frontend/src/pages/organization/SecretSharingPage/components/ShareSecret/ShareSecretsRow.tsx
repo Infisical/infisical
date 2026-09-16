@@ -1,3 +1,4 @@
+import { useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ClockAlertIcon, ClockIcon, Copy, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
 
@@ -46,6 +47,10 @@ export const ShareSecretsRow = ({
     }
   ) => void;
 }) => {
+  const subOrganization = useSearch({
+    strict: false,
+    select: (search) => search?.subOrganization
+  });
   const lastViewedAt = row.lastViewedAt
     ? format(new Date(row.lastViewedAt), "MMM d, yyyy h:mm a")
     : undefined;
@@ -107,9 +112,11 @@ export const ShareSecretsRow = ({
               <DropdownMenuItem
                 onClick={async () => {
                   try {
-                    await navigator.clipboard.writeText(
-                      `${window.location.origin}/shared/secret/${row.id}`
-                    );
+                    const link = new URL(`${window.location.origin}/shared/secret/${row.id}`);
+                    if (subOrganization) {
+                      link.searchParams.set("subOrganization", subOrganization);
+                    }
+                    await navigator.clipboard.writeText(link.toString());
                     createNotification({
                       text: "Shared secret link copied to clipboard.",
                       type: "success"
