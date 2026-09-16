@@ -748,6 +748,11 @@ export const pamSessionServiceFactory = ({
       if (rawConnectionDetails.subscriptionId) {
         metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
       }
+    } else if (account.accountType === PamAccountType.Snowflake) {
+      for (const key of ["account", "warehouse", "database", "schema", "role"]) {
+        const value = rawConnectionDetails[key];
+        if (typeof value === "string" && value) metadata[key] = value;
+      }
     } else if (account.accountType === PamAccountType.Kubernetes) {
       metadata.authMethod = rawCredentials.authMethod as string;
       if (rawCredentials.namespace) {
@@ -762,7 +767,8 @@ export const pamSessionServiceFactory = ({
         (account.accountType === PamAccountType.Postgres ||
           account.accountType === PamAccountType.MySQL ||
           account.accountType === PamAccountType.MongoDB ||
-          account.accountType === PamAccountType.MsSQL) &&
+          account.accountType === PamAccountType.MsSQL ||
+          account.accountType === PamAccountType.OracleDB) &&
         rawConnectionDetails.database
       ) {
         metadata.database = rawConnectionDetails.database as string;

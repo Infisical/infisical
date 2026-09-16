@@ -6,6 +6,7 @@ export enum PamAccountType {
   OracleDB = "oracledb",
   MongoDB = "mongodb",
   Redis = "redis",
+  Snowflake = "snowflake",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
@@ -43,6 +44,12 @@ export enum PamSessionStatus {
 export enum PamSessionEndReason {
   Completed = "completed",
   Expired = "expired"
+}
+
+export enum PamSnowflakeAuthMethod {
+  KeyPair = "key-pair",
+  ProgrammaticAccessToken = "programmatic-access-token",
+  Password = "password"
 }
 
 export enum GcpServiceAccountAuthMethod {

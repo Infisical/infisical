@@ -72,7 +72,7 @@ export const IntegrationsListPage = () => {
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
       <div className="relative mx-auto max-w-8xl pb-12 text-white">
-        <div className="mb-8">
+        <div className="mb-8 flex flex-col gap-8">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Project Integrations"

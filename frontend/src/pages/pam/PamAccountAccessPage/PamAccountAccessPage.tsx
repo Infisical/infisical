@@ -132,7 +132,8 @@ const PageContent = () => {
       {({ reason, mfaSessionId }) => {
         if (
           account.accountType === PamAccountType.Postgres ||
-          account.accountType === PamAccountType.MySQL
+          account.accountType === PamAccountType.MySQL ||
+          account.accountType === PamAccountType.Snowflake
         ) {
           return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }

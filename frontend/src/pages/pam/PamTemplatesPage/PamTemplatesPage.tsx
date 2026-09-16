@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { ClipboardList, Layers, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import { PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Button,
   Card,
@@ -56,6 +56,7 @@ import { PAM_TEMPLATE_TABS } from "../components/pamResourceTabs";
 import { PamDocsUrls } from "../pam-docs-urls";
 import { CreateTemplateModal } from "./components/CreateTemplateModal";
 import { DeleteTemplateModal } from "./components/DeleteTemplateModal";
+import { MissingTemplatesCallout } from "./components/MissingTemplatesCallout";
 import { TemplateDetailSheet } from "./components/TemplateDetailSheet";
 
 const TemplateRow = ({
@@ -186,6 +187,8 @@ export const PamTemplatesPage = () => {
           title="Account Templates"
           description="Define the rules that apply when users connect to accounts."
         />
+
+        <MissingTemplatesCallout templates={templates} accountTypes={accountTypes} />
 
         <Card className="mt-4">
           <CardHeader>

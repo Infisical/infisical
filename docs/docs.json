@@ -42,23 +42,31 @@
         "tab": "Get started",
         "pages": [
           "documentation/getting-started/overview",
+          "documentation/getting-started/quickstarts",
           "documentation/getting-started/introduction",
+          "documentation/getting-started/set-up-with-ai",
+          "documentation/platform/external-migrations/overview",
+          "documentation/getting-started/concepts/deployment-models",
           {
-            "group": "Concepts",
+            "group": "Use cases",
             "pages": [
-              "documentation/getting-started/concepts/deployment-models",
-              "documentation/getting-started/concepts/platform-hierarchy",
-              "documentation/getting-started/concepts/platform-iam",
-              "documentation/getting-started/concepts/client-integrations",
-              "documentation/getting-started/concepts/audit-logs"
+              "documentation/getting-started/choose-a-product/secrets-management/overview",
+              "documentation/getting-started/choose-a-product/secret-scanning",
+              "documentation/getting-started/choose-a-product/pki",
+              "documentation/getting-started/choose-a-product/kms",
+              "documentation/getting-started/choose-a-product/pam"
             ]
           },
           {
-            "group": "Migrate to Infisical",
+            "group": "Understand the platform",
             "pages": [
-              "documentation/platform/external-migrations/overview",
-              "documentation/platform/external-migrations/doppler",
-              "documentation/platform/external-migrations/vault"
+              "documentation/getting-started/concepts/platform-hierarchy",
+              "documentation/getting-started/concepts/platform-iam",
+              "documentation/getting-started/concepts/audit-logs",
+              "documentation/getting-started/concepts/app-connections",
+              "documentation/getting-started/concepts/networking",
+              "documentation/getting-started/concepts/internals",
+              "documentation/getting-started/concepts/contributing"
             ]
           }
         ]
@@ -87,7 +95,15 @@
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
-                  "documentation/platform/secret-sharing"
+                  "documentation/platform/secret-sharing",
+                  {
+                    "group": "Migrate to Infisical",
+                    "root": "documentation/platform/secrets-mgmt/quick-starts/migrate",
+                    "pages": [
+                      "documentation/platform/external-migrations/doppler",
+                      "documentation/platform/external-migrations/vault"
+                    ]
+                  }
                 ]
               },
               {
@@ -693,8 +709,10 @@
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
+                      "documentation/platform/pam/accounts/oracledb",
                       "documentation/platform/pam/accounts/mongodb",
                       "documentation/platform/pam/accounts/redis",
+                      "documentation/platform/pam/accounts/snowflake",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -713,6 +731,7 @@
                       "documentation/platform/pam/product-reference/credential-rotation/postgresql",
                       "documentation/platform/pam/product-reference/credential-rotation/mysql",
                       "documentation/platform/pam/product-reference/credential-rotation/mssql",
+                      "documentation/platform/pam/product-reference/credential-rotation/oracledb",
                       "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
@@ -748,19 +767,23 @@
           },
           {
             "item": "Agent Vault",
-            "icon": "sparkles",
+            "icon": "shield-keyhole",
+            "tag": "PREVIEW",
             "pages": [
               "documentation/platform/agent-vault/overview",
               {
                 "group": "Get started",
                 "pages": [
-                  "documentation/platform/agent-vault/quickstart"
+                  "documentation/platform/agent-vault/quickstart",
+                  "documentation/platform/agent-vault/why-agent-vault",
+                  "documentation/platform/agent-vault/how-it-works"
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/services",
                   "documentation/platform/agent-vault/sessions",
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
@@ -4675,6 +4698,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/ai/model-context-protocol",
+      "destination": "/documentation/getting-started/set-up-with-ai"
+    },
     {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"

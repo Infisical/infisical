@@ -142,6 +142,6 @@ describe("parseCertificateBody usages", () => {
 
     const fields = extractCertificateFields(pem);
 
-    expect(fields.extendedKeyUsages).toEqual(["serverAuth"]);
+    expect(fields.extendedKeyUsages).toEqual(["serverAuth", "smartCardLogon"]);
   });
 });
