@@ -1,0 +1,192 @@
+---
+title: "Quickstart: Agent Vault"
+sidebarTitle: "Quickstart"
+description: "Launch an agent that makes authenticated API calls without needing an actual token."
+---
+
+This quickstart guide walks you through using Agent Vault to launch an agent that makes authenticated API calls without needing an actual token.
+
+## Prerequisites
+
+- An Infisical organization where you're an Agent Vault admin
+- The [Infisical CLI](/cli/overview) installed on the host that will run the proxy and on the host that will run the agent. For this guide, both hosts can be the same machine
+
+- Credentials for the API you want the agent to call (such as an API token)
+
+## Step 1: Set up in Infisical
+
+### Create an access bundle
+
+First, create an [access bundle](/documentation/platform/agent-vault/access-bundles) that defines which APIs ([services](/documentation/platform/agent-vault/services)) the agent can access.
+
+<Steps>
+  <Step>
+    In Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**.
+  </Step>
+  <Step>
+    Select **Create Access Bundle**. Give the access bundle a **Name**, then select **Create Access Bundle**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with code-review entered as the name" />
+    </Frame>
+  </Step>
+  <Step>
+    Select the access bundle you just created, then select **Add Service**. Find the template for the API you want the agent to access, then select it.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
+    </Frame>
+
+    <Note>
+      If the API you want to access isn't on the template list, pick **Custom** and set the host, header name, and prefix yourself. For more information, check out the [services](/documentation/platform/agent-vault/services) documentation.
+    </Note>
+  </Step>
+  <Step>
+    Follow the steps to set up the service. The template automatically fills in most fields, including:
+    
+    - The host (for example, `api.github.com`)
+    - The header the API expects (for example, `Authorization: Bearer <token>`)
+
+    Paste your credentials in the **Credential** section.
+  </Step>
+  <Step>
+    Once you've configured the service, select **Add Service**.
+  </Step>
+</Steps>
+
+<Tip>
+  You can repeat these steps to add as many more services as you like to the access bundle.
+</Tip>
+
+### Enroll a proxy
+
+Next, enroll a [proxy](/documentation/platform/agent-vault/proxies) to intercept API calls from your agent.
+
+<Steps>
+  <Step>
+    Go to **Proxies** and select **Create Proxy**.
+  </Step>
+  <Step>
+    Give the proxy a **Name**, then select **Create**. This creates a one-time enrollment token. Copy the command shown—you'll need it in the next step.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/proxy-enrollment-token.png" alt="The Enrollment Token dialog with the CLI command, and Docker and systemd tabs alongside it" />
+    </Frame>
+  </Step>
+  <Step>
+    On the host that will act as the proxy, run the command from the previous step.
+
+    ```bash
+    infisical agent-vault proxy --enrollment-token <enrollment-token>
+    ```
+
+    This enrolls the proxy, which starts listening on port `17323`. Leave it running and note this host's address—you'll need it when launching your agent.
+  </Step>
+</Steps>
+
+<Note>
+  This runs the proxy in your current terminal, so the proxy stops when the terminal closes. For a persistent setup, use the **Docker** or **systemd** snippet from the enrollment dialog.
+  
+  Check out the [proxies documentation](/documentation/platform/agent-vault/proxies) for more information.
+</Note>
+
+### Create a session
+
+Next, create a [session](/documentation/platform/agent-vault/sessions) with your access bundle attached.
+
+<Steps>
+  <Step>
+    Go to **Sessions** and select **Create Session**.
+  </Step>
+  <Step>
+    Pick the **Access Bundle** the agent should use, set a duration under **Expires**, then select **Create Session**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session dialog with code-review picked and a seven day expiry" />
+    </Frame>
+  </Step>
+  <Step>
+    This creates the session and gives you a command to run your agent with it. Copy the command—you'll need it in the next step.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the infisical agent-vault run command with the session token" />
+    </Frame>
+  </Step>
+</Steps>
+
+## Step 2: Launch your agent
+
+On the host where the agent runs, paste the command you copied in the previous step. Replace `<proxy-host>` with your host's actual domain or IP address, and `<agent-command>` with your agent's own command.
+
+For example, with Claude:
+
+```bash
+infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
+```
+
+The CLI adds the proxy's certificate authority to the agent process' trusted CAs and starts `claude` with its HTTP traffic routed through the proxy. Any calls to services in your access bundle leave the proxy with the real credential attached, while calls to any other host go out normally.
+
+<Note>
+  On macOS, you'll need to enter your user password when running your agent for the first time. This is because macOS needs your approval to add the proxy's certificate to your keychain.
+</Note>
+
+## Step 3: Verify it works
+
+To confirm the proxy is attaching credentials, make a test call to a service you configured. Pick an authenticated endpoint on that service (for example, one that returns your account), and make the call one of two ways:
+
+<Tabs>
+  <Tab title="With your agent">
+    In your running agent's session, ask it to make the call. For example:
+
+    > Run `curl -sS <endpoint-url>` and show me the output.
+
+    The API should respond successfully. The agent doesn't need any real API credentials because the proxy attaches the credential as the request passes through. Run the same command outside the agent, and it fails with an authentication error.
+  </Tab>
+  <Tab title="With `curl`">
+    Any HTTP client works the same way. Run it through the proxy in place of your agent's command:
+
+    ```bash
+    infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS <endpoint-url>
+    ```
+
+    The proxy logs the request as `brokered`.
+  </Tab>
+</Tabs>
+
+<Check>
+  Your agent now has a session where it can make authenticated calls to an API without ever seeing a real token.
+</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Authentication error from the upstream API">
+    The credential wasn't applied. Open your access bundle and confirm a service covers the host you called. If one does, the stored token is likely wrong.
+  </Accordion>
+  <Accordion title="407 from the proxy">
+    The session token was missing from the request. Confirm you passed `--session-token`, or that the token appears as the userinfo in your `HTTPS_PROXY` URL (like `http://x-agent-vault:<session-token>@<proxy-address>`).
+  </Accordion>
+  <Accordion title="403 from the proxy">
+    This could be for two reasons:
+
+    - The session was revoked or has expired. Check the Sessions page in Infisical, and create a new one if needed.
+    - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host you called. Add a service that does, or use a pass-through service.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Access bundles" icon="box" href="/documentation/platform/agent-vault/access-bundles">
+    Lists of services that AI agents can access during a session.
+  </Card>
+  <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
+    Time-bound grants that let AI agents access services without holding real credentials.
+  </Card>
+  <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
+    Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/cli/commands/agent-vault">
+    Every flag of `infisical agent-vault proxy` and `infisical agent-vault run`.
+  </Card>
+</CardGroup>

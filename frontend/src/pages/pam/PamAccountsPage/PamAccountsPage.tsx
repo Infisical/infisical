@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
@@ -41,6 +41,7 @@ import {
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization } from "@app/context";
 import {
+  PamAccessType,
   PamAccountType,
   PamResourcePermissionActions,
   TAccessiblePamAccount,
@@ -55,6 +56,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
 import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
 import { RequestAccessSheet } from "../components/RequestAccessSheet";
@@ -67,6 +69,7 @@ import { DeleteAccountModal } from "./components/DeleteAccountModal";
 import { DeleteFolderModal } from "./components/DeleteFolderModal";
 import { FolderAccountRows } from "./components/FolderAccountRows";
 import { FolderDetailSheet } from "./components/FolderDetailSheet";
+import { ViewCredentialsModal } from "./components/ViewCredentialsModal";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
@@ -75,6 +78,8 @@ export const PamAccountsPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   // Every role sees the same folder/account structure; permissions only disable actions on a row,
   // never hide it. Capabilities just drive the create affordances and the empty-state copy.
@@ -95,6 +100,18 @@ export const PamAccountsPage = () => {
 
   // For regular users - request access flow
   const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
+  const [requestAccessType, setRequestAccessType] = useState(PamAccessType.Session);
+  const [credentialAccount, setCredentialAccount] = useState<TAccessiblePamAccount | null>(null);
+
+  const requestSessionAccess = (account: TAccessiblePamAccount) => {
+    setRequestAccessType(PamAccessType.Session);
+    setRequestAccount(account);
+  };
+
+  const requestCredentialAccess = (account: TAccessiblePamAccount) => {
+    setRequestAccessType(PamAccessType.Credential);
+    setRequestAccount(account);
+  };
 
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "createAccount",
@@ -215,6 +232,7 @@ export const PamAccountsPage = () => {
                   <Search />
                 </InputGroupAddon>
                 <InputGroupInput
+                  ref={searchInputRef}
                   placeholder="Search accounts..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
@@ -330,7 +348,9 @@ export const PamAccountsPage = () => {
                   }
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onLaunchAccount={setLaunchAccount}
-                  onRequestAccess={setRequestAccount}
+                  onRequestAccess={requestSessionAccess}
+                  onViewCredentials={setCredentialAccount}
+                  onRequestCredentialAccess={requestCredentialAccess}
                   onDeleteAccount={(accountId, accountName, accountType) =>
                     handlePopUpOpen("deleteAccount", {
                       accountId,
@@ -433,9 +453,25 @@ export const PamAccountsPage = () => {
 
       <RequestAccessSheet
         account={requestAccount}
+        accessType={requestAccessType}
         isOpen={!!requestAccount}
         onOpenChange={(open) => {
           if (!open) setRequestAccount(null);
+        }}
+        onGranted={(account, grantedAccessType) => {
+          if (grantedAccessType === PamAccessType.Credential) setCredentialAccount(account);
+          else setLaunchAccount(account);
+        }}
+      />
+
+      <ViewCredentialsModal
+        accountId={credentialAccount?.id}
+        accountName={credentialAccount?.name}
+        accountType={credentialAccount?.accountType}
+        requireReason={Boolean(credentialAccount?.requireReason)}
+        isOpen={credentialAccount !== null}
+        onOpenChange={(open) => {
+          if (!open) setCredentialAccount(null);
         }}
       />
     </div>

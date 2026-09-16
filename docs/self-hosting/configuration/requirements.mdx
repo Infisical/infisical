@@ -24,7 +24,7 @@ However, its logs and metrics are saved to disk for later viewing. As a result, 
 
 ### CPU and memory (per container/instance)
 
-Infisical is stateless and scales horizontally by running across multiple containers/instances. Each instance typically does **not** need more than **2–4 CPU cores** and **4–8 GB** of memory. 
+Infisical is stateless and scales horizontally by running across multiple containers/instances. Each instance typically doesn't need more than **2–4 CPU cores** and **4–8 GB** of memory. 
 If you need additional capacity, simply increase the **number** of containers/instances running in parallel.
 
 | **Deployment Size** | **CPU (Cores, per container)** | **Memory (GB, per container)** | **Recommended Number of Containers** |
@@ -42,7 +42,7 @@ If you need additional capacity, simply increase the **number** of containers/in
 ### PostgreSQL
 
 PostgreSQL is the only database supported by Infisical. Infisical has been extensively tested with PostgreSQL version 16. We recommend using versions 14 and up for optimal compatibility.
-The compute required for PostgreSQL is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you will need.
+The compute required for PostgreSQL is largely dependent on the number of secret operations (reads and writes) you expect. The more frequently you read and write secrets, the more compute you'll need.
 You'll notice that storage requirements are high and this is because audit logs are by default stored in the database.
 
 
@@ -59,7 +59,7 @@ for scheduled jobs, and rate-limit counters. An instance refuses to start unless
 connection is configured, and a running instance is degraded for as long as Redis is unreachable.
 
 <Info>
-**Active-passive** setup is recommended for Redis. **Active-active** setup for Redis has not been tested.
+**Active-passive** setup is recommended for Redis. **Active-active** setup for Redis hasn't been tested.
 </Info>
 
 Redis requirements:

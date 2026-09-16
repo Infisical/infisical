@@ -30,7 +30,6 @@ import { createNotification } from "@app/components/notifications";
 import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -42,6 +41,13 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -58,7 +64,7 @@ import {
 import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { envConfig } from "@app/config/env";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useServerConfig,
@@ -67,6 +73,7 @@ import {
 } from "@app/context";
 import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { getOrgScopedProductFromPath } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import {
   adminQueryKeys,
@@ -78,6 +85,8 @@ import {
 import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
+import { pamKeys } from "@app/hooks/api/pam";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { Organization } from "@app/hooks/api/types";
@@ -223,6 +232,8 @@ export const Navbar = () => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
     queryClient.removeQueries({ queryKey: appConnectionKeys.all });
+    // PAM's keys carry no org, so a stale entry would render another org's data until it goes stale.
+    queryClient.removeQueries({ queryKey: pamKeys.all });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
     await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
@@ -304,9 +315,11 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const isPamScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/pam/`);
+  const orgScopedProduct = getOrgScopedProductFromPath(location.pathname);
+  const isPamScope = orgScopedProduct === ProjectType.PAM;
+  const isAgentVaultScope = orgScopedProduct === ProjectType.AgentVault;
   const isProjectScope =
-    isPamScope ||
+    Boolean(orgScopedProduct) ||
     (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
       location.pathname !== `/organizations/${currentOrg.id}/projects`);
 
@@ -344,7 +357,8 @@ export const Navbar = () => {
         "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
-        !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
+        !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
+        !isServerAdminPanel && isProjectScope && !orgScopedProduct && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
@@ -607,7 +621,7 @@ export const Navbar = () => {
         </Button>
       )}
       {!location.pathname.startsWith("/admin") && !user.superAdmin && (
-        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+        <OrgPermissionCan I={OrgPermissionMemberActions.Create} a={OrgPermissionSubjects.Member}>
           {(isAllowed) =>
             isAllowed ? (
               <Button variant="outline" size="sm" className="mr-2" asChild>
@@ -709,7 +723,10 @@ export const Navbar = () => {
                 Personal Settings
               </Link>
             </DropdownMenuItem>
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan
+              I={OrgPermissionMemberActions.Create}
+              a={OrgPermissionSubjects.Member}
+            >
               {(isAllowed) =>
                 isAllowed ? (
                   <DropdownMenuItem asChild>
@@ -770,64 +787,52 @@ export const Navbar = () => {
         </DropdownMenu>
       </ButtonGroup>
 
-      <Modal
-        isOpen={showCardDeclinedModal}
-        onOpenChange={() => !isModalIntrusive && setShowCardDeclinedModal(false)}
+      <Dialog
+        open={showCardDeclinedModal}
+        onOpenChange={(isOpen) => {
+          if (!isModalIntrusive) setShowCardDeclinedModal(isOpen);
+        }}
       >
-        <ModalContent
-          title={
-            <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-primary-400" />
+        <DialogContent showCloseButton={!isModalIntrusive}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-warning" />
               Your payment could not be processed.
-            </div>
-          }
-          showCloseButton={!isModalIntrusive}
-        >
-          <div>
-            <div>
-              <div className="mb-1">
-                <p>
-                  We were unable to process your last payment
-                  {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
-                  Please update your payment information to continue using premium features.
-                </p>
-              </div>
-              <div className="mt-4">
-                <div className="flex space-x-3">
-                  <V2Button
-                    colorSchema="primary"
-                    variant="solid"
-                    onClick={handleNavigateToRootOrgBilling}
-                  >
-                    Update Payment Method
-                  </V2Button>
-                  {!isModalIntrusive && (
-                    <V2Button
-                      colorSchema="secondary"
-                      variant="outline"
-                      onClick={() => setShowCardDeclinedModal(false)}
-                    >
-                      Dismiss
-                    </V2Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </ModalContent>
-      </Modal>
+            </DialogTitle>
+            <DialogDescription>
+              We were unable to process your last payment
+              {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
+              Please update your payment information to continue using premium features.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            {!isModalIntrusive && (
+              <Button variant="outline" onClick={() => setShowCardDeclinedModal(false)}>
+                Dismiss
+              </Button>
+            )}
+            <Button variant="org" onClick={handleNavigateToRootOrgBilling}>
+              Update Payment Method
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <NewSubOrganizationModal
         isOpen={showSubOrgForm}
         onOpenChange={setShowSubOrgForm}
         onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
       />
-      <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
-        <ModalContent title="Server Administrators" subTitle="View all server administrators">
-          <div className="mb-2">
+      <Dialog open={showAdminsModal} onOpenChange={setShowAdminsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Server Administrators</DialogTitle>
+            <DialogDescription>View all server administrators</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="flex flex-col overflow-visible">
             <ServerAdminsPanel />
-          </div>
-        </ModalContent>
-      </Modal>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

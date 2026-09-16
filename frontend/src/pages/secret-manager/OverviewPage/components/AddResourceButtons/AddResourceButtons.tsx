@@ -6,6 +6,7 @@ import {
   FolderIcon,
   HexagonIcon,
   ImportIcon,
+  KeyIcon,
   PlusIcon,
   RefreshCwIcon,
   UploadIcon
@@ -29,7 +30,7 @@ import {
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 
-type Props = {
+export type AddResourceButtonsProps = {
   onAddSecret: () => void;
   onAddFolder: () => void;
   onAddDyanamicSecret: () => void;
@@ -38,17 +39,20 @@ type Props = {
   onAddProxiedService: () => void;
   onAddSecretImport: () => void;
   onImportSecrets: () => void;
-  onReplicateSecrets: () => void;
+  onCopySecrets: () => void;
+  isCopySecretsDisabled: boolean;
+  copySecretsDisabledReason?: string;
   onImportFromVault: () => void;
   onImportFromDoppler: () => void;
   isDyanmicSecretAvailable: boolean;
   isSecretRotationAvailable: boolean;
   isHoneyTokenAvailable: boolean;
-  isReplicateSecretsAvailable: boolean;
   isSecretImportAvailable: boolean;
   isSingleEnvSelected: boolean;
   hasVaultConnection: boolean;
   hasDopplerConnection: boolean;
+  isDisabled?: boolean;
+  variant?: "toolbar" | "object-type";
   canCreateSecrets: boolean;
   canCreateFolders: boolean;
   canCreateHoneyTokens: boolean;
@@ -63,44 +67,61 @@ export function AddResourceButtons({
   onAddProxiedService,
   onAddSecretImport,
   onImportSecrets,
-  onReplicateSecrets,
+  onCopySecrets,
+  isCopySecretsDisabled,
+  copySecretsDisabledReason,
   onImportFromVault,
   onImportFromDoppler,
   isDyanmicSecretAvailable,
   isSecretRotationAvailable,
   isHoneyTokenAvailable,
-  isReplicateSecretsAvailable,
   isSecretImportAvailable,
   isSingleEnvSelected,
   hasVaultConnection,
   hasDopplerConnection,
+  isDisabled,
+  variant = "toolbar",
   canCreateSecrets,
   canCreateFolders,
   canCreateHoneyTokens
-}: Props) {
+}: AddResourceButtonsProps) {
   return (
     <ButtonGroup>
-      <Tooltip open={!canCreateSecrets ? undefined : false}>
-        <TooltipTrigger>
-          <Button
-            className="rounded-r-none"
-            isDisabled={!canCreateSecrets}
-            variant="project"
-            onClick={onAddSecret}
-          >
-            <PlusIcon />
-            Add Secret
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Access Denied</TooltipContent>
-      </Tooltip>
+      {variant === "toolbar" && (
+        <Tooltip open={!canCreateSecrets ? undefined : false}>
+          <TooltipTrigger>
+            <Button
+              className="rounded-r-none"
+              isDisabled={!canCreateSecrets}
+              variant="project"
+              onClick={onAddSecret}
+            >
+              <PlusIcon />
+              Add Secret
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Access Denied</TooltipContent>
+        </Tooltip>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <IconButton variant="project">
-            <ChevronDown />
-          </IconButton>
+          {variant === "object-type" ? (
+            <IconButton
+              aria-label={isDisabled ? "Secret draft in progress" : "Add another resource type"}
+              className="mx-auto border-0 [&>svg]:!size-4"
+              isDisabled={isDisabled}
+              size="2xs"
+              variant="ghost-muted"
+            >
+              {isDisabled ? <KeyIcon className="text-secret" /> : <PlusIcon />}
+            </IconButton>
+          ) : (
+            <IconButton aria-label="Open add resource menu" variant="project">
+              <ChevronDown />
+            </IconButton>
+          )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align={variant === "object-type" ? "start" : "end"}>
           <DropdownMenuLabel>New</DropdownMenuLabel>
           <Tooltip open={!canCreateFolders ? undefined : false}>
             <TooltipTrigger className="block w-full">
@@ -141,7 +162,7 @@ export function AddResourceButtons({
                 onClick={onAddHoneyToken}
                 isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
               >
-                <HexagonIcon className="text-yellow" />
+                <HexagonIcon className="text-warning" />
                 Add Honey Token
               </DropdownMenuItem>
             </TooltipTrigger>
@@ -197,20 +218,15 @@ export function AddResourceButtons({
             </TooltipTrigger>
             <TooltipContent side="left">Access Restricted</TooltipContent>
           </Tooltip>
-          <Tooltip open={!isReplicateSecretsAvailable || !canCreateFolders ? undefined : false}>
+          <Tooltip open={isCopySecretsDisabled ? undefined : false}>
             <TooltipTrigger className="block w-full">
-              <DropdownMenuItem
-                onClick={onReplicateSecrets}
-                isDisabled={!isReplicateSecretsAvailable || !canCreateFolders}
-              >
+              <DropdownMenuItem onClick={onCopySecrets} isDisabled={isCopySecretsDisabled}>
                 <ClipboardPasteIcon className="text-accent" />
-                Replicate Secrets
+                Copy Secrets
               </DropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent side="left">
-              {!isReplicateSecretsAvailable
-                ? "Select a single environment to replicate secrets"
-                : "Access Denied"}
+              {copySecretsDisabledReason ?? "Copy secrets is unavailable"}
             </TooltipContent>
           </Tooltip>
           {(hasVaultConnection || hasDopplerConnection) && (

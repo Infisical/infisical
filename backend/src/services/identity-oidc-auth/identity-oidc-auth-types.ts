@@ -2,10 +2,11 @@ import { TProjectPermission } from "@app/lib/types";
 
 export type TAttachOidcAuthDTO = {
   identityId: string;
-  oidcDiscoveryUrl: string;
-  caCert: string;
-  boundIssuer: string;
-  boundAudiences: string;
+  templateId?: string;
+  oidcDiscoveryUrl?: string;
+  caCert?: string;
+  boundIssuer?: string;
+  boundAudiences?: string;
   boundClaims: Record<string, string>;
   claimMetadataMapping?: Record<string, string>;
   boundSubject: string;
@@ -18,6 +19,7 @@ export type TAttachOidcAuthDTO = {
 
 export type TUpdateOidcAuthDTO = {
   identityId: string;
+  templateId?: string | null;
   oidcDiscoveryUrl?: string;
   caCert?: string;
   boundIssuer?: string;

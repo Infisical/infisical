@@ -1,22 +1,19 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import {
-  TSnowflakeDatabase,
-  TSnowflakeSchema,
   useSnowflakeConnectionListDatabases,
   useSnowflakeConnectionListSchemas
 } from "@app/hooks/api/appConnections/snowflake";
@@ -58,7 +55,10 @@ export const SnowflakeSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-snowflake-database-label"
+              htmlFor="secret-sync-snowflake-database"
+            >
               Database
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -71,20 +71,25 @@ export const SnowflakeSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-snowflake-database-label"
+                aria-describedby={error ? "secret-sync-snowflake-database-error" : undefined}
+                id="secret-sync-snowflake-database"
+                isError={Boolean(error)}
                 isLoading={isDatabasesPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={databases.find((db) => db.name === value) ?? null}
-                onChange={(option) => {
+                onValueChange={(option) => {
                   setValue("destinationConfig.schema", "");
-                  onChange((option as SingleValue<TSnowflakeDatabase>)?.name ?? "");
+                  onChange(option.name ?? "");
                 }}
                 options={databases}
                 placeholder="Select a database..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-snowflake-database-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -95,7 +100,10 @@ export const SnowflakeSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel
+              id="secret-sync-snowflake-schema-label"
+              htmlFor="secret-sync-snowflake-schema"
+            >
               Schema
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -108,19 +116,22 @@ export const SnowflakeSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-snowflake-schema-label"
+                aria-describedby={error ? "secret-sync-snowflake-schema-error" : undefined}
+                id="secret-sync-snowflake-schema"
+                isError={Boolean(error)}
                 isLoading={isSchemasPending && Boolean(connectionId) && Boolean(database)}
                 isDisabled={!connectionId || !database}
                 value={schemas.find((schema) => schema.name === value) ?? null}
-                onChange={(option) =>
-                  onChange((option as SingleValue<TSnowflakeSchema>)?.name ?? "")
-                }
+                onValueChange={(option) => onChange(option.name ?? "")}
                 options={schemas}
                 placeholder="Select a schema..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-snowflake-schema-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

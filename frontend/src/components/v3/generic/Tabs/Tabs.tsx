@@ -50,7 +50,7 @@ const Tabs = React.forwardRef<
   );
 });
 
-type TabsVariant = "filled" | "project" | "org" | "sub-org" | "pam";
+type TabsVariant = "filled" | "project" | "org" | "sub-org" | "pam" | "av";
 
 const tabsListVariants: Record<"filled" | "underline", string> = {
   filled: "border p-1 border-border",
@@ -63,7 +63,8 @@ const tabsListStyleByVariant: Record<TabsVariant, "filled" | "underline"> = {
   project: "underline",
   org: "underline",
   "sub-org": "underline",
-  pam: "underline"
+  pam: "underline",
+  av: "underline"
 };
 
 const tabsListAriaLabelByVariant: Record<TabsVariant, string> = {
@@ -71,7 +72,8 @@ const tabsListAriaLabelByVariant: Record<TabsVariant, string> = {
   project: "Project sections",
   org: "Organization sections",
   "sub-org": "Sub-organization sections",
-  pam: "PAM sections"
+  pam: "PAM sections",
+  av: "Agent Vault sections"
 };
 
 const TabsList = React.forwardRef<
@@ -91,7 +93,7 @@ const TabsList = React.forwardRef<
       data-scrollable-start={scrollEdges.start}
       data-scrollable-end={scrollEdges.end}
       className={cn(
-        "scroll-edge-fade group/tabs-list no-scrollbar text-muted-foreground inline-flex w-fit max-w-full shrink-0 justify-center rounded-md data-[orientation=horizontal]:h-9 data-[orientation=horizontal]:overflow-x-auto data-[orientation=horizontal]:overflow-y-hidden data-[orientation=horizontal]:overscroll-x-contain data-[orientation=vertical]:h-fit data-[orientation=vertical]:flex-col data-[style=filled]:items-center data-[style=filled]:pb-[3px] data-[style=underline]:w-full data-[style=underline]:items-stretch data-[style=underline]:rounded-none",
+        "scroll-edge-fade group/tabs-list no-scrollbar text-muted-foreground inline-flex w-fit max-w-full shrink-0 justify-center rounded-md data-[orientation=horizontal]:h-9 data-[orientation=horizontal]:overflow-x-auto data-[orientation=horizontal]:overflow-y-hidden data-[orientation=horizontal]:overscroll-x-contain data-[orientation=vertical]:h-fit data-[orientation=vertical]:flex-col data-[style=filled]:items-center data-[style=underline]:w-full data-[style=underline]:items-stretch data-[style=underline]:rounded-none",
         tabsListVariants[tabsListStyleByVariant[variant]],
         className
       )}
@@ -130,6 +132,7 @@ const TabsTrigger = React.forwardRef<
       "group-data-[variant=org]/tabs-list:after:bg-org",
       "group-data-[variant=sub-org]/tabs-list:after:bg-sub-org",
       "group-data-[variant=pam]/tabs-list:after:bg-product-pam",
+      "group-data-[variant=av]/tabs-list:after:bg-product-av",
       className
     )}
     ref={ref}

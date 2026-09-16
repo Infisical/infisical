@@ -36,7 +36,7 @@ const addMemberFormSchema = projectAssignmentSchema.extend({
   organizationRole: z.object({
     name: z.string(),
     slug: z.string(),
-    description: z.string().optional()
+    description: z.string().nullish()
   })
 });
 

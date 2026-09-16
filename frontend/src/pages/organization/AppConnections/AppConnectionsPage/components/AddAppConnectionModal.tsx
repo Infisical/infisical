@@ -1,22 +1,15 @@
-import { useEffect, useState } from "react";
-import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeftIcon } from "lucide-react";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
+  DiscardChangesAlertDialog,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
+import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -45,19 +38,40 @@ export const AddAppConnectionModal = ({
   // When `app` is preset (inline create from another flow, or an OAuth reopen) we skip the provider
   // select screen and go straight to that app's form. Otherwise the user picks a provider first.
   const [selectedApp, setSelectedApp] = useState<AppConnection | null>(app ?? null);
-  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const discardActionRef = useRef<VoidFunction>(() => {});
 
   // Reset to the starting step whenever the sheet (re)opens: a preset `app` goes straight to its
   // form, otherwise the provider picker. Keyed on `isOpen` so reopening with an unchanged preset
   // `app` (inline create flows keep the modal mounted) still restores the form instead of falling
   // back to the picker.
   useEffect(() => {
-    if (isOpen) setSelectedApp(app ?? null);
+    if (isOpen) {
+      setSelectedApp(app ?? null);
+      setIsDirty(false);
+    }
   }, [isOpen, app]);
 
-  const closeSheet = () => {
+  const closeSheet = useCallback(() => {
+    setIsDirty(false);
     setSelectedApp(null);
     onOpenChange(false);
+  }, [onOpenChange]);
+
+  const returnToAppSelect = useCallback(() => {
+    setIsDirty(false);
+    setSelectedApp(null);
+  }, []);
+
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty,
+      onDiscard: () => discardActionRef.current()
+    });
+
+  const requestDiscardAction = (action: VoidFunction) => {
+    discardActionRef.current = action;
+    requestDiscard();
   };
 
   const handleComplete = (appConnection: TAppConnection) => {
@@ -66,13 +80,11 @@ export const AddAppConnectionModal = ({
   };
 
   const handleSheetOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && selectedApp) {
-      // User has started configuring a connection — confirm before discarding.
-      setConfirmDiscardOpen(true);
+    if (!nextOpen) {
+      requestDiscardAction(closeSheet);
       return;
     }
-    if (!nextOpen) setSelectedApp(null);
-    onOpenChange(nextOpen);
+    onOpenChange(true);
   };
 
   // Only offer "back to select" when the user navigated here from the select screen (no preset app).
@@ -88,7 +100,7 @@ export const AddAppConnectionModal = ({
                 {showBack && (
                   <button
                     type="button"
-                    onClick={() => setSelectedApp(null)}
+                    onClick={() => requestDiscardAction(returnToAppSelect)}
                     className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
                   >
                     <ArrowLeftIcon className="size-3" />
@@ -112,39 +124,31 @@ export const AddAppConnectionModal = ({
                 app={selectedApp}
                 projectId={projectId}
                 onComplete={handleComplete}
-                // Explicit Cancel is a deliberate abandon, so it closes immediately. Ambiguous
-                // dismissals (X / Escape / outside click) route through handleSheetOpenChange,
-                // which shows the discard confirmation.
-                onCancel={closeSheet}
+                onCancel={() => requestDiscardAction(closeSheet)}
+                onDirtyChange={setIsDirty}
               />
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-              <AppConnectionsSelect onSelect={setSelectedApp} projectType={projectType} />
+              <AppConnectionsSelect
+                onSelect={(nextApp) => {
+                  setIsDirty(false);
+                  setSelectedApp(nextApp);
+                }}
+                projectType={projectType}
+              />
             </div>
           )}
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <AlertTriangleIcon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Discard connection setup?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your progress configuring this connection will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={closeSheet}>
-              Discard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Connection Setup?"
+        description="Your progress configuring this connection will be lost."
+      />
     </>
   );
 };

@@ -20,10 +20,10 @@ describe("dynamic-secret production route cutover", () => {
   it("routes create and edit through the shared registry and form", async () => {
     const [createSource, editSource] = await Promise.all([
       readSource(
-        "../../../pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/CreateDynamicSecretForm.tsx"
+        "../../../pages/secret-manager/OverviewPage/components/CreateDynamicSecretForm/CreateDynamicSecretForm.tsx"
       ),
       readSource(
-        "../../../pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm/EditDynamicSecretForm.tsx"
+        "../../../pages/secret-manager/OverviewPage/components/EditDynamicSecretForm/EditDynamicSecretForm.tsx"
       )
     ]);
 
@@ -42,7 +42,7 @@ describe("dynamic-secret production route cutover", () => {
   it("keeps provider presentation and lease behavior behind the shared registry", async () => {
     const [pickerSource, rowSource, provisionSource, leasesSource] = await Promise.all([
       readSource(
-        "../../../pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/DynamicSecretProviderSelect.tsx"
+        "../../../pages/secret-manager/OverviewPage/components/CreateDynamicSecretForm/DynamicSecretProviderSelect.tsx"
       ),
       readSource(
         "../../../pages/secret-manager/OverviewPage/components/DynamicSecretTableRow/DynamicSecretTableRow.tsx"

@@ -1,6 +1,6 @@
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { getWebhookPayload, isWebhookPathSubscribed } from "./webhook-fns";
+import { getWebhookPayload, isWebhookPathSubscribed, TEST_EVENT_PAYLOAD_BUILDERS } from "./webhook-fns";
 import { AccessRequestWebhookAction, ChangeRequestWebhookAction, WebhookEvents, WebhookType } from "./webhook-types";
 
 const projectFields = {
@@ -402,6 +402,18 @@ describe("getWebhookPayload: secrets.access-request.modified", () => {
     }) as { attachments: { content: { body: { type: string }[] } }[] };
 
     expect(result.attachments[0].content.body.map((b) => b.type)).toEqual(["TextBlock", "FactSet"]);
+  });
+});
+
+describe("getWebhookPayload: test", () => {
+  test("every webhook type renders a test event body", () => {
+    expect(Object.keys(TEST_EVENT_PAYLOAD_BUILDERS).sort()).toEqual([...Object.values(WebhookType)].sort());
+  });
+
+  test("slack body carries the text field the incoming webhook API requires", () => {
+    expect(
+      getWebhookPayload({ type: WebhookEvents.TestEvent, payload: { ...projectFields, type: WebhookType.SLACK } })
+    ).toHaveProperty("text");
   });
 });
 

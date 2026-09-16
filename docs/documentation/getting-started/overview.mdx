@@ -7,9 +7,14 @@ icon: "play"
 
 import AiAgentsCallout from "/snippets/ai-agents-callout.mdx";
 
-<Card title="What is Infisical?" href="/documentation/getting-started/introduction">
-  Learn what Infisical is and how it can help you manage secrets, certificates, and secure access across your infrastructure.
-</Card>
+<CardGroup cols={2}>
+  <Card title="Quickstarts" icon="rocket" href="/documentation/getting-started/quickstarts">
+    Follow guides for common tasks in Infisical, grouped by product.
+  </Card>
+  <Card title="What is Infisical?" icon="circle-info" href="/documentation/getting-started/introduction">
+    Learn how Infisical manages secrets, certificates, and infrastructure access.
+  </Card>
+</CardGroup>
 
 ## Products
 
@@ -31,11 +36,14 @@ Select a product to get started:
   <Card title="Privileged Access Management" icon="user-shield" href="/documentation/platform/pam/overview">
     Manage access to resources like databases, servers, and accounts with policy-based controls and approvals.
   </Card>
+  <Card title="Agent Vault" icon="sparkles" href="/documentation/platform/agent-vault/overview">
+    Run AI agents with the access, context, and capabilities they need to do work, without ever holding a credential.
+  </Card>
 </CardGroup>
 
 ## Platform
 
-Configuration and infrastructure shared across every product. You will end up here whichever one you started with.
+Configuration and infrastructure shared across every product. You'll end up here whichever one you started with.
 
 <CardGroup cols={3}>
   <Card title="Organizations" icon="building" href="/documentation/platform/organization">
@@ -48,7 +56,7 @@ Configuration and infrastructure shared across every product. You will end up he
     Stored credentials that let Infisical reach your third-party services.
   </Card>
   <Card title="Networking" icon="network-wired" href="/documentation/platform/gateways/overview">
-    Gateways and relays, for reaching systems that are not on the public internet.
+    Gateways and relays, for reaching systems that aren't on the public internet.
   </Card>
   <Card title="Self-hosting" icon="server" href="/self-hosting/overview">
     Run Infisical on your own infrastructure, from one container to a high availability cluster.

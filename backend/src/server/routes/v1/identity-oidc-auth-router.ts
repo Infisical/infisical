@@ -12,7 +12,9 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
+  rejectTemplateManagedOidcFields,
   validateOidcAuthAudiencesField,
+  validateOidcAuthAudiencesFieldOptional,
   validateOidcBoundClaimsField
 } from "@app/services/identity-oidc-auth/identity-oidc-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -31,6 +33,7 @@ const IdentityOidcAuthResponseSchema = IdentityOidcAuthsSchema.pick({
   boundClaims: true,
   claimMetadataMapping: true,
   boundSubject: true,
+  templateId: true,
   createdAt: true,
   updatedAt: true
 }).extend({
@@ -169,10 +172,14 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       }),
       body: z
         .object({
-          oidcDiscoveryUrl: z.string().url().min(1).describe(OIDC_AUTH.ATTACH.oidcDiscoveryUrl),
-          caCert: z.string().trim().default("").describe(OIDC_AUTH.ATTACH.caCert),
-          boundIssuer: z.string().min(1).describe(OIDC_AUTH.ATTACH.boundIssuer),
-          boundAudiences: validateOidcAuthAudiencesField.describe(OIDC_AUTH.ATTACH.boundAudiences),
+          templateId: z.string().uuid().optional().describe(OIDC_AUTH.ATTACH.templateId),
+          // no zod defaults on the template-managed fields: a default would make them
+          // indistinguishable from caller-supplied values, so template attaches could not
+          // reject them; the service defaults them on the custom path
+          oidcDiscoveryUrl: z.string().url().min(1).optional().describe(OIDC_AUTH.ATTACH.oidcDiscoveryUrl),
+          caCert: z.string().trim().optional().describe(OIDC_AUTH.ATTACH.caCert),
+          boundIssuer: z.string().min(1).optional().describe(OIDC_AUTH.ATTACH.boundIssuer),
+          boundAudiences: validateOidcAuthAudiencesFieldOptional.describe(OIDC_AUTH.ATTACH.boundAudiences),
           boundClaims: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.boundClaims),
           claimMetadataMapping: validateOidcBoundClaimsField.describe(OIDC_AUTH.ATTACH.claimMetadataMapping).optional(),
           boundSubject: z.string().optional().default("").describe(OIDC_AUTH.ATTACH.boundSubject),
@@ -200,10 +207,44 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
             .describe(OIDC_AUTH.ATTACH.accessTokenMaxTTL),
           accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.ATTACH.accessTokenNumUsesLimit)
         })
-        .refine(
-          (val) => val.accessTokenTTL <= val.accessTokenMaxTTL,
-          "Access Token TTL cannot be greater than Access Token Max TTL."
-        ),
+        .superRefine((data, ctx) => {
+          if (data.templateId) {
+            rejectTemplateManagedOidcFields(data, ctx);
+            // the template only pins the issuer; without a per-identity binding, any
+            // token that issuer signs could authenticate as this identity
+            if (!data.boundSubject && Object.keys(data.boundClaims ?? {}).length === 0) {
+              ctx.addIssue({
+                path: ["boundSubject"],
+                code: z.ZodIssueCode.custom,
+                message:
+                  "When using an auth template, set a subject or at least one claim binding to restrict which workloads can authenticate as this identity."
+              });
+            }
+          } else {
+            if (data.oidcDiscoveryUrl === undefined) {
+              ctx.addIssue({
+                path: ["oidcDiscoveryUrl"],
+                code: z.ZodIssueCode.custom,
+                message: "OIDC discovery URL is required when not using an auth template"
+              });
+            }
+            if (data.boundIssuer === undefined) {
+              ctx.addIssue({
+                path: ["boundIssuer"],
+                code: z.ZodIssueCode.custom,
+                message: "Issuer is required when not using an auth template"
+              });
+            }
+          }
+
+          if (data.accessTokenTTL > data.accessTokenMaxTTL) {
+            ctx.addIssue({
+              path: ["accessTokenTTL"],
+              code: z.ZodIssueCode.custom,
+              message: "Access Token TTL cannot be greater than Access Token Max TTL."
+            });
+          }
+        }),
       response: {
         200: z.object({
           identityOidcAuth: IdentityOidcAuthResponseSchema
@@ -228,6 +269,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           type: EventType.ADD_IDENTITY_OIDC_AUTH,
           metadata: {
             identityId: identityOidcAuth.identityId,
+            templateId: identityOidcAuth.templateId,
+            templateName: identityOidcAuth.templateName,
             oidcDiscoveryUrl: identityOidcAuth.oidcDiscoveryUrl,
             caCert: identityOidcAuth.caCert,
             boundIssuer: identityOidcAuth.boundIssuer,
@@ -318,10 +361,21 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           accessTokenNumUsesLimit: z.number().int().min(0).default(0).describe(OIDC_AUTH.UPDATE.accessTokenNumUsesLimit)
         })
         .partial()
-        .refine(
-          (val) => (val.accessTokenMaxTTL && val.accessTokenTTL ? val.accessTokenTTL <= val.accessTokenMaxTTL : true),
-          "Access Token TTL cannot be greater than Access Token Max TTL."
-        ),
+        .extend({
+          templateId: z.string().uuid().nullable().optional().describe(OIDC_AUTH.UPDATE.templateId)
+        })
+        .superRefine((data, ctx) => {
+          if (data.templateId) {
+            rejectTemplateManagedOidcFields(data, ctx);
+          }
+          if (data.accessTokenMaxTTL && data.accessTokenTTL ? data.accessTokenTTL > data.accessTokenMaxTTL : false) {
+            ctx.addIssue({
+              path: ["accessTokenTTL"],
+              code: z.ZodIssueCode.custom,
+              message: "Access Token TTL cannot be greater than Access Token Max TTL."
+            });
+          }
+        }),
       response: {
         200: z.object({
           identityOidcAuth: IdentityOidcAuthResponseSchema
@@ -346,6 +400,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
           type: EventType.UPDATE_IDENTITY_OIDC_AUTH,
           metadata: {
             identityId: identityOidcAuth.identityId,
+            templateId: identityOidcAuth.templateId,
+            templateName: identityOidcAuth.templateName,
             oidcDiscoveryUrl: identityOidcAuth.oidcDiscoveryUrl,
             caCert: identityOidcAuth.caCert,
             boundIssuer: identityOidcAuth.boundIssuer,

@@ -19,6 +19,7 @@ import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission
@@ -54,9 +55,9 @@ export const AccessManagementPage = () => {
     {
       key: OrgAccessControlTabSections.Member,
       label: "Users",
-      isHidden: permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Member),
+      isHidden: permission.cannot(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member),
       requirement: {
-        action: OrgPermissionActions.Read,
+        action: OrgPermissionMemberActions.Read,
         subject: OrgPermissionSubjects.Member
       },
       component: OrgMembersTab

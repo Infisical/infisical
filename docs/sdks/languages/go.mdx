@@ -56,7 +56,7 @@ func main() {
 This example demonstrates how to use the Infisical Go SDK in a simple Go application. The application retrieves a secret named `API_KEY` from the `dev` environment of the `YOUR_PROJECT_ID` project.
 
 <Warning>
-  We do not recommend hardcoding your [Machine Identity
+  We don't recommend hardcoding your [Machine Identity
   Tokens](/documentation/platform/identities/machine-identities). Setting it as
   an environment variable would be best.
 </Warning>
@@ -121,7 +121,7 @@ You can opt-out by setting `AutoTokenRefresh` to `false` in the client settings.
 
 ### Client lifecycle
 
-When using automatic token refreshing it's important to understand how your application uses the Infisical client. If you are instantiating new instances of the client often, it's important to cancel the context when the client is no longer needed to avoid the token refreshing process from running indefinitely.
+When using automatic token refreshing it's important to understand how your application uses the Infisical client. If you're instantiating new instances of the client often, it's important to cancel the context when the client is no longer needed to avoid the token refreshing process from running indefinitely.
 
 ```go
   ctx, cancel := context.WithCancel(context.Background())
@@ -134,8 +134,8 @@ When using automatic token refreshing it's important to understand how your appl
   // Use the client
 ```
 
-This is only necessary if you are creating multiple instances of the client, and those instances are deleted or otherwise removed throughout the application lifecycle.
-If you are only creating one instance of the client, and it will be used throughout the lifetime of your application, you don't need to worry about this.
+This is only necessary if you're creating multiple instances of the client, and those instances are deleted or otherwise removed throughout the application lifecycle.
+If you're only creating one instance of the client, and it will be used throughout the lifetime of your application, you don't need to worry about this.
 
 
 ## Authentication
@@ -1105,7 +1105,7 @@ lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicS
 ```
 
 <Note>
-  Renewals must happen **before** the lease expires. Renewing does not issue new
+  Renewals must happen **before** the lease expires. Renewing doesn't issue new
   credentials; it extends the expiration of the existing credentials.
 </Note>
 
@@ -1130,7 +1130,7 @@ lease, err := client.DynamicSecrets().Leases().RenewById(infisical.RenewDynamicS
       How much time to add to the lease's current expiration, e.g. `10m` or
       `1h`. The duration is added to the existing expiry rather than measured
       from now, so renewing a lease that still has time left extends it beyond
-      the remaining time. The total lifetime cannot exceed the dynamic secret's
+      the remaining time. The total lifetime can't exceed the dynamic secret's
       max TTL, counted from when the lease was created. Defaults to the dynamic
       secret's default TTL if not specified.
     </ParamField>

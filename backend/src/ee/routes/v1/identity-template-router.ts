@@ -8,11 +8,13 @@ import {
   TEMPLATE_VALIDATION_MESSAGES
 } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import {
-  kubernetesTemplateFieldsBaseSchema,
   kubernetesTemplateFieldsCreateSchema,
   kubernetesTemplateFieldsResponseSchema,
   ldapTemplateFieldsResponseSchema,
-  ldapTemplateFieldsSchema
+  ldapTemplateFieldsSchema,
+  oidcTemplateFieldsResponseSchema,
+  oidcTemplateFieldsSchema,
+  templateFieldsPatchSchema
 } from "@app/ee/services/identity-auth-template/identity-auth-template-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -44,6 +46,10 @@ const sanitizedTemplateSchema = z.discriminatedUnion("authMethod", [
   templateRowSchema.extend({
     authMethod: z.literal(IdentityAuthTemplateMethod.KUBERNETES),
     templateFields: kubernetesTemplateFieldsResponseSchema
+  }),
+  templateRowSchema.extend({
+    authMethod: z.literal(IdentityAuthTemplateMethod.OIDC),
+    templateFields: oidcTemplateFieldsResponseSchema
   })
 ]);
 
@@ -73,6 +79,11 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
           name: templateNameSchema,
           authMethod: z.literal(IdentityAuthTemplateMethod.KUBERNETES),
           templateFields: kubernetesTemplateFieldsCreateSchema
+        }),
+        z.object({
+          name: templateNameSchema,
+          authMethod: z.literal(IdentityAuthTemplateMethod.OIDC),
+          templateFields: oidcTemplateFieldsSchema
         })
       ]),
       response: {
@@ -126,11 +137,7 @@ export const registerIdentityTemplateRouter = async (server: FastifyZodProvider)
       }),
       body: z.object({
         name: templateNameSchema.optional(),
-        // strict partials so the union can discriminate by field names; the service
-        // validates the patch against the template's actual auth method
-        templateFields: z
-          .union([ldapTemplateFieldsSchema.partial().strict(), kubernetesTemplateFieldsBaseSchema.partial().strict()])
-          .optional()
+        templateFields: templateFieldsPatchSchema.optional()
       }),
       response: {
         200: sanitizedTemplateSchema

@@ -26,6 +26,8 @@ Run `make lint-docs-branch` after any change under `docs/` (or `make lint-docs` 
 
 When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design system — colors, typography, components, and voice.
 
+Before changing a shared frontend component's lifecycle, read the [shared component lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) for current deprecations, blockers, and replacement decisions.
+
 ## Issue and PR Guidelines
 
 - Never create a GitHub issue.

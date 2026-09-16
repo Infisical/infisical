@@ -13,7 +13,7 @@ import {
   FieldTitle,
   IconButton,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { GatewayPicker, SecretInput } from "@app/components/v3/platform";
 import {
@@ -334,6 +334,7 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                 value={field.value ?? ""}
                 id="azure-sql-password"
                 placeholder="Enter database password"
+                isError={Boolean(error)}
                 aria-describedby={error ? "azure-sql-password-error" : undefined}
               />
               <FieldError id="azure-sql-password-error">{error?.message}</FieldError>
@@ -351,7 +352,7 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                   Configure a custom CA certificate for this connection.
                 </FieldDescription>
               </FieldContent>
-              <Switch
+              <Toggle
                 ref={field.ref}
                 checked={field.value ?? false}
                 onBlur={field.onBlur}
@@ -385,7 +386,7 @@ const AzureSqlFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                       Verify the server certificate against the supplied certificate authorities.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     ref={field.ref}
                     checked={field.value ?? true}
                     onBlur={field.onBlur}

@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -19,6 +18,7 @@ import {
   TrashIcon,
   UnlockIcon
 } from "lucide-react";
+import { motion } from "motion/react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -75,7 +75,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
+import {
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useSlashFocusSearch,
+  useTimedReset
+} from "@app/hooks";
 import {
   useBulkExportCmekPrivateKeys,
   useGetCmeksByProjectId,
@@ -133,6 +139,8 @@ export const CmekTable = () => {
   } = usePagination(CmekOrderBy.Name, {
     initPerPage: getUserTablePreference("cmekClientTable", PreferenceKey.PerPage, 20)
   });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -385,6 +393,7 @@ export const CmekTable = () => {
                 onChange={(e) => {
                   setSearch(e.target.value);
                 }}
+                ref={searchInputRef}
                 placeholder="Search keys by name or ID..."
               />
             </InputGroup>

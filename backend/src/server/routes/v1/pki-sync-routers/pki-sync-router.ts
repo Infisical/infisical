@@ -74,6 +74,7 @@ export const PkiSyncSchema = z.object({
 const PkiSyncOptionsSchema = z.object({
   name: z.string(),
   connection: z.nativeEnum(AppConnection),
+  additionalConnections: z.nativeEnum(AppConnection).array().optional(),
   destination: z.nativeEnum(PkiSync),
   canImportCertificates: z.boolean(),
   canRemoveCertificates: z.boolean(),

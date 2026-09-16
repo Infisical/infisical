@@ -66,6 +66,7 @@ export const DashboardPage = () => {
       <div className="mx-auto flex flex-col text-white">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader
+            className="mb-6 md:mb-10"
             scope={ProjectType.CertificateManager}
             title="Certificate Dashboard"
             description="See the overall state of your certificates at a glance."
@@ -81,7 +82,7 @@ export const DashboardPage = () => {
               ) : (
                 <div className="flex flex-col gap-6">
                   <KpiCards stats={stats} onNavigate={navigateToInventory} />
-                  <div className="flex flex-wrap gap-4">
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                     <DistributionCharts stats={stats} onNavigate={navigateToInventory} />
                     <ExpirationTimeline
                       buckets={stats.expirationBuckets}

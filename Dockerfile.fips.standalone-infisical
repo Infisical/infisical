@@ -1,12 +1,16 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
-ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM node:22.22.0-trixie-slim AS base
+ARG INFISICAL_CLI_VERSION=0.43.129
 
-# Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
-RUN npm install -g npm@10.9.0
+FROM node:22.23.2-trixie-slim AS base
+
+# The base image ships npm 10.9.8, whose bundled tar 7.5.11 carries CVE-2026-59873;
+# 10.9.9 fixes it. package.json declares npm >= 11.10.0, but the committed lockfile
+# does not install under npm 11, which requires every optional platform entry to be
+# present. Regenerating the lockfile is a separate change; until then this stays on 10.x.
+RUN npm install -g npm@10.9.9
 
 FROM base AS frontend-dependencies
 WORKDIR /app
@@ -34,8 +38,6 @@ ARG INTERCOM_ID
 ENV VITE_INTERCOM_ID $INTERCOM_ID
 ARG INFISICAL_PLATFORM_VERSION
 ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
-ARG CAPTCHA_SITE_KEY
-ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
 
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
@@ -151,7 +153,7 @@ RUN apt-get update && apt-get install -y \
 RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsS.so\nFileUsage = 1\n" > /etc/odbcinst.ini
 
 COPY --from=backend-build /app .
-RUN rm -rf ./node_modules ./bdd ./e2e-test
+RUN rm -rf ./node_modules ./bdd ./e2e-test ./src
 RUN npm ci --omit=dev
 
 RUN mkdir frontend-build
@@ -160,7 +162,8 @@ RUN mkdir frontend-build
 FROM base AS production
 
 # Install all required runtime packages
-RUN apt-get update && apt-get install -y \
+ARG INFISICAL_CLI_VERSION
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     autoconf \
     automake \
@@ -183,19 +186,36 @@ RUN apt-get update && apt-get install -y \
     smbclient \
     openssh-client \
     && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.43.90 \
-    # Patch CVEs in base image packages (pinned versions for reproducibility)
+    && test -n "$INFISICAL_CLI_VERSION" \
+    && apt-get update && apt-get install -y infisical="$INFISICAL_CLI_VERSION" \
+    # Upgrade base-image packages that apt will not move on its own. Only packages
+    # preinstalled in the base belong here; anything pulled in as a dependency
+    # already installs at the candidate version. Re-check each release; a stale
+    # pin holds the vulnerable version, and a withdrawn one fails the build.
     && apt-get install -y --only-upgrade \
     libgnutls30t64=3.8.9-3+deb13u4 \
-    libc6=2.41-12+deb13u3 \
-    libc-bin=2.41-12+deb13u3 \
+    libc6=2.41-12+deb13u4 \
+    libc-bin=2.41-12+deb13u4 \
     libssl3t64=3.5.7-1~deb13u2 \
     dpkg=1.22.22 \
     libcap2 \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
     libngtcp2-16=1.11.0-1+deb13u1 \
     libngtcp2-crypto-gnutls8=1.11.0-1+deb13u1 \
-    libsqlite3-0=3.46.1-7+deb13u1 \
+    libsqlite3-0=3.46.1-7+deb13u2 \
+    util-linux=2.41.5-0+deb13u1 \
+    mount=2.41.5-0+deb13u1 \
+    libblkid1=2.41.5-0+deb13u1 \
+    libuuid1=2.41.5-0+deb13u1 \
+    libmount1=2.41.5-0+deb13u1 \
+    libsmartcols1=2.41.5-0+deb13u1 \
+    liblastlog2-2=2.41.5-0+deb13u1 \
+    bsdutils=1:2.41.5-0+deb13u1 \
+    login=1:4.16.0-2+really2.41.5-0+deb13u1 \
+    libsystemd0=257.13-1~deb13u1 \
+    libudev1=257.13-1~deb13u1 \
+    liblzma5=5.8.1-1+deb13u1 \
+    sed=4.9-2+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Oracle Instant Client from parallel stage
@@ -252,8 +272,6 @@ ARG POSTHOG_API_KEY
 ENV POSTHOG_API_KEY=$POSTHOG_API_KEY
 ARG INTERCOM_ID=intercom-id
 ENV INTERCOM_ID=$INTERCOM_ID
-ARG CAPTCHA_SITE_KEY
-ENV CAPTCHA_SITE_KEY=$CAPTCHA_SITE_KEY
 
 WORKDIR /
 

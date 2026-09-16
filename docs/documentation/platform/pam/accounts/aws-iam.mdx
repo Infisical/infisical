@@ -9,7 +9,7 @@ AWS IAM accounts let you manage access to AWS through IAM role assumption. Users
 Infisical assumes the IAM role you configure directly, then returns short-lived STS credentials. Those credentials work with the AWS CLI and can also be exchanged for a federated AWS Management Console sign-in URL.
 
 <Note>
-AWS IAM accounts do not require a Gateway. Infisical communicates directly with the AWS STS API.
+AWS IAM accounts don't require a Gateway. Infisical communicates directly with the AWS STS API.
 </Note>
 
 ## How it works
@@ -88,7 +88,7 @@ Before adding the account in Infisical, create the IAM role in your AWS account 
 
 <Steps>
   <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and click **Add Account**.
+    Go to **Privileged Access Management → Accounts** and select **Add Account**.
   </Step>
   <Step title="Select a folder and template">
     Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an AWS IAM [template](/documentation/platform/pam/templates/overview).
@@ -100,7 +100,7 @@ Before adding the account in Infisical, create the IAM role in your AWS account 
     | **Role ARN** | The ARN of the IAM role Infisical assumes for this account (e.g., `arn:aws:iam::123456789012:role/infisical-pam-readonly`) |
   </Step>
   <Step title="Save">
-    Click **Create**.
+    Select **Create**.
   </Step>
 </Steps>
 
@@ -113,7 +113,7 @@ Before adding the account in Infisical, create the IAM role in your AWS account 
 Sessions use short-lived STS credentials. The duration is bounded by the target role's **maximum session duration** in AWS (`MaxSessionDuration`), with a minimum of 15 minutes. Requesting longer than the role allows will cause AWS to reject the request, so set the role's `MaxSessionDuration` to cover the session lengths you expect.
 
 <Info>
-  AWS Console sessions cannot be terminated early. Once a federated URL is generated, the session remains valid until it expires. You can [revoke active sessions](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html) by modifying the role's trust policy.
+  AWS Console sessions can't be terminated early. Once a federated URL is generated, the session remains valid until it expires. You can [revoke active sessions](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html) by modifying the role's trust policy.
 </Info>
 
 All actions performed with the credentials are logged in [AWS CloudTrail](https://console.aws.amazon.com/cloudtrail). The session is identified by the `RoleSessionName`, which includes the user's email for attribution.
@@ -123,8 +123,8 @@ All actions performed with the credentials are logged in [AWS CloudTrail](https:
 <Tabs>
   <Tab title="AWS Console">
     1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
-    3. Click **Connect in Browser**
+    2. Find the account and select the rocket icon (or select **Launch Session** from the menu)
+    3. Select **Connect in Browser**
     4. You'll be taken directly to the AWS console, logged in with the role
   </Tab>
   <Tab title="CLI">

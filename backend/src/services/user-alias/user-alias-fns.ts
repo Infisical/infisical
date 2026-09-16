@@ -1,11 +1,20 @@
 import { Knex } from "knex";
 
 import { AccessScope, TableName, TUserAliases, TUsers } from "@app/db/schemas";
+import {
+  EventType,
+  TAuditLogServiceFactory,
+  TSsoUserEmailSyncSkipReason
+} from "@app/ee/services/audit-log/audit-log-types";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { verifyEmailDomainOwnership } from "@app/ee/services/email-domain/email-domain-fns";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError, ForbiddenRequestError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { sanitizeEmail } from "@app/lib/validator/validate-email";
 
+import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "./user-alias-dal";
@@ -91,6 +100,202 @@ export const ensureSsoAccountVerified = async ({
     user: { ...user, isAccepted: true, isEmailVerified: true },
     userAlias: { ...userAlias, isEmailVerified: true }
   };
+};
+
+type TSyncSsoUserProfileDTO = {
+  user: TUsers;
+  userAlias: TUserAliases;
+  // Caller has already sanitized this and verified its domain against the org.
+  assertedEmail: string;
+  assertedFirstName?: string | null;
+  assertedLastName?: string | null;
+  orgId: string;
+  isAuthEnforced: boolean;
+  userDAL: Pick<TUserDALFactory, "findOne" | "updateById" | "transaction">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "updateById">;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+};
+
+/**
+ * An IdP that keys people on a stable identifier (a UPN, say) lets them change mailbox and display
+ * name without changing who they are, so our copy of both goes stale: notification mail is sent to
+ * an address that no longer exists, and every audit entry written from then on records it. Where
+ * the org enforces SSO it has already made the IdP authoritative for identity, so the assertion is
+ * the better source and we take it.
+ *
+ * Requires a verified alias, which is our proof that the IdP controls this account. An unverified
+ * alias asserting an unrecognized email is what isStaleSsoAlias exists to catch, and reading that
+ * as a rename would let a stale alias rewrite somebody else's account.
+ *
+ * Runs on every login, so it writes only on a real difference. Call it outside the caller's
+ * transaction: it owns its own, and the audit entry must not describe a change that later rolls
+ * back.
+ *
+ * Never fails the login. An unsynced profile is stale data, which is what we already had, whereas a
+ * throw here locks someone out of an org that has no other way in.
+ */
+export const syncSsoUserProfile = async ({
+  user,
+  userAlias,
+  assertedEmail,
+  assertedFirstName,
+  assertedLastName,
+  orgId,
+  isAuthEnforced,
+  userDAL,
+  userAliasDAL,
+  emailDomainDAL,
+  auditLogService
+}: TSyncSsoUserProfileDTO): Promise<TUsers> => {
+  if (!isAuthEnforced || !userAlias.isEmailVerified) return user;
+
+  const assertedUsername = sanitizeEmail(assertedEmail);
+  const isEmailChanged = Boolean(assertedUsername) && assertedUsername !== user.username;
+
+  const firstName = assertedFirstName?.trim();
+  const lastName = assertedLastName?.trim();
+  const nameChanges: { firstName?: string; lastName?: string } = {};
+  if (firstName && firstName !== user.firstName) nameChanges.firstName = firstName;
+  if (lastName && lastName !== user.lastName) nameChanges.lastName = lastName;
+  const isNameChanged = Object.keys(nameChanges).length > 0;
+
+  if (!isEmailChanged && !isNameChanged) return user;
+
+  const logSkippedEmailSync = async ({
+    reason,
+    conflictingUserId
+  }: {
+    reason: TSsoUserEmailSyncSkipReason;
+    conflictingUserId?: string;
+  }) => {
+    const detail =
+      reason === "domain-not-owned"
+        ? "the organization does not own both addresses"
+        : "the asserted address belongs to another account";
+    logger.warn(
+      { userId: user.id, orgId, externalId: userAlias.externalId, assertedEmail: assertedUsername, conflictingUserId },
+      `Skipped SSO email sync, ${detail} [userId=${user.id}] [orgId=${orgId}]`
+    );
+    await auditLogService
+      .createAuditLog({
+        actor: { type: ActorType.PLATFORM, metadata: {} },
+        orgId,
+        event: {
+          type: EventType.SSO_USER_EMAIL_SYNC_SKIPPED,
+          metadata: {
+            userId: user.id,
+            aliasType: userAlias.aliasType,
+            externalId: userAlias.externalId,
+            currentEmail: user.username,
+            assertedEmail: assertedUsername,
+            reason,
+            conflictingUserId
+          }
+        }
+      })
+      .catch((err) => {
+        logger.error(err, `Failed to audit the skipped SSO email sync for user ${user.id} in org ${orgId}`);
+      });
+  };
+
+  let isEmailApplied = isEmailChanged;
+  if (isEmailChanged) {
+    const isOrgOwnedRename = await Promise.all([
+      verifyEmailDomainOwnership({ email: user.username, orgId, emailDomainDAL }),
+      verifyEmailDomainOwnership({ email: assertedUsername, orgId, emailDomainDAL })
+    ])
+      .then(() => true)
+      .catch(() => false);
+
+    if (!isOrgOwnedRename) {
+      isEmailApplied = false;
+      await logSkippedEmailSync({ reason: "domain-not-owned" });
+      if (!isNameChanged) return user;
+    }
+  }
+
+  if (isEmailApplied) {
+    const conflictingUser = await userDAL.findOne({ username: assertedUsername });
+    if (conflictingUser && conflictingUser.id !== user.id) {
+      isEmailApplied = false;
+      await logSkippedEmailSync({ reason: "address-taken", conflictingUserId: conflictingUser.id });
+      if (!isNameChanged) return user;
+    }
+  }
+
+  const writeProfile = (applyEmail: boolean) =>
+    userDAL.transaction(async (tx) => {
+      const nextUser = await userDAL.updateById(
+        user.id,
+        {
+          ...nameChanges,
+          ...(applyEmail ? { email: assertedUsername, username: assertedUsername } : {})
+        },
+        tx
+      );
+
+      if (applyEmail) {
+        await userAliasDAL.updateById(
+          userAlias.id,
+          { emails: unique([...(userAlias.emails ?? []), assertedUsername]) },
+          tx
+        );
+      }
+
+      return nextUser;
+    });
+
+  let updatedUser: TUsers;
+  try {
+    updatedUser = await writeProfile(isEmailApplied);
+  } catch (err) {
+    if (
+      !(err instanceof DatabaseError) ||
+      (err.error as { code?: string })?.code !== DatabaseErrorCode.UniqueViolation
+    ) {
+      logger.error(err, `Failed to sync SSO profile for user ${user.id} in org ${orgId}`);
+      return user;
+    }
+
+    await logSkippedEmailSync({ reason: "address-taken" });
+    isEmailApplied = false;
+    if (!isNameChanged) return user;
+
+    try {
+      updatedUser = await writeProfile(false);
+    } catch (nameErr) {
+      logger.error(nameErr, `Failed to sync SSO profile name for user ${user.id} in org ${orgId}`);
+      return user;
+    }
+  }
+
+  logger.info(
+    { userId: user.id, orgId, externalId: userAlias.externalId, isEmailApplied },
+    `Synced SSO profile from the identity provider [userId=${user.id}] [orgId=${orgId}]`
+  );
+
+  await auditLogService
+    .createAuditLog({
+      actor: { type: ActorType.PLATFORM, metadata: {} },
+      orgId,
+      event: {
+        type: EventType.SSO_USER_PROFILE_SYNCED,
+        metadata: {
+          userId: user.id,
+          aliasType: userAlias.aliasType,
+          externalId: userAlias.externalId,
+          ...(isEmailApplied ? { previousEmail: user.username, newEmail: assertedUsername } : {}),
+          ...(nameChanges.firstName ? { previousFirstName: user.firstName, newFirstName: nameChanges.firstName } : {}),
+          ...(nameChanges.lastName ? { previousLastName: user.lastName, newLastName: nameChanges.lastName } : {})
+        }
+      }
+    })
+    .catch((err) => {
+      logger.error(err, `Failed to audit SSO profile sync for user ${user.id} in org ${orgId}`);
+    });
+
+  return updatedUser;
 };
 
 type TResolveAliasUserIdsDTO = {

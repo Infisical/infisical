@@ -3,8 +3,9 @@ import { forwardRef } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 
-import { Lottie } from "@app/components/v2/Lottie";
 import { cn } from "@app/components/v3/utils";
+
+import { Loader } from "../Loader";
 
 const buttonVariants = cva(
   cn(
@@ -21,6 +22,7 @@ const buttonVariants = cva(
           "text-foreground hover:bg-foreground/10 border-border hover:border-foreground/20 data-[state=open]:bg-foreground/10 data-[state=open]:border-foreground/20 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:var(--color-border)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-foreground)_20%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-foreground)_20%,transparent)]",
         ghost:
           "text-foreground hover:bg-foreground/10 border-transparent data-[state=open]:bg-foreground/10 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:transparent]",
+        link: "h-auto! rounded-none border-transparent bg-transparent p-0! text-foreground hover:bg-transparent hover:underline data-[state=open]:bg-transparent active:scale-100 [--control-variant-color:var(--color-foreground)] [--control-variant-border-color:transparent]",
         neutral:
           "border-neutral/25 bg-neutral/10 text-foreground hover:bg-neutral/15 hover:border-neutral/30 data-[state=open]:bg-neutral/15 data-[state=open]:border-neutral/30 [--control-variant-color:var(--color-neutral)] [--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_25%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_30%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-neutral)_30%,transparent)]",
         project:
@@ -36,6 +38,7 @@ const buttonVariants = cva(
         danger:
           "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30 [--control-variant-color:var(--color-danger)] [--control-variant-border-color:color-mix(in_oklab,var(--color-danger)_25%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-danger)_30%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-danger)_30%,transparent)]",
         pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35 [--control-variant-color:var(--color-product-pam)] [--control-variant-border-color:color-mix(in_oklab,var(--color-product-pam)_30%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-pam)_35%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-pam)_35%,transparent)]",
+        av: "border-product-av/30 bg-product-av/25 text-foreground hover:bg-product-av/30 hover:border-product-av/35 data-[state=open]:bg-product-av/30 data-[state=open]:border-product-av/35 [--control-variant-color:var(--color-product-av)] [--control-variant-border-color:color-mix(in_oklab,var(--color-product-av)_30%,transparent)] hover:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-av)_35%,transparent)] data-[state=open]:[--control-variant-border-color:color-mix(in_oklab,var(--color-product-av)_35%,transparent)]",
         // Tinted from --product-color, which the caller must set inline (e.g. a billing catalog
         // product's color) since the palette isn't knowable at build time.
         product:
@@ -102,9 +105,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ) : (
       <>
         {_children}
-        {isPending && (
-          <Lottie icon="infisical_loading_white" isAutoPlay className="absolute w-8 rounded-xl" />
-        )}
+        {isPending && <Loader aria-hidden size="sm" className="absolute rounded-xl" />}
       </>
     );
 
@@ -115,6 +116,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-variant={variant}
         data-size={size}
         type={type}
+        aria-busy={isPending || undefined}
         disabled={isDisabled || isPending}
         className={cn(buttonVariants({ variant, size, className, isPending, isFullWidth }))}
         {...props}

@@ -12,8 +12,8 @@ import {
   FieldLabel,
   FilterableSelect,
   Input,
-  Switch,
   TextArea,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -625,7 +625,7 @@ export const NetworkingAuthMethodForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <Field>
                     <div className="flex items-center gap-2">
-                      <Switch
+                      <Toggle
                         id="gateway-k8s-verify-tls"
                         variant="org"
                         checked={field.value}

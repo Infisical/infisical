@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
 import handlebars from "handlebars";
 import picomatch from "picomatch";
 import { z } from "zod";
@@ -379,13 +379,47 @@ const constructPermissionErrorMessage = (
   }`;
 };
 
-const assertPermissionBoundary = (actorPermission: MongoAbility, managedPermission: MongoAbility, message: string) => {
-  const boundary = validatePermissionBoundary(actorPermission, managedPermission);
-  if (!boundary.isValid) {
-    throw new PermissionBoundaryError({
-      message,
-      details: { missingPermissions: boundary.missingPermissions }
-    });
+type TAssertRoleSetBoundaryArg = {
+  shouldUseNewPrivilegeSystem: boolean;
+  opActions: (OrgPermissionSet[0] | ProjectPermissionSet[0]) | (OrgPermissionSet[0] | ProjectPermissionSet[0])[];
+  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1];
+  actorPermission: MongoAbility;
+  targetPermissions: { permission: MongoAbility; role?: { slug: string } }[];
+  baseMessage: string;
+  subjectFields?: Record<string, string | undefined>;
+};
+
+// Bounds a privilege change against every role the target holds, not just the first one.
+const assertRoleSetBoundary = ({
+  shouldUseNewPrivilegeSystem,
+  opActions,
+  opSubject,
+  actorPermission,
+  targetPermissions,
+  baseMessage,
+  subjectFields
+}: TAssertRoleSetBoundaryArg) => {
+  const primaryAction = Array.isArray(opActions) ? opActions[0] : opActions;
+
+  const targets = targetPermissions.length ? targetPermissions : [{ permission: createMongoAbility([]) }];
+
+  for (const target of targets) {
+    const targetSubjectFields = target.role ? { ...subjectFields, assignableRole: target.role.slug } : subjectFields;
+
+    const boundary = validatePrivilegeChangeOperation(
+      shouldUseNewPrivilegeSystem,
+      opActions,
+      opSubject,
+      actorPermission,
+      target.permission,
+      targetSubjectFields
+    );
+
+    if (!boundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(baseMessage, shouldUseNewPrivilegeSystem, primaryAction, opSubject),
+        details: { missingPermissions: boundary.missingPermissions }
+      });
   }
 };
 
@@ -633,7 +667,7 @@ export const interpolatePermissionRules = <T>(rules: T[], identityContext: Recor
 };
 
 export {
-  assertPermissionBoundary,
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,

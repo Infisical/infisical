@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
+import { VaultKubernetesImportModal } from "@app/components/external-migrations";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -18,8 +19,8 @@ import {
   FieldTitle,
   IconButton,
   Input,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { ProjectPermissionSub, useProject } from "@app/context";
@@ -33,7 +34,6 @@ import {
   KubernetesDynamicSecretCredentialType
 } from "@app/hooks/api/dynamicSecret/types";
 import type { VaultKubernetesRole } from "@app/hooks/api/migration/types";
-import { VaultKubernetesImportModal } from "@app/pages/secret-manager/SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm/VaultKubernetesImportModal";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";
@@ -337,7 +337,7 @@ const KubernetesFields = ({ mode }: { mode: TDynamicSecretProviderFormMode }) =>
                       CA.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     ref={field.ref}
                     checked={field.value}
                     onBlur={field.onBlur}
@@ -385,7 +385,7 @@ const KubernetesFields = ({ mode }: { mode: TDynamicSecretProviderFormMode }) =>
                       error={error?.message}
                     />
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     ref={field.ref}
                     checked={field.value ?? true}
                     onBlur={field.onBlur}

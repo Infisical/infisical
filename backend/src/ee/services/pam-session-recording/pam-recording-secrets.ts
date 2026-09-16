@@ -73,30 +73,49 @@ export const decryptSessionKey = async ({
   return decrypted.subarray(32, 32 + SESSION_KEY_LENGTH);
 };
 
+const PamUploadTokenRejection = {
+  Missing: "PamUploadTokenMissing",
+  MalformedLength: "PamUploadTokenMalformedLength",
+  StoredHashMalformed: "PamUploadTokenStoredHashMalformed",
+  HashMismatch: "PamUploadTokenHashMismatch"
+} as const;
+
+// The chunk router substring-matches this to write the upload-token audit event, and the gateway
+// treats HashMismatch as the one failure worth giving up on, so both are a contract.
+const UPLOAD_TOKEN_INVALID_MESSAGE = "Invalid upload token";
+
 export const verifyGatewayUploadToken = (
   presentedTokenBase64: string | undefined | null,
   storedTokenHash: Buffer | null | undefined
 ) => {
   if (!presentedTokenBase64 || !storedTokenHash) {
     throw new BadRequestError({
+      name: PamUploadTokenRejection.Missing,
       message: "Gateway upload token missing or session not configured for chunked uploads"
     });
   }
-  let presentedBuf: Buffer;
-  try {
-    presentedBuf = Buffer.from(presentedTokenBase64, "base64");
-  } catch {
-    throw new BadRequestError({ message: "Invalid upload token" });
-  }
+
+  // Buffer.from drops invalid base64 rather than throwing, so a bad encoding lands here short.
+  const presentedBuf = Buffer.from(presentedTokenBase64, "base64");
   if (presentedBuf.length !== UPLOAD_TOKEN_LENGTH) {
-    throw new BadRequestError({ message: "Invalid upload token" });
+    throw new BadRequestError({
+      name: PamUploadTokenRejection.MalformedLength,
+      message: UPLOAD_TOKEN_INVALID_MESSAGE
+    });
   }
+
   const presentedHash = crypto.nativeCrypto.createHash("sha256").update(presentedBuf).digest();
   if (presentedHash.length !== storedTokenHash.length) {
-    throw new BadRequestError({ message: "Invalid upload token" });
+    throw new BadRequestError({
+      name: PamUploadTokenRejection.StoredHashMalformed,
+      message: UPLOAD_TOKEN_INVALID_MESSAGE
+    });
   }
   if (!crypto.nativeCrypto.timingSafeEqual(presentedHash, storedTokenHash)) {
-    throw new BadRequestError({ message: "Invalid upload token" });
+    throw new BadRequestError({
+      name: PamUploadTokenRejection.HashMismatch,
+      message: UPLOAD_TOKEN_INVALID_MESSAGE
+    });
   }
 };
 

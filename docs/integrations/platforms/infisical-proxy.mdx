@@ -61,7 +61,7 @@ infisical proxy start \
 Then configure your application to use `http://localhost:8081` as the Infisical host instead of `https://app.infisical.com`.
 
 <Warning>
-  For production deployments, it is strongly recommended to enable TLS by providing `--tls-cert-file` and `--tls-key-file`, and setting `--tls-enabled` to `true`.
+  For production deployments, it's strongly recommended to enable TLS by providing `--tls-cert-file` and `--tls-key-file`, and setting `--tls-enabled` to `true`.
 </Warning>
 
 <Accordion title="Using event subscriptions">
@@ -332,7 +332,7 @@ If a token is compromised, only the cache entries associated with that specific 
 
 <AccordionGroup>
   <Accordion title="Stale data after secret updates">
-    If you're updating secrets directly in Infisical (not through the proxy), the proxy will not automatically invalidate the cache. You will need to manually purge the cache by restarting the proxy, or by waiting for the next `static-secrets-refresh-interval` cycle.
+    If you're updating secrets directly in Infisical (not through the proxy), the proxy won't automatically invalidate the cache. You'll need to manually purge the cache by restarting the proxy, or by waiting for the next `static-secrets-refresh-interval` cycle.
 
     <Note>
       The `static-secrets-refresh-interval` is the interval at which the proxy will refresh cached secrets from Infisical.

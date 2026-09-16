@@ -148,7 +148,7 @@ Upload certificates managed in Infisical to GCP Certificate Manager as self-mana
 
 ## Certificate naming
 
-GCP Certificate Manager resource IDs must start with a letter, contain only lowercase letters, digits and hyphens, and be 1 to 63 characters. The default certificate name schema is `infisical-{{certificateId}}`, which always satisfies that. A schema has to begin with a letter rather than a placeholder, because a certificate ID can begin with a digit, and Infisical rejects one that does not when you save the sync.
+GCP Certificate Manager resource IDs must start with a letter, contain only lowercase letters, digits and hyphens, and be 1 to 63 characters. The default certificate name schema is `infisical-{{certificateId}}`, which always satisfies that. A schema has to begin with a letter rather than a placeholder, because a certificate ID can begin with a digit, and Infisical rejects one that doesn't when you save the sync.
 
 If you use `{{commonName}}` or `{{applicationName}}` in the schema, their values are converted to lowercase and any other character becomes a hyphen, so `API.Example.com` becomes `api-example-com`.
 
@@ -165,7 +165,7 @@ in GCP    checkout-service-eu-west-1-payments-internal-example-c-3e574b24
 
 The certificate ID is gone entirely. A second certificate for the same common name keeps the same first 54 characters and differs only in the hash, so the two never collide.
 
-Put the identifier first if you want it visible in GCP, or use `{{shortCertificateId}}` to keep names short enough that they are never shortened at all.
+Put the identifier first if you want it visible in GCP, or use `{{shortCertificateId}}` to keep names short enough that they're never shortened at all.
 
 ## Labels
 
@@ -173,7 +173,7 @@ Under **Sync Options**, enable **Configure labels** to attach your own GCP label
 
 Label keys must start with a lowercase letter and contain only lowercase letters, digits, hyphens and underscores, up to 63 characters. Values follow the same character rules and may be empty. You can set up to 62 labels.
 
-Infisical always adds two labels of its own, which you cannot override:
+Infisical always adds two labels of its own, which you can't override:
 
 - `managed-by: infisical` marks the certificate as managed by this sync.
 - `infisical-certificate-id` records the Infisical certificate ID, so you can find a certificate in GCP with `gcloud certificate-manager certificates list --filter="labels.infisical-certificate-id=CERTIFICATE_ID"`.
@@ -193,7 +193,7 @@ The scope is set when Infisical creates each certificate and is immutable in GCP
 
 ## Attaching certificates to traffic
 
-Uploading a certificate does not by itself serve any traffic. Something has to reference it.
+Uploading a certificate doesn't by itself serve any traffic. Something has to reference it.
 
 For a **global** certificate, a certificate map entry maps a hostname to the certificate, and a target HTTPS proxy attaches the map. You have two options:
 
@@ -201,7 +201,7 @@ For a **global** certificate, a certificate map entry maps a hostname to the cer
 - **Let Infisical maintain the entry.** Enable **Attach to a certificate map** and pick an existing map. Infisical creates one entry per sync, pointed at the sync's certificate, and moves it to the replacement when the certificate changes. This requires the Default scope.
 
 <Warning>
-  Every certificate in the entry must cover the hostname you bind it to through a **Subject Alternative Name**. GCP does not consult the Common Name, so a certificate whose Common Name is `app.example.com` but whose Subject Alternative Names do not include it is rejected with `does not cover map entry hostname`. A wildcard SAN of `*.example.com` covers `app.example.com`.
+  Every certificate in the entry must cover the hostname you bind it to through a **Subject Alternative Name**. GCP doesn't consult the Common Name, so a certificate whose Common Name is `app.example.com` but whose Subject Alternative Names don't include it is rejected with `does not cover map entry hostname`. A wildcard SAN of `*.example.com` covers `app.example.com`.
 
   For the same reason, keep Subject Alternative Names stable across renewals when an entry matches on hostname. Leave the hostname empty to serve the certificate as the map's primary entry, which has no coverage requirement.
 </Warning>
@@ -213,7 +213,7 @@ For a **global** certificate, a certificate map entry maps a hostname to the cer
 When disabled, a renewal or a name change creates a new GCP certificate under a new resource name. Whether the old certificate is deleted depends on **Remove Expired/Revoked Certificates**:
 
 - **Removal enabled**: Infisical deletes the old certificate. If a certificate map entry references it, Infisical moves its own entry to the new certificate first. Anything else pointing at the old certificate has to be updated by hand, and GCP refuses to delete a certificate that is still referenced.
-- **Removal disabled**: the old certificate stays in your GCP project. Infisical never deletes it, and it is no longer tracked by the sync.
+- **Removal disabled**: the old certificate stays in your GCP project. Infisical never deletes it, and it's no longer tracked by the sync.
 
 <Note>
   The sync form leaves removal off when you create a sync in the UI. The API leaves it **on** when the field is omitted, so a sync created with Terraform or a script deletes replaced certificates unless you set `canRemoveCertificates` to `false` explicitly.
@@ -228,7 +228,7 @@ When disabled, a renewal or a name change creates a new GCP certificate under a 
 A sync run never takes a working certificate out of the serving path to reflect a failure elsewhere in the run.
 
 - If one certificate fails to upload, or is skipped, the certificate map entry keeps the copy GCP is already serving for it. Only the certificates that did sync are updated.
-- If the certificate map entry itself cannot be updated, the run reports the failure and leaves both the entry and the existing certificates alone. Nothing is deleted until the entry is current again, so a transient error does not become an outage.
+- If the certificate map entry itself can't be updated, the run reports the failure and leaves both the entry and the existing certificates alone. Nothing is deleted until the entry is current again, so a transient error doesn't become an outage.
 - Changing the bound certificate map creates the entry in the new map before the entry in the old map is removed.
 
 ## Supported key algorithms
@@ -249,7 +249,7 @@ Use the [Sync Certificates](/api-reference/endpoints/pki/syncs/gcp-certificate-m
 
 <AccordionGroup>
   <Accordion title="Can I import certificates from GCP back into Infisical?">
-    No. GCP never returns the private key of a self-managed certificate, so importing certificates from GCP Certificate Manager into Infisical is not supported.
+    No. GCP never returns the private key of a self-managed certificate, so importing certificates from GCP Certificate Manager into Infisical isn't supported.
   </Accordion>
 
   <Accordion title="Why can't I change the location or scope of an existing sync?">

@@ -1,24 +1,18 @@
 import net from "node:net";
 
 import { Netmask } from "netmask";
-import RE2 from "re2";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { isValidIpOrCidr } from "@app/lib/ip";
+import { isValidHostname } from "@app/lib/validator/validate-hostname";
 
 export const MAX_TARGET_HOSTS = 65536;
-
-const HOSTNAME_REGEX = new RE2(
-  /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-);
 
 const isValidIpv4Target = (value: string) => {
   const base = value.includes("/") ? value.split("/")[0] : value;
   return net.isIPv4(base) && isValidIpOrCidr(value);
 };
-
-const isValidHostname = (value: string) => value.length <= 253 && HOSTNAME_REGEX.test(value);
 
 const isValidTarget = (value: string) => isValidIpv4Target(value) || isValidHostname(value);
 

@@ -8,7 +8,7 @@ description: "Learn how to automatically rotate Windows local account passwords 
 
   This rotation updates a single credential set in place. Old credentials become invalid immediately upon rotation. This means that clients using the previous credentials will fail to authenticate until they retrieve the new credentials.
 
-  This is a limitation of the rotation mechanism and cannot be rectified by Infisical.
+  This is a limitation of the rotation mechanism and can't be rectified by Infisical.
 </Note>
 
 ## Prerequisites
@@ -19,7 +19,7 @@ description: "Learn how to automatically rotate Windows local account passwords 
 - The target local account must exist on the Windows server before configuring the rotation
 
 <Note>
-  This rotation manages **local accounts** stored in the Windows machine's local SAM database. Domain Controllers do not have local accounts — if you need to manage accounts on a Domain Controller, those are domain accounts managed through Active Directory, which is not supported by this rotation type.
+  This rotation manages **local accounts** stored in the Windows machine's local SAM database. Domain Controllers don't have local accounts — if you need to manage accounts on a Domain Controller, those are domain accounts managed through Active Directory, which isn't supported by this rotation type.
 </Note>
 
 <Accordion title="Open firewall on Windows Defender for SMB connection">

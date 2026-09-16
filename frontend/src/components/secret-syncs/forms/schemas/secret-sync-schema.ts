@@ -16,6 +16,7 @@ import { Cloud66SyncDestinationSchema } from "./cloud-66-sync-destination-schema
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
+import { DaytonaSyncDestinationSchema } from "./daytona-sync-destination-schema";
 import { DevinSyncDestinationSchema } from "./devin-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
 import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
@@ -97,6 +98,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   HasuraCloudSyncDestinationSchema,
   QoverySyncDestinationSchema,
   Cloud66SyncDestinationSchema,
+  DaytonaSyncDestinationSchema,
   SpaceliftSyncDestinationSchema
 ]);
 
@@ -105,3 +107,12 @@ export const SecretSyncFormSchema = SecretSyncUnionSchema;
 export const UpdateSecretSyncFormSchema = SecretSyncUnionSchema;
 
 export type TSecretSyncForm = z.infer<typeof SecretSyncFormSchema>;
+
+export const getSecretSyncDestinationConfig = (
+  destination: TSecretSyncForm["destination"],
+  config: unknown
+) => {
+  const schema = SecretSyncFormSchema.optionsMap.get(destination)?.shape.destinationConfig;
+  const result = schema?.safeParse(config);
+  return result?.success ? result.data : undefined;
+};

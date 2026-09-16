@@ -55,6 +55,8 @@ const createService = ({
   const membershipIdentityDAL = {
     getIdentityById: vi.fn().mockResolvedValue({
       scopeOrgId: ORG_ID,
+      // The real query inner-joins MembershipRole, so a membership always carries at least one role.
+      roles: [{ role: "member" }],
       identity: { id: IDENTITY_ID, orgId: identityOrgId, projectId: null, hasDeleteProtection }
     }),
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
@@ -73,11 +75,14 @@ const createService = ({
       getOrgPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getOrgPermissionByRoles: vi.fn()
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
     } as never,
     licenseService: { getPlan: vi.fn(), getOrgSeatUsage: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
-    orgDAL: { findById: vi.fn(), findEffectiveOrgMembership: vi.fn() } as never,
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
+      findEffectiveOrgMembership: vi.fn()
+    } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     usageMeteringService: { emit: vi.fn() } as never,
     alertService: { deleteAlertsForResource, deleteAlertsForDeletedResource } as never,

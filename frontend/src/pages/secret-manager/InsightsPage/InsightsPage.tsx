@@ -88,7 +88,7 @@ export const InsightsPage = withProjectPermission(
                 {
                   label: "honey tokens",
                   value: counts.honeyTokenCount,
-                  icon: <HexagonIcon className="size-3.5 text-yellow-700" />
+                  icon: <HexagonIcon className="size-3.5 text-warning" />
                 }
               ]
             : [])

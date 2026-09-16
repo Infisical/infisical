@@ -2,7 +2,7 @@
 title: "Identity and access"
 sidebarTitle: "Identity and access"
 icon: "id-card"
-description: "Understand who and what can reach Infisical, how each one proves it, and what they are allowed to do."
+description: "Understand who and what can reach Infisical, how each one proves it, and what they're allowed to do."
 ---
 
 Everything that reaches Infisical does so as an identity. There are two kinds of identities:
@@ -35,7 +35,7 @@ User identity count is straightforward—it equals the number of human users who
   User identities map 1:1 with people. If you have 50 engineers who need Infisical access, that's 50 user identities.
 </Tip>
 
-An agent operated one-to-one by a person, such as a local coding assistant, authenticates as that person and does not add to your identity count. See [AI agent identities](#ai-agent-identities) for the full breakdown.
+An agent operated one-to-one by a person, such as a local coding assistant, authenticates as that person and doesn't add to your identity count. See [AI agent identities](#ai-agent-identities) for the full breakdown.
 
 ### Machine identities
 
@@ -61,7 +61,7 @@ Consider these factors when determining your machine identity count:
 | Factor | Impact on Identity Count |
 |--------|-------------------------|
 | **Unique permission sets** | Each distinct combination of project access + environment access + secret paths = 1 identity |
-| **Number of machines** | Does NOT directly increase identity count if permissions are identical |
+| **Number of machines** | Has no effect on identity count if permissions are identical |
 | **Authentication methods** | A single identity can authenticate via multiple methods (AWS IAM, Kubernetes, GCP, Azure, etc.) simultaneously |
 
 #### Examples
@@ -117,7 +117,7 @@ Consider these factors when determining your machine identity count:
 
 #### AI agent identities
 
-Agents follow the same rule as any other workload: **identities are permission-based, not process-based**. What decides whether an agent consumes a machine identity is how it authenticates, not that it is an agent or where it runs.
+Agents follow the same rule as any other workload: **identities are permission-based, not process-based**. What decides whether an agent consumes a machine identity is how it authenticates, not that it's an agent or where it runs.
 
 | How the agent authenticates | Counts as |
 |-----------------------------|-----------|
@@ -125,7 +125,7 @@ Agents follow the same rule as any other workload: **identities are permission-b
 | **As itself.** An agent that runs perpetually in its own environment, on a schedule, or unattended, plus any agent you deliberately scope to its own identity, authenticates with its own [machine identity](/documentation/platform/identities/machine-identities). | One machine identity per unique permission set. |
 
 <Note>
-  Running a coding agent on your own computer does not consume a machine identity. With the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) there is no machine identity to create: you log in once, the run authenticates as you, and its activity is attributed to your account. Machine identities are for agents that run standalone, outside any one user's session.
+  Running a coding agent on your own computer doesn't consume a machine identity. With the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) there is no machine identity to create: you log in once, the run authenticates as you, and its activity is attributed to your account. Machine identities are for agents that run standalone, outside any one user's session.
 </Note>
 
 <Tip>
@@ -152,7 +152,7 @@ For agents that authenticate as themselves, scope identities by purpose and perm
 
   **Machine identities needed**: **0**
 
-  Each run authenticates as the engineer who started it, so the access is already accounted for by their 40 user identities. A machine identity is not required here. If you later decide a particular agent should run under its own scoped identity, that identity counts, even though the agent still runs locally.
+  Each run authenticates as the engineer who started it, so the access is already accounted for by their 40 user identities. A machine identity isn't required here. If you later decide a particular agent should run under its own scoped identity, that identity counts, even though the agent still runs locally.
 </Accordion>
 
 <Accordion title="Example 7: Standalone agents with different purposes">
@@ -170,7 +170,7 @@ For agents that authenticate as themselves, scope identities by purpose and perm
 
   **Machine identities needed**: **1**
 
-  Runs, containers, and replicas do not increase the count. All workers execute the same logic against the same secrets, so they share one identity, the same way 10 VMs with identical access do.
+  Runs, containers, and replicas don't increase the count. All workers execute the same logic against the same secrets, so they share one identity, the same way 10 VMs with identical access do.
 </Accordion>
 
 <Accordion title="Example 9: Remote agents behind a Standalone Agent Proxy">
@@ -238,7 +238,7 @@ For Kubernetes environments, we recommend mapping machine identities at the **na
   | `k8s-platform` | `team-platform` | Infrastructure secrets only |
   | `k8s-analytics` | `team-analytics` | Analytics pipeline secrets only |
   
-  This ensures that a compromised pod in `team-analytics` cannot access payment processing credentials, even if an attacker gains cluster-level access.
+  This ensures that a compromised pod in `team-analytics` can't access payment processing credentials, even if an attacker gains cluster-level access.
 </Accordion>
 
 ### Quick assessment questions

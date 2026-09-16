@@ -32,7 +32,7 @@ Windows rotation runs over **WinRM**, tunneled through an Infisical [Gateway](/d
 
 <Tabs>
   <Tab title="Windows (local)">
-    - **Self-rotation**: the account changes its own password. This requires the account to be able to sign in over WinRM and to hold the rights to change its own credential. Many local accounts cannot, so delegated rotation is the common choice.
+    - **Self-rotation**: the account changes its own password. This requires the account to be able to sign in over WinRM and to hold the rights to change its own credential. Many local accounts can't, so delegated rotation is the common choice.
     - **Delegated rotation**: a **local administrator on the same host** performs the change. This is the recommended setup for local accounts, because the administrator can both reset the password and verify it on the box.
 
     A delegated rotation account must connect to the **same host** as the account it rotates.

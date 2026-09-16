@@ -24,6 +24,12 @@ You can configure your organization in Infisical to have users and user groups b
 - Provisioning: The SCIM provider pushes user information to Infisical. If the user exists in Infisical, Infisical sends an email invitation to add them to the relevant organization in Infisical; if not, Infisical initializes a new user and sends them an email invitation to finish setting up their account in the organization.
 - Deprovisioning: The SCIM provider instructs Infisical to remove user(s) from an organization in Infisical.
 
+## Email address changes
+
+Infisical identifies a member by their email address, so an update that changes the address is rejected unless your organization [enforces SSO](/documentation/platform/sso/overview#sso-enforcement). With enforcement on, the address comes from your identity provider: the update renames the existing Infisical account, and the member keeps their memberships and project access.
+
+The update is rejected with `409 Conflict` when another Infisical account already uses the new address. Remove or merge that account, then retry the provisioning job.
+
 SCIM providers:
 
 - [Okta SCIM](/documentation/platform/scim/okta)

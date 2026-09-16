@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { PolicyNotice, PolicyRowGuidance } from "./certificatePolicyGuidance";
@@ -48,6 +49,11 @@ export const SubjectAltNamesField = ({
   namePrefix = "subjectAltNames"
 }: SubjectAltNamesFieldProps) => {
   const sanTypeLabels = getSanTypeLabels();
+  const { subscription } = useSubscription();
+  const { maxSansPerCertificate, maxWildcardCertificates } = subscription;
+  // 0 means the plan has no wildcard support at all, which the backend refuses before it counts
+  // anything, so it is the one cap this form can mirror exactly.
+  const areWildcardsUnavailable = maxWildcardCertificates === 0;
 
   return (
     <Controller
@@ -56,14 +62,22 @@ export const SubjectAltNamesField = ({
       shouldUnregister={shouldUnregister}
       render={({ field: { onChange, value } }) => {
         const currentValues: SubjectAltName[] = value || [];
+        const isAtSanLimit =
+          typeof maxSansPerCertificate === "number" &&
+          currentValues.length >= maxSansPerCertificate;
         return (
           <Field className="mb-4">
             <FieldLabel>Subject Alternative Names (SANs)</FieldLabel>
             <div className="space-y-3">
               {currentValues.map((san, index) => {
                 const policy = policyRows?.[index];
+                const isBlockedWildcard = areWildcardsUnavailable && san.value?.includes("*");
                 const rowError =
-                  rowErrors?.[index] ?? (revealPolicyErrors ? policy?.error : undefined);
+                  rowErrors?.[index] ??
+                  (isBlockedWildcard
+                    ? "Wildcard certificates are not available on your plan."
+                    : undefined) ??
+                  (revealPolicyErrors ? policy?.error : undefined);
 
                 return (
                   // eslint-disable-next-line react/no-array-index-key
@@ -124,6 +138,7 @@ export const SubjectAltNamesField = ({
                 type="button"
                 variant="outline"
                 size="sm"
+                isDisabled={isAtSanLimit}
                 onClick={() => {
                   const defaultType =
                     allowedSanTypes.length > 0
@@ -135,6 +150,13 @@ export const SubjectAltNamesField = ({
                 <Plus className="size-4" /> Add SAN
               </Button>
             </div>
+            {isAtSanLimit && (
+              <PolicyRowMessage
+                lines={[
+                  `Your plan allows up to ${maxSansPerCertificate} subject alternative names per certificate.`
+                ]}
+              />
+            )}
             <FieldError>{error}</FieldError>
             {revealPolicyErrors && <PolicyNoticeList notices={policyNotices ?? []} />}
           </Field>

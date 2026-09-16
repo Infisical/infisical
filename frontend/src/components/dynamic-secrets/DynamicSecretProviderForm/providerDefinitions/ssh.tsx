@@ -81,6 +81,8 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
                   onChange={(event) => setPrincipal(event.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Enter principal name..."
+                  isError={Boolean(error)}
+                  aria-describedby="ssh-principals-feedback"
                 />
                 <Button
                   type="button"
@@ -138,6 +140,7 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
                   id="ssh-key-algorithm"
                   onBlur={field.onBlur}
                   isError={Boolean(error)}
+                  aria-describedby="ssh-key-algorithm-feedback"
                 >
                   <SelectValue />
                 </SelectTrigger>

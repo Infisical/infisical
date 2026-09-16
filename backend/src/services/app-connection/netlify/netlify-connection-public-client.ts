@@ -4,6 +4,7 @@
 import { AxiosInstance, AxiosRequestConfig, AxiosResponse, HttpStatusCode, isAxiosError } from "axios";
 
 import { createRequestClient } from "@app/lib/config/request";
+import { RateLimitError } from "@app/lib/errors";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { NetlifySyncContext } from "@app/services/secret-sync/netlify";
 
@@ -84,7 +85,12 @@ class NetlifyPublicClient {
     });
     const limiter = getNetlifyRatelimiter(response);
 
-    if (limiter.isRatelimited && retryAttempt <= limiter.maxAttempts) {
+    if (limiter.isRatelimited) {
+      if (retryAttempt >= limiter.maxAttempts) {
+        throw new RateLimitError({
+          message: "Netlify rate limit reached. Wait a moment and try again."
+        });
+      }
       await limiter.wait();
       return this.send(connection, config, retryAttempt + 1);
     }

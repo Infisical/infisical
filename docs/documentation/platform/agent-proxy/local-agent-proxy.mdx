@@ -31,7 +31,7 @@ For agents running on your infrastructure, see [standalone proxy](/documentation
 
 ## What the sandbox is for
 
-The proxy holds real credentials, and it runs on the same machine as the agent. Something has to keep the agent away from them, and that something is an **OS-level sandbox**: the agent cannot read the proxy's files, your keyring, or your credential files, and it cannot reach the network except through the proxy.
+The proxy holds real credentials, and it runs on the same machine as the agent. Something has to keep the agent away from them, and that something is an **OS-level sandbox**: the agent can't read the proxy's files, your keyring, or your credential files, and it can't reach the network except through the proxy.
 
 `run` builds it for you each time you start an agent, and takes it down when the agent exits:
 
@@ -50,14 +50,14 @@ flowchart LR
 ```
 
 <Warning>
-  **`run` cannot be pointed at a proxy running elsewhere.** It always starts its own, so `--proxy` is rejected with an error rather than silently ignored. To route an agent through a proxy on another host, see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+  **`run` can't be pointed at a proxy running elsewhere.** It always starts its own, so `--proxy` is rejected with an error rather than silently ignored. To route an agent through a proxy on another host, see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 </Warning>
 
 ## Requirements
 
 - The [Infisical CLI](/cli/overview) installed, and `infisical login` completed.
 - At least one [proxied service](/documentation/platform/agent-proxy/proxied-services) in the folder you point `run` at. Brokering only happens for hosts a service matches; if you have none, everything simply passes through uncredentialed.
-- macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed. The sandbox comes from the operating system, so what you install depends on which one you are on:
+- macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed. The sandbox comes from the operating system, so what you install depends on which one you're on:
 
 <Tabs>
   <Tab title="macOS">
@@ -121,7 +121,7 @@ infisical secrets agent-proxy run -e dev -- \
 ## What a run does
 
 1. **Resolves your identity**, from your keyring login or `--token`.
-2. **Fetches your proxied services and the real secret values** into its own memory. They are never written to disk and never reach the agent.
+2. **Fetches your proxied services and the real secret values** into its own memory. They're never written to disk and never reach the agent.
 3. **Checks the sandbox will hold on this host**, then starts the proxy and launches your agent inside it.
 4. **On exit**, revokes any dynamic-secret leases, drops the cached credentials, and removes the temporary directory.
 
@@ -139,7 +139,7 @@ A per-run `0700` temporary directory holds the only things that touch disk:
 
 ## The sandbox
 
-The sandbox is on by default, and it is what makes brokering safe when the proxy and the agent share a machine. `run` applies it to the agent process before the agent starts, and the operating system extends it to every command the agent runs, so nothing inside the agent can lift it, including an agent's own sandbox settings. Its restrictions are deliberate, and a few are surprising the first time, so this is the part worth reading before you use `run` for real work.
+The sandbox is on by default, and it's what makes brokering safe when the proxy and the agent share a machine. `run` applies it to the agent process before the agent starts, and the operating system extends it to every command the agent runs, so nothing inside the agent can lift it, including an agent's own sandbox settings. Its restrictions are deliberate, and a few are surprising the first time, so this is the part worth reading before you use `run` for real work.
 
 ```text
                                   |
@@ -175,23 +175,23 @@ The sandbox is on by default, and it is what makes brokering safe when the proxy
 | **Linux**, private netns unavailable | bubblewrap sharing the host network | Advisory only, with a warning (see below) |
 | **Windows** | None | `run` refuses to start unless you pass `--no-sandbox` |
 
-On Linux, `run` checks the sandbox before starting your agent. If the private network is unavailable but the rest of the sandbox works, it falls back to shared networking and warns you. If the sandbox cannot start at all (unprivileged user namespaces restricted, as on stock Ubuntu 24.04), it stops and tells you how to fix the host rather than running your agent uncontained.
+On Linux, `run` checks the sandbox before starting your agent. If the private network is unavailable but the rest of the sandbox works, it falls back to shared networking and warns you. If the sandbox can't start at all (unprivileged user namespaces restricted, as on stock Ubuntu 24.04), it stops and tells you how to fix the host rather than running your agent uncontained.
 
 <Warning>
-  On the shared-network fallback the agent can reach the network directly, so routing through the proxy depends on the agent honoring the proxy environment variables: a tool that ignores them is not brokered, and its traffic leaves unproxied. Everything else is unchanged, including the environment scrub, the keyring block, and the credential-path denies. Allow unprivileged user namespaces on the host to restore the enforced fence.
+  On the shared-network fallback the agent can reach the network directly, so routing through the proxy depends on the agent honoring the proxy environment variables: a tool that ignores them isn't brokered, and its traffic leaves unproxied. Everything else is unchanged, including the environment scrub, the keyring block, and the credential-path denies. Allow unprivileged user namespaces on the host to restore the enforced fence.
 </Warning>
 
 ### Network: The proxy is the only way out
 
-Under both enforced modes the agent has exactly one route to the outside, the proxy. Direct connections fail, including connections straight to an IP with no hostname involved. Only HTTP and HTTPS are brokered, so SSH cannot be: use HTTPS with a brokered token, which is how `git` and `gh` work.
+Under both enforced modes the agent has exactly one route to the outside, the proxy. Direct connections fail, including connections straight to an IP with no hostname involved. Only HTTP and HTTPS are brokered, so SSH can't be: use HTTPS with a brokered token, which is how `git` and `gh` work.
 
-**DNS is deliberately unavailable inside the sandbox.** The agent does not need a resolver: it hands the hostname to the proxy in a `CONNECT` or an absolute-URI request, and the proxy resolves it on the host, outside the sandbox. Blocking it buys two things. A tool that ignores the proxy variables fails loudly instead of quietly going direct, and DNS lookups cannot be used to smuggle data out. So `Could not resolve host` inside a sandboxed agent is expected, and it means the failing tool is not using the proxy.
+**DNS is deliberately unavailable inside the sandbox.** The agent doesn't need a resolver: it hands the hostname to the proxy in a `CONNECT` or an absolute-URI request, and the proxy resolves it on the host, outside the sandbox. Blocking it buys two things. A tool that ignores the proxy variables fails loudly instead of quietly going direct, and DNS lookups can't be used to smuggle data out. So `Could not resolve host` inside a sandboxed agent is expected, and it means the failing tool isn't using the proxy.
 
 Both letter cases of every proxy variable are set (`HTTP_PROXY` and `http_proxy`, and so on), because some tools read only one, and `NO_PROXY` always covers `localhost` and `127.0.0.1`.
 
 Two consequences for local servers are worth knowing, since the fence applies to loopback as well as the internet:
 
-- The agent **cannot reach a service running on your machine** outside the sandbox, such as a database on `127.0.0.1:5432`. Loopback bypasses the proxy by design, and the fence denies the direct connection, so it fails.
+- The agent **can't reach a service running on your machine** outside the sandbox, such as a database on `127.0.0.1:5432`. Loopback bypasses the proxy by design, and the fence denies the direct connection, so it fails.
 - A server the **agent** starts is reachable from your machine on macOS, but not on Linux: there the agent gets its own private network, so a dev server it launches is invisible from outside. Start long-lived local servers yourself, outside the agent.
 
 ### Filesystem: Broad read, credentials denied
@@ -223,7 +223,7 @@ Reads are allowed nearly everywhere, which is what keeps agents useful. Writes a
   +-- /usr, /etc, /opt, ...     read-only
 ```
 
-On Linux the agent gets a private `/tmp`, so files it writes there are not visible from the rest of your machine. Have it write to your working directory instead of `/tmp` if you need to open the result yourself.
+On Linux the agent gets a private `/tmp`, so files it writes there aren't visible from the rest of your machine. Have it write to your working directory instead of `/tmp` if you need to open the result yourself.
 
 Credential paths deny **writes** as well as reads. That matters when you launch an agent from `$HOME`, where the writable-working-directory rule would otherwise let it append to `~/.ssh/authorized_keys`.
 
@@ -244,7 +244,7 @@ That is precise: `~/.aws/config` becomes readable, read-only, while everything e
 The agent inherits your environment with the credential-shaped parts removed:
 
 - **Anything whose name looks like a secret** is dropped: names containing `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL`, `API_KEY`, `APIKEY`, `PRIVATE_KEY`, or `ACCESS_KEY`. The sweep is intentionally coarse and will catch variables you wanted.
-- **Infisical's own variables**, including `INFISICAL_TOKEN`, `INFISICAL_DOMAIN`, and any machine identity credentials. The agent is given no Infisical token at all, so it cannot act as you against the API.
+- **Infisical's own variables**, including `INFISICAL_TOKEN`, `INFISICAL_DOMAIN`, and any machine identity credentials. The agent is given no Infisical token at all, so it can't act as you against the API.
 - **Agent-socket and IPC addresses**: `SSH_AUTH_SOCK`, `SSH_AGENT_PID`, `GPG_AGENT_INFO`, `DBUS_SESSION_BUS_ADDRESS`, `DBUS_SYSTEM_BUS_ADDRESS`, `XDG_RUNTIME_DIR`. An agent socket lets a program sign and authenticate as you without ever reading a key file, which would sidestep the `~/.ssh` deny entirely.
 
 In their place `run` sets the proxy variables, the CA trust variables, and a placeholder for each [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) credential in the folder. Services that use a [header rewrite](/documentation/platform/agent-proxy/proxied-services#header-rewrites) need nothing in the environment; the proxy sets the header itself.
@@ -271,7 +271,7 @@ Tools split into two groups by how they decide what to trust:
 - **Environment-variable trust** (Claude Code, Codex, `curl`, Python, Node, Deno). `run` points `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT` at the local root. Nothing to do.
 - **System trust** (`gh` and most Go-based tools). These ignore those variables and consult the OS trust store.
 
-To serve the second group on macOS, `run` keeps the local root under `~/.infisical/agent-proxy` (a sandbox-denied path, so the agent cannot read the key) and adds it to your **login keychain** once. That is the one password prompt you see on the first run; later runs are silent because the root persists. It grants **certificate trust only**: keychain secret access stays blocked inside the sandbox, so your Infisical login token remains unreadable. Decline it and everything still works except natively-trusting tools, and `run` says so instead of failing.
+To serve the second group on macOS, `run` keeps the local root under `~/.infisical/agent-proxy` (a sandbox-denied path, so the agent can't read the key) and adds it to your **login keychain** once. That is the one password prompt you see on the first run; later runs are silent because the root persists. It grants **certificate trust only**: keychain secret access stays blocked inside the sandbox, so your Infisical login token remains unreadable. Decline it and everything still works except natively-trusting tools, and `run` says so instead of failing.
 
 On Linux the root is generated fresh in memory for each run and the environment variables are sufficient, so there is no trust-store step.
 
@@ -279,16 +279,16 @@ On Linux the root is generated fresh in memory for each run and the environment 
 
 Every API call is made with your own token, and it needs three permissions: **`Read` on proxied services** to find them, **`Read Value` on the secrets** they reference to broker them, and **`Lease`** to mint a dynamic one. A default project member already has all three.
 
-That is deliberate. You are running an agent as yourself, on your own machine, against secrets you could already read; a permission boundary between you and yourself would be theater. The sandbox is the security boundary here. The only question `run` asks is whether you can read the value.
+That is deliberate. You're running an agent as yourself, on your own machine, against secrets you could already read; a permission boundary between you and yourself would be theater. The sandbox is the security boundary here. The only question `run` asks is whether you can read the value.
 
 [Activity records](/documentation/platform/agent-proxy/activity-logs) attribute requests to your email (or `token` when you pass `--token`), since the run is authenticated as you, and a brokered service's **last used** time is reported under your own account.
 
 ### Dynamic secrets
 
-[Dynamic secrets](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets) are brokered like any other credential, with one thing to know about who mints them. The proxy leases lazily on the first request that needs the credential, caches the output fields in memory, renews before expiry, and revokes on a clean exit. With `run` it mints using **your** token, so your own `Lease` permission on that dynamic secret is the gate. A dynamic credential you cannot lease is skipped up front, with a single warning in the log file naming the secret, rather than failing every request that needs it.
+[Dynamic secrets](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets) are brokered like any other credential, with one thing to know about who mints them. The proxy leases lazily on the first request that needs the credential, caches the output fields in memory, renews before expiry, and revokes on a clean exit. With `run` it mints using **your** token, so your own `Lease` permission on that dynamic secret is the gate. A dynamic credential you can't lease is skipped up front, with a single warning in the log file naming the secret, rather than failing every request that needs it.
 
 <Note>
-  You are the minter here, so `Lease` on the dynamic secret is a permission you need yourself. The agent still cannot mint for itself: it has no token and no route to Infisical.
+  You're the minter here, so `Lease` on the dynamic secret is a permission you need yourself. The agent still can't mint for itself: it has no token and no route to Infisical.
 </Note>
 
 ## Watching what it does
@@ -306,7 +306,7 @@ Every request records a decision: `brokered` (a service matched and a credential
 
 Without `--log-file` you still see problems: warnings and errors print to your terminal, including a credential the proxy had to skip and a dropped authorization. What you lose is the per-request trail, so reach for `--log-file` when you need to see what happened on a specific request.
 
-`passthrough` and `canceled` are left out by default. Passthrough is usually most of an agent's traffic, so leaving it out keeps a log small, and a cancellation just means the agent hung up. `--log-level debug` adds both, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
+`passthrough` and `canceled` are left out by default. Passthrough is usually most of an agent's traffic, so leaving it out keeps a log small, and a cancellation just means the agent hung up. `--log-level debug` adds both, which is useful when you're working out why a host isn't being brokered and noisy the rest of the time.
 
 <Note>
   A path you pass to `--log-file` is appended to on every run and never rotated for you, so rotate it with `logrotate` (`copytruncate`) if you keep one around.
@@ -316,10 +316,10 @@ Without `--log-file` you still see problems: warnings and errors print to your t
 
 <AccordionGroup>
   <Accordion title="Could not resolve host">
-    Expected: DNS is blocked inside the sandbox on purpose. It means the tool that failed is not routing through the proxy. Check whether it reads `HTTP_PROXY` / `HTTPS_PROXY`.
+    Expected: DNS is blocked inside the sandbox on purpose. It means the tool that failed isn't routing through the proxy. Check whether it reads `HTTP_PROXY` / `HTTPS_PROXY`.
   </Accordion>
   <Accordion title="Certificate errors">
-    The tool is not reading the injected CA. Most honor one of the six trust variables; Go-based tools on macOS use the system trust store, which is what the one-time keychain prompt covers. If you declined that prompt, those tools fail here.
+    The tool isn't reading the injected CA. Most honor one of the six trust variables; Go-based tools on macOS use the system trust store, which is what the one-time keychain prompt covers. If you declined that prompt, those tools fail here.
   </Accordion>
   <Accordion title="A tool refuses to start, complaining it cannot read its own config">
     For example `failed to read configuration: open ~/.config/gh/hosts.yml: operation not permitted`. The file exists but is unreadable, and many tools treat that as fatal rather than falling back to "no config". Re-opening it with `--allow-read` is usually the wrong fix, because for `gh` that file *is* the GitHub token.
@@ -333,19 +333,19 @@ Without `--log-file` you still see problems: warnings and errors print to your t
     The same pattern applies to any tool with a config-directory override.
   </Accordion>
   <Accordion title="Everything is passthrough, nothing is brokered">
-    No proxied service matched the host. Check the [host pattern](/documentation/platform/agent-proxy/proxied-services#host-patterns) against the exact hostname the agent calls, that the service is enabled, and that you are pointed at the folder the service lives in.
+    No proxied service matched the host. Check the [host pattern](/documentation/platform/agent-proxy/proxied-services#host-patterns) against the exact hostname the agent calls, that the service is enabled, and that you're pointed at the folder the service lives in.
   </Accordion>
   <Accordion title="A 401 from the upstream API">
-    The credential was not applied and the request was forwarded as the agent sent it; the proxy does not block the call. Check the activity log for the decision, and that you have `Read Value` on the secret the service references.
+    The credential wasn't applied and the request was forwarded as the agent sent it; the proxy doesn't block the call. Check the activity log for the decision, and that you have `Read Value` on the secret the service references.
   </Accordion>
   <Accordion title="The sandbox will not start on Linux">
     Either bubblewrap is missing (install it as shown in [Requirements](#requirements)) or unprivileged user namespaces are restricted on the host. The error says which. `run` refuses to start rather than running your agent uncontained.
   </Accordion>
-  <Accordion title="A tool cannot prompt for a password">
-    On Linux the agent runs in its own session, which is what stops a sandboxed process from pushing keystrokes into your terminal. Its stdin and stdout are still terminals, so TUIs behave normally, but a tool that opens `/dev/tty` directly to prompt, `sudo` for instance, cannot. Run that step yourself, outside the agent.
+  <Accordion title="A tool can't prompt for a password">
+    On Linux the agent runs in its own session, which is what stops a sandboxed process from pushing keystrokes into your terminal. Its stdin and stdout are still terminals, so TUIs behave normally, but a tool that opens `/dev/tty` directly to prompt, `sudo` for instance, can't. Run that step yourself, outside the agent.
   </Accordion>
   <Accordion title="The agent cannot read a file it needs">
-    It is probably in a denied credential path. Re-open just that file with `--allow-read <path>`. Reach for `--no-sandbox` last, not first.
+    It's probably in a denied credential path. Re-open just that file with `--allow-read <path>`. Reach for `--no-sandbox` last, not first.
 
     Some agents run a sandbox of their own inside this one, and a denied file looks the same in both. Faced with one, an agent will often assume its own sandbox is too strict and run the command a second time with that sandbox switched off. That does not help: this sandbox is still in force, so the command fails exactly as it did the first time.
 
@@ -361,7 +361,7 @@ infisical secrets agent-proxy run -e dev --no-sandbox -- claude
 
 Brokering still works and the environment is still scrubbed, but the agent is uncontained: it can read your keyring and credential files and reach the network directly, bypassing the proxy. `run` prints a warning saying so. This is a debugging tool, and the only option on Windows.
 
-`INFISICAL_AGENT_PROXY_SANDBOX=0` does the same thing. Neither can be set from `.infisical.json`, deliberately, so a committed file cannot quietly disable the boundary for everyone who runs the agent.
+`INFISICAL_AGENT_PROXY_SANDBOX=0` does the same thing. Neither can be set from `.infisical.json`, deliberately, so a committed file can't quietly disable the boundary for everyone who runs the agent.
 
 ## Next steps
 

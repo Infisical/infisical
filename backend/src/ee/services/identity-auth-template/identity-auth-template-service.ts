@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
@@ -24,6 +24,7 @@ import { withKubernetesHostScheme } from "@app/services/identity-kubernetes-auth
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 import { validateKubernetesConnectionFields } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/identity-ldap-auth-dal";
+import { TIdentityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -38,6 +39,7 @@ import {
   TKubernetesTemplateFields,
   TLdapTemplateFields,
   TListIdentityAuthTemplatesDTO,
+  TOidcTemplateFields,
   TSanitizedIdentityAuthTemplate,
   TUnlinkTemplateUsageDTO
 } from "./identity-auth-template-types";
@@ -46,6 +48,7 @@ type TIdentityAuthTemplateServiceFactoryDep = {
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
   identityLdapAuthDAL: Pick<TIdentityLdapAuthDALFactory, "updateByTemplateId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "updateByTemplateId">;
+  identityOidcAuthDAL: Pick<TIdentityOidcAuthDALFactory, "updateByTemplateId">;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
@@ -63,6 +66,7 @@ export const identityAuthTemplateServiceFactory = ({
   identityAuthTemplateDAL,
   identityLdapAuthDAL,
   identityKubernetesAuthDAL,
+  identityOidcAuthDAL,
   gatewayDAL,
   gatewayV2DAL,
   gatewayPoolDAL,
@@ -102,8 +106,35 @@ export const identityAuthTemplateServiceFactory = ({
     return { ...template, templateFields: redacted } as TSanitizedIdentityAuthTemplate;
   };
 
+  // blockLocalAndPrivateIpAddresses lets a DNS failure escape as-is, so a typo'd or
+  // not-yet-published discovery host would 500 instead of telling the author what to fix
+  const $validateOidcDiscoveryHost = async (oidcDiscoveryUrl: string) => {
+    try {
+      await blockLocalAndPrivateIpAddresses(oidcDiscoveryUrl);
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+      throw new BadRequestError({
+        message: `Could not resolve the host of the OIDC discovery URL '${oidcDiscoveryUrl}'. Check the URL and that the host resolves from Infisical.`
+      });
+    }
+  };
+
   // audit the platform-driven rewrite of linked identities; runs after the propagation
   // transaction commits so the tx never waits on Redis, chunked to bound concurrency
+  const $templatePropagationEvent = (
+    authMethod: string,
+    metadata: { identityId: string; identityName?: string; templateId: string; templateName: string }
+  ) => {
+    switch (authMethod) {
+      case IdentityAuthTemplateMethod.LDAP:
+        return { type: EventType.UPDATE_IDENTITY_LDAP_AUTH, metadata } as const;
+      case IdentityAuthTemplateMethod.OIDC:
+        return { type: EventType.UPDATE_IDENTITY_OIDC_AUTH, metadata } as const;
+      default:
+        return { type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH, metadata } as const;
+    }
+  };
+
   const $auditTemplatePropagation = async ({
     identities,
     authMethod,
@@ -127,16 +158,7 @@ export const identityAuthTemplateServiceFactory = ({
               metadata: {}
             },
             orgId,
-            event:
-              authMethod === IdentityAuthTemplateMethod.LDAP
-                ? {
-                    type: EventType.UPDATE_IDENTITY_LDAP_AUTH,
-                    metadata: { identityId, identityName, templateId, templateName }
-                  }
-                : {
-                    type: EventType.UPDATE_IDENTITY_KUBENETES_AUTH,
-                    metadata: { identityId, identityName, templateId, templateName }
-                  }
+            event: $templatePropagationEvent(authMethod, { identityId, identityName, templateId, templateName })
           })
         )
       );
@@ -334,6 +356,12 @@ export const identityAuthTemplateServiceFactory = ({
       fieldsToPersist = normalizedFields;
     }
 
+    if (authMethod === IdentityAuthTemplateMethod.OIDC) {
+      // parity with the identity attach flow: a template-authored discovery URL must not
+      // let the backend dial local or private addresses
+      await $validateOidcDiscoveryHost((templateFields as TOidcTemplateFields).oidcDiscoveryUrl);
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: actorOrgId
@@ -490,6 +518,24 @@ export const identityAuthTemplateServiceFactory = ({
       kubernetesPropagationData.gatewayPoolId = effectiveGatewayColumns.gatewayPoolId;
     }
 
+    let oidcPropagationData: TIdentityOidcAuthsUpdate | undefined;
+    if (fieldPatch && template.authMethod === IdentityAuthTemplateMethod.OIDC) {
+      const merged = mergedTemplateFields as TOidcTemplateFields;
+      // the merged URL propagates to every linked identity on this patch, so vet it on
+      // every propagation rather than only when the patch touches it (login re-validates
+      // before dialing, but the template must never store a URL its author could not
+      // have set directly)
+      await $validateOidcDiscoveryHost(merged.oidcDiscoveryUrl);
+      oidcPropagationData = {
+        oidcDiscoveryUrl: merged.oidcDiscoveryUrl,
+        boundIssuer: merged.boundIssuer,
+        boundAudiences: merged.boundAudiences ?? "",
+        encryptedCaCertificate: merged.caCert
+          ? encryptor({ plainText: Buffer.from(merged.caCert) }).cipherTextBlob
+          : null
+      };
+    }
+
     const { updatedTemplate, propagatedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
       const authTemplate = await identityAuthTemplateDAL.updateById(
         templateId,
@@ -555,6 +601,11 @@ export const identityAuthTemplateServiceFactory = ({
         identityIds = updatedRows.map((row) => row.identityId);
       }
 
+      if (oidcPropagationData) {
+        const updatedRows = await identityOidcAuthDAL.updateByTemplateId({ templateId }, oidcPropagationData, tx);
+        identityIds = updatedRows.map((row) => row.identityId);
+      }
+
       return { updatedTemplate: authTemplate, propagatedIdentityIds: identityIds };
     });
 
@@ -617,6 +668,9 @@ export const identityAuthTemplateServiceFactory = ({
           { templateId: null },
           tx
         );
+        identityIds = updatedRows.map((row) => row.identityId);
+      } else if (template.authMethod === IdentityAuthTemplateMethod.OIDC) {
+        const updatedRows = await identityOidcAuthDAL.updateByTemplateId({ templateId }, { templateId: null }, tx);
         identityIds = updatedRows.map((row) => row.identityId);
       } else {
         // fail loudly rather than deleting a template whose linked identities we cannot unlink
@@ -828,6 +882,12 @@ export const identityAuthTemplateServiceFactory = ({
       unlinkedIdentityIds = updatedRows.map((row) => row.identityId);
     } else if (template.authMethod === IdentityAuthTemplateMethod.KUBERNETES) {
       const updatedRows = await identityKubernetesAuthDAL.updateByTemplateId(
+        { templateId, identityIds },
+        { templateId: null }
+      );
+      unlinkedIdentityIds = updatedRows.map((row) => row.identityId);
+    } else if (template.authMethod === IdentityAuthTemplateMethod.OIDC) {
+      const updatedRows = await identityOidcAuthDAL.updateByTemplateId(
         { templateId, identityIds },
         { templateId: null }
       );

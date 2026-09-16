@@ -55,7 +55,7 @@ secrets = client.secrets.list_secrets(project_id="<project-id>", environment_slu
 The `InfisicalSDKClient` takes the following parameters, which are used as a global configuration for the lifetime of the SDK instance.
 
 - **host** (`str`, _Optional_): The host URL for your Infisical instance. Defaults to `https://app.infisical.com`.
-- **token** (`str`, _Optional_): Specify an authentication token to use for all requests. If provided, you will not need to call any of the `auth` methods. Defaults to `None`
+- **token** (`str`, _Optional_): Specify an authentication token to use for all requests. If provided, you won't need to call any of the `auth` methods. Defaults to `None`
 - **cache_ttl** (`int`, _Optional_): The SDK has built-in client-side caching for secrets, greatly improving response times. By default, secrets are cached for 1 minute (60 seconds). You can disable caching by setting `cache_ttl` to `None`, or adjust the duration in seconds as needed.
 
 ```python
@@ -785,7 +785,7 @@ updated_folder = client.folders.update_folder(
 - `project_id` (str): The ID of your project.
 - `environment_slug` (str): The slug of the environment the folder is in.
 - `path` (str, optional): The parent path the folder is in. Defaults to `/`.
-- `description` (str, optional): A new description for the folder. Omitting it leaves the existing description unchanged, so it cannot be used to clear one.
+- `description` (str, optional): A new description for the folder. Omitting it leaves the existing description unchanged, so it can't be used to clear one.
 
 **Returns:**
 - `UpdateFolderResponseItem`: The response containing the updated folder.
@@ -814,4 +814,4 @@ deleted_folder = client.folders.delete_folder(
 </Warning>
 
 **Returns:**
-- `DeleteFolderResponseItem`: The response containing the deleted folder. Unlike the other folder responses, it does not include a `path` field.
+- `DeleteFolderResponseItem`: The response containing the deleted folder. Unlike the other folder responses, it doesn't include a `path` field.

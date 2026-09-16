@@ -25,8 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
   Separator,
-  Switch,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { allowedEmailDomainsSchema } from "@app/helpers/email";
@@ -208,7 +208,7 @@ export const GeneralPageForm = () => {
                     </FieldDescription>
                     <FieldError>{error?.message}</FieldError>
                   </FieldContent>
-                  <Switch
+                  <Toggle
                     id="trust-ldap-emails"
                     aria-label="Trust LDAP emails"
                     variant="neutral"

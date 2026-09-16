@@ -61,7 +61,8 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import {
   adoptProvisionedShadowUser,
   ensureSsoAccountVerified,
-  isStaleSsoAlias
+  isStaleSsoAlias,
+  syncSsoUserProfile
 } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -540,6 +541,22 @@ export const oidcConfigServiceFactory = ({
         userAliasDAL
       }));
     }
+
+    // The IdP is authoritative for identity in an org that enforces SSO, so a mailbox or name
+    // changed there is carried onto the account rather than left to go stale.
+    user = await syncSsoUserProfile({
+      user,
+      userAlias,
+      assertedEmail: sanitizedEmail,
+      assertedFirstName: firstName,
+      assertedLastName: lastName,
+      orgId,
+      isAuthEnforced: Boolean(organization.authEnforced),
+      userDAL,
+      userAliasDAL,
+      emailDomainDAL,
+      auditLogService
+    });
 
     if (user.email && (!userAlias.isEmailVerified || !user.isAccepted)) {
       const token = await tokenService.createTokenForUser({

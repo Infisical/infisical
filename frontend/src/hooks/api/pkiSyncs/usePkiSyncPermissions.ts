@@ -8,7 +8,7 @@ import {
 } from "../pkiApplications";
 import { TPkiSync } from "./types";
 
-const useCanSetHostCommand = (
+const useCanPerformSyncAction = (
   action: PkiApplicationResourceActions,
   projectAction: ProjectPermissionPkiSyncActions,
   applicationId?: string | null
@@ -24,14 +24,21 @@ const useCanSetHostCommand = (
 };
 
 export const useCanSetPostSyncCommand = (applicationId?: string | null) =>
-  useCanSetHostCommand(
+  useCanPerformSyncAction(
     PkiApplicationResourceActions.SetPostSyncCommand,
     ProjectPermissionPkiSyncActions.SetPostSyncCommand,
     applicationId
   );
 
+export const useCanSetTargetHost = (applicationId?: string | null) =>
+  useCanPerformSyncAction(
+    PkiApplicationResourceActions.SetTargetHost,
+    ProjectPermissionPkiSyncActions.SetTargetHost,
+    applicationId
+  );
+
 export const useCanSetHealthCheckCommand = (applicationId?: string | null) =>
-  useCanSetHostCommand(
+  useCanPerformSyncAction(
     PkiApplicationResourceActions.SetHealthCheckCommand,
     ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
     applicationId

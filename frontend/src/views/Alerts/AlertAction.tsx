@@ -20,7 +20,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
@@ -179,7 +179,7 @@ export const AlertAction = ({
                   <Label htmlFor="alert-quick-enable" className="cursor-pointer font-normal">
                     Enabled
                   </Label>
-                  <Switch
+                  <Toggle
                     id="alert-quick-enable"
                     variant={scopeVariant}
                     checked={existingAlert.enabled}

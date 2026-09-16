@@ -12,7 +12,6 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -51,6 +50,7 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
+import { areSecretSyncDestinationConfigsEqual } from "./secret-sync-duplicate-check";
 import {
   DESTINATION_DUPLICATE_CHECK_MAP,
   SECRET_SYNC_CONNECTION_MAP,
@@ -276,7 +276,10 @@ export const secretSyncServiceFactory = ({
       ProjectPermissionSub.SecretSyncs
     );
 
-    if (!destinationConfig || Object.keys(destinationConfig).length === 0) {
+    // An absent config means the caller has not filled the form in yet, so there is nothing to
+    // compare. An empty one is different: a destination whose scope comes entirely from its
+    // connection has no fields to send, and skipping those would leave them with no check at all.
+    if (!destinationConfig) {
       return { hasDuplicate: false, duplicateProjectId: undefined };
     }
 
@@ -308,7 +311,7 @@ export const secretSyncServiceFactory = ({
 
       const candidates = existingSyncs.filter((sync) => {
         if (sync.id === excludeSyncId) return false;
-        return deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
+        return areSecretSyncDestinationConfigsEqual(destination, sync.destinationConfig, destinationConfig, skipFields);
       });
 
       const duplicateCheckResults = await Promise.all(

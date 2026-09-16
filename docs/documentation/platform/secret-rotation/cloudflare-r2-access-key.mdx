@@ -155,8 +155,8 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
 </Tabs>
 
 <Warning>
-  **Buckets are granted by name.** The token's policy references each bucket by its name and jurisdiction, so renaming or recreating a bucket in Cloudflare breaks the grant. Cloudflare does not reject unknown bucket names, so a stale name produces a key that silently grants nothing on it. Update the rotation's parameters after renaming a bucket.
+  **Buckets are granted by name.** The token's policy references each bucket by its name and jurisdiction, so renaming or recreating a bucket in Cloudflare breaks the grant. Cloudflare doesn't reject unknown bucket names, so a stale name produces a key that silently grants nothing on it. Update the rotation's parameters after renaming a bucket.
 
-  **Parameter changes apply on the next rotation.** Editing the buckets or access level does not re-scope the key that is currently active; the change takes effect when the next key is generated. Trigger a manual rotation if you need it applied immediately.
+  **Parameter changes apply on the next rotation.** Editing the buckets or access level doesn't re-scope the key that is currently active; the change takes effect when the next key is generated. Trigger a manual rotation if you need it applied immediately.
 </Warning>
 

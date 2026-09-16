@@ -47,7 +47,7 @@ To be more specific:
 
 <Note>
   Infisical US/EU and dedicated instances are deployed with AWS ALB. TLS Certificate Auth must flow through our ALB mTLS pass-through in order to authenticate.
-  When you are authenticating with TLS Certificate Auth, you must use the port `8443` instead of the default `443`. Example: `https://app.infisical.com:8443/api/v1/auth/tls-cert-auth/login`
+  When you're authenticating with TLS Certificate Auth, you must use the port `8443` instead of the default `443`. Example: `https://app.infisical.com:8443/api/v1/auth/tls-cert-auth/login`
 </Note>
 
 ## Guide
@@ -64,11 +64,11 @@ access the Infisical API using request signing.
 
 ### Creating an identity
 
-To create an identity, head to your Organization Settings > Access Control > [Identities](https://app.infisical.com/organization/access-management?selectedTab=identities) and press **Create identity**.
+To create an identity, go to **Access Control** > [**Machine Identities**](https://app.infisical.com/organization/access-management?selectedTab=identities) in your organization and select **Create**.
 
 ![identities organization](/images/platform/identities/identities-org.png)
 
-When creating an identity, you specify an organization-level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > [Organization Roles](https://app.infisical.com/organization/access-management?selectedTab=roles).
+When creating an identity, you specify an organization-level [role](/documentation/platform/access-controls/role-based-access-controls) for it to assume; you can configure roles in **Access Control** > [Roles](https://app.infisical.com/organization/access-management?selectedTab=roles).
 
 ![identities organization create](/images/platform/identities/identities-org-create.png)
 
@@ -81,7 +81,7 @@ Once you've created an identity, you'll be redirected to a page where you can ma
 
 ![identities page](/images/platform/identities/identities-page.png)
 
-Since the identity has been configured with [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) by default, you should reconfigure it to use TLS Certificate Auth instead. To do this, click the cog next to **Universal Auth** and then select **Delete** in the options dropdown.
+Since the identity has been configured with [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) by default, you should reconfigure it to use TLS Certificate Auth instead. To do this, select the three dot menu next to **Universal Auth**, then select **Remove Auth Method**.
 
 ![identities press cog](/images/platform/identities/identities-press-cog.png)
 
@@ -94,7 +94,7 @@ Now create a new TLS Certificate Auth Method.
 Here's some information about each field:
 
 - **CA Certificate:** A PEM encoded CA Certificate used to validate incoming TLS request client certificate. Any name constraints it asserts are honored, so a client certificate whose name falls outside the namespace the CA may certify is rejected. Both the CA Certificate and the client certificate must permit client authentication: a certificate that lists an Extended Key Usage without `clientAuth` (or `anyExtendedKeyUsage`) is rejected, since a CA's key usages also limit what the certificates beneath it may be used for. A certificate that lists no Extended Key Usage is unrestricted and is accepted.
-- **Verify Client Certificate Chain (default is disabled):** By default, the CA Certificate must be the **direct issuer** of the client's leaf certificate. Enable this to instead treat the CA Certificate as a **trust anchor** and accept any client whose presented chain (leaf followed by intermediates) builds a valid path up to it. This is helpful when the issuing intermediate rotates beneath a long-lived root, such as a **SPIRE X.509-SVID**: you can pin the stable root here once and let the workload present its current intermediate alongside its leaf, rather than updating the CA Certificate on every rotation. Either way the trust anchor is the only certificate trusted, the client certificate must still be an end-entity certificate, and the Common Name and Subject Alternative Name checks below still apply to the leaf. Restrictions that the CAs on the path place on their subordinates are honored: a client certificate whose name falls outside an issuing CA's name constraints is rejected, as is a chain with more intermediates than a CA's path length permits, or one that passes through a CA whose Extended Key Usage does not permit client authentication.
+- **Verify Client Certificate Chain (default is disabled):** By default, the CA Certificate must be the **direct issuer** of the client's leaf certificate. Enable this to instead treat the CA Certificate as a **trust anchor** and accept any client whose presented chain (leaf followed by intermediates) builds a valid path up to it. This is helpful when the issuing intermediate rotates beneath a long-lived root, such as a **SPIRE X.509-SVID**: you can pin the stable root here once and let the workload present its current intermediate alongside its leaf, rather than updating the CA Certificate on every rotation. Either way the trust anchor is the only certificate trusted, the client certificate must still be an end-entity certificate, and the Common Name and Subject Alternative Name checks below still apply to the leaf. Restrictions that the CAs on the path place on their subordinates are honored: a client certificate whose name falls outside an issuing CA's name constraints is rejected, as is a chain with more intermediates than a CA's path length permits, or one that passes through a CA whose Extended Key Usage doesn't permit client authentication.
 - **Allowed Common Names:** A comma separated list of client certificate common names allowed.
 - **Allowed Subject Alternative Names:** A comma separated list of client certificate subject alternative names (SANs) allowed. This is useful when the client certificate carries its identity in a SAN rather than the Subject Common Name, such as a SPIFFE X.509-SVID whose identity is a URI SAN (`spiffe://trust-domain/path`) with an empty Subject. Matching is type-aware, so an entry only matches a SAN of the same type:
   - **Type-prefixed entries** are matched against the corresponding SAN type, e.g. `URI:spiffe://example.org/svc`, `IP:10.0.0.1`, `EMAIL:svc@example.com`.
@@ -111,14 +111,14 @@ Here's some information about each field:
   those restrictions are enforced on every login, in both single-hop and chain mode. A URI name
   constraint restricts the **host** only and must be a fully qualified domain name, such as
   `example.org` or `.example.org`. Writing it the way the identity itself looks, such as
-  `spiffe://example.org`, or writing one that carries a path, is not a hostname, so no client
+  `spiffe://example.org`, or writing one that carries a path, isn't a hostname, so no client
   certificate can satisfy it and every login is denied. Infisical rejects such a CA Certificate when you save it.
 
   A client certificate that carries several names of a constrained type has to keep **every** one of
-  them inside the permitted namespace. Pairing an in-scope name with an out-of-scope one does not
+  them inside the permitted namespace. Pairing an in-scope name with an out-of-scope one doesn't
   make the out-of-scope name acceptable; the login is denied.
 
-  Name constraints cannot scope individual workloads, because a URI constraint applies to the host
+  Name constraints can't scope individual workloads, because a URI constraint applies to the host
   and ignores the path. Use **Allowed Subject Alternative Names** for that.
 </Note>
 
@@ -126,7 +126,7 @@ Here's some information about each field:
 
 In order to allow an identity to access project-level resources such as secrets, you must add it to the relevant projects.
 
-To do this, head over to the project you want to add the identity to and navigate to Project Settings > Access Control > Machine Identities and press **Add Identity**.
+To do this, open the project you want to add the identity to, go to **Access Control** > **Machine Identities**, and select **Add Machine Identity to Project**.
 
 ![identities project](/images/platform/identities/identities-project.png)
 

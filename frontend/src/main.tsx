@@ -2,9 +2,14 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { setWasmUrl } from "@lottiefiles/dotlottie-react";
 import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm?url";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
+// Load-bearing import: the entry module pulling in this barrel is what keeps
+// @app/context in the entry chunk. Pointing this at a deeper path re-partitions
+// the chunks and breaks module init order, which took the app down on boot.
+// Neither lint nor typecheck catches it, so only a real build does.
 import { Lottie } from "./components/v2";
 import { queryClient } from "./hooks/api/reactQuery";
 import { initializePlatform } from "./lib/fn/platform";
@@ -99,7 +104,9 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
     </StrictMode>
   );
 }

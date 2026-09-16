@@ -7,7 +7,7 @@ description: "Monitor upcoming rotations, reminders, stale secrets, and secret a
 <Note>
   Secret Insights is a paid feature.
 
-  On Infisical Cloud it is available on the Pro and Enterprise plans, If you're self-hosting Infisical, contact sales@infisical.com to acquire a license.
+  On Infisical Cloud it's available on the Pro and Enterprise plans, If you're self-hosting Infisical, contact sales@infisical.com to acquire a license.
 </Note>
 
 Secret Insights is an observability dashboard for your Secrets Management project. It surfaces the questions you care about most — *Which secrets are due for rotation? Which reminders are overdue? What hasn't been touched in months? Who's actually reading my secrets?* — and links you straight to the secrets you need to act on.
@@ -31,7 +31,7 @@ The page also includes an **Audit Reports** card for generating exportable compl
 
 ## Summary
 
-The three cards along the top of the page give you a quick read on what needs attention. Each card opens a popover with a table you can drill into; clicking a row jumps directly to the matching secret in the **Overview** page with the appropriate filters applied.
+The three cards along the top of the page give you a quick read on what needs attention. Each card opens a popover with a table you can drill into; selecting a row jumps directly to the matching secret in the **Overview** page with the appropriate filters applied.
 
 ### Upcoming rotations
 
@@ -42,7 +42,7 @@ A status badge on the card calls out failed rotations:
 - A green badge reads **No failed rotations** when everything is healthy.
 - A red badge shows **{N} failed** when one or more rotations are in a failed state and need investigation.
 
-Click **View Rotations** (or **View Failed Rotations**) to see the full list. Each row shows the rotation name, environment, secret path, and a relative-time status (`scheduled`, `in 3 days`, `retries in 1h`, or `failed`). Click a row to open that rotation's secret in the Overview page filtered by rotation.
+Select **View Rotations** (or **View Failed Rotations**) to see the full list. Each row shows the rotation name, environment, secret path, and a relative-time status (`scheduled`, `in 3 days`, `retries in 1h`, or `failed`). Select a row to open that rotation's secret in the Overview page filtered by rotation.
 
 ![Secret Insights rotation](/images/platform/insights/rotations.png)
 
@@ -55,7 +55,7 @@ A status badge calls out overdue reminders:
 - A green badge reads **No overdue reminders** when you're caught up.
 - A red badge shows **{N} overdue** when reminders have passed their due date without being acknowledged.
 
-Click **View Upcoming Reminders** (or **View Overdue Reminders**) to see the list. Each row shows the secret key, environment, path, and how soon it's due (or how long it's been overdue). Click a row to jump to that secret in the Overview page.
+Select **View Upcoming Reminders** (or **View Overdue Reminders**) to see the list. Each row shows the secret key, environment, path, and how soon it's due (or how long it's been overdue). Select a row to jump to that secret in the Overview page.
 
 ![Secret Insights reminders](/images/platform/insights/reminders.png)
 
@@ -63,7 +63,7 @@ Click **View Upcoming Reminders** (or **View Overdue Reminders**) to see the lis
 
 Counts secrets that **haven't been modified in more than 90 days**.
 
-The card shows either **All secrets up to date** when nothing is stale, or **{N} need(s) review** when there are stale secrets to look at. The popover table is paginated 10 rows at a time and shows each secret's key, environment, path, and last-modified time. Click a row to open it in Overview.
+The card shows either **All secrets up to date** when nothing is stale, or **{N} need(s) review** when there are stale secrets to look at. The popover table is paginated 10 rows at a time and shows each secret's key, environment, path, and last-modified time. Select a row to open it in Overview.
 
 Stale secrets aren't necessarily a problem — long-lived configuration values are normal. The list is meant as a prompt to review whether anything should be rotated, removed, or refreshed.
 
@@ -76,16 +76,16 @@ Audit Reports let you generate point-in-time compliance exports for a Secrets Ma
 Where the rest of the Insights dashboard is a live, read-only view, an Audit Report is a snapshot you can hand to an auditor, attach to a ticket, or archive for SOC 2 / ISO 27001 evidence. You'll find it as the **Audit Reports** card on the Insights page.
 
 <Warning>
-  Audit reports can contain sensitive metadata — secret keys, paths, access patterns, and recipient emails. They are delivered by email to the addresses you specify; only send reports to recipients you trust, and treat the CSV as confidential.
+  Audit reports can contain sensitive metadata — secret keys, paths, access patterns, and recipient emails. They're delivered by email to the addresses you specify; only send reports to recipients you trust, and treat the CSV as confidential.
 </Warning>
 
 ### Generating a report
 
 1. Open the **Insights** tab and find the **Audit Reports** card.
-2. Click **Generate Report**.
+2. Select **Generate Report**.
 3. In the dialog, select one or more [report types](#report-types).
 4. (Optional) Enter one or more **email recipients**, comma-separated. If you leave this blank, the report is sent to your own email.
-5. Click **Generate Report**.
+5. Select **Generate Report**.
 
 ![overview-screen](/images/platform/insights/audit-reports/generate-report.png)
 
@@ -145,7 +145,7 @@ The calendar panel shows every upcoming rotation and reminder laid out on a mont
 | Blue, with a refresh icon | Rotation |
 | Orange, with a bell icon | Reminder |
 
-**Event details.** Click a pill to view its details, then use the **View in Overview** button to jump to the corresponding secret in the project Overview with filters applied.
+**Event details.** Select a pill to view its details, then use the **View in Overview** button to jump to the corresponding secret in the project Overview with filters applied.
 
 ## Secret access volume
 

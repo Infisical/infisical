@@ -1,11 +1,16 @@
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
-import { TUsers } from "@app/db/schemas";
+import { TUserAliases, TUsers } from "@app/db/schemas";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError, ForbiddenRequestError } from "@app/lib/errors";
 
-import { adoptProvisionedShadowUser, resolveAliasUserIds } from "./user-alias-fns";
+import { adoptProvisionedShadowUser, resolveAliasUserIds, syncSsoUserProfile } from "./user-alias-fns";
+import { UserAliasType } from "./user-alias-types";
+
+vi.mock("@app/lib/logger", () => ({
+  logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() }
+}));
 
 const alias = (externalId: string, userId: string) => ({ externalId, userId });
 
@@ -294,5 +299,226 @@ describe("adoptProvisionedShadowUser", () => {
     deps.userDAL.findOne.mockResolvedValueOnce(shadowUser()).mockResolvedValueOnce(null);
 
     await expect(adopt(deps)).rejects.toThrow(DatabaseError);
+  });
+});
+
+const makeUser = (overrides: Partial<TUsers> = {}) =>
+  ({
+    id: "user-1",
+    username: "old@example.com",
+    email: "old@example.com",
+    firstName: "Robert",
+    lastName: "Smith",
+    ...overrides
+  }) as TUsers;
+
+const makeAlias = (overrides: Partial<TUserAliases> = {}) =>
+  ({
+    id: "alias-1",
+    userId: "user-1",
+    orgId: "org-1",
+    aliasType: UserAliasType.OIDC,
+    externalId: "m249913@one.example.com",
+    emails: ["old@example.com"],
+    isEmailVerified: true,
+    ...overrides
+  }) as TUserAliases;
+
+type TAuditLogArg = { orgId: string; event: { type: string; metadata: Record<string, unknown> } };
+
+const makeDeps = ({
+  conflictingUser = null as TUsers | null,
+  updateError = null as Error | null,
+  emailUpdateError = null as Error | null,
+  orgVerifiedDomains = ["example.com"] as string[]
+} = {}) => {
+  const updatedRows: Record<string, unknown>[] = [];
+  const userDAL = {
+    findOne: vi.fn().mockResolvedValue(conflictingUser),
+    updateById: vi.fn().mockImplementation((id: string, update: Record<string, unknown>) => {
+      if (updateError) throw updateError;
+      if (emailUpdateError && update.username) throw emailUpdateError;
+      updatedRows.push(update);
+      return { ...makeUser(), ...update };
+    }),
+    transaction: vi.fn().mockImplementation((cb: (tx: unknown) => unknown) => cb({}))
+  };
+  const userAliasDAL = { updateById: vi.fn().mockResolvedValue(undefined) };
+  const emailDomainDAL = {
+    findOne: vi
+      .fn()
+      .mockImplementation(({ domain }: { domain: string }) =>
+        orgVerifiedDomains.includes(domain) ? { id: "domain-1", domain } : undefined
+      )
+  };
+  const auditLogService = {
+    createAuditLog: vi.fn<(arg: TAuditLogArg) => Promise<void>>().mockResolvedValue(undefined)
+  };
+
+  return { userDAL, userAliasDAL, emailDomainDAL, auditLogService, updatedRows };
+};
+
+const sync = (args: Record<string, unknown>, deps: ReturnType<typeof makeDeps>) =>
+  syncSsoUserProfile({
+    user: makeUser(),
+    userAlias: makeAlias(),
+    assertedEmail: "old@example.com",
+    orgId: "org-1",
+    isAuthEnforced: true,
+    userDAL: deps.userDAL,
+    userAliasDAL: deps.userAliasDAL,
+    emailDomainDAL: deps.emailDomainDAL,
+    auditLogService: deps.auditLogService,
+    ...args
+  } as Parameters<typeof syncSsoUserProfile>[0]);
+
+describe("syncSsoUserProfile", () => {
+  test("does nothing when the org does not enforce SSO", async () => {
+    const deps = makeDeps();
+    const user = await sync({ assertedEmail: "new@example.com", isAuthEnforced: false }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+    expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
+  });
+
+  test("does nothing when the alias is not yet verified", async () => {
+    const deps = makeDeps();
+    const user = await sync(
+      { assertedEmail: "new@example.com", userAlias: makeAlias({ isEmailVerified: false }) },
+      deps
+    );
+
+    expect(user.username).toBe("old@example.com");
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("does not write when nothing differs", async () => {
+    const deps = makeDeps();
+    await sync({ assertedFirstName: "Robert", assertedLastName: "Smith" }, deps);
+
+    expect(deps.userDAL.findOne).not.toHaveBeenCalled();
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("carries a renamed mailbox onto the account and the alias", async () => {
+    const deps = makeDeps();
+    const user = await sync({ assertedEmail: "new@example.com" }, deps);
+
+    expect(user.username).toBe("new@example.com");
+    expect(user.email).toBe("new@example.com");
+    expect(deps.userAliasDAL.updateById).toHaveBeenCalledWith(
+      "alias-1",
+      { emails: ["old@example.com", "new@example.com"] },
+      expect.anything()
+    );
+    const [audited] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(audited.event.type).toBe("sso-user-profile-synced");
+    expect(audited.event.metadata.previousEmail).toBe("old@example.com");
+    expect(audited.event.metadata.newEmail).toBe("new@example.com");
+  });
+
+  test("syncs a changed name without touching the email", async () => {
+    const deps = makeDeps();
+    const user = await sync({ assertedFirstName: "Bob", assertedLastName: "Smith" }, deps);
+
+    expect(user.firstName).toBe("Bob");
+    expect(deps.updatedRows[0]).toEqual({ firstName: "Bob" });
+    expect(deps.userAliasDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("does not blank out a name the assertion omits", async () => {
+    const deps = makeDeps();
+    await sync({ assertedFirstName: "", assertedLastName: undefined }, deps);
+
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("skips the email but keeps the name when the address belongs to another account", async () => {
+    const deps = makeDeps({ conflictingUser: { ...makeUser(), id: "user-2" } as TUsers });
+    const user = await sync({ assertedEmail: "new@example.com", assertedFirstName: "Bob" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(user.firstName).toBe("Bob");
+    expect(deps.updatedRows[0]).toEqual({ firstName: "Bob" });
+    expect(deps.userDAL.findOne).toHaveBeenCalledWith({ username: "new@example.com" });
+    const [audited] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(audited.event.type).toBe("sso-user-email-sync-skipped");
+    expect(audited.event.metadata.reason).toBe("address-taken");
+    expect(audited.event.metadata.conflictingUserId).toBe("user-2");
+  });
+
+  test("leaves the account untouched when the conflicting account is the only change", async () => {
+    const deps = makeDeps({ conflictingUser: { ...makeUser(), id: "user-2" } as TUsers });
+    const user = await sync({ assertedEmail: "new@example.com" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("never fails the login when the address is taken between the check and the write", async () => {
+    const deps = makeDeps({
+      updateError: new DatabaseError({ error: { code: DatabaseErrorCode.UniqueViolation } })
+    });
+    const user = await sync({ assertedEmail: "new@example.com" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    const [audited] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(audited.event.type).toBe("sso-user-email-sync-skipped");
+    expect(audited.event.metadata.reason).toBe("address-taken");
+  });
+
+  test("keeps the name when the address is taken between the check and the write", async () => {
+    const deps = makeDeps({
+      emailUpdateError: new DatabaseError({ error: { code: DatabaseErrorCode.UniqueViolation } })
+    });
+    const user = await sync({ assertedEmail: "new@example.com", assertedFirstName: "Bob" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(user.firstName).toBe("Bob");
+    expect(deps.updatedRows).toEqual([{ firstName: "Bob" }]);
+
+    const [conflict] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(conflict.event.type).toBe("sso-user-email-sync-skipped");
+    expect(conflict.event.metadata.reason).toBe("address-taken");
+    const [synced] = deps.auditLogService.createAuditLog.mock.calls[1];
+    expect(synced.event.type).toBe("sso-user-profile-synced");
+    expect(synced.event.metadata.newEmail).toBeUndefined();
+    expect(synced.event.metadata.newFirstName).toBe("Bob");
+  });
+
+  test("never fails the login on an unexpected database error", async () => {
+    const deps = makeDeps({ updateError: new Error("connection reset") });
+    const user = await sync({ assertedEmail: "new@example.com" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
+  });
+
+  test("skips the email but keeps the name when the org does not own the address being replaced", async () => {
+    const deps = makeDeps({ orgVerifiedDomains: ["new-corp.com"] });
+    const user = await sync({ assertedEmail: "renamed@new-corp.com", assertedFirstName: "Bob" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(user.firstName).toBe("Bob");
+    expect(deps.updatedRows[0]).toEqual({ firstName: "Bob" });
+
+    const [skipped] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(skipped.event.type).toBe("sso-user-email-sync-skipped");
+    expect(skipped.event.metadata.reason).toBe("domain-not-owned");
+    expect(skipped.event.metadata.conflictingUserId).toBeUndefined();
+  });
+
+  test("skips the email when the org does not own the address being written", async () => {
+    const deps = makeDeps({ orgVerifiedDomains: ["example.com"] });
+    const user = await sync({ assertedEmail: "renamed@elsewhere.com" }, deps);
+
+    expect(user.username).toBe("old@example.com");
+    expect(deps.userDAL.updateById).not.toHaveBeenCalled();
+    expect(deps.userDAL.findOne).not.toHaveBeenCalled();
+
+    const [skipped] = deps.auditLogService.createAuditLog.mock.calls[0];
+    expect(skipped.event.type).toBe("sso-user-email-sync-skipped");
+    expect(skipped.event.metadata.reason).toBe("domain-not-owned");
   });
 });

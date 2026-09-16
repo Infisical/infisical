@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "../../generic/Select";
-import { Switch } from "../../generic/Switch";
+import { Toggle } from "../../generic/Toggle";
 
 const MAX_RANGE_MONTHS = 3;
 
@@ -53,7 +53,7 @@ export type DateRangeFilterResult = {
   isUtc: boolean;
 };
 
-export type DateRangeFilterAccent = "primary" | "secondary";
+export type DateRangeFilterAccent = "primary" | "secondary" | "av";
 
 type Props = {
   defaultValue?: DateRangeFilterValue;
@@ -98,6 +98,19 @@ export const ACCENT_STYLES: Record<
     applyButton: "border-org/25 bg-org/10 hover:bg-org/15 hover:border-org/30",
     calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
     activeVariant: "org"
+  },
+  av: {
+    selectedBorderBg: "border-product-av bg-product-av/5",
+    selectedCard: "border-product-av/40 bg-product-av/5 shadow-xs",
+    selectedBadge:
+      "rounded-sm bg-product-av/5 px-1.5 py-0.5 text-[11px] font-medium text-product-av",
+    selectedChip: "border-product-av/40 bg-product-av/5 text-foreground",
+    switchChecked:
+      "data-[state=checked]:border-product-av/25 data-[state=checked]:bg-product-av/10 data-[state=checked]:hover:border-product-av/30 data-[state=checked]:hover:bg-product-av/15",
+    applyButton:
+      "border-product-av/25 bg-product-av/10 hover:bg-product-av/15 hover:border-product-av/30",
+    calendarMiddle: "data-[range-middle=true]:!bg-muted/[12%]",
+    activeVariant: "av"
   }
 };
 
@@ -510,7 +523,7 @@ export function DateRangeFilter({
                 >
                   Local
                 </span>
-                <Switch
+                <Toggle
                   id="date-range-utc-toggle"
                   checked={pendingIsUtc}
                   onCheckedChange={setPendingIsUtc}

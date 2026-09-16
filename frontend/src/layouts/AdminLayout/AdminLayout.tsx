@@ -1,7 +1,7 @@
 import { Outlet } from "@tanstack/react-router";
 
 import { Banner } from "@app/components/page-frames/Banner";
-import { SidebarProvider } from "@app/components/v3/generic/Sidebar";
+import { SidebarInset, SidebarProvider } from "@app/components/v3/generic/Sidebar";
 import { useServerConfig, useSubscription } from "@app/context";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { AuditLogBanner } from "@app/layouts/OrganizationLayout/components/AuditLogBanner";
@@ -24,19 +24,21 @@ export const AdminLayout = () => {
     <>
       <Banner />
       <SidebarProvider
-        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-background transition-all`}
+        className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-page transition-all`}
       >
         <Navbar />
-        {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}
-        {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
-        {!isLoading && subscription.auditLogs && <AuditLogBanner />}
-        {!window.isSecureContext && <InsecureConnectionBanner />}
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           <AdminSidebar />
-          <div className="min-h-0 flex-1 overflow-y-auto bg-background px-4 pt-6 pb-4 text-foreground md:px-8 md:pt-8 xl:px-12 xl:pt-10 dark:scheme-dark">
-            <SignupDisabledBanner />
-            <Outlet />
-          </div>
+          <SidebarInset className="flex flex-col overflow-hidden">
+            {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}
+            {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
+            {!isLoading && subscription.auditLogs && <AuditLogBanner />}
+            {!window.isSecureContext && <InsecureConnectionBanner />}
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-6 pb-4 text-foreground md:px-8 md:pt-8 xl:px-12 xl:pt-10 dark:scheme-dark">
+              <SignupDisabledBanner />
+              <Outlet />
+            </div>
+          </SidebarInset>
         </div>
       </SidebarProvider>
       <Banner />
