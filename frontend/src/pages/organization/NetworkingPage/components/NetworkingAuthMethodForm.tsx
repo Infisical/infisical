@@ -8,7 +8,6 @@ import {
   Button,
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect,
@@ -513,10 +512,6 @@ export const NetworkingAuthMethodForm = ({
                         isError={Boolean(error)}
                         placeholder="my-gcp-project, ..."
                       />
-                      <FieldDescription>
-                        Checked against the Compute Engine details in the token. A GKE workload
-                        identity token does not carry them, so leave this empty for GKE.
-                      </FieldDescription>
                       <FieldError errors={[error]} />
                     </FieldContent>
                   </Field>
