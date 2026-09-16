@@ -1,6 +1,7 @@
 import { TPkiSyncFilters } from "./pki-sync-types";
 
-export const PKI_SYNC_MAX_LINKED_CERTIFICATES = 500;
+export const PKI_SYNC_PREVIEW_PAGE_SIZE = 500;
+export const PKI_SYNC_MAX_FILTER_ORDERS = 10_000;
 
 export const PKI_SYNC_FILTER_KINDS = ["profileIds", "certificateOrderIds", "metadata"] as const;
 

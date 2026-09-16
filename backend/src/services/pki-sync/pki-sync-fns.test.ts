@@ -1,5 +1,5 @@
 import { PkiSync } from "./pki-sync-enums";
-import { hasAnyPkiSyncFilter, PKI_SYNC_MAX_LINKED_CERTIFICATES } from "./pki-sync-filter-fns";
+import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";
 import {
   assertFiltersCannotExceedCertificateCap,
   assertPkiSyncCanHoldCertificateCount,
@@ -158,29 +158,13 @@ describe("parsePkiSyncErrorMessage", () => {
 describe("assertPkiSyncCanHoldCertificateCount", () => {
   const multiCertSchema = { certificateNameSchema: "Infisical-{{certificateId}}" };
 
-  test("allows a count within both the global cap and the destination cap", () => {
+  test("a destination with no cap accepts any number of certificates", () => {
     expect(() =>
       assertPkiSyncCanHoldCertificateCount(PkiSync.AwsCertificateManager, multiCertSchema, undefined, 499)
     ).not.toThrow();
     expect(() =>
-      assertPkiSyncCanHoldCertificateCount(
-        PkiSync.AwsCertificateManager,
-        multiCertSchema,
-        undefined,
-        PKI_SYNC_MAX_LINKED_CERTIFICATES
-      )
+      assertPkiSyncCanHoldCertificateCount(PkiSync.AwsCertificateManager, multiCertSchema, undefined, 25_000)
     ).not.toThrow();
-  });
-
-  test("rejects a count over the global cap", () => {
-    expect(() =>
-      assertPkiSyncCanHoldCertificateCount(
-        PkiSync.AwsCertificateManager,
-        multiCertSchema,
-        undefined,
-        PKI_SYNC_MAX_LINKED_CERTIFICATES + 1
-      )
-    ).toThrow("at most 500 certificates");
   });
 
   test("rejects more than one certificate on a single-certificate destination", () => {

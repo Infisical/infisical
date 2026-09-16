@@ -42,7 +42,7 @@ export const PkiSyncMatchedCertificatesTable = ({
 }: Props) => {
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex min-h-40 flex-col gap-2">
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-8 w-full" />
@@ -52,7 +52,7 @@ export const PkiSyncMatchedCertificatesTable = ({
 
   if (rows.length === 0) {
     return (
-      <Empty className="border py-8">
+      <Empty className="min-h-40 border py-8">
         <EmptyMedia variant="icon">
           <ScrollText />
         </EmptyMedia>

@@ -118,9 +118,14 @@ export type TPkiSyncPreviewCertificate = {
   profileName?: string | null;
 };
 
+export type TPkiSyncCertificateOrder = {
+  certificateOrderId: string;
+  commonName: string;
+  altNames?: string | null;
+};
+
 export type TPkiSyncFilterPreview = {
   matchedCount: number;
-  hasMoreMatches: boolean;
   certificates: TPkiSyncPreviewCertificate[];
   toUnlink: { id: string; commonName: string; altNames?: string | null }[];
   willRemoveFromDestination: boolean;

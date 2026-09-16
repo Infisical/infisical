@@ -4277,5 +4277,7 @@ export const PKI_SYNC_FILTERS = {
   metadataKey: "Metadata key the certificate must carry.",
   metadataValue: "Metadata value the key must have. Omit it to match any value.",
   previewPkiSyncId: "Preview the filters against this existing PKI Sync.",
-  previewApplicationId: "Preview the filters against this Application, for a PKI Sync that does not exist yet."
+  previewApplicationId: "Preview the filters against this Application, for a PKI Sync that does not exist yet.",
+  previewOffset: "The offset to start from. If you enter 10, it will start from the 10th matching certificate.",
+  previewLimit: "The number of matching certificates to return."
 };

@@ -312,7 +312,7 @@ export const usePreviewPkiSyncFilters = () => {
       filters?: TPkiSyncFilters | null;
     }) => {
       const { data } = await apiRequest.post<TPkiSyncFilterPreview>(
-        "/api/v1/cert-manager/syncs/certificates/preview",
+        "/api/v1/cert-manager/syncs/certificates/search",
         { pkiSyncId, filters: filters ?? null }
       );
 

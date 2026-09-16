@@ -151,7 +151,7 @@ const getFormSteps = (
     subtitle: "Describe the certificates this sync holds.",
     rightLabel: "CERTIFICATES",
     rightDescription:
-      "Anything in the Application matching these filters is attached as it is issued, and anything that stops matching is detached. Nothing changes until you save."
+      "Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save."
   });
 
   steps.push({
@@ -464,11 +464,14 @@ export const EditPkiSyncForm = ({
             </AlertDialogMedia>
             <AlertDialogTitle>
               {pendingUnlink?.preview.toUnlink.length} certificate
-              {pendingUnlink?.preview.toUnlink.length === 1 ? "" : "s"} will be detached
+              {pendingUnlink?.preview.toUnlink.length === 1 ? "" : "s"} will no longer be synced
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="flex flex-col gap-2">
-                <p>These certificates no longer match the filters and will be detached:</p>
+                <p>
+                  These certificates no longer match the filters, so this sync will stop holding
+                  them:
+                </p>
                 <ul className="max-h-40 overflow-y-auto font-mono text-xs">
                   {pendingUnlink?.preview.toUnlink.map((certificate) => (
                     <li key={certificate.id}>
@@ -497,7 +500,7 @@ export const EditPkiSyncForm = ({
                 if (pending) applyUpdate(pending.formData).catch(() => {});
               }}
             >
-              Detach and save
+              Save changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

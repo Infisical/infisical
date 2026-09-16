@@ -3,7 +3,12 @@ import { ReactNode, useCallback, useState } from "react";
 import { Badge, HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v3";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
-import { hasAnyFilter, isFilterPresent, TFilterKind } from "./forms/pki-sync-filter-fns";
+import {
+  FILTER_KINDS,
+  hasAnyFilter,
+  isFilterPresent,
+  TFilterKind
+} from "./forms/pki-sync-filter-fns";
 
 type TFilterCountLabelProps = { count: number; names: string[] };
 
@@ -16,7 +21,7 @@ const FilterBadgeOverflow = ({ badges }: { badges: ReactNode[] }) => {
       {rest.length > 0 && (
         <HoverCard openDelay={100}>
           <HoverCardTrigger asChild>
-            <Badge variant="neutral" className="cursor-default">
+            <Badge variant="neutral" className="cursor-pointer hover:bg-neutral/35">
               +{rest.length}
             </Badge>
           </HoverCardTrigger>
@@ -40,21 +45,22 @@ export const PkiSyncFilterCountLabel = ({ count, names }: TFilterCountLabelProps
     if (node) setPortalContainer(node.closest<HTMLElement>('[role="dialog"]'));
   }, []);
 
-  if (names.length === 0) return <span className="text-sm text-foreground">{count}</span>;
+  if (names.length === 0) return <Badge variant="neutral">{count}</Badge>;
 
   return (
     <HoverCard openDelay={100}>
       <HoverCardTrigger asChild>
-        <span ref={rootRef} className="text-sm text-foreground">
+        <Badge ref={rootRef} variant="neutral" className="cursor-pointer hover:bg-neutral/35">
           {count}
-        </span>
+        </Badge>
       </HoverCardTrigger>
       <HoverCardContent
         container={portalContainer ?? undefined}
         className="flex max-h-64 w-64 flex-col gap-1 overflow-y-auto"
       >
-        {names.map((name) => (
-          <span key={name} className="shrink-0 truncate font-mono text-xs">
+        {names.map((name, index) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <span key={`${name}-${index}`} className="shrink-0 truncate font-mono text-xs">
             {name}
           </span>
         ))}
@@ -80,11 +86,13 @@ const PkiSyncFilterValueBadges = ({ values }: { values: string[] }) => {
 export const buildPkiSyncFilterSummary = ({
   filters,
   profileNameById,
-  orderNameById
+  orderNameById,
+  visibleKinds = FILTER_KINDS
 }: {
   filters: TPkiSyncFilters | null | undefined;
   profileNameById: Map<string, string>;
   orderNameById: Map<string, string>;
+  visibleKinds?: readonly TFilterKind[];
 }): { label: string; value: ReactNode }[] | null => {
   if (!hasAnyFilter(filters)) return null;
 
@@ -96,10 +104,11 @@ export const buildPkiSyncFilterSummary = ({
     isFilterPresent(filters, kind) ? PkiSyncNoFilterLabel : PkiSyncAnyFilterLabel;
 
   const namesFor = (ids: string[] | undefined, lookup: Map<string, string>) =>
-    (ids ?? []).map((id) => lookup.get(id)).filter((name): name is string => Boolean(name));
+    (ids ?? []).map((id) => lookup.get(id) ?? `Order ${id.slice(0, 8)}`);
 
-  return [
+  const summary: { kind: TFilterKind; label: string; value: ReactNode }[] = [
     {
+      kind: "profileIds",
       label: "Profiles",
       value: filters?.profileIds?.length ? (
         <PkiSyncFilterValueBadges
@@ -110,6 +119,7 @@ export const buildPkiSyncFilterSummary = ({
       )
     },
     {
+      kind: "certificateOrderIds",
       label: "Certificate Orders",
       value: filters?.certificateOrderIds?.length ? (
         <PkiSyncFilterCountLabel
@@ -121,6 +131,7 @@ export const buildPkiSyncFilterSummary = ({
       )
     },
     {
+      kind: "metadata",
       label: "Metadata",
       value: metadataPairs.length ? (
         <PkiSyncFilterCountLabel count={metadataPairs.length} names={metadataPairs} />
@@ -129,4 +140,8 @@ export const buildPkiSyncFilterSummary = ({
       )
     }
   ];
+
+  return summary
+    .filter(({ kind }) => visibleKinds.includes(kind))
+    .map(({ label, value }) => ({ label, value }));
 };

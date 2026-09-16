@@ -49,7 +49,7 @@ type Props = {
 
 const getSyncUnavailableReason = (sync: TPkiSync): string | null => {
   if (!sync.applicationId) return "Not attached to an Application";
-  if (!hasAnyFilter(sync.filters)) return "No filters, so it holds nothing";
+  if (!hasAnyFilter(sync.filters)) return "No filters set";
   if (!isCertificateOrderTheOnlyFilter(sync.filters))
     return "Selects certificates by profile or metadata";
   return null;

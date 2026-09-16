@@ -294,20 +294,22 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
 
   server.route({
     method: "POST",
-    url: "/certificates/preview",
+    url: "/certificates/search",
     config: {
       rateLimit: readLimit
     },
     schema: {
       hide: false,
-      ...(enableOperationId ? { operationId: "previewPkiSyncFilters" } : {}),
+      ...(enableOperationId ? { operationId: "searchPkiSyncFilterCertificates" } : {}),
       tags: [ApiDocsTags.PkiSyncs],
-      description: "Preview the certificates a set of filters matches, for an existing PKI Sync or an Application.",
+      description: "List the certificates a set of filters matches, for an existing PKI Sync or an Application.",
       body: z
         .object({
           pkiSyncId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewPkiSyncId),
           applicationId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewApplicationId),
-          filters: PkiSyncFiltersField
+          filters: PkiSyncFiltersField,
+          offset: z.coerce.number().min(0).default(0).describe(PKI_SYNC_FILTERS.previewOffset),
+          limit: z.coerce.number().min(1).max(500).default(100).describe(PKI_SYNC_FILTERS.previewLimit)
         })
         .refine((body) => Boolean(body.pkiSyncId) !== Boolean(body.applicationId), {
           message: "Provide either pkiSyncId or applicationId."
@@ -315,7 +317,6 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       response: {
         200: z.object({
           matchedCount: z.number(),
-          hasMoreMatches: z.boolean(),
           certificates: PkiSyncCertificateRefSchema.array(),
           toUnlink: PkiSyncCertificateRefSchema.array(),
           willRemoveFromDestination: z.boolean()
@@ -325,11 +326,62 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const preview = await server.services.pkiSync.previewPkiSyncFilters(
-        { pkiSyncId: req.body.pkiSyncId, applicationId: req.body.applicationId, filters: req.body.filters },
+        {
+          pkiSyncId: req.body.pkiSyncId,
+          applicationId: req.body.applicationId,
+          filters: req.body.filters,
+          offset: req.body.offset,
+          limit: req.body.limit
+        },
         req.permission
       );
 
       return preview;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/certificate-orders/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      ...(enableOperationId ? { operationId: "searchPkiSyncCertificateOrders" } : {}),
+      tags: [ApiDocsTags.PkiSyncs],
+      description: "Resolve certificate orders to the certificate each one currently holds.",
+      body: z
+        .object({
+          pkiSyncId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewPkiSyncId),
+          applicationId: z.string().uuid().optional().describe(PKI_SYNC_FILTERS.previewApplicationId),
+          certificateOrderIds: z.string().uuid().array().max(200).describe(PKI_SYNC_FILTERS.certificateOrderIds)
+        })
+        .refine((body) => Boolean(body.pkiSyncId) !== Boolean(body.applicationId), {
+          message: "Provide either pkiSyncId or applicationId."
+        }),
+      response: {
+        200: z.object({
+          orders: z
+            .object({
+              certificateOrderId: z.string().uuid(),
+              commonName: z.string(),
+              altNames: z.string().nullish()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      return server.services.pkiSync.searchPkiSyncCertificateOrders(
+        {
+          pkiSyncId: req.body.pkiSyncId,
+          applicationId: req.body.applicationId,
+          certificateOrderIds: req.body.certificateOrderIds
+        },
+        req.permission
+      );
     }
   });
 

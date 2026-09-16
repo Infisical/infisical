@@ -228,12 +228,25 @@ export type TPreviewPkiSyncFiltersDTO = {
   applicationId?: string;
   pkiSyncId?: string;
   filters?: TPkiSyncFilters | null;
+  offset?: number;
+  limit?: number;
   projectId?: string;
+};
+
+export type TSearchPkiSyncCertificateOrdersDTO = {
+  applicationId?: string;
+  pkiSyncId?: string;
+  certificateOrderIds: string[];
+};
+
+export type TPkiSyncCertificateOrder = {
+  certificateOrderId: string;
+  commonName: string;
+  altNames?: string | null;
 };
 
 export type TPkiSyncFilterPreview = {
   matchedCount: number;
-  hasMoreMatches: boolean;
   certificates: TPkiSyncCertificateRef[];
   toUnlink: TPkiSyncCertificateRef[];
   willRemoveFromDestination: boolean;

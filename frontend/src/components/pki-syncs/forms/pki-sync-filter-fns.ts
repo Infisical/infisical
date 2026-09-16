@@ -6,16 +6,16 @@ export const FILTER_KINDS = ["certificateOrderIds", "profileIds", "metadata"] as
 export type TFilterKind = (typeof FILTER_KINDS)[number];
 
 export const FILTER_LABELS: Record<TFilterKind, string> = {
-  certificateOrderIds: "Certificate Order",
+  certificateOrderIds: "Certificate Orders",
   profileIds: "Certificate profile",
   metadata: "Metadata"
 };
 
-export const hasAnyFilter = (filters: TPkiSyncFilters | null | undefined) =>
-  Boolean(filters && FILTER_KINDS.some((kind) => filters[kind] !== undefined));
-
 export const isFilterPresent = (filters: TPkiSyncFilters | null | undefined, kind: TFilterKind) =>
-  Boolean(filters && filters[kind] !== undefined);
+  filters?.[kind] !== undefined;
+
+export const hasAnyFilter = (filters: TPkiSyncFilters | null | undefined) =>
+  FILTER_KINDS.some((kind) => isFilterPresent(filters, kind));
 
 export const presentFilterKinds = (filters: TPkiSyncFilters | null | undefined): TFilterKind[] =>
   FILTER_KINDS.filter((kind) => isFilterPresent(filters, kind));

@@ -6,7 +6,7 @@ import { HOSTNAME_MAX_LENGTH, isValidHostname } from "@app/lib/validator/validat
 
 import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
-import { PKI_SYNC_MAX_LINKED_CERTIFICATES } from "./pki-sync-filter-fns";
+import { PKI_SYNC_MAX_FILTER_ORDERS } from "./pki-sync-filter-fns";
 import { HOST_COMMAND_MAX_LENGTH } from "./pki-sync-host-command-fns";
 
 export const HostCommandSchema = z
@@ -114,7 +114,7 @@ const PkiSyncFiltersSchema = z
       .string()
       .uuid()
       .array()
-      .max(PKI_SYNC_MAX_LINKED_CERTIFICATES)
+      .max(PKI_SYNC_MAX_FILTER_ORDERS)
       .optional()
       .describe(PKI_SYNC_FILTERS.certificateOrderIds),
     metadata: z

@@ -94,6 +94,22 @@ A profile backed by an external certificate authority needs the identifier the c
   </Tab>
 </Tabs>
 
+## Certificate orders
+
+A certificate id belongs to one certificate. When you renew, you don't get that certificate back with a later expiry, you get a second certificate with its own id. The old one is marked **Renewed**, the new one becomes **Active**, and both stay in the inventory.
+
+The order id is the part that stays put. It's stamped on the first certificate you issue, and every renewal of that certificate inherits it:
+
+| `app.example.com` | Certificate id | Status |
+|-------------------|----------------|--------|
+| Issued in January | `a1b2c3d4` | Renewed |
+| Renewed in April | `e5f6a7b8` | Renewed |
+| Renewed in July | `c9d0e1f2` | Active |
+
+Three certificates, one order. The order always points at the newest active one, `c9d0e1f2` here.
+
+You'll find the order id on the certificate details page. It matters most over the API, where it lets you ask for whatever is current instead of chasing a new id after every renewal.
+
 ## Renewal
 
 | Type | How It Works |

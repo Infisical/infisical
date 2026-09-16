@@ -113,7 +113,7 @@ const STEP_META: Record<
     subtitle: "Link the certificates this sync pushes.",
     rightLabel: "CERTIFICATES",
     rightDescription:
-      "Anything in the Application matching these filters is attached as it is issued. A sync with no filters holds nothing."
+      "Anything in the application matching these filters is synced as it is issued. A sync with no filters syncs nothing."
   },
   review: {
     short: "Confirm and create",

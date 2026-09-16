@@ -1,9 +1,16 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { FilterIcon } from "lucide-react";
 
 import { buildPkiSyncFilterSummary } from "@app/components/pki-syncs/PkiSyncFilterBadges";
-import { Badge, CodeBlock, Empty, EmptyDescription, EmptyMedia } from "@app/components/v3";
+import {
+  Badge,
+  CodeBlock,
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  Pagination
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
@@ -12,12 +19,14 @@ import {
   VALUE_SYNC_OPTION_FIELDS
 } from "@app/helpers/pkiSyncs";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { usePkiSyncPreviewCertificates } from "@app/hooks/api/pkiSyncs";
+import { usePkiSyncOption, usePkiSyncPreviewCertificates } from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
-import { buildOrderNameMap, hasAnyFilter } from "./pki-sync-filter-fns";
+import { buildOrderNameMap, getPkiSyncCertificateCap, hasAnyFilter } from "./pki-sync-filter-fns";
 import { PkiSyncMatchedCertificatesTable } from "./PkiSyncMatchedCertificatesTable";
+
+const MATCHED_PAGE_SIZE = 20;
 
 const ReviewFieldLabel = ({ label, children }: { label: string; children?: ReactNode }) => (
   <div className="row-span-2 grid min-w-0 grid-rows-subgrid pb-2">
@@ -57,22 +66,36 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
 
   const destinationName = PKI_SYNC_MAP[destination].name;
 
+  const { syncOption } = usePkiSyncOption(destination);
+  const acceptsOnlyCertificateOrders =
+    getPkiSyncCertificateCap({
+      destinationMaxCertificates: syncOption?.maxCertificates,
+      syncOptions: syncOptions as Record<string, unknown> | undefined,
+      destinationConfig: destinationConfig as Record<string, unknown> | undefined
+    }) !== undefined;
+
+  const [page, setPage] = useState(1);
+
   const { data: preview, isPending: isPreviewPending } = usePkiSyncPreviewCertificates({
     projectId: currentProject?.id || "",
     applicationId,
     filters: (filters ?? null) as TPkiSyncFilters | null,
+    offset: (page - 1) * MATCHED_PAGE_SIZE,
+    limit: MATCHED_PAGE_SIZE,
     enabled: Boolean(applicationId) && hasAnyFilter(filters)
   });
 
   const orderNameById = buildOrderNameMap(preview?.certificates);
 
   const matchedRows = hasAnyFilter(filters) ? (preview?.certificates ?? []) : [];
+  const matchedCount = hasAnyFilter(filters) ? (preview?.totalCount ?? 0) : 0;
   const filterFields = buildPkiSyncFilterSummary({
     filters: (filters ?? null) as TPkiSyncFilters | null,
     profileNameById: new Map(
       (profileData?.certificateProfiles ?? []).map(({ id, slug }) => [id, slug])
     ),
-    orderNameById
+    orderNameById,
+    visibleKinds: acceptsOnlyCertificateOrders ? ["certificateOrderIds"] : undefined
   });
   const postSyncCommand =
     syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
@@ -88,7 +111,10 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
         <div className="w-full">
           <p className="mb-2 text-sm font-medium text-foreground">Filters</p>
           {filterFields ? (
-            <div className="mb-4 grid grid-cols-3 gap-x-8">
+            <div
+              className="mb-4 grid gap-x-8"
+              style={{ gridTemplateColumns: `repeat(${filterFields.length}, minmax(0, 1fr))` }}
+            >
               {filterFields.map(({ label, value }) => (
                 <ReviewFieldLabel key={label} label={label}>
                   {value}
@@ -100,23 +126,32 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
               <EmptyMedia variant="icon">
                 <FilterIcon />
               </EmptyMedia>
-              <EmptyDescription>No filters, so this sync holds nothing.</EmptyDescription>
+              <EmptyDescription>No filters set. Nothing will be synced.</EmptyDescription>
             </Empty>
           )}
           {hasAnyFilter(filters) && (
             <>
               <p className="mb-2 text-sm font-medium text-foreground">Matched Certificates</p>
               <p className="mb-2 text-xs text-muted">
-                {preview?.hasMoreMatches
-                  ? `More than ${matchedRows.length} certificates match. Narrow the filters before saving.`
-                  : `${matchedRows.length} certificate${matchedRows.length === 1 ? "" : "s"} will be synced.`}
+                {matchedCount} certificate{matchedCount === 1 ? "" : "s"} will be synced.
               </p>
               <PkiSyncMatchedCertificatesTable
                 rows={matchedRows}
                 isLoading={isPreviewPending}
                 emptyTitle="No certificates match"
-                emptyDescription="Nothing in this Application matches these filters yet."
+                emptyDescription="Nothing in this application matches these filters yet."
               />
+              {matchedCount > MATCHED_PAGE_SIZE && (
+                <Pagination
+                  className="mt-2"
+                  count={matchedCount}
+                  page={page}
+                  perPage={MATCHED_PAGE_SIZE}
+                  onChangePage={setPage}
+                  onChangePerPage={() => {}}
+                  perPageList={[MATCHED_PAGE_SIZE]}
+                />
+              )}
             </>
           )}
         </div>

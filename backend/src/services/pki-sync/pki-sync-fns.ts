@@ -54,12 +54,7 @@ import {
 } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
-import {
-  hasAnyPkiSyncFilter,
-  PKI_SYNC_FILTER_KINDS,
-  PKI_SYNC_MAX_LINKED_CERTIFICATES,
-  TPkiSyncFilterKind
-} from "./pki-sync-filter-fns";
+import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, TPkiSyncFilterKind } from "./pki-sync-filter-fns";
 import { getHealthCheckCommand } from "./pki-sync-health-check-command-fns";
 import {
   findSingleCertificateHostCommandVariables,
@@ -778,15 +773,7 @@ export const assertPkiSyncCanHoldCertificateCount = (
   syncOptions: Record<string, unknown> | undefined,
   destinationConfig: Record<string, unknown> | undefined,
   resultingCertificateCount: number
-) => {
-  if (resultingCertificateCount > PKI_SYNC_MAX_LINKED_CERTIFICATES) {
-    throw new BadRequestError({
-      message: `A PKI sync holds at most ${PKI_SYNC_MAX_LINKED_CERTIFICATES} certificates`
-    });
-  }
-
-  assertPkiSyncCertificateCapsAllowCount(destination, syncOptions, destinationConfig, resultingCertificateCount);
-};
+) => assertPkiSyncCertificateCapsAllowCount(destination, syncOptions, destinationConfig, resultingCertificateCount);
 
 const PKI_SYNC_FILTER_LABELS: Record<TPkiSyncFilterKind, string> = {
   profileIds: "certificate profile",

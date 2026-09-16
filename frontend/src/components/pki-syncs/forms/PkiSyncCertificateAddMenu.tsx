@@ -21,7 +21,7 @@ import {
 } from "./pki-sync-filter-fns";
 
 const FILTER_HINTS: Record<TFilterKind, string> = {
-  certificateOrderIds: "Follows every renewal of a certificate",
+  certificateOrderIds: "An order is a certificate and its renewals",
   profileIds: "Issued from one of these profiles",
   metadata: "Carries this key and value"
 };
@@ -44,15 +44,14 @@ export const PkiSyncCertificateAddMenu = ({ applicationId, onOpenPicker }: Props
 
   const supportsFilters = Boolean(applicationId);
 
-  const addableFilterKinds = FILTER_KINDS.filter(
-    (kind) =>
-      (certificateCap === undefined || kind === "certificateOrderIds") &&
-      (kind === "metadata" || !isFilterPresent(filters, kind))
-  );
+  const addableFilterKinds = FILTER_KINDS.filter((kind) => {
+    if (certificateCap !== undefined && kind !== "certificateOrderIds") return false;
+
+    return kind === "metadata" || !isFilterPresent(filters, kind);
+  });
 
   const addFilter = (kind: TFilterKind) => {
     if (kind === "certificateOrderIds") {
-      setValue("filters", { ...filters, [kind]: [] }, { shouldDirty: true });
       onOpenPicker();
       return;
     }

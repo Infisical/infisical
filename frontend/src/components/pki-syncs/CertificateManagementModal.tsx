@@ -234,11 +234,12 @@ export const CertificateManagementModal = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
+                    <TableHead className="w-10">
                       {!isSingleSelect && (
                         <Checkbox
                           id="select-all-certificates"
                           variant="project"
+                          aria-label="Select every certificate on this page"
                           isChecked={
                             allCertificates.length > 0 &&
                             allCertificates.every(
@@ -263,6 +264,9 @@ export const CertificateManagementModal = ({
                     const isAlreadySynced = Boolean(
                       cert.orderId && preselectedOrderIds.includes(cert.orderId)
                     );
+                    const { orderId } = cert;
+                    const isSelectable = Boolean(orderId) && (!cannotBeAdded || isAlreadySynced);
+                    const isSelected = Boolean(orderId && selectedIds.includes(orderId));
 
                     const { originalDisplayName, displayName, isTruncated } =
                       getCertificateDisplayName(cert);
@@ -271,26 +275,24 @@ export const CertificateManagementModal = ({
                     return (
                       <TableRow
                         key={cert.id}
-                        className={`cursor-pointer ${
-                          cannotBeAdded && !isAlreadySynced ? "opacity-50" : ""
-                        }`}
+                        data-state={isSelected ? "selected" : undefined}
+                        className={
+                          isSelectable ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                        }
                         onClick={() => {
-                          if (cert.orderId && (!cannotBeAdded || isAlreadySynced)) {
-                            handleToggleSelection(cert.orderId);
-                          }
+                          if (orderId && isSelectable) handleToggleSelection(orderId);
                         }}
                       >
-                        <TableCell className="max-w-0" onClick={(e) => e.stopPropagation()}>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
-                            id={cert.id}
+                            id={`select-certificate-${cert.id}`}
                             variant="project"
-                            isChecked={Boolean(cert.orderId && selectedIds.includes(cert.orderId))}
+                            aria-label={`Select ${originalDisplayName}`}
+                            isChecked={isSelected}
+                            isDisabled={!isSelectable}
                             onCheckedChange={() => {
-                              if (cert.orderId && (!cannotBeAdded || isAlreadySynced)) {
-                                handleToggleSelection(cert.orderId);
-                              }
+                              if (orderId && isSelectable) handleToggleSelection(orderId);
                             }}
-                            isDisabled={cannotBeAdded && !isAlreadySynced}
                           />
                         </TableCell>
                         <TableCell className="max-w-0">
