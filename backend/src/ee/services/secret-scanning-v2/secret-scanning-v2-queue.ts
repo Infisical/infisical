@@ -12,11 +12,11 @@ import {
   parseScanErrorMessage,
   scanGitRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig, SECRET_SCANNING_SCAN_OVERHEAD } from "@app/lib/config/env";
+import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -57,7 +57,6 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
@@ -67,13 +66,14 @@ const STUCK_SCAN_REAP_BATCH_SIZE = 100;
 const STUCK_SCAN_STATUS_MESSAGE =
   "The scan did not complete and was cancelled. This usually means the resource is too large to scan.";
 
-// The lock has to outlive the worst case a scan can take: clone timeout plus scan timeout plus the
-// same measurement/bookkeeping overhead the stuck-scan boot validation budgets for. Anything
-// shorter can expire mid-scan and let a second scan of the same resource start alongside the first.
-const getFullScanLockTtlMs = () => {
-  const appCfg = getConfig();
-  return appCfg.SECRET_SCANNING_CLONE_TIMEOUT + appCfg.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
-};
+// A full scan usually dies because the worker was OOM-killed on a large repository, which retrying
+// does resolve — the pod that picks it up next is not the one that ran out of memory. The two
+// budgets are separate in BullMQ and both are needed: `attempts` covers a run that throws, while a
+// killed process never throws at all and is recovered by the stalled checker under
+// `maxStalledCount`. The delay only has to outlast a restarting pod; nothing is held across it.
+const FULL_SCAN_ATTEMPTS = 3;
+const FULL_SCAN_MAX_STALLED_COUNT = 2;
+const FULL_SCAN_RETRY_DELAY = ms("1m");
 
 export const secretScanningV2QueueServiceFactory = ({
   queueService,
@@ -84,7 +84,6 @@ export const secretScanningV2QueueServiceFactory = ({
   smtpService,
   kmsService,
   auditLogService,
-  keyStore,
   appConnectionDAL,
   notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
@@ -115,13 +114,6 @@ export const secretScanningV2QueueServiceFactory = ({
         });
       }
 
-      for (const resource of filteredRawResources) {
-        // eslint-disable-next-line no-await-in-loop
-        if (await keyStore.getItem(KeyStorePrefixes.SecretScanningLock(dataSource.id, resource.externalId))) {
-          throw new BadRequestError({ message: `A scan is already in progress for resource "${resource.name}"` });
-        }
-      }
-
       await secretScanningV2DAL.resources.transaction(async (tx) => {
         const resources = await secretScanningV2DAL.resources.upsert(
           filteredRawResources.map((rawResource) => ({
@@ -132,8 +124,24 @@ export const secretScanningV2QueueServiceFactory = ({
           tx
         );
 
+        const inFlightScans = await secretScanningV2DAL.scans.find(
+          {
+            type: SecretScanningScanType.FullScan,
+            $in: {
+              resourceId: resources.map((resource) => resource.id),
+              status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning]
+            }
+          },
+          { tx }
+        );
+
+        const scannedResourceIds = new Set(inFlightScans.map((scan) => scan.resourceId));
+        const resourcesToScan = resources.filter((resource) => !scannedResourceIds.has(resource.id));
+
+        if (!resourcesToScan.length) return;
+
         const scans = await secretScanningV2DAL.scans.insertMany(
-          resources.map((resource) => ({
+          resourcesToScan.map((resource) => ({
             resourceId: resource.id,
             type: SecretScanningScanType.FullScan
           })),
@@ -150,7 +158,12 @@ export const secretScanningV2QueueServiceFactory = ({
               resourceId: scan.resourceId,
               dataSourceId: dataSource.id
             },
-            { jobId: scan.id, removeOnFail: true }
+            {
+              jobId: scan.id,
+              removeOnFail: true,
+              attempts: FULL_SCAN_ATTEMPTS,
+              backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
+            }
           );
         }
       });
@@ -191,18 +204,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
     if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
 
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-
     try {
-      try {
-        lock = await keyStore.acquireLock(
-          [KeyStorePrefixes.SecretScanningLock(dataSource.id, resource.externalId)],
-          getFullScanLockTtlMs()
-        );
-      } catch (e) {
-        throw new Error("Failed to acquire scanning lock.");
-      }
-
       await secretScanningV2DAL.scans.update(
         { id: scanId },
         {
@@ -400,7 +402,6 @@ export const secretScanningV2QueueServiceFactory = ({
       throw error;
     } finally {
       await deleteTempFolder(tempFolder);
-      await lock?.release();
     }
   };
 
@@ -858,7 +859,7 @@ export const secretScanningV2QueueServiceFactory = ({
     async (job) => {
       await handleFullScan(job as Parameters<typeof handleFullScan>[0]);
     },
-    { concurrency: 1 }
+    { concurrency: 1, maxStalledCount: FULL_SCAN_MAX_STALLED_COUNT }
   );
 
   queueService.start(

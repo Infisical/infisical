@@ -4057,7 +4057,6 @@ export const registerRoutes = async (
     projectMembershipDAL,
     smtpService,
     kmsService,
-    keyStore,
     appConnectionDAL,
     notificationService
   });
