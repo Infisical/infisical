@@ -25,6 +25,9 @@
   "thumbnails": {
     "appearance": "light"
   },
+  "icons": {
+    "library": "lucide"
+  },
   "favicon": "/favicon.ico",
   "contextual": {
     "options": [
@@ -76,7 +79,7 @@
         "menu": [
           {
             "item": "Secrets Management",
-            "icon": "vault",
+            "icon": "key",
             "pages": [
               "documentation/platform/secrets-mgmt/overview",
               {
@@ -460,7 +463,7 @@
           },
           {
             "item": "Certificate Management",
-            "icon": "file-certificate",
+            "icon": "file-key",
             "pages": [
               "documentation/platform/pki/overview",
               {
@@ -647,7 +650,7 @@
           },
           {
             "item": "KMS",
-            "icon": "key",
+            "icon": "lock",
             "pages": [
               "documentation/platform/kms/overview",
               {
@@ -668,7 +671,7 @@
           },
           {
             "item": "Privileged Access Management",
-            "icon": "user-shield",
+            "icon": "users",
             "pages": [
               "documentation/platform/pam/overview",
               {
@@ -767,7 +770,7 @@
           },
           {
             "item": "Agent Vault",
-            "icon": "shield-keyhole",
+            "icon": "vault",
             "tag": "PREVIEW",
             "pages": [
               "documentation/platform/agent-vault/overview",
@@ -1106,7 +1109,7 @@
           },
           {
             "item": "Networking",
-            "icon": "network-wired",
+            "icon": "network",
             "pages": [
               "documentation/platform/gateways/overview",
               "documentation/setup/networking",
@@ -1215,7 +1218,7 @@
           },
           {
             "item": "Internals",
-            "icon": "diagram-project",
+            "icon": "workflow",
             "pages": [
               "internals/overview",
               {
@@ -1245,7 +1248,7 @@
           },
           {
             "item": "Contributing",
-            "icon": "code-pull-request",
+            "icon": "git-pull-request",
             "pages": [
               "contributing/getting-started/overview",
               {
@@ -1331,7 +1334,7 @@
           },
           {
             "item": "API",
-            "icon": "book-open-lines",
+            "icon": "book-open",
             "pages": [
               "api-reference/overview/introduction",
               {
@@ -4514,7 +4517,7 @@
           },
           {
             "item": "SDKs",
-            "icon": "cubes",
+            "icon": "boxes",
             "pages": [
               "sdks/overview",
               {

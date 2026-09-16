@@ -27,7 +27,7 @@ export const SERVICE_STEPS: StepMeta[] = [
     subtitle: "What this service is called, the hosts it covers, and the requests it allows.",
     rightLabel: "DETAILS",
     rightDescription:
-      "The credentials are only used for the hosts you list here. Every path is allowed unless you name the ones you want."
+      "The proxy only attaches the credential to requests that reach the hosts you list here. Every path is allowed unless you name the ones you want."
   },
   {
     step: ServiceStep.Credential,
@@ -36,7 +36,7 @@ export const SERVICE_STEPS: StepMeta[] = [
     title: "Credential",
     subtitle: "How requests to this service are authenticated.",
     rightLabel: "CREDENTIAL",
-    rightDescription: "Agents reach this service without ever holding the credentials themselves."
+    rightDescription: "Agents reach this service without ever holding the credential themselves."
   },
   {
     step: ServiceStep.Transformations,

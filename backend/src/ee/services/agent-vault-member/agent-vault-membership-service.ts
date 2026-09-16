@@ -332,7 +332,7 @@ export const agentVaultMembershipServiceFactory = ({
     if (dto.userId) return { column: "actorUserId" as const, id: dto.userId, label: "User" };
     if (dto.groupId) return { column: "actorGroupId" as const, id: dto.groupId, label: "Group" };
     if (dto.identityId) return { column: "actorIdentityId" as const, id: dto.identityId, label: "Machine identity" };
-    throw new BadRequestError({ message: "Name exactly one user, group or machine identity" });
+    throw new BadRequestError({ message: "Name exactly one user, group, or machine identity" });
   };
 
   const assertValidRole = (role: string) => {
@@ -362,7 +362,7 @@ export const agentVaultMembershipServiceFactory = ({
       // org check below passes for it. Only Agent Vault's own identities and unscoped org ones belong here.
       if (identity.projectId && identity.projectId !== projectId) {
         throw new BadRequestError({
-          message: `Machine identity with ID '${dto.identityId}' belongs to another project and cannot be given Agent Vault access`
+          message: `Machine identity with ID '${dto.identityId}' belongs to another project and cannot be given access to Agent Vault`
         });
       }
     }

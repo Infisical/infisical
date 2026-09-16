@@ -29,7 +29,7 @@ export const DetailsFields = () => {
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
               <Input {...field} placeholder="datadog-us5" isError={Boolean(fieldState.error)} />
-              <FieldDescription>Lowercase letters, numbers and hyphens.</FieldDescription>
+              <FieldDescription>Use lowercase letters, numbers, and hyphens.</FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
           </Field>
