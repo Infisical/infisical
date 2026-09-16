@@ -4,7 +4,7 @@ import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from
 import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Button,
   Card,

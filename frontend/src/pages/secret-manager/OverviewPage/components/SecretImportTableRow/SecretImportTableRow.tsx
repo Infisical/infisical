@@ -4,9 +4,8 @@ import { useDragOperation } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import {
   BanIcon,
-  ChevronDownIcon,
+  ChevronRightIcon,
   FolderIcon,
-  GripVerticalIcon,
   ImportIcon,
   InfoIcon,
   LayersIcon,
@@ -51,6 +50,16 @@ import { SecretV3RawSanitized } from "@app/hooks/api/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import { useRowHoverActions } from "../rowHoverActions";
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
+  TABLE_ROW_EXPAND_ICON_CLASS_NAME,
+  TABLE_ROW_EXPAND_ICON_TRANSITION_CLASS_NAME,
+  TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_RESOURCE_ICON_CLASS_NAME
+} from "../tableRowActionStyles";
 import { SecretImportSecretRow } from "./SecretImportSecretRow";
 
 type ImportedSecretData = {
@@ -277,6 +286,59 @@ export const SecretImportTableRow = ({
     setIsExpanded.toggle();
   };
 
+  const renderLeadingIcon = () => {
+    if (isSingleEnvView) {
+      return (
+        <>
+          <button
+            type="button"
+            ref={handleRef}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} secret import ${importPath}`}
+            aria-expanded={isExpanded}
+            className={twMerge(
+              "absolute inset-0 flex cursor-grab items-center justify-center text-muted transition-opacity duration-75 motion-reduce:transition-none",
+              isExpanded
+                ? "opacity-100"
+                : "opacity-100 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:pointer-events-auto [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"
+            )}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleRowClick();
+            }}
+          >
+            <ChevronRightIcon
+              className={twMerge(
+                "size-4",
+                TABLE_ROW_EXPAND_ICON_TRANSITION_CLASS_NAME,
+                isExpanded && TABLE_ROW_EXPANDED_ICON_CLASS_NAME
+              )}
+            />
+          </button>
+          {!isExpanded && (
+            <ImportIcon className={twMerge("text-import", TABLE_ROW_RESOURCE_ICON_CLASS_NAME)} />
+          )}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <ImportIcon
+          className={twMerge(
+            "text-import",
+            !isExpanded && TABLE_ROW_RESOURCE_ICON_CLASS_NAME,
+            isExpanded && "hidden"
+          )}
+        />
+        <ChevronRightIcon
+          className={
+            isExpanded ? TABLE_ROW_EXPANDED_ICON_CLASS_NAME : TABLE_ROW_EXPAND_ICON_CLASS_NAME
+          }
+        />
+      </>
+    );
+  };
+
   const renderReplicationStatus = (importItem: TSecretImport, envSlug: string) => {
     return (
       <>
@@ -341,11 +403,13 @@ export const SecretImportTableRow = ({
               <Tooltip>
                 <TooltipTrigger>
                   <IconButton
+                    aria-label="Resync secret import"
                     variant="ghost"
                     size="xs"
                     className={twMerge(
-                      "w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7",
-                      resyncSecretReplication.isPending && "w-7 animate-spin"
+                      TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+                      resyncSecretReplication.isPending &&
+                        `${TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME} animate-spin`
                     )}
                     isDisabled={!isAllowed}
                     onClick={(e) => {
@@ -372,9 +436,8 @@ export const SecretImportTableRow = ({
       <div
         className={twMerge(
           "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-          "pointer-events-none opacity-0 transition-all duration-300",
-          "group-focus-within:pointer-events-auto group-focus-within:gap-1 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
-          resyncSecretReplication.isPending && "pointer-events-auto gap-1 opacity-100"
+          TABLE_ROW_ACTION_BAR_CLASS_NAME,
+          resyncSecretReplication.isPending && TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME
         )}
       >
         {singleEnvImport.isReplication && (
@@ -391,11 +454,13 @@ export const SecretImportTableRow = ({
               <Tooltip>
                 <TooltipTrigger>
                   <IconButton
+                    aria-label="Resync secret import"
                     variant="ghost"
                     size="xs"
                     className={twMerge(
-                      "w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7",
-                      resyncSecretReplication.isPending && "w-7 animate-spin"
+                      TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+                      resyncSecretReplication.isPending &&
+                        `${TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME} animate-spin`
                     )}
                     isDisabled={!isAllowed}
                     onClick={(e) => {
@@ -424,9 +489,10 @@ export const SecretImportTableRow = ({
             <Tooltip>
               <TooltipTrigger>
                 <IconButton
+                  aria-label="Delete secret import"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-focus-within:w-7 group-hover:w-7 hover:text-danger"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                   isDisabled={!isAllowed}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -685,29 +751,16 @@ export const SecretImportTableRow = ({
       >
         <TableCell
           className={twMerge(
+            "w-10 max-w-10 min-w-10 p-0",
             !isSingleEnvView && "sticky left-0 z-10",
             "bg-container transition-colors duration-75 group-hover:bg-container-hover",
             !isSingleEnvView && isExpanded && "border-b-0 bg-container-hover",
             isSingleEnvView && "relative"
           )}
         >
-          {/* eslint-disable-next-line no-nested-ternary */}
-          {isSingleEnvView ? (
-            <>
-              <button
-                type="button"
-                ref={handleRef}
-                className="absolute inset-0 flex cursor-grab items-center justify-center text-muted opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
-              >
-                <GripVerticalIcon className="size-4" />
-              </button>
-              <ImportIcon className="text-import group-focus-within:invisible group-hover:invisible" />
-            </>
-          ) : isExpanded ? (
-            <ChevronDownIcon />
-          ) : (
-            <ImportIcon className="text-import" />
-          )}
+          <div className="flex h-full items-center justify-center [&>svg]:size-4">
+            {renderLeadingIcon()}
+          </div>
         </TableCell>
         <TableCell
           className={twMerge(
@@ -737,7 +790,7 @@ export const SecretImportTableRow = ({
                 className={twMerge(
                   "ml-auto flex items-center",
                   isSingleEnvView &&
-                    "transition-[margin] duration-300 group-focus-within:mr-16 group-hover:mr-16"
+                    "mr-16 transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
                 )}
               >
                 <Badge variant="danger">
@@ -749,7 +802,7 @@ export const SecretImportTableRow = ({
             {isSingleEnvView &&
               singleEnvImport?.isReplication &&
               singleEnvImport.lastReplicated && (
-                <div className="ml-auto flex items-center transition-[margin] duration-300 group-focus-within:mr-16 group-hover:mr-16">
+                <div className="mr-16 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16">
                   <Tooltip disableHoverableContent>
                     <TooltipTrigger>
                       <div
@@ -839,7 +892,7 @@ export const SecretImportTableRow = ({
             <TableCell colSpan={totalCols} className="bg-card p-0">
               <div
                 style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 flex flex-col gap-y-4 border-t-2 border-b-1 border-l-1 border-border border-x-project/50 bg-card p-4"
+                className="sticky left-0 flex flex-col gap-y-4 bg-card p-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm text-muted">Imported in:</span>

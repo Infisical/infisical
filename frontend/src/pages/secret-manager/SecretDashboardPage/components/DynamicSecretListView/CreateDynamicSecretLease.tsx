@@ -560,8 +560,8 @@ export const CreateSshDynamicSecretLease = ({
               <Input
                 id="ssh-lease-principal"
                 value={principalInput}
-                aria-describedby="ssh-lease-principals-feedback"
                 isError={Boolean(error)}
+                aria-describedby="ssh-lease-principals-feedback"
                 onChange={(event) => setPrincipalInput(event.target.value)}
                 placeholder="Enter principal name..."
                 onKeyDown={(event) => {
