@@ -379,7 +379,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_CERTIFICATE_PROFILE]: "Delete Certificate Profile",
   [EventType.GET_CERTIFICATE_PROFILE]: "Get Certificate Profile",
   [EventType.LIST_CERTIFICATE_PROFILES]: "List Certificate Profiles",
-  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Request Certificate From Profile",
+  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Issue Certificate From Profile",
   [EventType.SIGN_CERTIFICATE_FROM_PROFILE]: "Sign Certificate From Profile",
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:

@@ -104,6 +104,7 @@ import {
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -183,6 +184,7 @@ type TCertificateV3ServiceFactoryDep = {
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageCounterDAL: Pick<
@@ -348,6 +350,7 @@ export const certificateV3ServiceFactory = ({
   resourceMetadataDAL,
   pkiAlertV2Queue,
   pkiApplicationProfileDAL,
+  pkiApplicationDAL,
   apiEnrollmentConfigDAL,
   licenseService,
   usageCounterDAL,
@@ -532,6 +535,12 @@ export const certificateV3ServiceFactory = ({
     return actor === ActorType.IDENTITY && policy?.bypassForMachineIdentities === true;
   };
 
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const issueCertificateFromProfile = async ({
     profileId,
     certificateRequest,
@@ -563,6 +572,7 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       EnrollmentType.API
     );
+    const applicationName = await $resolveApplicationName(applicationId);
 
     const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
     const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
@@ -749,7 +759,9 @@ export const certificateV3ServiceFactory = ({
         message: "Certificate request requires approval",
         projectId: profile.projectId,
         profileName: profile.slug,
-        commonName: certificateRequest.commonName
+        commonName: certificateRequest.commonName,
+        applicationId,
+        applicationName
       };
     }
 
@@ -997,7 +1009,9 @@ export const certificateV3ServiceFactory = ({
         certificateRequestId,
         projectId: profile.projectId,
         profileName: profile.slug,
-        commonName: subjectCommonName
+        commonName: subjectCommonName,
+        applicationId,
+        applicationName
       };
     }
 
@@ -1240,7 +1254,9 @@ export const certificateV3ServiceFactory = ({
       certificateRequestId,
       projectId: profile.projectId,
       profileName: profile.slug,
-      commonName: cert.commonName || ""
+      commonName: cert.commonName || "",
+      applicationId,
+      applicationName
     };
   };
 
@@ -1280,6 +1296,7 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       enrollmentType
     );
+    const applicationName = await $resolveApplicationName(applicationId);
 
     if (!profile.caId) {
       throw new BadRequestError({
@@ -1510,7 +1527,9 @@ export const certificateV3ServiceFactory = ({
         message: "Certificate signing request requires approval",
         projectId: profile.projectId,
         profileName: profile.slug,
-        commonName: mappedCertificateRequest.commonName
+        commonName: mappedCertificateRequest.commonName,
+        applicationId,
+        applicationName
       };
     }
 
@@ -1714,7 +1733,9 @@ export const certificateV3ServiceFactory = ({
       certificateRequestId: pendingRequest.id,
       projectId: profile.projectId,
       profileName: profile.slug,
-      commonName: certResult.commonName || ""
+      commonName: certResult.commonName || "",
+      applicationId,
+      applicationName
     };
   };
 
@@ -1747,6 +1768,7 @@ export const certificateV3ServiceFactory = ({
       { actor, actorId, actorAuthMethod, actorOrgId },
       EnrollmentType.API
     );
+    const applicationName = await $resolveApplicationName(applicationId);
 
     let certificateRequest: TCertificateRequest;
     let extractedKeyAlgorithm: string | undefined;
@@ -2016,7 +2038,9 @@ export const certificateV3ServiceFactory = ({
         message: "Certificate order request requires approval",
         projectId: profile.projectId,
         profileName: profile.slug,
-        commonName: certificateOrder.commonName
+        commonName: certificateOrder.commonName,
+        applicationId,
+        applicationName
       };
     }
 
@@ -2145,7 +2169,9 @@ export const certificateV3ServiceFactory = ({
         status: CertificateRequestStatus.PENDING,
         certificateRequestId: certRequest.id,
         projectId: certRequest.projectId,
-        profileName: profile.slug
+        profileName: profile.slug,
+        applicationId,
+        applicationName
       };
     }
 
@@ -2206,7 +2232,15 @@ export const certificateV3ServiceFactory = ({
       }
     }
 
-    return { metadata: updatedMetadata, projectId: certificate.projectId, commonName: certificate.commonName };
+    return {
+      metadata: updatedMetadata,
+      projectId: certificate.projectId,
+      commonName: certificate.commonName,
+      applicationId: certificate.applicationId ?? null,
+      applicationName: certificate.applicationId
+        ? ((await pkiApplicationDAL.findById(certificate.applicationId))?.name ?? null)
+        : null
+    };
   };
 
   const renewalService = certificateRenewalServiceFactory({
@@ -2229,6 +2263,7 @@ export const certificateV3ServiceFactory = ({
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
+    pkiApplicationDAL,
     apiEnrollmentConfigDAL,
     licenseService,
     quotaDeps: $quotaDeps,

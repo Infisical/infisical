@@ -145,7 +145,8 @@ export const registerSyncPkiEndpoints = ({
           metadata: {
             syncId: pkiSyncId,
             destination,
-            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName })
           }
         }
       });
@@ -200,7 +201,8 @@ export const registerSyncPkiEndpoints = ({
             hasPostSyncCommand: Boolean(req.body.syncOptions?.postSyncCommand),
             hasHealthCheckCommand: Boolean(req.body.syncOptions?.healthCheckCommand),
             hasFilters: Boolean(req.body.filters),
-            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName })
           }
         }
       });
@@ -260,6 +262,7 @@ export const registerSyncPkiEndpoints = ({
             pkiSyncId,
             name: pkiSync.name,
             ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName }),
             destination: pkiSync.destination,
             connectionId: pkiSync.connectionId,
             connectionName: pkiSync.appConnectionName,
@@ -320,7 +323,8 @@ export const registerSyncPkiEndpoints = ({
             pkiSyncId,
             name: pkiSync.name,
             destination: pkiSync.destination,
-            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName })
           }
         }
       });

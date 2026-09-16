@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   ButtonBadge,
@@ -44,12 +45,12 @@ export default function InitialSignupStep({
   const { t } = useTranslation();
   const { config } = useServerConfig();
   const { mutateAsync, isPending } = useSendVerificationEmail();
+  const requiresCaptcha = Boolean(envConfig.CAPTCHA_SITE_KEY);
   const [emailError, setEmailError] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
+  const [isCaptchaReady, setIsCaptchaReady] = useState(!requiresCaptcha);
+  const [isCaptchaPending, setIsCaptchaPending] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
   const isEmailValid = z.string().email().safeParse(email).success;
-
-  const requiresCaptcha = Boolean(envConfig.CAPTCHA_SITE_KEY);
 
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
@@ -76,17 +77,37 @@ export default function InitialSignupStep({
       return;
     }
 
+    let captchaToken: string | undefined;
+
+    if (requiresCaptcha) {
+      setIsCaptchaPending(true);
+      try {
+        captchaToken = (await captchaRef.current?.execute({ async: true }))?.response;
+        if (!captchaToken) {
+          throw new Error("hCaptcha did not return a token");
+        }
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Captcha verification failed. Please try again."
+        });
+        captchaRef.current?.resetCaptcha();
+        return;
+      } finally {
+        setIsCaptchaPending(false);
+      }
+    }
+
     try {
       const { cooldownSeconds } = await mutateAsync({
         email: normalizedEmail,
-        captchaToken: requiresCaptcha ? captchaToken : undefined
+        captchaToken
       });
       incrementStep(normalizedEmail, cooldownSeconds);
     } finally {
       // hCaptcha tokens are single-use, so a retry with a stale one is rejected server-side.
       if (requiresCaptcha) {
         captchaRef.current?.resetCaptcha();
-        setCaptchaToken("");
       }
     }
   };
@@ -173,15 +194,13 @@ export default function InitialSignupStep({
                 isError={emailError}
               />
               {envConfig.CAPTCHA_SITE_KEY && (
-                <div className="flex justify-center [&>div]:!w-full">
-                  <HCaptcha
-                    theme="dark"
-                    sitekey={envConfig.CAPTCHA_SITE_KEY}
-                    onVerify={(token) => setCaptchaToken(token)}
-                    onExpire={() => setCaptchaToken("")}
-                    ref={captchaRef}
-                  />
-                </div>
+                <HCaptcha
+                  size="invisible"
+                  theme="dark"
+                  sitekey={envConfig.CAPTCHA_SITE_KEY}
+                  onLoad={() => setIsCaptchaReady(true)}
+                  ref={captchaRef}
+                />
               )}
               <Button
                 type="submit"
@@ -189,8 +208,8 @@ export default function InitialSignupStep({
                 variant="project"
                 size="lg"
                 isFullWidth
-                isDisabled={!isEmailValid || isPending || (requiresCaptcha && !captchaToken)}
-                isPending={isPending}
+                isDisabled={!isEmailValid || isPending || isCaptchaPending || !isCaptchaReady}
+                isPending={isPending || isCaptchaPending}
               >
                 Continue with Email
               </Button>

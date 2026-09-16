@@ -55,6 +55,7 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
           type: EventType.SET_PKI_APPLICATION_EST_ENROLLMENT,
           metadata: {
             applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
             profileId: req.params.profileId,
             disableBootstrapCaValidation: result.est.disableBootstrapCaValidation
           }
@@ -105,7 +106,11 @@ export const registerPkiApplicationEstEnrollmentRouter = async (server: FastifyZ
         projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CLEAR_PKI_APPLICATION_EST_ENROLLMENT,
-          metadata: { applicationId: req.params.applicationId, profileId: req.params.profileId }
+          metadata: {
+            applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
+            profileId: req.params.profileId
+          }
         }
       });
       await server.services.telemetry.sendPostHogEvents({
