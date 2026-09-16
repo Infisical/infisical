@@ -22,3 +22,4 @@ export const analytics = {
 };
 
 export { AnalyticsEvent };
+export type { FolderAccessGrantSheetSource } from "./events";
