@@ -469,6 +469,14 @@ const envSchema = z
       .describe(
         "CPU thread ceiling for scanning child processes, applied as GOMAXPROCS to the Go scanner and pack.threads to git clone. Both otherwise use every core on the host, so one full scan can saturate the instance. Set to 0 to remove the cap."
       ),
+    SECRET_SCANNING_COMMIT_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(1000)
+      .describe(
+        "Commits scanned per `infisical scan` invocation during a full scan. Each batch's findings and resume point are persisted before the next one starts, so a worker killed mid-scan resumes rather than restarting. Set to 0 to scan the whole history in a single invocation."
+      ),
     SECRET_SCANNING_MAX_REPO_SIZE_MB: z.coerce
       .number()
       .int()

@@ -155,10 +155,101 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
   });
 };
 
-export async function scanDirectory(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
+/**
+ * Commits are enumerated oldest-first and scanned in slices of that order, because that is the only
+ * ordering a resumed scan can trust: new commits land at the end, so an index into it still means
+ * the same commit on the next run, where a newest-first index shifts under every push.
+ *
+ * `git log` itself only walks newest-first, so a slice is expressed as a skip/count against that
+ * order. Both halves must enumerate with identical flags for the two orderings to correspond.
+ */
+const COMMIT_LIST_ARGS = ["rev-list", "--full-history", "--all"];
+
+// Enumeration is a traversal with no patch generation, so it is bounded separately from the scan
+// rather than spending any of the customer-tunable scan budget.
+const COMMIT_ENUMERATION_TIMEOUT = 5 * 60 * 1000;
+
+export type TCommitBatch = {
+  /** Commits to skip in `git log`'s newest-first order before this batch begins. */
+  skip: number;
+  maxCount: number;
+  /** The batch's newest commit, recorded as the scan's resume point once the batch completes. */
+  lastCommit: string;
+};
+
+const buildCommitBatchLogOpts = ({ skip, maxCount }: TCommitBatch) =>
+  `${COMMIT_LIST_ARGS.slice(1).join(" ")} --skip=${skip} --max-count=${maxCount}`;
+
+/**
+ * Batches are aligned on absolute position in the oldest-first ordering rather than on wherever the
+ * previous run stopped, so a resumed scan lands on the same boundaries as an uninterrupted one even
+ * if the batch size changed between runs. Overlap that alignment causes is harmless: findings are
+ * upserted on their fingerprint, so rescanning a commit rewrites the same row.
+ */
+export const planCommitBatches = async ({
+  repoPath,
+  batchSize,
+  resumeAfterCommit
+}: {
+  repoPath: string;
+  batchSize: number;
+  resumeAfterCommit?: string | null;
+}): Promise<{ totalCommits: number; batches: TCommitBatch[]; resumed: boolean }> => {
+  const boundaries: { index: number; commit: string }[] = [];
+  let totalCommits = 0;
+  let resumeIndex = -1;
+  let newestCommit = "";
+
+  // A repository with hundreds of thousands of commits emits more than the exec layer will buffer,
+  // and nothing here needs the full list: only the batch edges and the resume point are retained.
+  await execFileBounded("git", [...COMMIT_LIST_ARGS, "--reverse"], {
+    phase: SecretScanningExecPhase.Enumerate,
+    cwd: repoPath,
+    timeoutMs: COMMIT_ENUMERATION_TIMEOUT,
+    env: GIT_PROCESS_ENV,
+    onStdoutLine: (line) => {
+      const commit = line.trim();
+      if (!commit) return;
+
+      const index = totalCommits;
+      totalCommits += 1;
+      newestCommit = commit;
+
+      if (commit === resumeAfterCommit) resumeIndex = index;
+      if ((index + 1) % batchSize === 0) boundaries.push({ index, commit });
+    }
+  });
+
+  const lastIndex = totalCommits - 1;
+  if (totalCommits && boundaries[boundaries.length - 1]?.index !== lastIndex) {
+    boundaries.push({ index: lastIndex, commit: newestCommit });
+  }
+
+  const batches = boundaries
+    .map(({ index, commit }, position) => ({
+      index,
+      skip: totalCommits - 1 - index,
+      maxCount: index - position * batchSize + 1,
+      lastCommit: commit
+    }))
+    .filter(({ index }) => index > resumeIndex)
+    .map(({ skip, maxCount, lastCommit }) => ({ skip, maxCount, lastCommit }));
+
+  return { totalCommits, batches, resumed: resumeIndex >= 0 };
+};
+
+export async function scanDirectory(
+  inputPath: string,
+  outputPath: string,
+  configPath?: string,
+  logOpts?: string
+): Promise<void> {
   const args = ["scan", "--exit-code=77", "-r", outputPath];
   if (configPath) {
     args.push("-c", configPath);
+  }
+  if (logOpts) {
+    args.push(`--log-opts=${logOpts}`);
   }
 
   await execFileBounded("infisical", args, {
@@ -195,9 +286,11 @@ export async function scanFile(inputPath: string, configPath?: string): Promise<
 export const scanGitRepositoryAndGetFindings = async (
   scanPath: string,
   findingsPath: string,
-  configPath?: string
+  configPath?: string,
+  batch?: TCommitBatch
 ): TGetFindingsPayload => {
-  await scanDirectory(scanPath, findingsPath, configPath);
+  const logOpts = batch ? buildCommitBatchLogOpts(batch) : undefined;
+  await scanDirectory(scanPath, findingsPath, configPath, logOpts);
 
   const findingsData = JSON.parse(await readFindingsFile(findingsPath)) as SecretMatch[];
 

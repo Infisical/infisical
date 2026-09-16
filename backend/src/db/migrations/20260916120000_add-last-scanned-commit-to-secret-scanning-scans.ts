@@ -4,20 +4,24 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const hasLastScannedCommit = await knex.schema.hasColumn(TableName.SecretScanningScan, "lastScannedCommit");
+  const hasProgressUpdatedAt = await knex.schema.hasColumn(TableName.SecretScanningScan, "progressUpdatedAt");
 
-  if (!hasLastScannedCommit) {
+  if (!hasLastScannedCommit || !hasProgressUpdatedAt) {
     await knex.schema.alterTable(TableName.SecretScanningScan, (t) => {
-      t.string("lastScannedCommit").nullable();
+      if (!hasLastScannedCommit) t.string("lastScannedCommit").nullable();
+      if (!hasProgressUpdatedAt) t.timestamp("progressUpdatedAt").nullable();
     });
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
   const hasLastScannedCommit = await knex.schema.hasColumn(TableName.SecretScanningScan, "lastScannedCommit");
+  const hasProgressUpdatedAt = await knex.schema.hasColumn(TableName.SecretScanningScan, "progressUpdatedAt");
 
-  if (hasLastScannedCommit) {
+  if (hasLastScannedCommit || hasProgressUpdatedAt) {
     await knex.schema.alterTable(TableName.SecretScanningScan, (t) => {
-      t.dropColumn("lastScannedCommit");
+      if (hasLastScannedCommit) t.dropColumn("lastScannedCommit");
+      if (hasProgressUpdatedAt) t.dropColumn("progressUpdatedAt");
     });
   }
 }

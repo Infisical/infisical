@@ -437,17 +437,17 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     try {
       const scans = await (tx || db)(TableName.SecretScanningScan)
         .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Scanning)
-        .where((qb) => {
-          void qb
-            .where(`${TableName.SecretScanningScan}.scanningStartedAt`, "<", startedBefore)
-            // Rows written before `scanningStartedAt` existed, or by a pod still running an older
-            // image mid-deploy, fall back to their creation time so they're reaped too.
-            .orWhere((nullStartedAt) => {
-              void nullStartedAt
-                .whereNull(`${TableName.SecretScanningScan}.scanningStartedAt`)
-                .andWhere(`${TableName.SecretScanningScan}.createdAt`, "<", startedBefore);
-            });
-        })
+        // A batched full scan outlives any single scan timeout, so what is being measured is time
+        // since the scan last made progress, not time since it started. `progressUpdatedAt` is
+        // stamped as each commit batch is persisted; rows written before it existed, or by a pod
+        // still running an older image mid-deploy, fall back to the start and then the creation
+        // time so they're reaped too.
+        .whereRaw(`COALESCE(??, ??, ??) < ?`, [
+          `${TableName.SecretScanningScan}.progressUpdatedAt`,
+          `${TableName.SecretScanningScan}.scanningStartedAt`,
+          `${TableName.SecretScanningScan}.createdAt`,
+          startedBefore
+        ])
         .join(
           TableName.SecretScanningResource,
           `${TableName.SecretScanningResource}.id`,
