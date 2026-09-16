@@ -328,7 +328,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
         <Warning>
           A gateway can't review its own token. The proxy runs over the gateway's own tunnel, which only exists once it has already authenticated, so the reviewer must be a different gateway that is already enrolled and connected.
 
-          This means the **first** gateway in a private cluster can't use Kubernetes auth. Enrol it with an enrollment token, AWS auth or GCP auth, then point later gateways at it. Deleting a gateway that other gateways use as their reviewer is refused until they're pointed elsewhere.
+          This means the **first** gateway in a private cluster can't use Kubernetes auth. Enroll it with an enrollment token, AWS auth or GCP auth, then point later gateways at it. Deleting a gateway that other gateways use as their reviewer is refused until they're pointed elsewhere.
         </Warning>
 
         <Tabs>
