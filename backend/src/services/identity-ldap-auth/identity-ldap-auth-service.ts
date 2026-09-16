@@ -687,6 +687,13 @@ export const identityLdapAuthServiceFactory = ({
       };
     }
 
+    if (!template && config.url && config.url !== identityLdapAuth.url && !config.bindPass) {
+      throw new BadRequestError({
+        message:
+          "Changing the LDAP URL requires supplying bindPass, because the stored bind password cannot be read back. Send the bind password for the new server with this change."
+      });
+    }
+
     let encryptedBindPass: Buffer | undefined;
     if (config.bindPass) {
       const { cipherTextBlob: bindPassCiphertext } = encryptor({
