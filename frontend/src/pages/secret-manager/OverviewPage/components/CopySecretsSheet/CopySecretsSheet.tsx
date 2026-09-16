@@ -51,7 +51,7 @@ import {
 } from "@app/hooks/api/secretFolders/queries";
 import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
-import { getCopySecretsErrorKind } from "./copySecrets.data";
+import { type CopySecretsErrorKind, getCopySecretsErrorKind } from "./copySecrets.data";
 import type {
   CopySecretsAttributes,
   CopySecretsEnvironment,
@@ -89,6 +89,19 @@ type Props = {
 
 const DOCUMENTATION_URL =
   "https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents";
+
+const CopySecretsAccessError = ({ kind }: { kind: Exclude<CopySecretsErrorKind, "unknown"> }) => (
+  <Alert variant="danger" className="h-full content-center">
+    <AlertTitle>
+      {kind === "unauthorized" ? "Organization access required" : "Access denied"}
+    </AlertTitle>
+    <AlertDescription>
+      {kind === "unauthorized"
+        ? "Your session doesn't include access to this organization. Sign in again or switch organizations."
+        : "You don't have permission to view secrets at this location."}
+    </AlertDescription>
+  </Alert>
+);
 
 const CopySecretsSession = ({
   projectId,
@@ -470,25 +483,8 @@ const CopySecretsSession = ({
         ))}
       </div>
     );
-  } else if (sourceErrorKind === "unauthorized") {
-    sourceContent = (
-      <Alert variant="danger" className="h-full content-center">
-        <AlertTitle>Organization access required</AlertTitle>
-        <AlertDescription>
-          Your session doesn&apos;t include access to this organization. Sign in again or switch
-          organizations.
-        </AlertDescription>
-      </Alert>
-    );
-  } else if (sourceErrorKind === "forbidden") {
-    sourceContent = (
-      <Alert variant="danger" className="h-full content-center">
-        <AlertTitle>Access denied</AlertTitle>
-        <AlertDescription>
-          You don&apos;t have permission to view secrets at this location.
-        </AlertDescription>
-      </Alert>
-    );
+  } else if (sourceErrorKind === "unauthorized" || sourceErrorKind === "forbidden") {
+    sourceContent = <CopySecretsAccessError kind={sourceErrorKind} />;
   } else if (sourceErrorKind) {
     sourceContent = (
       <Alert variant="danger" className="h-full content-center">
@@ -545,25 +541,8 @@ const CopySecretsSession = ({
         ))}
       </div>
     );
-  } else if (destinationErrorKind === "unauthorized") {
-    destinationContent = (
-      <Alert variant="danger" className="h-full content-center">
-        <AlertTitle>Organization access required</AlertTitle>
-        <AlertDescription>
-          Your session doesn&apos;t include access to this organization. Sign in again or switch
-          organizations.
-        </AlertDescription>
-      </Alert>
-    );
-  } else if (destinationErrorKind === "forbidden") {
-    destinationContent = (
-      <Alert variant="danger" className="h-full content-center">
-        <AlertTitle>Access denied</AlertTitle>
-        <AlertDescription>
-          You don&apos;t have permission to view secrets at this location.
-        </AlertDescription>
-      </Alert>
-    );
+  } else if (destinationErrorKind === "unauthorized" || destinationErrorKind === "forbidden") {
+    destinationContent = <CopySecretsAccessError kind={destinationErrorKind} />;
   } else if (destinationErrorKind) {
     destinationContent = (
       <Alert variant="warning" className="h-full content-center">
