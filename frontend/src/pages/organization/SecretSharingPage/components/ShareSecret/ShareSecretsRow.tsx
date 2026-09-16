@@ -1,6 +1,7 @@
 import { format } from "date-fns";
-import { ClockAlertIcon, ClockIcon, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
+import { ClockAlertIcon, ClockIcon, Copy, Ellipsis, Mail, MailOpen, Trash2 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   DropdownMenu,
@@ -16,6 +17,18 @@ import {
 } from "@app/components/v3";
 import { TSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+const getStatusLabel = ({
+  isTimeExpired,
+  isViewsExhausted
+}: {
+  isTimeExpired: boolean;
+  isViewsExhausted: boolean;
+}) => {
+  if (isViewsExhausted) return "Views Used";
+  if (isTimeExpired) return "Expired";
+  return "Active";
+};
 
 export const ShareSecretsRow = ({
   row,
@@ -37,14 +50,9 @@ export const ShareSecretsRow = ({
     ? format(new Date(row.lastViewedAt), "MMM d, yyyy h:mm a")
     : undefined;
 
-  let isExpired = false;
-  if (row.expiresAfterViews !== null && row.expiresAfterViews <= 0) {
-    isExpired = true;
-  }
-
-  if (row.expiresAt !== null && new Date(row.expiresAt) < new Date()) {
-    isExpired = true;
-  }
+  const isViewsExhausted = row.expiresAfterViews !== null && row.expiresAfterViews <= 0;
+  const isTimeExpired = row.expiresAt !== null && new Date(row.expiresAt) < new Date();
+  const isExpired = isViewsExhausted || isTimeExpired;
 
   return (
     <TableRow key={row.id}>
@@ -52,9 +60,13 @@ export const ShareSecretsRow = ({
         <Tooltip>
           <TooltipTrigger asChild>
             {lastViewedAt ? (
-              <MailOpen className="size-4 text-accent" />
+              <span className="flex size-7 items-center justify-center rounded-md border border-info/10 bg-info/10">
+                <MailOpen className="size-4 text-info" />
+              </span>
             ) : (
-              <Mail className="size-4 text-accent" />
+              <span className="flex size-7 items-center justify-center rounded-md border border-border bg-container">
+                <Mail className="size-4 text-muted opacity-70" />
+              </span>
             )}
           </TooltipTrigger>
           <TooltipContent>
@@ -62,7 +74,7 @@ export const ShareSecretsRow = ({
           </TooltipContent>
         </Tooltip>
       </TableCell>
-      <TableCell>{row.name || <span className="text-muted">&mdash;</span>}</TableCell>
+      <TableCell>{row.name || <span className="text-muted">Unnamed secret</span>}</TableCell>
 
       <TableCell>{format(new Date(row.createdAt), "MMM d, yyyy h:mm a")}</TableCell>
       <TableCell>{format(new Date(row.expiresAt), "MMM d, yyyy h:mm a")}</TableCell>
@@ -70,28 +82,55 @@ export const ShareSecretsRow = ({
         {row.expiresAfterViews !== null ? (
           row.expiresAfterViews
         ) : (
-          <span className="text-muted">&mdash;</span>
+          <span className="text-muted">Unlimited</span>
         )}
       </TableCell>
       <TableCell>
         <Badge variant={isExpired ? "danger" : "success"}>
           {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-          {isExpired ? "Expired" : "Active"}
+          {getStatusLabel({ isTimeExpired, isViewsExhausted })}
         </Badge>
       </TableCell>
       <TableCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton variant="ghost" size="xs" aria-label="actions">
+            <IconButton
+              variant="ghost"
+              size="xs"
+              aria-label={`Actions for ${row.name || "shared secret"}`}
+            >
               <Ellipsis className="size-4" />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {!isExpired && (
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(
+                      `${window.location.origin}/shared/secret/${row.id}`
+                    );
+                    createNotification({
+                      text: "Shared secret link copied to clipboard.",
+                      type: "success"
+                    });
+                  } catch {
+                    createNotification({
+                      text: "Could not copy the link. Your browser blocked clipboard access.",
+                      type: "error"
+                    });
+                  }
+                }}
+              >
+                <Copy />
+                Copy Link
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               variant="danger"
               onClick={() =>
                 handlePopUpOpen("deleteSharedSecretConfirmation", {
-                  name: "delete",
+                  name: row.name || "this secret",
                   id: row.id
                 })
               }
