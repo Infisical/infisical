@@ -163,8 +163,8 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
           <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
         </CardTitle>
         <CardDescription>
-          A service names one API the agent may reach, the hosts it answers on, and the credential
-          the proxy attaches.
+          A service defines one API the agent can reach, the hosts the API answers on, and the
+          credential the proxy attaches to matching requests.
         </CardDescription>
         {canManage && (
           <CardAction>
@@ -200,7 +200,7 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
               </EmptyTitle>
               <EmptyDescription>
                 {services.length === 0
-                  ? "Add a service to give this bundle a host and a credential."
+                  ? "Add services to give this bundle access to external hosts."
                   : "Try a different search term."}
               </EmptyDescription>
             </EmptyHeader>

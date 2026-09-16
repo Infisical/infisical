@@ -228,6 +228,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
         )}
       </CardContent>
       <UpgradePlanModal
+        paywallKey="cert-manager.signers"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="Code signing is available on Infisical's Enterprise plan."

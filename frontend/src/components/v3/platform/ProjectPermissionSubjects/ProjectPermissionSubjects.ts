@@ -211,6 +211,7 @@ export const PROJECT_PERMISSION_SUBJECT_PRESENTATION = {
   [ProjectPermissionSub.Certificates]: pki(FileKeyIcon),
   [ProjectPermissionSub.CertificateAuthorities]: pki(FileKeyIcon),
   [ProjectPermissionSub.CertificateTemplates]: pki(FileStackIcon),
+  [ProjectPermissionSub.Application]: pki(ServerIcon),
   [ProjectPermissionSub.CertificateProfiles]: pki(FileStackIcon),
   [ProjectPermissionSub.CertificatePolicies]: pki(ScaleIcon),
   [ProjectPermissionSub.CertificateInventoryViews]: pki(TableIcon),

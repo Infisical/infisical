@@ -4,8 +4,8 @@ import { format } from "date-fns";
 import { MoreHorizontal, Plus, Radar, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Button,
   Card,

@@ -863,6 +863,34 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findActiveEffectiveOrgMembershipsByUserId = async (userId: string, tx?: Knex): Promise<TMemberships[]> => {
+    try {
+      const conn = tx ?? db.replicaNode();
+
+      const userGroupIdsSubquery = conn(TableName.UserGroupMembership)
+        .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .select(db.ref("groupId").withSchema(TableName.UserGroupMembership));
+
+      const rows = await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.isActive`, true)
+        .where((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupIdsSubquery);
+        })
+        .where((qb) => {
+          void qb
+            .where(`${TableName.Membership}.status`, OrgMembershipStatus.Accepted)
+            .orWhereNull(`${TableName.Membership}.status`);
+        })
+        .select(selectAllTableCols(TableName.Membership));
+      return rows as TMemberships[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find active effective org memberships by user id" });
+    }
+  };
+
   /**
    * Returns the first effective org membership for an actor (user or identity): direct or via group.
    * Use for access checks and to get a single membership id/role. For all memberships use findEffectiveOrgMemberships.
@@ -1075,6 +1103,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findMembership,
     findEffectiveOrgMembership,
     findEffectiveOrgMemberships,
+    findActiveEffectiveOrgMembershipsByUserId,
     findMembershipWithScimFilter,
     createMembership,
     bulkCreateMemberships,
