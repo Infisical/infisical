@@ -22,6 +22,7 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
+import { toRequestCustomExtensions, TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
 import { mapEnumsForValidation } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { parseExtendedKeyUsages, parseKeyUsages } from "./certificate-v3-fns";
@@ -67,6 +68,7 @@ type TRenewalAuditSubject = Pick<
   | "pathLength"
   | "notBefore"
   | "notAfter"
+  | "customExtensions"
 >;
 
 const formatBasicConstraints = (isCA: boolean | null | undefined, pathLength: number | null | undefined) =>
@@ -81,6 +83,19 @@ type TRenewalAttributeDescriptor<K extends keyof TRenewalAttributes> = {
 };
 
 const text = (value: string | null | undefined) => value ?? "";
+
+const describeStoredCustomExtensions = (stored: unknown): TRequestCustomExtension[] => {
+  try {
+    return toRequestCustomExtensions(stored);
+  } catch {
+    return ((stored as { oid: string }[] | null) ?? []).map(({ oid }) => ({ oid, value: "" }));
+  }
+};
+
+const customExtensionList = (extensions: TRequestCustomExtension[] | null | undefined) =>
+  (extensions ?? [])
+    .map((extension) => `${extension.oid}=${extension.value ?? ""}${extension.critical ? " (critical)" : ""}`)
+    .join(",");
 const list = (values: readonly string[] | null | undefined) => (values ?? []).join(",");
 
 const RENEWAL_ATTRIBUTES: { [K in keyof TRenewalAttributes]-?: TRenewalAttributeDescriptor<K> } = {
@@ -169,6 +184,13 @@ const RENEWAL_ATTRIBUTES: { [K in keyof TRenewalAttributes]-?: TRenewalAttribute
     apply: (value) => ({ basicConstraints: value }),
     current: (original) => formatBasicConstraints(original.isCA, original.pathLength),
     issued: (request) => formatBasicConstraints(request.basicConstraints?.isCA, request.basicConstraints?.pathLength)
+  },
+  customExtensions: {
+    label: "custom extensions",
+    csrEditable: true,
+    apply: (value) => ({ customExtensions: value }),
+    current: (original) => customExtensionList(describeStoredCustomExtensions(original.customExtensions)),
+    issued: (request) => customExtensionList(request.customExtensions)
   }
 };
 
@@ -222,8 +244,11 @@ export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
     .map((key) => RENEWAL_ATTRIBUTES[key].label);
 
   if (rejected.length > 0) {
+    const settable = RENEWAL_ATTRIBUTE_KEYS.filter((key) => RENEWAL_ATTRIBUTES[key].csrEditable).map(
+      (key) => RENEWAL_ATTRIBUTES[key].label
+    );
     throw new BadRequestError({
-      message: `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only TTL and basic constraints can be set alongside a CSR.`
+      message: `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
     });
   }
 };

@@ -5,7 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowUpRight, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   AlertDialog,
   AlertDialogAction,

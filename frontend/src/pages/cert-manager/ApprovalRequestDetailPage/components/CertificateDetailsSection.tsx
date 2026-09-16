@@ -1,4 +1,11 @@
-import { faGlobe, faKey, faLock, faShieldHalved, faTags } from "@fortawesome/free-solid-svg-icons";
+import {
+  faGlobe,
+  faKey,
+  faLock,
+  faPuzzlePiece,
+  faShieldHalved,
+  faTags
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
@@ -15,6 +22,7 @@ import {
 } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useGetCertificateRequest } from "@app/hooks/api/certificates/queries";
+import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
 
 type Props = {
   request: TApprovalRequest;
@@ -88,6 +96,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
   const hasDomainComponents = Boolean(domainComponents && domainComponents.length > 0);
   const basicConstraints = certRequestDetails?.basicConstraints || certRequest?.basicConstraints;
   const metadata = certRequestDetails?.metadata || [];
+  const customExtensions = certRequestDetails?.customExtensions || [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -262,6 +271,16 @@ export const CertificateDetailsSection = ({ request }: Props) => {
             <p className="text-sm text-mineshaft-400">No subject information specified</p>
           )}
       </div>
+
+      {customExtensions.length > 0 && (
+        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-mineshaft-100">
+            <FontAwesomeIcon icon={faPuzzlePiece} className="text-sm text-mineshaft-400" />
+            Custom Extensions
+          </h3>
+          <CustomExtensionList extensions={customExtensions} />
+        </div>
+      )}
 
       {basicConstraints?.isCA && (
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">

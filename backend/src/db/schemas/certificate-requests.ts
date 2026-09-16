@@ -42,7 +42,8 @@ export const CertificateRequestsSchema = z.object({
   encryptedPrivateKey: zodBuffer.nullable().optional(),
   pendingMessage: z.string().nullable().optional(),
   applicationId: z.string().uuid().nullable().optional(),
-  domainComponents: z.string().nullable().optional()
+  domainComponents: z.string().nullable().optional(),
+  customExtensions: z.unknown().nullable().optional()
 });
 
 export type TCertificateRequests = z.infer<typeof CertificateRequestsSchema>;

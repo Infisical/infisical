@@ -123,6 +123,22 @@ export const identityGcpAuthServiceFactory = ({
         }
       }
 
+      if (
+        identityGcpAuth.type === "gce" &&
+        (identityGcpAuth.allowedProjects || identityGcpAuth.allowedZones) &&
+        !gcpIdentityDetails.computeEngineDetails
+      ) {
+        throw new UnauthorizedError({
+          message: "Access denied: GCP identity token is missing the Compute Engine details required to verify it.",
+          detail: {
+            reasonCode: "compute_engine_details_missing",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
+
       if (identityGcpAuth.allowedServiceAccounts) {
         // validate if the service account is in the list of allowed service accounts
 
@@ -143,11 +159,7 @@ export const identityGcpAuthServiceFactory = ({
           });
       }
 
-      if (
-        identityGcpAuth.type === "gce" &&
-        identityGcpAuth.allowedProjects &&
-        gcpIdentityDetails.computeEngineDetails
-      ) {
+      if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedProjects) {
         // validate if the project that the service account belongs to is in the list of allowed projects
 
         const isProjectAllowed = identityGcpAuth.allowedProjects
@@ -167,7 +179,7 @@ export const identityGcpAuthServiceFactory = ({
           });
       }
 
-      if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedZones && gcpIdentityDetails.computeEngineDetails) {
+      if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedZones) {
         const isZoneAllowed = identityGcpAuth.allowedZones
           .split(",")
           .map((zone) => zone.trim())

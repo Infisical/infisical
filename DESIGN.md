@@ -127,7 +127,7 @@ font or substitute one role for another:
 | Role                    | Class                                                                     | Notes                                                              |
 | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Page title (h1)         | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
-| Page description        | `text-label`                                                              | Sits under the title, `mt-1.5`                                     |
+| Page description        | `text-label`                                                              | Sits under the title, separated by the header's `gap-2`            |
 | Card title              | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
 | Card description        | `text-sm text-accent`                                                     |                                                                    |
 | Body                    | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
