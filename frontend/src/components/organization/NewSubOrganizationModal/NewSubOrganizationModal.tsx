@@ -115,6 +115,8 @@ export const NewSubOrganizationModal = ({ isOpen, onOpenChange, onCreated }: Pro
                     }}
                     placeholder="Acme Corp"
                     isError={Boolean(error)}
+                    autoComplete="off"
+                    name="sub-org-name"
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

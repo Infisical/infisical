@@ -2,10 +2,10 @@
 // if you pass array it will say it one by one giving user clear instruction on what's happening
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { twMerge } from "tailwind-merge";
 
-import { Lottie } from "../Lottie";
+import { Loader } from "../../v3/generic/Loader";
 
 type Props = {
   text?: string | string[];
@@ -30,15 +30,11 @@ export const ContentLoader = ({ text, frequency = 2000, className, lottieClassNa
   return (
     <div
       className={twMerge(
-        "relative container mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 px-8 text-mineshaft-50 dark:scheme-dark",
+        "relative container mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 px-8 text-mineshaft-50",
         className
       )}
     >
-      <Lottie
-        isAutoPlay
-        icon="infisical_loading"
-        className={twMerge("h-32 w-32", lottieClassName)}
-      />
+      <Loader variant="brand" size="lg" className={twMerge("h-32", lottieClassName)} />
       {text && isTextArray && (
         <AnimatePresence mode="wait">
           <motion.div

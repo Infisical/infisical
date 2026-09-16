@@ -54,3 +54,33 @@ export const validateEmail = (email: string) => {
   if (email.toLowerCase().trim() !== email)
     throw new BadRequestError({ message: "Email contains uppercase characters or leading/trailing whitespace" });
 };
+
+const DOTLESS_LOCAL_PART_DOMAINS = new Map([
+  ["gmail.com", "gmail.com"],
+  ["googlemail.com", "gmail.com"]
+]);
+
+export const normalizeEmail = (email: string) => {
+  const sanitized = sanitizeEmail(email);
+
+  // Domains never contain "@", so the last one is the separator even for a quoted local part.
+  const separatorIdx = sanitized.lastIndexOf("@");
+  if (separatorIdx <= 0 || separatorIdx === sanitized.length - 1) return sanitized;
+
+  let localPart = sanitized.slice(0, separatorIdx);
+  const domain = sanitized.slice(separatorIdx + 1);
+
+  const plusIdx = localPart.indexOf("+");
+  if (plusIdx !== -1) localPart = localPart.slice(0, plusIdx);
+
+  const canonicalDomain = DOTLESS_LOCAL_PART_DOMAINS.get(domain);
+  if (canonicalDomain) localPart = localPart.replaceAll(".", "");
+
+  // A local part made only of separators would normalize to nothing and collapse every such address
+  // onto a single bucket, throttling unrelated senders together. Fall back to the sanitized form.
+  if (!localPart) return sanitized;
+
+  return `${localPart}@${canonicalDomain ?? domain}`;
+};
+
+export const isAliasedEmail = (email: string) => normalizeEmail(email) !== sanitizeEmail(email);

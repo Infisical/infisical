@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useCreateCertificateInventoryView } from "@app/hooks/api/certificateInventoryViews";
 import type { TInventoryViewFilters } from "@app/hooks/api/certificateInventoryViews/types";
@@ -88,7 +88,7 @@ export const SaveViewModal = ({
           />
           {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-foreground">
-            <Switch variant="project" checked={isShared} onCheckedChange={setIsShared} />
+            <Toggle variant="project" checked={isShared} onCheckedChange={setIsShared} />
             Share with team
           </label>
           <DialogFooter className="mt-6">

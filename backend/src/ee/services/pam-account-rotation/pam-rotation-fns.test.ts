@@ -1,18 +1,24 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { PamAccountType } from "../pam/pam-enums";
 import {
   computeNextRotationAt,
   getRotationReadiness,
   isRotatableAccountType,
-  PamRotationReadinessIssue
+  PamRotationReadinessIssue,
+  withGatewayRetry
 } from "./pam-rotation-fns";
 
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
+}));
+
 describe("isRotatableAccountType", () => {
-  test("accepts the three SQL types", () => {
+  test("accepts the SQL types", () => {
     expect(isRotatableAccountType(PamAccountType.Postgres)).toBe(true);
     expect(isRotatableAccountType(PamAccountType.MySQL)).toBe(true);
     expect(isRotatableAccountType(PamAccountType.MsSQL)).toBe(true);
+    expect(isRotatableAccountType(PamAccountType.OracleDB)).toBe(true);
   });
 
   test("accepts Windows local and domain accounts", () => {
@@ -95,5 +101,40 @@ describe("computeNextRotationAt", () => {
       expect(next.getTime()).toBeGreaterThanOrEqual(baseline);
       expect(next.getTime()).toBeLessThanOrEqual(baseline + cap * 1000);
     }
+  });
+});
+
+describe("withGatewayRetry", () => {
+  test("retries a transport failure", async () => {
+    let attempts = 0;
+    const result = await withGatewayRetry(
+      async () => {
+        attempts += 1;
+        if (attempts < 3) throw new Error("dial tcp: i/o timeout");
+        return true;
+      },
+      "verify",
+      { baseDelayMs: 0 }
+    );
+
+    expect(result).toBe(true);
+    expect(attempts).toBe(3);
+  });
+
+  test("gives up immediately when the target rejected the credential", async () => {
+    let attempts = 0;
+    const authErr = Object.assign(new Error("WinRM authentication failed"), { gatewayFailureKind: "auth" });
+
+    await expect(
+      withGatewayRetry(
+        async () => {
+          attempts += 1;
+          throw authErr;
+        },
+        "verify",
+        { baseDelayMs: 0 }
+      )
+    ).rejects.toThrow("WinRM authentication failed");
+    expect(attempts).toBe(1);
   });
 });

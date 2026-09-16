@@ -252,5 +252,9 @@ export const OrgEncryptionTab = withPermission(
       </Card>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Kms }
+  {
+    action: OrgPermissionActions.Read,
+    subject: OrgPermissionSubjects.Kms,
+    accessRestrictedMode: "dialog"
+  }
 );

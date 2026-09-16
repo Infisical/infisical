@@ -7,6 +7,11 @@ export type TWindowsServerPkiSync = TRootPkiSync & {
   destination: PkiSync.WindowsServer;
   destinationConfig: {
     destinationPath: string;
+    host?: string;
+    port?: number;
+    sslEnabled?: boolean;
+    sslRejectUnauthorized?: boolean;
+    sslCertificate?: string;
   };
   syncOptions: TRootPkiSync["syncOptions"] & {
     exportFormat?: PkiSyncExportFormat;
@@ -14,10 +19,11 @@ export type TWindowsServerPkiSync = TRootPkiSync & {
     combineCertificateChain?: boolean;
     includePrivateKey?: boolean;
     fileAccessRules?: { identity: string; access: WindowsFileAccess }[];
+    healthCheckCommand?: string | null;
     postSyncCommand?: string | null;
   };
   connection: {
-    app: AppConnection.WinRM;
+    app: AppConnection;
     name: string;
     id: string;
   };

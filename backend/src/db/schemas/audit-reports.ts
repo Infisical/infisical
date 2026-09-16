@@ -9,7 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const AuditReportsSchema = z.object({
   id: z.string().uuid(),
-  projectId: z.string(),
+  projectId: z.string().nullable().optional(),
   requestedByUserId: z.string().uuid().nullable().optional(),
   status: z.string().default("pending"),
   reportConfigs: z.unknown(),
@@ -17,7 +17,8 @@ export const AuditReportsSchema = z.object({
   resultSummary: z.unknown().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  orgId: z.string().uuid().nullable().optional()
 });
 
 export type TAuditReports = z.infer<typeof AuditReportsSchema>;

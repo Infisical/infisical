@@ -447,7 +447,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         const nameA = a[orderBy as keyof TSecretFolders] as string;
         const nameB = b[orderBy as keyof TSecretFolders] as string;
         const cmp = nameA.localeCompare(nameB, "en");
-        return orderDirection === OrderByDirection.ASC ? cmp : -cmp;
+        if (cmp !== 0) return orderDirection === OrderByDirection.ASC ? cmp : -cmp;
+        // (depth, name) ties are the norm across environments and the fetches above have no ORDER BY,
+        // so break them deterministically or cross-request offset paging duplicates/skips folders
+        const envCmp = a.environment.localeCompare(b.environment, "en");
+        if (envCmp !== 0) return envCmp;
+        return a.id.localeCompare(b.id, "en");
       });
 
       return results;

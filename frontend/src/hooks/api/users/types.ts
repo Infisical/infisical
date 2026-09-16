@@ -103,6 +103,7 @@ export type TWorkspaceUser = {
   id: string;
   user: {
     isOrgMembershipActive: boolean;
+    isOrgMembershipPending: boolean;
     email: string;
     username: string;
     firstName: string;
@@ -184,6 +185,7 @@ export type AddUserToOrgDTO = {
   projectIds?: string[];
   /** Also grant invitees member access to the org's PAM product. */
   grantPamAccess?: boolean;
+  grantAgentVaultAccess?: boolean;
 };
 
 export type CreateAPIKeyRes = {

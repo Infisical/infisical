@@ -148,7 +148,13 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const kms = kmsDAL.deleteById(id);
+    const [kms] = await kmsDAL.delete({ id, hasDeleteProtection: false });
+
+    if (!kms) {
+      throw new BadRequestError({
+        message: `Key with ID ${id} has delete protection enabled. Disable delete protection on the key before destroying it.`
+      });
+    }
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.DESTROY,

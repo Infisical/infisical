@@ -1,0 +1,43 @@
+---
+title: "Integrations"
+sidebarTitle: "Overview"
+description: "Delivers secrets to the places that need them."
+---
+
+A secret in Infisical is only useful once it reaches the process that reads it. Search all integrations and find the one for your use case:
+
+<Card title="Search integrations" icon="magnifying-glass" href="/integrations/all">
+  Every framework, platform, and sync destination, filterable by type.
+</Card>
+
+There are three types of integrations for delivering secrets, each with its own setup process. Read below to learn more about each one.
+
+## Frameworks
+
+A framework integration puts the Infisical SDK or CLI inside your application. The application authenticates with a machine identity, fetches its secrets at startup, and holds them in memory. No secrets land on disk, and any secrets that get rotated will reach the application the next time it starts.
+
+Pick a framework integration when you control the application code and want the shortest path between Infisical and your process.
+
+<Card title="Browse frameworks" icon="code" href="/integrations/all?type=Framework">
+  Every framework, SDK, and build tool that can pull secrets from Infisical.
+</Card>
+
+## Infrastructure
+
+An infrastructure integration moves the fetch one layer out, into whatever runs your workload. That layer authenticates with a machine identity, fetches the secrets, and hands them to your application in a form it already reads, such as environment variables, a file on disk, or the platform's own secret object.
+
+Pick an infrastructure integration when the application code carries no Infisical client, or when you can't change that code at all.
+
+<Card title="Browse infrastructure" icon="server" href="/integrations/all?type=Infrastructure">
+  Every platform, orchestrator, and CI system that can hand secrets to a workload.
+</Card>
+
+## Secret Syncs
+
+A [Secret Sync](/integrations/secret-syncs/overview) copies secrets from an Infisical project into a third-party store such as AWS Secrets Manager, GitHub, or Vercel. The sync runs over an [App Connection](/integrations/app-connections/overview), and any changes you make to secrets in Infisical will automatically propagate to the integration.
+
+Pick a Secret Sync when your platform reads from its own secret store, or when you're migrating to Infisical and the old store has to stay populated in the meantime.
+
+<Card title="Browse secret syncs" icon="arrows-rotate" href="/integrations/all?type=Secret+Sync">
+  Every third-party store Infisical can push secrets to.
+</Card>

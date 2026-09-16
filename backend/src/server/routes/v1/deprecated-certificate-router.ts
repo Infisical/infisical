@@ -2,7 +2,6 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { CertificatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -11,6 +10,7 @@ import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CertExtendedKeyUsage, CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
 import {
   validateAltNamesField,
@@ -25,7 +25,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -35,7 +35,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: SanitizedCertificateSchema
         })
       }
     },
@@ -74,7 +74,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -121,7 +121,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -178,7 +178,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -292,7 +292,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -354,7 +354,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -468,7 +468,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -524,7 +524,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -534,7 +534,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: SanitizedCertificateSchema
         })
       }
     },
@@ -572,7 +572,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
@@ -624,7 +624,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
       hide: true,
       tags: [ApiDocsTags.PkiCertificates],

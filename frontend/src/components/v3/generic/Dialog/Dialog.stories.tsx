@@ -75,6 +75,37 @@ export const Default: Story = {
   )
 };
 
+export const FixedHeight: Story = {
+  name: "Variant: Fixed Height",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Use height="fixed" for changing content such as announcement slides. The dialog reserves 40rem, capped to the available viewport height. Keep scrolling content in DialogBody and actions in DialogFooter; the default padding, spacing, and footer styling are preserved.'
+      }
+    }
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Open Fixed Height Dialog</Button>
+      </DialogTrigger>
+      <DialogContent height="fixed">
+        <DialogHeader>
+          <DialogTitle>What&apos;s New</DialogTitle>
+          <DialogDescription>Review the latest updates.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>Short content keeps the same dialog height as longer content.</DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+};
+
 export const WithForm: Story = {
   name: "Example: With Form",
   parameters: {
@@ -191,6 +222,46 @@ export const ScrollableContent: Story = {
             <Button variant="ghost">Decline</Button>
           </DialogClose>
           <Button>Accept</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+};
+
+export const AlternativeScroll: Story = {
+  name: "Alternative: Scrollable Body",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "An alternative scroll composition keeps the header, body, and footer in one scroll flow while the sticky footer remains visible at the bottom. Use this when the footer should follow the content naturally but remain available during scrolling."
+      }
+    }
+  },
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Open scroll dialog</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Project details</DialogTitle>
+          <DialogDescription>Review the project information before continuing.</DialogDescription>
+        </DialogHeader>
+        <DialogBody className="flex flex-none flex-col gap-3 overflow-visible text-sm text-foreground">
+          {Array.from({ length: 12 }).map((_, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <p key={i}>
+              <span className="font-medium">Detail {i + 1}.</span> This content remains inside the
+              scrollable body while the dialog header and footer stay visible.
+            </p>
+          ))}
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button>Continue</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

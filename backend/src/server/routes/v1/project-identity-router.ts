@@ -7,6 +7,7 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const metadataSchema = z.object({
   key: z.string().trim().min(1, "Metadata key cannot be empty"),
@@ -168,6 +169,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
           projectId: req.params.projectId,
           orgId: req.permission.orgId
         },
+        isActorSuperAdmin: isSuperAdmin(req.auth),
         selector: {
           identityId: req.params.identityId
         },
@@ -231,6 +233,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
           scope: AccessScope.Project,
           projectId: req.params.projectId
         },
+        isActorSuperAdmin: isSuperAdmin(req.auth),
         selector: {
           identityId: req.params.identityId
         }
@@ -257,7 +260,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getProjectMachineIdentityById",
@@ -301,7 +304,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "listProjectMachineIdentities",

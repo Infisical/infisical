@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "../Button";
@@ -50,5 +51,48 @@ export const Hidden: Story = {
   name: "Example: No Selection",
   args: {
     selectedCount: 0
+  }
+};
+
+export const Embedded: Story = {
+  name: "Example: Embedded Layout",
+  render: (args) => {
+    const [container, setContainer] = useState<HTMLDivElement | null>(null);
+
+    return (
+      <div ref={setContainer} className="relative h-96 overflow-hidden rounded-lg border">
+        <div className="p-6 text-sm text-accent">
+          The action bar is aligned to this content region instead of the full viewport.
+        </div>
+        <SelectedActionBar
+          {...args}
+          portalContainer={container}
+          positionerClassName="absolute bottom-4"
+        />
+      </div>
+    );
+  }
+};
+
+export const EscapeClearsSelection: Story = {
+  name: "Interaction: Escape clears selection",
+  render: (args) => {
+    const [selectedCount, setSelectedCount] = useState(args.selectedCount);
+
+    return (
+      <>
+        <div className="fixed top-6 left-6 space-y-2 text-sm text-foreground">
+          <p>Press Escape while this story is focused to clear the selection.</p>
+          <Button size="sm" variant="outline" onClick={() => setSelectedCount(3)}>
+            Restore selection
+          </Button>
+        </div>
+        <SelectedActionBar
+          {...args}
+          selectedCount={selectedCount}
+          onClearSelection={() => setSelectedCount(0)}
+        />
+      </>
+    );
   }
 };

@@ -228,16 +228,13 @@ export const DuplicatedSecretsCard = () => {
                   </AccordionTrigger>
                   <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                     {group.secrets.length > 0 && (
-                      <Table
-                        containerClassName="rounded-t-none overflow-x-hidden"
-                        className="table-fixed"
-                      >
+                      <Table containerClassName="rounded-t-none overflow-x-hidden">
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-[35%]">Secret Key</TableHead>
                             <TableHead className="w-[25%]">Environment</TableHead>
                             <TableHead>Path</TableHead>
-                            <TableHead className="w-12" />
+                            <TableHead variant="action" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -263,7 +260,7 @@ export const DuplicatedSecretsCard = () => {
                                   <span className="truncate">{entry.secretPath}</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="pr-5">
+                              <TableCell variant="action">
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>

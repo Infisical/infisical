@@ -7,8 +7,25 @@ import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLim
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
+import {
+  ACCEPTED_SUBJECT_TOKEN_TYPES,
+  DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
+  DEFAULT_OAUTH_GRANT_TYPES,
+  MAX_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
+  MIN_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
+  OauthGrantType,
+  OauthTokenType
+} from "@app/services/oauth-client/oauth-client-types";
+import { OauthTokenError, OauthTokenErrorCode, toOauthTokenError } from "@app/services/oauth-client/oauth-token-error";
 
 const SanitizedOauthClientSchema = OauthClientsSchema.omit({ clientSecretHash: true });
+
+const SUPPORTED_GRANT_TYPES = Object.values(OauthGrantType).join(", ");
+
+const isBodyParserError = (error: unknown) => {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "string" && code.startsWith("FST_ERR_CTP_");
+};
 
 const redirectUriSchema = z
   .string()
@@ -17,6 +34,50 @@ const redirectUriSchema = z
     isAllowedRedirectUri,
     "Redirect URI must use https:// (http:// is only allowed for loopback addresses such as localhost)"
   );
+
+const grantTypesSchema = z
+  .nativeEnum(OauthGrantType)
+  .array()
+  .min(1)
+  .max(32)
+  .refine((grantTypes) => new Set(grantTypes).size === grantTypes.length, {
+    message: "Grant types must not contain duplicate values"
+  })
+  .describe(
+    "The OAuth grant types this application may use. An application uses either the redirect flow (authorization_code, optionally with refresh_token) or the token-exchange grant. Redirect URIs apply only to authorization_code; the token exchange audience applies only to the token-exchange grant."
+  );
+
+const tokenExchangeAudienceSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(255)
+  .describe("The expected 'aud' claim of subject tokens presented to the token exchange grant.");
+
+const accessTokenTtlSchema = z
+  .number()
+  .int()
+  .min(MIN_OAUTH_ACCESS_TOKEN_TTL_SECONDS)
+  .max(MAX_OAUTH_ACCESS_TOKEN_TTL_SECONDS)
+  .describe(
+    "How long, in seconds, the access tokens this application issues stay valid. Cannot exceed the instance's login session lifetime. The organization's session length still applies on top, so the issued token's 'expires_in' is the shorter of the two."
+  );
+
+const tokenExchangeIdpSatisfiesMfaSchema = z
+  .boolean()
+  .describe(
+    "Declares that authentication at the identity provider satisfies this organization's MFA requirement. Required for token exchange in an organization that enforces MFA."
+  );
+
+// The zod validator compiler hands Fastify the raw ZodError, whose `message` is the whole issue list
+// stringified as JSON. Summarise it instead, so error_description names the offending fields.
+const describeValidationError = (error: Error) => {
+  if (!(error instanceof z.ZodError)) return error.message;
+
+  return error.issues
+    .map((issue) => (issue.path.length ? `${issue.path.join(".")}: ${issue.message}` : issue.message))
+    .join("; ");
+};
 
 export const registerOAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -30,8 +91,12 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().min(1).max(64),
         description: z.string().trim().max(256).optional(),
-        redirectUris: redirectUriSchema.array().min(1),
-        requirePkce: z.boolean().optional()
+        grantTypes: grantTypesSchema.default([...DEFAULT_OAUTH_GRANT_TYPES]),
+        redirectUris: redirectUriSchema.array().max(32).default([]),
+        requirePkce: z.boolean().optional(),
+        accessTokenTTL: accessTokenTtlSchema.default(DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS),
+        tokenExchangeAudience: tokenExchangeAudienceSchema.optional(),
+        tokenExchangeIdpSatisfiesMfa: tokenExchangeIdpSatisfiesMfaSchema.optional()
       }),
       response: {
         200: z.object({
@@ -52,7 +117,11 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
           metadata: {
             clientDbId: client.id,
             clientId: client.clientId,
-            name: client.name
+            name: client.name,
+            grantTypes: client.grantTypes,
+            accessTokenTTL: client.accessTokenTTL,
+            tokenExchangeAudience: client.tokenExchangeAudience,
+            tokenExchangeIdpSatisfiesMfa: client.tokenExchangeIdpSatisfiesMfa
           }
         }
       });
@@ -120,8 +189,12 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().min(1).max(64).optional(),
         description: z.string().trim().max(256).nullable().optional(),
-        redirectUris: redirectUriSchema.array().min(1).optional(),
-        requirePkce: z.boolean().optional()
+        grantTypes: grantTypesSchema.optional(),
+        redirectUris: redirectUriSchema.array().max(32).optional(),
+        requirePkce: z.boolean().optional(),
+        accessTokenTTL: accessTokenTtlSchema.optional(),
+        tokenExchangeAudience: tokenExchangeAudienceSchema.nullable().optional(),
+        tokenExchangeIdpSatisfiesMfa: tokenExchangeIdpSatisfiesMfaSchema.optional()
       }),
       response: {
         200: z.object({
@@ -144,7 +217,11 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
           metadata: {
             clientDbId: client.id,
             clientId: client.clientId,
-            name: client.name
+            name: client.name,
+            grantTypes: client.grantTypes,
+            accessTokenTTL: client.accessTokenTTL,
+            tokenExchangeAudience: client.tokenExchangeAudience,
+            tokenExchangeIdpSatisfiesMfa: client.tokenExchangeIdpSatisfiesMfa
           }
         }
       });
@@ -369,55 +446,159 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: authRateLimit
     },
+    attachValidation: true,
+    errorHandler: (error) => {
+      if (isBodyParserError(error)) {
+        throw new OauthTokenError({
+          code: OauthTokenErrorCode.InvalidRequest,
+          message:
+            "The request body could not be read. Send the parameters as 'application/x-www-form-urlencoded' or 'application/json'.",
+          error
+        });
+      }
+      throw error;
+    },
     schema: {
       body: z.object({
-        grant_type: z.enum(["authorization_code", "refresh_token"]),
-        code: z.string().optional(),
-        redirect_uri: z.string().optional(),
-        code_verifier: z.string().optional(),
-        refresh_token: z.string().optional(),
-        client_id: z.string().optional(),
-        client_secret: z.string().optional()
+        grant_type: z.nativeEnum(OauthGrantType),
+        code: z.string().max(256).optional(),
+        redirect_uri: z.string().max(2048).optional(),
+        code_verifier: z.string().max(256).optional(),
+        refresh_token: z.string().max(8192).optional(),
+        client_id: z.string().max(256).optional(),
+        client_secret: z.string().max(256).optional(),
+        subject_token: z.string().max(8192).optional(),
+        subject_token_type: z.nativeEnum(OauthTokenType).optional(),
+        requested_token_type: z.nativeEnum(OauthTokenType).optional(),
+        actor_token: z.string().max(8192).optional(),
+        actor_token_type: z.string().max(255).optional(),
+        audience: z.string().max(255).optional(),
+        resource: z.string().max(2048).optional(),
+        scope: z.string().max(2048).optional()
       }),
       response: {
         200: z.object({
           access_token: z.string(),
           token_type: z.string(),
           expires_in: z.number(),
-          refresh_token: z.string(),
-          scope: z.string()
+          refresh_token: z.string().optional(),
+          scope: z.string().optional(),
+          issued_token_type: z.nativeEnum(OauthTokenType).optional()
         })
       }
     },
     handler: async (req, res) => {
+      void res.header("Cache-Control", "no-store");
+      void res.header("Pragma", "no-cache");
+
+      if (req.validationError) {
+        const grantType = (req.body as { grant_type?: unknown } | undefined)?.grant_type;
+        if (grantType === undefined || grantType === null || grantType === "") {
+          throw new OauthTokenError({
+            code: OauthTokenErrorCode.InvalidRequest,
+            message: `Missing 'grant_type'. Supported values are: ${SUPPORTED_GRANT_TYPES}`
+          });
+        }
+
+        const isKnownGrantType =
+          typeof grantType === "string" && Object.values(OauthGrantType).includes(grantType as OauthGrantType);
+
+        throw new OauthTokenError({
+          code: isKnownGrantType ? OauthTokenErrorCode.InvalidRequest : OauthTokenErrorCode.UnsupportedGrantType,
+          message: isKnownGrantType
+            ? describeValidationError(req.validationError)
+            : `Unsupported 'grant_type'. Supported values are: ${SUPPORTED_GRANT_TYPES}`
+        });
+      }
+
       const basicAuth = parseBasicAuthHeader(req.headers.authorization);
       const clientId = basicAuth?.clientId ?? req.body.client_id;
       const clientSecret = basicAuth?.clientSecret ?? req.body.client_secret;
 
-      void res.header("Cache-Control", "no-store");
-      void res.header("Pragma", "no-cache");
+      try {
+        if (req.body.grant_type === OauthGrantType.AuthorizationCode) {
+          if (!req.body.code) throw new BadRequestError({ message: "Missing authorization code" });
 
-      if (req.body.grant_type === "authorization_code") {
-        if (!req.body.code) throw new BadRequestError({ message: "Missing authorization code" });
+          return await server.services.oauthClient.exchangeToken({
+            grantType: OauthGrantType.AuthorizationCode,
+            code: req.body.code,
+            redirectUri: req.body.redirect_uri,
+            codeVerifier: req.body.code_verifier,
+            clientId,
+            clientSecret
+          });
+        }
 
-        return server.services.oauthClient.exchangeToken({
-          grantType: "authorization_code",
-          code: req.body.code,
-          redirectUri: req.body.redirect_uri,
-          codeVerifier: req.body.code_verifier,
+        if (req.body.grant_type === OauthGrantType.TokenExchange) {
+          if (!req.body.subject_token) {
+            throw new BadRequestError({ message: "Missing 'subject_token'" });
+          }
+
+          if (!req.body.subject_token_type) {
+            throw new BadRequestError({ message: "Missing 'subject_token_type'" });
+          }
+
+          if (!ACCEPTED_SUBJECT_TOKEN_TYPES.includes(req.body.subject_token_type)) {
+            throw new BadRequestError({
+              message: `Unsupported 'subject_token_type'. Supported values are: ${ACCEPTED_SUBJECT_TOKEN_TYPES.join(", ")}`
+            });
+          }
+
+          if (req.body.requested_token_type && req.body.requested_token_type !== OauthTokenType.AccessToken) {
+            throw new BadRequestError({
+              message: `Unsupported 'requested_token_type'. Only '${OauthTokenType.AccessToken}' can be issued.`
+            });
+          }
+
+          if (req.body.actor_token || req.body.actor_token_type) {
+            throw new BadRequestError({
+              message:
+                "The 'actor_token' and 'actor_token_type' parameters are not supported. This grant issues a token that acts as the user in the subject token, and does not record the application as a separate acting party."
+            });
+          }
+
+          if (req.body.scope) {
+            throw new OauthTokenError({
+              code: OauthTokenErrorCode.InvalidScope,
+              message:
+                "The 'scope' parameter is not supported on the token exchange grant. The issued token carries the user's own permissions."
+            });
+          }
+
+          if (req.body.audience || req.body.resource) {
+            throw new OauthTokenError({
+              code: OauthTokenErrorCode.InvalidTarget,
+              message:
+                "The 'audience' and 'resource' parameters are not supported. The expected subject token audience is configured on the application."
+            });
+          }
+
+          return await server.services.oauthClient.exchangeToken({
+            grantType: OauthGrantType.TokenExchange,
+            subjectToken: req.body.subject_token,
+            clientId,
+            clientSecret,
+            ip: req.realIp,
+            userAgent: req.headers["user-agent"]
+          });
+        }
+
+        if (!req.body.refresh_token) throw new BadRequestError({ message: "Missing refresh token" });
+
+        return await server.services.oauthClient.exchangeToken({
+          grantType: OauthGrantType.RefreshToken,
+          refreshToken: req.body.refresh_token,
           clientId,
           clientSecret
         });
+      } catch (error) {
+        const tokenError = toOauthTokenError(error, req.body.grant_type);
+        if (tokenError !== error && tokenError.oauthErrorCode === OauthTokenErrorCode.ServerError) {
+          req.log.error(error, "OAuth token request failed unexpectedly");
+        }
+
+        throw tokenError;
       }
-
-      if (!req.body.refresh_token) throw new BadRequestError({ message: "Missing refresh token" });
-
-      return server.services.oauthClient.exchangeToken({
-        grantType: "refresh_token",
-        refreshToken: req.body.refresh_token,
-        clientId,
-        clientSecret
-      });
     }
   });
 

@@ -2,7 +2,7 @@ import { type ClickHouseClient } from "@clickhouse/client";
 import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAuditLogs } from "@app/db/schemas";
+import { IdentityAuthMethod, TableName, TAuditLogs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -29,6 +29,28 @@ type TClickHouseFindArg = {
   eventMetadata?: Record<string, string>;
   pamScope?: TPamAuditLogScope;
 };
+
+type TClickHouseCountByDateArg = {
+  orgId: string;
+  eventTypes: EventType[];
+  startDate: string;
+  endDate: string;
+};
+
+type TClickHouseDateVolumeRow = {
+  date: string;
+  count: number;
+};
+
+// count() is a UInt64, which ClickHouse quotes as a string in JSON output
+type TClickHouseDateVolumeRawRow = Omit<TClickHouseDateVolumeRow, "count"> & { count: string };
+
+type TClickHouseAuthMethodRow = {
+  authMethod: IdentityAuthMethod;
+  count: number;
+};
+
+type TClickHouseAuthMethodRawRow = Omit<TClickHouseAuthMethodRow, "count"> & { count: string };
 
 // Shape of a row returned from ClickHouse's JSONEachRow format
 // actorMetadata and eventMetadata are String columns — they come back as raw JSON strings
@@ -230,5 +252,95 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
   };
 
-  return { find };
+  const countByDateForOrg = async ({
+    orgId,
+    eventTypes,
+    startDate,
+    endDate
+  }: TClickHouseCountByDateArg): Promise<TClickHouseDateVolumeRow[]> => {
+    const query = `
+      SELECT
+        toDate(createdAt) AS date,
+        count() AS count
+      FROM ${tableName}
+      WHERE orgId = {orgId:UUID}
+        AND createdAt >= {startDate:DateTime64(6)}
+        AND createdAt < {endDate:DateTime64(6)}
+        AND eventType IN ({eventTypes:Array(String)})
+      GROUP BY date
+    `;
+
+    try {
+      const result = await clickhouseClient.query({
+        query,
+        query_params: {
+          orgId,
+          // ClickHouse's DateTime64 parser rejects the trailing 'Z'
+          startDate: startDate.replace("Z", ""),
+          endDate: endDate.replace("Z", ""),
+          eventTypes
+        },
+        clickhouse_settings: {
+          max_execution_time: 10
+        },
+        format: "JSONEachRow"
+      });
+
+      const rows = await result.json<TClickHouseDateVolumeRawRow>();
+
+      return rows.map((row) => ({ ...row, count: Number(row.count) }));
+    } catch (error) {
+      logger.error(error, `Failed to aggregate audit logs by date from ClickHouse [orgId=${orgId}]`);
+      throw new DatabaseError({ error });
+    }
+  };
+
+  const countByIdentityAuthMethodForOrg = async ({
+    orgId,
+    eventTypes,
+    startDate,
+    endDate
+  }: TClickHouseCountByDateArg): Promise<TClickHouseAuthMethodRow[]> => {
+    const query = `
+      SELECT
+        JSONExtractString(actorMetadata, 'authMethod') AS authMethod,
+        count() AS count
+      FROM ${tableName}
+      WHERE orgId = {orgId:UUID}
+        AND createdAt >= {startDate:DateTime64(6)}
+        AND createdAt < {endDate:DateTime64(6)}
+        AND eventType IN ({eventTypes:Array(String)})
+        AND actor = {actorType:String}
+      GROUP BY authMethod
+      HAVING authMethod IN ({authMethods:Array(String)})
+    `;
+
+    try {
+      const result = await clickhouseClient.query({
+        query,
+        query_params: {
+          orgId,
+          // ClickHouse's DateTime64 parser rejects the trailing 'Z'
+          startDate: startDate.replace("Z", ""),
+          endDate: endDate.replace("Z", ""),
+          eventTypes,
+          actorType: ActorType.IDENTITY,
+          authMethods: Object.values(IdentityAuthMethod)
+        },
+        clickhouse_settings: {
+          max_execution_time: 10
+        },
+        format: "JSONEachRow"
+      });
+
+      const rows = await result.json<TClickHouseAuthMethodRawRow>();
+
+      return rows.map((row) => ({ ...row, count: Number(row.count) }));
+    } catch (error) {
+      logger.error(error, `Failed to aggregate audit logs by identity auth method from ClickHouse [orgId=${orgId}]`);
+      throw new DatabaseError({ error });
+    }
+  };
+
+  return { find, countByDateForOrg, countByIdentityAuthMethodForOrg };
 };

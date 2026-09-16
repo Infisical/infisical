@@ -31,7 +31,7 @@ export const useOrgPermission = () => {
   const hasOrgRole = useCallback(
     (role: string) =>
       memberships?.some((membership) => membership.roles.some((el) => role === el.role)),
-    []
+    [memberships]
   );
 
   return { permission, memberships, hasOrgRole };

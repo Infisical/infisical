@@ -21,13 +21,13 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
-  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Toggle
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -360,7 +360,7 @@ const BulkTagDialogContent = ({
               name="isReplaceMode"
               control={control}
               render={({ field }) => (
-                <Switch
+                <Toggle
                   variant="project"
                   id="replace-tags-toggle"
                   checked={field.value}
@@ -395,7 +395,7 @@ export const BulkTagDialog = ({ isOpen, onOpenChange, ...contentProps }: Props) 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {isOpen && (
-        <DialogContent className="max-w-7xl">
+        <DialogContent className="max-w-3xl">
           <BulkTagDialogContent {...contentProps} onClose={() => onOpenChange(false)} />
         </DialogContent>
       )}

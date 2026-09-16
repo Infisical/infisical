@@ -13,7 +13,7 @@ import {
 import type { TDashboardStats } from "@app/hooks/api/certificates";
 import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 
-import { CHART_COLORS, CHART_COLORS_HEX } from "./chart-theme";
+import { CHART_COLORS_HEX, formatShare } from "./chart-theme";
 
 type Props = {
   stats: TDashboardStats;
@@ -111,7 +111,7 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
             <div className="min-w-0 flex-1">
               <div className="space-y-1.5">
                 {nonZeroData.map((entry, idx) => {
-                  const pct = total > 0 ? Math.round((entry.count / total) * 100) : 0;
+                  const pct = formatShare(entry.count, total);
                   return (
                     <button
                       key={entry.label}
@@ -121,12 +121,12 @@ export const PqcReadinessChart = ({ stats, onNavigate }: Props) => {
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                        style={{ backgroundColor: CHART_COLORS_HEX[idx % CHART_COLORS_HEX.length] }}
                       />
                       <span className="min-w-0 flex-1 truncate text-left text-foreground">
                         {entry.label}
                       </span>
-                      <span className="shrink-0 text-right text-muted">{pct}%</span>
+                      <span className="shrink-0 text-right text-muted">{pct}</span>
                       <span className="shrink-0 text-right font-medium text-foreground">
                         {entry.count}
                       </span>

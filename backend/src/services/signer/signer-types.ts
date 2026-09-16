@@ -4,6 +4,10 @@ import { z } from "zod";
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 
+import {
+  TCodeSigningRequestScopeInput,
+  TCodeSigningScope
+} from "../approval-policy/code-signing/code-signing-policy-types";
 import { CertKeyAlgorithm } from "../certificate/certificate-types";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
@@ -97,9 +101,13 @@ export type TSignDataDTO = {
   actorName?: string;
   clientMetadata?: {
     tool?: string;
+    signingApplication?: string;
     hostname?: string;
-    reportedIp?: string;
+    command?: string;
+    osUsername?: string;
+    signingApplicationHash?: string;
   };
+  ipAddress?: string;
 } & TActorPermission;
 
 export type TGetPublicKeyDTO = {
@@ -111,6 +119,11 @@ export type TListSigningOperationsDTO = {
   offset?: number;
   limit?: number;
   status?: SigningOperationStatus;
+} & TActorPermission;
+
+export type TGetSigningOperationDTO = {
+  signerId: string;
+  operationId: string;
 } & TActorPermission;
 
 export type TEnableSignerDTO = {
@@ -171,8 +184,9 @@ export type TRequestToSignDTO = {
   signerId: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
+  scope?: TCodeSigningRequestScopeInput;
+  ipAddress?: string;
 } & TActorPermission;
 
 export type TPreApproveSigningDTO = {
@@ -181,8 +195,8 @@ export type TPreApproveSigningDTO = {
   granteeIdentityId?: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
+  scope?: TCodeSigningScope;
 } & TActorPermission;
 
 export type TRevokeSignerRequestDTO = {

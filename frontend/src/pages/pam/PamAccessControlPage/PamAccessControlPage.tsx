@@ -62,7 +62,7 @@ export const PamAccessControlPage = () => {
         description="Manage members, groups, and identities."
       />
       <Tabs value={selectedTab} onValueChange={updateTab}>
-        <TabsList variant="pam">
+        <TabsList variant="pam" aria-label="PAM access control sections">
           <TabsTrigger value={PamAccessControlTab.Members}>
             Members
             <Badge variant="pam">{members.length}</Badge>

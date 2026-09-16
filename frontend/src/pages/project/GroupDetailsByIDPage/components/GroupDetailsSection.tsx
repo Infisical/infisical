@@ -2,7 +2,6 @@ import { format } from "date-fns";
 import { CheckIcon, ClipboardListIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -13,7 +12,10 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  IconButton
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -49,20 +51,23 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
           </Detail>
           <Detail>
             <DetailLabel>ID</DetailLabel>
-            <DetailValue className="flex items-center gap-x-1">
+            <DetailValue className="flex items-center gap-x-1 font-mono">
               {group.id}
-              <Tooltip content="Copy group ID to clipboard">
-                <IconButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(group.id);
-                    setCopyTextId("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
-                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    onClick={() => {
+                      navigator.clipboard.writeText(group.id);
+                      setCopyTextId("Copied");
+                    }}
+                    variant="ghost"
+                    size="xs"
+                    aria-label="Copy group ID"
+                  >
+                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{isCopyingId ? "Group ID copied" : "Copy group ID"}</TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>

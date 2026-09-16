@@ -632,3 +632,26 @@ export type TGetDynamicSecretsByEnvsDTO = {
   path: string;
   environmentSlugs: string[];
 };
+
+export type TGetEntraIdUsersDTO = {
+  projectSlug: string;
+  tenantId: string;
+  applicationId: string;
+  clientSecret: string;
+};
+
+export type TGetIbmApiConnectOrgsDTO = {
+  projectSlug: string;
+  instanceUrl: string;
+  apiKey: string;
+  clientId: string;
+  clientSecret: string;
+};
+
+export type TGetIbmApiConnectOrgCatalogsDTO = TGetIbmApiConnectOrgsDTO & {
+  orgId: string;
+};
+
+export type TGetIbmApiConnectOrgAppsDTO = TGetIbmApiConnectOrgCatalogsDTO & {
+  catalogId: string;
+};

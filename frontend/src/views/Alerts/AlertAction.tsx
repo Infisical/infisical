@@ -16,14 +16,11 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Field,
-  FieldLabel,
-  Input,
   Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
@@ -88,7 +85,6 @@ export const AlertAction = ({
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["alert", "deleteAlert"] as const);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const scopeVariant = useScopeVariant();
 
   const updateAlert = useUpdateAlert();
@@ -113,8 +109,6 @@ export const AlertAction = ({
     try {
       await deleteAlert.mutateAsync({ alertId: existingAlert.id });
       createNotification({ text: "Successfully deleted alert", type: "success" });
-      // Programmatic close bypasses the dialog's onOpenChange reset.
-      setDeleteConfirmation("");
       handlePopUpToggle("deleteAlert", false);
     } catch {
       // MutationCache reports request errors globally; keep the dialog open.
@@ -185,7 +179,7 @@ export const AlertAction = ({
                   <Label htmlFor="alert-quick-enable" className="cursor-pointer font-normal">
                     Enabled
                   </Label>
-                  <Switch
+                  <Toggle
                     id="alert-quick-enable"
                     variant={scopeVariant}
                     checked={existingAlert.enabled}
@@ -235,10 +229,8 @@ export const AlertAction = ({
           />
           <AlertDialog
             open={popUp.deleteAlert.isOpen}
-            onOpenChange={(open) => {
-              if (!open) setDeleteConfirmation("");
-              handlePopUpToggle("deleteAlert", open);
-            }}
+            confirmationValue={existingAlert.name}
+            onOpenChange={(open) => handlePopUpToggle("deleteAlert", open)}
           >
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -247,24 +239,7 @@ export const AlertAction = ({
                   This permanently removes the alert and stops its notifications.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogConfirmationField>
-                <Field>
-                  <FieldLabel htmlFor="delete-alert-confirmation" size="sm">
-                    <span>
-                      Type &quot;<span className="text-foreground">{existingAlert.name}</span>
-                      &quot; to confirm.
-                    </span>
-                  </FieldLabel>
-                  <Input
-                    id="delete-alert-confirmation"
-                    value={deleteConfirmation}
-                    onChange={(event) => setDeleteConfirmation(event.target.value)}
-                    placeholder={existingAlert.name}
-                    autoComplete="off"
-                    autoFocus
-                  />
-                </Field>
-              </AlertDialogConfirmationField>
+              <AlertDialogConfirmationField inputProps={{ placeholder: existingAlert.name }} />
               <Alert variant="danger" appearance="borderless">
                 <AlertDescription>Removing this alert cannot be undone.</AlertDescription>
               </Alert>
@@ -273,7 +248,6 @@ export const AlertAction = ({
                 <AlertDialogAction
                   variant="danger"
                   isPending={deleteAlert.isPending}
-                  isDisabled={deleteConfirmation !== existingAlert.name}
                   onClick={(event) => {
                     event.preventDefault();
                     handleDeleteAlert();

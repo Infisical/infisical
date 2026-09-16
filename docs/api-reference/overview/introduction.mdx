@@ -1,6 +1,8 @@
 ---
-title: "API Reference"
-sidebarTitle: "Introduction"
+title: "API reference"
+description: "Programmatically manage secrets, access control, and audit logs over HTTPS with the Infisical REST API."
+sidebarTitle: "API"
+icon: "book-open-lines"
 ---
 
 Infisical's Public (REST) API provides users an alternative way to programmatically access and manage
@@ -9,13 +11,13 @@ rotating credentials, or for integrating secret management into a larger system.
 
 With the Public API, you can create, read, update, and delete secrets, as well as manage access control, query audit logs, and more.
 
-## API Versioning
+## API versioning
 
 The API is versioned on a per-resource basis. A resource's version is only incremented for breaking changes, so different endpoints may have different version numbers (e.g., `/api/v4/secrets` vs. `/api/v1/secret-syncs`).
 
 As a best practice, always use the latest available version for each endpoint to ensure access to the most recent features and improvements.
 
-## Rate Limits
+## Rate limits
 
 Infisical enforces several different types of rate limits:
 

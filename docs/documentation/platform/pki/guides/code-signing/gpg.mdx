@@ -1,6 +1,6 @@
 ---
-title: "Sign Git Commits and Tags with GPG"
-sidebarTitle: "Sign Git Commits with GPG"
+title: "Sign Git commits and tags with GPG"
+sidebarTitle: "Sign Git commits with GPG"
 description: "Use the Infisical PKCS#11 module with GnuPG to sign git commits, tags, and packages."
 ---
 
@@ -19,7 +19,7 @@ Use GnuPG with the Infisical PKCS#11 module via `gnupg-pkcs11-scd` to sign git c
 - GnuPG 2.2 or later
 - `gnupg-pkcs11-scd` (the PKCS#11 smart card daemon bridge)
 
-## Step 1: Set Up Authentication
+## Step 1: Set up authentication
 
 Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
 
@@ -99,7 +99,7 @@ Restart the GPG agent to apply the changes:
 gpgconf --kill gpg-agent
 ```
 
-## Step 4: Import the PKCS#11 Key into GPG
+## Step 4: Import the PKCS#11 key into GPG
 
 List the available keys from the PKCS#11 token:
 
@@ -149,7 +149,7 @@ gpg --batch --gen-key /tmp/gpg-keygen.txt
 
 Note the key ID from the output (shown as a 40-character hex string). You'll use it for signing.
 
-## Step 5: Sign Git Commits
+## Step 5: Sign Git commits
 
 Configure git to use your GPG key:
 
@@ -174,7 +174,7 @@ git commit -m "feat: add new feature"
 git tag -s v1.0.0 -m "Release v1.0.0"
 ```
 
-### Verify Signatures
+### Verify signatures
 
 ```bash
 # Verify a commit signature
@@ -184,7 +184,7 @@ git log --show-signature -1
 git tag -v v1.0.0
 ```
 
-## Step 6: Sign Arbitrary Files
+## Step 6: Sign arbitrary files
 
 Use GPG to create detached signatures for any file:
 
@@ -196,7 +196,7 @@ gpg --detach-sign --armor -u <KEY-ID> release-v1.0.0.tar.gz
 gpg --verify release-v1.0.0.tar.gz.asc release-v1.0.0.tar.gz
 ```
 
-## CI/CD Integration
+## CI/CD integration
 
 For CI pipelines, configure the GPG agent in non-interactive mode. You need to create the key stub on each run since `GNUPGHOME` is ephemeral:
 
@@ -250,7 +250,7 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Sign Containers" icon="docker" href="/documentation/platform/pki/guides/code-signing/cosign">

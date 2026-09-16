@@ -1,16 +1,46 @@
 import { AnyZodObject, z } from "zod";
 
-export const POST_SYNC_COMMAND_MAX_LENGTH = 2048;
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-export const PostSyncCommandSchema = z
+export const HOST_COMMAND_MAX_LENGTH = 8192;
+
+export const HostCommandSchema = z
   .string()
   .trim()
-  .max(
-    POST_SYNC_COMMAND_MAX_LENGTH,
-    `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`
-  )
+  .max(HOST_COMMAND_MAX_LENGTH, `Command must be at most ${HOST_COMMAND_MAX_LENGTH} characters`)
   .nullish()
   .transform((command) => command || null);
+
+export const PkiSyncConnectionSchema = z.object({
+  id: z.string().uuid("Invalid connection ID format"),
+  name: z.string().max(255, "Connection name must be less than 255 characters"),
+  app: z.nativeEnum(AppConnection).optional()
+});
+
+export const PkiSyncTargetPortSchema = z.coerce
+  .number()
+  .int()
+  .min(1, "Port must be between 1 and 65535")
+  .max(65535, "Port must be between 1 and 65535")
+  .optional();
+
+export const PkiSyncTargetHostSchema = z
+  .string()
+  .trim()
+  .max(253, "Target host is too long")
+  .refine(
+    (value) =>
+      !value ||
+      /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
+        value
+      ),
+    {
+      message:
+        "Target host must be a hostname or IP address (for example server01.corp.example.com or 10.0.0.5)"
+    }
+  )
+  .transform((value) => value || undefined)
+  .optional();
 
 export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined>(
   additionalSyncOptions?: T
@@ -72,10 +102,7 @@ export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined
     isAutoSyncEnabled: z.boolean().default(true),
     subscriberId: z.string().nullable().optional(),
     certificateIds: z.array(z.string()).optional(),
-    connection: z.object({
-      id: z.string().uuid("Invalid connection ID format"),
-      name: z.string().max(255, "Connection name must be less than 255 characters")
-    }),
+    connection: PkiSyncConnectionSchema,
     syncOptions: syncOptionsSchema
   });
 };

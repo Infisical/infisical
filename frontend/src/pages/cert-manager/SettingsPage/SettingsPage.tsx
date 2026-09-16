@@ -27,6 +27,7 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="w-full max-w-8xl">
         <PageHeader
+          className="mb-6"
           scope={ProjectType.CertificateManager}
           title="Settings"
           description="Configure app connections, HSM connectors, and cleanup rules."

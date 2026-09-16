@@ -192,6 +192,7 @@ export const useAddUsersToOrg = () => {
       grantFailures?: {
         projectIds: string[];
         pamAccess: boolean;
+        agentVaultAccess: boolean;
       };
     };
   };
@@ -271,22 +272,6 @@ export const useDeleteOrgMembershipBatch = () => {
     },
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
-    }
-  });
-};
-
-export const useDeactivateOrgMembership = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<object, object, DeleteOrgMembershipDTO>({
-    mutationFn: ({ membershipId, orgId }) => {
-      return apiRequest.post(
-        `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
-      );
-    },
-    onSuccess: (_, { orgId, membershipId }) => {
-      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.getOrgMembership(orgId, membershipId) });
     }
   });
 };

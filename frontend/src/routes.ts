@@ -22,20 +22,9 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
   layout("secret-manager-layout", "secret-manager/layout.tsx", [
     route("/overview", "secret-manager/OverviewPage/route.tsx"),
     route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
-    route("/allowlist", "secret-manager/IPAllowlistPage/route.tsx"),
     route("/approval", "secret-manager/SecretApprovalsPage/route.tsx"),
     route("/insights", "secret-manager/InsightsPage/route.tsx"),
     route("/settings", "secret-manager/SettingsPage/route.tsx"),
-    route("/commits/$environment/$folderId", [
-      index("secret-manager/CommitsPage/route.tsx"),
-      route("/$commitId", [
-        index("secret-manager/CommitDetailsPage/route.tsx"),
-        route(
-          "/restore",
-          "secret-manager/CommitDetailsPage/components/RollbackPreviewTab/route.tsx"
-        )
-      ])
-    ]),
     route("/audit-logs", "project/AuditLogsPage/route-secret-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
     route("/app-connections", "project/AppConnectionsPage/route-secret-manager.tsx"),
@@ -299,7 +288,10 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
     route("/requests", "cert-manager/RequestsPage/route.tsx"),
     route("/code-signing", [
       index("cert-manager/CodeSigningPage/route.tsx"),
-      route("/$signerId", "cert-manager/SignerDetailPage/route.tsx")
+      route("/$signerId", [
+        index("cert-manager/SignerDetailPage/route.tsx"),
+        route("/operations/$operationId", "cert-manager/SigningOperationDetailPage/route.tsx")
+      ])
     ]),
     route("/approvals", [
       index("cert-manager/ApprovalsPage/route.tsx"),
@@ -367,19 +359,40 @@ const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanni
 const pamRoutes = route("/organizations/$orgId/pam", [
   layout("pam-layout", "pam/layout.tsx", [
     route("/access", [index("redirects/pam-org-access-redirect.tsx")]),
-    route("/accounts", "pam/PamAccountsPage/route.tsx"),
+    route("/accounts", [
+      index("pam/PamAccountsPage/route.tsx"),
+      route("/$folderId", "pam/PamAccountsPage/PamFolderPage/route.tsx")
+    ]),
     route("/templates", "pam/PamTemplatesPage/route.tsx"),
     route("/discovery", "pam/PamDiscoveryPage/route.tsx"),
     route("/sessions", "pam/PamSessionsPage/route.tsx"),
     route("/approval-requests", "pam/PamApprovalRequestsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
 
-    // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-pam.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-pam.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-pam.tsx"),
     route("/groups/$groupId", "project/GroupDetailsByIDPage/route-pam.tsx")
+  ])
+]);
+
+const agentVaultRoutes = route("/organizations/$orgId/agent-vault", [
+  layout("agent-vault-layout", "agent-vault/layout.tsx", [
+    index("redirects/agent-vault-index-redirect.tsx"),
+    route("/sessions", "agent-vault/AgentVaultSessionsPage/route.tsx"),
+    route("/access-bundles", [
+      index("agent-vault/AgentVaultAccessBundlesPage/route.tsx"),
+      route("/$accessBundleId", "agent-vault/AgentVaultAccessBundleDetailPage/route.tsx")
+    ]),
+    route("/proxies", "agent-vault/AgentVaultProxiesPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-agent-vault.tsx"),
+
+    route("/access-management", "project/AccessControlPage/route-agent-vault.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-agent-vault.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-agent-vault.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-agent-vault.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-agent-vault.tsx")
   ])
 ]);
 
@@ -395,6 +408,7 @@ const organizationRoutes = route("/organizations/$orgId", [
     index("organization/KmipServersPage/route.tsx"),
     route("/$kmipServerId", "organization/KmipServersPage/KmipServerDetailsByIDPage/route.tsx")
   ]),
+  route("/projects/secret-management/insights", "organization/SecretInsightsPage/route.tsx"),
   route("/projects/secret-management/secret-sharing", [
     index("organization/SecretSharingPage/route.tsx")
   ]),
@@ -500,7 +514,8 @@ export const routes = rootRoute("root.tsx", [
         certManagerRoutes,
         kmsRoutes,
         secretScanningRoutes,
-        pamRoutes
+        pamRoutes,
+        agentVaultRoutes
       ])
     ])
   ])

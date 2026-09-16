@@ -23,6 +23,7 @@ import {
 import {
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
+  TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
@@ -38,18 +39,21 @@ import {
   queueStalledCounter,
   resolveCoreMeter
 } from "@app/lib/telemetry/metrics";
-import { QueueWorkerProfile } from "@app/lib/types";
 import {
   TAppConnectionCredentialRotationRotateJobPayload,
   TAppConnectionCredentialRotationSendNotificationJobPayload
 } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { ExternalPlatforms } from "@app/services/external-migration/external-migration-types";
+import {
+  ExternalPlatforms,
+  TVaultImportSideEffectsJobPayload
+} from "@app/services/external-migration/external-migration-types";
 import { TCreateUserNotificationDTO } from "@app/services/notification/notification-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import {
   TQueuePkiSyncImportCertificatesByIdDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
+  TQueuePkiSyncRunHealthCheckByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "@app/services/pki-sync/pki-sync-types";
 import {
@@ -89,17 +93,23 @@ export enum QueueName {
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   PkiSync = "pki-sync",
+  PkiSyncHealthCheck = "pki-sync-health-check",
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
+  VaultImportSideEffects = "vault-import-side-effects",
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   PamCredentialRotation = "pam-credential-rotation",
   PamCredentialRotationRotate = "pam-credential-rotation-rotate",
+  PamHeartbeat = "pam-heartbeat",
+  PamHeartbeatCheck = "pam-heartbeat-check",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
+  SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
+  SecretScanningV2RealtimeScan = "secret-scanning-v2-realtime-scan",
   UserNotification = "user-notification",
   AlertDispatch = "alert-dispatch",
   AuditReportGeneration = "audit-report-generation",
@@ -116,7 +126,8 @@ export enum QueueName {
   ProjectEnvHardDelete = "project-env-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
-  UsageEvent = "usage-event"
+  UsageEvent = "usage-event",
+  IntegrationDeprecationNotice = "integration-deprecation-notice"
 }
 
 export enum QueueJobs {
@@ -145,6 +156,7 @@ export enum QueueJobs {
   IdentityAccessTokenStatusUpdate = "identity-access-token-status-update",
   ServiceTokenStatusUpdate = "service-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
+  VaultImportSideEffects = "vault-import-side-effects",
   SecretSyncSyncSecrets = "secret-sync-sync-secrets",
   SecretSyncImportSecrets = "secret-sync-import-secrets",
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
@@ -152,15 +164,20 @@ export enum QueueJobs {
   PkiSyncSyncCertificates = "pki-sync-sync-certificates",
   PkiSyncImportCertificates = "pki-sync-import-certificates",
   PkiSyncRemoveCertificates = "pki-sync-remove-certificates",
+  PkiSyncRunHealthCheck = "pki-sync-run-health-check",
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
   PamCredentialRotationQueueRotations = "pam-credential-rotation-queue-rotations",
   PamCredentialRotationRotate = "pam-credential-rotation-rotate",
+  PamHeartbeatQueueChecks = "pam-heartbeat-queue-checks",
+  PamHeartbeatCheck = "pam-heartbeat-check",
   CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
+  // Kept as "diff-scan" while the queue moved to "realtime-scan": jobs already enqueued under this
+  // name carry it, and the drain branch on QueueName.SecretScanningV2 matches on it.
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
@@ -196,7 +213,8 @@ export enum QueueJobs {
   ProjectEnvHardDelete = "project-env-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
-  UsageEvent = "usage-event-job"
+  UsageEvent = "usage-event-job",
+  SendIntegrationDeprecationNotice = "send-integration-deprecation-notice"
 }
 
 export enum JobState {
@@ -352,6 +370,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiSyncRemoveCertificates;
         payload: TQueuePkiSyncRemoveCertificatesByIdDTO;
       };
+  [QueueName.PkiSyncHealthCheck]: {
+    name: QueueJobs.PkiSyncRunHealthCheck;
+    payload: TQueuePkiSyncRunHealthCheckByIdDTO;
+  };
   [QueueName.ProjectV3Migration]: {
     name: QueueJobs.ProjectV3Migration;
     payload: { projectId: string };
@@ -377,6 +399,10 @@ export type TQueueJobTypes = {
         encoding: SecretKeyEncoding;
       };
     };
+  };
+  [QueueName.VaultImportSideEffects]: {
+    name: QueueJobs.VaultImportSideEffects;
+    payload: TVaultImportSideEffectsJobPayload;
   };
   [QueueName.AppConnectionSecretSync]:
     | {
@@ -420,6 +446,14 @@ export type TQueueJobTypes = {
     name: QueueJobs.PamCredentialRotationRotate;
     payload: { accountId: string };
   };
+  [QueueName.PamHeartbeat]: {
+    name: QueueJobs.PamHeartbeatQueueChecks;
+    payload: undefined;
+  };
+  [QueueName.PamHeartbeatCheck]: {
+    name: QueueJobs.PamHeartbeatCheck;
+    payload: { accountId: string };
+  };
   [QueueName.InvalidateCache]: {
     name: QueueJobs.InvalidateCache;
     payload: {
@@ -441,6 +475,14 @@ export type TQueueJobTypes = {
         name: QueueJobs.SecretScanningV2SendNotification;
         payload: TQueueSecretScanningSendNotification;
       };
+  [QueueName.SecretScanningV2FullScan]: {
+    name: QueueJobs.SecretScanningV2FullScan;
+    payload: TQueueSecretScanningDataSourceFullScan;
+  };
+  [QueueName.SecretScanningV2RealtimeScan]: {
+    name: QueueJobs.SecretScanningV2DiffScan;
+    payload: TQueueSecretScanningResourceDiffScanPayload;
+  };
   [QueueName.CaLifecycle]: {
     name: QueueJobs.CaOrderCertificateForSubscriber;
     payload: {
@@ -568,28 +610,26 @@ export type TQueueJobTypes = {
     name: QueueJobs.UsageEvent;
     payload: { orgId: string; dimensionKey: string };
   };
+  [QueueName.IntegrationDeprecationNotice]: {
+    name: QueueJobs.SendIntegrationDeprecationNotice;
+    // period is a YYYY-MM stamp computed once by the cron tick so every retry of the same fire is deduped alike
+    payload: { orgId: string; period: string };
+  };
 };
 
 const SECRET_SCANNING_QUEUES = [
   QueueName.SecretScanningV2,
+  QueueName.SecretScanningV2FullScan,
+  QueueName.SecretScanningV2RealtimeScan,
   QueueName.SecretFullRepoScan,
   QueueName.SecretPushEventScan
 ];
 
-const NON_STANDARD_QUEUES = [...SECRET_SCANNING_QUEUES];
-
 const isQueueEnabled = (name: QueueName) => {
   const appCfg = getConfig();
-  switch (appCfg.QUEUE_WORKER_PROFILE) {
-    case QueueWorkerProfile.Standard:
-      return !NON_STANDARD_QUEUES.includes(name);
-    case QueueWorkerProfile.SecretScanning:
-      return SECRET_SCANNING_QUEUES.includes(name);
-    case QueueWorkerProfile.All:
-    default:
-      // allow all
-      return true;
-  }
+  return SECRET_SCANNING_QUEUES.includes(name)
+    ? appCfg.isSecretScanningRunModeEnabled
+    : appCfg.isGeneralWorkerRunModeEnabled;
 };
 
 export type TQueueServiceFactory = {
@@ -703,7 +743,13 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
   // Remove orphaned job schedulers left in Redis by deleted queues.
   // Queues migrated to the cronJob system (cron-job.ts) are listed here so their
   // BullMQ schedulers and pending jobs are cleaned up on first boot of the new image.
+  //
+  // Gated to general-workers because every name below belongs to that fleet, and obliterate() is
+  // called with force, which deletes active jobs too. Reaping is the consuming pod's job: an API
+  // pod has no worker on these queues and must not clear work another pod is running.
   void (async () => {
+    if (!getConfig().isGeneralWorkerRunModeEnabled) return;
+
     const staleQueueNames = [
       "queue-internal-recovery",
       "queue-internal-reconciliation",
@@ -780,15 +826,11 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       throw new Error(`${name} queue is already initialized`);
     }
 
-    const appCfg = getConfig();
-
-    if (!appCfg.QUEUE_WORKERS_ENABLED) return;
-
     const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
 
-    // The Queue (producer) is created regardless of worker profile — only the Worker (consumer) is
+    // The Queue (producer) is created regardless of run mode — only the Worker (consumer) is
     // gated below. A pod that doesn't consume a queue must still be able to enqueue onto it, or
-    // splitting the fleet by profile silently drops every job destined for another profile's worker.
+    // splitting the fleet by run mode silently drops every job destined for another pod's worker.
     queueContainer[name] = new Queue(name as string, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...queueSettings,
@@ -815,6 +857,8 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     worker.on("completed", (job) => {
       const baseAttrs = { "queue.name": name, "job.name": job.name } as Record<string, string>;
       queueJobCounter.add(1, { ...baseAttrs, outcome: "completed" });
+
+      logger.debug({ queue: name, job: job.name, jobId: job.id }, "Queue job completed");
 
       if (typeof job.processedOn === "number" && typeof job.timestamp === "number") {
         const durationMs = Date.now() - job.processedOn;
@@ -843,24 +887,37 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       }
 
       const errorType = classifyError(err);
-      const attemptsExhausted = !!(job?.opts.attempts && job.attemptsMade && job.attemptsMade >= job.opts.attempts);
+      const attemptsExhausted = !!job && job.attemptsMade >= (job.opts.attempts || 1);
       queueJobFailureCounter.add(1, {
         ...baseAttrs,
         "error.type": errorType,
         "attempts.exhausted": attemptsExhausted ? "true" : "false"
       });
+
+      logger.error(
+        err,
+        `Queue job failed [queue=${name}] [job=${job?.name ?? "unknown"}] [jobId=${job?.id ?? "unknown"}] [attempt=${
+          job?.attemptsMade ?? 0
+        }] [attemptsExhausted=${attemptsExhausted}]`
+      );
     });
 
-    worker.on("stalled", () => {
+    // Stalling means the worker stopped heartbeating and BullMQ handed the job to someone else, so
+    // it is both rare and always worth seeing. It stays at warn rather than debug for that reason.
+    worker.on("stalled", (jobId) => {
       queueStalledCounter.add(1, { "queue.name": name });
+      logger.warn({ queue: name, jobId }, `Queue job stalled and was requeued [queue=${name}] [jobId=${jobId}]`);
+    });
+
+    worker.on("active", (job) => {
+      logger.debug({ queue: name, job: job.name, jobId: job.id }, "Queue job picked up by a worker");
     });
 
     workerContainer[name] = worker;
   };
 
   const listen: TQueueServiceFactory["listen"] = (name, event, listener) => {
-    const appCfg = getConfig();
-    if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
+    if (!isQueueEnabled(name)) {
       return;
     }
 
@@ -880,7 +937,12 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       jobId
     };
 
-    await q?.add(job, data, finalOptions);
+    const addedJob = await q?.add(job, data, finalOptions);
+
+    // Only when the job really exists. `q` is undefined only where QUEUE_WORKERS_ENABLED is false,
+    // and a pod in that mode neither produces nor consumes, so a no-op there is expected rather
+    // than a dropped job worth reporting.
+    if (addedJob) logger.debug({ queue: name, job, jobId: addedJob.id }, "Queue job enqueued");
   };
 
   const stopRepeatableJob: TQueueServiceFactory["stopRepeatableJob"] = async (name, job, repeatOpt, jobId) => {

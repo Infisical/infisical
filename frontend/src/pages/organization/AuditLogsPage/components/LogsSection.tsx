@@ -17,6 +17,7 @@ import {
   DateRangeQuickPresets,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { DateRangeFilterAccent } from "@app/components/v3/platform/DateRangeFilter/DateRangeFilter";
 import {
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
@@ -26,6 +27,7 @@ import {
 } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { isOrgScopedProduct } from "@app/helpers/project";
 import { withPermission, withProjectPermission } from "@app/hoc";
 import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
@@ -99,7 +101,9 @@ const LogsSectionComponent = ({
   });
 
   const timezone = dateRange.isUtc ? Timezone.UTC : Timezone.Local;
-  const dateRangeAccent = project ? "primary" : "secondary";
+  // An org-scoped product has its own colour, and "primary" would paint its chrome the secrets yellow.
+  let dateRangeAccent: DateRangeFilterAccent = project ? "primary" : "secondary";
+  if (project?.type === ProjectType.AgentVault) dateRangeAccent = "av";
 
   useEffect(() => {
     if (subscription && !subscription.auditLogs) {
@@ -146,7 +150,7 @@ const LogsSectionComponent = ({
           <CardDescription>
             Search and review a detailed history of events
             {!project && " across your organization"}
-            {project && project.type !== ProjectType.PAM && " in this project"}.
+            {project && !isOrgScopedProduct(project.type) && " in this project"}.
           </CardDescription>
           {showFilters && (
             <CardAction>
@@ -304,8 +308,32 @@ const LogsSectionComponent = ({
   );
 };
 
+// Built once at module scope: creating them inside the render makes a new component type on every
+// render, which remounts the whole log table (and replays the permission gate) each time.
+const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
+  action: ProjectPermissionAuditLogsActions.Read,
+  subject: ProjectPermissionSub.AuditLogs
+});
+
+const ProjectAuditLogsPageWithPermission = withProjectPermission(LogsSectionComponent, {
+  action: ProjectPermissionAuditLogsActions.Read,
+  subject: ProjectPermissionSub.AuditLogs,
+  accessRestrictedMode: "dialog"
+});
+
+const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
+  action: OrgPermissionAuditLogsActions.Read,
+  subject: OrgPermissionSubjects.AuditLogs
+});
+
+const OrgAuditLogsPageWithPermission = withPermission(LogsSectionComponent, {
+  action: OrgPermissionAuditLogsActions.Read,
+  subject: OrgPermissionSubjects.AuditLogs,
+  accessRestrictedMode: "dialog"
+});
+
 export const LogsSection = (props: Props) => {
-  const { project } = props;
+  const { pageView, project } = props;
 
   if (project) {
     // PAM uses its own product/resource permission model and scopes audit logs server-side, so the
@@ -314,16 +342,16 @@ export const LogsSection = (props: Props) => {
       return <LogsSectionComponent {...props} />;
     }
 
-    const ProjectLogsSectionWithPermission = withProjectPermission(LogsSectionComponent, {
-      action: ProjectPermissionAuditLogsActions.Read,
-      subject: ProjectPermissionSub.AuditLogs
-    });
-    return <ProjectLogsSectionWithPermission {...props} />;
+    return pageView ? (
+      <ProjectAuditLogsPageWithPermission {...props} />
+    ) : (
+      <ProjectLogsSectionWithPermission {...props} />
+    );
   }
 
-  const OrgLogsSectionWithPermission = withPermission(LogsSectionComponent, {
-    action: OrgPermissionAuditLogsActions.Read,
-    subject: OrgPermissionSubjects.AuditLogs
-  });
-  return <OrgLogsSectionWithPermission {...props} />;
+  return pageView ? (
+    <OrgAuditLogsPageWithPermission {...props} />
+  ) : (
+    <OrgLogsSectionWithPermission {...props} />
+  );
 };

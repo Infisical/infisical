@@ -1,0 +1,13 @@
+extends: capitalization
+message: "Use sentence case in headings: '%s' should be '%s'."
+level: error
+link: https://github.com/Infisical/infisical/blob/main/docs/STYLE_GUIDE.md#use-sentence-case-for-titles-and-headings
+scope: heading
+match: $sentence
+# Every word must be correctly cased. The default of 0.8 lets one word in five
+# stay wrong.
+threshold: 1.0
+# A colon starts a new clause, so `## Step 1: Set up authentication` is correct.
+# A leading `1.` is treated as an indicator by Vale itself.
+indicators:
+  - ':'

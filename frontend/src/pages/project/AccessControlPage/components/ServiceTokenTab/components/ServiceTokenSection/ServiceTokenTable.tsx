@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   ChevronDownIcon,
@@ -64,6 +64,7 @@ enum TokensOrderBy {
 
 export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
   const { currentProject } = useProject();
+  const [activeSort, setActiveSort] = useState<TokensOrderBy | null>(TokensOrderBy.Name);
   const { data, isPending } = useGetUserWsServiceTokens({
     workspaceID: currentProject?.id || ""
   });
@@ -77,8 +78,6 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
     setPerPage,
     offset,
     orderDirection,
-    toggleOrderDirection,
-    orderBy,
     setOrderDirection,
     setOrderBy
   } = usePagination<TokensOrderBy>(TokensOrderBy.Name, {
@@ -109,9 +108,11 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           );
         })
         .sort((a, b) => {
+          if (!activeSort) return 0;
+
           const [tokenOne, tokenTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
 
-          switch (orderBy) {
+          switch (activeSort) {
             case TokensOrderBy.Expiration:
               if (!tokenOne.expiresAt && !tokenTwo.expiresAt) return 0;
               if (!tokenOne.expiresAt) return 1;
@@ -126,7 +127,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
               return tokenOne.name.toLowerCase().localeCompare(tokenTwo.name.toLowerCase());
           }
         }) ?? [],
-    [data, orderDirection, search, orderBy]
+    [activeSort, data, orderDirection, search]
   );
 
   useResetPageHelper({
@@ -135,14 +136,20 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
     setPage
   });
 
-  const handleSort = (column: TokensOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
+  const handleSort = (column: TokensOrderBy, direction: "ascending" | "descending" | "none") => {
+    if (direction === "none") {
+      setActiveSort(null);
       return;
     }
 
+    setActiveSort(column);
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    setOrderDirection(direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC);
+  };
+
+  const getAriaSort = (column: TokensOrderBy) => {
+    if (activeSort !== column) return "none";
+    return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
   };
 
   return (
@@ -155,6 +162,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search service tokens"
             placeholder="Search service tokens by name, environment or secret path..."
           />
         </InputGroup>
@@ -175,32 +183,40 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead onClick={() => handleSort(TokensOrderBy.Name)}>
+                <TableHead
+                  sortDirection={getAriaSort(TokensOrderBy.Name)}
+                  onSortChange={(direction) => handleSort(TokensOrderBy.Name, direction)}
+                >
                   Name
                   <ChevronDownIcon
                     className={twMerge(
                       "transition-transform",
                       orderDirection === OrderByDirection.DESC &&
-                        orderBy === TokensOrderBy.Name &&
+                        activeSort === TokensOrderBy.Name &&
                         "rotate-180",
-                      orderBy !== TokensOrderBy.Name && "opacity-30"
+                      activeSort !== TokensOrderBy.Name && "opacity-30"
                     )}
                   />
                 </TableHead>
                 <TableHead>Environment / Secret Path</TableHead>
-                <TableHead onClick={() => handleSort(TokensOrderBy.Expiration)}>
+                <TableHead
+                  sortDirection={getAriaSort(TokensOrderBy.Expiration)}
+                  onSortChange={(direction) => handleSort(TokensOrderBy.Expiration, direction)}
+                >
                   Valid Until
                   <ChevronDownIcon
                     className={twMerge(
                       "transition-transform",
                       orderDirection === OrderByDirection.DESC &&
-                        orderBy === TokensOrderBy.Expiration &&
+                        activeSort === TokensOrderBy.Expiration &&
                         "rotate-180",
-                      orderBy !== TokensOrderBy.Expiration && "opacity-30"
+                      activeSort !== TokensOrderBy.Expiration && "opacity-30"
                     )}
                   />
                 </TableHead>
-                <TableHead className="w-5" />
+                <TableHead className="w-5">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -226,11 +242,11 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                   <TableRow key={row.id}>
                     <TableCell isTruncatable>{row.name}</TableCell>
                     <TableCell>
-                      <div className="flex flex-row flex-wrap gap-1">
+                      <div className="flex flex-row gap-1">
                         {row?.scopes.map(({ secretPath, environment }) => (
                           <Badge key={`${row.id}-${environment}-${secretPath}`} variant="neutral">
                             <span className="border-r border-border pr-1.5">{environment}</span>
-                            <FolderIcon className="text-yellow" />
+                            <FolderIcon className="text-folder" />
                             <span>{secretPath}</span>
                           </Badge>
                         ))}
@@ -249,6 +265,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                           <IconButton
                             variant="ghost"
                             size="xs"
+                            aria-label={`${row.name} actions`}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MoreHorizontalIcon />

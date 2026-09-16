@@ -40,6 +40,8 @@ import { initLogger, logger } from "@app/lib/logger";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
+import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -130,6 +132,8 @@ const main = async () => {
 
   const superAdminDAL = superAdminDALFactory(knex);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+  const kmsLegacyEncryptionKeyDAL = kmsLegacyEncryptionKeyDALFactory(knex);
+  const kmsKekHistoryDAL = kmsKekHistoryDALFactory(knex);
   const hsmConfig = getHsmConfig(logger);
 
   const hsmModule = initializeHsmModule(hsmConfig);
@@ -152,6 +156,8 @@ const main = async () => {
   const projectDAL = projectDALFactory(knex);
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
+    kmsLegacyEncryptionKeyDAL,
+    kmsKekHistoryDAL,
     kmsDAL,
     internalKmsDAL,
     internalKmsKeyVersionDAL,

@@ -35,8 +35,16 @@ import {
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import {
+  clearIdentityLockoutsForAuthMethod,
+  clearIdentityLockoutState,
+  getIdentityLockoutState,
+  identityLockoutLockKey,
+  persistIdentityLockoutState
+} from "../identity/identity-fns";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLogin, shouldRecordIdentityLastLogin } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityUaClientSecretDALFactory } from "./identity-ua-client-secret-dal";
@@ -71,22 +79,16 @@ type TIdentityUaServiceFactoryDep = {
   >;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "setItemWithExpiry"
     | "setItemWithExpiryNX"
-    | "getItem"
-    | "deleteItem"
-    | "getKeysByPattern"
-    | "deleteItems"
+    | "getItemPrimary"
+    | "setIndexedItemWithExpiry"
+    | "deleteIndexedItems"
+    | "sortedSetMembersPrimary"
     | "acquireLock"
   >;
 };
 
 export type TIdentityUaServiceFactory = ReturnType<typeof identityUaServiceFactory>;
-
-type LockoutObject = {
-  lockedOut: boolean;
-  failedAttempts: number;
-};
 
 // debounce per-secret usage writes so login bursts on one unlimited secret don't pile up on its row lock
 const UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS = 10;
@@ -130,18 +132,13 @@ export const identityUaServiceFactory = ({
         trustedIps: identityUa.clientSecretTrustedIps as TIp[]
       });
 
-      const lockoutKey = KeyStorePrefixes.IdentityLockoutState(
-        identityUa.identityId,
-        IdentityAuthMethod.UNIVERSAL_AUTH,
-        clientId
-      );
+      const lockoutSelector = {
+        identityId: identityUa.identityId,
+        authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+        slug: clientId
+      };
 
-      const lockoutRaw = await keyStore.getItem(lockoutKey);
-
-      let lockout: LockoutObject | undefined;
-      if (lockoutRaw) {
-        lockout = JSON.parse(lockoutRaw) as LockoutObject;
-      }
+      let lockout = await getIdentityLockoutState(lockoutSelector, keyStore);
 
       if (lockout && lockout.lockedOut && identityUa.lockoutEnabled) {
         throw new UnauthorizedError({
@@ -176,22 +173,21 @@ export const identityUaServiceFactory = ({
         if (identityUa.lockoutEnabled) {
           let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
           try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(lockoutKey)], 300, {
-              retryCount: 3,
-              retryDelay: 300,
-              retryJitter: 100
-            });
+            lock = await keyStore.acquireLock(
+              [identityLockoutLockKey(identityUa.identityId, IdentityAuthMethod.UNIVERSAL_AUTH, clientId)],
+              300,
+              {
+                retryCount: 3,
+                retryDelay: 300,
+                retryJitter: 100
+              }
+            );
 
             // Re-fetch the latest lockout data while holding the lock
-            const lockoutRawNew = await keyStore.getItem(lockoutKey);
-            if (lockoutRawNew) {
-              lockout = JSON.parse(lockoutRawNew) as LockoutObject;
-            } else {
-              lockout = {
-                lockedOut: false,
-                failedAttempts: 0
-              };
-            }
+            lockout = (await getIdentityLockoutState(lockoutSelector, keyStore)) ?? {
+              lockedOut: false,
+              failedAttempts: 0
+            };
 
             if (lockout.lockedOut) {
               throw new UnauthorizedError({
@@ -210,10 +206,15 @@ export const identityUaServiceFactory = ({
               lockout.lockedOut = true;
             }
 
-            await keyStore.setItemWithExpiry(
-              lockoutKey,
-              lockout.lockedOut ? identityUa.lockoutDurationSeconds : identityUa.lockoutCounterResetSeconds,
-              JSON.stringify(lockout)
+            await persistIdentityLockoutState(
+              {
+                ...lockoutSelector,
+                expiryInSeconds: lockout.lockedOut
+                  ? identityUa.lockoutDurationSeconds
+                  : identityUa.lockoutCounterResetSeconds
+              },
+              lockout,
+              keyStore
             );
           } catch (e) {
             if (lock === undefined) {
@@ -241,7 +242,7 @@ export const identityUaServiceFactory = ({
         });
       } else if (lockout) {
         // If credentials are valid, clear any existing lockout record
-        await keyStore.deleteItem(lockoutKey);
+        await clearIdentityLockoutState(lockoutSelector, keyStore);
       }
 
       const { clientSecretTTL, clientSecretNumUses, clientSecretNumUsesLimit } = validClientSecretInfo;
@@ -316,41 +317,33 @@ export const identityUaServiceFactory = ({
         }
       }
 
-      await identityUaDAL.transaction(async (tx) => {
-        if (clientSecretNumUsesLimit > 0) {
-          // finite usage limit: count must stay exact, so increment synchronously (low-frequency, no contention)
-          await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
-        } else {
-          // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
-          const isFirstUseInWindow = await keyStore.setItemWithExpiryNX(
-            KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(validClientSecretInfo!.id),
-            UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
-            "1"
-          );
-          if (isFirstUseInWindow) {
-            await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
+      const clientSecretId = validClientSecretInfo.id;
+
+      const [shouldIncrementUsage, shouldRecordLastLogin] = await Promise.all([
+        clientSecretNumUsesLimit > 0
+          ? // finite usage limit: count must stay exact, so increment synchronously (low-frequency, no contention)
+            Promise.resolve(true)
+          : // unlimited secret: numUses is informational, so collapse a login storm to one row write per window
+            keyStore
+              .setItemWithExpiryNX(
+                KeyStorePrefixes.IdentityUaClientSecretUsageDebounce(clientSecretId),
+                UA_CLIENT_SECRET_USAGE_DEBOUNCE_SECONDS,
+                "1"
+              )
+              .then(Boolean),
+        shouldRecordIdentityLastLogin(keyStore, identity.id)
+      ]);
+
+      if (shouldIncrementUsage || shouldRecordLastLogin) {
+        await identityUaDAL.transaction(async (tx) => {
+          if (shouldIncrementUsage) {
+            await identityUaClientSecretDAL.incrementUsage(clientSecretId, tx);
           }
-        }
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
-      });
+          if (shouldRecordLastLogin) {
+            await recordIdentityLastLogin(membershipIdentityDAL, identity, IdentityAuthMethod.UNIVERSAL_AUTH, tx);
+          }
+        });
+      }
 
       const subOrgDetails =
         subOrganizationId && subOrganizationId !== org.id ? await orgDAL.findById(subOrganizationId) : null;
@@ -446,8 +439,6 @@ export const identityUaServiceFactory = ({
     lockoutDurationSeconds,
     lockoutCounterResetSeconds
   }: TAttachUaDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -481,7 +472,7 @@ export const identityUaServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -495,10 +486,12 @@ export const identityUaServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map((clientSecretTrustedIp) => {
@@ -576,7 +569,8 @@ export const identityUaServiceFactory = ({
     lockoutEnabled,
     lockoutThreshold,
     lockoutDurationSeconds,
-    lockoutCounterResetSeconds
+    lockoutCounterResetSeconds,
+    isActorSuperAdmin
   }: TUpdateUaDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -620,7 +614,7 @@ export const identityUaServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -632,8 +626,13 @@ export const identityUaServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps?.map((clientSecretTrustedIp) => {
@@ -746,7 +745,8 @@ export const identityUaServiceFactory = ({
     actorId,
     actor,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isActorSuperAdmin
   }: TRevokeUaDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -821,6 +821,8 @@ export const identityUaServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
       const deletedUniversalAuth = await identityUaDAL.delete({ identityId }, tx);
       return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
@@ -846,7 +848,8 @@ export const identityUaServiceFactory = ({
     ttl,
     actorAuthMethod,
     description,
-    numUsesLimit
+    numUsesLimit,
+    isActorSuperAdmin
   }: TCreateUaClientSecretDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -924,6 +927,9 @@ export const identityUaServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const appCfg = getConfig();
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await crypto.hashing().createHash(clientSecret, appCfg.SALT_ROUNDS);
@@ -1135,7 +1141,8 @@ export const identityUaServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
-    clientSecretId
+    clientSecretId,
+    isActorSuperAdmin
   }: TRevokeUaClientSecretDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1221,6 +1228,9 @@ export const identityUaServiceFactory = ({
         });
       }
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     // Insert the revocation marker BEFORE flipping isClientSecretRevoked. If
     // the flip fails, tokens are already dead and a retry safely re-flips the
     // bit; flipping first would leave the secret flagged but tokens authentic.
@@ -1241,7 +1251,8 @@ export const identityUaServiceFactory = ({
     actorId,
     actor,
     actorOrgId,
-    actorAuthMethod
+    actorAuthMethod,
+    isActorSuperAdmin
   }: TClearUaLockoutsDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -1286,9 +1297,10 @@ export const identityUaServiceFactory = ({
       });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
     }
-    const deleted = await keyStore.deleteItems({
-      pattern: KeyStorePrefixes.IdentityLockoutStateByMethodPattern(identityId, IdentityAuthMethod.UNIVERSAL_AUTH)
-    });
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
+    const deleted = await clearIdentityLockoutsForAuthMethod(identityId, IdentityAuthMethod.UNIVERSAL_AUTH, keyStore);
 
     return { deleted, identityId, orgId: identityMembershipOrg.scopeOrgId };
   };

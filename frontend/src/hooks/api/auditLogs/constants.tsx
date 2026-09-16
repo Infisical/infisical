@@ -111,6 +111,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.GET_CERT_BODY]: "Get certificate body",
   [EventType.GET_CERT_PRIVATE_KEY]: "Get certificate private key",
   [EventType.GET_CERT_BUNDLE]: "Get certificate bundle",
+  [EventType.EXPORT_CERT_PKCS12]: "Export certificate as PKCS#12",
   [EventType.CREATE_PKI_ALERT]: "Create PKI alert",
   [EventType.GET_PKI_ALERT]: "Get PKI alert",
   [EventType.UPDATE_PKI_ALERT]: "Update PKI alert",
@@ -190,10 +191,16 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
   [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
   [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
+  [EventType.PKI_SYNC_HEALTH_CHECK]: "PKI Sync health check ran",
+  [EventType.PKI_SYNC_TEST_HEALTH_CHECK]: "PKI Sync health check tested",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
     "OIDC group membership mapping removed user from groups",
+  [EventType.OIDC_PROVISIONED_PLACEHOLDER_ADOPTED]:
+    "OIDC login adopted provisioned placeholder account",
+  [EventType.SSO_USER_PROFILE_SYNCED]: "Synced user profile from identity provider",
+  [EventType.SSO_USER_EMAIL_SYNC_SKIPPED]: "Skipped user email sync from identity provider",
   [EventType.SECRET_APPROVAL_REQUEST_REVIEW]: "Review Secret Approval Request",
   [EventType.CREATE_KMIP_CLIENT]: "Create KMIP client",
   [EventType.UPDATE_KMIP_CLIENT]: "Update KMIP client",
@@ -204,6 +211,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SETUP_KMIP]: "Setup KMIP configuration",
   [EventType.GET_KMIP]: "Get KMIP configuration",
   [EventType.REGISTER_KMIP_SERVER]: "Register KMIP server",
+  [EventType.KMIP_SERVER_CONNECT]: "KMIP server connect",
   [EventType.KMIP_OPERATION_CREATE]: "KMIP operation create",
   [EventType.KMIP_OPERATION_GET]: "KMIP operation get",
   [EventType.KMIP_OPERATION_DESTROY]: "KMIP operation destroy",
@@ -284,6 +292,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
     "View Secrets Management Calendar Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME]:
     "View Secrets Management Access Volume Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION]:
+    "View Organization Secrets Management Auth Method Distribution Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS]:
     "View Secrets Management Access Locations Insights",
   [EventType.VIEW_INSIGHTS_AUTH_METHODS]: "View Machine Identity Auth Methods Insights",
@@ -291,6 +301,13 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION]: "View Secrets Duplication Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS]:
     "View Secrets Management Resource Counts Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE]: "View Secrets Management Usage Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS]:
+    "View Secrets Management Project Warnings Insights",
+
+  [EventType.CREATE_ORG_AUDIT_REPORT]: "Create Organization Audit Report",
+  [EventType.GET_ORG_AUDIT_REPORTS]: "List Organization Audit Reports",
+  [EventType.DELETE_ORG_AUDIT_REPORT]: "Delete Organization Audit Report",
 
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
@@ -304,6 +321,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.CREATE_SUB_ORGANIZATION]: "Create Sub Organization",
   [EventType.UPDATE_SUB_ORGANIZATION]: "Update Sub Organization",
+
+  [EventType.UPDATE_USER_ORG_MEMBERSHIP]: "Update User Org Membership",
+  [EventType.DELETE_USER_ORG_MEMBERSHIP]: "Delete User Org Membership",
 
   [EventType.CREATE_IDENTITY_ORG_MEMBERSHIP]: "Create Identity Org Membership",
   [EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP]: "Update Identity Org Membership",
@@ -344,6 +364,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS]: "Rotate PAM Account Credentials",
   [EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT]: "Set PAM Account Rotation Account",
   [EventType.PAM_ACCOUNT_SSH_CA_CREATE]: "Create PAM Account SSH CA",
+  [EventType.PAM_ACCOUNT_CREDENTIALS_VIEW]: "View PAM Account Credentials",
   [EventType.PAM_APPROVAL_CONFIG_UPDATE]: "Update PAM Approval Configuration",
   [EventType.PAM_DISCOVERY_SOURCE_CREATE]: "Create PAM Discovery Source",
   [EventType.PAM_DISCOVERY_SOURCE_UPDATE]: "Update PAM Discovery Source",
@@ -411,8 +432,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.EXTERNAL_MIGRATION_CREATE]: "Create External Migration",
   [EventType.EXTERNAL_MIGRATION_UPDATE]: "Update External Migration",
   [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration",
+  [EventType.IMPORT_VAULT_SECRETS]: "Import Vault secrets",
   [EventType.GATEWAY_CREATE]: "Create gateway",
   [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
+  [EventType.GATEWAY_CONNECT]: "Gateway connect",
   [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
   [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Resource login",
   [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Resource login failed",
@@ -428,7 +451,31 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE]: "Generate KMIP server enrollment token",
 
   [EventType.CREATE_PROJECT_FOLDER_GRANT]: "Create project grant",
-  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant"
+  [EventType.DELETE_PROJECT_FOLDER_GRANT]: "Delete project grant",
+
+  [EventType.CREATE_SECRET_FOLDER_ACCESS]: "Grant folder access",
+  [EventType.UPDATE_SECRET_FOLDER_ACCESS]: "Update folder access",
+  [EventType.DELETE_SECRET_FOLDER_ACCESS]: "Revoke folder access",
+
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE]: "Create access bundle",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE]: "Update access bundle",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE]: "Delete access bundle",
+  [EventType.AGENT_VAULT_SERVICE_CREATE]: "Create service",
+  [EventType.AGENT_VAULT_SERVICE_UPDATE]: "Update service",
+  [EventType.AGENT_VAULT_SERVICE_DELETE]: "Delete service",
+  [EventType.AGENT_VAULT_MEMBER_ADD]: "Add member",
+  [EventType.AGENT_VAULT_MEMBER_UPDATE]: "Change member role",
+  [EventType.AGENT_VAULT_MEMBER_REMOVE]: "Remove member",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD]: "Grant access bundle",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE]: "Revoke access bundle",
+  [EventType.AGENT_VAULT_SESSION_MINT]: "Create session",
+  [EventType.AGENT_VAULT_SESSION_REVOKE]: "Revoke session",
+  [EventType.AGENT_VAULT_PROXY_REGISTER]: "Create proxy",
+  [EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE]: "Generate proxy enrollment token",
+  [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
+  [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
+  [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
+  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -474,11 +521,33 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
     EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
     EventType.PAM_ACCOUNT_SSH_CA_CREATE,
+    EventType.PAM_ACCOUNT_CREDENTIALS_VIEW,
     EventType.PAM_APPROVAL_CONFIG_UPDATE,
     EventType.PAM_DISCOVERY_SOURCE_CREATE,
     EventType.PAM_DISCOVERY_SOURCE_UPDATE,
     EventType.PAM_DISCOVERY_SOURCE_DELETE,
     EventType.PAM_DISCOVERY_SCAN,
     EventType.PAM_DISCOVERED_ACCOUNT_IMPORT
+  ],
+  [ProjectType.AgentVault]: [
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE,
+    EventType.AGENT_VAULT_SERVICE_CREATE,
+    EventType.AGENT_VAULT_SERVICE_UPDATE,
+    EventType.AGENT_VAULT_SERVICE_DELETE,
+    EventType.AGENT_VAULT_MEMBER_ADD,
+    EventType.AGENT_VAULT_MEMBER_UPDATE,
+    EventType.AGENT_VAULT_MEMBER_REMOVE,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE,
+    EventType.AGENT_VAULT_SESSION_MINT,
+    EventType.AGENT_VAULT_SESSION_REVOKE,
+    EventType.AGENT_VAULT_PROXY_REGISTER,
+    EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
+    EventType.AGENT_VAULT_PROXY_ENROLL,
+    EventType.AGENT_VAULT_PROXY_UPDATE,
+    EventType.AGENT_VAULT_PROXY_REVOKE,
+    EventType.AGENT_VAULT_PROXY_DELETE
   ]
 };

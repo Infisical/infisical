@@ -18,6 +18,7 @@ import {
   certSignatureAlgorithmToNameMap
 } from "@app/hooks/api/certificates";
 import { camelCaseToSpaces, toTitleCase } from "@app/lib/fn/string";
+import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
 
 type Props = {
   certificateId: string;
@@ -26,18 +27,18 @@ type Props = {
 // Preserve list for key usage terms that need special formatting
 // These terms have acronyms or specific capitalization that shouldn't be converted from camelCase
 const KEY_USAGE_DISPLAY_MAP: Record<string, string> = {
-  cRLSign: "CRL Sign"
+  cRLSign: "CRL Sign",
+  crl_sign: "CRL Sign"
 };
 
 export const CertificateDetailsSection = ({ certificateId }: Props) => {
   const { data, isLoading } = useGetCertificateById(certificateId);
 
-  // Format key usage names, checking preserve list first
   const formatKeyUsage = (usage: string): string => {
     if (KEY_USAGE_DISPLAY_MAP[usage]) {
       return KEY_USAGE_DISPLAY_MAP[usage];
     }
-    return toTitleCase(camelCaseToSpaces(usage));
+    return toTitleCase(camelCaseToSpaces(usage).replace(/_/g, " "));
   };
 
   if (isLoading) {
@@ -220,6 +221,14 @@ export const CertificateDetailsSection = ({ certificateId }: Props) => {
                 )}
               </DetailValue>
             </Detail>
+            {Boolean(certificate.customExtensions?.length) && (
+              <Detail>
+                <DetailLabel>Custom Extensions</DetailLabel>
+                <DetailValue>
+                  <CustomExtensionList extensions={certificate.customExtensions ?? []} />
+                </DetailValue>
+              </Detail>
+            )}
           </DetailGroup>
         </CardContent>
       </Card>

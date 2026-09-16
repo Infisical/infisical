@@ -9,6 +9,7 @@ import {
   InfoIcon,
   PencilIcon,
   RefreshCwIcon,
+  StethoscopeIcon,
   ToggleLeftIcon,
   ToggleRightIcon,
   Trash2Icon
@@ -20,6 +21,7 @@ import {
   PkiSyncImportCertificatesModal,
   PkiSyncRemoveCertificatesModal
 } from "@app/components/pki-syncs";
+import { notifyUnhandledHostCommandError } from "@app/components/pki-syncs/forms/hostCommandErrors";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,9 +38,11 @@ import { useOrganization } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
+  PkiSyncStatus,
   TPkiSync,
   usePkiSyncOption,
   usePkiSyncPermissions,
+  useRunPkiSyncHealthCheck,
   useTriggerPkiSyncSyncCertificates,
   useUpdatePkiSync
 } from "@app/hooks/api/pkiSyncs";
@@ -68,7 +72,11 @@ export const PkiSyncActionTriggers = ({ pkiSync, onEdit }: Props) => {
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
+  const hasHealthCheckCommand = Boolean(
+    (pkiSync.syncOptions as { healthCheckCommand?: string })?.healthCheckCommand
+  );
   const triggerSyncMutation = useTriggerPkiSyncSyncCertificates();
+  const runHealthCheckMutation = useRunPkiSyncHealthCheck();
   const updatePkiSyncMutation = useUpdatePkiSync();
 
   const { syncOption } = usePkiSyncOption(destination);
@@ -101,6 +109,25 @@ export const PkiSyncActionTriggers = ({ pkiSync, onEdit }: Props) => {
     });
   }, [triggerSyncMutation, id, destination, projectId]);
 
+  const handleRunHealthCheck = useCallback(async () => {
+    try {
+      const result = await runHealthCheckMutation.mutateAsync({
+        syncId: id,
+        destination,
+        projectId
+      });
+      const passed = result.status === PkiSyncStatus.Succeeded;
+      createNotification({
+        title: passed ? "Health check passed" : "Health check failed",
+        text:
+          result.output || result.failureDetail || result.message || "The host reported no output.",
+        type: passed ? "success" : "error"
+      });
+    } catch (error) {
+      notifyUnhandledHostCommandError(error, "Could not run the health check");
+    }
+  }, [runHealthCheckMutation, id, destination, projectId]);
+
   const handleToggleAutoSync = useCallback(async () => {
     await updatePkiSyncMutation.mutateAsync({
       syncId: id,
@@ -132,6 +159,15 @@ export const PkiSyncActionTriggers = ({ pkiSync, onEdit }: Props) => {
             <RefreshCwIcon />
             Trigger Sync
           </DropdownMenuItem>
+          {syncOption?.canRunHealthCheckCommand && hasHealthCheckCommand && (
+            <DropdownMenuItem
+              onClick={handleRunHealthCheck}
+              isDisabled={!canTriggerSync || runHealthCheckMutation.isPending}
+            >
+              <StethoscopeIcon />
+              Run Health Check
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();

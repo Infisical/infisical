@@ -30,7 +30,7 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
       params: ApplicationIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(ApplicationMemberSchema) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.pkiApplicationMembership.listMembers({
         actor: req.permission.type,
@@ -104,6 +104,8 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
         properties: {
           applicationId: req.params.applicationId,
           orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "group",
           role: req.body.role
         }
       });
@@ -155,6 +157,19 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
         }
       });
 
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationMemberUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "group",
+          role: req.body.role
+        }
+      });
+
       return { membership };
     }
   });
@@ -196,6 +211,18 @@ export const registerPkiApplicationGroupMembershipRouter = async (server: Fastif
             groupId: result.actorGroupId ?? undefined,
             groupName: result.details?.name ?? undefined
           }
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.PkiApplicationMemberRemoved,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          applicationId: req.params.applicationId,
+          orgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          memberType: "group"
         }
       });
 

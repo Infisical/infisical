@@ -11,14 +11,23 @@ import {
   OrganizationActionScope,
   TIdentityOidcAuthsUpdate
 } from "@app/db/schemas";
+import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
+import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import { TOidcTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
@@ -44,12 +53,14 @@ import { getValueByDot } from "@app/lib/template/dot-access";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { ActorType } from "../auth/auth-type";
+import { splitCommaSeparatedPolicyValues } from "../identity/identity-auth-policy-values";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { recordIdentityLastLoginDebounced } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityOidcAuthDALFactory } from "./identity-oidc-auth-dal";
@@ -65,7 +76,9 @@ import {
 type TIdentityOidcAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
+  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -82,7 +95,9 @@ export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuth
 export const identityOidcAuthServiceFactory = ({
   identityDAL,
   identityOidcAuthDAL,
+  identityAuthTemplateDAL,
   membershipIdentityDAL,
+  keyStore,
   permissionService,
   licenseService,
   identityAccessTokenDAL,
@@ -398,9 +413,9 @@ export const identityOidcAuthServiceFactory = ({
 
       if (identityOidcAuth.boundAudiences) {
         if (
-          !identityOidcAuth.boundAudiences
-            .split(", ")
-            .some((policyValue) => doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue))
+          !splitCommaSeparatedPolicyValues(identityOidcAuth.boundAudiences).some((policyValue) =>
+            doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue)
+          )
         ) {
           throw new UnauthorizedError({
             message: "Access denied: OIDC audience not allowed.",
@@ -432,7 +447,11 @@ export const identityOidcAuthServiceFactory = ({
           }
 
           // handle both single and multi-valued claims
-          if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(value, claimEntry))) {
+          if (
+            !splitCommaSeparatedPolicyValues(claimValue).some((claimEntry) =>
+              doesFieldValueMatchOidcPolicy(value, claimEntry)
+            )
+          ) {
             throw new UnauthorizedError({
               message: "Access denied: OIDC claim not allowed.",
               detail: {
@@ -496,26 +515,11 @@ export const identityOidcAuthServiceFactory = ({
         }
       }
 
-      await identityOidcAuthDAL.transaction(async (tx) => {
-        await membershipIdentityDAL.update(
-          identity.projectId
-            ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
-            : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
-          {
-            lastLoginAuthMethod: IdentityAuthMethod.OIDC_AUTH,
-            lastLoginTime: new Date()
-          },
-          tx
-        );
+      await recordIdentityLastLoginDebounced({
+        keyStore,
+        membershipIdentityDAL,
+        identity,
+        lastLoginAuthMethod: IdentityAuthMethod.OIDC_AUTH
       });
 
       const subOrgDetails =
@@ -590,26 +594,26 @@ export const identityOidcAuthServiceFactory = ({
     }
   };
 
-  const attachOidcAuth = async ({
-    identityId,
-    oidcDiscoveryUrl,
-    caCert,
-    boundIssuer,
-    boundAudiences,
-    boundClaims,
-    claimMetadataMapping,
-    boundSubject,
-    accessTokenTTL,
-    accessTokenMaxTTL,
-    accessTokenNumUsesLimit,
-    accessTokenTrustedIps,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    isActorSuperAdmin
-  }: TAttachOidcAuthDTO) => {
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+  const attachOidcAuth = async (dto: TAttachOidcAuthDTO) => {
+    const {
+      identityId,
+      templateId,
+      boundClaims,
+      claimMetadataMapping,
+      boundSubject,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      actorId,
+      actorAuthMethod,
+      actor,
+      actorOrgId,
+      isActorSuperAdmin
+    } = dto;
+    // the route leaves these optional (no zod default) so template-managed values can be
+    // detected and rejected when a template is used; defaulted below for the custom path
+    let { oidcDiscoveryUrl, caCert, boundIssuer, boundAudiences } = dto;
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -623,6 +627,7 @@ export const identityOidcAuthServiceFactory = ({
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
+
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OIDC_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add OIDC Auth to already configured identity"
@@ -644,7 +649,7 @@ export const identityOidcAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Create,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -658,12 +663,77 @@ export const identityOidcAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
+        OrgPermissionIdentityActions.EditAuth,
         OrgPermissionSubjects.Identity
       );
     }
 
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
+
+    let template: TIdentityAuthTemplates | undefined;
+    if (templateId) {
+      if (!plan.machineIdentityAuthTemplates) {
+        throw new BadRequestError({
+          message:
+            "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+        OrgPermissionSubjects.MachineIdentityAuthTemplate
+      );
+
+      template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId);
+      if (!template || template.authMethod !== IdentityAuthTemplateMethod.OIDC) {
+        throw new NotFoundError({ message: `OIDC auth template with ID '${templateId}' not found` });
+      }
+
+      const templateFields = JSON.parse(
+        decryptor({ cipherTextBlob: template.templateFields }).toString()
+      ) as TOidcTemplateFields;
+
+      oidcDiscoveryUrl = templateFields.oidcDiscoveryUrl;
+      boundIssuer = templateFields.boundIssuer;
+      boundAudiences = templateFields.boundAudiences ?? "";
+      caCert = templateFields.caCert || "";
+
+      // a template's bindings identify the issuer, not a workload; with no per-identity
+      // binding, any token that issuer signs (e.g. any workflow in the org) could log in
+      // as this identity, so require the caller to scope it
+      if (!boundSubject && Object.keys(boundClaims).length === 0) {
+        throw new BadRequestError({
+          message:
+            "When using an auth template, set a subject or at least one claim binding to restrict which workloads can authenticate as this identity."
+        });
+      }
+    }
+
+    if (!oidcDiscoveryUrl || !boundIssuer) {
+      throw new BadRequestError({
+        message: "OIDC discovery URL and issuer are required when not using an auth template."
+      });
+    }
+    // consts so the narrowing survives into the transaction closure below
+    const resolvedOidcDiscoveryUrl = oidcDiscoveryUrl;
+    const resolvedBoundIssuer = boundIssuer;
+    const resolvedCaCert = caCert ?? "";
+    const resolvedBoundAudiences = boundAudiences ?? "";
+
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -681,21 +751,17 @@ export const identityOidcAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    await blockLocalAndPrivateIpAddresses(oidcDiscoveryUrl);
-
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
-    });
+    await blockLocalAndPrivateIpAddresses(resolvedOidcDiscoveryUrl);
 
     const identityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const doc = await identityOidcAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
-          oidcDiscoveryUrl,
-          encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob,
-          boundIssuer,
-          boundAudiences,
+          templateId: template?.id ?? null,
+          oidcDiscoveryUrl: resolvedOidcDiscoveryUrl,
+          encryptedCaCertificate: encryptor({ plainText: Buffer.from(resolvedCaCert) }).cipherTextBlob,
+          boundIssuer: resolvedBoundIssuer,
+          boundAudiences: resolvedBoundAudiences,
           boundClaims,
           claimMetadataMapping,
           boundSubject,
@@ -709,27 +775,32 @@ export const identityOidcAuthServiceFactory = ({
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
-    return { ...identityOidcAuth, orgId: identityMembershipOrg.scopeOrgId, caCert };
+    return {
+      ...identityOidcAuth,
+      orgId: identityMembershipOrg.scopeOrgId,
+      caCert: resolvedCaCert,
+      templateName: template?.name
+    };
   };
 
-  const updateOidcAuth = async ({
-    identityId,
-    oidcDiscoveryUrl,
-    caCert,
-    boundIssuer,
-    boundAudiences,
-    boundClaims,
-    claimMetadataMapping,
-    boundSubject,
-    accessTokenTTL,
-    accessTokenMaxTTL,
-    accessTokenNumUsesLimit,
-    accessTokenTrustedIps,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TUpdateOidcAuthDTO) => {
+  const updateOidcAuth = async (dto: TUpdateOidcAuthDTO) => {
+    const {
+      identityId,
+      templateId,
+      boundClaims,
+      claimMetadataMapping,
+      boundSubject,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      actorId,
+      actorAuthMethod,
+      actor,
+      actorOrgId,
+      isActorSuperAdmin
+    } = dto;
+    let { oidcDiscoveryUrl, caCert, boundIssuer, boundAudiences } = dto;
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -768,7 +839,7 @@ export const identityOidcAuthServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Edit,
+        ProjectPermissionIdentityActions.EditAuth,
         subject(ProjectPermissionSub.Identity, { identityId })
       );
     } else {
@@ -781,10 +852,88 @@ export const identityOidcAuthServiceFactory = ({
         actorOrgId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.EditAuth,
+        OrgPermissionSubjects.Identity
+      );
     }
 
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
+
+    let template: TIdentityAuthTemplates | undefined;
+    // the UI re-sends the current templateId on every save of a linked identity, so only a
+    // link CHANGE requires the attach-template permission; a re-assert must stay editable
+    // for actors that hold identity EditAuth alone
+    if (templateId && templateId !== identityOidcAuth.templateId) {
+      if (!plan.machineIdentityAuthTemplates) {
+        throw new BadRequestError({
+          message:
+            "Failed to use identity auth template due to plan restriction. Upgrade plan to access machine identity auth templates."
+        });
+      }
+
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(orgPermission).throwUnlessCan(
+        OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+        OrgPermissionSubjects.MachineIdentityAuthTemplate
+      );
+
+      template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId);
+      if (!template || template.authMethod !== IdentityAuthTemplateMethod.OIDC) {
+        throw new NotFoundError({ message: `OIDC auth template with ID '${templateId}' not found` });
+      }
+
+      const templateFields = JSON.parse(
+        decryptor({ cipherTextBlob: template.templateFields }).toString()
+      ) as TOidcTemplateFields;
+
+      oidcDiscoveryUrl = templateFields.oidcDiscoveryUrl;
+      boundIssuer = templateFields.boundIssuer;
+      boundAudiences = templateFields.boundAudiences ?? "";
+      caCert = templateFields.caCert ?? "";
+    } else if (templateId === undefined && identityOidcAuth.templateId) {
+      const hasTemplateManagedFieldChanges =
+        oidcDiscoveryUrl !== undefined ||
+        boundIssuer !== undefined ||
+        boundAudiences !== undefined ||
+        caCert !== undefined;
+      if (hasTemplateManagedFieldChanges) {
+        throw new BadRequestError({
+          message:
+            "This identity's OIDC identity provider settings are managed by an auth template. Update the template to change them, or unlink the template by setting templateId to null."
+        });
+      }
+    }
+
+    // a linked identity must always carry its own principal binding (see attach); this
+    // also covers linking a template onto an identity whose bindings are empty, and a
+    // linked identity clearing them, since the template supplies no binding of its own
+    const templateIdAfterUpdate = templateId === undefined ? identityOidcAuth.templateId : templateId;
+    if (templateIdAfterUpdate) {
+      const effectiveBoundSubject = boundSubject !== undefined ? boundSubject : (identityOidcAuth.boundSubject ?? "");
+      const effectiveBoundClaims =
+        boundClaims !== undefined ? boundClaims : ((identityOidcAuth.boundClaims ?? {}) as Record<string, string>);
+      if (!effectiveBoundSubject && Object.keys(effectiveBoundClaims).length === 0) {
+        throw new BadRequestError({
+          message:
+            "When using an auth template, set a subject or at least one claim binding to restrict which workloads can authenticate as this identity."
+        });
+      }
+    }
+
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -813,6 +962,9 @@ export const identityOidcAuthServiceFactory = ({
       boundClaims,
       claimMetadataMapping,
       boundSubject,
+      // tri-state passthrough: undefined keeps the current link, null unlinks, a uuid links
+      // (a re-assert of the current id skips the template load above, so template is unset)
+      templateId,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,
@@ -820,11 +972,6 @@ export const identityOidcAuthServiceFactory = ({
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
         : undefined
     };
-
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
-    });
 
     if (caCert !== undefined) {
       updateQuery.encryptedCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
@@ -835,11 +982,19 @@ export const identityOidcAuthServiceFactory = ({
       ? decryptor({ cipherTextBlob: updatedOidcAuth.encryptedCaCertificate }).toString()
       : "";
 
+    // a re-asserted or untouched link skips the load above, so resolve the name the audit
+    // log needs rather than leaving the reader with a bare uuid
+    const linkedTemplate =
+      updatedOidcAuth.templateId && template?.id !== updatedOidcAuth.templateId
+        ? await identityAuthTemplateDAL.findByIdAndOrgId(updatedOidcAuth.templateId, identityMembershipOrg.scopeOrgId)
+        : template;
+
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
     return {
       ...updatedOidcAuth,
       orgId: identityMembershipOrg.scopeOrgId,
-      caCert: updatedCACert
+      caCert: updatedCACert,
+      templateName: updatedOidcAuth.templateId ? linkedTemplate?.name : undefined
     };
   };
 
@@ -902,7 +1057,14 @@ export const identityOidcAuthServiceFactory = ({
     return { ...identityOidcAuth, orgId: identityMembershipOrg.scopeOrgId, caCert };
   };
 
-  const revokeOidcAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TRevokeOidcAuthDTO) => {
+  const revokeOidcAuth = async ({
+    identityId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    isActorSuperAdmin
+  }: TRevokeOidcAuthDTO) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
         scope: AccessScope.Organization,
@@ -981,6 +1143,8 @@ export const identityOidcAuthServiceFactory = ({
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     }
+
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);

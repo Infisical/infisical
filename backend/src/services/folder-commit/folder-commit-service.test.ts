@@ -344,6 +344,84 @@ describe("folderCommitServiceFactory", () => {
       expect(result).toEqual(commitData);
     });
 
+    it.each([
+      {
+        name: "a folder update",
+        changes: [{ type: CommitType.ADD, isUpdate: true, folderVersionId: "folder-version-1" }],
+        expected: "Updated 1 folder"
+      },
+      {
+        name: "a folder deletion",
+        changes: [{ type: CommitType.DELETE, folderVersionId: "folder-version-1" }],
+        expected: "Deleted 1 folder"
+      },
+      {
+        name: "mixed secret and folder changes",
+        changes: [
+          { type: CommitType.ADD, secretVersionId: "secret-version-1" },
+          { type: CommitType.ADD, secretVersionId: "secret-version-2" },
+          { type: CommitType.ADD, folderVersionId: "folder-version-1" },
+          { type: CommitType.DELETE, secretVersionId: "secret-version-3" }
+        ],
+        expected: "Created 2 secrets and 1 folder, deleted 1 secret"
+      }
+    ])("should summarize $name when no message is provided", async ({ changes, expected }) => {
+      // Arrange
+      const folderData = { id: "folder-id", envId: "env-id" };
+      const commitData = { id: "commit-id", folderId: "folder-id" };
+
+      mockFolderDAL.findById.mockResolvedValue(folderData);
+      mockFolderCommitDAL.create.mockResolvedValue(commitData);
+      mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
+      mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
+      mockFolderDAL.findByParentId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockFolderVersionDAL.find.mockResolvedValue({});
+
+      // Act
+      await folderCommitService.createCommit({
+        actor: { type: ActorType.PLATFORM },
+        folderId: folderData.id,
+        changes,
+        omitIgnoreFilter: true
+      });
+
+      // Assert
+      expect(mockFolderCommitDAL.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expected }),
+        undefined
+      );
+    });
+
+    it("should summarize changes when the provided message is only whitespace", async () => {
+      // Arrange
+      const folderData = { id: "folder-id", envId: "env-id" };
+      const commitData = { id: "commit-id", folderId: "folder-id" };
+
+      mockFolderDAL.findById.mockResolvedValue(folderData);
+      mockFolderCommitDAL.create.mockResolvedValue(commitData);
+      mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
+      mockFolderCommitDAL.findLatestCommit.mockResolvedValue({ id: "latest-commit-id" });
+      mockFolderDAL.findByParentId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockFolderVersionDAL.find.mockResolvedValue({});
+
+      // Act
+      await folderCommitService.createCommit({
+        actor: { type: ActorType.PLATFORM },
+        message: "   ",
+        folderId: folderData.id,
+        changes: [{ type: CommitType.ADD, folderVersionId: "folder-version-1" }],
+        omitIgnoreFilter: true
+      });
+
+      // Assert
+      expect(mockFolderCommitDAL.create).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Created 1 folder" }),
+        undefined
+      );
+    });
+
     it("should throw NotFoundError when folder does not exist", async () => {
       // Arrange
       mockFolderDAL.findById.mockResolvedValue(null);

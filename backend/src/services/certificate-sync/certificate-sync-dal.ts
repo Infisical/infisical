@@ -121,15 +121,6 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
-  const removeAllCertificatesFromSync = async (pkiSyncId: string, tx?: Knex): Promise<number> => {
-    try {
-      const deletedCount = await (tx || db)(TableName.CertificateSync).where({ pkiSyncId }).del();
-      return deletedCount;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "RemoveAllCertificatesFromSync" });
-    }
-  };
-
   const updateSyncStatus = async (
     pkiSyncId: string,
     certificateId: string,
@@ -332,7 +323,6 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     findExternalIdentifiersInUse,
     addCertificates,
     removeCertificates,
-    removeAllCertificatesFromSync,
     updateSyncStatus,
     bulkUpdateSyncStatus,
     updateSyncMetadata,

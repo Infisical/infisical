@@ -37,7 +37,7 @@ export const registerHCVaultConnectionRouter = async (server: FastifyZodProvider
         200: z.string().array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 

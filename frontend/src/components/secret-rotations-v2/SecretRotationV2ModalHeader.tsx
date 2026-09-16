@@ -11,23 +11,23 @@ export const SecretRotationV2ModalHeader = ({ type, isConfigured }: Props) => {
   const destinationDetails = SECRET_ROTATION_MAP[type];
 
   return (
-    <div className="flex w-full items-start gap-2">
+    <div className="flex w-full items-start gap-3 pr-8">
       <img
         alt={`${destinationDetails.name} logo`}
         src={`/images/integrations/${destinationDetails.image}`}
-        className="h-12 w-12 rounded-md bg-bunker-500 p-2"
+        className="size-10 rounded-md border border-border bg-card object-contain p-2"
       />
-      <div>
-        <div className="flex items-center gap-x-2 text-mineshaft-300">
-          {destinationDetails.name} Rotation
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-foreground">
+          <span>{destinationDetails.name} secret rotation</span>
           <DocumentationLinkBadge
             href={`https://infisical.com/docs/documentation/platform/secret-rotation/${type}`}
           />
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="mt-1 text-sm leading-4 font-normal text-muted">
           {isConfigured
-            ? `Edit ${destinationDetails.name} Rotation`
-            : `Rotate ${destinationDetails.name}`}
+            ? `Edit the ${destinationDetails.name} rotation configuration.`
+            : `Configure how Infisical rotates ${destinationDetails.name}.`}
         </p>
       </div>
     </div>

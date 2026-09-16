@@ -10,6 +10,7 @@ import { ExecutionError, Redlock, ResourceLockedError } from "@app/lib/red-lock"
 
 export const CronJobName = {
   HealthAlert: "health-alert",
+  KmsRootKeyCleanup: "kms-root-key-cleanup",
   DailyReminders: "daily-reminders",
   DailyResourceCleanup: "daily-resource-cleanup",
   DailySecretVersionCleanup: "daily-secret-version-cleanup",
@@ -22,6 +23,7 @@ export const CronJobName = {
   DailyExpiringPkiItemAlert: "daily-expiring-pki-item-alert",
   DailyPkiAlertV2Processing: "daily-pki-alert-v2-processing",
   PkiSyncCleanup: "pki-sync-cleanup",
+  PkiSyncHealthCheck: "pki-sync-health-check",
   PkiSubscriberDailyAutoRenewal: "pki-subscriber-daily-auto-renewal",
   PkiDiscoveryScheduledScan: "pki-discovery-scheduled-scan",
   PamDiscoveryScheduledScan: "pam-discovery-scheduled-scan",
@@ -42,6 +44,8 @@ export const CronJobName = {
   AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
   LicenseUsageFlush: "license-usage-flush",
   PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
+  PamHeartbeatQueueChecks: "pam-heartbeat-queue-checks",
+  MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",
   DailyAlertProcessing: "daily-alert-processing",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check"
@@ -168,7 +172,8 @@ export const cronJobFactory = ({
   retryBackoffBaseMs = DEFAULTS.retryBackoffBaseMs,
   retryBackoffMaxMs = DEFAULTS.retryBackoffMaxMs,
   drainTimeoutMs = DEFAULTS.drainTimeoutMs,
-  keyPrefix = KEY_HASH_TAG
+  keyPrefix = KEY_HASH_TAG,
+  schedulingEnabled = true
 }: {
   redis: Redis | Cluster;
   redlock: Redlock;
@@ -188,6 +193,12 @@ export const cronJobFactory = ({
    * server's real one can share a Redis without colliding on slot keys.
    */
   keyPrefix?: string;
+  /**
+   * Whether this pod runs cron handlers at all. When false, `register` is a no-op, so a pod that
+   * never starts the timers also never holds the registry. Defaults to true so tests and any
+   * caller that only wants the manager keep the previous behaviour.
+   */
+  schedulingEnabled?: boolean;
 }) => {
   assertHashTagged(keyPrefix);
 
@@ -195,6 +206,10 @@ export const cronJobFactory = ({
   const RUN_KEY = (id: string) => `${keyPrefix}:run:${id}`;
   const LEASE_KEY = (id: string) => `${keyPrefix}:lease:${id}`;
   const PENDING_ZSET = `${keyPrefix}:pending`;
+
+  if (!schedulingEnabled) {
+    logger.info("cron: scheduling disabled for this run mode, skipping every registration");
+  }
 
   const workerId = randomUUID();
   const entries = new Map<string, CronEntry>();
@@ -319,6 +334,8 @@ export const cronJobFactory = ({
     handlerTimeoutMs?: number;
     leaseDurationMs?: number;
   }) => {
+    if (!schedulingEnabled) return;
+
     if (!enabled) {
       logger.info(`cron[${name}]: disabled`);
       return;

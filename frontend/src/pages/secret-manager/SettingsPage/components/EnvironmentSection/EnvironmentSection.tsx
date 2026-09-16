@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { addDays, format } from "date-fns";
-import { ClockIcon, KeyIcon, PlusIcon, RotateCcwIcon, TriangleAlertIcon } from "lucide-react";
+import { PlusIcon, TriangleAlertIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -11,6 +11,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -22,8 +23,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-  Input
+  CardTitle
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -32,7 +32,7 @@ import {
   useProjectPermission,
   useSubscription
 } from "@app/context";
-import { useDeleteWsEnvironment } from "@app/hooks/api";
+import { useDeleteWsEnvironment, useRestoreEnvironment } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddEnvironmentModal } from "./AddEnvironmentModal";
@@ -45,7 +45,14 @@ export const EnvironmentSection = () => {
   const { permission } = useProjectPermission();
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
-  const [hardDeleteConfirmation, setHardDeleteConfirmation] = useState("");
+  const restoreEnvironment = useRestoreEnvironment();
+  const [isTableMutationPending, setIsTableMutationPending] = useState(false);
+  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+  const [isRestoreSubmitting, setIsRestoreSubmitting] = useState(false);
+
+  const isDeletePending = deleteWsEnvironment.isPending || isDeleteSubmitting;
+  const isRestorePending = restoreEnvironment.isPending || isRestoreSubmitting;
+  const isExternalMutationPending = isDeletePending || isRestorePending;
 
   const isMoreEnvironmentsAllowed =
     subscription?.environmentLimit && currentProject?.environments
@@ -56,6 +63,7 @@ export const EnvironmentSection = () => {
     "createEnv",
     "updateEnv",
     "deleteEnv",
+    "restoreEnv",
     "hardDeleteEnv",
     "upgradePlan"
   ] as const);
@@ -68,44 +76,81 @@ export const EnvironmentSection = () => {
     | { name: string; slug: string; id: string; deleteAfter?: string }
     | undefined;
 
+  const restoreEnvData = popUp?.restoreEnv?.data as
+    | { name: string; slug: string; id: string }
+    | undefined;
+
   const onEnvDeleteSubmit = async () => {
-    if (!currentProject?.id || !deleteEnvData?.id) return;
+    if (!currentProject?.id || !deleteEnvData?.id || isDeletePending) return;
 
-    await deleteWsEnvironment.mutateAsync({
-      projectId: currentProject.id,
-      id: deleteEnvData.id
-    });
+    setIsDeleteSubmitting(true);
 
-    createNotification({
-      text: "Environment scheduled for deletion",
-      type: "success"
-    });
+    try {
+      await deleteWsEnvironment.mutateAsync({
+        projectId: currentProject.id,
+        id: deleteEnvData.id
+      });
 
-    handlePopUpClose("deleteEnv");
+      createNotification({
+        text: "Environment scheduled for deletion",
+        type: "success"
+      });
+
+      handlePopUpClose("deleteEnv");
+    } finally {
+      setIsDeleteSubmitting(false);
+    }
   };
 
   const onSwitchToHardDelete = () => {
-    if (!deleteEnvData) return;
+    if (!deleteEnvData || isDeletePending) return;
     handlePopUpClose("deleteEnv");
     handlePopUpOpen("hardDeleteEnv", deleteEnvData);
   };
 
+  const onEnvRestoreSubmit = async () => {
+    if (!currentProject?.id || !restoreEnvData?.id || isRestorePending) return;
+
+    setIsRestoreSubmitting(true);
+
+    try {
+      await restoreEnvironment.mutateAsync({
+        projectId: currentProject.id,
+        id: restoreEnvData.id
+      });
+
+      createNotification({
+        text: "Successfully restored environment",
+        type: "success"
+      });
+
+      handlePopUpClose("restoreEnv");
+    } finally {
+      setIsRestoreSubmitting(false);
+    }
+  };
+
   const onEnvHardDeleteSubmit = async () => {
-    if (!currentProject?.id || !hardDeleteEnvData?.id) return;
+    if (!currentProject?.id || !hardDeleteEnvData?.id || isDeletePending) return;
 
-    await deleteWsEnvironment.mutateAsync({
-      projectId: currentProject.id,
-      id: hardDeleteEnvData.id,
-      hardDelete: true
-    });
+    setIsDeleteSubmitting(true);
 
-    createNotification({
-      text: "Successfully deleted environment",
-      type: "success"
-    });
+    try {
+      await deleteWsEnvironment.mutateAsync({
+        projectId: currentProject.id,
+        id: hardDeleteEnvData.id,
+        hardDelete: true
+      });
 
-    handlePopUpClose("hardDeleteEnv");
-    setHardDeleteConfirmation("");
+      createNotification({
+        text: "Successfully deleted environment",
+        type: "success"
+      });
+
+      handlePopUpClose("hardDeleteEnv");
+    } finally {
+      setIsDeleteSubmitting(false);
+    }
   };
 
   return (
@@ -126,13 +171,14 @@ export const EnvironmentSection = () => {
                 variant="project"
                 size="sm"
                 onClick={() => {
+                  if (isExternalMutationPending || isTableMutationPending) return;
                   if (isMoreEnvironmentsAllowed) {
                     handlePopUpOpen("createEnv");
                   } else {
                     handlePopUpOpen("upgradePlan");
                   }
                 }}
-                isDisabled={!isAllowed}
+                isDisabled={!isAllowed || isExternalMutationPending || isTableMutationPending}
               >
                 <PlusIcon className="size-4" />
                 Create Environment
@@ -143,7 +189,11 @@ export const EnvironmentSection = () => {
       </CardHeader>
       <CardContent>
         {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
-          <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
+          <EnvironmentTable
+            handlePopUpOpen={handlePopUpOpen}
+            isExternalMutationPending={isExternalMutationPending}
+            onMutationPendingChange={setIsTableMutationPending}
+          />
         ) : (
           <PermissionDeniedBanner />
         )}
@@ -159,7 +209,10 @@ export const EnvironmentSection = () => {
       />
       <AlertDialog
         open={popUp.deleteEnv.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && isDeletePending) return;
+          handlePopUpToggle("deleteEnv", isOpen);
+        }}
       >
         <AlertDialogContent className="sm:max-w-xl!">
           <AlertDialogHeader>
@@ -175,33 +228,36 @@ export const EnvironmentSection = () => {
               .
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2 rounded-md border border-border bg-foreground/5 p-3 text-sm">
-            <div className="flex gap-2">
-              <RotateCcwIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-              <p>
-                <span className="font-medium text-foreground">Restore anytime within 14 days</span>{" "}
-                <span className="opacity-80">secrets, folders, and history are preserved.</span>
-              </p>
-            </div>
-            <div className="flex gap-2 opacity-80">
-              <KeyIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-              <p>
-                Service tokens and integrations referencing {deleteEnvData?.slug ?? ""} will fail to
-                resolve. Fix or remove them before the grace period ends.
-              </p>
-            </div>
-            <div className="flex gap-2 opacity-80">
-              <ClockIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-              <p>After 14 days, all secret data is wiped and cannot be recovered.</p>
-            </div>
-          </div>
+          <ul className="list-disc pl-4 text-sm text-label">
+            <li>Restore anytime within 14 days. Secrets, folders, and history are preserved.</li>
+            <li>After 14 days, all secret data is wiped and cannot be recovered.</li>
+          </ul>
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              Service tokens and integrations referencing {deleteEnvData?.slug ?? ""} will fail to
+              resolve. Fix or remove them before the grace period ends.
+            </AlertDescription>
+          </Alert>
           <AlertDialogFooter className="sm:justify-between">
-            <Button variant="danger" size="sm" onClick={onSwitchToHardDelete}>
-              Delete Permanently
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={onSwitchToHardDelete}
+              isDisabled={isDeletePending}
+            >
+              Delete Now
             </Button>
             <div className="flex gap-2">
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction variant="project" onClick={onEnvDeleteSubmit}>
+              <AlertDialogCancel isDisabled={isDeletePending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="project"
+                onClick={(event) => {
+                  event.preventDefault();
+                  onEnvDeleteSubmit().catch(() => undefined);
+                }}
+                isPending={isDeletePending}
+              >
                 Confirm
               </AlertDialogAction>
             </div>
@@ -209,10 +265,40 @@ export const EnvironmentSection = () => {
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
-        open={popUp.hardDeleteEnv.isOpen}
+        open={popUp.restoreEnv.isOpen}
         onOpenChange={(isOpen) => {
+          if (!isOpen && isRestorePending) return;
+          handlePopUpToggle("restoreEnv", isOpen);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore {restoreEnvData?.name ?? "environment"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The {restoreEnvData?.slug ?? ""} environment will become accessible again with its
+              secrets, folders, and history preserved. Service tokens and integrations referencing
+              it will begin resolving again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isRestorePending}>Cancel</AlertDialogCancel>
+            <Button
+              variant="project"
+              size="sm"
+              onClick={() => onEnvRestoreSubmit().catch(() => undefined)}
+              isPending={isRestorePending}
+            >
+              Restore Environment
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={popUp.hardDeleteEnv.isOpen}
+        confirmationValue={hardDeleteEnvData?.slug}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && isDeletePending) return;
           handlePopUpToggle("hardDeleteEnv", isOpen);
-          if (!isOpen) setHardDeleteConfirmation("");
         }}
       >
         <AlertDialogContent className="sm:max-w-xl!">
@@ -228,38 +314,27 @@ export const EnvironmentSection = () => {
           <Alert variant="danger">
             <TriangleAlertIcon />
             <AlertDescription>
-              <p>
-                <span className="font-medium text-foreground">All secrets and folders</span> will be
-                wiped from storage.
-              </p>
-              <p>
-                Any service token or integration referencing {hardDeleteEnvData?.slug ?? ""} will
-                fail immediately and cannot be restored from this UI.
-              </p>
+              All secrets and folders will be wiped from storage. Any service token or integration
+              referencing {hardDeleteEnvData?.slug ?? ""} will fail immediately and cannot be
+              restored from this UI.
             </AlertDescription>
           </Alert>
-          <div className="w-full pt-2 pb-4">
-            <p className="mb-2 text-sm text-muted">
-              Type {hardDeleteEnvData?.slug ?? ""} to confirm.
-            </p>
-            <Input
-              value={hardDeleteConfirmation}
-              onChange={(e) => setHardDeleteConfirmation(e.target.value)}
-              placeholder={hardDeleteEnvData?.slug ?? ""}
-            />
-          </div>
+          <AlertDialogConfirmationField
+            inputProps={{ disabled: isDeletePending }}
+            onConfirm={() => onEnvHardDeleteSubmit().catch(() => undefined)}
+          />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button
+            <AlertDialogCancel isDisabled={isDeletePending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
               variant="danger"
-              size="sm"
-              onClick={onEnvHardDeleteSubmit}
-              isDisabled={
-                !hardDeleteEnvData?.slug || hardDeleteConfirmation !== hardDeleteEnvData.slug
-              }
+              onClick={(event) => {
+                event.preventDefault();
+                onEnvHardDeleteSubmit().catch(() => undefined);
+              }}
+              isPending={isDeletePending}
             >
-              Delete Permanently
-            </Button>
+              Delete Now
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

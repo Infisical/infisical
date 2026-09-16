@@ -21,6 +21,7 @@ const nowSeconds = () => Math.floor(Date.now() / 1000);
 const mockFetchReturning = (token: string) =>
   vi.fn(async () => ({
     ok: true,
+    headers: new Headers(),
     json: async () => ({ token })
   })) as unknown as typeof fetch;
 
@@ -70,7 +71,11 @@ describe("createSelfHostedTokenProvider", () => {
   });
 
   test("single-flights concurrent exchanges", async () => {
-    let resolveFetch: (value: { ok: boolean; json: () => Promise<{ token: string }> }) => void = () => {};
+    let resolveFetch: (value: {
+      ok: boolean;
+      headers: Headers;
+      json: () => Promise<{ token: string }>;
+    }) => void = () => {};
     const fetchMock = vi.fn(
       () =>
         new Promise((resolve) => {
@@ -84,7 +89,7 @@ describe("createSelfHostedTokenProvider", () => {
     const [a, b] = await Promise.all([
       (async () => {
         const p = provider.getToken();
-        resolveFetch({ ok: true, json: async () => ({ token }) });
+        resolveFetch({ ok: true, headers: new Headers(), json: async () => ({ token }) });
         return p;
       })(),
       provider.getToken()
@@ -99,11 +104,12 @@ describe("createSelfHostedTokenProvider", () => {
     const fetchMock = vi.fn(async () => ({
       ok: false,
       status: 401,
+      headers: new Headers({ "x-request-id": "req-abc" }),
       text: async () => "unauthorized"
     })) as unknown as typeof fetch;
     vi.stubGlobal("fetch", fetchMock);
     const provider = createSelfHostedTokenProvider(LICENSE_KEY, { serverUrl: SERVER_URL });
 
-    await expect(provider.getToken()).rejects.toThrow(/token exchange failed/);
+    await expect(provider.getToken()).rejects.toThrow(/\[licenseRequestId=req-abc\] token exchange failed/);
   });
 });

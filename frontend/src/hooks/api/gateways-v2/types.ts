@@ -1,11 +1,14 @@
 export type TGatewayV2 = {
   id: string;
   identityId: string | null;
+  relayId: string | null;
   name: string;
   createdAt: string;
   updatedAt: string;
   heartbeat: string | null;
   heartbeatTTL: number | null;
+  directAddress: string | null;
+  directHeartbeat: string | null;
   canRevoke: boolean;
   connectedResourcesCount: number;
   identity: {
@@ -24,6 +27,22 @@ export type GatewayAwsAuthConfig = {
   updatedAt: string;
 };
 
+export type GatewayKubernetesAuthConfig = {
+  id: string;
+  kubernetesHost: string;
+  allowedNamespaces: string;
+  allowedNames: string;
+  allowedAudience: string;
+  verifyTlsCertificate: boolean;
+  caCertificate: string;
+  hasTokenReviewerJwt: boolean;
+  tokenReviewMode: string;
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type GatewayTokenAuthConfig = Record<string, never>;
 
 export type GatewayIdentityAuthConfig = {
@@ -33,6 +52,7 @@ export type GatewayIdentityAuthConfig = {
 
 export type GatewayAuthMethodView =
   | { method: "aws"; config: GatewayAwsAuthConfig }
+  | { method: "kubernetes"; config: GatewayKubernetesAuthConfig }
   | { method: "token"; config: GatewayTokenAuthConfig }
   | { method: "identity"; config: GatewayIdentityAuthConfig };
 
@@ -46,6 +66,21 @@ export type SettableAuthMethodInput =
       stsEndpoint?: string;
       allowedPrincipalArns: string;
       allowedAccountIds: string;
+    }
+  | {
+      method: "kubernetes";
+      // Omitted only in gateway review mode, where the gateway calls its own API server.
+      kubernetesHost?: string;
+      caCertificate?: string;
+      // Write-only. Omitted means "keep the stored value"; an empty string clears it.
+      tokenReviewerJwt?: string;
+      tokenReviewMode?: string;
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
+      allowedNamespaces: string;
+      allowedNames: string;
+      allowedAudience?: string;
+      verifyTlsCertificate?: boolean;
     }
   | { method: "token" };
 

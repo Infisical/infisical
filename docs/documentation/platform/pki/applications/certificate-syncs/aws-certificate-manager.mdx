@@ -27,11 +27,11 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
   Certificates synced to ACM are stored as imported certificates, preserving both the certificate and private key.
 </Note>
 
-## Create an ACM Sync
+## Create an ACM sync
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+        1. In your Application, go to the **Certificate Syncs** tab and select **Create Sync**.
 
         2. Select the **AWS Certificate Manager** option.
 
@@ -122,7 +122,7 @@ Push certificates from your Application to AWS Certificate Manager (ACM). Certif
 
 </Tabs>
 
-## Certificate Management
+## Certificate management
 
 The AWS Certificate Manager Certificate Sync provides:
 
@@ -134,10 +134,10 @@ The AWS Certificate Manager Certificate Sync provides:
 <Note>
   AWS Certificate Manager Certificate Syncs support both automatic and manual
   synchronization modes. When auto-sync is enabled, certificates are
-  automatically deployed as they are issued or renewed.
+  automatically deployed as they're issued or renewed.
 </Note>
 
-## Manual Certificate Sync
+## Manual certificate sync
 
 You can manually trigger certificate synchronization to AWS Certificate Manager using the sync certificates functionality. This is useful for:
 
@@ -151,13 +151,13 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
 ## FAQ
 
 <Accordion title="Can I import certificates from AWS Certificate Manager back into Infisical?">
-  AWS Certificate Manager does not support importing certificates back into
-  Infisical due to security limitations where private keys cannot be extracted
+  AWS Certificate Manager doesn't support importing certificates back into
+  Infisical due to security limitations where private keys can't be extracted
   from AWS Certificate Manager. Only certificates imported into ACM (not
   AWS-issued certificates) can be managed by the sync.
 </Accordion>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="AWS Elastic Load Balancer" icon="aws" href="/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer">

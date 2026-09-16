@@ -13,7 +13,7 @@ import {
   scanGitRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig, SECRET_SCANNING_SCAN_OVERHEAD_MS } from "@app/lib/config/env";
+import { getConfig, SECRET_SCANNING_SCAN_OVERHEAD } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -41,6 +41,7 @@ import {
   TFindingsPayload,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
+  TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningFinding
@@ -71,9 +72,7 @@ const STUCK_SCAN_STATUS_MESSAGE =
 // shorter can expire mid-scan and let a second scan of the same resource start alongside the first.
 const getFullScanLockTtlMs = () => {
   const appCfg = getConfig();
-  return (
-    appCfg.SECRET_SCANNING_CLONE_TIMEOUT_MS + appCfg.SECRET_SCANNING_SCAN_TIMEOUT_MS + SECRET_SCANNING_SCAN_OVERHEAD_MS
-  );
+  return appCfg.SECRET_SCANNING_CLONE_TIMEOUT + appCfg.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
 };
 
 export const secretScanningV2QueueServiceFactory = ({
@@ -144,7 +143,7 @@ export const secretScanningV2QueueServiceFactory = ({
         for (const scan of scans) {
           // eslint-disable-next-line no-await-in-loop
           await queueService.queue(
-            QueueName.SecretScanningV2,
+            QueueName.SecretScanningV2FullScan,
             QueueJobs.SecretScanningV2FullScan,
             {
               scanId: scan.id,
@@ -409,7 +408,7 @@ export const secretScanningV2QueueServiceFactory = ({
     payload,
     dataSourceId,
     dataSourceType
-  }: Pick<TQueueSecretScanningResourceDiffScan, "payload" | "dataSourceId" | "dataSourceType">) => {
+  }: Omit<TQueueSecretScanningResourceDiffScanPayload, "scanId" | "resourceId">) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]({
       kmsService,
       appConnectionDAL
@@ -445,7 +444,7 @@ export const secretScanningV2QueueServiceFactory = ({
       });
 
       await queueService.queue(
-        QueueName.SecretScanningV2,
+        QueueName.SecretScanningV2RealtimeScan,
         QueueJobs.SecretScanningV2DiffScan,
         {
           payload,
@@ -836,10 +835,10 @@ export const secretScanningV2QueueServiceFactory = ({
     pattern: "*/10 * * * *",
     runHashTtlS: 60 * 60,
     handler: async () => {
-      const { SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS } = getConfig();
+      const { SECRET_SCANNING_STUCK_SCAN_TIMEOUT } = getConfig();
 
       const stuckScans = await secretScanningV2DAL.scans.findStuck(
-        new Date(Date.now() - SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS),
+        new Date(Date.now() - SECRET_SCANNING_STUCK_SCAN_TIMEOUT),
         STUCK_SCAN_REAP_BATCH_SIZE
       );
 
@@ -854,7 +853,25 @@ export const secretScanningV2QueueServiceFactory = ({
     }
   });
 
+  queueService.start(
+    QueueName.SecretScanningV2FullScan,
+    async (job) => {
+      await handleFullScan(job as Parameters<typeof handleFullScan>[0]);
+    },
+    { concurrency: 1 }
+  );
+
+  queueService.start(
+    QueueName.SecretScanningV2RealtimeScan,
+    async (job) => {
+      await handleDiffScan(job as Parameters<typeof handleDiffScan>[0]);
+    },
+    { concurrency: 5 }
+  );
+
   queueService.start(QueueName.SecretScanningV2, async (job) => {
+    // We are keeping this for now because once deployed, the queue might still have
+    // full scan and diff scan messages in it and need to be processed.
     if (job.name === QueueJobs.SecretScanningV2FullScan) {
       await handleFullScan(job as Parameters<typeof handleFullScan>[0]);
     } else if (job.name === QueueJobs.SecretScanningV2DiffScan) {

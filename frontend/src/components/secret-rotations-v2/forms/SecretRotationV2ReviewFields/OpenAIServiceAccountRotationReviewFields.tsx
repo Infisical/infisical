@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
@@ -18,11 +18,11 @@ export const OpenAIServiceAccountRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Project ID">{parameters.projectId}</GenericFieldLabel>
-        <GenericFieldLabel label="Service Account Name">{parameters.name}</GenericFieldLabel>
+        <ReviewField label="Project ID">{parameters.projectId}</ReviewField>
+        <ReviewField label="Service Account Name">{parameters.name}</ReviewField>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="API Key">{apiKey}</GenericFieldLabel>
+        <ReviewField label="API Key">{apiKey}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

@@ -77,9 +77,7 @@ const requestWithNetScalerGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: platformConnectionDetails.relayHost,
-        gateway: platformConnectionDetails.gateway,
-        relay: platformConnectionDetails.relay
+        ...platformConnectionDetails
       }
     );
   }
@@ -201,9 +199,7 @@ export const executeNetScalerOperationWithGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: platformConnectionDetails.relayHost,
-        gateway: platformConnectionDetails.gateway,
-        relay: platformConnectionDetails.relay
+        ...platformConnectionDetails
       }
     );
   }

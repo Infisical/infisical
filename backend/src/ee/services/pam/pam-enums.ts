@@ -6,6 +6,7 @@ export enum PamAccountType {
   OracleDB = "oracledb",
   MongoDB = "mongodb",
   Redis = "redis",
+  Snowflake = "snowflake",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
@@ -16,6 +17,7 @@ export enum PamAccountType {
 
 export enum PamResourceRole {
   Admin = "admin",
+  Operator = "operator",
   Connector = "connector",
   Auditor = "auditor"
 }
@@ -23,6 +25,13 @@ export enum PamResourceRole {
 export enum PamProductRole {
   Admin = "admin",
   Member = "member"
+}
+
+export enum PamHeartbeatStatus {
+  Healthy = "healthy",
+  InvalidCredentials = "invalid-credentials",
+  CannotCheck = "cannot-check",
+  Unknown = "unknown"
 }
 
 export enum PamSessionStatus {
@@ -35,6 +44,12 @@ export enum PamSessionStatus {
 export enum PamSessionEndReason {
   Completed = "completed",
   Expired = "expired"
+}
+
+export enum PamSnowflakeAuthMethod {
+  KeyPair = "key-pair",
+  ProgrammaticAccessToken = "programmatic-access-token",
+  Password = "password"
 }
 
 export enum GcpServiceAccountAuthMethod {
@@ -51,6 +66,16 @@ export enum PamSshAuthMethod {
   Password = "password",
   PublicKey = "public-key",
   Certificate = "certificate"
+}
+
+export enum PamPostgresAuthMethod {
+  Password = "password",
+  AwsIam = "aws-iam"
+}
+
+export enum PamAccessType {
+  Session = "session",
+  Credential = "credential"
 }
 
 // The caller's just-in-time approval state for an account gated behind an access request flow
@@ -70,5 +95,9 @@ export enum PamMemberKind {
 export enum PamNotificationEvent {
   AccessRequested = "access-requested",
   AccessRequestApproved = "access-request-approved",
-  AccessRequestDenied = "access-request-denied"
+  AccessRequestDenied = "access-request-denied",
+  AccessRequestBypassed = "access-request-bypassed"
 }
+
+// Best-effort: the tunnel is torn down either way.
+export const PAM_CANCELLATION_FLUSH_TIMEOUT_MS = 5000;

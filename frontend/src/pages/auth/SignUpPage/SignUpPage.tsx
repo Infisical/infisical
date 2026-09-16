@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -7,6 +7,8 @@ import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
+import { OnboardingProgress } from "@app/components/auth/OnboardingPageLayout";
+import { OnboardingStepTransition } from "@app/components/auth/OnboardingStepTransition";
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
@@ -27,15 +29,6 @@ enum SignupSection {
   InviteTeam = "invite-team",
   Complete = "complete"
 }
-
-// Email entry and code verification share a step; the completion summary shows no counter.
-const STEP_NUMBERS: Partial<Record<SignupSection, number>> = {
-  [SignupSection.Email]: 1,
-  [SignupSection.VerifyCode]: 1,
-  [SignupSection.UserInfo]: 2,
-  [SignupSection.ProductSelect]: 3,
-  [SignupSection.InviteTeam]: 4
-};
 
 type PendingEmailVerification = {
   email: string;
@@ -58,6 +51,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     isInvite ? SignupSection.UserInfo : SignupSection.Email
   );
   const [orgId, setOrgId] = useState("");
+  const [inviteEmails, setInviteEmails] = useState("");
+  const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
   const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
   const [createdProjects, setCreatedProjects] = useState<
@@ -191,10 +186,19 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           />
         );
       case SignupSection.ProductSelect:
-        return <ProductSelectionStep onComplete={handleProductSelectComplete} />;
+        return (
+          <ProductSelectionStep
+            onComplete={handleProductSelectComplete}
+            initialProducts={selectedProducts}
+            projectCache={projectCache}
+          />
+        );
       case SignupSection.InviteTeam:
         return (
           <TeamInviteStep
+            emails={inviteEmails}
+            onEmailsChange={setInviteEmails}
+            onBack={() => setSection(SignupSection.ProductSelect)}
             productName={
               selectedProducts.length === 1
                 ? getSignupProduct(selectedProducts[0])?.name
@@ -204,6 +208,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
               project ? [project.id] : []
             )}
             grantPamAccess={selectedProducts.includes(ProjectType.PAM)}
+            grantAgentVaultAccess={selectedProducts.includes(ProjectType.AgentVault)}
             onComplete={handleInviteComplete}
           />
         );
@@ -242,52 +247,29 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     return undefined;
   };
 
-  // Without an email service the invite step is skipped, so the counter tops out at 3.
-  const totalSteps = serverDetails?.emailConfigured ? 4 : 3;
-  const stepNumber = STEP_NUMBERS[section];
-  const stepIndicator =
-    !isInvite && stepNumber ? (
-      <span className="rounded-sm border border-border bg-container/50 px-2.5 py-0.5 font-jetbrains-mono text-[10px] tracking-widest text-muted uppercase">
-        Step {stepNumber} of {totalSteps}
-      </span>
-    ) : undefined;
+  const isWorkspaceSetup =
+    section === SignupSection.ProductSelect ||
+    section === SignupSection.InviteTeam ||
+    section === SignupSection.Complete;
 
-  const completeAsideDescription = (() => {
-    if (selectedProducts.length === 0) return "Your organization overview has everything laid out.";
-    if (selectedProducts.length === 1) {
-      return `${getSignupProduct(selectedProducts[0])?.name} is set up and ready to use.`;
-    }
-    return "Your products are set up and ready to go.";
-  })();
-  const asideContent = (() => {
-    switch (section) {
-      case SignupSection.ProductSelect:
-        return {
-          eyebrow: "One platform, five products",
-          description:
-            "Secrets, PKI, KMS, privileged access, and scanning. Start where it hurts most."
-        };
-      case SignupSection.InviteTeam:
-        return {
-          eyebrow: "Better together",
-          description: "Infisical works best when your whole team is in one place."
-        };
-      case SignupSection.Complete:
-        return {
-          eyebrow: "You're all set",
-          description: completeAsideDescription
-        };
-      default:
-        return undefined;
-    }
-  })();
+  const postAuthSteps = serverDetails?.emailConfigured
+    ? [SignupSection.ProductSelect, SignupSection.InviteTeam, SignupSection.Complete]
+    : [SignupSection.ProductSelect, SignupSection.Complete];
+  const stepIndicator =
+    !isInvite && isWorkspaceSetup ? (
+      <OnboardingProgress
+        currentStep={postAuthSteps.indexOf(section) + 1}
+        totalSteps={postAuthSteps.length}
+      />
+    ) : undefined;
 
   return (
     <AuthPageLayout
       showFooter={false}
       bottomContent={renderBottomContent()}
       headerAction={stepIndicator}
-      aside={asideContent}
+      variant={isWorkspaceSetup ? "focused" : "split"}
+      contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
     >
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
@@ -296,15 +278,18 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      {section === SignupSection.VerifyCode ||
-      section === SignupSection.ProductSelect ||
-      section === SignupSection.Complete ? (
-        <div className="w-full">{renderView()}</div>
-      ) : (
-        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-          {renderView()}
-        </form>
-      )}
+      <OnboardingStepTransition step={section}>
+        {section === SignupSection.VerifyCode ||
+        section === SignupSection.UserInfo ||
+        section === SignupSection.ProductSelect ||
+        section === SignupSection.Complete ? (
+          <div className="w-full">{renderView()}</div>
+        ) : (
+          <form className="w-full" onSubmit={(e) => e.preventDefault()}>
+            {renderView()}
+          </form>
+        )}
+      </OnboardingStepTransition>
     </AuthPageLayout>
   );
 };

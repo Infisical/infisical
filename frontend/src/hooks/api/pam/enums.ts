@@ -6,6 +6,7 @@ export enum PamAccountType {
   OracleDB = "oracledb",
   MongoDB = "mongodb",
   Redis = "redis",
+  Snowflake = "snowflake",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
@@ -16,7 +17,8 @@ export enum PamAccountType {
 
 export enum PamDiscoveryType {
   ActiveDirectory = "active-directory",
-  Unix = "unix"
+  Unix = "unix",
+  Postgres = "postgres"
 }
 
 export enum PamDiscoverySchedule {
@@ -29,12 +31,27 @@ export const ROTATABLE_PAM_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
   PamAccountType.MySQL,
   PamAccountType.MsSQL,
+  PamAccountType.OracleDB,
   PamAccountType.Windows,
   PamAccountType.WindowsAd
 ];
 
 export const isRotatablePamAccountType = (type: PamAccountType | string) =>
   (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
+
+// Mirrors ORACLE_MAX_PASSWORD_LENGTH in backend/src/ee/services/pam-account/pam-account-schemas.ts, which is
+// what actually rejects a longer one. Change both together.
+export const ORACLE_MAX_PASSWORD_LENGTH = 30;
+
+export const maxGeneratedPasswordLength = (type: PamAccountType | string | undefined) =>
+  type === PamAccountType.OracleDB ? ORACLE_MAX_PASSWORD_LENGTH : 250;
+
+export enum PamHeartbeatStatus {
+  Healthy = "healthy",
+  InvalidCredentials = "invalid-credentials",
+  CannotCheck = "cannot-check",
+  Unknown = "unknown"
+}
 
 export enum PamRotationStatus {
   Success = "success",
@@ -63,6 +80,7 @@ export const formatRotationInterval = (seconds: number | null | undefined): stri
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
+  AllowBreakGlass = "allow-break-glass",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
@@ -116,6 +134,11 @@ export enum PamResourcePermissionActions {
   ViewAuditLogs = "view-audit-logs"
 }
 
+export enum PamAccessType {
+  Session = "session",
+  Credential = "credential"
+}
+
 // The caller's just-in-time approval state for an account gated behind an access request flow
 export enum PamAccessStatus {
   None = "none",
@@ -151,5 +174,6 @@ export enum PamApproverType {
 export enum PamNotificationEvent {
   AccessRequested = "access-requested",
   AccessRequestApproved = "access-request-approved",
-  AccessRequestDenied = "access-request-denied"
+  AccessRequestDenied = "access-request-denied",
+  AccessRequestBypassed = "access-request-bypassed"
 }

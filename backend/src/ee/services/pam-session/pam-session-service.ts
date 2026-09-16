@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { CliCapability, cliSupports } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -21,6 +22,8 @@ import {
   PamAccessMethod,
   PamAccessStatus,
   PamAccountType,
+  PamPostgresAuthMethod,
+  PamProductRole,
   PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
@@ -61,7 +64,8 @@ import {
   AWS_STS_MIN_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
   extractAwsAccountIdFromArn,
-  generateAwsIamSessionCredentials
+  generateAwsIamSessionCredentials,
+  generateRdsAuthToken
 } from "./aws-iam/aws-iam-federation";
 import { getAzureAccessTokens } from "./azure/azure-federation";
 import { mintGcpAccessToken } from "./gcp/gcp-federation";
@@ -69,6 +73,8 @@ import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
 import {
+  isPamSessionLive,
+  pamSessionRemainingSeconds,
   reportPamSessionEnded,
   resolvePamSessionDistinctId,
   sendPamSessionCancellationSignal
@@ -84,6 +90,7 @@ type TPamSessionServiceFactoryDep = {
     | "endSessionById"
     | "terminateSessionById"
     | "updateById"
+    | "claimRecordingSecrets"
     | "activateSession"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
@@ -140,6 +147,25 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext
   ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
 
+  const checkSession = async (
+    session: { accountId?: string | null; projectId: string },
+    action: ResourcePermissionPamResourceActions,
+    ctx: TActorContext
+  ) => {
+    if (session.accountId) {
+      const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
+      await checkAccount(session.accountId, account?.folderId, session.projectId, action, ctx);
+      return;
+    }
+
+    const { hasRole } = await verifyProductMembership(permissionService, session.projectId, ctx);
+    if (!hasRole(PamProductRole.Admin)) {
+      throw new ForbiddenRequestError({
+        message: "Only a project admin can access a session whose account has been deleted"
+      });
+    }
+  };
+
   const enforceRecordingConfig = (account: Parameters<typeof getAccountAccessibilityIssues>[0]) => {
     const issues = getAccountAccessibilityIssues(account);
     if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
@@ -154,7 +180,7 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext,
     pagination?: { offset?: number; limit?: number; search?: string; status?: string }
   ) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+    const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
@@ -167,34 +193,28 @@ export const pamSessionServiceFactory = ({
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
       viewSessionsAccountIds: accountIds,
+      includeOrphaned: hasRole(PamProductRole.Admin),
       ...pagination
     });
   };
 
   const getSessionById = async (sessionId: string, ctx: TActorContext) => {
     const session = await pamSessionDAL.findById(sessionId);
-    if (!session || !session.accountId) return null;
+    if (!session) return null;
 
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    await checkAccount(
-      session.accountId,
-      account?.folderId,
-      session.projectId,
-      ResourcePermissionPamResourceActions.ViewSessions,
-      ctx
-    );
+    await checkSession(session, ResourcePermissionPamResourceActions.ViewSessions, ctx);
 
     return session;
   };
 
   // Called by the gateway
-  const getSessionCredentials = async (sessionId: string, gatewayId: string) => {
+  const getSessionCredentials = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
     if (!session) {
       throw new NotFoundError({ message: "Session not found" });
     }
 
-    if (session.status !== PamSessionStatus.Starting && session.status !== PamSessionStatus.Active) {
+    if (!isPamSessionLive(session)) {
       throw new BadRequestError({ message: "Session is not active" });
     }
 
@@ -209,6 +229,7 @@ export const pamSessionServiceFactory = ({
 
     const connectionDetails = await decrypt(session.projectId, account.encryptedConnectionDetails);
     const credentials = await decrypt(session.projectId, account.encryptedCredentials);
+    const remainingSeconds = pamSessionRemainingSeconds(session);
 
     if (credentials.authMethod === "certificate" && account.encryptedInternalMetadata) {
       const internalMetadata = parseInternalMetadata(
@@ -226,7 +247,7 @@ export const pamSessionServiceFactory = ({
           clientPublicKey,
           keyId: `pam-session-${session.id}`,
           principals: [username],
-          requestedTtl: `${resolveAccessControls(account.templatePolicies).maxSessionDurationSeconds ?? DEFAULT_SESSION_DURATION_MS / 1000}s`,
+          requestedTtl: `${remainingSeconds}s`,
           certType: SshCertType.USER
         });
 
@@ -236,7 +257,6 @@ export const pamSessionServiceFactory = ({
     }
 
     if (account.accountType === PamAccountType.GcpServiceAccount) {
-      const remainingSeconds = Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
       credentials.token = await mintGcpAccessToken({
         serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
         authMethod: credentials.authMethod as string,
@@ -244,6 +264,21 @@ export const pamSessionServiceFactory = ({
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (credentials.authMethod === PamPostgresAuthMethod.AwsIam) {
+      const { host, port } = connectionDetails as { host: string; port: number };
+      credentials.password = await generateRdsAuthToken({
+        roleArn: credentials.roleArn as string,
+        externalId: orgId,
+        roleSessionName: `infisical-pam-${sessionId}`,
+        region: credentials.awsRegion as string,
+        host,
+        port,
+        username: credentials.username as string
+      });
+      delete credentials.awsRegion;
+      delete credentials.roleArn;
     }
 
     if (account.accountType === PamAccountType.AzureCli) {
@@ -279,32 +314,46 @@ export const pamSessionServiceFactory = ({
       sessionId: string;
     } | null = null;
 
-    if (!session.encryptedSessionKey) {
+    let storedSessionKey = session.encryptedSessionKey ?? null;
+
+    if (!storedSessionKey) {
       const secrets = await generateSessionRecordingSecrets({
         projectId: session.projectId,
         sessionId,
         kmsService
       });
 
-      await pamSessionDAL.updateById(sessionId, {
-        encryptedSessionKey: secrets.encryptedSessionKey,
-        gatewayUploadTokenHash: secrets.uploadTokenHash
-      });
+      // A gateway fetches credentials per connection, so two can mint at once; without a single
+      // claim the loser keeps a key the row no longer holds and its uploads fail forever.
+      const claimed = await pamSessionDAL.claimRecordingSecrets(
+        sessionId,
+        secrets.encryptedSessionKey,
+        secrets.uploadTokenHash
+      );
+      if (!claimed?.encryptedSessionKey) {
+        throw new NotFoundError({ message: `Session with ID '${sessionId}' was not found` });
+      }
 
-      recording = {
-        sessionKey: secrets.sessionKey.toString("base64"),
-        uploadToken: secrets.uploadToken.toString("base64"),
-        storageBackend: resolvedBackend,
-        projectId: session.projectId,
-        sessionId
-      };
-    } else {
+      if (claimed.encryptedSessionKey.equals(secrets.encryptedSessionKey)) {
+        recording = {
+          sessionKey: secrets.sessionKey.toString("base64"),
+          uploadToken: secrets.uploadToken.toString("base64"),
+          storageBackend: resolvedBackend,
+          projectId: session.projectId,
+          sessionId
+        };
+      } else {
+        storedSessionKey = claimed.encryptedSessionKey;
+      }
+    }
+
+    if (!recording && storedSessionKey) {
       // On re-fetch (e.g. gateway restart) return the existing key; empty token since the gateway
       // restores its own from disk and the server only keeps the token hash.
       const sessionKey = await decryptSessionKey({
         projectId: session.projectId,
         sessionId,
-        encryptedSessionKey: session.encryptedSessionKey,
+        encryptedSessionKey: storedSessionKey,
         kmsService
       });
 
@@ -406,6 +455,7 @@ export const pamSessionServiceFactory = ({
     reason,
     duration,
     mfaSessionId,
+    tokenVersionId,
     accessMethod = PamAccessMethod.Cli,
     targetHost
   }: {
@@ -419,6 +469,7 @@ export const pamSessionServiceFactory = ({
     reason?: string;
     duration?: string;
     mfaSessionId?: string;
+    tokenVersionId?: string;
     accessMethod?: PamAccessMethod;
     targetHost?: string;
   }) => {
@@ -452,7 +503,14 @@ export const pamSessionServiceFactory = ({
       }
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
-        { userId: actor.actorId, orgId: actor.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
+        {
+          userId: actor.actorId,
+          orgId: actor.actorOrgId,
+          actorEmail,
+          accountId: account.id,
+          mfaSessionId,
+          tokenVersionId
+        }
       );
     }
 
@@ -669,7 +727,10 @@ export const pamSessionServiceFactory = ({
         id: actor.actorId,
         type: actor.actor,
         name: user?.email ?? actorName
-      }
+      },
+      // The platform dials for web sessions, so only a CLI caller is gated on its version.
+      clientSupportsDirect:
+        accessMethod === PamAccessMethod.Web || cliSupports(actorUserAgent, CliCapability.DirectGatewayTransport)
     });
 
     if (!certs) {
@@ -687,6 +748,11 @@ export const pamSessionServiceFactory = ({
       if (rawConnectionDetails.subscriptionId) {
         metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
       }
+    } else if (account.accountType === PamAccountType.Snowflake) {
+      for (const key of ["account", "warehouse", "database", "schema", "role"]) {
+        const value = rawConnectionDetails[key];
+        if (typeof value === "string" && value) metadata[key] = value;
+      }
     } else if (account.accountType === PamAccountType.Kubernetes) {
       metadata.authMethod = rawCredentials.authMethod as string;
       if (rawCredentials.namespace) {
@@ -701,7 +767,8 @@ export const pamSessionServiceFactory = ({
         (account.accountType === PamAccountType.Postgres ||
           account.accountType === PamAccountType.MySQL ||
           account.accountType === PamAccountType.MongoDB ||
-          account.accountType === PamAccountType.MsSQL) &&
+          account.accountType === PamAccountType.MsSQL ||
+          account.accountType === PamAccountType.OracleDB) &&
         rawConnectionDetails.database
       ) {
         metadata.database = rawConnectionDetails.database as string;
@@ -717,9 +784,10 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs,
       accessMethod: PamAccessMethod.Cli,
       relayHost: certs.relayHost,
-      relayClientCertificate: certs.relay.clientCertificate,
-      relayClientPrivateKey: certs.relay.clientPrivateKey,
-      relayServerCertificateChain: certs.relay.serverCertificateChain,
+      directAddress: certs.directAddress,
+      relayClientCertificate: certs.relay?.clientCertificate,
+      relayClientPrivateKey: certs.relay?.clientPrivateKey,
+      relayServerCertificateChain: certs.relay?.serverCertificateChain,
       gatewayClientCertificate: certs.gateway.clientCertificate,
       gatewayClientPrivateKey: certs.gateway.clientPrivateKey,
       gatewayServerCertificateChain: certs.gateway.serverCertificateChain
@@ -736,18 +804,7 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Session is not active" });
     }
 
-    if (!session.accountId) {
-      throw new BadRequestError({ message: "Session has no linked account" });
-    }
-
-    const account = await pamAccountDAL.findByIdWithDetails(session.accountId);
-    await checkAccount(
-      session.accountId,
-      account?.folderId,
-      session.projectId,
-      ResourcePermissionPamResourceActions.TerminateSessions,
-      ctx
-    );
+    await checkSession(session, ResourcePermissionPamResourceActions.TerminateSessions, ctx);
 
     const updated = await pamSessionDAL.terminateSessionById(sessionId);
     if (!updated) {

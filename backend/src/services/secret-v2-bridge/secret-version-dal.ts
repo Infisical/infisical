@@ -42,6 +42,58 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOneWithTags = async (filter: Partial<TSecretVersionsV2>, tx?: Knex) => {
+    try {
+      const rawDocs = await (tx || db.replicaNode())(TableName.SecretVersionV2)
+        // eslint-disable-next-line
+        .where(buildFindFilter(filter, TableName.SecretVersionV2))
+        .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
+        .leftJoin(
+          TableName.SecretVersionV2Tag,
+          `${TableName.SecretVersionV2}.id`,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .leftJoin(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+          this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
+            `${TableName.Environment}.deleteAfter`
+          );
+        })
+        .select(selectAllTableCols(TableName.SecretVersionV2))
+        .select(db.ref("projectId").withSchema(TableName.Environment).as("projectId"))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"));
+
+      const docs = sqlNestRelationships({
+        data: rawDocs,
+        key: "id",
+        parentMapper: (el) => ({ ...SecretVersionsV2Schema.parse(el), projectId: el.projectId }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+              id,
+              color,
+              slug,
+              name: slug
+            })
+          }
+        ]
+      });
+
+      return docs?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOneWithSecretTags" });
+    }
+  };
+
   const findBySecretId = async (secretId: string, { offset, limit, sort, tx }: TFindOpt<TSecretVersionsV2> = {}) => {
     try {
       const query = (tx || db.replicaNode())(TableName.SecretVersionV2)
@@ -163,10 +215,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
             );
           }
         );
-      return docs.reduce<Record<string, TSecretVersionsV2>>(
-        (prev, curr) => ({ ...prev, [curr.secretId || ""]: curr }),
-        {}
-      );
+      return docs.reduce<Record<string, TSecretVersionsV2>>((prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.secretId || ""] = curr;
+        return prev;
+      }, {});
     } catch (error) {
       throw new DatabaseError({ error, name: "FindLatestVersionMany" });
     }
@@ -478,10 +531,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
       const allDocs = [...latestVersions, ...specificVersionsWithLatest];
 
       // Convert array to record with secretId as key
-      return allDocs.reduce<Record<string, TSecretVersionsV2>>(
-        (prev, curr) => ({ ...prev, [curr.secretId || ""]: curr }),
-        {}
-      );
+      return allDocs.reduce<Record<string, TSecretVersionsV2>>((prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.secretId || ""] = curr;
+        return prev;
+      }, {});
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByIdsWithLatestVersion" });
     }
@@ -582,6 +636,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     findByIdsWithLatestVersion,
     findByIdAndPreviousVersion,
     findOne,
+    findOneWithTags,
     findByParentVersionIds
   };
 };

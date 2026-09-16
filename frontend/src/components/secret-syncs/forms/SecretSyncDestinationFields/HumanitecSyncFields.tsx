@@ -1,15 +1,14 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -20,12 +19,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { HUMANITEC_SYNC_SCOPES } from "@app/helpers/secretSyncs";
-import {
-  THumanitecConnectionApp,
-  THumanitecConnectionEnvironment,
-  THumanitecConnectionOrganization,
-  useHumanitecConnectionListOrganizations
-} from "@app/hooks/api/appConnections/humanitec";
+import { useHumanitecConnectionListOrganizations } from "@app/hooks/api/appConnections/humanitec";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 
@@ -64,14 +58,20 @@ export const HumanitecSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel id="secret-sync-humanitec-org-label" htmlFor="secret-sync-humanitec-org">
+              Organization
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-humanitec-org-label"
+                aria-describedby={error ? "secret-sync-humanitec-org-error" : undefined}
+                id="secret-sync-humanitec-org"
+                isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={organizations ? (organizations.find((org) => org.id === value) ?? []) : []}
-                onChange={(option) => {
-                  onChange((option as SingleValue<THumanitecConnectionOrganization>)?.id ?? null);
+                value={organizations?.find((org) => org.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.app", "");
                   setValue("destinationConfig.env", "");
                 }}
@@ -79,8 +79,10 @@ export const HumanitecSyncFields = () => {
                 placeholder="Select an organization..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                getOptionKeywords={(option) => [option.id.toString()]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-humanitec-org-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -90,7 +92,7 @@ export const HumanitecSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>
+            <FieldLabel id="secret-sync-humanitec-app-label" htmlFor="secret-sync-humanitec-app">
               App
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -103,7 +105,11 @@ export const HumanitecSyncFields = () => {
               </Tooltip>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-humanitec-app-label"
+                aria-describedby={error ? "secret-sync-humanitec-app-error" : undefined}
+                id="secret-sync-humanitec-app"
+                isError={Boolean(error)}
                 isLoading={isOrganizationsPending && Boolean(connectionId) && Boolean(currentOrg)}
                 isDisabled={!connectionId || !currentOrg}
                 value={
@@ -111,8 +117,8 @@ export const HumanitecSyncFields = () => {
                     .find((org) => org.id === currentOrg)
                     ?.apps?.find((app) => app.id === value) ?? null
                 }
-                onChange={(option) => {
-                  onChange((option as SingleValue<THumanitecConnectionApp>)?.id ?? null);
+                onValueChange={(option) => {
+                  onChange(option.id ?? null);
                   setValue("destinationConfig.env", "");
                 }}
                 options={
@@ -121,8 +127,10 @@ export const HumanitecSyncFields = () => {
                 placeholder="Select an app..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id.toString()}
+                getOptionKeywords={(option) => [option.id.toString()]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-humanitec-app-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -148,8 +156,8 @@ export const HumanitecSyncFields = () => {
                     <ul className="flex list-disc flex-col gap-3 pl-4">
                       {Object.values(HUMANITEC_SYNC_SCOPES).map(({ name, description }) => (
                         <li key={name}>
-                          <p className="text-mineshaft-300">
-                            <span className="font-medium text-bunker-200">{name}</span>:{" "}
+                          <p className="text-label">
+                            <span className="font-medium text-foreground">{name}</span>:{" "}
                             {description}
                           </p>
                         </li>
@@ -189,9 +197,15 @@ export const HumanitecSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Environment</FieldLabel>
+              <FieldLabel id="secret-sync-humanitec-env-label" htmlFor="secret-sync-humanitec-env">
+                Environment
+              </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  aria-labelledby="secret-sync-humanitec-env-label"
+                  aria-describedby={error ? "secret-sync-humanitec-env-error" : undefined}
+                  id="secret-sync-humanitec-env"
+                  isError={Boolean(error)}
                   isLoading={
                     isOrganizationsPending &&
                     Boolean(connectionId) &&
@@ -200,15 +214,15 @@ export const HumanitecSyncFields = () => {
                   }
                   isDisabled={!connectionId || !currentApp}
                   value={environments.find((env) => env.id === value) ?? null}
-                  onChange={(option) =>
-                    onChange((option as SingleValue<THumanitecConnectionEnvironment>)?.id ?? null)
-                  }
+                  onValueChange={(option) => onChange(option.id ?? null)}
                   options={environments}
                   placeholder="Select an env..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
+                  modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-humanitec-env-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

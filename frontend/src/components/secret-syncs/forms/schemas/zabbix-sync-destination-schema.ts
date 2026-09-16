@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
-import { ZabbixMacroType, ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { ZabbixMacroType, ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix/types";
+import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 export const ZabbixSyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({

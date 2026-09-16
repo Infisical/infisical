@@ -1,5 +1,38 @@
 import ms from "ms";
 
+import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
+import { ApprovalStatus } from "@app/hooks/api/types";
+
+export type AccessRequestState =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "revoked"
+  | "expired"
+  | "policy-deleted";
+
+export const getAccessRequestState = (
+  request: TAccessApprovalRequest,
+  now = new Date()
+): AccessRequestState => {
+  if (request.status === ApprovalStatus.REVOKED) return "revoked";
+
+  if (request.isApproved || request.status === ApprovalStatus.APPROVED) return "approved";
+
+  if (
+    request.status === ApprovalStatus.REJECTED ||
+    request.reviewers.some((reviewer) => reviewer.status === ApprovalStatus.REJECTED)
+  ) {
+    return "rejected";
+  }
+
+  if (request.policy.deletedAt) return "policy-deleted";
+
+  if (request.expiresAt && new Date(request.expiresAt) < now) return "expired";
+
+  return "pending";
+};
+
 // Parse a user-supplied duration string ("30m", "2h", "1d") to milliseconds.
 // Returns undefined for anything ms() can't parse to a positive number.
 export const parseAccessDurationMs = (value?: string | null) => {

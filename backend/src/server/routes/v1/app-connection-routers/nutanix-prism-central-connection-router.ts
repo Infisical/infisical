@@ -43,7 +43,7 @@ export const registerNutanixPrismCentralConnectionRouter = async (server: Fastif
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const clusters = await server.services.appConnection.nutanixPrismCentral.listClusters(
         { connectionId: req.params.connectionId },

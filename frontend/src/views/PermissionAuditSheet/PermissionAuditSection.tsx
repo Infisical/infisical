@@ -66,7 +66,7 @@ export const PermissionAuditSection = ({ resource, stateFilter, search }: Props)
           )}
         </div>
       </AccordionTrigger>
-      <AccordionContent className="bg-card">
+      <AccordionContent className="bg-card p-6">
         {visibleActions.length === 0 ? (
           <div className="px-4 py-3 text-xs text-mineshaft-400">
             No actions match the current filter.

@@ -1,11 +1,11 @@
 ---
-title: "CDN Caching for Static Assets"
+title: "CDN caching for static assets"
 description: "How to set up CDN caching to prevent version skew issues during deployments"
 ---
 
 This guide explains a common issue with frontend asset caching during deployments and how to solve it using a CDN.
 
-## The Problem: Version Skew
+## The problem: Version skew
 
 Modern frontend build tools like Vite generate content-hashed filenames for static assets (e.g., `main-abc123.js`). Each build produces unique filenames based on file contents. During deployments, this can cause a race condition:
 
@@ -21,15 +21,15 @@ This results in broken pages, failed SPA navigation, and requires users to manua
 This is a documented limitation in Vite's official guidance: [Load Error Handling](https://vite.dev/guide/build#load-error-handling)
 </Note>
 
-### Current Behavior
+### Current behavior
 
 Infisical includes a built-in workaround that detects version mismatches and triggers a page reload. While functional, this introduces a noticeable delay for users during deployments.
 
-## The Solution: External Asset Storage
+## The solution: External asset storage
 
 The solution is to store static assets externally (e.g., S3, GCS, Azure Blob) and serve them through a CDN (e.g., CloudFront, Cloud CDN, Cloudflare). Assets are uploaded **before** container deployment, ensuring old versions remain available.
 
-### How It Works
+### How it works
 
 ```mermaid
 flowchart LR
@@ -52,7 +52,7 @@ The key points:
 
 At Infisical, we use **CloudFront + S3** for this purpose, but you can use any CDN and object storage combination that fits your infrastructure.
 
-## Exporting Assets
+## Exporting assets
 
 Infisical provides a built-in command to export frontend assets from the Docker image:
 
@@ -72,7 +72,7 @@ docker run --rm -v $(pwd)/cdn-assets:/output \
   infisical/infisical npm run --silent assets:export /output
 ```
 
-### What Gets Exported
+### What gets exported
 
 The command exports the `/assets` directory containing:
 
@@ -82,7 +82,7 @@ The command exports the `/assets` directory containing:
 
 These files are safe to cache with long TTLs because their filenames change whenever the content changes.
 
-## Integration with Your Pipeline
+## Integration with your pipeline
 
 The general deployment flow should be:
 

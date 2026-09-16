@@ -22,7 +22,7 @@ export const SecretScanningFindingsPage = () => {
         a={ProjectPermissionSub.SecretScanningFindings}
       >
         <div className="h-full bg-bunker-800">
-          <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+          <div className="mx-auto flex flex-col justify-between text-white">
             <div className="mx-auto mb-6 w-full max-w-8xl">
               <PageHeader
                 scope={ProjectType.SecretScanning}

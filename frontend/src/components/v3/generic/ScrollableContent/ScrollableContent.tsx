@@ -2,8 +2,10 @@ import * as React from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import { useScrollEdges } from "../../utils/useScrollEdges";
 import { IconButton } from "../IconButton";
 
+import "../../utils/ScrollEdgeFade.css";
 import "./ScrollableContent.css";
 
 type ScrollableContentStyle = React.CSSProperties & {
@@ -35,61 +37,15 @@ const ScrollableContent = React.forwardRef<HTMLDivElement, ScrollableContentProp
       outline = true,
       showScrollers = false,
       size = "lg",
-      onScroll,
       style,
       ...props
     },
     forwardedRef
   ) => {
-    const viewportRef = React.useRef<HTMLDivElement | null>(null);
-    const contentRef = React.useRef<HTMLDivElement | null>(null);
-    const [scrollability, setScrollability] = React.useState({
-      top: false,
-      bottom: false
-    });
-
-    const updateScrollability = React.useCallback(() => {
-      const viewport = viewportRef.current;
-      if (!viewport) return;
-
-      const nextScrollability = {
-        top: viewport.scrollTop > 1,
-        bottom: viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 1
-      };
-
-      setScrollability((current) =>
-        current.top === nextScrollability.top && current.bottom === nextScrollability.bottom
-          ? current
-          : nextScrollability
-      );
-    }, []);
-
-    const setViewportRef = React.useCallback(
-      (node: HTMLDivElement | null) => {
-        viewportRef.current = node;
-
-        if (typeof forwardedRef === "function") {
-          forwardedRef(node);
-        } else if (forwardedRef) {
-          Object.assign(forwardedRef, { current: node });
-        }
-      },
-      [forwardedRef]
+    const { scrollEdges, setViewportRef, viewportRef } = useScrollEdges<HTMLDivElement>(
+      "vertical",
+      forwardedRef
     );
-
-    React.useLayoutEffect(() => {
-      const viewport = viewportRef.current;
-      const content = contentRef.current;
-      if (!viewport || !content) return undefined;
-
-      updateScrollability();
-
-      const resizeObserver = new ResizeObserver(updateScrollability);
-      resizeObserver.observe(viewport);
-      resizeObserver.observe(content);
-
-      return () => resizeObserver.disconnect();
-    }, [updateScrollability]);
 
     const scrollableStyle: ScrollableContentStyle = {
       ...style,
@@ -116,8 +72,8 @@ const ScrollableContent = React.forwardRef<HTMLDivElement, ScrollableContentProp
     return (
       <div
         data-slot="scrollable-content"
-        data-scrollable-top={scrollability.top}
-        data-scrollable-bottom={scrollability.bottom}
+        data-scrollable-top={scrollEdges.start}
+        data-scrollable-bottom={scrollEdges.end}
         className={cn(
           "relative min-w-0",
           outline && "rounded-md outline-1 outline-offset-4 outline-accent/60 outline-solid",
@@ -133,18 +89,18 @@ const ScrollableContent = React.forwardRef<HTMLDivElement, ScrollableContentProp
           data-slot="scrollable-content-viewport"
           data-size={size}
           data-edge-behavior={edgeBehavior}
-          data-scrollable-top={scrollability.top}
-          data-scrollable-bottom={scrollability.bottom}
+          data-scroll-edge-axis="vertical"
+          data-scrollable-start={scrollEdges.start}
+          data-scrollable-end={scrollEdges.end}
+          data-scrollable-top={scrollEdges.start}
+          data-scrollable-bottom={scrollEdges.end}
           className={cn(
             "scrollable-content-viewport min-h-0 overflow-x-hidden overflow-y-auto outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            edgeBehavior === "fade" && "scroll-edge-fade",
             outline && "rounded-md",
             className
           )}
           style={scrollableStyle}
-          onScroll={(event) => {
-            updateScrollability();
-            onScroll?.(event);
-          }}
           {...props}
         >
           {edgeBehavior === "border" && (
@@ -153,7 +109,7 @@ const ScrollableContent = React.forwardRef<HTMLDivElement, ScrollableContentProp
               <div aria-hidden data-edge="bottom" className="scrollable-content-edge" />
             </>
           )}
-          <div ref={contentRef} data-slot="scrollable-content-content" className={contentClassName}>
+          <div data-slot="scrollable-content-content" className={contentClassName}>
             {children}
           </div>
         </div>
@@ -165,7 +121,7 @@ const ScrollableContent = React.forwardRef<HTMLDivElement, ScrollableContentProp
               variant="neutral"
               aria-label="Scroll up"
               data-scroll-direction="up"
-              isDisabled={!scrollability.top}
+              isDisabled={!scrollEdges.start}
               className="scrollable-content-scroller shadow-md"
               onClick={() => scrollByViewport("up")}
             >
@@ -177,7 +133,7 @@ const ScrollableContent = React.forwardRef<HTMLDivElement, ScrollableContentProp
               variant="neutral"
               aria-label="Scroll down"
               data-scroll-direction="down"
-              isDisabled={!scrollability.bottom}
+              isDisabled={!scrollEdges.end}
               className="scrollable-content-scroller shadow-md"
               onClick={() => scrollByViewport("down")}
             >

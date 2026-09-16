@@ -30,13 +30,7 @@ type TAuthTokenServiceFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
-    | "setItemWithExpiry"
-    | "setItemWithExpiryNX"
-    | "getItem"
-    | "deleteItem"
-    | "acquireLock"
-    | "deleteItemsByKeyIn"
-    | "ttl"
+    "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem" | "acquireLock" | "ttl"
   >;
 };
 
@@ -259,9 +253,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   const revokeMySessionById = async (userId: string, sessionId: string) =>
     tokenDAL.deleteTokenSession({ userId, id: sessionId });
 
-  // Revokes every token session created under the given userAgent (across all users/IPs). Used to
-  // invalidate all OAuth access/refresh tokens issued for a client when that client is deleted.
-  const revokeSessionsByUserAgent = async (userAgent: string) => tokenDAL.deleteTokenSession({ userAgent });
+  const revokeSessionsByUserAgent = async (userAgent: string, tx?: Knex) =>
+    tokenDAL.deleteTokenSession({ userAgent }, tx);
 
   const validateRefreshToken = async (refreshToken?: string, opts?: { allowOauthClientToken?: boolean }) => {
     const appCfg = getConfig();
@@ -362,14 +355,22 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return { newRefreshToken, updatedSession };
   };
 
-  // to parse jwt identity in inject identity plugin
-  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
-    const session = await tokenDAL.findOneTokenSession({
-      id: token.tokenVersionId,
-      userId: token.userId
+  const validateUserSessionFreshness = async ({
+    userId,
+    tokenVersionId,
+    accessVersion,
+    readFromPrimary = false
+  }: {
+    userId: string;
+    tokenVersionId: string;
+    accessVersion: number;
+    readFromPrimary?: boolean;
+  }) => {
+    const session = await tokenDAL.findOneTokenSession({ id: tokenVersionId, userId }, undefined, {
+      readFromPrimary
     });
     if (!session) throw new NotFoundError({ name: "Session not found" });
-    if (token.accessVersion !== session.accessVersion) {
+    if (accessVersion !== session.accessVersion) {
       throw new UnauthorizedError({ name: "StaleSession", message: "User session is stale, please re-authenticate" });
     }
 
@@ -381,6 +382,17 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     if (user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd)) {
       throw new UnauthorizedError({ message: "Account is locked" });
     }
+
+    return { user };
+  };
+
+  // to parse jwt identity in inject identity plugin
+  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
+    const { user } = await validateUserSessionFreshness({
+      userId: token.userId,
+      tokenVersionId: token.tokenVersionId,
+      accessVersion: token.accessVersion
+    });
 
     let orgId = "";
     let orgName = "";
@@ -442,30 +454,6 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
 
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
-  };
-
-  const acquireEmailSignupCooldown = async (email: string): Promise<{ emailHash: string; cooldownSeconds: number }> => {
-    const appCfg = getConfig();
-    const emailHash = computeHash(email, appCfg.AUTH_SECRET);
-    const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
-    const cooldownSeconds = KeyStoreTtls.EmailSignupResendCooldownInSeconds;
-
-    // SET NX is atomic: only one concurrent request can acquire the cooldown slot.
-    const acquired = await keyStore.setItemWithExpiryNX(cooldownKey, cooldownSeconds, "1");
-    if (!acquired) {
-      const remaining = await keyStore.ttl(cooldownKey);
-      throw new BadRequestError({
-        message: "Please wait before requesting another code",
-        details: {
-          cooldownSeconds: Math.max(1, remaining)
-        }
-      });
-    }
-
-    return {
-      emailHash,
-      cooldownSeconds
-    };
   };
 
   const createEmailSignupToken = async (emailHash: string): Promise<string> => {
@@ -540,8 +528,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         });
       }
 
-      const cooldownKey = KeyStorePrefixes.EmailSignupResendCooldown(emailHash);
-      await keyStore.deleteItemsByKeyIn([key, cooldownKey]);
+      await keyStore.deleteItem(key);
     } finally {
       await lock.release();
     }
@@ -559,9 +546,9 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     revokeSessionsByUserAgent,
     validateRefreshToken,
     rotateRefreshToken,
+    validateUserSessionFreshness,
     fnValidateJwtIdentity,
     getUserTokenSessionById,
-    acquireEmailSignupCooldown,
     createEmailSignupToken,
     validateEmailSignupToken
   };

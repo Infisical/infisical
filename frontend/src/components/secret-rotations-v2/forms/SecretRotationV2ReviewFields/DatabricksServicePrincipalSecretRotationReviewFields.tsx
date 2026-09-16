@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
@@ -18,16 +18,14 @@ export const DatabricksServicePrincipalSecretRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Service Principal">
+        <ReviewField label="Service Principal">
           {parameters.servicePrincipalName || parameters.servicePrincipalId}
-        </GenericFieldLabel>
-        {parameters.clientId && (
-          <GenericFieldLabel label="Client ID">{parameters.clientId}</GenericFieldLabel>
-        )}
+        </ReviewField>
+        {parameters.clientId && <ReviewField label="Client ID">{parameters.clientId}</ReviewField>}
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="Client ID">{clientId}</GenericFieldLabel>
-        <GenericFieldLabel label="Client Secret">{clientSecret}</GenericFieldLabel>
+        <ReviewField label="Client ID">{clientId}</ReviewField>
+        <ReviewField label="Client Secret">{clientSecret}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

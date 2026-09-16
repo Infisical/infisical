@@ -4,7 +4,7 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 export const NutanixPrismCentralPkiSyncConfigSchema = z.object({
   clusterId: z.string().min(1, "Cluster ID is required"),
@@ -14,7 +14,8 @@ export const NutanixPrismCentralPkiSyncConfigSchema = z.object({
 export const NutanixPrismCentralPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.literal(false).default(false),
   canRemoveCertificates: z.literal(false).default(false),
-  postSyncCommand: PostSyncCommandSchema
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema
 });
 
 export const NutanixPrismCentralPkiSyncSchema = PkiSyncSchema.extend({

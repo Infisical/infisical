@@ -106,9 +106,7 @@ export const requestWithVenafiTppGateway = async <T>(
     },
     {
       protocol: GatewayProxyProtocol.Tcp,
-      relayHost: gatewayConnectionDetails.relayHost,
-      gateway: gatewayConnectionDetails.gateway,
-      relay: gatewayConnectionDetails.relay
+      ...gatewayConnectionDetails
     }
   );
 };

@@ -161,6 +161,20 @@ export const RequestsPage = () => {
     })
   );
 
+  const pendingApplicationCount = useMemo(
+    () =>
+      (requests as TApprovalRequest[]).filter((r) => r.status === ApprovalRequestStatus.Pending)
+        .length,
+    [requests]
+  );
+  const pendingSigningCount = useMemo(
+    () =>
+      (signingRequests as TApprovalRequest[]).filter(
+        (r) => r.status === ApprovalRequestStatus.Pending
+      ).length,
+    [signingRequests]
+  );
+
   // resolve names only for the applications actually referenced by the visible
   // requests, rather than loading the project's entire application list
   const referencedAppIds = useMemo(() => {
@@ -231,6 +245,7 @@ export const RequestsPage = () => {
         <div className="mx-auto flex flex-col text-white">
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
+              className="mb-6"
               scope={ProjectType.CertificateManager}
               title="Approval Requests"
               description="Review pending approval requests across your applications and signers"
@@ -247,11 +262,21 @@ export const RequestsPage = () => {
               }
             >
               <TabList>
-                <Tab variant="project" value="application-requests">
+                <Tab variant="project" value="application-requests" className="gap-2">
                   Application Requests
+                  {Boolean(pendingApplicationCount) && (
+                    <Badge variant="warning" isSquare>
+                      {pendingApplicationCount}
+                    </Badge>
+                  )}
                 </Tab>
-                <Tab variant="project" value="signing-requests">
+                <Tab variant="project" value="signing-requests" className="gap-2">
                   Signing Requests
+                  {Boolean(pendingSigningCount) && (
+                    <Badge variant="warning" isSquare>
+                      {pendingSigningCount}
+                    </Badge>
+                  )}
                 </Tab>
               </TabList>
 

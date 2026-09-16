@@ -17,9 +17,9 @@ Before you begin, make sure you have:
 - An Infisical account with access to a project
 - Basic understanding of Terraform and infrastructure as code
 
-## Project Setup
+## Project setup
 
-### Configure Provider
+### Configure provider
 
 First, specify the Infisical provider in your Terraform configuration:
 
@@ -37,7 +37,7 @@ terraform {
 
 Configure the provider using one of these authentication methods:
 
-#### Machine Identity (Recommended)
+#### Machine identity (recommended)
 
 Using a Machine Identity, you can authenticate your Terraform provider using either [OIDC Auth](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general) or [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) methods.
 
@@ -54,7 +54,7 @@ provider "infisical" {
 ```
 Learn more about [machine identities](/documentation/platform/identities/machine-identities).
 
-#### Service Token (Legacy)
+#### Service token (legacy)
 
 <Warning>
 Machine Identity authentication is strongly recommended as the secure and modern method. Service tokens are considered legacy and will be deprecated in a future release.
@@ -67,11 +67,11 @@ provider "infisical" {
 }
 ```
 
-## Using Secrets in Terraform
+## Using secrets in Terraform
 
 Infisical provides two methods to fetch and use secrets in your Terraform configurations:
 
-### Method 1: Ephemeral Resources (Recommended)
+### Method 1: Ephemeral resources (recommended)
 
 Ephemeral resources, introduced in Terraform v1.10, provide enhanced security by ensuring sensitive values are never persisted in state files. This is the recommended approach for handling secrets in your infrastructure code.
 
@@ -99,7 +99,7 @@ Key benefits:
 - Perfect for GitOps workflows
 - Improved security posture for your infrastructure as code
 
-### Method 2: Data Sources
+### Method 2: Data sources
 
 For backwards compatibility or when working with older Terraform versions, you can use the traditional data source approach:
 
@@ -122,9 +122,9 @@ resource "aws_db_instance" "example" {
   When using data sources, secret values are stored in Terraform's state file. Ensure your state file is properly secured.
 </Warning>
 
-## Common Use Cases
+## Common use cases
 
-### Secure Database Credential Management
+### Secure database credential management
 
 Manage database credentials securely without exposing sensitive information in your state files:
 
@@ -151,7 +151,7 @@ resource "aws_db_instance" "example" {
 }
 ```
 
-### GitOps Workflow with OIDC
+### GitOps workflow with OIDC
 
 To eliminate the need for static credentials, you can authenticate your workflow using [OpenID Connect (OIDC)](https://infisical.com/docs/documentation/platform/identities/oidc-auth/general) through providers like the [Infisical Secrets GitHub Action](https://github.com/Infisical/secrets-action).
 Once authenticated, you can securely access secrets through the Infisical provider:
@@ -171,7 +171,7 @@ ephemeral "infisical_secret" "deploy_token" {
 ```
 For detailed instructions on setting up OIDC authentication with GitHub Actions, refer to our [GitHub Actions OIDC guide](https://infisical.com/docs/documentation/platform/identities/oidc-auth/github).
 
-## Best Practices
+## Best practices
 
 1. **Use Ephemeral Resources**: Whenever possible, use ephemeral resources instead of data sources for improved security.
 

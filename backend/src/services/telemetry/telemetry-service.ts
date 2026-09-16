@@ -13,6 +13,13 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  isTelemetryEnabled as isOtelMetricsEnabled,
+  ProductAnalyticsDropReason,
+  recordProductAnalyticsBacklogMetric,
+  recordProductAnalyticsDroppedMetric,
+  recordProductAnalyticsPublishedMetric
+} from "@app/lib/telemetry/metrics";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -38,8 +45,9 @@ export const POSTHOG_AGGREGATED_EVENTS = [
 // in the grouping key so each unique value produces its own aggregated event with the
 // property as a flat string — enabling clean PostHog breakdowns.
 const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
-  [PostHogEventTypes.PkiSyncExecuted]: ["destination"],
-  [PostHogEventTypes.IssueCert]: ["enrollmentType", "operation"]
+  [PostHogEventTypes.PkiSyncExecuted]: ["projectId", "destination"],
+  [PostHogEventTypes.CertificateRequestCreated]: ["projectId"],
+  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"]
 };
 
 // Bucket configuration
@@ -48,6 +56,15 @@ const TELEMETRY_BUCKET_NAMES = Array.from(
   { length: TELEMETRY_BUCKET_COUNT },
   (_, i) => `bucket-${i.toString().padStart(2, "0")}`
 );
+
+const TELEMETRY_EVENT_STREAM_BATCH_SIZE = 10_000;
+const TELEMETRY_EVENT_STREAM_COLLECT_CEILING = 50_000;
+const TELEMETRY_EVENT_STREAM_MAX_ENTRIES = 100_000;
+const TELEMETRY_EVENT_STREAM_RETENTION_MS = 30 * 60 * 1000;
+const TELEMETRY_EVENT_STREAM_KEY_TTL_SECONDS = 60 * 60;
+const BUCKET_CONCURRENCY = 2;
+
+const TELEMETRY_POSTHOG_MAX_QUEUE_SIZE = TELEMETRY_EVENT_STREAM_COLLECT_CEILING * BUCKET_CONCURRENCY;
 
 type AggregatedEventData = Record<string, unknown>;
 type SingleEventData = {
@@ -62,12 +79,17 @@ export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory
 export type TTelemetryServiceFactoryDep = {
   keyStore: Pick<
     TKeyStoreFactory,
-    "incrementBy" | "deleteItemsByKeyIn" | "setItemWithExpiry" | "setItemWithExpiryNX" | "getKeysByPattern" | "getItems"
+    "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getInstanceType" | "getPlan" | "getOrgSeatUsage">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
+
+const settleCapturedEvents = () =>
+  new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
 
 const getBucketForDistinctId = (distinctId: string): string => {
   // Use SHA-256 hash for consistent distribution
@@ -80,10 +102,8 @@ const getBucketForDistinctId = (distinctId: string): string => {
   return TELEMETRY_BUCKET_NAMES[bucketIndex];
 };
 
-export const createTelemetryEventKey = (event: string, distinctId: string): string => {
-  const bucketId = getBucketForDistinctId(distinctId);
-  return KeyStorePrefixes.TelemetryEvent(event, bucketId, distinctId, crypto.nativeCrypto.randomUUID());
-};
+const getTelemetryEventStreamKey = (event: string, distinctId: string): string =>
+  KeyStorePrefixes.TelemetryAggregatedEventStream(event, getBucketForDistinctId(distinctId));
 
 export enum DeploymentType {
   USCloud = "us-cloud",
@@ -144,7 +164,10 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   }
 
   const postHog = appCfg.TELEMETRY_ENABLED
-    ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, { host: appCfg.POSTHOG_HOST })
+    ? new PostHog(appCfg.POSTHOG_PROJECT_API_KEY, {
+        host: appCfg.POSTHOG_HOST,
+        maxQueueSize: TELEMETRY_POSTHOG_MAX_QUEUE_SIZE
+      })
     : undefined;
 
   // used for email marketting email sending purpose
@@ -257,9 +280,12 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const plan = await licenseService.getPlan(orgId);
+      const [plan, seatUsage] = await Promise.all([
+        licenseService.getPlan(orgId),
+        licenseService.getOrgSeatUsage(orgId)
+      ]);
       properties.plan = plan.slug ?? "free";
-      properties.seat_count = plan.membersUsed;
+      properties.seat_count = seatUsage.membersUsed;
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }
@@ -318,17 +344,20 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     const resolvedOrgName = event.organizationName ?? requestContext.get(RequestContextKey.OrgName);
 
     if (POSTHOG_AGGREGATED_EVENTS.includes(event.event)) {
-      const eventKey = createTelemetryEventKey(event.event, event.distinctId);
-      await keyStore.setItemWithExpiry(
-        eventKey,
-        KeyStoreTtls.TelemetryAggregatedEventInSeconds,
-        JSON.stringify({
-          distinctId: event.distinctId,
-          event: event.event,
-          properties: event.properties,
-          organizationId: event.organizationId,
-          ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
-        })
+      await keyStore.streamAdd(
+        getTelemetryEventStreamKey(event.event, event.distinctId),
+        "*",
+        {
+          data: JSON.stringify({
+            distinctId: event.distinctId,
+            event: event.event,
+            properties: event.properties,
+            organizationId: event.organizationId,
+            ...(resolvedOrgName ? { organizationName: resolvedOrgName } : {})
+          })
+        },
+        TELEMETRY_EVENT_STREAM_MAX_ENTRIES,
+        TELEMETRY_EVENT_STREAM_KEY_TTL_SECONDS
       );
     } else {
       // Skip groupIdentify entirely when the event is marked anonymous.
@@ -460,141 +489,221 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     return aggregatedData;
   };
 
-  const processBucketEvents = async (eventType: string, bucketId: string) => {
-    if (!postHog) return 0;
-
-    try {
-      const bucketPattern = KeyStorePrefixes.TelemetryEventByBucketPattern(eventType, bucketId);
-      const bucketKeys = await keyStore.getKeysByPattern(bucketPattern);
-
-      if (bucketKeys.length === 0) return 0;
-
-      const bucketEvents = await keyStore.getItems(bucketKeys);
-      let bucketEventsParsed: SingleEventData[] = [];
-
-      try {
-        bucketEventsParsed = bucketEvents
-          .filter((event) => event !== null)
-          .map((event) => JSON.parse(event as string) as SingleEventData);
-      } catch (error) {
-        logger.error(error, `Failed to parse bucket events for ${eventType} in ${bucketId}`);
-        return 0;
+  const parseEventPayloads = (entries: [string, string[]][], context: string): SingleEventData[] => {
+    const parsed: SingleEventData[] = [];
+    for (const [, fields] of entries) {
+      const payload = fields[1];
+      if (payload) {
+        try {
+          parsed.push(JSON.parse(payload) as SingleEventData);
+        } catch (error) {
+          logger.error(error, `Skipping unparseable telemetry event [${context}]`);
+        }
       }
+    }
+    return parsed;
+  };
 
-      const eventsGrouped = new Map<string, SingleEventData[]>();
+  const publishAggregatedEvents = async (
+    eventType: string,
+    events: SingleEventData[],
+    orgsIdentifyAttempted: Set<string>
+  ) => {
+    if (!postHog || events.length === 0) return;
 
-      const breakdownDimensions = AGGREGATION_BREAKDOWN_DIMENSIONS[eventType as PostHogEventTypes] || [];
+    const eventsGrouped = new Map<string, SingleEventData[]>();
 
-      bucketEventsParsed.forEach((event) => {
-        const breakdownValues: Record<string, string> = {};
-        if (breakdownDimensions.length > 0 && event.properties) {
-          const props = event.properties as Record<string, unknown>;
-          for (const dim of breakdownDimensions) {
-            if (props[dim] !== undefined && props[dim] !== null) {
-              breakdownValues[dim] = String(props[dim]);
-            }
-          }
-        }
-        const key = JSON.stringify({ id: event.distinctId, org: event.organizationId, ...breakdownValues });
-        if (!eventsGrouped.has(key)) {
-          eventsGrouped.set(key, []);
-        }
-        eventsGrouped.get(key)!.push(event);
-      });
+    const breakdownDimensions = AGGREGATION_BREAKDOWN_DIMENSIONS[eventType as PostHogEventTypes] || [];
 
-      if (eventsGrouped.size === 0) return 0;
-
-      // Cache org group properties per orgId to avoid redundant DB/API calls
-      // when multiple users share the same org within a bucket
-      const orgPropertiesCache = new Map<string, Record<string, unknown>>();
-
-      const instanceId = await getInstanceId();
-
-      for (const [eventsKey, events] of eventsGrouped) {
-        const key = JSON.parse(eventsKey) as { id: string; org?: string; [dim: string]: string | undefined };
-        if (key.org) {
-          try {
-            // Dedup groupIdentify across all paths: only fire once per org per hour
-            const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(key.org);
-            // eslint-disable-next-line no-await-in-loop
-            const wasSet = await keyStore.setItemWithExpiryNX(
-              groupIdentifyCacheKey,
-              KeyStoreTtls.TelemetryGroupIdentifyInSeconds,
-              "1"
-            );
-            if (wasSet) {
-              let groupProperties = orgPropertiesCache.get(key.org);
-              if (!groupProperties) {
-                const orgName = events[0]?.organizationName;
-                // eslint-disable-next-line no-await-in-loop
-                groupProperties = await getOrgGroupProperties(key.org, orgName);
-                orgPropertiesCache.set(key.org, groupProperties);
-              }
-              postHog.groupIdentify({
-                groupType: "organization",
-                groupKey: key.org,
-                properties: groupProperties,
-                distinctId: key.id
-              });
-            }
-          } catch (error) {
-            logger.error(error, "Failed to identify PostHog organization");
-          }
-        }
-        const properties = aggregateGroupProperties(events, breakdownDimensions);
-
-        // Attach breakdown dimension values as flat properties on the aggregated event
+    events.forEach((event) => {
+      const breakdownValues: Record<string, string> = {};
+      if (breakdownDimensions.length > 0 && event.properties) {
+        const props = event.properties as Record<string, unknown>;
         for (const dim of breakdownDimensions) {
-          if (key[dim] !== undefined) {
-            properties[dim] = key[dim];
+          if (props[dim] !== undefined && props[dim] !== null) {
+            breakdownValues[dim] = String(props[dim]);
           }
         }
+      }
+      const key = JSON.stringify({ id: event.distinctId, org: event.organizationId, ...breakdownValues });
+      if (!eventsGrouped.has(key)) {
+        eventsGrouped.set(key, []);
+      }
+      eventsGrouped.get(key)!.push(event);
+    });
 
-        // Always attach orgId as a flat property so aggregated events are filterable by organization
-        if (key.org) {
-          properties.orgId = key.org;
+    const instanceId = await getInstanceId();
+
+    for (const [eventsKey, groupedEvents] of eventsGrouped) {
+      const key = JSON.parse(eventsKey) as { id: string; org?: string; [dim: string]: string | undefined };
+      if (key.org && !orgsIdentifyAttempted.has(key.org)) {
+        orgsIdentifyAttempted.add(key.org);
+        try {
+          const groupIdentifyCacheKey = KeyStorePrefixes.TelemetryGroupIdentify(key.org);
+          // eslint-disable-next-line no-await-in-loop
+          const wasSet = await keyStore.setItemWithExpiryNX(
+            groupIdentifyCacheKey,
+            KeyStoreTtls.TelemetryGroupIdentifyInSeconds,
+            "1"
+          );
+          if (wasSet) {
+            // eslint-disable-next-line no-await-in-loop
+            const groupProperties = await getOrgGroupProperties(key.org, groupedEvents[0]?.organizationName);
+            postHog.groupIdentify({
+              groupType: "organization",
+              groupKey: key.org,
+              properties: groupProperties,
+              distinctId: key.id
+            });
+          }
+        } catch (error) {
+          logger.error(error, "Failed to identify PostHog organization");
         }
+      }
+      const properties = aggregateGroupProperties(groupedEvents, breakdownDimensions);
 
-        if (instanceId) {
-          properties.instanceId = instanceId;
+      for (const dim of breakdownDimensions) {
+        if (key[dim] !== undefined) {
+          properties[dim] = key[dim];
         }
-
-        postHog.capture({
-          event: `${eventType} aggregated`,
-          distinctId: key.id,
-          properties,
-          ...(key.org ? { groups: { organization: key.org } } : {})
-        });
       }
 
-      // Clean up processed data for this bucket
-      await keyStore.deleteItemsByKeyIn(bucketKeys);
+      if (key.org) {
+        properties.orgId = key.org;
+      }
 
-      logger.info(`Processed ${bucketEventsParsed.length} events from bucket ${bucketId} for ${eventType}`);
-      return bucketEventsParsed.length;
-    } catch (error) {
-      logger.error(error, `Failed to process bucket ${bucketId} for ${eventType}`);
-      return 0;
+      if (instanceId) {
+        properties.instanceId = instanceId;
+      }
+
+      postHog.capture({
+        event: `${eventType} aggregated`,
+        distinctId: key.id,
+        properties,
+        ...(key.org ? { groups: { organization: key.org } } : {})
+      });
     }
   };
 
-  const BUCKET_CONCURRENCY = 5;
+  const collectShardEvents = async (streamKey: string, eventType: string, bucketId: string) => {
+    const { entries, lastId } = await keyStore.streamCollect(
+      streamKey,
+      TELEMETRY_EVENT_STREAM_BATCH_SIZE,
+      TELEMETRY_EVENT_STREAM_COLLECT_CEILING
+    );
+
+    if (entries.length >= TELEMETRY_EVENT_STREAM_COLLECT_CEILING) {
+      logger.warn(
+        `Product analytics aggregation hit the collection ceiling for bucket ${bucketId} of ${eventType} [collected=${entries.length}] [ceiling=${TELEMETRY_EVENT_STREAM_COLLECT_CEILING}] [maxLen=${TELEMETRY_EVENT_STREAM_MAX_ENTRIES}] — the shard is backing up; the excess is dropped once it ages past the retention window or the stream hits its MAXLEN cap`
+      );
+    }
+
+    const events = parseEventPayloads(entries, `event=${eventType} bucket=${bucketId}`);
+
+    recordProductAnalyticsDroppedMetric({
+      eventType,
+      reason: ProductAnalyticsDropReason.Unparseable,
+      count: entries.length - events.length
+    });
+
+    return {
+      events,
+      collected: entries.length,
+      lastId
+    };
+  };
+
+  const recordShardBacklog = async (streamKey: string, eventType: string, bucketId: string) => {
+    // The XLEN is bought solely for this metric, so it is not worth a round trip per drained shard
+    // on the instances (the default) that export nothing.
+    if (!isOtelMetricsEnabled()) return;
+
+    try {
+      recordProductAnalyticsBacklogMetric({ eventType, backlog: await keyStore.streamLength(streamKey) });
+    } catch (error) {
+      logger.error(error, `Failed to measure backlog on bucket ${bucketId} for ${eventType}`);
+    }
+  };
+
+  const processBucketEvents = async (eventType: string, bucketId: string, orgsIdentifyAttempted: Set<string>) => {
+    if (!postHog) return { published: 0, expired: 0 };
+
+    const streamKey = KeyStorePrefixes.TelemetryAggregatedEventStream(eventType, bucketId);
+
+    try {
+      await keyStore.setExpiry(streamKey, TELEMETRY_EVENT_STREAM_KEY_TTL_SECONDS);
+    } catch (error) {
+      logger.error(error, `Failed to refresh key expiry on bucket ${bucketId} for ${eventType}`);
+    }
+
+    let expired = 0;
+    try {
+      expired = await keyStore.streamTrim(streamKey, `${Date.now() - TELEMETRY_EVENT_STREAM_RETENTION_MS}-0`);
+      recordProductAnalyticsDroppedMetric({
+        eventType,
+        reason: ProductAnalyticsDropReason.Retention,
+        count: expired
+      });
+    } catch (error) {
+      logger.error(error, `Failed to apply retention trim to bucket ${bucketId} for ${eventType}`);
+    }
+
+    try {
+      const { events, collected, lastId } = await collectShardEvents(streamKey, eventType, bucketId);
+
+      if (collected === 0 || !lastId) {
+        recordProductAnalyticsBacklogMetric({ eventType, backlog: 0 });
+        return { published: 0, expired };
+      }
+
+      await publishAggregatedEvents(eventType, events, orgsIdentifyAttempted);
+
+      await settleCapturedEvents();
+
+      await postHog.flush();
+
+      await keyStore.streamTrim(streamKey, lastId, true);
+
+      recordProductAnalyticsPublishedMetric({ eventType, count: events.length });
+      await recordShardBacklog(streamKey, eventType, bucketId);
+
+      logger.info(`Processed ${events.length} events from bucket ${bucketId} for ${eventType}`);
+      return { published: events.length, expired };
+    } catch (error) {
+      logger.error(error, `Failed to process bucket ${bucketId} for ${eventType}`);
+      return { published: 0, expired };
+    }
+  };
 
   const processAggregatedEvents = async () => {
     if (!postHog) return;
 
+    const orgsIdentifyAttempted = new Set<string>();
+
     for (const eventType of POSTHOG_AGGREGATED_EVENTS) {
       let totalProcessed = 0;
+      let totalExpired = 0;
       logger.info(`Starting bucket processing for ${eventType}`);
 
       for (let i = 0; i < TELEMETRY_BUCKET_NAMES.length; i += BUCKET_CONCURRENCY) {
         const batch = TELEMETRY_BUCKET_NAMES.slice(i, i + BUCKET_CONCURRENCY);
         // eslint-disable-next-line no-await-in-loop
-        const results = await Promise.all(batch.map((bucketId) => processBucketEvents(eventType, bucketId)));
-        totalProcessed += results.reduce((sum, n) => sum + n, 0);
+        const results = await Promise.all(
+          batch.map((bucketId) => processBucketEvents(eventType, bucketId, orgsIdentifyAttempted))
+        );
+        totalProcessed += results.reduce((sum, result) => sum + result.published, 0);
+        totalExpired += results.reduce((sum, result) => sum + result.expired, 0);
       }
 
       logger.info(`Completed processing ${totalProcessed} total events for ${eventType}`);
+
+      if (totalExpired > 0) {
+        logger.warn(
+          `Product analytics aggregation dropped ${totalExpired} events for ${eventType} that aged past the ${
+            TELEMETRY_EVENT_STREAM_RETENTION_MS / 60_000
+          }-minute retention window before they could be published`
+        );
+      }
     }
   };
 

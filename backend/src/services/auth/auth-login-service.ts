@@ -30,7 +30,8 @@ import {
   AuthAttemptAuthMethod,
   AuthAttemptAuthResult,
   authAttemptCounter,
-  recordAuthAttemptMetric
+  recordAuthAttemptMetric,
+  recordLegacyRootKeyUsageMetric
 } from "@app/lib/telemetry/metrics";
 import { matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -57,8 +58,7 @@ import {
   enforceUserLockStatus,
   getRequiredMfaMethod,
   isOAuthLoginMethodDisabled,
-  OAuthAuthMethod,
-  verifyCaptcha
+  OAuthAuthMethod
 } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -76,6 +76,7 @@ import {
   ProviderAuthResult,
   TProviderAuthCallback
 } from "./auth-type";
+import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 type TAuthLoginServiceFactoryDep = {
@@ -169,7 +170,9 @@ export const authLoginServiceFactory = ({
         subjectLine: "Infisical MFA code",
         recipients: [email],
         substitutions: {
-          code
+          code,
+          challengeFor: "sign-in",
+          preview: "Sign-in attempt requires further verification."
         }
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send MFA code email"));
@@ -483,6 +486,7 @@ export const authLoginServiceFactory = ({
 
       const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
 
+      recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "user_private_key" });
       const { iv, tag, ciphertext, encoding } = crypto
         .encryption()
         .symmetric()
@@ -809,12 +813,19 @@ export const authLoginServiceFactory = ({
     // user's signup (used by the caller to fire signup telemetry exactly once per account).
     const wasUserAcceptedBeforeLogin = Boolean(user?.isAccepted);
 
-    // Mirror complete-account's invite detection: a not-yet-accepted user who already has an org
-    // membership was invited (the inviter created it), versus an organic signup that has none yet.
-    // Only meaningful when this login completes the signup, so skip the read for accepted users.
+    // Mirror complete-account's invite detection: a not-yet-accepted user who already holds a
+    // pending invitation was invited (the inviter created it), versus an organic signup that has
+    // none. Only meaningful when this login completes the signup, so skip the read for accepted
+    // users.
     const wasInvited =
       !wasUserAcceptedBeforeLogin && user
-        ? (await orgDAL.findMembership({ actorUserId: user.id, scope: AccessScope.Organization })).length > 0
+        ? (
+            await orgDAL.findMembership({
+              actorUserId: user.id,
+              scope: AccessScope.Organization,
+              status: OrgMembershipStatus.Invited
+            })
+          ).length > 0
         : false;
 
     const serverCfg = await getServerCfg();

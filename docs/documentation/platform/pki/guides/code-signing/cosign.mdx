@@ -1,6 +1,6 @@
 ---
-title: "Sign Container Images with cosign"
-sidebarTitle: "Sign Container Images"
+title: "Sign container images with cosign"
+sidebarTitle: "Sign container images"
 description: "Use the Infisical PKCS#11 module to sign OCI container images with Sigstore cosign."
 ---
 
@@ -19,7 +19,7 @@ Sign OCI container images using `cosign` (from the Sigstore project) with the In
 - `cosign` v2.0 or later, **built with PKCS#11 support** (see below)
 - Write access to an OCI-compatible container registry
 
-## Step 1: Set Up Authentication
+## Step 1: Set up authentication
 
 Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
 
@@ -49,10 +49,10 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
 
 For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
 
-## Step 2: Install cosign with PKCS#11 Support
+## Step 2: Install cosign with PKCS#11 support
 
 <Warning>
-  Pre-built cosign binaries (including Homebrew) do **not** include PKCS#11 support. You must build cosign from source with the `pkcs11key` build tag enabled.
+  Pre-built cosign binaries (including Homebrew) don't include PKCS#11 support. You must build cosign from source with the `pkcs11key` build tag enabled.
 </Warning>
 
 <Tabs>
@@ -79,7 +79,7 @@ cosign pkcs11-tool --help
 
 If you see `This cosign was not built with pkcs11-tool support!`, you need to rebuild with the `pkcs11key` tag.
 
-## Step 3: Sign a Container Image
+## Step 3: Sign a container image
 
 First, list the available tokens and key URIs to find the correct PKCS#11 URI for your signer:
 
@@ -100,19 +100,19 @@ export COSIGN_PKCS11_MODULE_PATH="/usr/local/lib/libinfisical-pkcs11.so"
 cosign sign \
   --key "pkcs11:token=release-signer;object=release-signer;type=private" \
   --tlog-upload=false \
-  myregistry.example.com/myapp@sha256:abc123...
+  myregistry.example.com/myapp@sha256:<digest>
 ```
 
 <Note>
   - The `--key` flag uses a PKCS#11 URI. The `token` must match your signer's token label and `object` must match the key label. Use `cosign pkcs11-tool list-keys-uris` to find the exact URI.
   - Set `COSIGN_PKCS11_MODULE_PATH` to the absolute path of the Infisical PKCS#11 shared library.
-  - Use `--tlog-upload=false` if you are not using a Sigstore transparency log.
+  - Use `--tlog-upload=false` if you aren't using a Sigstore transparency log.
   - cosign pushes the signature to the same registry alongside the image.
   - You may need to authenticate to your container registry first (e.g., `docker login` or `cosign login`).
   - Prefer signing by digest (`@sha256:...`) rather than tag for reproducible builds.
 </Note>
 
-## Step 4: Verify the Signature
+## Step 4: Verify the signature
 
 Verify a signed image using the public key or certificate from the signer:
 
@@ -134,7 +134,7 @@ cosign verify \
   Use `--insecure-ignore-tlog` if you signed without uploading to a transparency log. In production, configure a transparency log for auditability.
 </Note>
 
-## CI/CD Integration
+## CI/CD integration
 
 Example for a container build pipeline:
 
@@ -158,7 +158,7 @@ cosign sign \
   "${DIGEST}"
 ```
 
-### Kubernetes Admission Control
+### Kubernetes admission control
 
 Combine cosign verification with a Kubernetes admission controller (e.g., [Kyverno](https://kyverno.io/) or [Connaisseur](https://github.com/sse-secure-systems/connaisseur)) to enforce that only signed images are deployed:
 
@@ -195,14 +195,14 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
 
 <AccordionGroup>
   <Accordion title="'unimplemented' or 'not built with pkcs11-tool support'">
-    Your cosign binary was not built with PKCS#11 support. Pre-built binaries (including Homebrew) do not include it. Rebuild from source with `CGO_ENABLED=1 go install -tags pkcs11key github.com/sigstore/cosign/v2/cmd/cosign@latest`.
+    Your cosign binary wasn't built with PKCS#11 support. Pre-built binaries (including Homebrew) don't include it. Rebuild from source with `CGO_ENABLED=1 go install -tags pkcs11key github.com/sigstore/cosign/v2/cmd/cosign@latest`.
   </Accordion>
   <Accordion title="Error getting signer or key not found">
     Ensure the PKCS#11 URI includes both `token` and `object` fields matching your signer name, and that `COSIGN_PKCS11_MODULE_PATH` is set to the absolute path of the module. Use `cosign pkcs11-tool list-keys-uris` to find the correct URI.
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">

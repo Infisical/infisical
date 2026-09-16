@@ -73,7 +73,7 @@ export const SortPopover = ({
           </button>
         </div>
         <Command>
-          <CommandInput placeholder="Search columns..." />
+          <CommandInput aria-label="Search columns" placeholder="Search columns..." />
           <CommandList>
             <CommandEmpty>No matching columns</CommandEmpty>
             <CommandGroup>

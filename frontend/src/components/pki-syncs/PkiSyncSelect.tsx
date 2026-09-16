@@ -57,11 +57,11 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const [search, setSearch] = useState("");
 
-  const handleSelect = (destination: PkiSync, enterprise?: boolean) => {
-    if (enterprise && !subscription.enterpriseCertificateSyncs) {
+  const handleSelect = (destination: PkiSync) => {
+    if (!subscription.pkiSyncs) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true,
-        text: "All Certificate Syncs can be unlocked if you switch to Infisical Enterprise plan."
+        text: "Certificate Syncs can be unlocked if you switch to Infisical Enterprise plan."
       });
       return;
     }
@@ -106,11 +106,11 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
 
       {filteredOptions.length ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {filteredOptions.map(({ destination, enterprise }) => (
+          {filteredOptions.map(({ destination }) => (
             <SyncCard
               key={destination}
               destination={destination}
-              onClick={() => handleSelect(destination, enterprise)}
+              onClick={() => handleSelect(destination)}
             />
           ))}
         </div>

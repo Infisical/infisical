@@ -99,6 +99,7 @@ export type TUpdateProjectDTO = {
     showSnapshotsLegacy?: boolean;
     secretDetectionIgnoreValues?: string[];
     enforceEncryptedSecretManagerSecretMetadata?: boolean;
+    auditLogsRetentionDays?: number;
   };
 } & Omit<TProjectPermission, "projectId">;
 
@@ -223,7 +224,9 @@ export type TDeleteProjectWorkflowIntegration = {
 } & TProjectPermission;
 
 export enum SearchProjectSortBy {
-  NAME = "name"
+  NAME = "name",
+  DESCRIPTION = "description",
+  CREATED_AT = "createdAt"
 }
 
 export type TSearchProjectsDTO = {

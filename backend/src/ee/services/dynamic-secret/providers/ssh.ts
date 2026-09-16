@@ -101,7 +101,10 @@ export const SshProvider = (): TDynamicProviderFns => {
       keyId,
       principals: requestedPrincipals,
       requestedTtl,
-      certType: SshCertType.USER
+      certType: SshCertType.USER,
+      // revoke is a no-op for this provider, so the certificate's expiry is the only thing ending
+      // the lease and must not drift past it
+      enforceExactExpiry: true
     });
 
     return {

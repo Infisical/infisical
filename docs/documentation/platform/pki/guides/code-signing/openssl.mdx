@@ -1,6 +1,6 @@
 ---
 title: "Sign with OpenSSL"
-sidebarTitle: "Sign Files with OpenSSL"
+sidebarTitle: "Sign files with OpenSSL"
 description: "Use the Infisical PKCS#11 module with OpenSSL's pkcs11 engine for general-purpose signing."
 ---
 
@@ -19,7 +19,7 @@ Use OpenSSL with the Infisical PKCS#11 module via the `libp11` engine for genera
 - OpenSSL 1.1.1 or later
 - `libp11` (OpenSSL PKCS#11 engine)
 
-## Step 1: Set Up Authentication
+## Step 1: Set up authentication
 
 Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
 
@@ -49,7 +49,7 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
 
 For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
 
-## Step 2: Install the PKCS#11 Engine
+## Step 2: Install the PKCS#11 engine
 
 <Tabs>
   <Tab title="Ubuntu / Debian">
@@ -83,7 +83,7 @@ The output confirms the engine is loaded:
      [ available ]
 ```
 
-## Step 3: Create an OpenSSL Configuration
+## Step 3: Create an OpenSSL configuration
 
 Create an OpenSSL config file `infisical-openssl.cnf` to set up the PKCS#11 engine:
 
@@ -108,7 +108,7 @@ Set this as the active OpenSSL config:
 export OPENSSL_CONF=/path/to/infisical-openssl.cnf
 ```
 
-## Step 4: Sign a File
+## Step 4: Sign a file
 
 Sign a file using the PKCS#11 key. The same command works for both RSA and ECDSA keys. OpenSSL automatically selects the correct algorithm based on the key type:
 
@@ -126,7 +126,7 @@ openssl dgst -sha256 \
   - The output is a raw signature file (PKCS#1 for RSA, DER-encoded for ECDSA).
 </Note>
 
-### Sign with RSA-PSS Padding
+### Sign with RSA-PSS padding
 
 For RSA keys, you can use PSS padding instead of the default PKCS#1 v1.5:
 
@@ -145,7 +145,7 @@ openssl dgst -sha256 \
   RSA-PSS requires the signer's key to support the `RSASSA_PSS` mechanism. This is only available with RSA keys.
 </Note>
 
-## Step 5: Verify the Signature
+## Step 5: Verify the signature
 
 Extract the public key or certificate from PKCS#11, then verify:
 
@@ -169,9 +169,9 @@ The output confirms the signature is valid:
 Verified OK
 ```
 
-## Common Use Cases
+## Common use cases
 
-### Sign a Checksum Manifest
+### Sign a checksum manifest
 
 ```bash
 # Generate checksums
@@ -186,7 +186,7 @@ openssl dgst -sha256 \
   SHA256SUMS
 ```
 
-### Create a Detached S/MIME Signature
+### Create a detached S/MIME signature
 
 ```bash
 openssl cms -sign \
@@ -200,7 +200,7 @@ openssl cms -sign \
   -binary
 ```
 
-## CI/CD Integration
+## CI/CD integration
 
 ```bash
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
@@ -232,7 +232,7 @@ For any issue, enable debug logging in your config file (`"log_level": "debug"`,
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Sign Windows Binaries" icon="windows" href="/documentation/platform/pki/guides/code-signing/osslsigncode">

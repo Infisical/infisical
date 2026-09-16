@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
@@ -17,7 +17,6 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -50,7 +49,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  type TableSortDirection
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -71,14 +71,20 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole, TProjectRole } from "@app/hooks/api/roles/types";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
+import { DeleteProjectRoleDialog } from "@app/pages/project/RoleDetailsBySlugPage/components/DeleteProjectRoleDialog";
 import { DuplicateProjectRoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/DuplicateProjectRoleModal";
 import { RoleModal } from "@app/pages/project/RoleDetailsBySlugPage/components/RoleModal";
 
 enum RolesOrderBy {
   Name = "name",
   Slug = "slug",
-  Type = "type"
+  Source = "source"
 }
+
+type RoleSortState = {
+  orderBy: RolesOrderBy | null;
+  orderDirection: OrderByDirection;
+};
 
 export const ProjectRoleList = () => {
   const navigate = useNavigate();
@@ -96,73 +102,77 @@ export const ProjectRoleList = () => {
     currentProject?.type
   );
 
-  const { mutateAsync: deleteRole } = useDeleteProjectRole();
+  const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteProjectRole();
   const { subscription } = useSubscription();
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TProjectRole;
+    const { id, name } = popUp?.deleteRole?.data as TProjectRole;
     await deleteRole({
       projectId,
       projectType: currentProject?.type,
       id
     });
-    createNotification({ type: "success", text: "Successfully removed the role" });
+    createNotification({ type: "success", text: `Project role "${name}" deleted` });
     handlePopUpClose("deleteRole");
   };
 
-  const {
-    orderDirection,
-    toggleOrderDirection,
-    orderBy,
-    setOrderDirection,
-    setOrderBy,
-    search,
-    setSearch,
-    page,
-    perPage,
-    setPerPage,
-    setPage,
-    offset
-  } = usePagination<RolesOrderBy>(RolesOrderBy.Type, {
-    initPerPage: getUserTablePreference("projectRolesTable", PreferenceKey.PerPage, 20)
+  const [sortState, setSortState] = useState<RoleSortState>({
+    orderBy: RolesOrderBy.Source,
+    orderDirection: OrderByDirection.ASC
   });
+  const { search, setSearch, page, perPage, setPerPage, setPage, offset } =
+    usePagination<RolesOrderBy>(RolesOrderBy.Name, {
+      initPerPage: getUserTablePreference("projectRolesTable", PreferenceKey.PerPage, 20)
+    });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
     setUserTablePreference("projectRolesTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const filteredRoles = useMemo(
-    () =>
-      roles
-        ?.filter((role) => {
-          const { slug, name } = role;
+  const filteredRoles = useMemo(() => {
+    const matchingRoles =
+      roles?.filter((role) => {
+        const { slug, name } = role;
 
-          const searchValue = search.trim().toLowerCase();
+        const searchValue = search.trim().toLowerCase();
 
+        return name.toLowerCase().includes(searchValue) || slug.toLowerCase().includes(searchValue);
+      }) ?? [];
+
+    if (!sortState.orderBy) return matchingRoles;
+
+    return [...matchingRoles].sort((a, b) => {
+      const [roleOne, roleTwo] =
+        sortState.orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
+
+      switch (sortState.orderBy) {
+        case RolesOrderBy.Slug:
+          return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
+        case RolesOrderBy.Source:
           return (
-            name.toLowerCase().includes(searchValue) || slug.toLowerCase().includes(searchValue)
+            Number(isCustomProjectRole(roleOne.slug)) - Number(isCustomProjectRole(roleTwo.slug))
           );
-        })
-        .sort((a, b) => {
-          const [roleOne, roleTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
+        case RolesOrderBy.Name:
+        default:
+          return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
+      }
+    });
+  }, [roles, search, sortState]);
 
-          switch (orderBy) {
-            case RolesOrderBy.Slug:
-              return roleOne.slug.toLowerCase().localeCompare(roleTwo.slug.toLowerCase());
-            case RolesOrderBy.Type: {
-              const roleOneValue = isCustomProjectRole(roleOne.slug) ? -1 : 1;
-              const roleTwoValue = isCustomProjectRole(roleTwo.slug) ? -1 : 1;
+  const handleSort = (column: RolesOrderBy, direction: TableSortDirection) => {
+    setSortState({
+      orderBy: direction === "none" ? null : column,
+      orderDirection: direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
+    });
+  };
 
-              return roleTwoValue - roleOneValue;
-            }
-            case RolesOrderBy.Name:
-            default:
-              return roleOne.name.toLowerCase().localeCompare(roleTwo.name.toLowerCase());
-          }
-        }) ?? [],
-    [roles, orderDirection, search, orderBy]
-  );
+  const getSortDirection = (column: RolesOrderBy): TableSortDirection => {
+    if (sortState.orderBy !== column) return "none";
+    return sortState.orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  };
+
+  const filteredRolesPage = filteredRoles.slice(offset, perPage * page);
 
   useResetPageHelper({
     totalCount: filteredRoles.length,
@@ -170,29 +180,17 @@ export const ProjectRoleList = () => {
     setPage
   });
 
-  const handleSort = (column: RolesOrderBy) => {
-    if (column === orderBy) {
-      toggleOrderDirection();
-      return;
-    }
-
-    setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
-  };
-
-  const filteredRolesPage = filteredRoles.slice(offset, perPage * page);
-
   const isProPlan =
     Boolean(subscription) &&
     subscription.rbac &&
     [SubscriptionPlanTypes.Pro, SubscriptionPlanTypes.ProAnnual].includes(subscription.slug);
 
-  const customRoles = filteredRoles.filter((role) => isCustomProjectRole(role.slug));
+  const hasCustomRoles = roles?.some((role) => isCustomProjectRole(role.slug));
 
   return (
     <>
       {/* TODO(custom-roles): Remove this banner after 2026-06-01 when custom roles are removed from Pro plan */}
-      {isProPlan && customRoles?.length > 0 && (
+      {isProPlan && hasCustomRoles && (
         <Alert variant="warning" className="mb-4">
           <TriangleAlertIcon />
           <AlertTitle>Custom roles are moving to Enterprise plans</AlertTitle>
@@ -201,16 +199,22 @@ export const ProjectRoleList = () => {
               Custom roles are part of the Infisical Enterprise plan, but were temporarily available
               to Pro users. Creation of new roles will be enforced starting June 1, 2026.
               <br />
-              You can use{" "}
-              <a
-                href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                additional privileges
-              </a>{" "}
-              as an alternative, or{" "}
+              {currentProject.isLegacyAdditionalPrivilegesEnabled ? (
+                <>
+                  You can use{" "}
+                  <a
+                    href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2"
+                  >
+                    additional privileges
+                  </a>{" "}
+                  as an alternative, or{" "}
+                </>
+              ) : (
+                <>You can </>
+              )}
               <a
                 href="https://infisical.com/scheduledemo"
                 target="_blank"
@@ -269,7 +273,7 @@ export const ProjectRoleList = () => {
               />
             </InputGroup>
           </div>
-          {!isRolesLoading && !filteredRoles?.length ? (
+          {!isRolesLoading && !filteredRoles.length ? (
             <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
@@ -297,43 +301,56 @@ export const ProjectRoleList = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-1/3" onClick={() => handleSort(RolesOrderBy.Name)}>
+                    <TableHead
+                      className="w-1/3"
+                      sortDirection={getSortDirection(RolesOrderBy.Name)}
+                      onSortChange={(direction) => handleSort(RolesOrderBy.Name, direction)}
+                    >
                       Name
                       <ChevronDownIcon
                         className={twMerge(
                           "transition-transform",
-                          orderDirection === OrderByDirection.DESC &&
-                            orderBy === RolesOrderBy.Name &&
+                          sortState.orderDirection === OrderByDirection.DESC &&
+                            sortState.orderBy === RolesOrderBy.Name &&
                             "rotate-180",
-                          orderBy !== RolesOrderBy.Name && "opacity-30"
+                          sortState.orderBy !== RolesOrderBy.Name && "opacity-30"
                         )}
                       />
                     </TableHead>
-                    <TableHead className="w-1/3" onClick={() => handleSort(RolesOrderBy.Slug)}>
+                    <TableHead
+                      className="w-1/3"
+                      sortDirection={getSortDirection(RolesOrderBy.Slug)}
+                      onSortChange={(direction) => handleSort(RolesOrderBy.Slug, direction)}
+                    >
                       Slug
                       <ChevronDownIcon
                         className={twMerge(
                           "transition-transform",
-                          orderDirection === OrderByDirection.DESC &&
-                            orderBy === RolesOrderBy.Slug &&
+                          sortState.orderDirection === OrderByDirection.DESC &&
+                            sortState.orderBy === RolesOrderBy.Slug &&
                             "rotate-180",
-                          orderBy !== RolesOrderBy.Slug && "opacity-30"
+                          sortState.orderBy !== RolesOrderBy.Slug && "opacity-30"
                         )}
                       />
                     </TableHead>
-                    <TableHead onClick={() => handleSort(RolesOrderBy.Type)}>
-                      Type
+                    <TableHead
+                      sortDirection={getSortDirection(RolesOrderBy.Source)}
+                      onSortChange={(direction) => handleSort(RolesOrderBy.Source, direction)}
+                    >
+                      Source
                       <ChevronDownIcon
                         className={twMerge(
                           "transition-transform",
-                          orderDirection === OrderByDirection.DESC &&
-                            orderBy === RolesOrderBy.Type &&
+                          sortState.orderDirection === OrderByDirection.DESC &&
+                            sortState.orderBy === RolesOrderBy.Source &&
                             "rotate-180",
-                          orderBy !== RolesOrderBy.Type && "opacity-30"
+                          sortState.orderBy !== RolesOrderBy.Source && "opacity-30"
                         )}
                       />
                     </TableHead>
-                    <TableHead className="w-5" />
+                    <TableHead variant="action">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -349,8 +366,8 @@ export const ProjectRoleList = () => {
                         <TableCell>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-4 w-4" />
+                        <TableCell variant="action">
+                          <Skeleton className="ml-auto h-4 w-4" />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -360,19 +377,25 @@ export const ProjectRoleList = () => {
                       slug as ProjectMembershipRole
                     );
 
+                    const navigateToRole = () =>
+                      navigate({
+                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                        params: {
+                          projectId: currentProject.id,
+                          roleSlug: slug
+                        }
+                      });
+
                     return (
                       <TableRow
                         key={`role-list-${id}`}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                            params: {
-                              projectId: currentProject.id,
-                              roleSlug: slug
-                            }
-                          })
-                        }
+                        tabIndex={0}
+                        aria-label={`View ${name}`}
+                        onClick={navigateToRole}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget || event.key !== "Enter") return;
+                          navigateToRole();
+                        }}
                       >
                         <TableCell isTruncatable>{name}</TableCell>
                         <TableCell isTruncatable>{slug}</TableCell>
@@ -391,13 +414,14 @@ export const ProjectRoleList = () => {
                             )}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell variant="action">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton
+                                aria-label={`Open actions for ${name}`}
                                 variant="ghost"
                                 size="xs"
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(event) => event.stopPropagation()}
                               >
                                 <MoreHorizontalIcon />
                               </IconButton>
@@ -409,15 +433,9 @@ export const ProjectRoleList = () => {
                               >
                                 {(isAllowed) => (
                                   <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate({
-                                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                                        params: {
-                                          projectId: currentProject.id,
-                                          roleSlug: slug
-                                        }
-                                      });
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      navigateToRole();
                                     }}
                                     isDisabled={!isAllowed}
                                   >
@@ -433,8 +451,8 @@ export const ProjectRoleList = () => {
                                 >
                                   {(isAllowed) => (
                                     <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
+                                      onClick={(event) => {
+                                        event.stopPropagation();
                                         handlePopUpOpen("duplicateRole", role);
                                       }}
                                       isDisabled={!isAllowed}
@@ -453,8 +471,8 @@ export const ProjectRoleList = () => {
                                   {(isAllowed) => (
                                     <DropdownMenuItem
                                       variant="danger"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
+                                      onClick={(event) => {
+                                        event.stopPropagation();
                                         handlePopUpOpen("deleteRole", role);
                                       }}
                                       isDisabled={!isAllowed}
@@ -473,9 +491,9 @@ export const ProjectRoleList = () => {
                   })}
                 </TableBody>
               </Table>
-              {Boolean(filteredRoles?.length) && (
+              {Boolean(filteredRoles.length) && (
                 <Pagination
-                  count={filteredRoles!.length}
+                  count={filteredRoles.length}
                   page={page}
                   perPage={perPage}
                   onChangePage={setPage}
@@ -487,14 +505,13 @@ export const ProjectRoleList = () => {
         </CardContent>
       </Card>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteProjectRoleDialog
         isOpen={popUp.deleteRole.isOpen}
-        title={`Are you sure you want to delete ${
-          (popUp?.deleteRole?.data as TProjectRole)?.name || " "
-        } role?`}
-        deleteKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
-        onClose={() => handlePopUpClose("deleteRole")}
-        onDeleteApproved={handleRoleDelete}
+        roleName={(popUp?.deleteRole?.data as TProjectRole)?.name || "project role"}
+        confirmationKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
+        isPending={isDeletingRole}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        onConfirm={handleRoleDelete}
       />
       <DuplicateProjectRoleModal
         isOpen={popUp.duplicateRole.isOpen}

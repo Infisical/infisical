@@ -25,6 +25,12 @@ import {
   mapLegacyKeyUsageToStandard,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "./certificate-constants";
+import {
+  appendCustomExtensions,
+  describeCustomExtensionValue,
+  isReservedExtensionOid,
+  TIssuedCustomExtension
+} from "./certificate-extension-fns";
 
 /**
  * Extracts certificate request data from a CSR string
@@ -35,8 +41,18 @@ import {
  * This allows applyProfileDefaults to correctly apply defaults for missing fields
  * (e.g., ACME clients like CertBot often omit CN, putting domain only in SAN).
  */
+export const parseCsr = (csr: string): x509.Pkcs10CertificateRequest => {
+  try {
+    return new x509.Pkcs10CertificateRequest(csr);
+  } catch {
+    throw new BadRequestError({
+      message: "The certificate signing request could not be parsed. Supply a PEM-encoded PKCS#10 request."
+    });
+  }
+};
+
 export const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
-  const csrObj = new x509.Pkcs10CertificateRequest(csr);
+  const csrObj = parseCsr(csr);
   const subject = extractDnParts(csrObj.subjectName);
 
   // Only include keys for fields that have values, so applyProfileDefaults
@@ -108,6 +124,20 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
     };
   }
 
+  const csrCustomExtensions = csrObj.extensions
+    .filter((extension) => !isReservedExtensionOid(extension.type))
+    .map((extension) => ({
+      oid: extension.type,
+      value:
+        describeCustomExtensionValue(extension.type, Buffer.from(new Uint8Array(extension.value)).toString("base64")) ??
+        undefined,
+      critical: extension.critical
+    }));
+
+  if (csrCustomExtensions.length) {
+    certificateRequest.customExtensions = csrCustomExtensions;
+  }
+
   return certificateRequest;
 };
 
@@ -118,7 +148,7 @@ export const buildSubjectOverrideForCsr = (
     "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality" | "domainComponents"
   >
 ): string => {
-  const csrSubject = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
+  const csrSubject = extractDnParts(parseCsr(csr).subjectName);
 
   return createDistinguishedName({
     commonName: csrSubject.commonName ?? request.commonName,
@@ -137,7 +167,7 @@ export const buildSubjectOverrideForCsr = (
  * @returns Object containing keyAlgorithm and signatureAlgorithm
  */
 export const extractAlgorithmsFromCSR = (csr: string) => {
-  const csrObj = new x509.Pkcs10CertificateRequest(csr);
+  const csrObj = parseCsr(csr);
 
   // Extract key algorithm from public key
   const { publicKey } = csrObj;
@@ -360,28 +390,34 @@ export const extractAlgorithmsFromCSR = (csr: string) => {
 export const generateLeafKeypairAndCsr = async ({
   subjectName,
   algorithm,
-  altNames = []
+  altNames = [],
+  customExtensions = []
 }: {
   subjectName: string;
   algorithm: ReturnType<typeof keyAlgorithmToAlgCfg>;
   altNames?: string[];
+  customExtensions?: TIssuedCustomExtension[];
 }): Promise<{ privateKeyPem: string; csrPem: string; csrDerBase64: string }> => {
   const leafKeys = await crypto.nativeCrypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
   const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
   const privateKeyPem = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
+  const csrExtensions: x509.Extension[] = [];
+  if (altNames.length > 0) {
+    csrExtensions.push(
+      new x509.SubjectAlternativeNameExtension(
+        altNames.map((value) => ({ type: "dns" as TAltNameType, value })),
+        false
+      )
+    );
+  }
+  appendCustomExtensions(csrExtensions, customExtensions);
+
   const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
     name: subjectName,
     keys: leafKeys,
     signingAlgorithm: algorithm,
-    ...(altNames.length > 0 && {
-      extensions: [
-        new x509.SubjectAlternativeNameExtension(
-          altNames.map((value) => ({ type: "dns" as TAltNameType, value })),
-          false
-        )
-      ]
-    })
+    ...(csrExtensions.length > 0 && { extensions: csrExtensions })
   });
 
   return {

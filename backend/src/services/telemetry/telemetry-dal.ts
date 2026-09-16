@@ -1,6 +1,6 @@
 import { TDbClient } from "@app/db";
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
-import { HEARTBEAT_BUFFER_SECONDS } from "@app/ee/services/gateway-v2/gateway-v2-constants";
+import { buildGatewayReachableSql } from "@app/ee/services/gateway-v2/gateway-v2-transport-fns";
 import { DatabaseError } from "@app/lib/errors";
 
 const BUILT_IN_ROLE_SLUGS = [...Object.values(OrgMembershipRole), ...Object.values(ProjectMembershipRole)] as string[];
@@ -23,6 +23,13 @@ const IDENTITY_AUTH_TABLE_MAP: Record<string, string> = {
   "spiffe-auth": TableName.IdentitySpiffeAuth
 };
 
+const PKI_ENROLLMENT_TABLE_MAP: Record<string, string> = {
+  est: TableName.PkiEstEnrollmentConfig,
+  api: TableName.PkiApiEnrollmentConfig,
+  acme: TableName.PkiAcmeEnrollmentConfig,
+  scep: TableName.PkiScepEnrollmentConfig
+};
+
 const countTable = async (db: TDbClient, table: TableName) => {
   const result = (await db(table).count().first())?.count as string;
   return parseInt(result || "0", 10);
@@ -43,6 +50,13 @@ export const telemetryDALFactory = (db: TDbClient) => {
         integrations,
         certificateAuthorities,
         certificates,
+        certificatePolicies,
+        certificateProfiles,
+        pkiApplications,
+        pkiSyncs,
+        pkiSigners,
+        pkiDiscoveryConfigs,
+        pkiAlerts,
         dynamicSecrets,
         groups,
         secretApprovalPolicies,
@@ -62,7 +76,11 @@ export const telemetryDALFactory = (db: TDbClient) => {
         accessApprovalPolicies,
         honeyTokens,
         proxiedServices,
-        proxiedServicesUsedLast7Days
+        proxiedServicesUsedLast7Days,
+        agentVaultProxies,
+        activeAgentVaultProxies,
+        agentVaultAccessBundles,
+        agentVaultServices
       ] = await Promise.all([
         (async () => {
           const result = (await db(TableName.Users).where({ isGhost: false }).count().first())?.count as string;
@@ -81,6 +99,13 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.Integration),
         countTable(db, TableName.CertificateAuthority),
         countTable(db, TableName.Certificate),
+        countTable(db, TableName.PkiCertificatePolicy),
+        countTable(db, TableName.PkiCertificateProfile),
+        countTable(db, TableName.PkiApplication),
+        countTable(db, TableName.PkiSync),
+        countTable(db, TableName.PkiSigners),
+        countTable(db, TableName.PkiDiscoveryConfig),
+        countTable(db, TableName.PkiAlertsV2),
         countTable(db, TableName.DynamicSecret),
         countTable(db, TableName.Groups),
         countTable(db, TableName.SecretApprovalPolicy),
@@ -119,7 +144,20 @@ export const telemetryDALFactory = (db: TDbClient) => {
               .first()
           )?.count as string;
           return parseInt(result || "0", 10);
-        })()
+        })(),
+        countTable(db, TableName.AgentVaultProxy),
+        (async () => {
+          const result = (
+            await db(TableName.AgentVaultProxy)
+              .whereNotNull("heartbeat")
+              .whereRaw(`"heartbeat" > NOW() - make_interval(secs => "pollInterval" * 3)`)
+              .count()
+              .first()
+          )?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
+        countTable(db, TableName.AgentVaultAccessBundle),
+        countTable(db, TableName.AgentVaultService)
       ]);
 
       // Per-type identity auth method breakdown
@@ -147,15 +185,8 @@ export const telemetryDALFactory = (db: TDbClient) => {
           .first()
       )?.count as string;
 
-      const v2ActiveResult = (
-        await db(TableName.GatewayV2)
-          .whereNotNull("heartbeat")
-          .whereRaw(
-            `COALESCE("heartbeatTTL", 0) > 0 AND "heartbeat" + make_interval(secs => COALESCE("heartbeatTTL", 0) + ${HEARTBEAT_BUFFER_SECONDS}) > NOW()`
-          )
-          .count()
-          .first()
-      )?.count as string;
+      const v2ActiveResult = (await db(TableName.GatewayV2).whereRaw(buildGatewayReachableSql()).count().first())
+        ?.count as string;
 
       const activeGateways = parseInt(legacyActiveResult || "0", 10) + parseInt(v2ActiveResult || "0", 10);
 
@@ -191,6 +222,33 @@ export const telemetryDALFactory = (db: TDbClient) => {
       const secretSyncBreakdown: Record<string, number> = {};
       for (const row of syncDestinationRows) {
         secretSyncBreakdown[row.destination] = parseInt(String(row.count), 10);
+      }
+
+      // PKI enrollment method breakdown
+      const pkiEnrollmentEntries = Object.entries(PKI_ENROLLMENT_TABLE_MAP);
+      const pkiEnrollmentResult = await db.raw<{ rows: { method: string; count: string }[] }>(
+        pkiEnrollmentEntries
+          .map(([method, table]) => `SELECT '${method}' AS method, COUNT(*)::text AS count FROM ${table}`)
+          .join(" UNION ALL ")
+      );
+      const pkiEnrollmentMethodBreakdown: Record<string, number> = {};
+      let pkiEnrollmentMethods = 0;
+      for (const row of pkiEnrollmentResult.rows) {
+        const count = parseInt(row.count || "0", 10);
+        pkiEnrollmentMethods += count;
+        if (count > 0) {
+          pkiEnrollmentMethodBreakdown[row.method] = count;
+        }
+      }
+
+      // PKI sync destination breakdown
+      const pkiSyncDestinationRows = (await db(TableName.PkiSync)
+        .select("destination")
+        .count("* as count")
+        .groupBy("destination")) as unknown as { destination: string; count: string }[];
+      const pkiSyncBreakdown: Record<string, number> = {};
+      for (const row of pkiSyncDestinationRows) {
+        pkiSyncBreakdown[row.destination] = parseInt(String(row.count), 10);
       }
 
       // Per-org breakdown: orgId, name, user count, project count
@@ -231,6 +289,16 @@ export const telemetryDALFactory = (db: TDbClient) => {
         integrations,
         certificateAuthorities,
         certificates,
+        certificatePolicies,
+        certificateProfiles,
+        pkiApplications,
+        pkiSyncs,
+        pkiSigners,
+        pkiDiscoveryConfigs,
+        pkiAlerts,
+        pkiEnrollmentMethods,
+        pkiEnrollmentMethodBreakdown,
+        pkiSyncBreakdown,
         dynamicSecrets,
         identityAuthMethods,
         identityAuthMethodBreakdown,
@@ -253,6 +321,10 @@ export const telemetryDALFactory = (db: TDbClient) => {
         honeyTokens,
         proxiedServices,
         proxiedServicesUsedLast7Days,
+        agentVaultProxies,
+        activeAgentVaultProxies,
+        agentVaultAccessBundles,
+        agentVaultServices,
         integrationBreakdown,
         projectTypeBreakdown,
         secretSyncBreakdown,

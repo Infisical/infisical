@@ -1,5 +1,4 @@
 .scrollable-content-viewport {
-  --scrollable-content-edge-size: 2rem;
   --scrollable-content-size-max-height: clamp(12rem, calc(100dvh - 24rem), 28rem);
 
   container-name: scrollable-content;
@@ -46,45 +45,6 @@
   visibility: visible;
   pointer-events: auto;
   opacity: 1;
-}
-
-.scrollable-content-viewport[data-edge-behavior="fade"][data-scrollable-top="true"][data-scrollable-bottom="true"] {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    black var(--scrollable-content-edge-size),
-    black calc(100% - var(--scrollable-content-edge-size)),
-    transparent
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    black var(--scrollable-content-edge-size),
-    black calc(100% - var(--scrollable-content-edge-size)),
-    transparent
-  );
-}
-
-.scrollable-content-viewport[data-edge-behavior="fade"][data-scrollable-top="true"][data-scrollable-bottom="false"] {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    black var(--scrollable-content-edge-size)
-  );
-  mask-image: linear-gradient(to bottom, transparent, black var(--scrollable-content-edge-size));
-}
-
-.scrollable-content-viewport[data-edge-behavior="fade"][data-scrollable-top="false"][data-scrollable-bottom="true"] {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    black calc(100% - var(--scrollable-content-edge-size)),
-    transparent
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    black calc(100% - var(--scrollable-content-edge-size)),
-    transparent
-  );
 }
 
 .scrollable-content-viewport::-webkit-scrollbar {

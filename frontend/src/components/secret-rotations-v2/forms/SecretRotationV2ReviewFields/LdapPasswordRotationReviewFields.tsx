@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
@@ -20,31 +20,25 @@ export const LdapPasswordRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="DN/UPN">{parameters.dn}</GenericFieldLabel>
+        <ReviewField label="DN/UPN">{parameters.dn}</ReviewField>
       </SecretRotationReviewSection>
       {passwordRequirements && (
         <SecretRotationReviewSection label="Password Requirements">
-          <GenericFieldLabel label="Length">{passwordRequirements.length}</GenericFieldLabel>
-          <GenericFieldLabel label="Minimum Digits">
-            {passwordRequirements.required.digits}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Minimum Lowercase Characters">
+          <ReviewField label="Length">{passwordRequirements.length}</ReviewField>
+          <ReviewField label="Minimum Digits">{passwordRequirements.required.digits}</ReviewField>
+          <ReviewField label="Minimum Lowercase Characters">
             {passwordRequirements.required.lowercase}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Minimum Uppercase Characters">
+          </ReviewField>
+          <ReviewField label="Minimum Uppercase Characters">
             {passwordRequirements.required.uppercase}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Minimum Symbols">
-            {passwordRequirements.required.symbols}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Allowed Symbols">
-            {passwordRequirements.allowedSymbols}
-          </GenericFieldLabel>
+          </ReviewField>
+          <ReviewField label="Minimum Symbols">{passwordRequirements.required.symbols}</ReviewField>
+          <ReviewField label="Allowed Symbols">{passwordRequirements.allowedSymbols}</ReviewField>
         </SecretRotationReviewSection>
       )}
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="DN/UPN">{dn}</GenericFieldLabel>
-        <GenericFieldLabel label="Password">{password}</GenericFieldLabel>
+        <ReviewField label="DN/UPN">{dn}</ReviewField>
+        <ReviewField label="Password">{password}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

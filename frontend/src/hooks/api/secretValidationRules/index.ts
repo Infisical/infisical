@@ -4,17 +4,24 @@ export {
   useUpdateSecretValidationRule
 } from "./mutations";
 export { useListSecretValidationRules } from "./queries";
+export { doesRuleCoverScope } from "./scope";
 export type {
-  TConstraint,
+  TConstraints,
   TCreateSecretValidationRuleDTO,
   TDeleteSecretValidationRuleDTO,
+  TGeneratedCredentialProvider,
+  TReusePrevention,
   TSecretValidationRule,
-  TUpdateSecretValidationRuleDTO
+  TSecretValidationRuleConfig,
+  TStaticSecretsRuleConfig,
+  TUpdateSecretValidationRuleDTO,
+  TValueConstraints
 } from "./types";
 export {
-  ConstraintTarget,
-  ConstraintType,
   DynamicSecretRuleProvider,
+  MAX_CONSTRAINT_LENGTH,
+  MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS,
+  SECRET_ROTATION_TO_RULE_PROVIDER,
   SecretRotationRuleProvider,
   SecretValidationRuleType
 } from "./types";

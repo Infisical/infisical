@@ -16,11 +16,11 @@ PAM uses a proxy-based architecture. Nothing connects directly to your databases
 
 **Actor** — the user or [machine identity](/documentation/platform/identities/machine-identities) the session belongs to. Permissions, policies, and the audit trail all follow the actor.
 
-## How a Connection Works
+## How a connection works
 
 When an actor connects to an [account](/documentation/platform/pam/accounts/overview):
 
-1. **Access is requested** — a user clicks Launch in the browser, or the CLI command runs
+1. **Access is requested** — a user selects Launch in the browser, or the CLI command runs
 2. **Infisical checks permissions** — verifies the actor has a [membership](/documentation/platform/pam/concepts/access-control) with the right role
 3. **[Template](/documentation/platform/pam/templates/overview) rules are enforced** — MFA, reason requirement, session duration
 4. **Approval is checked** — a gated account also needs an approved [access request](/documentation/platform/pam/access-requests/overview)
@@ -32,17 +32,21 @@ When an actor connects to an [account](/documentation/platform/pam/accounts/over
 
 The actor never sees the credentials. The database/server never sees the actor directly.
 
-## Network Security
+## Network security
 
-The Gateway uses outbound connections only:
+In relay mode, the Gateway uses outbound connections only:
 
 - **No inbound ports** — your firewall doesn't need to allow any inbound traffic
 - **Outbound to Infisical** — for credential retrieval and session uploads
 - **Outbound to your infrastructure** — to connect to databases and servers
 
+In [direct listen mode](/documentation/platform/gateways/gateway-deployment#choose-a-connection-mode), Infisical opens the connection instead, so the Gateway accepts inbound traffic on its listen address from the Infisical host.
+
 <Tip>
-Your databases and servers stay completely isolated from the internet. The Gateway sits inside your network and reaches out; nothing reaches in.
+Your databases and servers stay completely isolated from the internet either way. Only the Gateway is reachable, and only from Infisical.
 </Tip>
+
+Direct listen changes where a CLI session connects from. Browser-based sessions work in either mode, because the platform brokers the connection. `infisical pam access` connects from the user's own machine instead, so it needs to reach the Gateway's listen address. Users outside that network need a VPN into it, or a relay running on the Gateway alongside direct listen.
 
 ## Encryption
 
@@ -52,9 +56,9 @@ All connections are encrypted:
 - **Gateway to Infisical** — TLS
 - **Session recordings** — encrypted before upload
 
-The Relay server (which routes traffic between clients and Gateways) cannot decrypt or inspect the traffic passing through it.
+The Relay server (which routes traffic between clients and Gateways) can't decrypt or inspect the traffic passing through it.
 
-## Recording Architecture
+## Recording architecture
 
 Recording happens at the Gateway:
 
@@ -66,7 +70,7 @@ Recording happens at the Gateway:
 
 This ensures no data is lost, even during network issues.
 
-## Deployment Options
+## Deployment options
 
 | Setup | Use case |
 |-------|----------|
@@ -76,7 +80,7 @@ This ensures no data is lost, even during network issues.
 
 For deployment instructions, see [Deploy a Gateway](/documentation/platform/gateways/gateway-deployment).
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
   <Card title="Deploy a Gateway" icon="server" href="/documentation/platform/gateways/gateway-deployment">

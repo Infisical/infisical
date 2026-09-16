@@ -1,11 +1,13 @@
 export type TGatewayV2ConnectionDetails = {
-  relayHost: string;
+  gatewayId: string;
+  directAddress?: string;
+  relayHost?: string;
   gateway: {
     clientCertificate: string;
     clientPrivateKey: string;
     serverCertificateChain: string;
   };
-  relay: {
+  relay?: {
     clientCertificate: string;
     clientPrivateKey: string;
     serverCertificateChain: string;

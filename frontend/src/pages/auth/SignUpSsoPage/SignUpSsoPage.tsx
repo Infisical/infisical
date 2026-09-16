@@ -8,6 +8,7 @@ import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
   CardContent,
@@ -52,6 +53,8 @@ export const SignupSsoPage = () => {
   }, [token]);
 
   const handleSubmit = async () => {
+    const telemetry = new Telemetry().getInstance();
+
     const { token: accessToken } = await completeAccountSignup.mutateAsync({
       type: "alias",
       code,
@@ -61,6 +64,11 @@ export const SignupSsoPage = () => {
     SecurityClient.setSignupToken("");
     SecurityClient.setToken(accessToken);
     const { organizationId } = jwtDecode(accessToken) as { organizationId?: string };
+
+    if (decoded.email) {
+      const signupEmail = decoded.email.toLowerCase();
+      telemetry.identify(signupEmail, signupEmail);
+    }
 
     if (isInfisicalCloud()) {
       window.dataLayer = window.dataLayer || [];

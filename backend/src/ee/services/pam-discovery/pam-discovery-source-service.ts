@@ -17,7 +17,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { PamAccountType, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
+import { PamAccountType, PamPostgresAuthMethod, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
 import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { validateGatewayAttachment } from "../pam/pam-validators";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -222,12 +222,23 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       throw new BadRequestError({ message: `Credential account must be of type '${expectedType}'` });
     }
 
-    // discovery transmits an SSH password to every scanned host, so a password account may only be used by an actor
+    // discovery transmits a password to every scanned host, so a password account may only be used by an actor
     // allowed to view its secret
-    if (account.accountType === PamAccountType.SSH) {
+    if (account.accountType === PamAccountType.SSH || account.accountType === PamAccountType.Postgres) {
       const { decryptor } = await getProjectCipher(projectId);
       const { authMethod } = decryptToObject(account.encryptedCredentials, decryptor) as { authMethod?: string };
-      if (authMethod === PamSshAuthMethod.Password) {
+
+      if (account.accountType === PamAccountType.Postgres && authMethod === PamPostgresAuthMethod.AwsIam) {
+        throw new BadRequestError({
+          message: `PostgreSQL account '${account.name}' uses AWS IAM authentication, which cannot scan. Its login token is minted for one host, port, and user, so it cannot be reused across the instances a source scans. Select an account that authenticates with a password.`
+        });
+      }
+
+      const sendsPassword =
+        account.accountType === PamAccountType.Postgres
+          ? authMethod !== PamPostgresAuthMethod.AwsIam
+          : authMethod === PamSshAuthMethod.Password;
+      if (sendsPassword) {
         await checkAccountAccess(
           permissionService,
           credentialAccountId,
@@ -471,9 +482,9 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       const goneAccounts = storedAccounts.filter((a) => {
         if (seenFingerprints.has(a.fingerprint)) return false;
         if (a.accountType === PamAccountType.WindowsAd) return true;
-        if (a.accountType === PamAccountType.Windows) {
-          // local-account fingerprint is `${domain}:${computerObjectGUID}:${username}`; the machine key is the
-          // first two segments, matching what the provider reports as re-checked
+        if (a.accountType === PamAccountType.Windows || a.accountType === PamAccountType.Postgres) {
+          // fingerprints are `${domain}:${computerObjectGUID}:${username}` and `${host}:${port}:${rolname}`; in
+          // both the machine key is the first two segments, matching what the provider reports as re-checked
           const machineKey = a.fingerprint.split(":").slice(0, 2).join(":");
           return scannedMachines.has(machineKey);
         }

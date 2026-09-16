@@ -100,6 +100,7 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
               <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
                 <Command shouldFilter={false}>
                   <CommandInput
+                    aria-label="Search applications"
                     placeholder="Search applications..."
                     value={search}
                     onValueChange={setSearch}

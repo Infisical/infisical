@@ -134,8 +134,9 @@ func startNodeJS(ctx context.Context, networkName string, files []testcontainers
 	}, nil
 }
 
-// bootstrap creates the initial admin user, org, and machine identity,
-// then logs in to obtain a user JWT. Uses log.Fatalf since it runs in TestMain.
+// bootstrap creates the initial admin user, org, and machine identity, logs in
+// to obtain a user JWT, then mints the identity access token used by the infra
+// helpers. Uses log.Fatalf since it runs in TestMain.
 func (n *NodeJSService) bootstrap() {
 	var bootstrapResp BootstrapResponse
 	resp, err := n.client.R().
@@ -154,7 +155,6 @@ func (n *NodeJSService) bootstrap() {
 	}
 
 	n.orgID = bootstrapResp.Organization.ID
-	n.identityToken = bootstrapResp.Identity.Credentials.Token
 	n.userEmail = bootstrapResp.User.Email
 	n.userID = bootstrapResp.User.ID
 
@@ -189,6 +189,24 @@ func (n *NodeJSService) bootstrap() {
 		log.Fatalf("infra.bootstrap: select-org returned %d: %s", resp.StatusCode(), resp.String())
 	}
 	n.userToken = selectOrgResp.Token
+
+	// The bootstrap response token is signed without an exp claim, which the
+	// backend rejects as over max age once past the legacy no-exp token cutoff
+	// (2026-08-02 on default config). Mint a standard Token Auth access token
+	// for the instance admin identity and use that for all infra calls.
+	var tokenResp CreateTokenAuthTokenResponse
+	resp, err = n.client.R().
+		SetHeader("Authorization", "Bearer "+n.userToken).
+		SetBody(CreateTokenAuthTokenRequest{Name: "test-infra"}).
+		SetResult(&tokenResp).
+		Post("/api/v1/auth/token-auth/identities/" + bootstrapResp.Identity.ID + "/tokens")
+	if err != nil {
+		log.Fatalf("infra.bootstrap: create token-auth token request failed: %v", err)
+	}
+	if resp.IsError() {
+		log.Fatalf("infra.bootstrap: create token-auth token returned %d: %s", resp.StatusCode(), resp.String())
+	}
+	n.identityToken = tokenResp.AccessToken
 }
 
 // MustCreateProject creates a new project via the Node.js API.

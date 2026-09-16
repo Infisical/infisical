@@ -406,7 +406,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);
@@ -454,7 +455,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getTlsCertAuth",
@@ -533,7 +534,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId
+        identityId: req.params.identityId,
+        isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);

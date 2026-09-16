@@ -295,7 +295,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
   server.route({
     method: "GET",
     url: "/:projectId/groups",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     config: {
       rateLimit: readLimit
     },
@@ -365,7 +365,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
   server.route({
     method: "GET",
     url: "/:projectId/groups/:groupId",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     config: {
       rateLimit: readLimit
     },
@@ -437,7 +437,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
   server.route({
     method: "GET",
     url: "/:projectId/groups/:groupId/users",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     config: {
       rateLimit: readLimit
     },

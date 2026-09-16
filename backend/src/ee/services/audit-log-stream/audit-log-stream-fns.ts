@@ -17,6 +17,17 @@ import { getSumoLogicProviderListItem } from "./sumo-logic/sumo-logic-provider-f
 export const blockAuditLogStreamInternalIps = (url: string) =>
   blockLocalAndPrivateIpAddresses(url, false, getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP);
 
+// The instant a provider should report the event at. Delivery can lag the event by minutes
+// (retry backoff tops out around 240s) or by months during a backfill, so a provider that
+// stamps its own send time misdates the record. Falls back to now for payloads that carry no
+// createdAt
+export const resolveEventTimestamp = (event: { createdAt?: Date | string | null }): Date => {
+  if (!event.createdAt) return new Date();
+
+  const createdAt = new Date(event.createdAt);
+  return Number.isNaN(createdAt.getTime()) ? new Date() : createdAt;
+};
+
 export const listProviderOptions = () => {
   return [
     getDatadogProviderListItem(),

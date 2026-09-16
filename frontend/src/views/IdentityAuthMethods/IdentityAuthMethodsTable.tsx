@@ -127,8 +127,8 @@ export const IdentityAuthMethodsTable = ({
                         type={projectId ? "project" : "org"}
                         I={
                           projectId
-                            ? ProjectPermissionIdentityActions.Edit
-                            : OrgPermissionIdentityActions.Edit
+                            ? ProjectPermissionIdentityActions.EditAuth
+                            : OrgPermissionIdentityActions.EditAuth
                         }
                         a={
                           projectId
@@ -203,6 +203,7 @@ export const IdentityAuthMethodsTable = ({
           if (!open) setRevokeAuthMethod(null);
         }}
         identityId={identityId}
+        identityName={identityName}
         authMethod={revokeAuthMethod}
         onSuccess={onMutated}
       />

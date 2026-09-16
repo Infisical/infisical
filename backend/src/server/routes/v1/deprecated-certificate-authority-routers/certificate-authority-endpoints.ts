@@ -55,7 +55,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema.array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId }
@@ -100,7 +100,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { caName } = req.params;
       const { projectId } = req.query;
@@ -141,7 +141,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, type: caType },
@@ -181,7 +181,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { caName } = req.params;
 
@@ -230,7 +230,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { caName } = req.params;
       const { projectId } = req.body;

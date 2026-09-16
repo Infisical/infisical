@@ -1,11 +1,17 @@
-export { useDeleteAuditReport, useRequestAuditReport } from "./mutations";
-export { auditReportKeys, useGetAuditReports } from "./queries";
+export { useDeleteAuditReport, useRequestAuditReport, useRequestOrgAuditReport } from "./mutations";
+export { auditReportKeys, useGetAuditReports, useGetOrgAuditReports } from "./queries";
 export {
   AuditReportStatus,
   AuditReportType,
+  OrgAuditReportType,
   type TAuditReport,
   type TAuditReportConfig,
   type TAuditReportResultEntry,
   type TGetAuditReportsDTO,
-  type TRequestAuditReportDTO
+  type TGetOrgAuditReportsDTO,
+  type TOrgAuditReport,
+  type TOrgAuditReportConfig,
+  type TOrgAuditReportResultEntry,
+  type TRequestAuditReportDTO,
+  type TRequestOrgAuditReportDTO
 } from "./types";

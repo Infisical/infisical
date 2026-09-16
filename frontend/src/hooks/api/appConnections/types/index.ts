@@ -22,6 +22,7 @@ import { TCloudflareConnection } from "./cloudflare-connection";
 import { TConvexConnection } from "./convex-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
+import { TDaytonaConnection } from "./daytona-connection";
 import { TDbtConnection } from "./dbt-connection";
 import { TDevinConnection } from "./devin-connection";
 import { TDigiCertConnection } from "./digicert-connection";
@@ -105,6 +106,7 @@ export * from "./cloudflare-connection";
 export * from "./convex-connection";
 export * from "./databricks-connection";
 export * from "./datadog-connection";
+export * from "./daytona-connection";
 export * from "./dbt-connection";
 export * from "./devin-connection";
 export * from "./digicert-connection";
@@ -248,7 +250,8 @@ export type TAppConnection =
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
-  | TSpaceliftConnection;
+  | TSpaceliftConnection
+  | TDaytonaConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

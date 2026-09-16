@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -19,6 +18,7 @@ import {
   TrashIcon,
   UnlockIcon
 } from "lucide-react";
+import { motion } from "motion/react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -75,7 +75,13 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper, useTimedReset } from "@app/hooks";
+import {
+  usePagination,
+  usePopUp,
+  useResetPageHelper,
+  useSlashFocusSearch,
+  useTimedReset
+} from "@app/hooks";
 import {
   useBulkExportCmekPrivateKeys,
   useGetCmeksByProjectId,
@@ -133,6 +139,8 @@ export const CmekTable = () => {
   } = usePagination(CmekOrderBy.Name, {
     initPerPage: getUserTablePreference("cmekClientTable", PreferenceKey.PerPage, 20)
   });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -385,6 +393,7 @@ export const CmekTable = () => {
                 onChange={(e) => {
                   setSearch(e.target.value);
                 }}
+                ref={searchInputRef}
                 placeholder="Search keys by name or ID..."
               />
             </InputGroup>
@@ -448,7 +457,7 @@ export const CmekTable = () => {
                   <TableHead>Status</TableHead>
                   <TableHead>Version</TableHead>
                   <TableHead className="w-5" />
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -474,6 +483,7 @@ export const CmekTable = () => {
                       algorithm,
                       isDisabled,
                       isExportable,
+                      hasDeleteProtection,
                       keyUsage
                     } = cmek;
                     const { variant, label } = getStatusBadgeProps(isDisabled);
@@ -598,7 +608,7 @@ export const CmekTable = () => {
                             </Tooltip>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell variant="action">
                           <div className="flex justify-end">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -695,14 +705,27 @@ export const CmekTable = () => {
                                   )}
                                   {isDisabled ? "Enable" : "Disable"} Key
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handlePopUpOpen("deleteKey", cmek)}
-                                  isDisabled={cannotDeleteKey}
-                                  variant="danger"
+                                <Tooltip
+                                  open={cannotDeleteKey || hasDeleteProtection ? undefined : false}
                                 >
-                                  <TrashIcon className="mr-2 size-4" />
-                                  Delete Key
-                                </DropdownMenuItem>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <DropdownMenuItem
+                                        onClick={() => handlePopUpOpen("deleteKey", cmek)}
+                                        isDisabled={cannotDeleteKey || hasDeleteProtection}
+                                        variant="danger"
+                                      >
+                                        <TrashIcon className="mr-2 size-4" />
+                                        Delete Key
+                                      </DropdownMenuItem>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left">
+                                    {cannotDeleteKey
+                                      ? "Access Restricted"
+                                      : "Disable delete protection on this key before deleting it"}
+                                  </TooltipContent>
+                                </Tooltip>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>

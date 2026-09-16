@@ -6,7 +6,6 @@ import {
   CertRequestRequestGrantSchema,
   CertRequestRequestSchema,
   CreateCertRequestPolicySchema,
-  CreateCertRequestRequestSchema,
   UpdateCertRequestPolicySchema
 } from "@app/services/approval-policy/cert-request/cert-request-policy-schemas";
 import {
@@ -32,11 +31,17 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Partial<
       createPolicySchema: CreateCertRequestPolicySchema,
       updatePolicySchema: UpdateCertRequestPolicySchema,
       policyResponseSchema: CertRequestPolicySchema,
-      createRequestSchema: CreateCertRequestRequestSchema,
       requestResponseSchema: CertRequestRequestSchema,
       grantResponseSchema: CertRequestRequestGrantSchema,
       inputsSchema: CertRequestPolicyInputsSchema,
-      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema
+      checkPolicyMatchResponseSchema: BaseCheckPolicyMatchResponseSchema,
+      // Certificate approval requests are only ever opened server-side by the issuance flow
+      // (certificate-v3-service -> createRequestFromPolicy), atomically with the certificate
+      // request row they gate. There is no caller-driven path: a request cannot be opened
+      // before its certificate request row exists, and once it exists the row already carries
+      // its own approval request. Exposing creation would let a caller pick which policy gates
+      // a certificate request they did not create, so it stays off.
+      allowRequestCreation: false
     });
   },
   [ApprovalPolicyType.CertCodeSigning]: async (server: FastifyZodProvider) => {

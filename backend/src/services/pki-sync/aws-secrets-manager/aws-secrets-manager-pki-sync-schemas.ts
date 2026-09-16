@@ -5,7 +5,7 @@ import { AppConnection, AWSRegion } from "@app/services/app-connection/app-conne
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { AWS_SECRETS_MANAGER_PKI_SYNC_CERTIFICATE_NAMING } from "./aws-secrets-manager-pki-sync-constants";
 
@@ -27,7 +27,8 @@ const AwsSecretsManagerPkiSyncOptionsSchema = z.object({
   includeRootCa: z.boolean().default(false),
   preserveSecretOnRenewal: z.boolean().default(true),
   updateExistingCertificates: z.boolean().default(true),
-  postSyncCommand: PostSyncCommandSchema,
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()

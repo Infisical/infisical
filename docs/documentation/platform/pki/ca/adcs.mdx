@@ -62,7 +62,7 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
       </Step>
     </Steps>
 
-    ## Certificate Templates
+    ## Certificate templates
 
     Infisical retrieves the templates published on your CA in real time, so a profile can only reference a template that exists and is reachable. The template lives on the issuance flow (the profile), not on the CA.
 
@@ -90,7 +90,7 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
       The certificate template must allow "Supply in the request" for subject information so that the CSR's subject fields are honored. A subordinate CA template (for example, `SubCA`) is the typical choice.
     </Warning>
 
-    ## Installing an Intermediate CA Certificate via AD CS
+    ## Installing an intermediate CA certificate via AD CS
 
     <Tabs>
       <Tab title="Infisical UI">
@@ -147,7 +147,7 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
       </Tab>
     </Tabs>
 
-    ## Auto-Renewal
+    ## Auto-renewal
 
     Infisical supports automatic renewal of intermediate CA certificates signed by AD CS. When enabled, Infisical submits a fresh CSR to AD CS through the Gateway and imports the renewed certificate before the current one expires.
 
@@ -179,26 +179,36 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
 
 ## Limitations
 
-- Templates that require manual approval or are held by CA policy are not supported. Requests are issued immediately.
-- Authentication uses NTLM. Kerberos is not yet supported.
+- Templates that require manual approval or are held by CA policy aren't supported. Requests are issued immediately.
+- Authentication uses NTLM. Kerberos isn't yet supported.
 
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="The requested certificate template is not supported">
+  <Accordion title="The requested certificate template isn't supported">
     The CA rejected the request with `CERTSRV_E_UNSUPPORTED_CERT_TYPE`. The template is either not published on the CA or the name is wrong. Confirm the template is published (`certutil -CATemplates`) and that the name matches exactly.
   </Accordion>
   <Accordion title="Enroll permission denied">
-    The connection account does not have Enroll permission on the requested template. Grant Enroll to the account on the template's security settings.
+    The connection account doesn't have Enroll permission on the requested template. Grant Enroll to the account on the template's security settings.
   </Accordion>
   <Accordion title="The certificate authority name could not be discovered">
-    Automatic discovery reads the CA name from the host's registry over SMB (TCP 445), which requires the Remote Registry service to be running and reachable from the Gateway. If SMB is not open to the Gateway, leave discovery aside and set the certificate authority name explicitly on the external CA. Run `certutil -getreg CA\CommonName` on the AD CS server to find it.
+    Automatic discovery reads the CA name from the host's registry over SMB (TCP 445), which requires the Remote Registry service to be running and reachable from the Gateway. If SMB isn't open to the Gateway, leave discovery aside and set the certificate authority name explicitly on the external CA. Run `certutil -getreg CA\CommonName` on the AD CS server to find it.
   </Accordion>
   <Accordion title="Could not reach certificate authority through the gateway">
-    When you create or update the CA, Infisical validates the certificate authority name against the CA over the Gateway. This error means the name does not match a CA on the host, or the Gateway cannot reach the AD CS server. Confirm the name with `certutil -getreg CA\CommonName` on the AD CS server and that the Gateway can connect to the host over DCOM (MS-WCCE).
+    When you create or update the CA, Infisical validates the certificate authority name against the CA over the Gateway. This error means the name doesn't match a CA on the host, or the Gateway can't reach the AD CS server. Confirm the name with `certutil -getreg CA\CommonName` on the AD CS server and that the Gateway can connect to the host over DCOM (MS-WCCE).
+  </Accordion>
+  <Accordion title="The certificate was issued without a custom extension">
+    AD CS copies a custom extension out of a request only when its OID is listed in the CA's `EnableRequestExtensionList`, which lists none by default. Add the OID and restart the service:
+
+    ```powershell
+    certutil -setreg policy\EnableRequestExtensionList +1.3.6.1.4.1.311.25.2
+    net stop certsvc && net start certsvc
+    ```
+
+    Leaving an OID off that list is also how you stop requests from introducing it.
   </Accordion>
   <Accordion title="Signer rejected: missing Code Signing extended key usage">
-    The template used for a code signing signer does not produce a code-signing certificate. Point the signer at a template that carries the Code Signing extended key usage.
+    The template used for a code signing signer doesn't produce a code-signing certificate. Point the signer at a template that carries the Code Signing extended key usage.
   </Accordion>
   <Accordion title="Gateway connectivity issues">
     Verify the Gateway can reach the AD CS host over DCOM (MS-WCCE) and that the domain account credentials are correct.

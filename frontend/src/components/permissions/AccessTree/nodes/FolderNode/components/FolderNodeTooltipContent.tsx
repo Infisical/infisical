@@ -1,7 +1,6 @@
 import { ReactElement } from "react";
-import { faCheckCircle, faCircleMinus, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { NodeToolbar, Position } from "@xyflow/react";
+import { CircleCheckIcon, CircleMinusIcon, CircleXIcon } from "lucide-react";
 
 import {
   formatedConditionsOperatorNames,
@@ -26,11 +25,11 @@ type ConditionDisplayProps = {
 const ConditionDisplay = ({ _key: key, value, operator }: ConditionDisplayProps) => {
   return (
     <li>
-      <span className="font-medium text-mineshaft-100 capitalize">{camelCaseToSpaces(key)}</span>{" "}
-      <span className="text-mineshaft-200">
+      <span className="font-medium text-foreground capitalize">{camelCaseToSpaces(key)}</span>{" "}
+      <span className="text-accent">
         {formatedConditionsOperatorNames[operator as PermissionConditionOperators]}
       </span>{" "}
-      <span className="rounded-sm bg-mineshaft-600 p-0.5 font-mono">
+      <span className="rounded-sm bg-container px-1 py-0.5 font-mono text-foreground">
         {typeof value === "string" ? value : value.join(", ")}
       </span>
       .
@@ -45,13 +44,13 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.Full:
       component = (
         <>
-          <div className="flex items-center gap-1.5 text-green capitalize">
-            <FontAwesomeIcon icon={faCheckCircle} size="xs" />
+          <div className="flex items-center gap-1.5 text-success capitalize">
+            <CircleCheckIcon className="size-3.5" />
             <span>Full {formatActionName(action)} Permissions</span>
           </div>
-          <p className="text-mineshaft-200">
+          <p className="text-accent">
             Policy grants unconditional{" "}
-            <span className="font-medium text-mineshaft-100">
+            <span className="font-medium text-foreground">
               {formatActionName(action).toLowerCase()}
             </span>{" "}
             permission for {subject.replaceAll("-", " ")} in this folder.
@@ -62,13 +61,13 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.Partial:
       component = (
         <>
-          <div className="flex items-center gap-1.5 text-yellow capitalize">
-            <FontAwesomeIcon icon={faCircleMinus} className="text-yellow" size="xs" />
+          <div className="flex items-center gap-1.5 text-warning capitalize">
+            <CircleMinusIcon className="size-3.5" />
             <span>Conditional {formatActionName(action)} Permissions</span>
           </div>
-          <p className="mb-1 text-mineshaft-200">
+          <p className="mb-1 text-accent">
             Policy conditionally allows{" "}
-            <span className="font-medium text-mineshaft-100">
+            <span className="font-medium text-foreground">
               {formatActionName(action).toLowerCase()}
             </span>{" "}
             permission for {subject.replaceAll("-", " ")} in this folder.
@@ -137,13 +136,13 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.None:
       component = (
         <>
-          <div className="flex items-center gap-1.5 text-red capitalize">
-            <FontAwesomeIcon icon={faCircleXmark} size="xs" />
+          <div className="flex items-center gap-1.5 text-danger capitalize">
+            <CircleXIcon className="size-3.5" />
             <span>No {formatActionName(action)} Permissions</span>
           </div>
-          <p className="text-mineshaft-200">
+          <p className="text-accent">
             Policy always forbids{" "}
-            <span className="font-medium text-mineshaft-100">
+            <span className="font-medium text-foreground">
               {formatActionName(action).toLowerCase()}
             </span>{" "}
             permission for {subject.replaceAll("-", " ")} in this folder.
@@ -157,7 +156,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
 
   return (
     <NodeToolbar
-      className="rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-sm font-light text-bunker-100"
+      className="max-w-sm rounded-md border border-border bg-popover px-4 py-2 text-sm text-foreground shadow-lg"
       isVisible
       position={Position.Bottom}
     >

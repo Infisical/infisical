@@ -1,3 +1,5 @@
+import { TriangleAlertIcon } from "lucide-react";
+
 import {
   Alert,
   AlertDescription,
@@ -42,7 +44,11 @@ export const OauthClientSecretModal = ({ popUp, handlePopUpClose, handlePopUpTog
       open={popUp?.clientSecret?.isOpen}
       onOpenChange={(isOpen) => handlePopUpToggle("clientSecret", isOpen)}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>OAuth client credentials</DialogTitle>
           <DialogDescription>
@@ -52,8 +58,9 @@ export const OauthClientSecretModal = ({ popUp, handlePopUpClose, handlePopUpTog
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <Alert variant="warning">
+            <TriangleAlertIcon />
             <AlertDescription>
-              The client secret is only shown once. Store it securely — you will not be able to
+              The client secret is only shown once. Store it securely. You will not be able to
               retrieve it again, only rotate it.
             </AlertDescription>
           </Alert>

@@ -14,6 +14,7 @@ import {
   TAddPamProductGroupMemberDTO,
   TAddPamProductIdentityMemberDTO,
   TAddPamProductUserMemberDTO,
+  TBreakGlassPamAccessRequestDTO,
   TCreatePamAccessRequestDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
@@ -23,9 +24,11 @@ import {
   TDeletePamAccountTemplateDTO,
   TDeletePamDiscoverySourceDTO,
   TDeletePamFolderDTO,
+  TGetPamAccountCredentialsDTO,
   TImportPamDiscoveredAccountResult,
   TImportPamDiscoveredAccountsDTO,
   TPamAccessResponse,
+  TPamAccountCredentials,
   TPamAccountTemplate,
   TPamDiscoverySource,
   TPamFolder,
@@ -779,6 +782,36 @@ export const useCreatePamAccessRequest = () => {
   });
 };
 
+export const useCheckPamAccountHeartbeat = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId }: { accountId: string }) => {
+      const { data } = await apiRequest.post<{ heartbeatStatus: string; message?: string }>(
+        `/api/v1/pam/accounts/${accountId}/health/check`
+      );
+      return data;
+    },
+    onSettled: (_, __, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountHeartbeat(accountId) });
+      // The row badge reads its status from lists keyed by filters this caller doesn't know.
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+    }
+  });
+};
+
+export const usePamAccountCredentials = () => {
+  return useMutation({
+    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },
+    mutationFn: async ({ accountId, reason, mfaSessionId }: TGetPamAccountCredentialsDTO) => {
+      const { data } = await apiRequest.post<TPamAccountCredentials>(
+        `/api/v1/pam/accounts/${accountId}/credentials`,
+        { reason, mfaSessionId }
+      );
+      return data;
+    }
+  });
+};
+
 export const useRotatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -825,13 +858,35 @@ export const useRevokePamAccessRequest = () => {
   });
 };
 
+export const useBreakGlassPamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, bypassReason }: TBreakGlassPamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/pam/access-requests/${requestId}/break-glass`,
+        { bypassReason }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+    }
+  });
+};
+
 export const useSetPamApprovalConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ folderId, steps, notificationConfigs }: TSetPamApprovalConfigDTO) => {
+    mutationFn: async ({
+      folderId,
+      steps,
+      notificationConfigs,
+      breakGlassUsers
+    }: TSetPamApprovalConfigDTO) => {
       const { data } = await apiRequest.put(
         `/api/v1/pam/folders/${folderId}/approval-configuration`,
-        { steps, notificationConfigs }
+        { steps, notificationConfigs, breakGlassUsers }
       );
       return data;
     },

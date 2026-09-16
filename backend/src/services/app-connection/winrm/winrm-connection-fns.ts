@@ -100,9 +100,7 @@ export const executeWinRMGatewayOperation = async <T>(
       }),
     {
       protocol: GatewayProxyProtocol.WinRm,
-      relayHost: connectionDetails.relayHost,
-      gateway: connectionDetails.gateway,
-      relay: connectionDetails.relay
+      ...connectionDetails
     }
   );
 

@@ -8,6 +8,8 @@ const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
 export const SignerIdParamsSchema = z.object({ signerId: z.string().uuid() });
 
+export const SignerRequestParamsSchema = SignerIdParamsSchema.extend({ requestId: z.string().uuid() });
+
 export const SignerExternalConfigurationSchema = z.discriminatedUnion("caType", [
   z.object({
     caType: z.literal(CaType.DIGICERT),

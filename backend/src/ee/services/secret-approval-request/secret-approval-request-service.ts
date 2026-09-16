@@ -19,12 +19,14 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -67,11 +69,13 @@ import {
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+import { ChangeRequestWebhookAction, TWebhookActor, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import {
@@ -86,6 +90,7 @@ import {
 } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
+import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import { hasSecretUpdateCommitConflict, sendApprovalEmailsFn } from "./secret-approval-request-fns";
@@ -96,6 +101,7 @@ import {
   InternalMetadataType,
   RequestState,
   TApprovalRequestCountDTO,
+  TCreateSecretApprovalSideEffectsDTO,
   TGenerateSecretApprovalRequestDTO,
   TGenerateSecretApprovalRequestV2BridgeDTO,
   TInternalMetadata,
@@ -161,6 +167,8 @@ type TSecretApprovalRequestServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  queueService: Pick<TQueueServiceFactory, "queue">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -194,7 +202,9 @@ export const secretApprovalRequestServiceFactory = ({
   microsoftTeamsService,
   folderCommitService,
   notificationService,
-  telemetryService
+  telemetryService,
+  queueService,
+  secretValidationRuleService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({
     projectId,
@@ -239,7 +249,9 @@ export const secretApprovalRequestServiceFactory = ({
     committer,
     limit,
     offset,
-    search
+    search,
+    orderBy,
+    orderDirection
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
@@ -273,7 +285,9 @@ export const secretApprovalRequestServiceFactory = ({
         userId: userIdFilter,
         limit,
         offset,
-        search
+        search,
+        orderBy,
+        orderDirection
       });
     }
 
@@ -285,7 +299,9 @@ export const secretApprovalRequestServiceFactory = ({
       userId: userIdFilter,
       limit,
       offset,
-      search
+      search,
+      orderBy,
+      orderDirection
     });
   };
 
@@ -328,6 +344,7 @@ export const secretApprovalRequestServiceFactory = ({
       !canReadApprovalRequests &&
       !hasRole(ProjectMembershipRole.Admin) &&
       secretApprovalRequest.committerUserId !== actorId &&
+      secretApprovalRequest.committerIdentityId !== actorId &&
       !policy.approvers.find(({ userId }) => userId === actorId)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
@@ -472,6 +489,90 @@ export const secretApprovalRequestServiceFactory = ({
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 
+  const $queueChangeRequestWebhook = async ({
+    action,
+    secretApprovalRequest,
+    projectId,
+    environment,
+    environmentName,
+    secretPath,
+    isBypassed,
+    tx
+  }: {
+    action: ChangeRequestWebhookAction;
+    secretApprovalRequest: NonNullable<Awaited<ReturnType<TSecretApprovalRequestDALFactory["findById"]>>>;
+    projectId: string;
+    environment: string;
+    environmentName?: string;
+    secretPath: string;
+    isBypassed?: boolean;
+    tx?: Knex;
+  }) => {
+    const project = await projectDAL.findById(projectId, tx);
+    if (!project) {
+      logger.warn(
+        `Skipping change request webhook, project not found [projectId=${projectId}] [requestId=${secretApprovalRequest.id}] [action=${action}]`
+      );
+      return;
+    }
+
+    const cfg = getConfig();
+    // Taking every mutable field from one source keeps a caller-supplied null from being read as
+    // "not provided" and silently replaced by the replica's value.
+    const { committerUser } = secretApprovalRequest;
+    const requestedBy: TWebhookActor | null = secretApprovalRequest.committerUserId
+      ? {
+          type: ActorType.USER,
+          id: secretApprovalRequest.committerUserId,
+          name:
+            [committerUser?.firstName, committerUser?.lastName].filter(Boolean).join(" ") ||
+            committerUser?.username ||
+            "Unknown",
+          email: committerUser?.email ?? null
+        }
+      : null;
+
+    await queueService.queue(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      {
+        type: WebhookEvents.ChangeRequestModified,
+        payload: {
+          projectId,
+          projectName: project.name,
+          environment,
+          environmentName,
+          secretPath,
+          action,
+          request: {
+            id: secretApprovalRequest.id,
+            slug: secretApprovalRequest.slug,
+            url: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${projectId}/approval?requestId=${secretApprovalRequest.id}`,
+            status: secretApprovalRequest.status,
+            hasMerged: secretApprovalRequest.hasMerged,
+            isBypassed: isBypassed ?? Boolean(secretApprovalRequest.bypassReason),
+            policy: {
+              id: secretApprovalRequest.policy.id,
+              name: secretApprovalRequest.policy.name,
+              enforcementLevel: secretApprovalRequest.policy.enforcementLevel
+            },
+            requestedBy,
+            createdAt: secretApprovalRequest.createdAt.toISOString(),
+            updatedAt: secretApprovalRequest.updatedAt.toISOString()
+          }
+        }
+      },
+      {
+        jobId: `change-request-webhook-${secretApprovalRequest.id}-${alphaNumericNanoId(6)}`,
+        removeOnFail: { count: 5 },
+        removeOnComplete: true,
+        delay: 1000,
+        attempts: 5,
+        backoff: { type: "exponential", delay: 3000 }
+      }
+    );
+  };
+
   const reviewApproval = async ({
     approvalId,
     actor,
@@ -548,6 +649,34 @@ export const secretApprovalRequestServiceFactory = ({
       return secretApprovalRequestReviewerDAL.updateById(review.id, { status, comment }, tx);
     });
 
+    try {
+      const reviewedRequest = await secretApprovalRequestDAL.transaction((tx) =>
+        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+      );
+      const [reviewedFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+        secretApprovalRequest.folderId
+      ]);
+      if (reviewedRequest && reviewedFolder) {
+        await $queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Reviewed,
+          secretApprovalRequest: reviewedRequest,
+          projectId: secretApprovalRequest.projectId,
+          environment: reviewedFolder.environmentSlug,
+          environmentName: reviewedFolder.environmentName,
+          secretPath: reviewedFolder.path
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request or folder not found [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Reviewed}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Reviewed}]`
+      );
+    }
+
     return { ...reviewStatus, projectId: secretApprovalRequest.projectId };
   };
 
@@ -606,6 +735,37 @@ export const secretApprovalRequestServiceFactory = ({
       status,
       statusChangedByUserId: actorId
     });
+
+    const statusAction =
+      status === RequestState.Open ? ChangeRequestWebhookAction.Reopened : ChangeRequestWebhookAction.Closed;
+    try {
+      const changedRequest = await secretApprovalRequestDAL.transaction((tx) =>
+        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+      );
+      const [statusFolder] = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+        secretApprovalRequest.folderId
+      ]);
+      if (changedRequest && statusFolder) {
+        await $queueChangeRequestWebhook({
+          action: statusAction,
+          secretApprovalRequest: changedRequest,
+          projectId: secretApprovalRequest.projectId,
+          environment: statusFolder.environmentSlug,
+          environmentName: statusFolder.environmentName,
+          secretPath: statusFolder.path
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request or folder not found [requestId=${secretApprovalRequest.id}] [action=${statusAction}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${statusAction}]`
+      );
+    }
+
     return { ...secretApprovalRequest, ...updatedRequest };
   };
 
@@ -662,10 +822,11 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
-    const reviewers = secretApprovalRequest.reviewers.reduce<Record<string, ApprovalStatus>>(
-      (prev, curr) => ({ ...prev, [curr.userId.toString()]: curr.status as ApprovalStatus }),
-      {}
-    );
+    const reviewers = secretApprovalRequest.reviewers.reduce<Record<string, ApprovalStatus>>((prev, curr) => {
+      // eslint-disable-next-line no-param-reassign
+      prev[curr.userId.toString()] = curr.status as ApprovalStatus;
+      return prev;
+    }, {});
     const hasMinApproval =
       secretApprovalRequest.policy.approvals <=
       secretApprovalRequest.policy.approvers.filter(({ userId: approverId }) =>
@@ -842,6 +1003,24 @@ export const secretApprovalRequestServiceFactory = ({
               tx
             });
           }
+        }
+
+        // Back-fill secretId on approval commit rows so created secrets are traceable
+        // This is useful for clients that require polling when a approval request is created
+        // for example our terraform provider.
+        if (newSecrets.length) {
+          const newSecretsByKey = new Map(newSecrets.map((s) => [s.key, s.id]));
+          await Promise.all(
+            secretCreationCommits
+              .filter((commit) => newSecretsByKey.has(commit.key))
+              .map((commit) =>
+                secretApprovalRequestSecretDAL.updateV2ById(
+                  commit.id,
+                  { secretId: newSecretsByKey.get(commit.key)! },
+                  tx
+                )
+              )
+          );
         }
 
         const updationBlindIndexes = await Promise.all(
@@ -1219,6 +1398,32 @@ export const secretApprovalRequestServiceFactory = ({
       events
     });
 
+    try {
+      const mergedRequest = await secretApprovalRequestDAL.transaction((tx) =>
+        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+      );
+      if (mergedRequest) {
+        await $queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Merged,
+          secretApprovalRequest: mergedRequest,
+          projectId,
+          environment: folder.environmentSlug,
+          environmentName: folder.environmentName,
+          secretPath: folder.path,
+          isBypassed: isMergedViaBypass
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request not found [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Merged}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Merged}]`
+      );
+    }
+
     if (isSoftEnforcement && !hasMinApproval) {
       const cfg = getConfig();
       const env = await projectEnvDAL.findOne({ slug: environment, projectId });
@@ -1272,7 +1477,15 @@ export const secretApprovalRequestServiceFactory = ({
             username: secretApprovalRequest.committerUser?.username ?? ""
           }
         }
-      : undefined;
+      : secretApprovalRequest.committerIdentity
+        ? {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: secretApprovalRequest.committerIdentity.identityId,
+              name: secretApprovalRequest.committerIdentity.name
+            }
+          }
+        : undefined;
 
     const secretMutationEvents: Event[] = [];
 
@@ -1590,7 +1803,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerUserId: actorId
+          ...getCommitterIds(actor, actorId)
         },
         tx
       );
@@ -1667,7 +1880,10 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+    const user =
+      actor === ActorType.IDENTITY
+        ? undefined
+        : await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
@@ -1683,7 +1899,8 @@ export const secretApprovalRequestServiceFactory = ({
         notification: {
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
-            userEmail: user.email as string,
+            userEmail: user?.email ?? undefined,
+            machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
             environment: env.name,
             secretPath,
             projectId,
@@ -1712,10 +1929,35 @@ export const secretApprovalRequestServiceFactory = ({
       notificationService
     });
 
+    try {
+      const createdRequest = await secretApprovalRequestDAL.transaction((tx) =>
+        secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+      );
+      if (createdRequest) {
+        await $queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Created,
+          secretApprovalRequest: createdRequest,
+          projectId,
+          environment,
+          environmentName: env.name,
+          secretPath
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request not found [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
+      );
+    }
+
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user.username ?? user.email ?? actorId,
+        distinctId: user?.username ?? user?.email ?? actorId,
         organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,
@@ -1723,12 +1965,122 @@ export const secretApprovalRequestServiceFactory = ({
           projectId,
           environment,
           secretPath,
-          numberOfCommits: commits.length
+          numberOfCommits: commits.length,
+          actorType: actor as string
         }
       })
       .catch(() => {});
 
     return secretApprovalRequest;
+  };
+
+  const createSecretApprovalSideEffects = async ({
+    secretApprovalRequest,
+    projectId,
+    environment,
+    secretPath,
+    secretKeys,
+    actor,
+    actorId,
+    actorOrgId,
+    tx
+  }: TCreateSecretApprovalSideEffectsDTO) => {
+    const user =
+      actor === ActorType.IDENTITY
+        ? undefined
+        : await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+    const project = await projectDAL.findById(projectId);
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
+
+    const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
+    const approvalPath = `${projectPath}/approval`;
+    const cfg = getConfig();
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
+
+    await triggerWorkflowIntegrationNotification({
+      input: {
+        projectId,
+        notification: {
+          type: TriggerFeature.SECRET_APPROVAL,
+          payload: {
+            machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
+            userEmail: user?.email ?? undefined,
+            environment: env.name,
+            secretPath,
+            projectId,
+            projectName: project.name,
+            requestId: secretApprovalRequest.id,
+            secretKeys,
+            approvalUrl
+          }
+        }
+      },
+      dependencies: {
+        projectDAL,
+        kmsService,
+        projectSlackConfigDAL,
+        microsoftTeamsService,
+        projectMicrosoftTeamsConfigDAL
+      }
+    });
+
+    await sendApprovalEmailsFn({
+      projectDAL,
+      secretApprovalPolicyDAL,
+      secretApprovalRequest,
+      smtpService,
+      projectId,
+      notificationService
+    });
+
+    try {
+      // A caller-supplied transaction has not committed yet, so the reads have to go through it
+      // to see the request at all, and to avoid checking out a second connection while it is open.
+      const createdRequest = tx
+        ? await secretApprovalRequestDAL.findById(secretApprovalRequest.id, tx)
+        : await secretApprovalRequestDAL.transaction((innerTx) =>
+            secretApprovalRequestDAL.findById(secretApprovalRequest.id, innerTx)
+          );
+      if (createdRequest) {
+        await $queueChangeRequestWebhook({
+          action: ChangeRequestWebhookAction.Created,
+          secretApprovalRequest: createdRequest,
+          projectId,
+          environment,
+          environmentName: env.name,
+          secretPath,
+          tx
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, request not found [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
+        );
+      }
+    } catch (error) {
+      if (tx) throw error;
+
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${secretApprovalRequest.id}] [action=${ChangeRequestWebhookAction.Created}]`
+      );
+    }
+
+    void telemetryService
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretApprovalRequestSubmitted,
+        distinctId: user?.username ?? user?.email ?? actorId,
+        organizationId: actorOrgId,
+        properties: {
+          requestId: secretApprovalRequest.id,
+          policyId: secretApprovalRequest.policyId,
+          projectId,
+          environment,
+          secretPath,
+          numberOfCommits: secretApprovalRequest.commits.length,
+          actorType: actor as string
+        }
+      })
+      .catch(() => {});
   };
 
   const generateSecretApprovalRequestV2Bridge = async ({
@@ -1741,12 +2093,14 @@ export const secretApprovalRequestServiceFactory = ({
     projectId,
     secretPath,
     environment,
+    folder: providedFolder,
     commitMessage,
     updateMode = SecretUpdateMode.FailOnNotFound,
-    trx: providedTx
-  }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
-    if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
-      throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
+    trx: providedTx,
+    skipPostProcessing
+  }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }) => {
+    if (actor === ActorType.SERVICE)
+      throw new BadRequestError({ message: "Cannot use service token over protected branches" });
 
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
@@ -1756,7 +2110,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    const folder = providedFolder ?? (await folderDAL.findBySecretPath(projectId, environment, secretPath, providedTx));
     if (!folder)
       throw new NotFoundError({
         message: `Folder not found for the environment slug '${environment}' & secret path '${secretPath}'`,
@@ -1784,24 +2138,33 @@ export const secretApprovalRequestServiceFactory = ({
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
 
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const project = await projectDAL.findById(projectId);
-    await scanSecretPolicyViolations(
-      projectId,
-      secretPath,
-      [
-        ...(data[SecretOperations.Create] || []),
-        ...(data[SecretOperations.Update] || []).filter((el) => el.secretValue)
-      ].map((el) => ({
-        secretKey: el.secretKey,
-        secretValue: el.secretValue as string
-      })),
-      project.secretDetectionIgnoreValues || []
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey(
+      {
+        type: KmsDataKey.SecretManager,
+        projectId
+      },
+      providedTx
     );
+
+    const project = await projectDAL.findById(projectId, providedTx);
+
+    // scanSecretPolicyViolations is an expensive operation, so it only runs it if we are not in a transaction
+    if (!providedTx) {
+      await scanSecretPolicyViolations(
+        projectId,
+        secretPath,
+        [
+          ...(data[SecretOperations.Create] || []),
+          ...(data[SecretOperations.Update] || []).filter((el) => el.secretValue)
+        ].map((el) => ({
+          secretKey: el.secretKey,
+          secretValue: el.secretValue as string
+        })),
+        project.secretDetectionIgnoreValues || []
+      );
+    }
+
+    const secretsToValidate: { key: string; value?: string; secretId?: string }[] = [];
 
     // for created secret approval change
     const createdSecrets = data[SecretOperations.Create];
@@ -1811,10 +2174,15 @@ export const secretApprovalRequestServiceFactory = ({
         createdSecrets.map((el) => ({
           key: el.secretKey,
           type: SecretType.Shared
-        }))
+        })),
+        providedTx
       );
       if (secrets.length)
-        throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
+        throw new BadRequestError({
+          message: `Secret already exists: ${secrets.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
+        });
+
+      secretsToValidate.push(...createdSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })));
 
       commits.push(
         ...createdSecrets.map((createdSecret) => ({
@@ -1852,7 +2220,8 @@ export const secretApprovalRequestServiceFactory = ({
         secretsToUpdate.map((el) => ({
           key: el.secretKey,
           type: SecretType.Shared
-        }))
+        })),
+        providedTx
       );
 
       secretsToUpdateStoredInDB.forEach((el) => {
@@ -1878,6 +2247,8 @@ export const secretApprovalRequestServiceFactory = ({
               missingSecrets.filter((s) => !createdKeys.has(s.secretKey)).map((s) => [s.secretKey, s] as const)
             ).values()
           ];
+
+          secretsToValidate.push(...upsertSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })));
 
           commits.push(
             ...upsertSecrets.map((secret) => ({
@@ -1921,7 +2292,8 @@ export const secretApprovalRequestServiceFactory = ({
           secretsWithNewName.map((el) => ({
             key: el.secretKey,
             type: SecretType.Shared
-          }))
+          })),
+          providedTx
         );
 
         if (secrets.length !== secretsWithNewName.length)
@@ -1935,7 +2307,8 @@ export const secretApprovalRequestServiceFactory = ({
           secretsWithNewName.map((el) => ({
             key: el.newSecretName as string,
             type: SecretType.Shared
-          }))
+          })),
+          providedTx
         );
         if (existingSecretsWithNewName.length)
           throw new BadRequestError({
@@ -1946,9 +2319,21 @@ export const secretApprovalRequestServiceFactory = ({
       }
 
       const updatingSecretsGroupByKey = groupBy(secretsToUpdateStoredInDB, (el) => el.key);
+
+      secretsToValidate.push(
+        ...actualSecretsToUpdate
+          .filter((s) => s.secretValue !== undefined || s.newSecretName)
+          .map((s) => ({
+            key: s.newSecretName || s.secretKey,
+            value: s.secretValue,
+            secretId: updatingSecretsGroupByKey[s.secretKey]?.[0]?.id
+          }))
+      );
+
       const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(
         folderId,
-        secretsToUpdateStoredInDB.map(({ id }) => id)
+        secretsToUpdateStoredInDB.map(({ id }) => id),
+        providedTx
       );
       commits.push(
         ...actualSecretsToUpdate.map(
@@ -2005,32 +2390,35 @@ export const secretApprovalRequestServiceFactory = ({
     // deleted secrets
     const deletedSecrets = data[SecretOperations.Delete];
     if (deletedSecrets && deletedSecrets.length) {
-      const secretsToDeleteInDB = await secretV2BridgeDAL.find({
-        folderId,
-        $complex: {
-          operator: "and",
-          value: [
-            {
-              operator: "or",
-              value: deletedSecrets.map((el) => ({
-                operator: "and",
-                value: [
-                  {
-                    operator: "eq",
-                    field: `${TableName.SecretV2}.key` as "key",
-                    value: el.secretKey
-                  },
-                  {
-                    operator: "eq",
-                    field: "type",
-                    value: SecretType.Shared
-                  }
-                ]
-              }))
-            }
-          ]
-        }
-      });
+      const secretsToDeleteInDB = await secretV2BridgeDAL.find(
+        {
+          folderId,
+          $complex: {
+            operator: "and",
+            value: [
+              {
+                operator: "or",
+                value: deletedSecrets.map((el) => ({
+                  operator: "and",
+                  value: [
+                    {
+                      operator: "eq",
+                      field: `${TableName.SecretV2}.key` as "key",
+                      value: el.secretKey
+                    },
+                    {
+                      operator: "eq",
+                      field: "type",
+                      value: SecretType.Shared
+                    }
+                  ]
+                }))
+              }
+            ]
+          }
+        },
+        { tx: providedTx }
+      );
       if (secretsToDeleteInDB.length !== deletedSecrets.length)
         throw new NotFoundError({
           message: `Secret does not exist: ${secretsToDeleteInDB.map((el) => el.key).join(",")}`
@@ -2049,7 +2437,11 @@ export const secretApprovalRequestServiceFactory = ({
 
       const secretsGroupedByKey = groupBy(secretsToDeleteInDB, (i) => i.key);
       const deletedSecretIds = deletedSecrets.map((el) => secretsGroupedByKey[el.secretKey][0].id);
-      const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, deletedSecretIds);
+      const latestSecretVersions = await secretVersionV2BridgeDAL.findLatestVersionMany(
+        folderId,
+        deletedSecretIds,
+        providedTx
+      );
       commits.push(
         ...deletedSecrets.map(({ secretKey }) => {
           const secret = secretsGroupedByKey[secretKey][0];
@@ -2075,8 +2467,21 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (!commits.length) throw new BadRequestError({ message: "Empty commits" });
 
+    if (secretsToValidate.length) {
+      await secretValidationRuleService.validateSecrets(
+        {
+          projectId,
+          environment,
+          envId: folder.envId,
+          secretPath,
+          secrets: secretsToValidate
+        },
+        providedTx
+      );
+    }
+
     const tagIds = unique(Object.values(commitTagIds).flat());
-    const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
+    const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds, providedTx) : [];
     if (tagIds.length !== tags.length) throw new NotFoundError({ message: "Tag not found" });
     const tagsGroupById = groupBy(tags, (i) => i.id);
 
@@ -2104,7 +2509,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerUserId: actorId,
+          ...getCommitterIds(actor, actorId),
           commitMessage
         },
         tx
@@ -2165,64 +2570,19 @@ export const secretApprovalRequestServiceFactory = ({
       ? await executeApprovalRequestCreation(providedTx)
       : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
-    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
-    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-
-    const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
-    const approvalPath = `${projectPath}/approval`;
-    const cfg = getConfig();
-    const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
-
-    await triggerWorkflowIntegrationNotification({
-      input: {
+    if (!skipPostProcessing) {
+      await createSecretApprovalSideEffects({
+        secretApprovalRequest,
         projectId,
-        notification: {
-          type: TriggerFeature.SECRET_APPROVAL,
-          payload: {
-            userEmail: user.email as string,
-            environment: env.name,
-            secretPath,
-            projectId,
-            projectName: project.name,
-            requestId: secretApprovalRequest.id,
-            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))],
-            approvalUrl
-          }
-        }
-      },
-      dependencies: {
-        projectDAL,
-        kmsService,
-        projectSlackConfigDAL,
-        microsoftTeamsService,
-        projectMicrosoftTeamsConfigDAL
-      }
-    });
-
-    await sendApprovalEmailsFn({
-      projectDAL,
-      secretApprovalPolicyDAL,
-      secretApprovalRequest,
-      smtpService,
-      projectId,
-      notificationService
-    });
-
-    void telemetryService
-      .sendPostHogEvents({
-        event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user.username ?? user.email ?? actorId,
-        organizationId: actorOrgId,
-        properties: {
-          requestId: secretApprovalRequest.id,
-          policyId: policy.id,
-          projectId,
-          environment,
-          secretPath,
-          numberOfCommits: commits.length
-        }
-      })
-      .catch(() => {});
+        environment,
+        secretPath,
+        secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))],
+        actor,
+        actorId,
+        actorOrgId,
+        tx: providedTx
+      });
+    }
 
     return secretApprovalRequest;
   };
@@ -2230,6 +2590,7 @@ export const secretApprovalRequestServiceFactory = ({
   return {
     generateSecretApprovalRequest,
     generateSecretApprovalRequestV2Bridge,
+    createSecretApprovalSideEffects,
     mergeSecretApprovalRequest,
     reviewApproval,
     updateApprovalStatus,

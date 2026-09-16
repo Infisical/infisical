@@ -3,9 +3,12 @@ import { TProjectPermission } from "@app/lib/types";
 import {
   CertExtendedKeyUsageType,
   CertificateRequestStatus,
+  CertKeyAlgorithm,
   CertKeyUsageType,
+  CertSignatureAlgorithm,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 
 export type TIssueCertificateFromProfileDTO = {
@@ -35,6 +38,7 @@ export type TIssueCertificateFromProfileDTO = {
       isCA: boolean;
       pathLength?: number;
     };
+    customExtensions?: TRequestCustomExtension[];
   };
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
@@ -57,10 +61,6 @@ export type TSignCertificateFromProfileDTO = {
     pathLength?: number;
   };
   applicationId?: string;
-  /**
-   * Links the certificate request this issuance creates back to its ACME order, so a crash between
-   * signing and persistence can be reconciled by `checkAndSyncAcmeOrderStatus`.
-   */
   acmeOrderId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -92,6 +92,7 @@ export type TOrderCertificateFromProfileDTO = {
     country?: string;
     state?: string;
     locality?: string;
+    customExtensions?: TRequestCustomExtension[];
   };
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
@@ -111,6 +112,7 @@ export type TCertificateIssuanceResponse = {
   serialNumber?: string;
   certificateId?: string;
   message?: string;
+  changedAttributes?: TRenewalAuditChange[];
 };
 
 export type TCertificateIssuedResponse = TCertificateIssuanceResponse & {
@@ -126,10 +128,53 @@ export type TCertificatePendingApprovalResponse = TCertificateIssuanceResponse &
   status: CertificateRequestStatus.PENDING_APPROVAL;
 };
 
+export enum CertificateRenewalKeySource {
+  New = "new",
+  Reuse = "reuse",
+  Csr = "csr"
+}
+
+export type TRenewalAuditChange = {
+  field: keyof TRenewalAttributes;
+  from: string;
+  to: string;
+};
+
+export type TRenewalAttributes = {
+  commonName?: string | null;
+  organization?: string | null;
+  organizationalUnit?: string | null;
+  country?: string | null;
+  state?: string | null;
+  locality?: string | null;
+  domainComponents?: string[] | null;
+  altNames?: Array<{
+    type: CertSubjectAlternativeNameType;
+    value: string;
+  }>;
+  keyUsages?: CertKeyUsageType[];
+  extendedKeyUsages?: CertExtendedKeyUsageType[];
+  signatureAlgorithm?: CertSignatureAlgorithm;
+  keyAlgorithm?: CertKeyAlgorithm;
+  ttl?: string;
+  basicConstraints?: {
+    isCA: boolean;
+    pathLength?: number;
+  };
+  customExtensions?: Array<{
+    oid: string;
+    value?: string;
+    critical?: boolean;
+  }>;
+};
+
 export type TRenewCertificateDTO = {
   certificateId: string;
   removeRootsFromChain?: boolean;
   certificateRequestId?: string;
+  renewalKeySource?: CertificateRenewalKeySource;
+  csr?: string;
+  attributes?: TRenewalAttributes;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateRenewalConfigDTO = {

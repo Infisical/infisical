@@ -7,7 +7,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -24,6 +24,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { CreatePolicyModal } from "../PoliciesPage/components/CertificatePoliciesTab/CreatePolicyModal";
 import {
   PolicyAlgorithmsSection,
+  PolicyCustomExtensionsSection,
   PolicyDetailsSection,
   PolicyKeyUsagesSection,
   PolicyNoRulesSection,
@@ -71,7 +72,8 @@ const Page = () => {
       policy?.algorithms?.signature?.length ||
       policy?.algorithms?.keyAlgorithm?.length ||
       policy?.validity?.max ||
-      policy?.basicConstraints?.isCA
+      policy?.basicConstraints?.isCA ||
+      policy?.customExtensions
   );
 
   const handleDeleteConfirm = async () => {
@@ -102,9 +104,10 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between text-white">
       {policy && (
         <ProjectPermissionCan
+          renderGuardBanner
           I={ProjectPermissionCertificatePolicyActions.Read}
           a={subject(ProjectPermissionSub.CertificatePolicies, { name: policy.name })}
         >
@@ -162,6 +165,7 @@ const Page = () => {
                         <PolicySansRulesSection policy={policy} />
                         <PolicyKeyUsagesSection policy={policy} />
                         <PolicyAlgorithmsSection policy={policy} />
+                        <PolicyCustomExtensionsSection policy={policy} />
                       </>
                     ) : (
                       <PolicyNoRulesSection />
@@ -184,11 +188,7 @@ const Page = () => {
                   onDeleteApproved={handleDeleteConfirm}
                 />
               </div>
-            ) : (
-              <div className="container mx-auto flex h-full items-center justify-center">
-                <AccessRestrictedBanner />
-              </div>
-            )
+            ) : null
           }
         </ProjectPermissionCan>
       )}

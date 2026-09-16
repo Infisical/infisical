@@ -12,6 +12,8 @@ import {
   TPkiSyncCertificate
 } from "@app/hooks/api/pkiSyncs/types";
 
+import { PkiSyncStatus } from "./enums";
+
 export const pkiSyncKeys = {
   all: ["pki-sync"] as const,
   options: () => [...pkiSyncKeys.all, "options"] as const,
@@ -88,6 +90,16 @@ export const fetchPkiSyncsByProjectId = async (
   return data.pkiSyncs;
 };
 
+const IN_FLIGHT_POLL_MS = 2000;
+
+const isPkiSyncInFlight = (sync?: TPkiSync) =>
+  sync?.syncStatus === PkiSyncStatus.Pending ||
+  sync?.syncStatus === PkiSyncStatus.Running ||
+  sync?.importStatus === PkiSyncStatus.Pending ||
+  sync?.importStatus === PkiSyncStatus.Running ||
+  sync?.removeStatus === PkiSyncStatus.Pending ||
+  sync?.removeStatus === PkiSyncStatus.Running;
+
 export const useListPkiSyncs = (
   projectId: string,
   options?: Omit<
@@ -99,6 +111,8 @@ export const useListPkiSyncs = (
   return useQuery({
     queryKey: pkiSyncKeys.list(projectId, applicationId),
     queryFn: () => fetchPkiSyncsByProjectId(projectId, undefined, applicationId),
+    refetchInterval: (query) =>
+      query.state.data?.some(isPkiSyncInFlight) ? IN_FLIGHT_POLL_MS : false,
     ...queryOptions
   });
 };
@@ -140,6 +154,7 @@ export const useGetPkiSync = (
 
       return data;
     },
+    refetchInterval: (query) => (isPkiSyncInFlight(query.state.data) ? IN_FLIGHT_POLL_MS : false),
     ...options
   });
 };

@@ -5,7 +5,7 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
-import { generatePassword } from "@app/ee/services/secret-rotation-v2/shared/utils";
+import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "@app/ee/services/secret-rotation-v2/shared/utils";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
@@ -14,20 +14,24 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { PamAccountType, PamProductRole } from "../pam/pam-enums";
+import { PamAccountType, PamHeartbeatStatus, PamPostgresAuthMethod, PamProductRole } from "../pam/pam-enums";
 import {
   checkAccountAccess,
   getResourceIdsWithActions,
   TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
+import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
 import { validateConnectionDetails, validateCredentials } from "../pam-account/pam-account-schemas";
+import { computeNextHeartbeatAt, isHeartbeatScheduled } from "../pam-account-heartbeat/pam-heartbeat-fns";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamAccountDependencyDALFactory } from "../pam-discovery/pam-account-dependency-dal";
 import { resolveHostsViaDcDns, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
+import { generateRdsAuthToken } from "../pam-session/aws-iam/aws-iam-federation";
 import {
   TGetPamAccountRotationDTO,
   TListPamRotationCandidatesDTO,
@@ -54,6 +58,8 @@ import {
   winrmTransportFromConn
 } from "./pam-rotation-handlers";
 
+type TGeneratedPasswordRequirements = Parameters<typeof generatePassword>[0];
+
 export const ROTATION_STATUS = { Success: "success", Failed: "failed" } as const;
 
 const ROTATION_IN_PROGRESS_MESSAGE = "A rotation is already in progress for this account";
@@ -78,6 +84,7 @@ type TPamAccountRotationServiceFactoryDep = {
     | "transaction"
   >;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
@@ -105,6 +112,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     gatewayPoolService,
     pamAccountDependencyDAL,
     pamDiscoverySourceDAL,
+    projectDAL,
     rotationHandlers = PAM_ROTATION_FACTORY_MAP
   } = deps;
 
@@ -123,7 +131,13 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     return JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>;
   };
 
-  type TSqlAccountCredentials = { username: string; password?: string; authMethod?: string };
+  type TSqlAccountCredentials = {
+    username: string;
+    password?: string;
+    authMethod?: string;
+    awsRegion?: string;
+    roleArn?: string;
+  };
 
   const decryptSqlCredentials = async (
     projectId: string,
@@ -143,6 +157,23 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const getRotationConfig = (templateSettings: unknown) =>
     PamTemplateSettingsSchema.safeParse(templateSettings).data?.rotation;
 
+  const capRequirementsForAccountType = (
+    accountType: PamAccountType,
+    requirements: TGeneratedPasswordRequirements
+  ): TGeneratedPasswordRequirements => {
+    if (accountType !== PamAccountType.OracleDB) return requirements;
+    const effective = requirements ?? DEFAULT_PASSWORD_REQUIREMENTS;
+    if (effective.length <= ORACLE_MAX_PASSWORD_LENGTH) return requirements;
+
+    const requiredTotal = Object.values(effective.required).reduce((sum, count) => sum + count, 0);
+    if (requiredTotal > ORACLE_MAX_PASSWORD_LENGTH) {
+      throw new BadRequestError({
+        message: `This account's template requires at least ${requiredTotal} characters, which is more than the ${ORACLE_MAX_PASSWORD_LENGTH} an Oracle password allows. Lower the character requirements on the template, then rotate again`
+      });
+    }
+    return { ...effective, length: ORACLE_MAX_PASSWORD_LENGTH };
+  };
+
   const getPasswordRequirements = (templateSettings: unknown) =>
     PamTemplateSettingsSchema.safeParse(templateSettings).data?.passwordRequirements;
 
@@ -152,16 +183,27 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     return computeNextRotationAt({ anchor: now, intervalSeconds: rotation.intervalSeconds, now });
   };
 
-  const markRotated = (account: TPamAccountDetail, encryptedBlob: Buffer, now: Date) =>
-    pamAccountDAL.updateById(account.id, {
+  const markRotated = async (account: TPamAccountDetail, encryptedBlob: Buffer, now: Date) => {
+    // Rotation commits only after authenticating, so an account stopped for a bad password resumes here.
+    const heartbeat = PamTemplateSettingsSchema.safeParse(account.templateSettings).data?.heartbeat;
+
+    await pamAccountDAL.updateById(account.id, {
       encryptedCredentials: encryptedBlob,
       encryptedPendingCredentials: null,
       credentialConfigured: true,
       lastRotatedAt: now,
       rotationStatus: ROTATION_STATUS.Success,
       encryptedLastRotationMessage: null,
-      nextRotationAt: nextRotationAfter(account.templateSettings, now)
+      nextRotationAt: nextRotationAfter(account.templateSettings, now),
+      heartbeatStatus: PamHeartbeatStatus.Healthy,
+      lastHeartbeatAt: now,
+      lastHeartbeatHealthyAt: now,
+      encryptedLastHeartbeatMessage: null,
+      nextHeartbeatAt: isHeartbeatScheduled(heartbeat)
+        ? computeNextHeartbeatAt({ anchor: now, intervalSeconds: heartbeat.intervalSeconds as number, now })
+        : null
     });
+  };
 
   const resolveConnectionDetails = (
     accountType: PamAccountType,
@@ -280,15 +322,22 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   };
 
   // A delegated rotator must sit on the same resource as its target so its credential can reach it: same
-  // host for SQL / local Windows, same domain controller for Windows AD.
+  // host for SQL / local Windows, same domain controller for Windows AD. Oracle users live in a PDB rather
+  // than the instance, so a rotator reaching a different service name cannot see the target user.
   const isSameResource = (
     accountType: PamAccountType,
     a: Record<string, unknown>,
     b: Record<string, unknown>
   ): boolean => {
-    if (accountType === PamAccountType.WindowsAd) return a.dcAddress === b.dcAddress && a.domain === b.domain;
-    if (isWindowsRotatableType(accountType)) return a.host === b.host;
-    return a.host === b.host && a.port === b.port;
+    const sameField = (field: string) =>
+      (a[field] as string | undefined)?.toLowerCase() === (b[field] as string | undefined)?.toLowerCase();
+
+    if (accountType === PamAccountType.WindowsAd) return sameField("dcAddress") && sameField("domain");
+    if (isWindowsRotatableType(accountType)) return sameField("host");
+    if (accountType === PamAccountType.OracleDB) {
+      return sameField("host") && a.port === b.port && sameField("database");
+    }
+    return sameField("host") && a.port === b.port;
   };
 
   const assertRotatorSameResource = (
@@ -300,11 +349,13 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     let detail = "on the same resource (host and port) as";
     if (accountType === PamAccountType.WindowsAd) detail = "in the same domain as";
     else if (isWindowsRotatableType(accountType)) detail = "on the same host as";
+    else if (accountType === PamAccountType.OracleDB) detail = "on the same resource (host, port and service name) as";
     throw new BadRequestError({ message: `Rotation account is no longer ${detail} this account` });
   };
 
   // Stable key for the identity an account authenticates as, to detect two PAM objects on the same credential:
-  // domain accounts on domain, local Windows on host, SQL on host+port, all on the bare name. Null if not rotatable.
+  // domain accounts on domain, local Windows on host, SQL on host+port (plus service name for Oracle), all on
+  // the bare name. Null if not rotatable.
   const identityKey = (accountType: PamAccountType, conn: Record<string, unknown>, username: string): string | null => {
     const user = toBareAccountName(username).toLowerCase();
     if (accountType === PamAccountType.WindowsAd) {
@@ -317,7 +368,12 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     }
     if (isSqlRotatableType(accountType)) {
       const host = (conn.host as string | undefined)?.toLowerCase();
-      return host ? `sql|${host}|${String(conn.port)}|${user}` : null;
+      if (!host) return null;
+      if (accountType === PamAccountType.OracleDB) {
+        const service = (conn.database as string | undefined)?.toLowerCase();
+        return service ? `sql|${host}|${String(conn.port)}|${service}|${user}` : null;
+      }
+      return `sql|${host}|${String(conn.port)}|${user}`;
     }
     return null;
   };
@@ -424,6 +480,35 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     return visible.filter((v): v is { id: string; name: string; discoverySources: string[] } => v !== null);
   };
 
+  // A rotator authenticates as itself to run the password change. An IAM login has no stored password,
+  // so it gets the same short-lived token a session would.
+  const resolveRotatorPassword = async (
+    projectId: string,
+    credentials: TSqlAccountCredentials,
+    connectionDetails: Record<string, unknown>
+  ): Promise<string> => {
+    if (credentials.authMethod !== PamPostgresAuthMethod.AwsIam) {
+      if (!credentials.password) {
+        throw new BadRequestError({ message: "Rotation account has no stored password" });
+      }
+      return credentials.password;
+    }
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: "Project not found" });
+
+    const { host, port } = connectionDetails as { host: string; port: number };
+    return generateRdsAuthToken({
+      roleArn: credentials.roleArn as string,
+      externalId: project.orgId,
+      roleSessionName: "infisical-pam-rotation",
+      region: credentials.awsRegion as string,
+      host,
+      port,
+      username: credentials.username
+    });
+  };
+
   const resolveRotator = async (
     account: TPamAccountDetail,
     targetCredentials: TSqlAccountCredentials,
@@ -458,15 +543,13 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       account.accountType as PamAccountType,
       rotator.encryptedCredentials
     );
-    if (!rotatorCredentials.password) {
-      throw new BadRequestError({ message: "Rotation account has no stored password" });
-    }
     const rotatorConnectionDetails = resolveConnectionDetails(
       account.accountType as PamAccountType,
       await decrypt(projectId, rotator.encryptedConnectionDetails)
     );
+    const rotatorPassword = await resolveRotatorPassword(projectId, rotatorCredentials, rotatorConnectionDetails);
     return {
-      auth: { username: rotatorCredentials.username, password: rotatorCredentials.password },
+      auth: { username: rotatorCredentials.username, password: rotatorPassword },
       connectionDetails: rotatorConnectionDetails,
       gatewayId: rotator.gatewayId ?? rotator.templateGatewayId,
       gatewayPoolId: rotator.gatewayPoolId ?? rotator.templateGatewayPoolId
@@ -509,6 +592,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       gatewayId: rotatorGatewayId,
       gatewayPoolId: rotatorGatewayPoolId
     } = await resolveRotator(account, targetCredentials, connectionDetails, { gatewayId, gatewayPoolId });
+    handler.validateRotatorCredential?.({ accountType, password: auth.password });
     if (isDelegated) assertRotatorSameResource(accountType, rotatorConnectionDetails, connectionDetails);
     // A delegated local account can't be logged in as to verify, so validate via the admin rotator instead.
     const verifyVia = isDelegated && accountType === PamAccountType.Windows ? auth : undefined;
@@ -584,7 +668,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       }
     }
 
-    const requirements = getPasswordRequirements(account.templateSettings);
+    const requirements = capRequirementsForAccountType(accountType, getPasswordRequirements(account.templateSettings));
     const newPassword = generatePassword(requirements);
     const encryptedPending = await encrypt(projectId, { ...targetCredentials, password: newPassword });
 

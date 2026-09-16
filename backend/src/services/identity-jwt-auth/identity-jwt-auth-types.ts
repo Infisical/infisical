@@ -36,6 +36,7 @@ export type TUpdateJwtAuthDTO = {
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetJwtAuthDTO = {
@@ -44,6 +45,7 @@ export type TGetJwtAuthDTO = {
 
 export type TRevokeJwtAuthDTO = {
   identityId: string;
+  isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TLoginJwtAuthDTO = {

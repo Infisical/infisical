@@ -1,5 +1,5 @@
 import { PkiSync } from "./pki-sync-enums";
-import { getPkiSyncProviderCapabilities, matchesCertificateNameSchema } from "./pki-sync-fns";
+import { getPkiSyncProviderCapabilities, matchesCertificateNameSchema, parsePkiSyncErrorMessage } from "./pki-sync-fns";
 
 // A dash-stripped UUID (what {{certificateId}}, {{profileId}}, {{applicationId}} resolve to).
 const HEX = "550e8400e29b41d4a716446655440000";
@@ -112,5 +112,37 @@ describe("getPkiSyncProviderCapabilities: canRunPostSyncCommand", () => {
     Object.values(PkiSync).forEach((destination) => {
       expect(typeof getPkiSyncProviderCapabilities(destination).canRunPostSyncCommand).toBe("boolean");
     });
+  });
+});
+
+describe("parsePkiSyncErrorMessage", () => {
+  // The three sync/import/remove message columns are varchar(1024), so an over-long message makes
+  // the status write throw and leaves the sync stuck reporting "running".
+  test("caps the message at the width of the columns it is written to", () => {
+    const message = parsePkiSyncErrorMessage(new Error("x".repeat(2000)));
+
+    expect(message).toHaveLength(1024);
+    expect(message.endsWith("...")).toBe(true);
+  });
+
+  test("caps a thrown string too", () => {
+    expect(parsePkiSyncErrorMessage("y".repeat(2000))).toHaveLength(1024);
+  });
+
+  test("leaves a provider message that fits the widened column alone", () => {
+    const provider = `GCP rejected the certificate map entry creation: ${"detail ".repeat(60)}`;
+
+    expect(provider.length).toBeGreaterThan(255);
+    expect(parsePkiSyncErrorMessage(new Error(provider))).toBe(provider);
+  });
+
+  test("leaves a message that already fits untouched", () => {
+    expect(parsePkiSyncErrorMessage(new Error("Connection refused by the destination host"))).toBe(
+      "Connection refused by the destination host"
+    );
+  });
+
+  test("falls back to a readable message for a non-error throw", () => {
+    expect(parsePkiSyncErrorMessage({ weird: true })).toBe("An unknown error occurred during PKI sync operation");
   });
 });

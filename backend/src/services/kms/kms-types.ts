@@ -37,6 +37,7 @@ export type TGenerateKMSDTO = {
   keyUsage?: KmsKeyUsage;
   isReserved?: boolean;
   isExportable?: boolean;
+  hasDeleteProtection?: boolean;
   name?: string;
   description?: string;
   tx?: Knex;
@@ -115,6 +116,7 @@ export type TImportKeyMaterialDTO = {
   name?: string;
   isReserved: boolean;
   isExportable?: boolean;
+  hasDeleteProtection?: boolean;
   projectId: string;
   orgId: string;
   keyUsage: KmsKeyUsage;

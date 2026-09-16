@@ -80,5 +80,9 @@ export const AuditLogStreamsTab = withPermission(
       </>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings }
+  {
+    action: OrgPermissionActions.Read,
+    subject: OrgPermissionSubjects.Settings,
+    accessRestrictedMode: "dialog"
+  }
 );

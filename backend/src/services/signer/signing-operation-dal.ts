@@ -13,6 +13,67 @@ export type TSigningOperationDALFactory = ReturnType<typeof signingOperationDALF
 export const signingOperationDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PkiSigningOperations);
 
+  const $withActorJoins = (tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.PkiSigningOperations)
+      .leftJoin(TableName.Users, (qb) => {
+        void qb
+          .on(`${TableName.PkiSigningOperations}.actorId`, `${TableName.Users}.id`)
+          .andOn(`${TableName.PkiSigningOperations}.actorType`, db.raw("?", [ActorType.USER]));
+      })
+      .leftJoin(TableName.Identity, (qb) => {
+        void qb
+          .on(`${TableName.PkiSigningOperations}.actorId`, `${TableName.Identity}.id`)
+          .andOn(`${TableName.PkiSigningOperations}.actorType`, db.raw("?", [ActorType.IDENTITY]));
+      })
+      .leftJoin(TableName.Membership, (qb) => {
+        void qb
+          .on(`${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+          .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.PkiSigningOperations}.projectId`)
+          .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Project]));
+      })
+      .select(selectAllTableCols(TableName.PkiSigningOperations))
+      .select(
+        db.ref("email").withSchema(TableName.Users).as("userEmail"),
+        db.ref("username").withSchema(TableName.Users).as("userUsername"),
+        db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
+        db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
+        db.ref("name").withSchema(TableName.Identity).as("identityName"),
+        db.ref("id").withSchema(TableName.Membership).as("membershipId")
+      );
+
+  const $mapActorRow = <T extends Record<string, unknown>>(row: T) => {
+    const { userEmail, userUsername, userFirstName, userLastName, identityName, membershipId, ...op } =
+      row as typeof row & {
+        userEmail?: string | null;
+        userUsername?: string | null;
+        userFirstName?: string | null;
+        userLastName?: string | null;
+        identityName?: string | null;
+        membershipId?: string | null;
+        actorName?: string | null;
+        actorType?: string;
+      };
+
+    let resolvedActorName: string | null = op.actorName ?? null;
+    if (!resolvedActorName) {
+      if (op.actorType === ActorType.USER) {
+        if (userFirstName || userLastName) {
+          resolvedActorName = [userFirstName, userLastName].filter(Boolean).join(" ");
+        } else {
+          resolvedActorName = userEmail || userUsername || null;
+        }
+      } else if (op.actorType === ActorType.IDENTITY) {
+        resolvedActorName = identityName || null;
+      }
+    }
+
+    return {
+      ...op,
+      actorName: resolvedActorName,
+      actorMembershipId: membershipId ?? null
+    };
+  };
+
   const findBySignerId = async (
     signerId: string,
     {
@@ -27,33 +88,7 @@ export const signingOperationDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      let query = (tx || db.replicaNode())(TableName.PkiSigningOperations)
-        .where(`${TableName.PkiSigningOperations}.signerId`, signerId)
-        .leftJoin(TableName.Users, (qb) => {
-          void qb
-            .on(`${TableName.PkiSigningOperations}.actorId`, `${TableName.Users}.id`)
-            .andOn(`${TableName.PkiSigningOperations}.actorType`, db.raw("?", [ActorType.USER]));
-        })
-        .leftJoin(TableName.Identity, (qb) => {
-          void qb
-            .on(`${TableName.PkiSigningOperations}.actorId`, `${TableName.Identity}.id`)
-            .andOn(`${TableName.PkiSigningOperations}.actorType`, db.raw("?", [ActorType.IDENTITY]));
-        })
-        .leftJoin(TableName.Membership, (qb) => {
-          void qb
-            .on(`${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-            .andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.PkiSigningOperations}.projectId`)
-            .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Project]));
-        })
-        .select(selectAllTableCols(TableName.PkiSigningOperations))
-        .select(
-          db.ref("email").withSchema(TableName.Users).as("userEmail"),
-          db.ref("username").withSchema(TableName.Users).as("userUsername"),
-          db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
-          db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
-          db.ref("name").withSchema(TableName.Identity).as("identityName"),
-          db.ref("id").withSchema(TableName.Membership).as("membershipId")
-        );
+      let query = $withActorJoins(tx).where(`${TableName.PkiSigningOperations}.signerId`, signerId);
 
       if (status) {
         query = query.where(`${TableName.PkiSigningOperations}.status`, status);
@@ -64,38 +99,18 @@ export const signingOperationDALFactory = (db: TDbClient) => {
         .offset(offset)
         .limit(limit);
 
-      return rows.map((row) => {
-        const { userEmail, userUsername, userFirstName, userLastName, identityName, membershipId, ...op } =
-          row as typeof row & {
-            userEmail?: string | null;
-            userUsername?: string | null;
-            userFirstName?: string | null;
-            userLastName?: string | null;
-            identityName?: string | null;
-            membershipId?: string | null;
-          };
-
-        let resolvedActorName: string | null = op.actorName ?? null;
-        if (!resolvedActorName) {
-          if (op.actorType === ActorType.USER) {
-            if (userFirstName || userLastName) {
-              resolvedActorName = [userFirstName, userLastName].filter(Boolean).join(" ");
-            } else {
-              resolvedActorName = userEmail || userUsername || null;
-            }
-          } else if (op.actorType === ActorType.IDENTITY) {
-            resolvedActorName = identityName || null;
-          }
-        }
-
-        return {
-          ...op,
-          actorName: resolvedActorName,
-          actorMembershipId: membershipId ?? null
-        };
-      });
+      return rows.map($mapActorRow);
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSigningOperationsBySignerId" });
+    }
+  };
+
+  const findByIdWithActor = async (operationId: string, tx?: Knex) => {
+    try {
+      const row = await $withActorJoins(tx).where(`${TableName.PkiSigningOperations}.id`, operationId).first();
+      return row ? $mapActorRow(row) : null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSigningOperationByIdWithActor" });
     }
   };
 
@@ -132,5 +147,5 @@ export const signingOperationDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findBySignerId, countBySignerId, countByGrantId };
+  return { ...orm, findBySignerId, findByIdWithActor, countBySignerId, countByGrantId };
 };

@@ -4,12 +4,15 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -19,6 +22,8 @@ import { constructPemChainFromCerts } from "@app/services/certificate/certificat
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
+  getNotAfterWithClockSkew,
+  getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
@@ -37,14 +42,16 @@ import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-co
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { TAwsAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
+import { TAwsAuthMethodConfig, TKubernetesAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
   GATEWAY_ROUTING_INFO_OID,
+  GatewayTransport,
   PAM_INFO_OID
 } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
+import { parseDirectAddress, resolveClientTransports, resolveTransports } from "./gateway-v2-transport-fns";
 import { TGatewayV2ConnectionDetails } from "./gateway-v2-types";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
@@ -67,7 +74,13 @@ type TGatewayV2ServiceFactoryDep = {
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
-    "initAtCreate" | "loadView" | "mintToken" | "loginWithToken"
+    | "initAtCreate"
+    | "loadView"
+    | "mintToken"
+    | "loginWithToken"
+    | "encryptKubernetesSecrets"
+    | "preflightKubernetesConfig"
+    | "findKubernetesProxyDependents"
   >;
 };
 
@@ -129,8 +142,8 @@ export const gatewayV2ServiceFactory = ({
       const rootCaCert = await x509.X509CertificateGenerator.createSelfSigned({
         name: `O=${orgId},CN=Infisical Gateway Root CA`,
         serialNumber: rootCaSerialNumber,
-        notBefore: rootCaIssuedAt,
-        notAfter: rootCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(rootCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(rootCaExpiration),
         signingAlgorithm: alg,
         keys: rootCaKeys,
         extensions: [
@@ -150,8 +163,8 @@ export const gatewayV2ServiceFactory = ({
         serialNumber: serverCaSerialNumber,
         subject: `O=${orgId},CN=Infisical Gateway Server CA`,
         issuer: rootCaCert.subject,
-        notBefore: serverCaIssuedAt,
-        notAfter: serverCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(serverCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(serverCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: serverCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -180,8 +193,8 @@ export const gatewayV2ServiceFactory = ({
         serialNumber: clientCaSerialNumber,
         subject: `O=${orgId},CN=Infisical Gateway Client CA`,
         issuer: rootCaCert.subject,
-        notBefore: clientCaIssuedAt,
-        notAfter: clientCaExpiration,
+        notBefore: getNotBeforeWithClockSkew(clientCaIssuedAt),
+        notAfter: getNotAfterWithClockSkew(clientCaExpiration),
         signingKey: rootCaKeys.privateKey,
         publicKey: clientCaKeys.publicKey,
         signingAlgorithm: alg,
@@ -333,11 +346,13 @@ export const gatewayV2ServiceFactory = ({
   const getPlatformConnectionDetailsByGatewayId = async ({
     gatewayId,
     targetHost,
-    targetPort
+    targetPort,
+    transport
   }: {
     gatewayId: string;
     targetHost: string;
     targetPort: number;
+    transport?: GatewayTransport;
   }): Promise<TGatewayV2ConnectionDetails | undefined> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -349,9 +364,11 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
     }
 
-    if (!gateway.relayId) {
+    const { useDirect, useRelay, hasTransport } = resolveTransports({ gateway, transport });
+
+    if (!hasTransport) {
       throw new BadRequestError({
-        message: "Gateway is not associated with a relay"
+        message: `Gateway does not have a ${transport ?? "reachable"} transport configured`
       });
     }
 
@@ -424,8 +441,8 @@ export const gatewayV2ServiceFactory = ({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${ActorType.PLATFORM}:${gatewayId}`,
       issuer: gatewayClientCaCert.subject,
-      notAfter: clientCertExpiration,
-      notBefore: clientCertIssuedAt,
+      notAfter: getNotAfterWithClockSkew(clientCertExpiration),
+      notBefore: getNotBeforeWithClockSkew(clientCertIssuedAt),
       signingKey: importedGatewayClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
       signingAlgorithm: alg,
@@ -449,26 +466,33 @@ export const gatewayV2ServiceFactory = ({
 
     const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
 
-    const relayCredentials = await relayService.getCredentialsForClient({
-      relayId: gateway.relayId,
-      orgId: gateway.orgId,
-      orgName: gateway.orgName,
-      gatewayId,
-      gatewayName: gateway.name
-    });
+    const relayCredentials =
+      useRelay && gateway.relayId
+        ? await relayService.getCredentialsForClient({
+            relayId: gateway.relayId,
+            orgId: gateway.orgId,
+            orgName: gateway.orgName,
+            gatewayId,
+            gatewayName: gateway.name
+          })
+        : undefined;
 
     return {
-      relayHost: relayCredentials.relayHost,
+      gatewayId,
+      directAddress: useDirect ? (gateway.directAddress ?? undefined) : undefined,
+      relayHost: relayCredentials?.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
         clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
         serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert])
       },
-      relay: {
-        clientCertificate: relayCredentials.clientCertificate,
-        clientPrivateKey: relayCredentials.clientPrivateKey,
-        serverCertificateChain: relayCredentials.serverCertificateChain
-      }
+      relay: relayCredentials
+        ? {
+            clientCertificate: relayCredentials.clientCertificate,
+            clientPrivateKey: relayCredentials.clientPrivateKey,
+            serverCertificateChain: relayCredentials.serverCertificateChain
+          }
+        : undefined
     };
   };
 
@@ -479,7 +503,8 @@ export const gatewayV2ServiceFactory = ({
     accountType,
     host,
     port,
-    actorMetadata
+    actorMetadata,
+    clientSupportsDirect
   }: {
     gatewayId: string;
     sessionId: string;
@@ -488,6 +513,7 @@ export const gatewayV2ServiceFactory = ({
     host: string;
     port?: number;
     actorMetadata: { id: string; type: ActorType; name: string };
+    clientSupportsDirect: boolean;
   }) => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -499,9 +525,21 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
     }
 
-    if (!gateway.relayId) {
+    const { allowDirect, hasTransport, isDirectOnlyForOlderClient, gatewayHasTransport } = resolveClientTransports({
+      gateway,
+      clientSupportsDirect
+    });
+
+    if (isDirectOnlyForOlderClient) {
       throw new BadRequestError({
-        message: "Gateway is not associated with a relay"
+        message: "This gateway only supports direct connections. Upgrade the Infisical CLI to connect to it."
+      });
+    }
+    if (!hasTransport) {
+      throw new BadRequestError({
+        message: gatewayHasTransport
+          ? "This gateway's connection transports are not supported by your client. Upgrade the Infisical CLI to connect to it."
+          : "Gateway has no configured connection transport"
       });
     }
 
@@ -585,8 +623,8 @@ export const gatewayV2ServiceFactory = ({
       serialNumber: clientCertSerialNumber,
       subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${actorMetadata.type}:${gatewayId}`,
       issuer: gatewayClientCaCert.subject,
-      notAfter: clientCertExpiration,
-      notBefore: clientCertIssuedAt,
+      notAfter: getNotAfterWithClockSkew(clientCertExpiration),
+      notBefore: getNotBeforeWithClockSkew(clientCertIssuedAt),
       signingKey: importedGatewayClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
       signingAlgorithm: alg,
@@ -611,27 +649,33 @@ export const gatewayV2ServiceFactory = ({
 
     const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
 
-    const relayCredentials = await relayService.getCredentialsForClient({
-      relayId: gateway.relayId,
-      orgId: gateway.orgId,
-      orgName: gateway.orgName,
-      gatewayId,
-      gatewayName: gateway.name,
-      duration
-    });
+    const relayCredentials = gateway.relayId
+      ? await relayService.getCredentialsForClient({
+          relayId: gateway.relayId,
+          orgId: gateway.orgId,
+          orgName: gateway.orgName,
+          gatewayId,
+          gatewayName: gateway.name,
+          duration
+        })
+      : undefined;
 
     return {
-      relayHost: relayCredentials.relayHost,
+      gatewayId,
+      directAddress: allowDirect ? (gateway.directAddress ?? undefined) : undefined,
+      relayHost: relayCredentials?.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
         clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
         serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert])
       },
-      relay: {
-        clientCertificate: relayCredentials.clientCertificate,
-        clientPrivateKey: relayCredentials.clientPrivateKey,
-        serverCertificateChain: relayCredentials.serverCertificateChain
-      }
+      relay: relayCredentials
+        ? {
+            clientCertificate: relayCredentials.clientCertificate,
+            clientPrivateKey: relayCredentials.clientPrivateKey,
+            serverCertificateChain: relayCredentials.serverCertificateChain
+          }
+        : undefined
     };
   };
 
@@ -643,8 +687,8 @@ export const gatewayV2ServiceFactory = ({
   }: {
     orgId: string;
     orgCAs: Awaited<ReturnType<typeof $getOrgCAs>>;
-    relayName: string;
-    gateway: { id: string; name: string };
+    relayName?: string;
+    gateway: { id: string; name: string; directAddress?: string | null };
   }) => {
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
     const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
@@ -669,6 +713,16 @@ export const gatewayV2ServiceFactory = ({
     const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
     const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
 
+    const subjectAlternativeNames: x509.JsonGeneralName[] = [
+      { type: "dns", value: "localhost" },
+      { type: "ip", value: "127.0.0.1" },
+      { type: "ip", value: "::1" }
+    ];
+    if (gateway.directAddress) {
+      const { host } = parseDirectAddress(gateway.directAddress);
+      subjectAlternativeNames.push(net.isIP(host) ? { type: "ip", value: host } : { type: "dns", value: host });
+    }
+
     const gatewayServerCertExtensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
@@ -680,11 +734,7 @@ export const gatewayV2ServiceFactory = ({
         true
       ),
       new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
-      new x509.SubjectAlternativeNameExtension([
-        { type: "dns", value: "localhost" },
-        { type: "ip", value: "127.0.0.1" },
-        { type: "ip", value: "::1" }
-      ])
+      new x509.SubjectAlternativeNameExtension(subjectAlternativeNames)
     ];
 
     const gatewayServerSerialNumber = createSerialNumber();
@@ -692,34 +742,41 @@ export const gatewayV2ServiceFactory = ({
       serialNumber: gatewayServerSerialNumber,
       subject: `O=${orgId},CN=Gateway`,
       issuer: gatewayServerCaCert.subject,
-      notBefore: gatewayServerCertIssuedAt,
-      notAfter: gatewayServerCertExpireAt,
+      notBefore: getNotBeforeWithClockSkew(gatewayServerCertIssuedAt),
+      notAfter: getNotAfterWithClockSkew(gatewayServerCertExpireAt),
       signingKey: gatewayServerCaPrivateKey,
       publicKey: gatewayServerKeys.publicKey,
       signingAlgorithm: alg,
       extensions: gatewayServerCertExtensions
     });
 
-    const relayCredentials = await relayService.getCredentialsForGateway({
-      relayName,
-      orgId,
-      gatewayId: gateway.id,
-      gatewayName: gateway.name
-    });
+    const relayCredentials = relayName
+      ? await relayService.getCredentialsForGateway({
+          relayName,
+          orgId,
+          gatewayId: gateway.id,
+          gatewayName: gateway.name
+        })
+      : undefined;
 
     return {
       gatewayId: gateway.id,
-      relayHost: relayCredentials.relayHost,
+      // For the audit log; not in either response schema, so zod strips it.
+      gatewayName: gateway.name,
+      directAddress: gateway.directAddress ?? undefined,
+      relayHost: relayCredentials?.relayHost,
       pki: {
         serverCertificate: gatewayServerCertificate.toString("pem"),
         serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
         clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert])
       },
-      ssh: {
-        clientCertificate: relayCredentials.clientSshCert,
-        clientPrivateKey: relayCredentials.clientSshPrivateKey,
-        serverCAPublicKey: relayCredentials.serverCAPublicKey
-      }
+      ssh: relayCredentials
+        ? {
+            clientCertificate: relayCredentials.clientSshCert,
+            clientPrivateKey: relayCredentials.clientSshPrivateKey,
+            serverCAPublicKey: relayCredentials.serverCAPublicKey
+          }
+        : undefined
     };
   };
 
@@ -729,6 +786,7 @@ export const gatewayV2ServiceFactory = ({
     actorType,
     actorAuthMethod,
     relayName,
+    directAddress,
     name
   }: {
     orgId: string;
@@ -736,8 +794,17 @@ export const gatewayV2ServiceFactory = ({
     actorType: ActorType;
     actorAuthMethod: ActorAuthMethod;
     relayName?: string;
+    directAddress?: string;
     name?: string;
   }) => {
+    if (directAddress) {
+      if (getConfig().isCloud) {
+        throw new BadRequestError({ message: "Direct gateway connections are not available on Infisical Cloud" });
+      }
+      const { host } = parseDirectAddress(directAddress);
+      // Once per address change rather than once per dial, since this resolves DNS.
+      await assertHostNotInfisicalInfrastructure({ host });
+    }
     const orgCAs = await $getOrgCAs(orgId);
 
     // Enrollment-flow gateways authenticate with GATEWAY_ACCESS_TOKEN — the gateway row
@@ -753,17 +820,22 @@ export const gatewayV2ServiceFactory = ({
         resolvedRelay = await relayDAL.findOne({ orgId, name: relayName });
         if (!resolvedRelay) resolvedRelay = await relayDAL.findOne({ name: relayName, orgId: null });
         if (!resolvedRelay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
-
-        if (resolvedRelay.id !== gateway.relayId) {
-          await gatewayV2DAL.updateById(gateway.id, { relayId: resolvedRelay.id });
-        }
-      } else {
-        if (!gateway.relayId) throw new NotFoundError({ message: "No relay associated with this gateway" });
+      } else if (!directAddress && gateway.relayId) {
         resolvedRelay = await relayDAL.findById(gateway.relayId);
         if (!resolvedRelay) throw new NotFoundError({ message: "No relay associated with this gateway" });
+      } else if (!directAddress) {
+        throw new NotFoundError({ message: "No connection transport associated with this gateway" });
       }
 
-      return $issueGatewayCerts({ orgId, orgCAs, relayName: resolvedRelay.name, gateway });
+      // The gateway declares its full transport set every call, so an omitted transport is removed.
+      const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
+        directAddress: directAddress ?? null,
+        directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
+        heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
+        relayId: resolvedRelay?.id ?? null
+      });
+
+      return $issueGatewayCerts({ orgId, orgCAs, relayName: resolvedRelay?.name, gateway: registeredGateway });
     }
 
     // Identity-based flow: upsert the gateway row then issue certs.
@@ -773,13 +845,16 @@ export const gatewayV2ServiceFactory = ({
       throw new BadRequestError({ message: "Gateway name is required" });
     }
 
-    if (!relayName) {
-      throw new BadRequestError({ message: "Relay name is required" });
+    if (!relayName && !directAddress) {
+      throw new BadRequestError({ message: "A relay name or direct address is required" });
     }
 
-    let relay: TRelays = await relayDAL.findOne({ orgId, name: relayName });
-    if (!relay) relay = await relayDAL.findOne({ name: relayName, orgId: null });
-    if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
+    let relay: TRelays | undefined;
+    if (relayName) {
+      relay = await relayDAL.findOne({ orgId, name: relayName });
+      if (!relay) relay = await relayDAL.findOne({ name: relayName, orgId: null });
+      if (!relay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
+    }
 
     try {
       const gateway = await gatewayV2DAL.transaction(async (tx) => {
@@ -789,7 +864,10 @@ export const gatewayV2ServiceFactory = ({
               orgId,
               name,
               identityId: actorId,
-              relayId: relay.id
+              relayId: relay?.id ?? null,
+              directAddress: directAddress ?? null,
+              directHeartbeat: null,
+              heartbeat: null
             }
           ],
           ["identityId"],
@@ -799,7 +877,7 @@ export const gatewayV2ServiceFactory = ({
         return upserted;
       });
 
-      return await $issueGatewayCerts({ orgId, orgCAs, relayName, gateway });
+      return await $issueGatewayCerts({ orgId, orgCAs, relayName: relay?.name, gateway });
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: "A gateway with this name already exists" });
@@ -809,95 +887,86 @@ export const gatewayV2ServiceFactory = ({
     }
   };
 
-  const $checkGatewayHealth = async (gatewayId: string) => {
+  const $checkGatewayHealth = async (gatewayId: string, transport?: GatewayTransport) => {
     const gatewayV2ConnectionDetails = await getPlatformConnectionDetailsByGatewayId({
       gatewayId,
       targetHost: "health-check",
-      targetPort: 443
+      targetPort: 443,
+      transport
     });
 
     if (!gatewayV2ConnectionDetails) {
       throw new NotFoundError({ message: `Gateway connection details for gateway ${gatewayId} not found.` });
     }
 
-    let probeResponse: string | undefined;
-    try {
-      probeResponse = await withGatewayV2Proxy(
-        async (port) => {
-          return new Promise<string>((resolve, reject) => {
-            const socket = new net.Socket();
-            let isResolved = false;
-            const chunks: Buffer[] = [];
+    const probeResponse = await withGatewayV2Proxy(
+      async (port) => {
+        return new Promise<string>((resolve, reject) => {
+          const socket = new net.Socket();
+          let isResolved = false;
+          const chunks: Buffer[] = [];
 
-            socket.setTimeout(10000);
+          socket.setTimeout(10000);
 
-            const cleanup = () => {
-              if (!socket.destroyed) {
-                socket.destroy();
-              }
-            };
+          const cleanup = () => {
+            if (!socket.destroyed) {
+              socket.destroy();
+            }
+          };
 
-            socket.on("data", (data: Buffer) => {
-              chunks.push(data);
-              const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
-              if (totalLength > 1024) {
-                if (!isResolved) {
-                  isResolved = true;
-                  cleanup();
-                  reject(new Error("Probe response exceeded 1KB limit"));
-                }
-                return;
-              }
-              const response = Buffer.concat(chunks).toString().trim();
-              if ((response === "PONG" || response.includes("\n") || response.endsWith("}")) && !isResolved) {
-                isResolved = true;
-                cleanup();
-                resolve(response);
-              }
-            });
-
-            socket.on("error", (err: Error) => {
+          socket.on("data", (data: Buffer) => {
+            chunks.push(data);
+            const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
+            if (totalLength > 1024) {
               if (!isResolved) {
                 isResolved = true;
                 cleanup();
-                reject(new Error(`TCP connection error: ${err.message}`));
+                reject(new Error("Probe response exceeded 1KB limit"));
               }
-            });
-
-            socket.on("timeout", () => {
-              if (!isResolved) {
-                isResolved = true;
-                cleanup();
-                reject(new Error("TCP connection timeout"));
-              }
-            });
-
-            socket.on("close", () => {
-              if (!isResolved) {
-                isResolved = true;
-                cleanup();
-                reject(new Error("Connection closed without receiving response"));
-              }
-            });
-
-            socket.connect(port, "localhost");
+              return;
+            }
+            const response = Buffer.concat(chunks).toString().trim();
+            if ((response === "PONG" || response.includes("\n") || response.endsWith("}")) && !isResolved) {
+              isResolved = true;
+              cleanup();
+              resolve(response);
+            }
           });
-        },
-        {
-          protocol: GatewayProxyProtocol.Health,
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay
-        }
-      );
-    } catch (err) {
-      // Probe failed — gateway is unreachable. Mark TTL as 0 but preserve the last successful heartbeat timestamp.
-      await gatewayV2DAL.updateById(gatewayId, { heartbeatTTL: 0 });
-      throw err;
-    }
+
+          socket.on("error", (err: Error) => {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              reject(new Error(`TCP connection error: ${err.message}`));
+            }
+          });
+
+          socket.on("timeout", () => {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              reject(new Error("TCP connection timeout"));
+            }
+          });
+
+          socket.on("close", () => {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              reject(new Error("Connection closed without receiving response"));
+            }
+          });
+
+          socket.connect(port, "localhost");
+        });
+      },
+      {
+        protocol: GatewayProxyProtocol.Health,
+        ...gatewayV2ConnectionDetails
+      }
+    );
 
     if (!probeResponse) {
-      await gatewayV2DAL.updateById(gatewayId, { heartbeatTTL: 0 });
       throw new BadRequestError({ message: `Gateway ${gatewayId} is not reachable` });
     }
 
@@ -917,10 +986,45 @@ export const gatewayV2ServiceFactory = ({
       }
     }
 
-    await gatewayV2DAL.updateById(gatewayId, {
-      heartbeat: new Date(),
-      heartbeatTTL
+    await gatewayV2DAL.updateById(
+      gatewayId,
+      transport === GatewayTransport.Direct
+        ? { directHeartbeat: new Date(), heartbeatTTL }
+        : { heartbeat: new Date(), heartbeatTTL }
+    );
+  };
+
+  const $checkAllGatewayTransports = async (gatewayId: string) => {
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway) throw new NotFoundError({ message: `Gateway ${gatewayId} not found` });
+
+    const transports: GatewayTransport[] = [];
+    if (gateway.directAddress) transports.push(GatewayTransport.Direct);
+    if (gateway.relayId) transports.push(GatewayTransport.Relay);
+    if (transports.length === 0) {
+      throw new BadRequestError({ message: `Gateway ${gatewayId} has no configured connection transport` });
+    }
+
+    const results = await Promise.allSettled(transports.map((transport) => $checkGatewayHealth(gatewayId, transport)));
+
+    // One transport failing raises nothing, so log it or a broken direct path stays invisible.
+    results.forEach((result, index) => {
+      if (result.status !== "rejected") return;
+      const err = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+      logger.warn(
+        { gatewayId, transport: transports[index], err },
+        `Gateway ${gatewayId} health probe failed on its ${transports[index]} transport`
+      );
     });
+
+    if (results.every((result) => result.status === "rejected")) {
+      await gatewayV2DAL.updateById(gatewayId, { heartbeatTTL: 0 });
+      const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+      if (failure?.reason instanceof Error) throw failure.reason;
+      throw new BadRequestError({
+        message: `Gateway ${gatewayId} is not reachable on any configured transport`
+      });
+    }
   };
 
   const triggerHeartbeat = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
@@ -943,7 +1047,7 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    await $checkGatewayHealth(gateway.id);
+    await $checkAllGatewayTransports(gateway.id);
   };
 
   const heartbeat = async ({
@@ -961,7 +1065,7 @@ export const gatewayV2ServiceFactory = ({
         throw new NotFoundError({ message: `Gateway ${orgPermission.id} not found.` });
       }
       await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
-      await $checkGatewayHealth(gateway.id);
+      await $checkAllGatewayTransports(gateway.id);
       return;
     }
 
@@ -977,7 +1081,36 @@ export const gatewayV2ServiceFactory = ({
     }
 
     await gatewayV2DAL.updateById(gateway.id, { capabilities: nextCapabilities });
-    await $checkGatewayHealth(gateway.id);
+    await $checkAllGatewayTransports(gateway.id);
+  };
+
+  const reportMetrics = async ({
+    orgPermission,
+    activeChannels
+  }: {
+    orgPermission: OrgServiceActor;
+    activeChannels: number;
+  }) => {
+    let gateway;
+    if (orgPermission.type === ActorType.GATEWAY) {
+      gateway = await gatewayV2DAL.findById(orgPermission.id);
+    } else {
+      // Same check heartbeat makes: an identity whose gateway permission was revoked must not keep
+      // submitting occupancy values and steering pool routing.
+      await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
+      gateway = await gatewayV2DAL.findOne({ orgId: orgPermission.orgId, identityId: orgPermission.id });
+    }
+
+    if (!gateway || gateway.orgId !== orgPermission.orgId) {
+      throw new NotFoundError({ message: `Gateway with ID '${orgPermission.id}' not found` });
+    }
+
+    // Do not mark the gateway alive here. A load report only proves the gateway can reach us;
+    // heartbeat proves we can reach it back over one of its transports. Updating liveness from this
+    // would keep a gateway whose inbound path is broken looking healthy.
+    await getGatewayLoadTracker()?.recordReportedLoad(gateway.id, activeChannels);
+
+    return { gatewayId: gateway.id, activeChannels };
   };
 
   const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
@@ -999,6 +1132,13 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionGatewayActions.DeleteGateways,
       OrgPermissionSubjects.Gateway
     );
+
+    const proxyDependents = await resourceAuthMethodService.findKubernetesProxyDependents(gateway.id);
+    if (proxyDependents.length) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway.name}' reviews Kubernetes tokens for ${proxyDependents.map((name) => `'${name}'`).join(", ")}. Point those gateways at a different reviewer before deleting this one.`
+      });
+    }
 
     try {
       return await gatewayV2DAL.deleteById(gateway.id);
@@ -1186,7 +1326,10 @@ export const gatewayV2ServiceFactory = ({
     actorType: ActorType;
     actorAuthMethod: ActorAuthMethod;
     name: string;
-    authMethod: { method: "aws"; config: TAwsAuthMethodConfig } | { method: "token" };
+    authMethod:
+      | { method: "aws"; config: TAwsAuthMethodConfig }
+      | { method: "kubernetes"; config: TKubernetesAuthMethodConfig }
+      | { method: "token" };
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actorType,
@@ -1201,6 +1344,25 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionGatewayActions.CreateGateways,
       OrgPermissionSubjects.Gateway
     );
+
+    // The host check (DNS) and the secret encryption (possibly an external KMS) both reach
+    // the network, so they run before the transaction is opened rather than inside it.
+    let authMethodArg = authMethod;
+    if (authMethod.method === "kubernetes") {
+      await resourceAuthMethodService.preflightKubernetesConfig(authMethod.config, orgId, undefined, {
+        type: actorType,
+        id: actorId,
+        orgId,
+        authMethod: actorAuthMethod
+      });
+      authMethodArg = {
+        method: authMethod.method,
+        config: {
+          ...authMethod.config,
+          ...(await resourceAuthMethodService.encryptKubernetesSecrets(orgId, authMethod.config))
+        }
+      };
+    }
 
     const gateway = await gatewayV2DAL.transaction(async (tx) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -1227,7 +1389,10 @@ export const gatewayV2ServiceFactory = ({
         throw err;
       }
 
-      await resourceAuthMethodService.initAtCreate({ resource: { type: "gateway", id: created.id }, authMethod }, tx);
+      await resourceAuthMethodService.initAtCreate(
+        { resource: { type: "gateway", id: created.id }, authMethod: authMethodArg },
+        tx
+      );
 
       return created;
     });
@@ -1239,13 +1404,23 @@ export const gatewayV2ServiceFactory = ({
     orgId,
     actorId,
     actorType,
-    relayName
+    relayName,
+    directAddress
   }: {
     orgId: string;
     actorId: string;
     actorType: ActorType;
     relayName?: string;
+    directAddress?: string;
   }) => {
+    if (directAddress) {
+      if (getConfig().isCloud) {
+        throw new BadRequestError({ message: "Direct gateway connections are not available on Infisical Cloud" });
+      }
+      const { host } = parseDirectAddress(directAddress);
+      // Once per address change rather than once per dial, since this resolves DNS.
+      await assertHostNotInfisicalInfrastructure({ host });
+    }
     const orgCAs = await $getOrgCAs(orgId);
 
     if (actorType === ActorType.GATEWAY) {
@@ -1259,18 +1434,22 @@ export const gatewayV2ServiceFactory = ({
         resolvedRelay = await relayDAL.findOne({ orgId, name: relayName });
         if (!resolvedRelay) resolvedRelay = await relayDAL.findOne({ name: relayName, orgId: null });
         if (!resolvedRelay) throw new NotFoundError({ message: `Relay ${relayName} not found` });
-
-        // Persist the relay change so future restarts use the new relay
-        if (resolvedRelay.id !== gateway.relayId) {
-          await gatewayV2DAL.updateById(gateway.id, { relayId: resolvedRelay.id });
-        }
-      } else {
-        if (!gateway.relayId) throw new NotFoundError({ message: "No relay associated with this gateway" });
+      } else if (!directAddress && gateway.relayId) {
         resolvedRelay = await relayDAL.findById(gateway.relayId);
         if (!resolvedRelay) throw new NotFoundError({ message: "No relay associated with this gateway" });
+      } else if (!directAddress) {
+        throw new NotFoundError({ message: "No connection transport associated with this gateway" });
       }
 
-      return $issueGatewayCerts({ orgId, orgCAs, relayName: resolvedRelay.name, gateway });
+      // The gateway declares its full transport set every call, so an omitted transport is removed.
+      const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
+        directAddress: directAddress ?? null,
+        directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
+        heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
+        relayId: resolvedRelay?.id ?? null
+      });
+
+      return $issueGatewayCerts({ orgId, orgCAs, relayName: resolvedRelay?.name, gateway: registeredGateway });
     }
 
     throw new BadRequestError({ message: "Invalid actor type for gateway connect" });
@@ -1283,6 +1462,7 @@ export const gatewayV2ServiceFactory = ({
   return {
     listGateways,
     registerGateway,
+    reportMetrics,
     getPlatformConnectionDetailsByGatewayId,
     getPAMConnectionDetails,
     deleteGatewayById,

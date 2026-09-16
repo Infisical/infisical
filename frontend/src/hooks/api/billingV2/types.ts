@@ -34,8 +34,12 @@ export type BillingV2Plan = {
   name: string;
   selfServe: boolean;
   salesLed: boolean;
-  // Offers a self-serve trial; the trial CTA shows only when selfServe && trialable.
+  // Org-aware: whether this org may trial / upgrade to this plan. The server computes both from the
+  // same rules the mutating endpoints enforce, so gating a CTA on them can never offer a 409.
   trialable: boolean;
+  upgradeable: boolean;
+  // Trial length in days; 0 when the plan offers no trial.
+  trialDays: number;
   // Kept for existing customers, closed to new ones; deprecation carries the reason/nextSteps/date.
   deprecated?: boolean;
   deprecation?: BillingV2Deprecation;
@@ -135,6 +139,10 @@ export type BillingV2Entitlement = {
   status?: string;
   isTrialing?: boolean;
   trialEndsAt?: string | null;
+  trialPlan?: string;
+  trialPlanName?: string;
+  trialPlanEndsAt?: string | null;
+  trialPlanDaysLeft?: number | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line.
   renewsOn?: string | null;
@@ -145,6 +153,24 @@ export type BillingV2Entitlement = {
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"); rendered, pluralized, beside the count.
   unit?: string | null;
+};
+
+export type BillingV2TrialOutcome =
+  | "trialing"
+  | "converted"
+  | "expired"
+  | "canceled"
+  | "completed"
+  | "reverted";
+
+export type BillingV2Trial = {
+  productKey: string;
+  planTier: string | null;
+  basePlanTier: string | null;
+  outcome: BillingV2TrialOutcome | string;
+  endedDetail: string | null;
+  endedAt: string | null;
+  endedDaysAgo: number | null;
 };
 
 export type BillingV2Overview = {
@@ -185,8 +211,8 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
-  // Product keys whose one-per-product trial is used up (any outcome); gates the trial CTA.
   trialedProductKeys: string[];
+  trials: BillingV2Trial[];
   // Mutating billing actions are frozen server-side; the UI disables purchase/commit/remove controls.
   checkoutFrozen: boolean;
   // false for an enterprise-managed org: render the self-serve billing UI but disable its controls
@@ -239,6 +265,9 @@ export type BillingV2Preview = {
   totalDueNow: number;
   nextInvoiceTotal: number;
   nextRecurringTotal: number;
+  prorationDate?: number | null;
+  // Upgrade previews only; must be echoed back on apply.
+  toPlanVersionId?: string | null;
   lines: BillingV2PreviewLine[];
 };
 
@@ -267,6 +296,25 @@ export type TPreviewBillingV2ChangeDTO = {
   removeProductId?: string;
   // Per_resource commitment quantity changes to preview against the existing subscription.
   commitmentChanges?: BillingV2CommitmentChange[];
+  // Plan change for a product already held. Carries no quantities or cadence: the server moves the
+  // existing lines as they are.
+  upgradeProductId?: string;
+  upgradePlan?: string;
+};
+
+export type TUpgradeBillingV2ProductDTO = {
+  orgId: string;
+  productId: string;
+  plan: string;
+  expectedPlanVersionId: string;
+  prorationDate?: number;
+};
+
+export type BillingV2UpgradeResult = {
+  outcome: "upgraded";
+  subscriptionId?: string;
+  fromPlanKey?: string;
+  toPlanKey?: string;
 };
 
 export type TRemoveBillingV2ProductDTO = {

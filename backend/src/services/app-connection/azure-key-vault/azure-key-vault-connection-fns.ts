@@ -121,9 +121,7 @@ export const requestWithAzureKeyVaultGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: gatewayConnectionDetailsV2.relayHost,
-        gateway: gatewayConnectionDetailsV2.gateway,
-        relay: gatewayConnectionDetailsV2.relay
+        ...gatewayConnectionDetailsV2
       }
     );
   }

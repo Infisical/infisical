@@ -53,7 +53,10 @@ const buildSlackPayload = (notification: TNotification) => {
   switch (notification.type) {
     case TriggerFeature.SECRET_APPROVAL: {
       const { payload } = notification;
-      const messageBody = `A secret approval request has been opened by ${payload.userEmail}.
+      const author = payload.machineIdentityId
+        ? `machine identity ${payload.machineIdentityId}`
+        : (payload.userEmail ?? "unknown");
+      const messageBody = `A secret approval request has been opened by ${author}.
 *Project*: ${payload.projectName}
 *Environment*: ${payload.environment}
 *Secret path*: ${payload.secretPath || "/"}
@@ -267,8 +270,9 @@ const buildSlackPayload = (notification: TNotification) => {
       const accountName = escapeSlackMrkdwn(payload.accountName);
       const folderName = escapeSlackMrkdwn(payload.folderName);
       const reason = payload.reason ? escapeSlackMrkdwn(payload.reason) : undefined;
+      const accessTypeLabel = escapeSlackMrkdwn(payload.accessTypeLabel ?? "access");
 
-      const messageBody = `${requesterFullName} (${requesterEmail}) has requested access to ${accountName} in the ${folderName} folder.\n\nDuration: ${payload.accessDuration}${
+      const messageBody = `${requesterFullName} (${requesterEmail}) has requested ${accessTypeLabel} to ${accountName} in the ${folderName} folder.\n\nDuration: ${payload.accessDuration}${
         reason ? `\n\nReason: ${reason}` : ""
       }`;
 
@@ -288,7 +292,7 @@ const buildSlackPayload = (notification: TNotification) => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*${requesterFullName}* (${requesterEmail}) has requested access to *${accountName}* in the *${folderName}* folder.\n\n*Duration:* ${payload.accessDuration}${
+            text: `*${requesterFullName}* (${requesterEmail}) has requested ${accessTypeLabel} to *${accountName}* in the *${folderName}* folder.\n\n*Duration:* ${payload.accessDuration}${
               reason ? `\n\n*Reason:* ${reason}` : ""
             }`
           }
@@ -375,6 +379,44 @@ const buildSlackPayload = (notification: TNotification) => {
         payloadMessage: messageBody,
         payloadBlocks,
         color: isApproved ? COMPANY_BRAND_COLOR : ERROR_COLOR
+      };
+    }
+    case TriggerFeature.PAM_ACCESS_REQUEST_BYPASSED: {
+      const { payload } = notification;
+      const requesterFullName = escapeSlackMrkdwn(payload.requesterFullName);
+      const requesterEmail = escapeSlackMrkdwn(payload.requesterEmail);
+      const accountName = escapeSlackMrkdwn(payload.accountName);
+      const folderName = escapeSlackMrkdwn(payload.folderName);
+      const bypassReason = escapeSlackMrkdwn(payload.bypassReason);
+
+      const messageBody = `${requesterFullName} (${requesterEmail}) used break-glass to self-approve access to ${accountName} in the ${folderName} folder, skipping the approvers.\n\nDuration: ${payload.accessDuration}\n\nReason: ${bypassReason}`;
+
+      const headerBlocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "PAM access approval bypassed",
+            emoji: true
+          }
+        }
+      ];
+
+      const payloadBlocks = [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${requesterFullName}* (${requesterEmail}) used break-glass to self-approve access to *${accountName}* in the *${folderName}* folder, skipping the approvers.\n\n*Duration:* ${payload.accessDuration}\n\n*Reason:* ${bypassReason}`
+          }
+        }
+      ];
+
+      return {
+        headerBlocks,
+        payloadMessage: messageBody,
+        payloadBlocks,
+        color: ERROR_COLOR
       };
     }
     default: {

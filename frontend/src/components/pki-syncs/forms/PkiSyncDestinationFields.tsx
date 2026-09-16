@@ -10,13 +10,18 @@ import { AzureKeyVaultPkiSyncFields } from "./AzureKeyVaultPkiSyncFields";
 import { ChefPkiSyncFields } from "./ChefPkiSyncFields";
 import { CloudflareCustomCertificatePkiSyncFields } from "./CloudflareCustomCertificatePkiSyncFields";
 import { F5BigIpPkiSyncFields } from "./F5BigIpPkiSyncFields";
+import { GcpCertificateManagerPkiSyncFields } from "./GcpCertificateManagerPkiSyncFields";
 import { KempLoadMasterPkiSyncFields } from "./KempLoadMasterPkiSyncFields";
 import { LinuxServerPkiSyncFields } from "./LinuxServerPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
 import { NutanixPrismCentralPkiSyncFields } from "./NutanixPrismCentralPkiSyncFields";
 import { WindowsServerPkiSyncFields } from "./WindowsServerPkiSyncFields";
 
-export const PkiSyncDestinationFields = () => {
+type Props = {
+  isUpdate?: boolean;
+};
+
+export const PkiSyncDestinationFields = ({ isUpdate }: Props) => {
   const { watch } = useFormContext<TPkiSyncForm>();
 
   const destination = watch("destination");
@@ -34,6 +39,8 @@ export const PkiSyncDestinationFields = () => {
       return <ChefPkiSyncFields />;
     case PkiSync.CloudflareCustomCertificate:
       return <CloudflareCustomCertificatePkiSyncFields />;
+    case PkiSync.GcpCertificateManager:
+      return <GcpCertificateManagerPkiSyncFields isUpdate={isUpdate} />;
     case PkiSync.NetScaler:
       return <NetScalerPkiSyncFields />;
     case PkiSync.F5BigIp:

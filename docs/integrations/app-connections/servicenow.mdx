@@ -1,5 +1,6 @@
 ---
-title: "ServiceNow Connection"
+title: "ServiceNow connection"
+sidebarTitle: "ServiceNow"
 description: "Learn how to configure a ServiceNow Connection for Infisical."
 ---
 
@@ -15,13 +16,13 @@ Infisical connects to ServiceNow using basic authentication. The connection is u
 - The Infisical application installed on your ServiceNow instance. See the [ServiceNow Integration](/documentation/platform/workflow-integrations/servicenow-integration) guide for installation.
 - Permission to create users and assign roles on the ServiceNow instance.
 
-## Create a ServiceNow Integration User
+## Create a ServiceNow integration user
 
 Use a dedicated ServiceNow user for the connection rather than a personal account. This keeps the audit trail clear and lets you rotate the credential without affecting anyone's access.
 
 <Steps>
   <Step title="Create the user">
-    In ServiceNow, navigate to **All > User Administration > Users** and click **New**.
+    In ServiceNow, navigate to **All > User Administration > Users** and select **New**.
 
     Set the following:
 
@@ -35,7 +36,7 @@ Use a dedicated ServiceNow user for the connection rather than a personal accoun
 
   </Step>
   <Step title="Assign the integration role">
-    In the **Roles** related list on the user record, click **Edit** and add:
+    In the **Roles** related list on the user record, select **Edit** and add:
 
     ```
     x_infis_approvals.secret-manager-integration
@@ -50,11 +51,11 @@ Use a dedicated ServiceNow user for the connection rather than a personal accoun
   </Step>
 </Steps>
 
-## Create a ServiceNow Connection in Infisical
+## Create a ServiceNow connection in Infisical
 
 <Steps>
   <Step title="Navigate to App Connections">
-    In your Infisical organization, go to **Organization Settings > App Connections** and click **Add Connection**.
+    In your Infisical organization, go to **Integrations** > **App Connections** and select **Add Connection**.
   </Step>
   <Step title="Select ServiceNow">
     Choose **ServiceNow** from the list of available connections.
@@ -76,7 +77,7 @@ Use a dedicated ServiceNow user for the connection rather than a personal accoun
   </Step>
 </Steps>
 
-## Rotating the Credential
+## Rotating the credential
 
 Change the password on the ServiceNow integration user, then update the **Password** field on the connection in Infisical. Requests already pending in ServiceNow are unaffected, since the decision callback authenticates with a separate Infisical machine identity rather than this connection.
 

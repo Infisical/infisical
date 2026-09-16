@@ -12,6 +12,7 @@ import {
   validateRecordingConnection,
   validateRecordingS3Config
 } from "../pam/pam-validators";
+import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
 import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
@@ -19,6 +20,7 @@ import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recordi
 import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
+  DEFAULT_HEARTBEAT_CONFIG,
   PamRecordingS3ConfigSchema,
   PamTemplateSettingsSchema,
   TPamTemplateSettings
@@ -39,7 +41,10 @@ const SAFE_PASSWORD_SYMBOLS = "!@#$%^&*()-_=+[]{}|:,.<>/~";
 
 type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "reconcileRotationScheduleForTemplate">;
+  pamAccountDAL: Pick<
+    TPamAccountDALFactory,
+    "reconcileRotationScheduleForTemplate" | "reconcileHeartbeatScheduleForTemplate"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
 };
 
@@ -76,6 +81,16 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
       if (invalid.length > 0) {
         throw new BadRequestError({ message: `Allowed symbols may only include: ${SAFE_PASSWORD_SYMBOLS}` });
       }
+    }
+    const requestedLength = settings.passwordRequirements?.length;
+    if (
+      accountType === PamAccountType.OracleDB &&
+      requestedLength !== undefined &&
+      requestedLength > ORACLE_MAX_PASSWORD_LENGTH
+    ) {
+      throw new BadRequestError({
+        message: `Oracle passwords are limited to ${ORACLE_MAX_PASSWORD_LENGTH} characters, so a template cannot request a longer one`
+      });
     }
   };
 
@@ -150,6 +165,14 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
+    // Credential health checking is on for a new template unless the caller says otherwise.
+    // Partial on purpose: the schema's defaults are applied on read, exactly as they were when create stored
+    // no settings at all.
+    const seededSettings: Partial<TPamTemplateSettings> = {
+      ...(settings ?? {}),
+      heartbeat: settings?.heartbeat ?? DEFAULT_HEARTBEAT_CONFIG
+    };
+
     try {
       const template = await pamAccountTemplateDAL.create({
         projectId,
@@ -157,7 +180,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         description,
         type,
         policies: validatedPolicies,
-        settings: settings ?? undefined,
+        settings: seededSettings,
         gatewayId,
         gatewayPoolId,
         recordingConnectionId
@@ -224,6 +247,14 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
           await pamAccountDAL.reconcileRotationScheduleForTemplate(
             templateId,
             { rescheduleReady: newInterval !== undefined && oldInterval !== newInterval },
+            tx
+          );
+
+          const oldHeartbeat = PamTemplateSettingsSchema.safeParse(existing.settings).data?.heartbeat;
+          const newHeartbeat = PamTemplateSettingsSchema.safeParse(settings).data?.heartbeat;
+          await pamAccountDAL.reconcileHeartbeatScheduleForTemplate(
+            templateId,
+            { rescheduleAll: oldHeartbeat?.intervalSeconds !== newHeartbeat?.intervalSeconds },
             tx
           );
         }

@@ -78,7 +78,8 @@ export const LimitsStep = ({
             </SelectContent>
           </Select>
           <FieldDescription>
-            After approval is granted, how long signing is allowed before it expires.
+            The longest signing window a request can ask for. The window runs from the moment the
+            request is approved.
           </FieldDescription>
           {showError && (
             <FieldError

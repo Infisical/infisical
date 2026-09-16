@@ -10,7 +10,7 @@ The Infisical IBM API Connect dynamic secret allows you to generate IBM API Conn
 1. You need an active IBM API Connect subscription with a running instance.
 2. You need at least one organization, catalog, and application already configured in your IBM API Connect instance.
 
-## Create an API Key in IBM API Connect
+## Create an API key in IBM API Connect
 
 <Steps>
   <Step title="Navigate to the Subscriptions page in the IBM SaaS Console and click 'View instances' under your API Connect subscription.">
@@ -46,7 +46,7 @@ The Infisical IBM API Connect dynamic secret allows you to generate IBM API Conn
   </Step>
 </Steps>
 
-## Set up Dynamic Secrets with IBM API Connect
+## Set up dynamic secrets with IBM API Connect
 
 <Steps>
   <Step title="Open Secret Overview Dashboard">
@@ -102,13 +102,13 @@ The Infisical IBM API Connect dynamic secret allows you to generate IBM API Conn
     </ParamField>
   </Step>
   <Step title="Click `Submit`">
-    After submitting the form, you will see a dynamic secret created in the dashboard.
+    After submitting the form, you'll see a dynamic secret created in the dashboard.
 
     ![Dynamic Secret Setup](/images/platform/dynamic-secrets/ibm-api-connect/08-form.png)
   </Step>
   <Step title="Generate dynamic secrets">
     Once you've successfully configured the dynamic secret, you're ready to generate on-demand credentials.
-    To do this, simply click on the 'Generate' button which appears when hovering over the dynamic secret item.
+    To do this, simply select the 'Generate' button which appears when hovering over the dynamic secret item.
     Alternatively, you can initiate the creation of a new lease by selecting 'New Lease' from the dynamic secret lease list section.
 
     ![Dynamic Secret](/images/platform/dynamic-secrets/dynamic-secret-generate.png)
@@ -130,17 +130,17 @@ The Infisical IBM API Connect dynamic secret allows you to generate IBM API Conn
   </Step>
 </Steps>
 
-## Audit or Revoke Leases
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+## Audit or revoke leases
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 This will allow you to see the expiration time of the lease or revoke a lease before its time to live expires.
 When a lease is revoked (either manually or by TTL expiration), Infisical will delete the corresponding application credential from IBM API Connect.
 
 ![Provision Lease](/images/platform/dynamic-secrets/lease-data.png)
 
-## Renew Leases
-To extend the life of the generated dynamic secret leases past its initial time to live, simply click on the **Renew** button as illustrated below.
+## Renew leases
+To extend the life of the generated dynamic secret leases past its initial time to live, simply select the **Renew** button as illustrated below.
 ![Provision Lease](/images/platform/dynamic-secrets/dynamic-secret-lease-renew.png)
 
 <Warning>
-  Lease renewals cannot exceed the maximum TTL set when configuring the dynamic secret.
+  Lease renewals can't exceed the maximum TTL set when configuring the dynamic secret.
 </Warning>

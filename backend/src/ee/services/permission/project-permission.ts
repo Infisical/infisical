@@ -19,6 +19,10 @@ export enum ProjectPermissionActions {
   Delete = "delete"
 }
 
+export enum ProjectPermissionSecretFolderActions {
+  ManageAccess = "manage-access"
+}
+
 export enum ProjectPermissionCommitsActions {
   Read = "read",
   PerformRollback = "perform-rollback"
@@ -84,6 +88,7 @@ export enum ProjectPermissionIdentityActions {
   AssignAdditionalPrivileges = "assign-additional-privileges",
   AssumePrivileges = "assume-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -161,6 +166,13 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionSecretValidationRuleActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionPkiSyncActions {
   Read = "read",
   Create = "create",
@@ -169,7 +181,9 @@ export enum ProjectPermissionPkiSyncActions {
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
-  SetPostSyncCommand = "set-post-sync-command"
+  SetPostSyncCommand = "set-post-sync-command",
+  SetHealthCheckCommand = "set-health-check-command",
+  SetTargetHost = "set-target-host"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {
@@ -284,6 +298,30 @@ export enum ProjectPermissionProxiedServiceActions {
   ReportUsage = "report-usage"
 }
 
+export enum ProjectPermissionAgentVaultAccessBundleActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ManageMembers = "manage-members"
+}
+
+export enum ProjectPermissionAgentVaultSessionActions {
+  Read = "read",
+  Create = "create",
+  Revoke = "revoke"
+}
+
+export enum ProjectPermissionAgentVaultProxyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  // Issuing a replacement enrollment token mints a credential that enrolls a new box, so it is not Edit.
+  IssueToken = "issue-token",
+  Revoke = "revoke"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -340,6 +378,7 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
+  SecretValidationRules = "secret-validation-rules",
   PkiSyncs = "pki-syncs",
   PkiDiscovery = "pki-discovery",
   PkiCertificateInstallations = "pki-certificate-installations",
@@ -359,6 +398,9 @@ export enum ProjectPermissionSub {
   ProjectFolderGrant = "project-folder-grant",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
+  AgentVaultAccessBundles = "agent-vault-access-bundles",
+  AgentVaultSessions = "agent-vault-sessions",
+  AgentVaultProxies = "agent-vault-proxies",
   Insights = "insights"
 }
 
@@ -396,6 +438,7 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
     ],
     [ProjectPermissionIdentityActions.AssumePrivileges]: ["identityId"],
     [ProjectPermissionIdentityActions.RevokeAuth]: ["identityId"],
+    [ProjectPermissionIdentityActions.EditAuth]: ["identityId"],
     [ProjectPermissionIdentityActions.CreateToken]: ["identityId"],
     [ProjectPermissionIdentityActions.GetToken]: ["identityId"],
     [ProjectPermissionIdentityActions.DeleteToken]: ["identityId"]
@@ -547,6 +590,13 @@ export type ProjectPermissionSet =
       )
     ]
   | [
+      ProjectPermissionSecretFolderActions,
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
+    ]
+  | [
       ProjectPermissionDynamicSecretActions,
       (
         | ProjectPermissionSub.DynamicSecrets
@@ -557,6 +607,7 @@ export type ProjectPermissionSet =
       ProjectPermissionSecretSyncActions,
       ProjectPermissionSub.SecretSyncs | (ForcedSubject<ProjectPermissionSub.SecretSyncs> & SecretSyncSubjectFields)
     ]
+  | [ProjectPermissionSecretValidationRuleActions, ProjectPermissionSub.SecretValidationRules]
   | [
       ProjectPermissionPkiSyncActions,
       ProjectPermissionSub.PkiSyncs | (ForcedSubject<ProjectPermissionSub.PkiSyncs> & PkiSyncSubjectFields)
@@ -668,6 +719,9 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
+  | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
+  | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
+  | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
   | [
       ProjectPermissionCertificateProfileActions,
       (
@@ -1434,6 +1488,12 @@ const GeneralPermissionSchema = [
     )
   }),
   z.object({
+    subject: z.literal(ProjectPermissionSub.SecretValidationRules).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretValidationRuleActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.Environments).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
@@ -1594,6 +1654,29 @@ const GeneralPermissionSchema = [
     ).optional()
   }),
   z.object({
+    subject: z
+      .literal(ProjectPermissionSub.AgentVaultAccessBundles)
+      .describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultAccessBundleActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultSessions).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultSessionActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultProxies).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultProxyActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(ProjectPermissionSub.ApprovalRequests).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApprovalRequestActions).describe(
       "Describe what action an entity can take."
@@ -1703,6 +1786,8 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(ProjectPermissionSub.SecretFolders).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    // manage-access is deliberately not writable here: it can only be obtained through the
+    // folder access flow (built-in admin role and the full-access folder tier)
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
       "Describe what action an entity can take."
     ),
@@ -1821,6 +1906,12 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     conditions: CertificatePolicyConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.Application).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApplicationActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.CertificateAuthorities).describe("The entity this permission pertains to."),

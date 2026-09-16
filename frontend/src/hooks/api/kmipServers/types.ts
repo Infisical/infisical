@@ -59,7 +59,7 @@ export type TCreateKmipServerDTO = {
 export type TUpdateKmipServerDTO = {
   kmipServerId: string;
   hostnamesOrIps?: string;
-  ttl?: string;
+  ttl?: string | null;
   keyAlgorithm?: CertKeyAlgorithm;
   authMethod?:
     | {

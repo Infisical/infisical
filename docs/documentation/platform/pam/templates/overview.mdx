@@ -1,6 +1,6 @@
 ---
-title: "Account Templates"
-sidebarTitle: "Account Templates"
+title: "Account templates"
+sidebarTitle: "Account templates"
 description: "Define the rules that apply when someone connects to an account."
 ---
 
@@ -10,19 +10,19 @@ Templates define how [accounts](/documentation/platform/pam/accounts/overview) b
 
 Infisical provides **default templates** for each account type with sensible defaults, so you can start adding accounts right away. Create custom templates when you need different rules — for example, stricter session limits for production or a specific Gateway for a network segment.
 
-## Default Templates
+## Default templates
 
 When you first use PAM, default templates are available for each account type (PostgreSQL, MySQL, MS SQL, MongoDB, Redis, SSH, Kubernetes, AWS IAM, GCP Service Account, Azure CLI, Windows, Windows AD). Each has sensible defaults like 1-hour session duration.
 
 If the defaults work for you, you can skip straight to [adding accounts](/documentation/platform/pam/accounts/overview).
 
-## Creating a Custom Template
+## Creating a custom template
 
 If you need different rules — say, 4-hour sessions with MFA for production — create a custom template.
 
 <Steps>
   <Step title="Navigate to Account Templates">
-    Go to **Privileged Access Management → Account Templates** and click **Create Template**.
+    Go to **Privileged Access Management → Account Templates** and select **Create Template**.
   </Step>
   <Step title="Set the basics">
     | Field | Description |
@@ -34,10 +34,20 @@ If you need different rules — say, 4-hour sessions with MFA for production —
   <Step title="Configure policies">
     | Option | What it does |
     |--------|--------------|
+    | **Require Approval** | Users must request and receive approval before launching a session or [viewing credentials](/documentation/platform/pam/accounts/overview#viewing-credentials) |
+    | **Allow Break-Glass** | Named responders can clear their own request without an approver, for emergencies |
     | **Require MFA** | Users must re-authenticate with MFA before connecting |
     | **Require Reason** | A reason must be provided before connecting |
     | **Max Session Duration** | How long someone can stay connected (in seconds) |
     | **Command Blocking** | Regex patterns for commands to reject (one per line). Currently SSH only. |
+
+    <Note>
+      **Require Approval** gates sessions and credential reveals with one switch, but they are approved separately: a session request never reveals the credential, and a credential request never launches a session. A member who needs both files both.
+    </Note>
+
+    <Note>
+      **Allow Break-Glass** needs **Require Approval** on the same template, and it stays off until a Folder Admin names the responders on the folder's **Approvals** tab. Break-glass clears whichever request it is used on, so a session request grants a session and a credential request grants a reveal. See [break-glass access](/documentation/platform/pam/access-requests/overview#break-glass-access).
+    </Note>
 
     <Note>
       **Require MFA** puts an account out of reach of [AI agents](/documentation/platform/pam/ai-agents/overview), which cannot complete the challenge yet, and of [machine identities](/documentation/platform/identities/machine-identities), which never can. For accounts an agent needs, use a template without it and gate access with [approvals](/documentation/platform/pam/access-requests/overview) instead.
@@ -51,11 +61,11 @@ If you need different rules — say, 4-hour sessions with MFA for production —
     | **Session Log Masking** | Regex patterns for content to mask in recordings (one per line) |
   </Step>
   <Step title="Save">
-    Click **Create**. The template is now available when adding accounts.
+    Select **Create**. The template is now available when adding accounts.
   </Step>
 </Steps>
 
-## How Templates Work with Accounts
+## How templates work with accounts
 
 Every account references a template. The account inherits everything from that template — session limits, MFA requirements, Gateway, recording storage, and so on.
 
@@ -66,7 +76,7 @@ This means you can:
 
 Some options like Gateway can be overridden at the account level when needed.
 
-## Next Steps
+## Next steps
 
 With templates set up, you're ready to add accounts to your [folders](/documentation/platform/pam/folders/overview).
 

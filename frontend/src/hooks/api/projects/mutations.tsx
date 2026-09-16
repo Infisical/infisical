@@ -150,7 +150,7 @@ export const useMigrateProjectToV3 = () => {
 
 export const useRequestProjectAccess = () => {
   const queryClient = useQueryClient();
-  return useMutation<object, object, { projectId: string; comment: string }>({
+  return useMutation<object, object, { projectId: string; comment?: string }>({
     mutationFn: ({ projectId, comment }) => {
       return apiRequest.post(`/api/v1/projects/${projectId}/project-access`, {
         comment

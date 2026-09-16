@@ -1,11 +1,8 @@
 import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 
+import { DiffViewItem, SecretVersionDiffView } from "@app/components/secrets/diff";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { CommitType, SecretV3Raw, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
-import {
-  DiffViewItem,
-  SecretVersionDiffView
-} from "@app/pages/secret-manager/CommitDetailsPage/components/SecretVersionDiffView/SecretVersionDiffView";
 
 export type Props = {
   op: CommitType;

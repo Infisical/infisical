@@ -4,28 +4,38 @@ import { ChevronRightIcon, RefreshCwIcon } from "lucide-react";
 import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 
+import { QuickSearchSelection } from "./quickSearchTypes";
+
 type Props = {
   secretRotation: TSecretRotationV2;
   envSlug: string;
-  onClose: () => void;
+  onClose: (clearSearch?: boolean) => void;
+  onSelectResult: (selection: QuickSearchSelection) => void;
 };
 
-export const QuickSearchSecretRotationItem = ({ secretRotation, envSlug, onClose }: Props) => {
+export const QuickSearchSecretRotationItem = ({
+  secretRotation,
+  envSlug,
+  onClose,
+  onSelectResult
+}: Props) => {
   const navigate = useNavigate({
     from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
 
   const handleNavigate = () => {
+    onSelectResult({ search: secretRotation.name });
     navigate({
       search: (prev) => ({
         ...prev,
         secretPath: secretRotation.folder.path,
-        search: secretRotation.name,
+        search: undefined,
+        tags: undefined,
         filterBy: "rotation",
         environments: [envSlug]
       })
     });
-    onClose();
+    onClose(false);
   };
 
   return (

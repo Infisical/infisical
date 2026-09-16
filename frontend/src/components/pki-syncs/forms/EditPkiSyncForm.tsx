@@ -13,12 +13,14 @@ import {
   Stepper,
   StepperList,
   StepperStep,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   PkiSync,
   TPkiSync,
+  useCanSetHealthCheckCommand,
   useCanSetPostSyncCommand,
   usePkiSyncOption,
   useUpdatePkiSync
@@ -28,8 +30,10 @@ import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
+import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -48,7 +52,11 @@ type FormStep = {
   rightDescription: string;
 };
 
-const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): FormStep[] => {
+const getFormSteps = (
+  destination: PkiSync,
+  canRunHostCommands: boolean,
+  needsTargetHost: boolean
+): FormStep[] => {
   const steps: FormStep[] = [
     {
       key: "destination",
@@ -60,6 +68,20 @@ const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): For
       rightDescription:
         "Choose the connection and the destination where certificates will be pushed. The available fields depend on the selected service."
     },
+    ...(needsTargetHost
+      ? [
+          {
+            key: "targetHost",
+            name: "Target Host",
+            description: "Which machine to reach",
+            title: "Target Host",
+            subtitle: "Name the machine this sync delivers to and how to reach it.",
+            rightLabel: "TARGET HOST",
+            rightDescription:
+              "An LDAP Connection supplies the credential for a whole domain rather than one machine, so each sync names its own host.\n\nMachines found in the directory are offered as suggestions, and you can enter one that is not listed."
+          }
+        ]
+      : []),
     {
       key: "options",
       name: "Sync Options",
@@ -85,16 +107,16 @@ const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): For
     });
   }
 
-  if (canRunPostSyncCommand) {
+  if (canRunHostCommands) {
     steps.push({
-      key: "postSyncCommand",
-      name: "Post-Sync Command",
-      description: "Command after sync",
-      title: "Post-Sync Command",
-      subtitle: "Optionally run a command on the host after certificates are written.",
-      rightLabel: "POST-SYNC COMMAND",
+      key: "hostCommands",
+      name: "Commands",
+      description: "Commands on the host",
+      title: "Commands",
+      subtitle: "Optionally check the host before the sync, and act on it afterward.",
+      rightLabel: "COMMANDS",
       rightDescription:
-        "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
+        "The health check runs first. If the host is not ready, the sync stops and no certificate is delivered.\n\nThe post-sync command runs after the certificates are written, so a service can reload and pick up the new one. It only runs when the sync delivers a file. If either command fails, the sync is marked failed."
     });
   }
 
@@ -112,13 +134,20 @@ const getFormSteps = (destination: PkiSync, canRunPostSyncCommand: boolean): For
   return steps;
 };
 
+const LDAP_TARGET_DEFAULTS = {
+  host: undefined,
+  port: undefined,
+  sslEnabled: undefined,
+  sslRejectUnauthorized: undefined,
+  sslCertificate: undefined
+};
+
 export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }: Props) => {
   const updatePkiSync = useUpdatePkiSync();
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
   const { syncOption } = usePkiSyncOption(pkiSync.destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
-  const steps = getFormSteps(pkiSync.destination, Boolean(syncOption?.canRunPostSyncCommand));
-
+  const canSetHealthCheckCommand = useCanSetHealthCheckCommand(pkiSync.applicationId);
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
 
   const formMethods = useForm<TUpdatePkiSyncForm>({
@@ -129,14 +158,24 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
       description: pkiSync.description ?? "",
       connection: {
         id: pkiSync.connectionId,
-        name: pkiSync.appConnectionName
+        name: pkiSync.appConnectionName,
+        app: pkiSync.connection.app
       },
       syncOptions: pkiSync.syncOptions,
-      destinationConfig: pkiSync.destinationConfig,
+      destinationConfig: { ...LDAP_TARGET_DEFAULTS, ...pkiSync.destinationConfig },
       isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
     } as Partial<TUpdatePkiSyncForm>,
     reValidateMode: "onChange"
   });
+
+  const selectedConnectionApp = (
+    formMethods.watch("connection") as { app?: AppConnection } | undefined
+  )?.app;
+  const steps = getFormSteps(
+    pkiSync.destination,
+    Boolean(syncOption?.canRunHealthCheckCommand || syncOption?.canRunPostSyncCommand),
+    selectedConnectionApp === AppConnection.LDAP
+  );
 
   const {
     handleSubmit,
@@ -173,7 +212,9 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
   const renderStep = () => {
     switch (currentStep.key) {
       case "destination":
-        return <PkiSyncDestinationFields />;
+        return <PkiSyncDestinationFields isUpdate />;
+      case "targetHost":
+        return <PkiSyncTargetHostField applicationId={pkiSync.applicationId} />;
       case "options":
         return (
           <>
@@ -191,7 +232,7 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
                         to only sync manually.
                       </FieldDescription>
                     </FieldContent>
-                    <Switch
+                    <Toggle
                       id="auto-sync-enabled"
                       variant="project"
                       checked={value}
@@ -205,12 +246,20 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
         );
       case "mappings":
         return <PkiSyncFieldMappingsFields destination={pkiSync.destination} />;
-      case "postSyncCommand":
+      case "hostCommands":
         return (
-          <PkiSyncPostSyncCommandFields
-            destination={pkiSync.destination}
-            canEditCommand={canSetPostSyncCommand}
-          />
+          <div className="flex flex-col gap-8">
+            <PkiSyncHealthCheckCommandFields
+              destination={pkiSync.destination}
+              applicationId={pkiSync.applicationId}
+              syncId={pkiSync.id}
+              canEditCommand={canSetHealthCheckCommand}
+            />
+            <PkiSyncPostSyncCommandFields
+              destination={pkiSync.destination}
+              canEditCommand={canSetPostSyncCommand}
+            />
+          </div>
         );
       case "details":
         return <PkiSyncDetailsFields />;
@@ -265,9 +314,11 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
                 />
               </div>
               <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {currentStep.rightDescription}
-              </p>
+              {currentStep.rightDescription.split("\n\n").map((paragraph) => (
+                <p key={paragraph} className="mt-2 text-sm leading-relaxed text-muted">
+                  {paragraph}
+                </p>
+              ))}
             </div>
           </aside>
         </div>

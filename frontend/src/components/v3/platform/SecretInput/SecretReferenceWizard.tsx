@@ -7,7 +7,7 @@ import {
   LayersIcon
 } from "lucide-react";
 
-import { useProject } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { useGetProjectFolders, useGetProjectSecrets, useGetWorkspaceById } from "@app/hooks/api";
 import { useListProjectFolderGrantsReceived } from "@app/hooks/api/projectFolderGrants";
 import { TProjectFolderGrantReceived } from "@app/hooks/api/projectFolderGrants/types";
@@ -47,13 +47,20 @@ export const SecretReferenceWizard = ({
   currentInput = ""
 }: Props) => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
   const projectId = currentProject?.id || "";
+
+  const canCrossProjectShare =
+    subscription?.crossProjectSecretSharing && currentOrg?.allowCrossProjectSecretSharing;
 
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const { data: receivedGrants } = useListProjectFolderGrantsReceived(projectId);
+  const { data: receivedGrants } = useListProjectFolderGrantsReceived(
+    canCrossProjectShare ? projectId : ""
+  );
 
   const { data: selectedSourceProject } = useGetWorkspaceById(
     state.selectedProjectFolderGrant?.sourceProjectId || ""
@@ -640,29 +647,39 @@ export const SecretReferenceWizard = ({
   };
 
   if (uniqueSourceProjects.length === 0) {
+    // If the user is typing a cross-project reference but cross-project sharing
+    // is not available (e.g. license downgrade), hide the wizard entirely so it
+    // does not block the input or the revealed value.
+    if (currentInput.startsWith("@")) {
+      return null;
+    }
+
     return <div ref={contentRef}>{renderStepContent()}</div>;
   }
 
   return (
     <Tabs value={state.tab} onValueChange={handleTabChange} className="gap-0">
-      <TabsList className="h-auto w-full rounded-none rounded-t-md border-0 border-b border-border bg-transparent p-0">
+      <TabsList
+        aria-label="Secret reference source"
+        className="h-auto w-full rounded-none rounded-t-md border-0 border-b border-border bg-transparent p-0"
+      >
         <TabsTrigger
           value="this-project"
-          className="flex-1 rounded-none rounded-tl-md border-0 py-2 text-xs"
+          className="flex-1 rounded-none rounded-tl-md py-2 text-xs"
         >
           This project
         </TabsTrigger>
         <TabsTrigger
           value="another-project"
-          className="flex-1 rounded-none rounded-tr-md border-0 py-2 text-xs"
+          className="flex-1 rounded-none rounded-tr-md py-2 text-xs"
         >
           Another project
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="this-project" className="mt-0">
+      <TabsContent value="this-project">
         {state.tab === "this-project" && <div ref={contentRef}>{renderStepContent()}</div>}
       </TabsContent>
-      <TabsContent value="another-project" className="mt-0">
+      <TabsContent value="another-project">
         {state.tab === "another-project" && <div ref={contentRef}>{renderStepContent()}</div>}
       </TabsContent>
     </Tabs>

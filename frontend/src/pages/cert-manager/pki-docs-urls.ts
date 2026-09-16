@@ -38,6 +38,7 @@ export const PkiDocsUrls = {
   applications: {
     overview: `${PKI_DOCS_BASE_URL}/applications/overview`,
     certificates: `${PKI_DOCS_BASE_URL}/applications/certificates`,
+    certificateRenewal: `${PKI_DOCS_BASE_URL}/applications/certificate-renewal`,
     approvals: `${PKI_DOCS_BASE_URL}/applications/approvals`,
     enrollment: {
       overview: `${PKI_DOCS_BASE_URL}/applications/enrollment-methods/overview`,

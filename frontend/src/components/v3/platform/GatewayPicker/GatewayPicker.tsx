@@ -8,7 +8,7 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { gatewaysQueryKeys, isListedGatewayV2 } from "@app/hooks/api/gateways/queries";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
 
@@ -36,6 +36,8 @@ type Props = {
   isError?: boolean;
   noGatewayLabel?: string;
   noGatewayIcon?: LucideIcon;
+  // Hides one gateway from the list, for callers where selecting it would be self-referential.
+  excludeGatewayId?: string;
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -53,7 +55,8 @@ export const GatewayPicker = ({
   placeholder,
   isError,
   noGatewayLabel = "Internet Gateway",
-  noGatewayIcon: NoGatewayIcon = GlobeIcon
+  noGatewayIcon: NoGatewayIcon = GlobeIcon,
+  excludeGatewayId
 }: Props) => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
@@ -85,7 +88,8 @@ export const GatewayPicker = ({
     }
   };
 
-  const v2Gateways = gateways?.filter((g) => !g.isV1) ?? [];
+  const v2Gateways =
+    gateways?.filter(isListedGatewayV2).filter((g) => g.id !== excludeGatewayId) ?? [];
 
   const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 
@@ -122,7 +126,7 @@ export const GatewayPicker = ({
                 </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="cursor-default rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                    <span className="cursor-default rounded bg-info/10 px-1.5 py-0.5 text-[10px] font-semibold text-info">
                       HA
                     </span>
                   </TooltipTrigger>
@@ -178,7 +182,7 @@ export const GatewayPicker = ({
                   to="/organizations/$orgId/networking"
                   params={{ orgId: currentOrg.id }}
                   target="_blank"
-                  className="text-foreground underline underline-offset-2 hover:text-primary"
+                  className="text-foreground underline underline-offset-2 hover:text-info"
                 >
                   Set one up
                 </Link>{" "}

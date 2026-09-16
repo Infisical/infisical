@@ -22,6 +22,18 @@
         "http://localhost:8080/*"
       ],
       "webOrigins": ["http://localhost:8080"]
+    },
+    {
+      "clientId": "infisical-mcp",
+      "name": "Infisical MCP (dev middleware)",
+      "description": "Stands in for trusted middleware in the OAuth token exchange flow. An ID token from this client carries aud=infisical-mcp, which is what an Infisical application's token exchange audience must match. See sso.md.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "infisical-mcp-client-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true
     }
   ],
   "users": [

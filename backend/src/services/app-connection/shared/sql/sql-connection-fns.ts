@@ -211,9 +211,7 @@ export const executeWithPotentialGateway = async <T>(
         },
         {
           protocol: GatewayProxyProtocol.Tcp,
-          relayHost: platformConnectionDetails.relayHost,
-          gateway: platformConnectionDetails.gateway,
-          relay: platformConnectionDetails.relay
+          ...platformConnectionDetails
         }
       );
     }

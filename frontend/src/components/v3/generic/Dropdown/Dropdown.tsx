@@ -26,6 +26,7 @@ const DropdownMenuTrigger = React.forwardRef<
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  collisionPadding = 8,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -33,10 +34,11 @@ function DropdownMenuContent({
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
+        collisionPadding={collisionPadding}
         className={cn(
           "max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin)",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          "z-50 thin-scrollbar overflow-x-hidden overflow-y-auto rounded-[6px] border border-border bg-popover p-1.5 text-sm text-foreground shadow-md",
+          "z-[var(--z-index-dropdown)] thin-scrollbar overflow-x-hidden overflow-y-auto rounded-[6px] border border-border bg-popover p-1.5 text-sm text-foreground shadow-md",
           className
         )}
         {...props}
@@ -217,16 +219,18 @@ function DropdownMenuSubTrigger({
 function DropdownMenuSubContent({
   className,
   sideOffset = 8,
+  collisionPadding = 8,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
   return (
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        "z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
+        "z-[var(--z-index-dropdown)] min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
         className
       )}
       sideOffset={sideOffset}
+      collisionPadding={collisionPadding}
       {...props}
     />
   );

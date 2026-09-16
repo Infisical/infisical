@@ -1,6 +1,6 @@
 image:
   repository: infisical/cli
-  tag: "0.43.84"
+  tag: "0.43.131"
   pullPolicy: IfNotPresent
 
 # Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
@@ -9,14 +9,15 @@ secret:
   name: "infisical-gateway-environment"
 
 gateway:
-  # Name of the gateway created in the Infisical UI. Required when enrollment.method is set.
+  # Name of the gateway created in the Infisical UI. Required by the default CLI
+  # image (positional `gateway start <name>`). Also required when enrollment.method is set.
   name: ""
 
   # Infisical instance URL (e.g. https://app.infisical.com). Required when enrollment.method is set.
   domain: ""
 
   enrollment:
-    # Enrollment method: "token" or "aws".
+    # Enrollment method: "token", "aws", or "kubernetes".
     # Leave empty to use the legacy machine identity flow (env vars from secret.name).
     method: ""
 
@@ -34,6 +35,17 @@ gateway:
       # Required when method=aws. Gateway ID from the Infisical UI.
       gatewayId: ""
 
+    # Kubernetes enrollment settings (method=kubernetes).
+    kubernetes:
+      # Required when method=kubernetes. Gateway ID from the Infisical UI.
+      gatewayId: ""
+      # Path to the projected service account token. Only override for a non-default mount.
+      serviceAccountTokenPath: ""
+      # Set true only if TokenReview permission comes from somewhere other than this chart: a token
+      # reviewer JWT configured on the gateway in Infisical, or a binding you manage yourself.
+      # Required to install with serviceAccount.createAsAuthDelegator disabled.
+      externalTokenReview: false
+
     # Name of a K8s Secret whose key-value pairs are injected as env vars.
     # Use this to provide credentials for the enrollment method (e.g. AWS keys, GCP credentials).
     # Not needed when credentials are provided via workload identity (IRSA, GCP Workload Identity, etc.).
@@ -42,11 +54,17 @@ gateway:
   # Specific relay to connect to. Leave empty for automatic selection.
   relayName: ""
 
+  # Stable host:port advertised by a gateway accepting direct connections.
+  # Requires an image.tag of 0.43.131 or newer; older images reject the flag and the pod
+  # crash-loops on startup.
+  listenAddress: ""
+
   pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
 
 # Persistent storage for the gateway (credentials and session recordings).
 # Required when enrollment.method=token so credentials survive pod restarts.
-# Optional when enrollment.method=aws since it re-authenticates via STS on every start.
+# Optional when enrollment.method=aws or enrollment.method=kubernetes, since both re-authenticate
+# on every start.
 # For legacy machine-identity installs (no enrollment.method), persistence only takes effect
 # when existingClaim is provided.
 persistence:
@@ -91,7 +109,9 @@ tolerations: {}
 nodeSelector: {}
 service:
   type: ClusterIP
-  port: 80
+  # Port the Service exposes. Empty means the port from gateway.listenAddress, which is the port
+  # the platform dials. Only set this to put a different port in front of the gateway.
+  port: ""
 
 ingress:
   enabled: false

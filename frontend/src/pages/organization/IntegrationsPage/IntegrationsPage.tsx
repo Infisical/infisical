@@ -2,8 +2,15 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { Alert, AlertTitle } from "@app/components/v3";
+import {
+  AlertTitle,
+  DismissableAlert,
+  PageHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -19,18 +26,23 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 const AppConnectionsTab = withPermission(
   () => (
     <>
-      <Alert variant="info" className="mb-4">
+      <DismissableAlert
+        variant="info"
+        className="mb-4"
+        actionKey="app_connections_project_scope_banner_dismissed"
+      >
         <InfoIcon />
         <AlertTitle>
           App connections can also be created and managed independently in projects now.
         </AlertTitle>
-      </Alert>
+      </DismissableAlert>
       <AppConnectionsTable />
     </>
   ),
   {
     action: OrgPermissionAppConnectionActions.Read,
-    subject: OrgPermissionSubjects.AppConnections
+    subject: OrgPermissionSubjects.AppConnections,
+    accessRestrictedMode: "dialog"
   }
 );
 
@@ -81,28 +93,31 @@ export const IntegrationsPage = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
       <div className="flex w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-8xl">
+        <div className="flex w-full max-w-8xl flex-col gap-8">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             title="Integrations"
             description="Connect Infisical to external services and manage organization-wide integrations."
           />
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
-            <TabList>
+            <TabsList
+              variant={isSubOrganization ? "sub-org" : "org"}
+              aria-label={
+                isSubOrganization
+                  ? "Sub-organization integrations sections"
+                  : "Organization integrations sections"
+              }
+            >
               {tabs.map(({ key, label }) => (
-                <Tab
-                  variant={isSubOrganization ? "namespace" : "org"}
-                  value={key}
-                  key={`tab-${key}`}
-                >
+                <TabsTrigger value={key} key={`tab-${key}`}>
                   {label}
-                </Tab>
+                </TabsTrigger>
               ))}
-            </TabList>
+            </TabsList>
             {tabs.map(({ key, component: Component }) => (
-              <TabPanel value={key} key={`tab-panel-${key}`}>
+              <TabsContent value={key} key={`tab-panel-${key}`}>
                 <Component />
-              </TabPanel>
+              </TabsContent>
             ))}
           </Tabs>
         </div>

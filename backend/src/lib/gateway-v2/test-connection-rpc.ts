@@ -1,6 +1,11 @@
 import { postGatewayRpc } from "./gateway-rpc";
 
-export type TestConnectionResponse = { ok: true; status: number } | { ok: false; status: number; errorMessage: string };
+// Older gateways send no kind, which the caller must treat as unclassified rather than as either outcome.
+export type GatewayFailureKind = "auth" | "transport" | "unknown";
+
+export type TestConnectionResponse =
+  | { ok: true; status: number }
+  | { ok: false; status: number; errorMessage: string; kind: GatewayFailureKind | null };
 
 export const TEST_CONNECTION_RPC_TIMEOUT_MS = 60_000;
 
@@ -27,10 +32,15 @@ export const callTestConnection = async (args: {
 
   const errEnv = (() => {
     try {
-      return (JSON.parse(text) as { error?: { message?: string } }).error;
+      return (JSON.parse(text) as { error?: { message?: string; kind?: GatewayFailureKind } }).error;
     } catch {
       return undefined;
     }
   })();
-  return { ok: false, status, errorMessage: errEnv?.message ?? `Gateway returned HTTP ${status}` };
+  return {
+    ok: false,
+    status,
+    errorMessage: errEnv?.message ?? `Gateway returned HTTP ${status}`,
+    kind: errEnv?.kind ?? null
+  };
 };

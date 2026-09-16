@@ -1,6 +1,6 @@
 ---
 title: "Kubernetes with cert-manager (ACME)"
-sidebarTitle: "Issue TLS Certificates in Kubernetes (ACME)"
+sidebarTitle: "Issue TLS certificates in Kubernetes (ACME)"
 description: "Automatically provision and manage TLS certificates in Kubernetes using cert-manager's ACME issuer and Infisical."
 ---
 
@@ -12,7 +12,7 @@ Issue TLS certificates to your Kubernetes workloads using [cert-manager](https:/
   This guide assumes you have an Application with [ACME enrollment](/documentation/platform/pki/applications/enrollment-methods/acme) configured.
 </Info>
 
-## How It Works
+## How it works
 
 1. Install cert-manager in your Kubernetes cluster
 2. Create an `Issuer` that connects to Infisical's ACME server
@@ -26,7 +26,7 @@ For complete details, see the official [cert-manager documentation](https://cert
 
 <Steps>
   <Step title="Get ACME Credentials from Infisical">
-    In your Application, go to the **Settings** tab and find the **Certificate Profiles** section. Click **Configure** on the profile with ACME enrollment, then click **Reveal ACME EAB** to get:
+    In your Application, go to the **Settings** tab and find the **Certificate Profiles** section. Select **Configure** on the profile with ACME enrollment, then select **Reveal ACME EAB** to get:
     
     - **ACME Directory URL**
     - **EAB Key ID (KID)**
@@ -251,7 +251,7 @@ For complete details, see the official [cert-manager documentation](https://cert
 
 <AccordionGroup>
 <Accordion title="How do I inject the CA certificate into secrets (ca.crt field)?">
-By default, cert-manager's ACME issuer does not populate the `ca.crt` field in the generated Kubernetes Secret ([see GitHub issue](https://github.com/cert-manager/cert-manager/issues/1571)). The secret will only contain `tls.crt` and `tls.key`.
+By default, cert-manager's ACME issuer doesn't populate the `ca.crt` field in the generated Kubernetes Secret ([see GitHub issue](https://github.com/cert-manager/cert-manager/issues/1571)). The secret will only contain `tls.crt` and `tls.key`.
 
 If your application requires `ca.crt` (e.g., for mTLS), use [trust-manager](https://cert-manager.io/docs/trust/trust-manager/) to inject it automatically.
 
@@ -340,11 +340,11 @@ You should now see `ca.crt`, `tls.crt`, and `tls.key` in the secret data.
 </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Nginx with Certbot" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
-    Set up ACME for Nginx web servers.
+  <Card title="NGINX with Certbot" icon="n" href="/documentation/platform/pki/guides/applications/nginx-certbot">
+    Set up ACME for NGINX web servers.
   </Card>
   <Card title="Certificate Syncs" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to AWS, Azure, and more.

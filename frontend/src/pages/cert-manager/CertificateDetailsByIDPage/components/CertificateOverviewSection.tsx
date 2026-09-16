@@ -3,6 +3,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
+import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import { Tooltip } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import {
@@ -18,8 +19,11 @@ import {
   DetailValue
 } from "@app/components/v3";
 import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
+import { CaType } from "@app/hooks/api/ca/enums";
+import { TCertificateExternalMetadata } from "@app/hooks/api/certificates/types";
 
 import {
+  getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails
 } from "../../CertificatesPage/components/CertificatesTable.utils";
@@ -36,6 +40,25 @@ const formatDateUTC = (dateString: string) => {
 
 const formatDateLocal = (dateString: string) => {
   return format(new Date(dateString), "EEE, dd MMM yyyy HH:mm:ss");
+};
+
+const getProviderReference = (metadata?: TCertificateExternalMetadata | null) => {
+  if (!metadata) return null;
+
+  switch (metadata.type) {
+    case CaType.DIGICERT:
+      return {
+        provider: "DigiCert CertCentral",
+        label: "Order ID",
+        value: String(metadata.orderId)
+      };
+    case CaType.GODADDY:
+      return { provider: "GoDaddy", label: "Certificate ID", value: metadata.certificateId };
+    case CaType.AWS_ACM_PUBLIC_CA:
+      return { provider: "AWS ACM Public CA", label: "Certificate ARN", value: metadata.arn };
+    default:
+      return null;
+  }
 };
 
 export const CertificateOverviewSection = ({ certificateId }: Props) => {
@@ -64,8 +87,10 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
   const { variant: expiryVariant, label: expiryLabel } = getCertValidUntilBadgeDetails(
     certificate.notAfter
   );
+  const displayStatus = getCertificateDisplayStatus(certificate);
 
   const showCaLink = certificate.caId && certificate.caName && certificate.caType === "internal";
+  const providerReference = getProviderReference(certificate.externalMetadata);
 
   return (
     <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
@@ -78,15 +103,24 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
           <DetailGroup>
             <Detail>
               <DetailLabel>Common Name</DetailLabel>
-              <DetailValue>{certificate.commonName}</DetailValue>
+              <DetailValue>
+                {certificate.commonName || <span className="text-muted">—</span>}
+              </DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Certificate ID</DetailLabel>
+              <DetailValue className="flex items-center gap-2 font-mono text-xs">
+                {certificate.id}
+                <CopyButton value={certificate.id} size="xs" variant="plain" />
+              </DetailValue>
             </Detail>
             <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
-                {certificate.status === CertStatus.REVOKED ? (
-                  <Badge variant="danger">Revoked</Badge>
-                ) : (
+                {displayStatus.status === CertStatus.ACTIVE ? (
                   <Badge variant={expiryVariant}>{expiryLabel}</Badge>
+                ) : (
+                  <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
                 )}
               </DetailValue>
             </Detail>
@@ -192,6 +226,18 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 {certificate.profileName || <span className="text-muted">—</span>}
               </DetailValue>
             </Detail>
+            {providerReference && (
+              <>
+                <Detail>
+                  <DetailLabel>Provider</DetailLabel>
+                  <DetailValue>{providerReference.provider}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>{providerReference.label}</DetailLabel>
+                  <DetailValue className="font-mono">{providerReference.value}</DetailValue>
+                </Detail>
+              </>
+            )}
             <Detail>
               <DetailLabel>Source</DetailLabel>
               <DetailValue>
@@ -221,7 +267,13 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
-                    {certificate.commonName}
+                    {
+                      getCertificateDisplayName(
+                        certificate,
+                        64,
+                        certificate.renewedFromCertificateId
+                      ).displayName
+                    }
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 </DetailValue>
@@ -240,7 +292,10 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
-                    {certificate.commonName}
+                    {
+                      getCertificateDisplayName(certificate, 64, certificate.renewedByCertificateId)
+                        .displayName
+                    }
                     <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
                   </Link>
                 </DetailValue>

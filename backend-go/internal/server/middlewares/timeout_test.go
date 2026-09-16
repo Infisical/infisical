@@ -75,7 +75,7 @@ func TestTimeout_IncludesRequestID(t *testing.T) {
 
 	// Chain requestid middleware before timeout middleware
 	timeoutMiddleware := Timeout(10 * time.Millisecond)
-	wrapped := requestid.Middleware(timeoutMiddleware(handler))
+	wrapped := requestid.Middleware("req-")(timeoutMiddleware(handler))
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", http.NoBody)
 	req.Header.Set(requestid.Header, "test-request-123")

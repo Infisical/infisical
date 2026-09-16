@@ -78,6 +78,10 @@ export const registerGcpKmsRouter = async (server: FastifyZodProvider) => {
       }
 
       const results = await server.services.externalKms.fetchGcpKeys({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         credential: credentialJson,
         gcpRegion: region
       });

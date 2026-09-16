@@ -2,19 +2,14 @@ import { z } from "zod";
 
 import { TAuditReports } from "@app/db/schemas";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import {
-  CONSTRAINT_LABELS,
-  evaluateConstraint,
-  TStaticSecretConstraintViolation
-} from "@app/services/secret-validation-rule/secret-validation-rule-fns";
-import { TConstraint } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 
 import {
   AuditReportResultEntrySchema,
   AuditReportStatus,
   AuditReportType,
-  TGeneratedReport,
-  TSecretToValidate
+  OrgAuditReportResultEntrySchema,
+  OrgAuditReportType,
+  TGeneratedReport
 } from "./audit-report-types";
 
 export const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -90,7 +85,9 @@ const StoredReportConfigsSchema = z.array(
 
 export const presentAuditReport = (report: TAuditReports) => ({
   id: report.id,
-  projectId: report.projectId,
+  // Callers only ever pass project-scoped rows here; org-scoped rows go through
+  // presentOrgAuditReport. The cast preserves the non-null projectId response contract.
+  projectId: report.projectId as string,
   requestedByUserId: report.requestedByUserId ?? null,
   status: z.nativeEnum(AuditReportStatus).parse(report.status),
   reportConfigs: StoredReportConfigsSchema.parse(report.reportConfigs),
@@ -104,20 +101,26 @@ export const presentAuditReport = (report: TAuditReports) => ({
 
 export type TPresentedAuditReport = ReturnType<typeof presentAuditReport>;
 
-export const evaluateStaticSecretConstraints = (
-  constraints: TConstraint[],
-  secret: TSecretToValidate
-): TStaticSecretConstraintViolation[] => {
-  const violations: TStaticSecretConstraintViolation[] = [];
-  for (const constraint of constraints) {
-    const error = evaluateConstraint(constraint, secret);
-    if (error) {
-      violations.push({
-        constraintType: constraint.type,
-        constraintLabel: CONSTRAINT_LABELS[constraint.type],
-        message: error
-      });
-    }
-  }
-  return violations;
-};
+const StoredOrgReportConfigsSchema = z.array(
+  z.object({
+    type: z.nativeEnum(OrgAuditReportType),
+    inputs: z.record(z.unknown())
+  })
+);
+
+export const presentOrgAuditReport = (report: TAuditReports) => ({
+  id: report.id,
+  // Callers only ever pass org-scoped rows here (project rows go through presentAuditReport).
+  orgId: report.orgId as string,
+  requestedByUserId: report.requestedByUserId ?? null,
+  status: z.nativeEnum(AuditReportStatus).parse(report.status),
+  reportConfigs: StoredOrgReportConfigsSchema.parse(report.reportConfigs),
+  emailRecipients: report.emailRecipients,
+  resultSummary:
+    report.resultSummary == null ? null : z.array(OrgAuditReportResultEntrySchema).parse(report.resultSummary),
+  errorMessage: report.errorMessage ?? null,
+  createdAt: report.createdAt,
+  updatedAt: report.updatedAt
+});
+
+export type TPresentedOrgAuditReport = ReturnType<typeof presentOrgAuditReport>;

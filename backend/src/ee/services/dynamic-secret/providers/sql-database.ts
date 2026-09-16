@@ -229,9 +229,7 @@ export const SqlDatabaseProvider = ({
           await gatewayCallback("localhost", port);
         },
         {
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay,
+          ...gatewayV2ConnectionDetails,
           protocol: GatewayProxyProtocol.Tcp
         }
       );
@@ -308,7 +306,7 @@ export const SqlDatabaseProvider = ({
 
     // When a secret validation rule covers this provider/scope, it fully
     // replaces the user-configured password requirements.
-    const password = metadata?.passwordValidation?.constraints?.length
+    const password = metadata?.passwordValidation
       ? generatePasswordWithConstraints(metadata.passwordValidation.constraints)
       : generatePassword(providerInputs.client, providerInputs.passwordRequirements);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {

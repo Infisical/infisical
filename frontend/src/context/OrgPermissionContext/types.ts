@@ -95,7 +95,8 @@ export enum OrgPermissionSubjects {
   EmailDomains = "email-domains",
   CertManager = "certificate-manager",
   HoneyTokens = "honey-tokens",
-  OauthClients = "oauth-clients"
+  OauthClients = "oauth-clients",
+  SecretsManagementInsights = "secrets-management-insights"
 }
 
 export enum OrgPermissionCertManagerActions {
@@ -113,6 +114,12 @@ export enum OrgPermissionEmailDomainActions {
 
 export enum OrgPermissionHoneyTokenActions {
   Setup = "setup"
+}
+
+export enum OrgPermissionSecretsManagementInsightsActions {
+  Read = "read",
+  GenerateReport = "generate-report",
+  DeleteReport = "delete-report"
 }
 
 export enum OrgPermissionProjectActions {
@@ -147,6 +154,14 @@ export enum OrgPermissionKmipActions {
   Proxy = "proxy"
 }
 
+export enum OrgPermissionMemberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
 export enum OrgPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -154,6 +169,7 @@ export enum OrgPermissionIdentityActions {
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
   RevokeAuth = "revoke-auth",
+  EditAuth = "edit-auth",
   CreateToken = "create-token",
   GetToken = "get-token",
   DeleteToken = "delete-token"
@@ -186,7 +202,7 @@ export type OrgPermissionSet =
   | [OrgPermissionProjectActions, OrgPermissionSubjects.Project]
   | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
-  | [OrgPermissionActions, OrgPermissionSubjects.Member]
+  | [OrgPermissionMemberActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
@@ -223,6 +239,10 @@ export type OrgPermissionSet =
   | [OrgPermissionEmailDomainActions, OrgPermissionSubjects.EmailDomains]
   | [OrgPermissionCertManagerActions, OrgPermissionSubjects.CertManager]
   | [OrgPermissionHoneyTokenActions, OrgPermissionSubjects.HoneyTokens]
-  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients];
+  | [OrgPermissionActions, OrgPermissionSubjects.OauthClients]
+  | [
+      OrgPermissionSecretsManagementInsightsActions,
+      OrgPermissionSubjects.SecretsManagementInsights
+    ];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

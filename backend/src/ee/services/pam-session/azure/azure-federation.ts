@@ -37,8 +37,10 @@ export const getAzureAccessToken = async ({
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
       const data = err.response.data as TAzureTokenErrorResponse;
+      // The cause carries the response status, which callers use to tell a refused credential from an outage.
       throw new BadRequestError({
-        message: `Azure rejected the service principal credentials: ${data.error_description || data.error || "unknown error"}`
+        message: `Azure rejected the service principal credentials: ${data.error_description || data.error || "unknown error"}`,
+        error: err
       });
     }
     throw new InternalServerError({ message: "Failed to reach the Azure token endpoint" });

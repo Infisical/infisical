@@ -4,12 +4,12 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject, useProjectPermission } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useSubscription } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, useToggle } from "@app/hooks";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
-import { SecretInput } from "./SecretInput";
+import { SecretInput, SecretInputVariant } from "./SecretInput";
 import { SecretReferenceWizard } from "./SecretReferenceWizard";
 
 const getIndexOfUnclosedRefToTheLeft = (value: string, pos: number) => {
@@ -30,8 +30,9 @@ const getIndexOfUnclosedRefToTheRight = (value: string, pos: number) => {
 };
 
 type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "value"> & {
-  value?: string;
+  value?: string | null;
   onChange: (val: string) => void;
+  variant?: SecretInputVariant;
   isImport?: boolean;
   isVisible?: boolean;
   isReadOnly?: boolean;
@@ -47,7 +48,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
 export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
     {
-      value = "",
+      value: propValue,
       onChange,
       containerClassName,
       secretPath: propSecretPath,
@@ -57,10 +58,16 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     },
     ref
   ) => {
+    const value = propValue ?? "";
     const { currentProject } = useProject();
+    const { currentOrg } = useOrganization();
+    const { subscription } = useSubscription();
     const projectId = currentProject?.id || "";
-    const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path });
+    const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.OverviewPage.path });
     const { permission } = useProjectPermission();
+
+    const canCrossProjectShare =
+      subscription?.crossProjectSecretSharing && currentOrg?.allowCrossProjectSecretSharing;
 
     const [debouncedValue] = useDebounce(value, 100);
 
@@ -74,9 +81,17 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       return left;
     })();
 
-    const isPopupOpen = openRefLeft !== -1 && isFocused;
+    const referenceContent =
+      openRefLeft !== -1 ? debouncedValue.slice(openRefLeft + 1, currentCursorPosition) : "";
 
-    const handleWizardSelect = (referenceContent: string) => {
+    // Don't open the wizard for cross-project references when cross-project
+    // sharing is unavailable (e.g. after a license downgrade).
+    const isCrossProjectRefWithoutAccess =
+      referenceContent.startsWith("@") && !canCrossProjectShare;
+
+    const isPopupOpen = openRefLeft !== -1 && isFocused && !isCrossProjectRefWithoutAccess;
+
+    const handleWizardSelect = (selectedReference: string) => {
       const left = openRefLeft + 1; // position right after ${
       const rightBracketIndex = getIndexOfUnclosedRefToTheRight(value, left);
       const isEnclosed = rightBracketIndex !== -1;
@@ -86,13 +101,13 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         rightBracketIndex !== -1 ? rightBracketIndex + 1 : currentCursorPosition
       );
 
-      const newValue = `${lhsValue}${referenceContent}${isEnclosed ? "" : "}"}${rhsValue}`;
+      const newValue = `${lhsValue}${selectedReference}${isEnclosed ? "" : "}"}${rhsValue}`;
       onChange?.(newValue);
 
       const delay = setTimeout(() => {
         clearTimeout(delay);
         if (inputRef.current) {
-          const cursorPos = lhsValue.length + referenceContent.length + 1; // +1 for }
+          const cursorPos = lhsValue.length + selectedReference.length + 1; // +1 for }
           inputRef.current.selectionStart = cursorPos;
           inputRef.current.selectionEnd = cursorPos;
         }
@@ -206,14 +221,14 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         }
 
         navigate({
-          to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
-          params: { projectId, envSlug: environmentSlug },
+          to: ROUTE_PATHS.SecretManager.OverviewPage.path,
+          params: { projectId },
           search: (prev) => ({
             ...prev,
             secretPath: segment === environmentSlug ? "/" : folderPath,
             search: segment === secretName ? secretName : prev.search,
             filterBy: segment === secretName ? "secret" : prev.filterBy,
-            tags: ""
+            environments: [environmentSlug]
           })
         });
       },
@@ -248,6 +263,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content
             align="start"
+            collisionPadding={8}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onMouseDown={(e) => e.preventDefault()}
             className="relative top-2 z-[100] max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md"
@@ -257,11 +273,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               isEnabled={isPopupOpen}
               onSelect={handleWizardSelect}
               onFocusItem={() => inputRef.current?.focus()}
-              currentInput={
-                openRefLeft !== -1
-                  ? debouncedValue.slice(openRefLeft + 1, currentCursorPosition)
-                  : ""
-              }
+              currentInput={referenceContent}
             />
           </PopoverPrimitive.Content>
         </PopoverPrimitive.Portal>

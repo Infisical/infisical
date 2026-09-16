@@ -6,8 +6,8 @@ import { format } from "date-fns";
 import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Badge,
   Button,
@@ -73,11 +73,16 @@ const TerminateCell = ({
   session: TPamSession;
   onTerminate: (session: TPamSession, e?: React.MouseEvent) => void;
 }) => {
-  const { data: perm } = usePamAccountPermission(session.accountId ?? "");
-  const canTerminate = perm?.permission.can(
-    PamResourcePermissionActions.TerminateSessions,
-    PamResourcePermissionSub.PamResource
+  const { data: perm } = usePamAccountPermission(
+    session.accountId ?? "",
+    Boolean(session.accountId)
   );
+  const canTerminate =
+    !session.accountId ||
+    perm?.permission.can(
+      PamResourcePermissionActions.TerminateSessions,
+      PamResourcePermissionSub.PamResource
+    );
 
   if (session.status !== PamSessionStatus.Active || !canTerminate) return null;
 

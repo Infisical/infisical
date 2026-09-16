@@ -5,7 +5,7 @@ import { Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Accordion,
   AccordionContent,
@@ -52,7 +52,7 @@ export const GroupContainer = ({
   return (
     <AccordionItem value={group.name}>
       <AccordionTrigger>{group.name}</AccordionTrigger>
-      <AccordionContent>
+      <AccordionContent className="p-6">
         <div className="flex flex-col divide-y divide-border">
           {group.fields.map((field) => (
             <div

@@ -85,6 +85,7 @@ import {
   PamDetailSheet
 } from "../../components/PamDetailSheet";
 import { PAM_ACCOUNT_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
+import { PendingInvitationBadge } from "../../components/PendingInvitationBadge";
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { TabWarningPing } from "../../components/TabWarningPing";
@@ -106,6 +107,7 @@ type ResolvedMember = {
   subtitle: string;
   source: PamMemberSource;
   kind: PamMemberKind;
+  isPendingInvitation?: boolean;
 };
 
 // Maps each accessibility issue to the tab where it can be resolved
@@ -199,7 +201,11 @@ const PermissionsTab = ({
             [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username;
           return [
             ou.user.id,
-            { name, email: ou.user.email ?? ou.inviteEmail ?? ou.user.username }
+            {
+              name,
+              email: ou.user.email ?? ou.inviteEmail ?? ou.user.username,
+              isPendingInvitation: ou.status === "invited"
+            }
           ] as const;
         })
       ),
@@ -214,7 +220,8 @@ const PermissionsTab = ({
         displayName: info?.name ?? m.userId ?? "Unknown",
         subtitle: info?.email ?? "",
         source: PamMemberSource.Direct,
-        kind: PamMemberKind.User
+        kind: PamMemberKind.User,
+        isPendingInvitation: info?.isPendingInvitation
       };
     });
     const groups = (accountMembers?.groups ?? []).map((m) => ({
@@ -246,7 +253,8 @@ const PermissionsTab = ({
         displayName: info?.name ?? m.userId ?? "Unknown",
         subtitle: info?.email ?? "",
         source: PamMemberSource.Inherited,
-        kind: PamMemberKind.User
+        kind: PamMemberKind.User,
+        isPendingInvitation: info?.isPendingInvitation
       };
     });
     const groups = (folderMembers?.groups ?? []).map((m) => ({
@@ -353,7 +361,7 @@ const PermissionsTab = ({
                   <TableHead>Assignee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -365,7 +373,10 @@ const PermissionsTab = ({
                     <TableRow key={`direct-${rm.member.membershipId}`} className="[&>td]:h-12">
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{rm.displayName}</span>
+                          <div className="flex items-center gap-x-1.5">
+                            <span className="font-medium text-foreground">{rm.displayName}</span>
+                            <PendingInvitationBadge isPending={Boolean(rm.isPendingInvitation)} />
+                          </div>
                           {rm.subtitle && <span className="text-xs text-muted">{rm.subtitle}</span>}
                         </div>
                       </TableCell>
@@ -375,7 +386,7 @@ const PermissionsTab = ({
                       <TableCell>
                         <MemberExpiry expiresAt={rm.member.expiresAt} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         {!isOwnMembership && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -461,7 +472,10 @@ const PermissionsTab = ({
                   <TableRow key={`inherited-${rm.member.membershipId}`} className="[&>td]:h-12">
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium text-foreground">{rm.displayName}</span>
+                        <div className="flex items-center gap-x-1.5">
+                          <span className="font-medium text-foreground">{rm.displayName}</span>
+                          <PendingInvitationBadge isPending={Boolean(rm.isPendingInvitation)} />
+                        </div>
                         {rm.subtitle && <span className="text-xs text-muted">{rm.subtitle}</span>}
                       </div>
                     </TableCell>

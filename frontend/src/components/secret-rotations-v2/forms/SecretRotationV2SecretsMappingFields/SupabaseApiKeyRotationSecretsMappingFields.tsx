@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FormControl, Input } from "@app/components/v2";
+import { Field, FieldError, Input } from "@app/components/v3";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { SupabaseApiKeyType } from "@app/hooks/api/secretRotationsV2/types/supabase-api-key-rotation";
 
@@ -35,14 +35,18 @@ export const SupabaseApiKeyRotationSecretsMappingFields = () => {
       name: "API Key",
       input: (
         <Controller
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
+          render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
               <Input
+                ref={ref}
                 value={value}
+                onBlur={onBlur}
                 onChange={onChange}
                 placeholder={keyType ? DEFAULT_SECRET_NAME[keyType] : "SUPABASE_API_KEY"}
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
           control={control}
           name="secretsMapping.apiKey"

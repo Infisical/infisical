@@ -14,10 +14,12 @@ export const tokenDALFactory = (db: TDbClient) => {
 
   const findOneTokenSession = async (
     filter: Partial<TAuthTokenSessions>,
-    tx?: Knex
+    tx?: Knex,
+    { readFromPrimary = false }: { readFromPrimary?: boolean } = {}
   ): Promise<TAuthTokenSessions | undefined> => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.AuthTokenSession).where(filter).first();
+      const reader = tx || (readFromPrimary ? db : db.replicaNode());
+      const doc = await reader(TableName.AuthTokenSession).where(filter).first();
       return doc;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindOneTokenSession" });

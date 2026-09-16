@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
@@ -18,11 +18,11 @@ export const DatadogApiKeyRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Key Name">{name}</GenericFieldLabel>
+        <ReviewField label="Key Name">{name}</ReviewField>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="API Key ID">{apiKeyId}</GenericFieldLabel>
-        <GenericFieldLabel label="API Key">{apiKey}</GenericFieldLabel>
+        <ReviewField label="API Key ID">{apiKeyId}</ReviewField>
+        <ReviewField label="API Key">{apiKey}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

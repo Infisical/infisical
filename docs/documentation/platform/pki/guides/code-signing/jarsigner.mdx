@@ -18,7 +18,7 @@ Sign Java JAR files using `jarsigner` with the Infisical PKCS#11 module. The mod
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - Java JDK 9 or later (for the `-addprovider` flag)
 
-## Step 1: Set Up Authentication
+## Step 1: Set up authentication
 
 Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
 
@@ -48,7 +48,7 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
 
 For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
 
-## Step 2: Create the SunPKCS11 Provider Configuration
+## Step 2: Create the SunPKCS11 provider configuration
 
 Create a configuration file for Java's SunPKCS11 provider. Save it as `infisical-pkcs11.cfg`:
 
@@ -93,7 +93,7 @@ jarsigner \
 
 When prompted for a keystore password, you can either press Enter (the module authenticates automatically using the credentials from your environment variables or config file) or provide the PIN in the format `clientId:clientSecret`.
 
-### Verify the Signature
+### Verify the signature
 
 After signing, verify the JAR signature:
 
@@ -107,7 +107,7 @@ The output indicates the JAR is signed and verified:
 jar verified.
 ```
 
-## CI/CD Integration
+## CI/CD integration
 
 For automated signing in CI/CD pipelines, use environment variables for credentials and suppress the password prompt:
 
@@ -152,7 +152,7 @@ For any issue, start by enabling debug logging in your config file to get detail
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
   <Card title="Sign Android APKs" icon="android" href="/documentation/platform/pki/guides/code-signing/apksigner">

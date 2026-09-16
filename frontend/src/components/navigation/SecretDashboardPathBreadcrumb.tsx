@@ -71,13 +71,16 @@ export const SecretDashboardPathBreadcrumb = ({
         </div>
       ) : (
         <Link
-          to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+          to="/organizations/$orgId/projects/secret-management/$projectId/overview"
           params={{
             orgId: currentOrg.id,
-            projectId,
-            envSlug: environmentSlug
+            projectId
           }}
-          search={(query) => ({ ...query, secretPath: newSecretPath })}
+          search={(query) => ({
+            ...query,
+            secretPath: newSecretPath,
+            environments: [environmentSlug]
+          })}
           className={twMerge(
             "text-sm transition-all hover:text-primary",
             isCopying && "text-primary"

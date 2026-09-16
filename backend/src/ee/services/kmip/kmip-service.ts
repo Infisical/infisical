@@ -80,6 +80,27 @@ type TKmipServiceFactoryDep = {
 
 export type TKmipServiceFactory = ReturnType<typeof kmipServiceFactory>;
 
+export const MIN_SERVER_CERT_TTL = "1h";
+
+// Throws rather than clamping, so a wrong stored value surfaces instead of being silently altered.
+export const assertTtlAtLeastFloor = (ttl: string) => {
+  let parsed: number | undefined;
+  try {
+    parsed = ms(ttl);
+  } catch {
+    parsed = undefined;
+  }
+  // ms() returns undefined rather than throwing, and NaN comparisons are always false.
+  if (!Number.isFinite(parsed)) {
+    throw new BadRequestError({ message: `KMIP server certificate TTL '${ttl}' is not a valid duration.` });
+  }
+  if ((parsed as number) < ms(MIN_SERVER_CERT_TTL)) {
+    throw new BadRequestError({
+      message: `KMIP server certificate TTL '${ttl}' is below the 1 hour minimum. Update the server's TTL before connecting.`
+    });
+  }
+};
+
 export const kmipServiceFactory = ({
   kmipClientDAL,
   permissionService,
@@ -827,6 +848,9 @@ export const kmipServiceFactory = ({
     keyAlgorithm,
     hostnamesOrIps
   }: TRegisterServerDTO) => {
+    // Enforced here rather than per route, since both enrollment paths issue through this.
+    assertTtlAtLeastFloor(ttl);
+
     // KMIP servers authenticate via their enrollment-based access token, which is itself the
     // authorization — no org-level permission needed. The legacy machine-identity path still
     // requires the (deprecated) KMIP proxy permission.

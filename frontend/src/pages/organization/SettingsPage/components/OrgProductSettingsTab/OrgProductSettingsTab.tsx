@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
+import { AlertDescription, AlertTitle, DismissableAlert } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 
 import { OrgCertManagerTab } from "../OrgCertManagerTab";
@@ -11,7 +11,10 @@ export const OrgProductSettingsTab = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <Alert variant="info">
+      <DismissableAlert
+        variant="info"
+        actionKey="secrets_management_settings_moved_banner_dismissed"
+      >
         <InfoIcon />
         <AlertTitle>Secrets Management Settings Have Moved</AlertTitle>
         <AlertDescription className="inline">
@@ -25,7 +28,7 @@ export const OrgProductSettingsTab = () => {
           </Link>
           .
         </AlertDescription>
-      </Alert>
+      </DismissableAlert>
       <OrgCertManagerTab />
     </div>
   );

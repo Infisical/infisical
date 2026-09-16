@@ -76,9 +76,7 @@ export const KubernetesProvider = ({
           );
         },
         {
-          relayHost: gatewayV2ConnectionDetails.relayHost,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          relay: gatewayV2ConnectionDetails.relay,
+          ...gatewayV2ConnectionDetails,
           protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
           httpsAgent: inputs.httpsAgent
         }

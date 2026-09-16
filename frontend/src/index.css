@@ -6,9 +6,9 @@
 @font-face {
   font-family: "Alliance No. 2";
   src:
-    url("/fonts/AllianceNo2-Regular.woff2") format("woff2"),
-    url("/fonts/AllianceNo2-Regular.woff") format("woff"),
-    url("/fonts/AllianceNo2-Regular.otf") format("opentype");
+    url("./assets/fonts/AllianceNo2-Regular.woff2") format("woff2"),
+    url("./assets/fonts/AllianceNo2-Regular.woff") format("woff"),
+    url("./assets/fonts/AllianceNo2-Regular.otf") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
@@ -35,15 +35,26 @@
     @apply overflow-hidden;
   }
 
-  /* Override browser/password-manager autofill styling for dark theme */
+  input {
+    color-scheme: dark;
+  }
+
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
-    -webkit-background-clip: text !important;
-    -webkit-text-fill-color: var(--color-foreground) !important;
-    caret-color: var(--color-foreground);
-    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: 0 0 0 1000px var(--autofill-background, var(--color-background)) inset !important;
+  }
+
+  input[data-slot="input-group-control"]:-webkit-autofill {
+    background-clip: text;
+    -webkit-text-fill-color: currentColor;
+    box-shadow: none !important;
+  }
+
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"] {
+    --autofill-background: var(--color-popover);
   }
 
   /* NordPass autofill override */
@@ -63,6 +74,16 @@
 }
 
 @theme {
+  --z-index-sticky: 10;
+  --z-index-action: 40;
+  --z-index-backdrop: 50;
+  --z-index-modal: 50;
+  --z-index-dropdown: 50;
+  --z-index-popover: 50;
+  --z-index-combobox: 60;
+  --z-index-tooltip: 70;
+  --z-index-toast: 999999999;
+
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
@@ -79,6 +100,7 @@
   --max-width-8xl: 88rem; /* 1408px */
 
   /* Colors v2 */
+  --color-page: #0e1014;
   --color-background: #19191c;
   --color-foreground: #ebebeb;
   --color-success: #2ecc71;
@@ -93,6 +115,7 @@
   --color-product-kms: #34edbf;
   --color-product-ss: #b056f0;
   --color-product-pam: #ff3568;
+  --color-product-av: #a1d434;
   --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
@@ -104,6 +127,9 @@
   --color-accent: #7d7f80;
   --color-container: #1a1c1e;
   --color-container-hover: #1f2123;
+
+  /* Elevation */
+  --shadow-floating: 0 8px 32px rgb(0 0 0 / 0.6);
 
   /* Sidebar */
   --color-sidebar: #19191c;
@@ -398,6 +424,25 @@ html[data-platform="ios"] {
     }
   }
 
+  @keyframes inputErrorShake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-3px);
+    }
+    40% {
+      transform: translateX(3px);
+    }
+    60% {
+      transform: translateX(-2px);
+    }
+    80% {
+      transform: translateX(1px);
+    }
+  }
+
   @keyframes popup {
     0% {
       transform: scale(0.2);
@@ -496,6 +541,20 @@ html[data-platform="ios"] {
 
   .type-reverse {
     animation: type 1.8s ease-out 0s infinite alternate-reverse both;
+  }
+
+  [data-slot="input"][aria-invalid="true"],
+  [data-slot="textarea"][aria-invalid="true"],
+  [data-slot="input-group"]:has([data-slot="input-group-control"][aria-invalid="true"]) {
+    animation: inputErrorShake 200ms cubic-bezier(0.77, 0, 0.175, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot="input"][aria-invalid="true"],
+    [data-slot="textarea"][aria-invalid="true"],
+    [data-slot="input-group"]:has([data-slot="input-group-control"][aria-invalid="true"]) {
+      animation: none;
+    }
   }
 }
 

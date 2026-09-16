@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 import { z } from "zod";
 
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { Badge } from "@app/components/v3";
 import {
   useCloudflareConnectionListPermissionGroups,
@@ -53,34 +53,30 @@ export const CloudflareApiTokenRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Token Name">{parameters.name}</GenericFieldLabel>
+        <ReviewField label="Token Name">{parameters.name}</ReviewField>
         <div className="grid grid-cols-2 gap-2">
           {parameters.policies.map((policy, i) => (
-            <GenericFieldLabel key={`policy-${i + 1}`} label={`Policy ${i + 1}`}>
+            <ReviewField key={`policy-${i + 1}`} label={`Policy ${i + 1}`}>
               <div className="flex flex-wrap items-center gap-2">
                 <span>{CLOUDFLARE_POLICY_EFFECT_MAP[policy.effect]}</span>
                 <Badge variant="neutral">{getScopeLabel(policy.scope, policy.zoneIds)}</Badge>
-                <span className="text-mineshaft-300">
+                <span className="text-muted">
                   {getPermissionGroupLabel(policy.permissionGroupId)}
                 </span>
               </div>
-            </GenericFieldLabel>
+            </ReviewField>
           ))}
         </div>
         {Boolean(parameters.allowedIps?.length) && (
-          <GenericFieldLabel label="Allowed IPs">
-            {parameters.allowedIps?.join(", ")}
-          </GenericFieldLabel>
+          <ReviewField label="Allowed IPs">{parameters.allowedIps?.join(", ")}</ReviewField>
         )}
         {Boolean(parameters.disallowedIps?.length) && (
-          <GenericFieldLabel label="Disallowed IPs">
-            {parameters.disallowedIps?.join(", ")}
-          </GenericFieldLabel>
+          <ReviewField label="Disallowed IPs">{parameters.disallowedIps?.join(", ")}</ReviewField>
         )}
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="Token ID">{tokenId}</GenericFieldLabel>
-        <GenericFieldLabel label="API Token">{apiToken}</GenericFieldLabel>
+        <ReviewField label="Token ID">{tokenId}</ReviewField>
+        <ReviewField label="API Token">{apiToken}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

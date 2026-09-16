@@ -3,12 +3,14 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
@@ -28,7 +30,7 @@ import {
   TUpdatePkiDiscoveryDTO
 } from "./pki-discovery-types";
 
-const MAX_DISCOVERIES_PER_PROJECT = 10;
+const MAX_CLOUD_DISCOVERIES = 10;
 const SCAN_RATE_LIMIT_HOURS = 24;
 
 type TPkiDiscoveryServiceFactoryDep = {
@@ -48,6 +50,7 @@ type TPkiDiscoveryServiceFactoryDep = {
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
@@ -74,6 +77,7 @@ export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryConfigDAL,
   pkiDiscoveryScanHistoryDAL,
   permissionService,
+  licenseService,
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolService,
@@ -112,11 +116,23 @@ export const pkiDiscoveryServiceFactory = ({
       ProjectPermissionSub.PkiDiscovery
     );
 
-    const existingCount = await pkiDiscoveryConfigDAL.countByProjectId(projectId);
-    if (existingCount >= MAX_DISCOVERIES_PER_PROJECT) {
+    // Creation only; existing discoveries keep scanning and stay editable.
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.pkiDiscovery) {
       throw new BadRequestError({
-        message: `Maximum number of discovery configurations (${MAX_DISCOVERIES_PER_PROJECT}) reached for this project`
+        message:
+          "Failed to create certificate discovery due to plan restriction. Upgrade plan to use certificate discovery."
       });
+    }
+
+    const appCfg = getConfig();
+    if (appCfg.isCloud) {
+      const existingCount = await pkiDiscoveryConfigDAL.countByProjectId(projectId);
+      if (existingCount >= MAX_CLOUD_DISCOVERIES) {
+        throw new BadRequestError({
+          message: `Maximum number of discovery configurations (${MAX_CLOUD_DISCOVERIES}) reached`
+        });
+      }
     }
 
     validateTargetConfigForType(discoveryType, targetConfig);

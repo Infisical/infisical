@@ -6,10 +6,12 @@ import { seedData1 } from "@app/db/seed-data";
 // Several auth specs flip org-wide flags on the *shared* seeded org and undo it
 // in afterAll:
 //
-//   auth-mfa.spec.ts               enforceMfa
-//   auth-signup-sso-enforced.spec  authEnforced
-//   scim.spec.ts                   scimEnabled
-//   auth-idp-attacks.spec.ts       scimEnabled
+//   auth-mfa.spec.ts                        enforceMfa
+//   auth-signup-sso-enforced.spec           authEnforced
+//   scim.spec.ts                            scimEnabled
+//   auth-idp-attacks.spec.ts                scimEnabled
+//   privilege-boundary-removal.spec.ts      shouldUseNewPrivilegeSystem
+//   membership-downgrade-boundary.spec.ts   shouldUseNewPrivilegeSystem
 //
 // Those afterAll hooks don't run when a file dies hard — a worker OOM or a
 // file-level timeout — and a leaked flag then breaks every later spec that logs
@@ -17,17 +19,19 @@ import { seedData1 } from "@app/db/seed-data";
 //
 // Test files run sequentially in a single fork, so resetting the flags at the
 // start of every file makes each one self-healing regardless of how its
-// predecessor ended. All three columns default to false in the schema, so this
-// restores the seeded baseline rather than inventing one.
+// predecessor ended. Each value below is that column's schema default, so this
+// restores the seeded baseline rather than inventing one. Note that
+// shouldUseNewPrivilegeSystem defaults to true, unlike the three auth flags.
 //
 // This runs before any hook the spec itself registers, so a spec that wants a
-// flag on still gets it. If that ordering ever changed, the affected spec would
-// fail outright rather than silently skip its setup.
+// different value still gets it. If that ordering ever changed, the affected
+// spec would fail outright rather than silently skip its setup.
 beforeAll(async () => {
   const db = (globalThis as unknown as { testDb: Knex }).testDb;
   await db(TableName.Organization).where({ id: seedData1.organization.id }).update({
     enforceMfa: false,
     authEnforced: false,
-    scimEnabled: false
+    scimEnabled: false,
+    shouldUseNewPrivilegeSystem: true
   });
 });

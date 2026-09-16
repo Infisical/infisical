@@ -13,7 +13,8 @@ const RouteComponent = withPermission(
   },
   {
     action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.ProjectTemplates
+    subject: OrgPermissionSubjects.ProjectTemplates,
+    accessRestrictedMode: "dialog"
   }
 );
 

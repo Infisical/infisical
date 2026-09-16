@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Check, Clock, ShieldCheck, X } from "lucide-react";
+import { Check, Clock, KeyRound, ShieldAlert, ShieldCheck, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   TextArea,
   Tooltip,
   TooltipContent,
@@ -19,6 +18,7 @@ import { useUser } from "@app/context";
 import {
   PamAccessRequestDecision,
   PamAccessRequestStatus,
+  PamAccessType,
   useReviewPamAccessRequest,
   useRevokePamAccessRequest
 } from "@app/hooks/api/pam";
@@ -93,7 +93,7 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
         isOpen={isRevokeConfirmOpen}
         onChange={setIsRevokeConfirmOpen}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this user's approved access? Any active session using it will be terminated immediately."
+        subTitle="Are you sure you want to revoke this user's approved access?"
         deleteKey="revoke"
         buttonText="Revoke"
         onDeleteApproved={handleRevoke}
@@ -122,6 +122,13 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
             ? { label: "Actor", value: "Machine Identity" }
             : { label: "Email", value: request?.requesterEmail ?? "-" },
           { label: "Folder", value: request?.folderName ?? "-" },
+          {
+            label: "Grants",
+            value:
+              request?.accessType === PamAccessType.Credential
+                ? "Credential access"
+                : "Session access"
+          },
           ...(request?.host ? [{ label: "Host", value: request.host }] : []),
           {
             label: "Requested At",
@@ -138,86 +145,109 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
           { label: "Reason", value: requestData?.reason || "No reason provided" }
         ]}
       >
-        <Tabs defaultValue="review" className="flex h-full flex-col">
-          <TabsList variant="pam" className="shrink-0 bg-popover">
-            <TabsTrigger value="review">
-              <Check className="size-4" />
-              Review
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="review" className="m-0 flex flex-1 flex-col p-6">
-            <div className="flex flex-1 flex-col gap-6">
-              {isPending && (
-                <div>
-                  <p className="mb-2 text-sm font-medium text-foreground">Approval comment</p>
-                  <TextArea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    rows={4}
-                    placeholder="Optional context for the requester"
-                  />
-                  <p className="mt-1.5 text-xs text-muted">
-                    Visible to the requester and recorded in audit logs
+        <div className="flex h-full flex-1 flex-col p-6">
+          <div className="flex flex-1 flex-col gap-6">
+            {request?.isBreakGlass && (
+              <div className="flex gap-2.5 rounded-md border border-danger/40 bg-danger/5 p-4">
+                <ShieldAlert className="mt-0.5 size-4 shrink-0 text-danger" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    Approval bypassed with break-glass
                   </p>
+                  <p className="mt-1 text-xs text-muted">
+                    {request.requesterName} granted themselves this access without waiting for an
+                    approver.
+                  </p>
+                  {request.bypassReason && (
+                    <p className="mt-2 text-xs text-foreground">
+                      <span className="text-muted">Reason:</span> {request.bypassReason}
+                    </p>
+                  )}
                 </div>
-              )}
-
-              <div>
-                <p className="mb-2 text-sm font-medium text-foreground">Access duration</p>
-                <div className="flex items-center gap-2 rounded-md border border-border bg-container px-3 py-2.5 text-sm text-foreground">
-                  <Clock className="size-4 text-muted" />
-                  {formatDuration(requestData?.duration)}
-                </div>
-              </div>
-
-              {!isPending && !canRevoke && (
-                <p className="text-sm text-muted">
-                  This request has been {status.label.toLowerCase()} and can no longer be actioned.
-                </p>
-              )}
-            </div>
-
-            {(isPending || canRevoke) && (
-              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-                {isPending && (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
-                      isPending={reviewMutation.isPending}
-                    >
-                      <X className="mr-1.5 size-4" />
-                      Deny
-                    </Button>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <Button
-                            variant="pam"
-                            onClick={() => handleReview(PamAccessRequestDecision.Approved)}
-                            isPending={reviewMutation.isPending}
-                            isDisabled={isOwnRequest}
-                          >
-                            <Check className="mr-1.5 size-4" />
-                            Approve
-                          </Button>
-                        </div>
-                      </TooltipTrigger>
-                      {isOwnRequest && (
-                        <TooltipContent>You cannot approve your own request</TooltipContent>
-                      )}
-                    </Tooltip>
-                  </>
-                )}
-                {canRevoke && (
-                  <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
-                    Revoke Access
-                  </Button>
-                )}
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+
+            {isPending && (
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">Approval comment</p>
+                <TextArea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={4}
+                  placeholder="Optional context for the requester"
+                />
+                <p className="mt-1.5 text-xs text-muted">
+                  Visible to the requester and recorded in audit logs
+                </p>
+              </div>
+            )}
+
+            {request?.accessType === PamAccessType.Credential && (
+              <Alert variant="warning">
+                <KeyRound />
+                <AlertTitle>Approving reveals the stored credential</AlertTitle>
+                <AlertDescription>
+                  The requester will be able to read this account&apos;s password or key directly
+                  for the duration below, outside a recorded session.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-foreground">Access duration</p>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-container px-3 py-2.5 text-sm text-foreground">
+                <Clock className="size-4 text-muted" />
+                {formatDuration(requestData?.duration)}
+              </div>
+            </div>
+
+            {!isPending && !canRevoke && (
+              <p className="text-sm text-muted">
+                This request has been {status.label.toLowerCase()} and can no longer be actioned.
+              </p>
+            )}
+          </div>
+
+          {(isPending || canRevoke) && (
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+              {isPending && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleReview(PamAccessRequestDecision.Rejected)}
+                    isPending={reviewMutation.isPending}
+                  >
+                    <X className="mr-1.5 size-4" />
+                    Deny
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Button
+                          variant="pam"
+                          onClick={() => handleReview(PamAccessRequestDecision.Approved)}
+                          isPending={reviewMutation.isPending}
+                          isDisabled={isOwnRequest}
+                        >
+                          <Check className="mr-1.5 size-4" />
+                          Approve
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {isOwnRequest && (
+                      <TooltipContent>You cannot approve your own request</TooltipContent>
+                    )}
+                  </Tooltip>
+                </>
+              )}
+              {canRevoke && (
+                <Button variant="danger" onClick={() => setIsRevokeConfirmOpen(true)}>
+                  Revoke Access
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </PamDetailSheet>
     </>
   );

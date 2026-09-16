@@ -6,7 +6,7 @@ import { SplunkProviderFactory } from "./splunk-provider-factory";
 import { TSplunkProviderCredentials } from "./splunk-provider-types";
 
 const { sentRequests } = vi.hoisted(() => ({
-  sentRequests: [] as { body: string; contentType: string }[]
+  sentRequests: [] as { body: string; contentType: string; url: string }[]
 }));
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
@@ -18,9 +18,17 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
-// The real helper resolves the hostname to check it isn't internal, which needs DNS.
-vi.mock("../audit-log-stream-fns", () => ({
-  blockAuditLogStreamInternalIps: vi.fn(async () => undefined)
+// Only safeRequest's URL validation is stubbed, because the real one resolves DNS. The stub still
+// dispatches through the axios instance below, so the on-wire assertions stay on real behaviour.
+vi.mock("@app/lib/validator", () => ({
+  safeRequest: {
+    post: async (url: string, data: unknown, options: Record<string, unknown> = {}) => {
+      const { allowPrivateIps, ...axiosOpts } = options;
+      const { request } = await import("@app/lib/config/request");
+
+      return request.request({ ...axiosOpts, method: "POST", url, data });
+    }
+  }
 }));
 
 // A real axios instance with a capturing adapter, because the adapter receives `config.data`
@@ -35,7 +43,8 @@ vi.mock("@app/lib/config/request", async () => {
       adapter: async (config) => {
         sentRequests.push({
           body: config.data as string,
-          contentType: String(config.headers["Content-Type"])
+          contentType: String(config.headers["Content-Type"]),
+          url: String(config.url)
         });
 
         return { data: {}, status: 200, statusText: "OK", headers: {}, config };
@@ -79,7 +88,44 @@ const readConcatenatedJson = (raw: string): Record<string, unknown>[] => {
 
 const CREDENTIALS: TSplunkProviderCredentials = { hostname: "hec.example.com", token: "hec-token" };
 
-const buildLog = (idx: number) => ({ id: `log-${idx}`, event: { type: "get-secrets" } }) as unknown as TAuditLogs;
+// createdAt is a string, not a Date: the payload reaches a provider after a jsonb round trip
+// through the outbox, so that is the shape production actually delivers.
+const buildLog = (idx: number) =>
+  ({
+    id: `log-${idx}`,
+    event: { type: "get-secrets" },
+    createdAt: new Date(Date.UTC(2026, 5, 11, 22, 7, 30, 732) + idx * 1_000).toISOString()
+  }) as unknown as TAuditLogs;
+
+describe("SplunkProviderFactory HEC port", () => {
+  beforeEach(() => {
+    sentRequests.length = 0;
+  });
+
+  // Credentials stored before the port field existed decrypt without one, so undefined has to
+  // keep resolving to 8088 or every pre-existing self-managed stream breaks.
+  test.each([
+    ["no port", undefined, "https://hec.example.com:8088/services/collector/event"],
+    ["port 8088", 8088, "https://hec.example.com:8088/services/collector/event"],
+    ["port 443, as paid Splunk Cloud stacks require", 443, "https://hec.example.com:443/services/collector/event"],
+    ["a custom port", 19088, "https://hec.example.com:19088/services/collector/event"]
+  ])("posts logs to %s", async (_label, port, expected) => {
+    await SplunkProviderFactory().batchStreamLog({
+      credentials: { ...CREDENTIALS, port },
+      auditLogs: [buildLog(0)]
+    });
+
+    expect(sentRequests.map((entry) => entry.url)).toEqual([expected]);
+  });
+
+  test("validateCredentials pings the configured port", async () => {
+    await SplunkProviderFactory().validateCredentials({
+      credentials: { ...CREDENTIALS, port: 443 }
+    });
+
+    expect(sentRequests.map((entry) => entry.url)).toEqual(["https://hec.example.com:443/services/collector/event"]);
+  });
+});
 
 describe("SplunkProviderFactory batchStreamLog", () => {
   beforeEach(() => {
@@ -115,5 +161,50 @@ describe("SplunkProviderFactory batchStreamLog", () => {
       expect(entry).toMatchObject({ source: "infisical", sourcetype: "_json", host: "app.infisical.com" });
       expect(typeof entry.time).toBe("number");
     });
+  });
+
+  // HEC only reads the event timestamp from `time`, and wants UNIX `<sec>.<ms>` (its own
+  // example is 1433188255.500). 1781215650.732 is 2026-06-11T22:07:30.732Z, buildLog(0)'s
+  // createdAt. Both input shapes are covered because production produces both: a Date on the
+  // live path, an ISO string once the payload has been through the outbox's jsonb column.
+  test.each([
+    ["an ISO string", (idx: number) => buildLog(idx)],
+    [
+      "a Date",
+      (idx: number) =>
+        ({
+          ...buildLog(idx),
+          createdAt: new Date(buildLog(idx).createdAt as unknown as string)
+        }) as unknown as TAuditLogs
+    ]
+  ])("stamps HEC time from the event's createdAt (%s), not the time of delivery", async (_label, build) => {
+    const auditLogs = [build(0), build(1)];
+
+    await SplunkProviderFactory().batchStreamLog({ credentials: CREDENTIALS, auditLogs });
+
+    const events = readConcatenatedJson(sentRequests[0].body);
+    expect(events.map((entry) => entry.time)).toEqual([1781215650.732, 1781215651.732]);
+  });
+
+  test("ignores an unparseable createdAt rather than emitting a null timestamp", async () => {
+    const before = Date.now() / 1000;
+    const auditLog = { id: "log-x", event: {}, createdAt: "not-a-date" } as unknown as TAuditLogs;
+
+    await SplunkProviderFactory().batchStreamLog({ credentials: CREDENTIALS, auditLogs: [auditLog] });
+
+    const [entry] = readConcatenatedJson(sentRequests[0].body);
+    expect(typeof entry.time).toBe("number");
+    expect(entry.time as number).toBeGreaterThanOrEqual(before);
+  });
+
+  test("falls back to the current time when the log carries no createdAt", async () => {
+    const before = Date.now() / 1000;
+    const auditLog = { id: "log-x", event: { type: "get-secrets" } } as unknown as TAuditLogs;
+
+    await SplunkProviderFactory().batchStreamLog({ credentials: CREDENTIALS, auditLogs: [auditLog] });
+
+    const [entry] = readConcatenatedJson(sentRequests[0].body);
+    expect(entry.time as number).toBeGreaterThanOrEqual(before);
+    expect(entry.time as number).toBeLessThanOrEqual(Date.now() / 1000);
   });
 });

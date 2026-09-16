@@ -1,6 +1,6 @@
 import { HoneyTokenForm } from "@app/components/honey-tokens/forms";
 import { HoneyTokenModalHeader } from "@app/components/honey-tokens/HoneyTokenModalHeader";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v3";
+import { Sheet, SheetContent, SheetHeader } from "@app/components/v3";
 import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
@@ -14,13 +14,11 @@ export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props)
   if (!honeyToken) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            <HoneyTokenModalHeader type={honeyToken.type as HoneyTokenType} isEdit />
-          </DialogTitle>
-        </DialogHeader>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-5xl">
+        <SheetHeader className="border-b">
+          <HoneyTokenModalHeader type={honeyToken.type as HoneyTokenType} isEdit />
+        </SheetHeader>
         <HoneyTokenForm
           onComplete={() => onOpenChange(false)}
           onCancel={() => onOpenChange(false)}
@@ -29,7 +27,7 @@ export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props)
           secretPath={honeyToken.folder.path}
           environment={honeyToken.environment.slug}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 };

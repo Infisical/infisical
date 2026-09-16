@@ -6,7 +6,13 @@ import { pkiDescriptionSchema } from "@app/services/certificate-common/certifica
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
-import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  BaseHealthCheckTestSchema,
+  HostCommandSchema,
+  PkiSyncSchema,
+  PkiSyncTargetHostSchema,
+  PkiSyncTargetPortSchema
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { WINDOWS_SERVER_NAMING } from "./windows-server-pki-sync-constants";
 
@@ -50,7 +56,20 @@ export const WindowsServerPkiSyncConfigSchema = z.object({
     .refine((p) => !WINDOWS_PATH_TRAVERSAL.test(p), { message: "Destination path must not contain '..'" })
     .refine((p) => !WINDOWS_DOUBLE_SEPARATOR.test(p), {
       message: "Destination path must not contain consecutive path separators"
-    })
+    }),
+  host: PkiSyncTargetHostSchema,
+  port: PkiSyncTargetPortSchema,
+  sslEnabled: z
+    .boolean()
+    .optional()
+    .describe("Reach the host over HTTPS WinRM instead of HTTP with NTLM message encryption."),
+  sslRejectUnauthorized: z.boolean().optional().describe("Verify the host's WinRM certificate when using HTTPS."),
+  sslCertificate: z
+    .string()
+    .trim()
+    .max(8192)
+    .optional()
+    .describe("CA certificate (PEM) used to verify a self-signed WinRM HTTPS listener (HTTPS only).")
 });
 
 export const WindowsServerPkiSyncOptionsSchema = z.object({
@@ -76,7 +95,8 @@ export const WindowsServerPkiSyncOptionsSchema = z.object({
     )
     .max(20)
     .optional(),
-  postSyncCommand: PostSyncCommandSchema,
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
@@ -145,7 +165,13 @@ export const UpdateWindowsServerPkiSyncSchema = z.object({
 export const WindowsServerPkiSyncListItemSchema = z.object({
   name: z.literal("Windows Server"),
   connection: z.literal(AppConnection.WinRM),
+  additionalConnections: z.literal(AppConnection.LDAP).array().optional(),
   destination: z.literal(PkiSync.WindowsServer),
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)
+});
+
+export const WindowsServerPkiSyncHealthCheckTestSchema = BaseHealthCheckTestSchema.extend({
+  destinationConfig: WindowsServerPkiSyncConfigSchema,
+  syncOptions: WindowsServerPkiSyncOptionsSchema.partial()
 });

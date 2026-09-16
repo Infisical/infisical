@@ -129,7 +129,7 @@ export const DependenciesSection = ({ accountId }: { accountId: string }) => {
         {deps.length === 1 ? "dependency" : "dependencies"} across {machineCount}{" "}
         {machineCount === 1 ? "machine" : "machines"}.
       </p>
-      <Table className="w-full table-fixed">
+      <Table className="w-full">
         <TableHeader>
           <TableRow>
             <TableHead className="w-8" />

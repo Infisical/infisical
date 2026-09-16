@@ -43,15 +43,17 @@ const ResourceRow = ({
   name,
   subtitle,
   to,
-  params
+  params,
+  search
 }: {
   name: string;
   subtitle: string;
   to: string;
   params: Record<string, string>;
+  search?: Record<string, unknown>;
 }) => (
   <Item asChild variant="outline" size="xs">
-    <Link to={to as "/"} params={params}>
+    <Link to={to as "/"} params={params} search={search as never}>
       <ItemContent>
         <ItemTitle>{name}</ItemTitle>
         <ItemDescription className="text-mineshaft-400">{subtitle}</ItemDescription>
@@ -132,12 +134,12 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                         key={d.id}
                         name={d.name}
                         subtitle={`${d.environmentSlug} · ${d.projectName}`}
-                        to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+                        to="/organizations/$orgId/projects/secret-management/$projectId/overview"
                         params={{
                           orgId: currentOrg.id,
-                          projectId: d.projectId,
-                          envSlug: d.environmentSlug
+                          projectId: d.projectId
                         }}
+                        search={{ environments: [d.environmentSlug] }}
                       />
                     ))}
                   </ItemGroup>
