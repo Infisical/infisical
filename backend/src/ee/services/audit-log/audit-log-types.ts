@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -31,10 +32,18 @@ import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/t
 import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
+import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyAlgorithm,
+  CertKeyUsage,
+  CrlReason
+} from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
+import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
@@ -97,7 +106,8 @@ export type TCreateAuditLogDTO = {
     | ScepAccountActor
     | GatewayActor
     | RelayActor
-    | KmipServerActor;
+    | KmipServerActor
+    | AgentVaultProxyActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -586,6 +596,9 @@ export enum EventType {
   PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
   PKI_SYNC_HEALTH_CHECK = "pki-sync-health-check",
   PKI_SYNC_TEST_HEALTH_CHECK = "pki-sync-test-health-check",
+  PKI_SYNC_LINK_CERTIFICATES = "pki-sync-link-certificates",
+  PKI_SYNC_UNLINK_CERTIFICATES = "pki-sync-unlink-certificates",
+  PKI_SYNC_SKIP_CERTIFICATE = "pki-sync-skip-certificate",
   PKI_SYNC_SET_DEFAULT_CERTIFICATE = "pki-sync-set-default-certificate",
   PKI_SYNC_CLEAR_DEFAULT_CERTIFICATE = "pki-sync-clear-default-certificate",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
@@ -752,6 +765,25 @@ export enum EventType {
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
   PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
   PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
+  AGENT_VAULT_ACCESS_BUNDLE_CREATE = "agent-vault-access-bundle-create",
+  AGENT_VAULT_ACCESS_BUNDLE_UPDATE = "agent-vault-access-bundle-update",
+  AGENT_VAULT_ACCESS_BUNDLE_DELETE = "agent-vault-access-bundle-delete",
+  AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
+  AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
+  AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
+  AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
+  AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
+  AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD = "agent-vault-access-bundle-member-add",
+  AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE = "agent-vault-access-bundle-member-remove",
+  AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
+  AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
+  AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
+  AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
+  AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
+  AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -850,6 +882,7 @@ export enum EventType {
   EXTERNAL_MIGRATION_CREATE = "external-migration-create",
   EXTERNAL_MIGRATION_UPDATE = "external-migration-update",
   EXTERNAL_MIGRATION_DELETE = "external-migration-delete",
+  IMPORT_VAULT_SECRETS = "import-vault-secrets",
 
   // OAuth 2.0 authorization server clients
   CREATE_OAUTH_CLIENT = "create-oauth-client",
@@ -868,6 +901,7 @@ export enum EventType {
   GATEWAY_CREATE = "gateway-create",
   GATEWAY_ENROLLMENT_TOKEN_CREATE = "gateway-enrollment-token-create",
   GATEWAY_ENROLL = "gateway-enroll",
+  GATEWAY_CONNECT = "gateway-connect",
 
   // Resource Auth Methods
   RESOURCE_AUTH_METHOD_LOGIN = "resource-auth-method-login",
@@ -928,7 +962,8 @@ export const ACTOR_TYPE_TO_METADATA_ID_KEY: Partial<Record<ActorType, string>> =
   [ActorType.SCEP_ACCOUNT]: "profileId",
   [ActorType.GATEWAY]: "gatewayId",
   [ActorType.RELAY]: "relayId",
-  [ActorType.KMIP_SERVER]: "kmipServerId"
+  [ActorType.KMIP_SERVER]: "kmipServerId",
+  [ActorType.AGENT_VAULT_PROXY]: "agentVaultProxyId"
 };
 
 export const filterableSecretEvents: EventType[] = [
@@ -1005,6 +1040,10 @@ interface KmipServerActorMetadata {
   kmipServerId: string;
 }
 
+interface AgentVaultProxyActorMetadata {
+  agentVaultProxyId: string;
+}
+
 export interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -1074,6 +1113,11 @@ export interface KmipServerActor {
   metadata: KmipServerActorMetadata;
 }
 
+export interface AgentVaultProxyActor {
+  type: ActorType.AGENT_VAULT_PROXY;
+  metadata: AgentVaultProxyActorMetadata;
+}
+
 export type Actor =
   | UserActor
   | ServiceActor
@@ -1087,7 +1131,8 @@ export type Actor =
   | ScepAccountActor
   | GatewayActor
   | RelayActor
-  | KmipServerActor;
+  | KmipServerActor
+  | AgentVaultProxyActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -3095,6 +3140,12 @@ interface ImportCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    certificateProfileId?: string;
+    profileName?: string;
+    caId?: string;
+    caName?: string;
   };
 }
 
@@ -3121,6 +3172,8 @@ interface GetCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3130,6 +3183,8 @@ interface DeleteCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3139,6 +3194,9 @@ interface RevokeCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    revocationReason?: CrlReason;
   };
 }
 
@@ -3159,6 +3217,8 @@ interface GetCertBody {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3168,6 +3228,8 @@ interface GetCertPrivateKey {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3177,6 +3239,8 @@ interface GetCertBundle {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 interface GetCertPkcs12 {
@@ -3185,6 +3249,8 @@ interface GetCertPkcs12 {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3194,6 +3260,7 @@ interface CreatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     applicationId?: string;
+    applicationName?: string;
     name: string;
     alertBefore?: string;
     eventType: PkiAlertEventType;
@@ -3205,6 +3272,7 @@ interface GetPkiAlert {
   metadata: {
     pkiAlertId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3214,6 +3282,7 @@ interface UpdatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     applicationId?: string;
+    applicationName?: string;
     name?: string;
     alertBefore?: string;
     eventType?: PkiAlertEventType;
@@ -3225,6 +3294,7 @@ interface DeletePkiAlert {
   metadata: {
     pkiAlertId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3292,6 +3362,7 @@ interface CreateCertificateInventoryView {
     columns?: string[];
     isShared?: boolean;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3304,6 +3375,7 @@ interface UpdateCertificateInventoryView {
     columns?: string[];
     isShared?: boolean;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3313,6 +3385,7 @@ interface DeleteCertificateInventoryView {
     viewId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3381,10 +3454,16 @@ interface AutomatedRenewCertificate {
   type: EventType.AUTOMATED_RENEW_CERTIFICATE;
   metadata: {
     certificateId: string;
+    newCertificateId?: string;
+    certificateRequestId?: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     profileId: string;
     renewBeforeDays: string;
     profileName: string;
+    status: CertificateRequestStatus;
+    serialNumber?: string;
   };
 }
 
@@ -3393,6 +3472,8 @@ interface AutomatedRenewCertificateFailed {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     profileId: string;
     renewBeforeDays: string;
     profileName: string;
@@ -3570,6 +3651,7 @@ interface CreateCertificatePolicy {
         certificatePolicyId: string;
         name: string;
         projectId: string;
+        customExtensionOids?: string[];
       }
     | {
         certificatePolicyId: string;
@@ -3589,6 +3671,7 @@ interface UpdateCertificatePolicy {
     | {
         certificatePolicyId: string;
         name: string;
+        customExtensionOids?: string[];
       }
     | {
         certificatePolicyId: string;
@@ -3696,6 +3779,7 @@ interface AttachPkiApplicationProfiles {
   type: EventType.ATTACH_PKI_APPLICATION_PROFILES;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     profileIds: string[];
   };
 }
@@ -3704,6 +3788,7 @@ interface DetachPkiApplicationProfile {
   type: EventType.DETACH_PKI_APPLICATION_PROFILE;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     profileId: string;
   };
 }
@@ -3767,6 +3852,7 @@ interface GetPkiApplicationEnrollment {
   type: EventType.GET_PKI_APPLICATION_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3775,6 +3861,7 @@ interface SetPkiApplicationApiEnrollment {
   type: EventType.SET_PKI_APPLICATION_API_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     autoRenew: boolean;
     renewBeforeDays: number | null;
@@ -3785,6 +3872,7 @@ interface ClearPkiApplicationApiEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_API_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3793,6 +3881,7 @@ interface SetPkiApplicationEstEnrollment {
   type: EventType.SET_PKI_APPLICATION_EST_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     disableBootstrapCaValidation: boolean;
   };
@@ -3802,6 +3891,7 @@ interface ClearPkiApplicationEstEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_EST_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3810,6 +3900,7 @@ interface SetPkiApplicationAcmeEnrollment {
   type: EventType.SET_PKI_APPLICATION_ACME_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     skipDnsOwnershipVerification: boolean;
     skipEabBinding: boolean;
@@ -3820,6 +3911,7 @@ interface ClearPkiApplicationAcmeEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_ACME_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3828,6 +3920,7 @@ interface RevealPkiApplicationAcmeEabSecret {
   type: EventType.REVEAL_PKI_APPLICATION_ACME_EAB_SECRET;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3836,6 +3929,7 @@ interface RotatePkiApplicationAcmeEabSecret {
   type: EventType.ROTATE_PKI_APPLICATION_ACME_EAB_SECRET;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3844,6 +3938,7 @@ interface SetPkiApplicationScepEnrollment {
   type: EventType.SET_PKI_APPLICATION_SCEP_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     challengeType: string;
     signRaWithCa: boolean;
@@ -3856,6 +3951,7 @@ interface ClearPkiApplicationScepEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3987,9 +4083,13 @@ interface IssueCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     certificateId: string;
+    certificateRequestId: string;
     commonName: string;
     profileName: string;
+    status: CertificateRequestStatus;
+    serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3998,9 +4098,13 @@ interface SignCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     certificateId: string;
+    certificateRequestId: string;
     profileName: string;
     commonName: string;
+    status: CertificateRequestStatus;
+    serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4008,8 +4112,13 @@ interface OrderCertificateFromProfile {
   type: EventType.ORDER_CERTIFICATE_FROM_PROFILE;
   metadata: {
     certificateProfileId: string;
+    certificateRequestId: string;
+    commonName: string;
     profileName: string;
+    status: CertificateRequestStatus;
+    serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4029,8 +4138,12 @@ interface RenewCertificate {
   metadata: {
     originalCertificateId: string;
     newCertificateId: string;
+    certificateRequestId: string;
     profileName: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
     changedAttributes: TRenewalAuditChange[];
   };
@@ -4548,6 +4661,7 @@ interface GetPkiSyncEvent {
     destination: string;
     syncId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4559,6 +4673,7 @@ interface GetPkiSyncCertificatesEvent {
     certificateIds: string[];
     destination: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4569,12 +4684,14 @@ interface CreatePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    applicationName?: string;
     connectionId?: string;
     connectionName?: string;
     targetHost?: string;
     hasCredentials?: boolean;
     hasPostSyncCommand?: boolean;
     hasHealthCheckCommand?: boolean;
+    hasFilters?: boolean;
   };
 }
 
@@ -4584,12 +4701,14 @@ interface UpdatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
     destination?: string;
     connectionId?: string;
     connectionName?: string;
     targetHost?: string;
     hasPostSyncCommand?: boolean;
     hasHealthCheckCommand?: boolean;
+    hasFilters?: boolean;
   };
 }
 
@@ -4600,6 +4719,7 @@ interface DeletePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4657,6 +4777,44 @@ interface PkiSyncRemoveCertificatesEvent {
   };
 }
 
+interface PkiSyncLinkCertificatesEvent {
+  type: EventType.PKI_SYNC_LINK_CERTIFICATES;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    count: number;
+    certificates: { id: string; commonName: string }[];
+    applicationId?: string;
+    applicationName?: string;
+  };
+}
+
+interface PkiSyncUnlinkCertificatesEvent {
+  type: EventType.PKI_SYNC_UNLINK_CERTIFICATES;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    count: number;
+    certificates: { id: string; commonName: string }[];
+    removedFromDestination?: boolean;
+    applicationId?: string;
+    applicationName?: string;
+  };
+}
+
+interface PkiSyncSkipCertificateEvent {
+  type: EventType.PKI_SYNC_SKIP_CERTIFICATE;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    certificateId: string;
+    commonName: string;
+    reason: string;
+    applicationId?: string;
+    applicationName?: string;
+  };
+}
+
 interface PkiSyncSetDefaultCertificateEvent {
   type: EventType.PKI_SYNC_SET_DEFAULT_CERTIFICATE;
   metadata: {
@@ -4664,6 +4822,7 @@ interface PkiSyncSetDefaultCertificateEvent {
     name: string;
     certificateId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4673,6 +4832,7 @@ interface PkiSyncClearDefaultCertificateEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4882,6 +5042,7 @@ interface UpdatePkiSignerApprovalPolicyEvent {
   type: EventType.UPDATE_PKI_SIGNER_APPROVAL_POLICY;
   metadata: {
     signerId: string;
+    name: string;
     stepCount: number;
   };
 }
@@ -4890,7 +5051,8 @@ interface PkiSignerRequestToSignEvent {
   type: EventType.PKI_SIGNER_REQUEST_TO_SIGN;
   metadata: {
     signerId: string;
-    requestId?: string;
+    name: string;
+    approvalRequestId?: string;
   };
 }
 
@@ -4898,7 +5060,8 @@ interface PkiSignerPreApproveSigningEvent {
   type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING;
   metadata: {
     signerId: string;
-    requestId?: string;
+    name: string;
+    approvalRequestId?: string;
     granteeUserId?: string;
     granteeIdentityId?: string;
   };
@@ -4908,7 +5071,8 @@ interface PkiSignerRevokeRequestEvent {
   type: EventType.PKI_SIGNER_REVOKE_REQUEST;
   metadata: {
     signerId: string;
-    requestId: string;
+    name: string;
+    approvalRequestId: string;
   };
 }
 
@@ -6071,6 +6235,197 @@ interface PamWebAccessSessionTicketCreatedEvent {
   };
 }
 
+interface AgentVaultProxyRegisterEvent {
+  type: EventType.AGENT_VAULT_PROXY_REGISTER;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyTokenReissueEvent {
+  type: EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyEnrollEvent {
+  type: EventType.AGENT_VAULT_PROXY_ENROLL;
+  metadata: {
+    proxyId: string;
+    name: string;
+    rootCaFingerprint: string;
+    replacedExistingCa: boolean;
+  };
+}
+
+interface AgentVaultProxyUpdateEvent {
+  type: EventType.AGENT_VAULT_PROXY_UPDATE;
+  metadata: {
+    proxyId: string;
+    name?: string;
+    trafficPolicy?: string;
+    allowedHosts?: string | null;
+    pollInterval?: number;
+  };
+}
+
+interface AgentVaultProxyRevokeEvent {
+  type: EventType.AGENT_VAULT_PROXY_REVOKE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyDeleteEvent {
+  type: EventType.AGENT_VAULT_PROXY_DELETE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultAccessBundleCreateEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
+  metadata: {
+    accessBundleId: string;
+    name: string;
+    description?: string | null;
+  };
+}
+
+interface AgentVaultAccessBundleUpdateEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    name?: string;
+    description?: string | null;
+  };
+}
+
+interface AgentVaultAccessBundleDeleteEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE;
+  metadata: {
+    accessBundleId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultServiceCreateEvent {
+  type: EventType.AGENT_VAULT_SERVICE_CREATE;
+  metadata: {
+    accessBundleId: string;
+    serviceId: string;
+    name: string;
+    hostPattern: string;
+    credentialType: string;
+    headerName?: string;
+    headerPrefix?: string;
+  };
+}
+
+interface AgentVaultServiceUpdateEvent {
+  type: EventType.AGENT_VAULT_SERVICE_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    serviceId: string;
+    name?: string;
+    hostPattern?: string;
+    credentialType?: string;
+    headerName?: string;
+    headerPrefix?: string;
+    credentialReplaced: boolean;
+  };
+}
+
+interface AgentVaultServiceDeleteEvent {
+  type: EventType.AGENT_VAULT_SERVICE_DELETE;
+  metadata: {
+    accessBundleId: string;
+    serviceId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProductMemberAddEvent {
+  type: EventType.AGENT_VAULT_MEMBER_ADD;
+  metadata: {
+    userId?: string;
+    userName?: string;
+    groupId?: string;
+    groupName?: string;
+    identityId?: string;
+    identityName?: string;
+    role: string;
+  };
+}
+
+interface AgentVaultProductMemberUpdateEvent {
+  type: EventType.AGENT_VAULT_MEMBER_UPDATE;
+  metadata: {
+    userId?: string;
+    userName?: string;
+    groupId?: string;
+    groupName?: string;
+    identityId?: string;
+    identityName?: string;
+    role: string;
+  };
+}
+
+interface AgentVaultProductMemberRemoveEvent {
+  type: EventType.AGENT_VAULT_MEMBER_REMOVE;
+  metadata: {
+    userId?: string;
+    userName?: string;
+    groupId?: string;
+    groupName?: string;
+    identityId?: string;
+    identityName?: string;
+  };
+}
+
+interface AgentVaultAccessBundleMemberAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    memberId: string;
+    userId?: string;
+    identityId?: string;
+    groupId?: string;
+  };
+}
+
+interface AgentVaultAccessBundleMemberRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    memberId: string;
+  };
+}
+
+interface AgentVaultSessionMintEvent {
+  type: EventType.AGENT_VAULT_SESSION_MINT;
+  metadata: {
+    sessionId: string;
+    accessBundleId: string;
+    accessBundleName: string;
+    expiresAt: string | null;
+  };
+}
+
+interface AgentVaultSessionRevokeEvent {
+  type: EventType.AGENT_VAULT_SESSION_REVOKE;
+  metadata: {
+    sessionId: string;
+  };
+}
+
 interface PamAccountCreateEvent {
   type: EventType.PAM_ACCOUNT_CREATE;
   metadata: {
@@ -6250,6 +6605,8 @@ interface UpdateCertificateRenewalConfigEvent {
     certificateId: string;
     renewBeforeDays: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -6258,6 +6615,8 @@ interface UpdateCertificateMetadataEvent {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     metadata: { key: string; value: string }[];
   };
 }
@@ -6285,6 +6644,8 @@ interface DisableCertificateRenewalConfigEvent {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -6302,6 +6663,11 @@ interface GetCertificateRequestEvent {
   type: EventType.GET_CERTIFICATE_REQUEST;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    commonName?: string;
+    status?: string;
+    serialNumber?: string;
   };
 }
 
@@ -6317,6 +6683,8 @@ interface TriggerCertificateRequestValidationEvent {
   type: EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     status: string;
     orderStatus?: string;
   };
@@ -6326,6 +6694,9 @@ interface CancelCertificateRequestEvent {
   type: EventType.CANCEL_CERTIFICATE_REQUEST;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    commonName?: string;
     cancelled: boolean;
     previousStatus: string;
     previousPendingMessage: string | null;
@@ -6390,9 +6761,11 @@ interface ApprovalRequestGetEvent {
   type: EventType.APPROVAL_REQUEST_GET;
   metadata: {
     policyType: string;
-    requestId: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     status: string;
-  };
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestListEvent {
@@ -6407,35 +6780,44 @@ interface ApprovalRequestCreateEvent {
   type: EventType.APPROVAL_REQUEST_CREATE;
   metadata: {
     policyType: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     justification?: string;
     requestDuration: string;
-  };
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestApproveEvent {
   type: EventType.APPROVAL_REQUEST_APPROVE;
   metadata: {
     policyType: string;
-    requestId: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     comment?: string;
-  };
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestRejectEvent {
   type: EventType.APPROVAL_REQUEST_REJECT;
   metadata: {
     policyType: string;
-    requestId: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     comment?: string;
-  };
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestCancelEvent {
   type: EventType.APPROVAL_REQUEST_CANCEL;
   metadata: {
     policyType: string;
-    requestId: string;
-  };
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestGrantListEvent {
@@ -6561,6 +6943,7 @@ interface FinalizeAcmeOrderEvent {
   type: EventType.FINALIZE_ACME_ORDER;
   metadata: {
     orderId: string;
+    commonName: string;
     csr: string;
   };
 }
@@ -6569,6 +6952,9 @@ interface DownloadAcmeCertificateEvent {
   type: EventType.DOWNLOAD_ACME_CERTIFICATE;
   metadata: {
     orderId: string;
+    certificateId: string;
+    commonName: string;
+    serialNumber: string;
   };
 }
 
@@ -6843,6 +7229,7 @@ interface ScepDynamicChallengeGeneratedEvent {
     profileSlug: string;
     expiresAt: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -6902,6 +7289,24 @@ interface ExternalMigrationDeleteEvent {
   metadata: {
     configId: string;
     provider: string;
+  };
+}
+
+interface ImportVaultSecretsEvent {
+  type: EventType.IMPORT_VAULT_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    vaultNamespace: string;
+    mountPath: string;
+    vaultSecretPaths: string[];
+    connectionId: string;
+    keepVaultStructure: boolean;
+    status: ExternalMigrationImportStatus;
+    importedSecretCount: number;
+    approvalRequiredSecretCount: number;
+    importedPaths?: string[];
+    approvalRequiredPaths?: string[];
   };
 }
 interface CreateOauthClientEvent {
@@ -7013,6 +7418,17 @@ interface GatewayEnrollEvent {
   metadata: {
     gatewayId: string;
     name: string;
+  };
+}
+
+interface GatewayConnectEvent {
+  type: EventType.GATEWAY_CONNECT;
+  metadata: {
+    gatewayId: string;
+    name: string;
+    transports: GatewayTransport[];
+    directAddress?: string;
+    relayName?: string;
   };
 }
 
@@ -7681,6 +8097,9 @@ export type Event =
   | PkiSyncHealthCheckEvent
   | PkiSyncTestHealthCheckEvent
   | PkiSyncRemoveCertificatesEvent
+  | PkiSyncLinkCertificatesEvent
+  | PkiSyncUnlinkCertificatesEvent
+  | PkiSyncSkipCertificateEvent
   | PkiSyncSetDefaultCertificateEvent
   | PkiSyncClearDefaultCertificateEvent
   | CreatePkiDiscoveryEvent
@@ -7839,6 +8258,25 @@ export type Event =
   | PamAccountMemberRemoveEvent
   | PamAccountAccessEvent
   | PamWebAccessSessionTicketCreatedEvent
+  | AgentVaultAccessBundleCreateEvent
+  | AgentVaultAccessBundleUpdateEvent
+  | AgentVaultAccessBundleDeleteEvent
+  | AgentVaultServiceCreateEvent
+  | AgentVaultServiceUpdateEvent
+  | AgentVaultServiceDeleteEvent
+  | AgentVaultProductMemberAddEvent
+  | AgentVaultProductMemberUpdateEvent
+  | AgentVaultProductMemberRemoveEvent
+  | AgentVaultAccessBundleMemberAddEvent
+  | AgentVaultAccessBundleMemberRemoveEvent
+  | AgentVaultSessionMintEvent
+  | AgentVaultSessionRevokeEvent
+  | AgentVaultProxyRegisterEvent
+  | AgentVaultProxyTokenReissueEvent
+  | AgentVaultProxyEnrollEvent
+  | AgentVaultProxyUpdateEvent
+  | AgentVaultProxyRevokeEvent
+  | AgentVaultProxyDeleteEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
@@ -7923,6 +8361,7 @@ export type Event =
   | ExternalMigrationCreateEvent
   | ExternalMigrationUpdateEvent
   | ExternalMigrationDeleteEvent
+  | ImportVaultSecretsEvent
   | CreateOauthClientEvent
   | UpdateOauthClientEvent
   | DeleteOauthClientEvent
@@ -7935,6 +8374,7 @@ export type Event =
   | GatewayCreateEvent
   | GatewayEnrollmentTokenCreateEvent
   | GatewayEnrollEvent
+  | GatewayConnectEvent
   | ResourceAuthMethodLoginEvent
   | ResourceAuthMethodLoginFailedEvent
   | ResourceAuthMethodUpdateEvent

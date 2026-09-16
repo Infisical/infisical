@@ -127,6 +127,7 @@ export const SignupOnboardingPage = () => {
               project ? [project.id] : []
             )}
             grantPamAccess={selectedProducts.includes(ProjectType.PAM)}
+            grantAgentVaultAccess={selectedProducts.includes(ProjectType.AgentVault)}
             onComplete={() => setSection(OnboardingSection.Complete)}
           />
         );

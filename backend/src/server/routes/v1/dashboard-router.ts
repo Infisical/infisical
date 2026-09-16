@@ -37,6 +37,7 @@ import {
 } from "@app/services/secret/secret-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
 import { isSecretPathMatch, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
@@ -59,6 +60,28 @@ const SecretMetadataSearchQuerySchema = z.object({
 });
 
 export const registerDashboardRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/accessible-secrets/metadata",
+    config: { rateLimit: secretsLimit },
+    schema: {
+      operationId: "getAccessibleSecretMetadata",
+      description: "List shared secret metadata recursively without reading secret values.",
+      security: [{ bearerAuth: [] }],
+      querystring: SecretMetadataQuerySchema,
+      response: { 200: SecretMetadataResponseSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.secret.getSecretMetadata({
+        ...req.query,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
+
   server.route({
     method: "GET",
     url: "/secrets-by-metadata",

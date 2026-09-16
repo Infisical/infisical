@@ -171,7 +171,13 @@ export const ProjectTemplateEditRoleForm = ({
                     label="Name"
                     className="mb-0 flex-1"
                   >
-                    <Input {...field} autoFocus placeholder="Role name..." />
+                    <Input
+                      {...field}
+                      autoFocus
+                      placeholder="Role name..."
+                      autoComplete="off"
+                      name="project-template-role-name"
+                    />
                   </FormControl>
                 )}
               />

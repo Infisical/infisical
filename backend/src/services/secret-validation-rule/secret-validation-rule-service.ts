@@ -372,10 +372,6 @@ export const secretValidationRuleServiceFactory = ({
     return $toRecord(rule, config);
   };
 
-  /**
-   * Pass `tx` when the caller already holds a transaction, or this checks out a second connection.
-   * `${env.key}` references are expanded first, so constraints see the resolved value.
-   */
   const validateSecrets = async (
     { projectId, environment, envId, secretPath, secrets }: TValidateSecretsDTO,
     tx?: Knex

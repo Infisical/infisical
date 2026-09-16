@@ -8,7 +8,7 @@ import { Play, Radar, Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
   Button,
@@ -106,7 +106,12 @@ const NameField = ({ control }: { control: Control<{ name: string }> }) => (
       <Field>
         <FieldLabel>Name</FieldLabel>
         <FieldContent>
-          <Input {...field} isError={!!fieldState.error} />
+          <Input
+            {...field}
+            isError={!!fieldState.error}
+            autoComplete="off"
+            name="pam-discovery-source-name"
+          />
           <FieldError>{fieldState.error?.message}</FieldError>
         </FieldContent>
       </Field>

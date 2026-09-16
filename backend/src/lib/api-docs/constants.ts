@@ -101,6 +101,11 @@ export enum ApiDocsTags {
   PamMemberships = "PAM Memberships",
   PamRoles = "PAM Roles",
   PamDiscovery = "PAM Discovery",
+  AgentVault = "Agent Vault",
+  AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultSessions = "Agent Vault Sessions",
+  AgentVaultProxies = "Agent Vault Proxies",
+  AgentVaultMemberships = "Agent Vault Memberships",
   KmipServers = "KMIP Servers"
 }
 
@@ -1497,6 +1502,24 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  SECRET_METADATA_LIST: {
+    projectId: "The ID of the project containing the secrets.",
+    environment: "The slug of the environment containing the secrets.",
+    secretPath: "The root folder to list shared secret metadata from, including all descendant folders.",
+    cursor:
+      "The opaque nextCursor returned by the previous page, valid for five minutes for the same caller and query. Omit it to restart.",
+    limit: "The maximum number of accessible shared secrets to return.",
+    secrets: "Shared secrets the caller can describe. Values, comments, tags and custom metadata are not returned.",
+    nextCursor:
+      "An opaque continuation cursor, or null when scanning is complete. Continue even when the page is empty or shorter than the limit.",
+    id: "The secret ID.",
+    secretKey: "The secret key.",
+    path: "The absolute folder path containing the secret.",
+    type: "The secret type. Only shared secrets are returned.",
+    isHoneyTokenSecret: "Whether the secret belongs to a honey token.",
+    isRotatedSecret: "Whether the secret is managed by a rotation.",
+    secretValueHidden: "Whether the caller lacks permission to read this secret's value. No values are returned."
+  },
   SECRET_OVERVIEW_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",
     environments:
@@ -2239,6 +2262,8 @@ export const CERTIFICATES = {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    externalMetadata:
+      "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
       "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
   },
@@ -2278,7 +2303,12 @@ export const CERTIFICATES = {
     chainPem: "Optional PEM-encoded chain of intermediate certificates.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
+    profileId:
+      "The certificate profile that will manage this certificate's lifecycle. The certificate must satisfy the profile's certificate policy, or the request is rejected with a 400 naming the attributes that failed. Omit to track the certificate without renewal, reissue or revocation.",
+    externalMetadata:
+      'Identifies this certificate at the provider that issued it. Required when the chosen profile issues from an external certificate authority. For DigiCert, pass the CertCentral order ID as { type: "digicert", orderId: 2081714 }.',
 
+    certificateId: "The ID of the imported certificate.",
     certificate: "The imported certificate.",
     certificateChain:
       "The certificate chain associated with the imported certificate. Returned only when a chain was supplied at import.",
@@ -2294,6 +2324,16 @@ const domainComponentRule = (rule: string) =>
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
 export const CERTIFICATE_POLICIES = {
+  CUSTOM_EXTENSION_RULES:
+    "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
+  CUSTOM_EXTENSION_RULE: {
+    allowed:
+      "Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.",
+    required:
+      "Value patterns this extension must match, with * as a wildcard. Setting any required pattern also makes the extension mandatory on every request.",
+    denied:
+      "Value patterns this extension must not take, with * as a wildcard. A denied match is rejected even when an allowed pattern also matches."
+  },
   SUBJECT_DOMAIN_COMPONENT_RULE: {
     allowed: domainComponentRule("permitted"),
     required: domainComponentRule("required"),
@@ -4175,4 +4215,97 @@ export const ENCRYPTION_KEY_ROTATION = {
     force:
       "Remove the key even though an instance started on it recently. This overrides only that check: a label that does not match the key currently held still fails. Any instance still using that key will fail its next restart until it is given the new one."
   }
+};
+
+export const AGENT_VAULT = {
+  ACCESS_BUNDLE: {
+    accessBundleId: "The ID of the access bundle.",
+    name: "The name of the access bundle.",
+    description: "A description of what this access bundle is for.",
+    serviceCount: "How many services the access bundle holds.",
+    memberCount: "How many users, machine identities and groups can reach the access bundle.",
+    hostPatterns: "Every host pattern the access bundle's services cover."
+  },
+  SERVICE: {
+    serviceId: "The ID of the service.",
+    name: "The name of the service.",
+    hostPattern:
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
+    credentialType: "How the credential is attached to the request: bearer, basic or passthrough.",
+    headerName: "The header the credential is written to. Defaults to Authorization.",
+    headerPrefix:
+      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
+    username:
+      "The username half of the basic credential. May be empty if a password is set. Never returned once saved, since some APIs put the whole key here.",
+    updateUsername:
+      "The username half of the basic credential. Omit to keep the stored username; send an empty string to remove it, which requires a password.",
+    updateValue: "The secret. Omit to keep the stored secret.",
+    updatePassword:
+      "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
+    createdAt: "When the service was added to the access bundle.",
+    value: "The secret. Never returned once saved.",
+    password:
+      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved."
+  },
+  MEMBER: {
+    memberId: "The ID of the access bundle membership.",
+    userId: "The ID of the user to grant the access bundle to.",
+    identityId: "The ID of the machine identity to grant the access bundle to.",
+    groupId: "The ID of the group to grant the access bundle to.",
+    userIds: "The IDs of the users to grant the access bundle to.",
+    identityIds: "The IDs of the machine identities to grant the access bundle to.",
+    groupIds: "The IDs of the groups to grant the access bundle to.",
+    skipped: "The IDs of the requested grantees who already had the access bundle and were left as they were."
+  },
+  MEMBERSHIP: {
+    role: "The Agent Vault role: admin or member."
+  },
+  PROXY: {
+    proxyId: "The ID of the proxy.",
+    name: "The name of the proxy.",
+    heartbeat: "When the proxy last checked in, or null if it never has.",
+    isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
+    enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
+    rootCaCertificate:
+      "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",
+    rootCaFingerprint:
+      "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
+    rootCaExpiresAt: "When the proxy's certificate authority expires.",
+    trafficPolicy:
+      "Which hosts an agent may reach through this proxy. 'any-host' lets every request out; 'bundle-hosts' allows only hosts an access bundle covers, plus anything in allowedHosts, and refuses the rest with a 403.",
+    allowedHosts:
+      "Hosts that stay reachable under the 'bundle-hosts' traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
+    pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
+    sessionToken: "The session an agent is running with. A selector, not a second credential."
+  },
+  SESSION: {
+    sessionId: "The ID of the session.",
+    accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
+    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
+    token: "The session token. Returned once, at mint, and never again.",
+    expiresAt: "When the session expires, or null when it never does.",
+    scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
+    status: "Filter by session status: active, revoked or expired.",
+    search: "Match sessions by actor name, actor email or access bundle name.",
+    limit: "The maximum number of sessions to return.",
+    offset: "How many sessions to skip."
+  }
+};
+
+export const PKI_SYNC_FILTERS = {
+  filters:
+    "Which of the Application's certificates this sync holds. A certificate must match every field that is set, and a sync with no filters holds nothing.",
+  updateFilters:
+    "Replaces which of the Application's certificates this sync holds. Omit to leave them unchanged, or set to null to empty the sync.",
+  profileIds: "Match certificates issued from any one of these certificate profiles.",
+  certificateOrderIds:
+    "Match any certificate belonging to any one of these certificate orders. An order groups a certificate with every renewal of it, so this keeps matching as the certificate is renewed.",
+  metadata:
+    "Match certificates carrying every one of these metadata pairs. Give a key on its own to match any value for that key.",
+  metadataKey: "Metadata key the certificate must carry.",
+  metadataValue: "Metadata value the key must have. Omit it to match any value.",
+  previewPkiSyncId: "Preview the filters against this existing PKI Sync.",
+  previewApplicationId: "Preview the filters against this Application, for a PKI Sync that does not exist yet.",
+  previewOffset: "The offset to start from. If you enter 10, it will start from the 10th matching certificate.",
+  previewLimit: "The number of matching certificates to return."
 };

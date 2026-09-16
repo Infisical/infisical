@@ -2,13 +2,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { folderQueryKeys } from "@app/hooks/api/secretFolders/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 
 import { projectKeys } from "../projects";
 import {
-  ExternalMigrationImportStatus,
   TImportDopplerSecretsDTO,
-  TImportVaultSecretsDTO
+  TImportVaultSecretsDTO,
+  TImportVaultSecretsResponse
 } from "./types";
 
 export const useImportEnvKey = () => {
@@ -76,9 +77,9 @@ export const useImportVault = () => {
 export const useImportVaultSecrets = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ status: ExternalMigrationImportStatus }, object, TImportVaultSecretsDTO>({
+  return useMutation<TImportVaultSecretsResponse, object, TImportVaultSecretsDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post<{ status: ExternalMigrationImportStatus }>(
+      const { data } = await apiRequest.post<TImportVaultSecretsResponse>(
         "/api/v3/external-migration/vault/import-secrets",
         dto
       );
@@ -91,6 +92,13 @@ export const useImportVaultSecrets = () => {
           projectId,
           environment,
           secretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: folderQueryKeys.getSecretFolders({
+          projectId,
+          environment,
+          path: secretPath
         })
       });
     }

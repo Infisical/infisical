@@ -5,6 +5,7 @@ import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-mana
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAgentProxyCaRouter } from "./agent-proxy-ca-router";
+import { registerAgentVaultRouters } from "./agent-vault-routers";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
@@ -202,4 +203,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerPamRouters, { prefix: "/pam" });
+
+  await server.register(registerAgentVaultRouters, { prefix: "/agent-vault" });
 };

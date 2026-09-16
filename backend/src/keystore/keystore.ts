@@ -37,7 +37,8 @@ export const PgSqlLock = {
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
-  LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
+  LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
+    pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
   OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
@@ -58,6 +59,7 @@ export const KeyStorePrefixes = {
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
+  PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
     `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
   AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>
@@ -158,6 +160,7 @@ export const KeyStorePrefixes = {
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
+  AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
@@ -256,6 +259,7 @@ export const KeyStoreTtls = {
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 900, // 15 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
+  AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes
   // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only

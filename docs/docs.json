@@ -25,6 +25,9 @@
   "thumbnails": {
     "appearance": "light"
   },
+  "icons": {
+    "library": "lucide"
+  },
   "favicon": "/favicon.ico",
   "contextual": {
     "options": [
@@ -42,23 +45,31 @@
         "tab": "Get started",
         "pages": [
           "documentation/getting-started/overview",
+          "documentation/getting-started/quickstarts",
           "documentation/getting-started/introduction",
+          "documentation/getting-started/set-up-with-ai",
+          "documentation/platform/external-migrations/overview",
+          "documentation/getting-started/concepts/deployment-models",
           {
-            "group": "Concepts",
+            "group": "Use cases",
             "pages": [
-              "documentation/getting-started/concepts/deployment-models",
-              "documentation/getting-started/concepts/platform-hierarchy",
-              "documentation/getting-started/concepts/platform-iam",
-              "documentation/getting-started/concepts/client-integrations",
-              "documentation/getting-started/concepts/audit-logs"
+              "documentation/getting-started/choose-a-product/secrets-management/overview",
+              "documentation/getting-started/choose-a-product/secret-scanning",
+              "documentation/getting-started/choose-a-product/pki",
+              "documentation/getting-started/choose-a-product/kms",
+              "documentation/getting-started/choose-a-product/pam"
             ]
           },
           {
-            "group": "Migrate to Infisical",
+            "group": "Understand the platform",
             "pages": [
-              "documentation/platform/external-migrations/overview",
-              "documentation/platform/external-migrations/doppler",
-              "documentation/platform/external-migrations/vault"
+              "documentation/getting-started/concepts/platform-hierarchy",
+              "documentation/getting-started/concepts/platform-iam",
+              "documentation/getting-started/concepts/audit-logs",
+              "documentation/getting-started/concepts/app-connections",
+              "documentation/getting-started/concepts/networking",
+              "documentation/getting-started/concepts/internals",
+              "documentation/getting-started/concepts/contributing"
             ]
           }
         ]
@@ -68,7 +79,7 @@
         "menu": [
           {
             "item": "Secrets Management",
-            "icon": "vault",
+            "icon": "key",
             "pages": [
               "documentation/platform/secrets-mgmt/overview",
               {
@@ -87,7 +98,15 @@
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
-                  "documentation/platform/secret-sharing"
+                  "documentation/platform/secret-sharing",
+                  {
+                    "group": "Migrate to Infisical",
+                    "root": "documentation/platform/secrets-mgmt/quick-starts/migrate",
+                    "pages": [
+                      "documentation/platform/external-migrations/doppler",
+                      "documentation/platform/external-migrations/vault"
+                    ]
+                  }
                 ]
               },
               {
@@ -410,8 +429,7 @@
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs"
                     ]
-                  },
-                  "documentation/platform/agent-proxy/agent-vault"
+                  }
                 ]
               }
             ]
@@ -445,7 +463,7 @@
           },
           {
             "item": "Certificate Management",
-            "icon": "file-certificate",
+            "icon": "file-key",
             "pages": [
               "documentation/platform/pki/overview",
               {
@@ -632,7 +650,7 @@
           },
           {
             "item": "KMS",
-            "icon": "key",
+            "icon": "lock",
             "pages": [
               "documentation/platform/kms/overview",
               {
@@ -653,7 +671,7 @@
           },
           {
             "item": "Privileged Access Management",
-            "icon": "user-shield",
+            "icon": "users",
             "pages": [
               "documentation/platform/pam/overview",
               {
@@ -694,8 +712,10 @@
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
+                      "documentation/platform/pam/accounts/oracledb",
                       "documentation/platform/pam/accounts/mongodb",
                       "documentation/platform/pam/accounts/redis",
+                      "documentation/platform/pam/accounts/snowflake",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -714,6 +734,7 @@
                       "documentation/platform/pam/product-reference/credential-rotation/postgresql",
                       "documentation/platform/pam/product-reference/credential-rotation/mysql",
                       "documentation/platform/pam/product-reference/credential-rotation/mssql",
+                      "documentation/platform/pam/product-reference/credential-rotation/oracledb",
                       "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
@@ -743,6 +764,32 @@
                   },
                   "documentation/platform/pam/auditing",
                   "documentation/platform/pam/architecture"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Agent Vault",
+            "icon": "vault",
+            "tag": "PREVIEW",
+            "pages": [
+              "documentation/platform/agent-vault/overview",
+              {
+                "group": "Get started",
+                "pages": [
+                  "documentation/platform/agent-vault/quickstart",
+                  "documentation/platform/agent-vault/why-agent-vault",
+                  "documentation/platform/agent-vault/how-it-works"
+                ]
+              },
+              {
+                "group": "Concepts",
+                "pages": [
+                  "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/services",
+                  "documentation/platform/agent-vault/sessions",
+                  "documentation/platform/agent-vault/proxies",
+                  "documentation/platform/agent-vault/access-control"
                 ]
               }
             ]
@@ -1062,13 +1109,13 @@
           },
           {
             "item": "Networking",
-            "icon": "network-wired",
+            "icon": "network",
             "pages": [
               "documentation/platform/gateways/overview",
+              "documentation/setup/networking",
               {
                 "group": "Gateways",
                 "pages": [
-                  "documentation/setup/networking",
                   "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-deployment",
                   "documentation/platform/gateways/gateway-pools",
@@ -1171,7 +1218,7 @@
           },
           {
             "item": "Internals",
-            "icon": "diagram-project",
+            "icon": "workflow",
             "pages": [
               "internals/overview",
               {
@@ -1201,7 +1248,7 @@
           },
           {
             "item": "Contributing",
-            "icon": "code-pull-request",
+            "icon": "git-pull-request",
             "pages": [
               "contributing/getting-started/overview",
               {
@@ -1248,6 +1295,7 @@
                       "cli/commands/run",
                       "cli/commands/secrets",
                       "cli/commands/agent-proxy",
+                      "cli/commands/agent-vault",
                       "cli/commands/dynamic-secrets",
                       {
                         "group": "infisical pam",
@@ -1286,7 +1334,7 @@
           },
           {
             "item": "API",
-            "icon": "book-open-lines",
+            "icon": "book-open",
             "pages": [
               "api-reference/overview/introduction",
               {
@@ -4407,7 +4455,7 @@
           },
           {
             "item": "SDKs",
-            "icon": "cubes",
+            "icon": "boxes",
             "pages": [
               "sdks/overview",
               {
@@ -4653,6 +4701,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/ai/model-context-protocol",
+      "destination": "/documentation/getting-started/set-up-with-ai"
+    },
     {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"

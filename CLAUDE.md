@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make reviewable-api` / `make reviewable-ui` — lint:fix + type:check (run before PRs). Neither checks [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md); review backend changes against it yourself.
 - `cd backend && npm run migration:new` — create new DB migration
 - `cd backend && npm run generate:schema` — regenerate Zod types from DB after migration changes
+- `make test-api-unit` / `make test-api-e2e` — run the Node backend suites in the FIPS image CI uses, against a throwaway database. Narrow with `SPEC=<pattern>`. See `backend/CLAUDE.md` for why running `npm run test:e2e` directly can destroy your dev data.
 - `cd backend-go && make test` — run Go integration tests
 
 Both backend and frontend use `@app/*` as path alias to `./src/*`.
@@ -67,7 +68,7 @@ Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm 
 
 **Read [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md) for every backend change, and check the change against it before calling the work done.** This applies to all work under `backend/`: new features, refactors, bug fixes, and reviews alike.
 
-It is a floor, not an exhaustive standard: user-understandable error messages and no pointless 500s, explicit validation on every API input, correct pagination when calling third-party APIs, avoiding deadlock conditions on a small connection pool (thread `tx`, keep transactions short), and REST-aligned API interfaces (flag deviations for the author to confirm rather than implementing them silently).
+It is a floor, not an exhaustive standard: user-understandable error messages and no pointless 500s, explicit validation on every API input, correct pagination when calling third-party APIs, avoiding deadlock conditions on a small connection pool (thread `tx`, keep transactions short), REST-aligned API interfaces (flag deviations for the author to confirm rather than implementing them silently), and audit log events an admin can actually read.
 
 That list describes what the guide currently covers; it is **not** a test for whether the guide applies. Do not skip it because a change does not look like one of those topics. Read it, then decide which items are relevant.
 
@@ -78,6 +79,10 @@ That list describes what the guide currently covers; it is **not** a test for wh
 Never write: narration restating the next line; section headers inside a function (`// --- validation ---`); change history (`// Added retry logic`, `// NEW`); references to plans, tickets, PRs, or reviewers; docstrings restating the signature; commented-out code.
 
 Before finishing, delete any comment you added that only says what the code says.
+
+### Product Analytics
+
+Read [`ANALYTICS.md`](ANALYTICS.md) before adding or changing product analytics. Every event has one owning producer: the frontend records UI exposure and intent, the application backend records accepted commands it can establish, and the system of record records durable outcomes. Define stable dimensions, cardinality, firing conditions, and dashboard consumers before implementation.
 
 ### Design System & Voice
 
@@ -96,6 +101,10 @@ Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https
 ### Auth & Permissions
 
 Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/src/server/plugins/auth/`. Authorization uses CASL (`@casl/ability`) with project-level and org-level permission checks — see `backend/CLAUDE.md` for backend details and `frontend/CLAUDE.md` for frontend permission hooks/HOCs. Note: `API_KEY` and `SERVICE_TOKEN` auth modes are deprecated — do not use them in new code.
+
+### Org-Scoped Products
+
+PAM and Agent Vault are products over one implicit project per organization, not projects a user creates. Their URLs are `/organizations/$orgId/<product>/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, their roles are admin or member only, and each has its own metered identities dimension (`pam_identities`, `agent_vault_identities`). When you add a `ProjectType.PAM` arm anywhere, add the Agent Vault arm beside it. See `backend/src/ee/services/pam/CLAUDE.md` and `backend/src/ee/services/agent-vault/CLAUDE.md`.
 
 ### Service Factory + Manual DI (Backend)
 

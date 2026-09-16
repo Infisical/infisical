@@ -95,7 +95,7 @@ export const SecretSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }:
                 <CalendarCheckIcon className="size-3" />
                 <div className="text-xs">Last Synced</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
+              <div className="rounded-sm bg-ring p-2 text-xs">
                 {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
               </div>
             </div>
@@ -106,9 +106,7 @@ export const SecretSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }:
                 <XIcon className="size-3" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
-                {failureMessage}
-              </div>
+              <div className="rounded-sm bg-ring p-2 text-xs break-words">{failureMessage}</div>
             </div>
           )}
         </div>

@@ -1,3 +1,4 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 import {
   CERT_EXTENDED_KEY_USAGES,
@@ -6,6 +7,7 @@ import {
   CertSubjectAlternativeNameType,
   TAltNameType
 } from "@app/services/certificate-common/certificate-constants";
+import { TImportExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -121,6 +123,7 @@ export type TGetCertDTO = {
 export type TDeleteCertDTO = {
   id?: string;
   serialNumber?: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRevokeCertDTO = {
@@ -151,6 +154,9 @@ export type TImportCertDTO = {
   certificatePem: string;
   privateKeyPem?: string;
   chainPem?: string;
+
+  profileId?: string;
+  externalMetadata?: TImportExternalMetadata;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertPrivateKeyDTO = {

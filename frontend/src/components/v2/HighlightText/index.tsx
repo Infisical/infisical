@@ -1,1 +1,1 @@
-export { HighlightText } from "./HighlightText";
+export { HighlightText } from "@app/components/utilities/HighlightText";

@@ -37,7 +37,7 @@ function SheetOverlay({
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 ease-out data-[state=closed]:animate-out data-[state=closed]:duration-250 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0",
+        "fixed inset-0 z-[var(--z-index-backdrop)] bg-black/50 ease-out data-[state=closed]:animate-out data-[state=closed]:duration-250 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -75,7 +75,7 @@ function SheetContent({
           onInteractOutside?.(e);
         }}
         className={cn(
-          "fixed z-50 flex thin-scrollbar flex-col border-border bg-popover text-foreground shadow-lg outline-0 transition ease-out data-[state=closed]:animate-out data-[state=closed]:duration-250 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0",
+          "fixed z-[var(--z-index-modal)] flex thin-scrollbar flex-col border-border bg-popover text-foreground shadow-lg outline-0 transition ease-out data-[state=closed]:animate-out data-[state=closed]:duration-250 data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right-8 data-[state=open]:slide-in-from-right-2 sm:max-w-md",
           side === "left" &&

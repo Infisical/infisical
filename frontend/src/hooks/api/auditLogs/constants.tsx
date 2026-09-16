@@ -188,6 +188,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_PKI_SYNC]: "Create PKI sync",
   [EventType.UPDATE_PKI_SYNC]: "Update PKI sync",
   [EventType.DELETE_PKI_SYNC]: "Delete PKI sync",
+  [EventType.PKI_SYNC_LINK_CERTIFICATES]: "PKI Sync linked certificates",
+  [EventType.PKI_SYNC_UNLINK_CERTIFICATES]: "PKI Sync unlinked certificates",
+  [EventType.PKI_SYNC_SKIP_CERTIFICATE]: "PKI Sync skipped a certificate",
   [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
   [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
   [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
@@ -376,7 +379,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_CERTIFICATE_PROFILE]: "Delete Certificate Profile",
   [EventType.GET_CERTIFICATE_PROFILE]: "Get Certificate Profile",
   [EventType.LIST_CERTIFICATE_PROFILES]: "List Certificate Profiles",
-  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Request Certificate From Profile",
+  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Issue Certificate From Profile",
   [EventType.SIGN_CERTIFICATE_FROM_PROFILE]: "Sign Certificate From Profile",
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
@@ -432,8 +435,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.EXTERNAL_MIGRATION_CREATE]: "Create External Migration",
   [EventType.EXTERNAL_MIGRATION_UPDATE]: "Update External Migration",
   [EventType.EXTERNAL_MIGRATION_DELETE]: "Delete External Migration",
+  [EventType.IMPORT_VAULT_SECRETS]: "Import Vault secrets",
   [EventType.GATEWAY_CREATE]: "Create gateway",
   [EventType.GATEWAY_ENROLL]: "Enroll gateway (legacy)",
+  [EventType.GATEWAY_CONNECT]: "Gateway connect",
   [EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE]: "Generate gateway enrollment token",
   [EventType.RESOURCE_AUTH_METHOD_LOGIN]: "Resource login",
   [EventType.RESOURCE_AUTH_METHOD_LOGIN_FAILED]: "Resource login failed",
@@ -453,7 +458,27 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.CREATE_SECRET_FOLDER_ACCESS]: "Grant folder access",
   [EventType.UPDATE_SECRET_FOLDER_ACCESS]: "Update folder access",
-  [EventType.DELETE_SECRET_FOLDER_ACCESS]: "Revoke folder access"
+  [EventType.DELETE_SECRET_FOLDER_ACCESS]: "Revoke folder access",
+
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE]: "Create access bundle",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE]: "Update access bundle",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE]: "Delete access bundle",
+  [EventType.AGENT_VAULT_SERVICE_CREATE]: "Create service",
+  [EventType.AGENT_VAULT_SERVICE_UPDATE]: "Update service",
+  [EventType.AGENT_VAULT_SERVICE_DELETE]: "Delete service",
+  [EventType.AGENT_VAULT_MEMBER_ADD]: "Add member",
+  [EventType.AGENT_VAULT_MEMBER_UPDATE]: "Change member role",
+  [EventType.AGENT_VAULT_MEMBER_REMOVE]: "Remove member",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD]: "Grant access bundle",
+  [EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE]: "Revoke access bundle",
+  [EventType.AGENT_VAULT_SESSION_MINT]: "Create session",
+  [EventType.AGENT_VAULT_SESSION_REVOKE]: "Revoke session",
+  [EventType.AGENT_VAULT_PROXY_REGISTER]: "Create proxy",
+  [EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE]: "Generate proxy enrollment token",
+  [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
+  [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
+  [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
+  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -506,5 +531,26 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_DISCOVERY_SOURCE_DELETE,
     EventType.PAM_DISCOVERY_SCAN,
     EventType.PAM_DISCOVERED_ACCOUNT_IMPORT
+  ],
+  [ProjectType.AgentVault]: [
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE,
+    EventType.AGENT_VAULT_SERVICE_CREATE,
+    EventType.AGENT_VAULT_SERVICE_UPDATE,
+    EventType.AGENT_VAULT_SERVICE_DELETE,
+    EventType.AGENT_VAULT_MEMBER_ADD,
+    EventType.AGENT_VAULT_MEMBER_UPDATE,
+    EventType.AGENT_VAULT_MEMBER_REMOVE,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD,
+    EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE,
+    EventType.AGENT_VAULT_SESSION_MINT,
+    EventType.AGENT_VAULT_SESSION_REVOKE,
+    EventType.AGENT_VAULT_PROXY_REGISTER,
+    EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
+    EventType.AGENT_VAULT_PROXY_ENROLL,
+    EventType.AGENT_VAULT_PROXY_UPDATE,
+    EventType.AGENT_VAULT_PROXY_REVOKE,
+    EventType.AGENT_VAULT_PROXY_DELETE
   ]
 };

@@ -4,20 +4,33 @@ import { HelpCircleIcon } from "lucide-react";
 import { FieldLabel, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 type Props = {
+  id?: string;
   htmlFor?: string;
   children: ReactNode;
   tooltip?: ReactNode;
   tooltipClassName?: string;
 };
 
-export const FieldLabelWithTooltip = ({ htmlFor, children, tooltip, tooltipClassName }: Props) => {
+export const FieldLabelWithTooltip = ({
+  id,
+  htmlFor,
+  children,
+  tooltip,
+  tooltipClassName
+}: Props) => {
   if (!tooltip) {
-    return <FieldLabel htmlFor={htmlFor}>{children}</FieldLabel>;
+    return (
+      <FieldLabel id={id} htmlFor={htmlFor}>
+        {children}
+      </FieldLabel>
+    );
   }
 
   return (
     <div className="flex items-center gap-1.5">
-      <FieldLabel htmlFor={htmlFor}>{children}</FieldLabel>
+      <FieldLabel id={id} htmlFor={htmlFor}>
+        {children}
+      </FieldLabel>
       <Tooltip>
         <TooltipTrigger asChild>
           <button

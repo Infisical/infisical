@@ -234,6 +234,7 @@ SendGrid
 SocketLabs
 Mailgun
 Mailhog
+Twilio
 Zoho
 Tailscale
 1Password
@@ -438,6 +439,7 @@ NTLM
 OAuth
 OCI
 OCID
+OIDs
 OIDC
 OKMS
 OTLP
@@ -623,3 +625,7 @@ iss
 # --- Surfaced by the code-signing pages ---
 # Vale strips a trailing `'s`, so the possessive needs no separate entry.
 MSBuild
+
+# --- Surfaced by the PAM Snowflake page ---
+DBeaver
+snowsql

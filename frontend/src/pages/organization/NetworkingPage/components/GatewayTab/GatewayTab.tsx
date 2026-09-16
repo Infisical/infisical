@@ -389,6 +389,9 @@ export const GatewayTab = withPermission(
                           <TableCell className="whitespace-nowrap">
                             <GatewayHealthStatus
                               heartbeat={"heartbeat" in el ? el.heartbeat : null}
+                              relayId={"relayId" in el ? el.relayId : null}
+                              directAddress={"directAddress" in el ? el.directAddress : null}
+                              directHeartbeat={"directHeartbeat" in el ? el.directHeartbeat : null}
                               heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                             />
                           </TableCell>
@@ -406,12 +409,18 @@ export const GatewayTab = withPermission(
                                   <CopyIcon />
                                   Copy ID
                                 </DropdownMenuItem>
-                                {!el.isV1 && (!!el.heartbeat || !!el.heartbeatTTL) && (
-                                  <DropdownMenuItem onClick={() => handleTriggerHealthCheck(el.id)}>
-                                    <HeartPulseIcon />
-                                    Trigger Health Check
-                                  </DropdownMenuItem>
-                                )}
+                                {!el.isV1 &&
+                                  (!!el.directAddress ||
+                                    !!el.relayId ||
+                                    !!el.heartbeat ||
+                                    el.heartbeatTTL !== null) && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleTriggerHealthCheck(el.id)}
+                                    >
+                                      <HeartPulseIcon />
+                                      Trigger Health Check
+                                    </DropdownMenuItem>
+                                  )}
                                 {el.isV1 && (
                                   <OrgPermissionCan
                                     I={OrgGatewayPermissionActions.EditGateways}
@@ -527,6 +536,7 @@ export const GatewayTab = withPermission(
           onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}
         />
         <UpgradePlanModal
+          paywallKey="organization.gateway"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan."

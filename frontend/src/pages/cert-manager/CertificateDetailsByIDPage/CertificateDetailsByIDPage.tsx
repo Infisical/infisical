@@ -202,7 +202,8 @@ const Page = () => {
   // CA capability check for revocation
   const caType = caData?.find((ca) => ca.id === certificate?.caId)?.type;
   const supportsRevocation =
-    !caType || caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
+    Boolean(certificate?.caId) &&
+    (!caType || caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES));
 
   const handleDisableAutoRenewal = async () => {
     if (!certificate) return;
@@ -451,7 +452,6 @@ const Page = () => {
                 )}
               {supportsRevocation &&
                 !isRevoked &&
-                certificate.source === CertSource.Issued &&
                 !(isInventoryView && certificate.applicationId) && (
                   <DropdownMenuItem
                     isDisabled={!canDeleteCertificate}
@@ -478,7 +478,7 @@ const Page = () => {
         </PageHeader>
         <div className="flex flex-col gap-5 lg:flex-row">
           <CertificateOverviewSection certificateId={certificate.id} />
-          <div className="flex flex-1 flex-col gap-y-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <CertificateDetailsSection certificateId={certificate.id} />
             <CertificateInstallationsSection certificateId={certificate.id} />
           </div>
