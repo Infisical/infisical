@@ -169,6 +169,7 @@ export const pkiAlertV2ServiceFactory = ({
       enabled: alert.enabled ?? true,
       projectId: alert.projectId,
       applicationId: alert.applicationId ?? null,
+      applicationName: alert.applicationName ?? null,
       channels: (alert.channels || []).map((channel) => {
         const config = decryptChannelConfig<TChannelConfig>(channel, decryptor);
 

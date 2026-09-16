@@ -79,25 +79,25 @@ export const AgentVaultAccessBundleDetailPage = () => {
   }
 
   return (
-    <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
       <Helmet>
         <title>{t("common.head-title", { title: accessBundle.name })}</title>
       </Helmet>
-
-      <Link
-        to="/organizations/$orgId/agent-vault/access-bundles"
-        params={{ orgId: currentOrg.id }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition hover:text-mineshaft-400/80"
-      >
-        <ChevronLeftIcon size={16} />
-        Access Bundles
-      </Link>
 
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
         title={accessBundle.name}
         description={accessBundle.description || "No description"}
+        backLink={
+          <Link
+            to="/organizations/$orgId/agent-vault/access-bundles"
+            params={{ orgId: currentOrg.id }}
+          >
+            <ChevronLeftIcon aria-hidden className="size-4" />
+            Access Bundles
+          </Link>
+        }
       >
         {isAdmin && (
           <DropdownMenu>

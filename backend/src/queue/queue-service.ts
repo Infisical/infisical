@@ -52,6 +52,8 @@ import { TCreateUserNotificationDTO } from "@app/services/notification/notificat
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import {
   TQueuePkiSyncImportCertificatesByIdDTO,
+  TQueuePkiSyncLinkMatchingCertificatesDTO,
+  TQueuePkiSyncReconcileFiltersDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
   TQueuePkiSyncRunHealthCheckByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
@@ -162,6 +164,8 @@ export enum QueueJobs {
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
   SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
   PkiSyncSyncCertificates = "pki-sync-sync-certificates",
+  PkiSyncLinkMatchingCertificates = "pki-sync-link-matching-certificates",
+  PkiSyncReconcileFilters = "pki-sync-reconcile-filters",
   PkiSyncImportCertificates = "pki-sync-import-certificates",
   PkiSyncRemoveCertificates = "pki-sync-remove-certificates",
   PkiSyncRunHealthCheck = "pki-sync-run-health-check",
@@ -369,6 +373,14 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.PkiSyncRemoveCertificates;
         payload: TQueuePkiSyncRemoveCertificatesByIdDTO;
+      }
+    | {
+        name: QueueJobs.PkiSyncLinkMatchingCertificates;
+        payload: TQueuePkiSyncLinkMatchingCertificatesDTO;
+      }
+    | {
+        name: QueueJobs.PkiSyncReconcileFilters;
+        payload: TQueuePkiSyncReconcileFiltersDTO;
       };
   [QueueName.PkiSyncHealthCheck]: {
     name: QueueJobs.PkiSyncRunHealthCheck;

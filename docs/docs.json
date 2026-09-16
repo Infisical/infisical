@@ -25,6 +25,9 @@
   "thumbnails": {
     "appearance": "light"
   },
+  "icons": {
+    "library": "lucide"
+  },
   "favicon": "/favicon.ico",
   "contextual": {
     "options": [
@@ -54,7 +57,8 @@
               "documentation/getting-started/choose-a-product/secret-scanning",
               "documentation/getting-started/choose-a-product/pki",
               "documentation/getting-started/choose-a-product/kms",
-              "documentation/getting-started/choose-a-product/pam"
+              "documentation/getting-started/choose-a-product/pam",
+              "documentation/getting-started/choose-a-product/agent-vault"
             ]
           },
           {
@@ -76,7 +80,7 @@
         "menu": [
           {
             "item": "Secrets Management",
-            "icon": "vault",
+            "icon": "key",
             "pages": [
               "documentation/platform/secrets-mgmt/overview",
               {
@@ -460,7 +464,7 @@
           },
           {
             "item": "Certificate Management",
-            "icon": "file-certificate",
+            "icon": "file-key",
             "pages": [
               "documentation/platform/pki/overview",
               {
@@ -647,7 +651,7 @@
           },
           {
             "item": "KMS",
-            "icon": "key",
+            "icon": "lock",
             "pages": [
               "documentation/platform/kms/overview",
               {
@@ -668,7 +672,7 @@
           },
           {
             "item": "Privileged Access Management",
-            "icon": "user-shield",
+            "icon": "users",
             "pages": [
               "documentation/platform/pam/overview",
               {
@@ -709,8 +713,10 @@
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
+                      "documentation/platform/pam/accounts/oracledb",
                       "documentation/platform/pam/accounts/mongodb",
                       "documentation/platform/pam/accounts/redis",
+                      "documentation/platform/pam/accounts/snowflake",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
@@ -729,6 +735,7 @@
                       "documentation/platform/pam/product-reference/credential-rotation/postgresql",
                       "documentation/platform/pam/product-reference/credential-rotation/mysql",
                       "documentation/platform/pam/product-reference/credential-rotation/mssql",
+                      "documentation/platform/pam/product-reference/credential-rotation/oracledb",
                       "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
@@ -764,19 +771,23 @@
           },
           {
             "item": "Agent Vault",
-            "icon": "sparkles",
+            "icon": "vault",
+            "tag": "PREVIEW",
             "pages": [
               "documentation/platform/agent-vault/overview",
               {
                 "group": "Get started",
                 "pages": [
-                  "documentation/platform/agent-vault/quickstart"
+                  "documentation/platform/agent-vault/quickstart",
+                  "documentation/platform/agent-vault/why-agent-vault",
+                  "documentation/platform/agent-vault/how-it-works"
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
+                  "documentation/platform/agent-vault/services",
                   "documentation/platform/agent-vault/sessions",
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
@@ -1099,7 +1110,7 @@
           },
           {
             "item": "Networking",
-            "icon": "network-wired",
+            "icon": "network",
             "pages": [
               "documentation/platform/gateways/overview",
               "documentation/setup/networking",
@@ -1208,7 +1219,7 @@
           },
           {
             "item": "Internals",
-            "icon": "diagram-project",
+            "icon": "workflow",
             "pages": [
               "internals/overview",
               {
@@ -1238,7 +1249,7 @@
           },
           {
             "item": "Contributing",
-            "icon": "code-pull-request",
+            "icon": "git-pull-request",
             "pages": [
               "contributing/getting-started/overview",
               {
@@ -1324,7 +1335,7 @@
           },
           {
             "item": "API",
-            "icon": "book-open-lines",
+            "icon": "book-open",
             "pages": [
               "api-reference/overview/introduction",
               {
@@ -4445,7 +4456,7 @@
           },
           {
             "item": "SDKs",
-            "icon": "cubes",
+            "icon": "boxes",
             "pages": [
               "sdks/overview",
               {

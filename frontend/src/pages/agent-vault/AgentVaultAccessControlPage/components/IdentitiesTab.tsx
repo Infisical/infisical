@@ -13,7 +13,7 @@ import {
 import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
   Button,
@@ -271,8 +271,8 @@ export const IdentitiesTab = () => {
         }
         description={
           toRemove && isAgentVaultManaged(toRemove)
-            ? "This identity lives in Agent Vault, so it is deleted along with its access. This cannot be undone."
-            : "The identity itself is left alone. It loses access and every bundle granted to it."
+            ? "This machine identity is managed by Agent Vault. Deleting it removes the identity along with its access. This cannot be undone."
+            : "It loses Agent Vault access, along with every access bundle granted to it. The machine identity won't be deleted because it isn't managed by Agent Vault."
         }
         confirmKey={toRemove?.name ?? ""}
         confirmLabel={toRemove && isAgentVaultManaged(toRemove) ? "Delete" : "Remove"}

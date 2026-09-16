@@ -149,7 +149,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
           <DialogHeader>
             <DialogTitle>{isUpdate ? "Edit Settings" : "Create Proxy"}</DialogTitle>
             <DialogDescription>
-              Set how this proxy handles your agents&apos; requests.
+              Configure how this proxy handles your agents&apos; requests.
             </DialogDescription>
           </DialogHeader>
 
@@ -226,8 +226,8 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                         <InfoIcon />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
-                        How often the proxy asks for its configuration, in seconds. It is how long a
-                        change here takes to reach a running agent.
+                        How often the proxy refreshes its configuration, in seconds. This determines
+                        how long a change in these settings takes to reach a running agent.
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>

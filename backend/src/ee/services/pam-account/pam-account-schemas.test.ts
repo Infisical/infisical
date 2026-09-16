@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { PamAccountType, PamPostgresAuthMethod } from "../pam/pam-enums";
+import { PamAccountType, PamPostgresAuthMethod, PamSnowflakeAuthMethod } from "../pam/pam-enums";
 import {
   accountTypeRequiresRecording,
   applyForcedFields,
   buildPamAccountTypeMetadata,
+  collectCredentialSecrets,
   getAccountAccessibilityIssues,
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
@@ -12,6 +13,7 @@ import {
   PamFieldDescriptorSchema,
   sanitizeCredentials,
   suppliesCredentialSecret,
+  validateConnectionDetails,
   validateCredentials
 } from "./pam-account-schemas";
 
@@ -140,6 +142,30 @@ describe("buildPamAccountTypeMetadata", () => {
     });
   });
 
+  test("derives Oracle connection and credential fields, labelling the service name", () => {
+    const oracle = byType.get(PamAccountType.OracleDB);
+    expect(oracle).toBeDefined();
+    expect(oracle?.name).toBe("Oracle Database");
+    expect(oracle?.supportsWebAccess).toBe(false);
+
+    expect(oracle?.connectionFields.map((f) => f.key)).toEqual([
+      "host",
+      "port",
+      "database",
+      "sslEnabled",
+      "sslRejectUnauthorized",
+      "sslCertificate"
+    ]);
+    expect(fieldByKey(oracle!.connectionFields, "database")).toMatchObject({
+      label: "Service Name",
+      required: true
+    });
+    expect(fieldByKey(oracle!.connectionFields, "port")).toMatchObject({ widget: "number", defaultValue: 1521 });
+
+    expect(fieldByKey(oracle!.credentialFields, "username")).toMatchObject({ required: true, secret: false });
+    expect(fieldByKey(oracle!.credentialFields, "password")).toMatchObject({ widget: "password", secret: true });
+  });
+
   test("derives Redis connection and credential fields from the schema", () => {
     const redis = byType.get(PamAccountType.Redis);
     expect(redis).toBeDefined();
@@ -229,6 +255,54 @@ describe("buildPamAccountTypeMetadata", () => {
       secret: true,
       showWhen: { field: "authMethod", equals: "public-key" }
     });
+  });
+});
+
+describe("collectCredentialSecrets", () => {
+  test("returns every stored secret for the account type's auth method", () => {
+    expect(
+      collectCredentialSecrets(PamAccountType.Snowflake, {
+        authMethod: PamSnowflakeAuthMethod.KeyPair,
+        username: "svc",
+        privateKey: "pem-body",
+        privateKeyPassphrase: "phrase"
+      })
+    ).toEqual(expect.arrayContaining(["pem-body", "phrase"]));
+
+    expect(
+      collectCredentialSecrets(PamAccountType.Snowflake, {
+        authMethod: PamSnowflakeAuthMethod.ProgrammaticAccessToken,
+        username: "svc",
+        token: "pat-value"
+      })
+    ).toEqual(["pat-value"]);
+  });
+});
+
+describe("Snowflake accounts", () => {
+  test("require a secret for the selected auth method", () => {
+    expect(
+      isCredentialConfigured(PamAccountType.Snowflake, {
+        authMethod: PamSnowflakeAuthMethod.KeyPair,
+        username: "svc",
+        privateKey: "pem-body"
+      })
+    ).toBe(true);
+    expect(
+      isCredentialConfigured(PamAccountType.Snowflake, {
+        authMethod: PamSnowflakeAuthMethod.KeyPair,
+        username: "svc"
+      })
+    ).toBe(false);
+  });
+
+  test("reject an account identifier carrying the Snowflake domain", () => {
+    expect(() =>
+      validateConnectionDetails(PamAccountType.Snowflake, {
+        account: "myorg-myaccount.snowflakecomputing.com",
+        database: "analytics"
+      })
+    ).toThrow();
   });
 });
 

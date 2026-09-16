@@ -212,7 +212,7 @@ export const AgentVaultProxiesPage = () => {
   };
 
   return (
-    <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
       <Helmet>
         <title>{t("common.head-title", { title: "Proxies" })}</title>
       </Helmet>
@@ -220,7 +220,7 @@ export const AgentVaultProxiesPage = () => {
         scope={ProjectType.AgentVault}
         icon={RouteIcon}
         title="Proxies"
-        description="Manage the proxies your agents route through."
+        description="Manage the proxies your agents route their requests through."
       />
 
       <Card>

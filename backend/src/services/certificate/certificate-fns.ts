@@ -5,6 +5,10 @@ import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import {
+  parseIssuedCustomExtensions,
+  TResolvedCustomExtension
+} from "@app/services/certificate-common/certificate-extension-fns";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
@@ -374,8 +378,10 @@ export const extractCertificateAlgorithms = (decryptedCertificate: Buffer) => {
  * Extract certificate fields including subject attributes, fingerprints, and basic constraints.
  * Returns all parsed fields as separate properties.
  */
-export const extractCertificateFields = (decryptedCertificate: Buffer) => {
+export const extractCertificateFields = (decryptedCertificate: Buffer, resolved?: TResolvedCustomExtension[]) => {
   const parsed = parseCertificateBody(decryptedCertificate);
+
+  const issuedCustomExtensions = parseIssuedCustomExtensions(decryptedCertificate, resolved);
 
   return {
     // Subject attributes
@@ -396,6 +402,8 @@ export const extractCertificateFields = (decryptedCertificate: Buffer) => {
     // Basic constraints
     isCA: parsed.basicConstraints?.isCA ?? null,
     pathLength: parsed.basicConstraints?.pathLength ?? null,
+
+    customExtensions: issuedCustomExtensions.length ? JSON.stringify(issuedCustomExtensions) : null,
 
     // Callers spread these last so the issued values win over the requested ones. Absent when the
     // certificate does not carry them, leaving the requested values in place.

@@ -136,14 +136,14 @@ export const AgentVaultAccessBundlesPage = () => {
     emptyDescription = "Try a different search term.";
   } else if (isAdmin) {
     emptyTitle = "No access bundles yet";
-    emptyDescription = "Create one to group the services an agent may use.";
+    emptyDescription = "Create one to group the services an agent can reach.";
   } else {
     emptyTitle = "No access bundles available";
     emptyDescription = "Ask an admin to grant you an access bundle.";
   }
 
   return (
-    <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
       <Helmet>
         <title>{t("common.head-title", { title: "Access Bundles" })}</title>
       </Helmet>
@@ -151,7 +151,7 @@ export const AgentVaultAccessBundlesPage = () => {
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
         title="Access Bundles"
-        description="Define what's included and who can use it."
+        description="Group the services an agent can reach through a session."
       />
 
       <Card>
@@ -161,8 +161,8 @@ export const AgentVaultAccessBundlesPage = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
           </CardTitle>
           <CardDescription>
-            Each bundle holds the services an agent may use and the members who can mint a session
-            over it.
+            Each bundle holds the services an agent can reach and the members who can create
+            sessions with it.
           </CardDescription>
           {isAdmin && (
             <CardAction>

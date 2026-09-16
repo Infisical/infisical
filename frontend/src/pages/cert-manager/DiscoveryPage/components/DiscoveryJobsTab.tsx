@@ -364,6 +364,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
       />
 
       <UpgradePlanModal
+        paywallKey="cert-manager.discovery-jobs"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { text: string })?.text}

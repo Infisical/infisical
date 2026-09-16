@@ -149,6 +149,7 @@ html.dark[data-current-path^="/documentation/platform/pam"] {
 .qs-index__jump-chip--certificates { --qs-chip-color: #a16207; }
 .qs-index__jump-chip--kms { --qs-chip-color: #109e7a; }
 .qs-index__jump-chip--pam { --qs-chip-color: #dc2626; }
+.qs-index__jump-chip--agent-vault { --qs-chip-color: #5f7000; }
 .qs-index__jump-chip--identity { --qs-chip-color: #cfcfcf; }
 .qs-index__jump-chip--networking { --qs-chip-color: #cfcfcf; }
 .qs-index__jump-chip--self-hosting { --qs-chip-color: #cfcfcf; }
@@ -178,6 +179,7 @@ html.dark[data-current-path^="/documentation/platform/pam"] {
 .dark .qs-index__jump-chip--certificates { --qs-chip-color: #f5c451; }
 .dark .qs-index__jump-chip--kms { --qs-chip-color: #34edbf; }
 .dark .qs-index__jump-chip--pam { --qs-chip-color: #ff8a85; }
+.dark .qs-index__jump-chip--agent-vault { --qs-chip-color: #a1d434; }
 .dark .qs-index__jump-chip--identity { --qs-chip-color: #3a3f47; }
 .dark .qs-index__jump-chip--networking { --qs-chip-color: #3a3f47; }
 .dark .qs-index__jump-chip--self-hosting { --qs-chip-color: #3a3f47; }
@@ -196,6 +198,7 @@ html.dark[data-current-path^="/documentation/platform/pam"] {
 .qs-index__section--certificates { --qs-accent: #a16207; --primary: 161 98 7 !important; --primary-light: 161 98 7 !important; }
 .qs-index__section--kms { --qs-accent: #109e7a; --primary: 16 158 122 !important; --primary-light: 16 158 122 !important; }
 .qs-index__section--pam { --qs-accent: #dc2626; --primary: 220 38 38 !important; --primary-light: 220 38 38 !important; }
+.qs-index__section--agent-vault { --qs-accent: #5f7000; --primary: 95 112 0 !important; --primary-light: 95 112 0 !important; }
 .qs-index__section--identity,
 .qs-index__section--networking,
 .qs-index__section--self-hosting {
@@ -323,6 +326,7 @@ html.dark[data-current-path^="/documentation/platform/pam"] {
 .dark .qs-index__section--certificates { --qs-accent: #f5c451; --primary: 245 196 81 !important; --primary-light: 245 196 81 !important; }
 .dark .qs-index__section--kms { --qs-accent: #34edbf; --primary: 52 237 191 !important; --primary-light: 52 237 191 !important; }
 .dark .qs-index__section--pam { --qs-accent: #ff8a85; --primary: 255 138 133 !important; --primary-light: 255 138 133 !important; }
+.dark .qs-index__section--agent-vault { --qs-accent: #a1d434; --primary: 161 212 52 !important; --primary-light: 161 212 52 !important; }
 .dark .qs-index__section--identity,
 .dark .qs-index__section--networking,
 .dark .qs-index__section--self-hosting {
@@ -929,8 +933,7 @@ a.ifx-steps__label:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1px;
-  border: 1px solid #ebebeb;
-  background-color: #ebebeb;
+  background-color: transparent;
 }
 
 .ifx-card {
@@ -941,6 +944,7 @@ a.ifx-steps__label:hover {
   flex-direction: column;
   padding: 1.5rem;
   background-color: #fbfbfa;
+  outline: 1px solid #ebebeb;
   text-decoration: none;
   transition: background-color 0.2s, box-shadow 0.2s;
 }
@@ -978,6 +982,11 @@ a.ifx-steps__label:hover {
   --ifx-accent: #109e7a;
   --primary: 16 158 122 !important;
   --primary-light: 16 158 122 !important;
+}
+
+.ifx-card--agent-vault {
+  --ifx-ink: #5f7000;
+  --ifx-accent: #5f7000;
 }
 
 .ifx-card__links {
@@ -1115,13 +1124,13 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .dark .ifx-grid {
-  border-color: #1e1f24;
-  background-color: #1e1f24;
+  background-color: transparent;
 }
 
 .dark .ifx-card {
   --ifx-ink: #707174;
   background-color: #101114;
+  outline-color: #1e1f24;
 }
 
 .dark .ifx-card--secrets {
@@ -1157,6 +1166,11 @@ a.ifx-card__title:hover .ifx-card__chevron {
   --ifx-accent: #34edbf;
   --primary: 52 237 191 !important;
   --primary-light: 52 237 191 !important;
+}
+
+.dark .ifx-card--agent-vault {
+  --ifx-ink: #a1d434;
+  --ifx-accent: #a1d434;
 }
 
 .dark .ifx-card__title {
@@ -1611,4 +1625,38 @@ a.ifx-card__title:hover .ifx-card__chevron {
   background-color: rgba(88,28,135,.35);
   color: #d8b4fe;
   border-color: #6b21a8;
+}
+
+/* Mintlify honors `tag` only on sidebar groups, so a navbar dropdown item has no
+   way to flag Agent Vault as preview. Both nav items are flex rows, so ::after
+   lands after the label. The mobile item appends a checkmark when it is the
+   current page; `order` keeps that trailing the pill. Depends on Mintlify's
+   navbar markup; recheck after a CLI upgrade. */
+
+.nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  content: "PREVIEW";
+  flex: none;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.125;
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.dark .nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.dark .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  background-color: rgba(120, 53, 15, 0.35);
+  color: #fcd34d;
+}
+
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] {
+  justify-content: flex-start;
+}
+
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] > svg {
+  order: 1;
+  margin-left: auto;
 }

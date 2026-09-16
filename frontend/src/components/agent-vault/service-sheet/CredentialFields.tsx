@@ -226,10 +226,10 @@ export const CredentialFields = ({ storedType }: Props) => {
 
       {credentialType === AgentVaultCredentialType.Passthrough && (
         <Alert variant="info">
-          <AlertTitle>No credentials are sent</AlertTitle>
+          <AlertTitle>No credential is attached</AlertTitle>
           <AlertDescription>
-            Requests go out as they are. On a proxy that denies everything else, this is what makes
-            these hosts reachable.
+            The proxy forwards requests to these hosts unchanged. Use this when you need a host to
+            be reachable through a proxy that would otherwise block it.
           </AlertDescription>
         </Alert>
       )}

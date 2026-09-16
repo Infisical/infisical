@@ -342,6 +342,7 @@ export const KmipClientTable = () => {
           certificate={popUp.displayKmipClientCert.data}
         />
         <UpgradePlanModal
+          paywallKey="kms.kmip-client"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not include access to KMIP. To unlock this feature, please upgrade to Infisical Enterprise plan."

@@ -1,64 +1,58 @@
 ---
-title: "Access bundles and services"
-description: "How access bundles group services and who can run agents with them, and what a service sends and where."
+title: "Access bundles"
+description: "Lists of services that AI agents can access during a session."
 ---
 
-An access bundle is what you hand an agent: everything it needs for a job, granted and revoked as one unit. A bundle holds services, and names who may run agents with it. A service is one external API the agent may reach, with the hosts that API answers on and the credential the proxy attaches to requests bound for it. You grant access bundles and create sessions with them; the proxy brokers the services inside.
+An access bundle defines the list of [services](/documentation/platform/agent-vault/services) (external APIs) that an AI agent can access during a [session](/documentation/platform/agent-vault/sessions).
 
-## Access bundles
+You can reuse access bundles across as many sessions as you like. This makes them useful for scoping what services an agent can access depending on its task. For example, you might have:
 
-An access bundle has a name, an optional description, its services, and its members. Granting an access bundle to a user, machine identity, or group lets them create sessions with it. The grantee has to be an Agent Vault member first: see [Access control](/documentation/platform/agent-vault/access-control).
+- A **code-review** bundle that grants access to GitHub and Slack
+- A **customer-feedback** bundle that grants access to Discord, Resend, and Slack
+- A **marketing** bundle that grants access to Twilio and Google Docs
 
 <Frame>
   <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing four access bundles with their services and member counts" />
 </Frame>
 
-Access bundles are how you scope access. An agent for on-call work gets the incident tooling, an agent for code review gets GitHub, and neither reaches the other's hosts.
+## Create an access bundle
 
-Removing a member from an access bundle, or from Agent Vault, takes effect on their running agents within one poll interval of the proxy. Deleting one removes its services from every session that carries it. See [Sessions](/documentation/platform/agent-vault/sessions#what-a-running-agent-can-reach).
+To create a new access bundle:
 
-## Services
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Bundles** and select **Create Access Bundle**.
+  </Step>
+  <Step>
+    Give the bundle a name that says what job it's for, like **code-review** or **marketing**.
+  </Step>
+  <Step>
+    Select **Create**. The access bundle will appear in the list.
+  </Step>
+</Steps>
 
-Each service has a name, the hosts it covers, and a credential. Open an access bundle from **Access Bundles** and select **Add Service** to add one.
+Now you can [add services](/documentation/platform/agent-vault/services#add-a-service) to the access bundle so agents using it can make authenticated requests.
 
-<Frame>
-  <img src="/images/platform/agent-vault/access-bundle-services.png" alt="The code-review access bundle's Services table listing its GitHub, Slack, and Anthropic services with their credentials and hosts" />
-</Frame>
+## Manage access to access bundles
 
-### Credential types
+Since access bundles provide authentication to external APIs, members of your organization can't create sessions with them by default. They need explicit access for each bundle.
 
-| Type             | What the proxy sends                                                                                 | When to use it                                                                              |
-| ---------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **Bearer**       | One header, `<header name>: <prefix> <value>`. Defaults to `Authorization: Bearer <value>`.          | Most APIs. Set the header name to `X-API-Key` and clear the prefix for APIs that take a bare key. |
-| **Basic**        | `Authorization: Basic <base64 of username:password>`. Either half can be blank.                      | APIs behind HTTP basic auth, including ones that put the whole key in the username.         |
-| **Pass-through** | Nothing. The request is forwarded unchanged.                                                         | To make a host reachable on a proxy that allows only access bundle hosts. See [Traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). |
+### Grant access
 
-The first step offers a **Template** for common services, which fills in the hosts and the header. Choose **Custom** to set them yourself.
+To allow a user, group, or machine identity to create sessions for a given access bundle:
 
-<Frame>
-  <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with Custom, OpenAI, Anthropic, Slack, GitHub, and Google Workspace" />
-</Frame>
+<Steps>
+  <Step>
+    Make sure the user, group, or machine identity is a member of Agent Vault. If not, [add them under Access Control](/documentation/platform/agent-vault/access-control#adding-members).
+  </Step>
+  <Step>
+    Open the access bundle from **Access Bundles** and select **Options** > **Manage Access**. Then, select **Grant Access**.
+  </Step>
+  <Step>
+    Select the user, group, or machine identity you want to grant access to. Then, select **Grant Access**.
+  </Step>
+</Steps>
 
-If the agent's request already carries a header with the same name, the proxy replaces it with the service's credential.
+### Revoke access
 
-### Host patterns
-
-A host pattern is a comma-separated list of hosts, each with an optional port:
-
-```text
-api.github.com, uploads.github.com
-*.atlassian.net
-internal-api.example.com:8443
-```
-
-- A host without a port means port `443`. Credentials are attached to HTTPS traffic only.
-- `*.` at the start matches exactly one label. `*.example.com` covers `api.example.com`, not `a.b.example.com` or `example.com`.
-- Paths aren't allowed. A service covers a host, not a route on it.
-
-Keep patterns as narrow as the API allows. A wildcard covers every host under it, and the credential goes to all of them. Some templates carry a placeholder such as `<your-tenant>.atlassian.net` for this reason; replace it with your own tenant before saving.
-
-### When two services cover one host
-
-Within one access bundle, two services can't cover the same host with the same pattern. Infisical rejects the save and names the service that already covers it. An exact host and a wildcard that includes it can both exist, and the exact one wins: if one service covers `api.example.com` and another `*.example.com`, requests to `api.example.com` get the first service's credential.
-
-Different access bundles can cover the same host with different credentials. An agent gets the credential from the access bundle its session carries.
+To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Open the member's actions menu and select **Revoke Access**. Any of their running agents lose the bundle's credentials within one poll interval of the proxy.
