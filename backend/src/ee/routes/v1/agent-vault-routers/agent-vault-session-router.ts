@@ -93,7 +93,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "createAgentVaultSession",
-      description: "Mint an Agent Vault session over an access bundle you can reach",
+      description: "Create an Agent Vault session with an access bundle you can reach",
       tags: [ApiDocsTags.AgentVaultSessions],
       body: z.object({
         accessBundles: slugSchema({ max: 64, field: "Access bundle" })
