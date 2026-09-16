@@ -3,6 +3,7 @@ import { logger } from "@app/lib/logger";
 import {
   getPowerDnsZoneRrset,
   patchPowerDnsZoneRrsets,
+  POWERDNS_REQUEST_TIMEOUT_MS,
   TPowerDnsGatewayDeps
 } from "@app/services/app-connection/powerdns/powerdns-connection-fns";
 import {
@@ -11,8 +12,8 @@ import {
 } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 
 const ACME_CHALLENGE_TTL_SECONDS = 60;
-const RRSET_LOCK_TTL_MS = 60 * 1000;
-const RRSET_LOCK_RETRY = { retryCount: 20, retryDelay: 1_000, retryJitter: 300 };
+const RRSET_LOCK_TTL_MS = POWERDNS_REQUEST_TIMEOUT_MS * 2 + 30_000;
+const RRSET_LOCK_RETRY = { retryCount: 50, retryDelay: 2_000, retryJitter: 300 };
 
 export type TPowerDnsProviderDeps = TPowerDnsGatewayDeps & {
   keyStore?: Pick<TKeyStoreFactory, "acquireLock">;

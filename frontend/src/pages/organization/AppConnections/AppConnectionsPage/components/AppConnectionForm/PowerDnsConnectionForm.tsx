@@ -65,6 +65,9 @@ const formSchema = z.discriminatedUnion("method", [
         .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
           message: "API URL must use http or https"
         })
+        .refine((value) => !new URL(value).search && !new URL(value).hash, {
+          message: "API URL must not contain a query string or fragment"
+        })
         .refine((value) => !/\/api(\/v\d+)?\/*$/.test(new URL(value).pathname), {
           message: "Enter the web server address only, without the /api/v1 path"
         }),

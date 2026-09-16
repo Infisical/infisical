@@ -9,7 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { logger } from "@app/lib/logger";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { getSharedHttpsAgent, safeRequest } from "@app/lib/validator/safe-request";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -17,7 +17,7 @@ import { PowerDnsConnectionMethod } from "./powerdns-connection-enums";
 import { TPowerDnsConnectionConfig, TPowerDnsRrset, TPowerDnsZone } from "./powerdns-connection-types";
 
 const POWERDNS_DEFAULT_SERVER_ID = "localhost";
-const POWERDNS_REQUEST_TIMEOUT_MS = 30_000;
+export const POWERDNS_REQUEST_TIMEOUT_MS = 30_000;
 const POWERDNS_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 
 export type TPowerDnsGatewayDeps = {
@@ -42,6 +42,23 @@ export const getPowerDnsConnectionListItem = () => {
 
 export const getPowerDnsApiUrl = (apiUrl: string, path: string, serverId?: string) =>
   `${removeTrailingSlash(apiUrl)}/api/v1/servers/${encodeURIComponent(serverId || POWERDNS_DEFAULT_SERVER_ID)}${path}`;
+
+const toLoggableError = (error: unknown) => {
+  if (isAxiosError(error)) {
+    return {
+      name: error.name,
+      code: error.code,
+      status: error.response?.status,
+      message: error.message,
+      url: error.config?.url ? sanitizeUrlForLog(error.config.url) : undefined,
+      stack: error.stack
+    };
+  }
+
+  if (error instanceof Error) return { name: error.name, message: error.message, stack: error.stack };
+
+  return { message: String(error) };
+};
 
 export const getPowerDnsErrorMessage = (error: unknown, fallback: string) => {
   if (isAxiosError(error)) {
@@ -171,7 +188,7 @@ export const listPowerDnsZones = async (
   } catch (error) {
     if (error instanceof BadRequestError) throw error;
 
-    logger.error(error, "Failed to list PowerDNS zones");
+    logger.error(toLoggableError(error), "Failed to list PowerDNS zones");
     throw new BadRequestError({
       message: `Failed to list PowerDNS zones: ${getPowerDnsErrorMessage(error, "verify the API URL and API key")}`
     });
@@ -198,7 +215,7 @@ export const getPowerDnsZoneRrset = async (
   } catch (error) {
     if (error instanceof BadRequestError) throw error;
 
-    logger.error(error, `Failed to read PowerDNS zone [zoneId=${zoneId}] [name=${name}]`);
+    logger.error(toLoggableError(error), `Failed to read PowerDNS zone [zoneId=${zoneId}] [name=${name}]`);
     throw new Error(`Failed to read PowerDNS zone '${zoneId}': ${getPowerDnsErrorMessage(error, "unknown error")}`);
   }
 };
@@ -217,7 +234,7 @@ export const patchPowerDnsZoneRrsets = async (
   } catch (error) {
     if (error instanceof BadRequestError) throw error;
 
-    logger.error(error, `Failed to update PowerDNS records [zoneId=${zoneId}]`);
+    logger.error(toLoggableError(error), `Failed to update PowerDNS records [zoneId=${zoneId}]`);
     throw new Error(
       `Failed to update PowerDNS records in zone '${zoneId}': ${getPowerDnsErrorMessage(error, "unknown error")}`
     );
@@ -234,7 +251,7 @@ export const validatePowerDnsConnectionCredentials = async (
   } catch (error) {
     if (error instanceof BadRequestError) throw error;
 
-    logger.error(error, "Failed to validate PowerDNS connection credentials");
+    logger.error(toLoggableError(error), "Failed to validate PowerDNS connection credentials");
     throw new BadRequestError({
       message: `Unable to validate PowerDNS connection: ${getPowerDnsErrorMessage(error, "verify the API URL and API key")}`
     });

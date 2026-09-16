@@ -24,6 +24,9 @@ export const PowerDnsConnectionApiKeyCredentialsSchema = z.object({
     .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
       message: "API URL must use http or https"
     })
+    .refine((value) => !new URL(value).search && !new URL(value).hash, {
+      message: "API URL must not contain a query string or fragment"
+    })
     .refine((value) => !API_PATH_SUFFIX.test(new URL(value).pathname), {
       message:
         "API URL must not include the /api/v1 path, only the web server address (e.g. https://pdns.example.com:8081)"
