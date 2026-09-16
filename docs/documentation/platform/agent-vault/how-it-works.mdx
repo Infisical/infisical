@@ -45,11 +45,11 @@ Here's how the four concepts connect:
     ```
   </Step>
   <Step>
-    You create a session scoped to that bundle for a limited time. Infisical returns a session token that identifies the session.
+    You create a session for the bundle. Infisical returns a session token scoped to that bundle for a limited time.
 
     ```mermaid
     flowchart LR
-      session["Session"] -->|"scoped to"| bundle
+      token["Session token"] -->|"scoped to"| bundle
       subgraph bundle["Access bundle"]
         s1["Service"]
         s2["Service"]
@@ -58,12 +58,12 @@ Here's how the four concepts connect:
     ```
   </Step>
   <Step>
-    The agent runs with the session token. It uses the token to authenticate to the Agent Vault proxy on every outbound request.
+    The agent runs with the session token and uses it to authenticate to the Agent Vault proxy on every outbound request.
 
     ```mermaid
     flowchart LR
-      agent["AI agent"] -->|"runs with"| session["Session"]
-      session -->|"scoped to"| bundle
+      agent["AI agent"] -->|"holds"| token["Session token"]
+      token -->|"scoped to"| bundle
       subgraph bundle["Access bundle"]
         s1["Service"]
         s2["Service"]
@@ -72,14 +72,13 @@ Here's how the four concepts connect:
     ```
   </Step>
   <Step>
-    Every outbound request goes through the proxy before leaving the network. The proxy authorizes the session.
+    Every outbound request goes through the proxy, with the session token attached as the proxy credential.
 
     ```mermaid
     flowchart LR
-      agent["AI agent"] -->|"routes through"| proxy["Proxy"]
-      proxy -->|"authorizes"| session["Session"]
-      agent -->|"runs with"| session
-      session -->|"scoped to"| bundle
+      agent["AI agent"] -->|"outbound request with session token"| proxy["Proxy"]
+      agent -->|"holds"| token["Session token"]
+      token -->|"scoped to"| bundle
       subgraph bundle["Access bundle"]
         s1["Service"]
         s2["Service"]
@@ -88,15 +87,15 @@ Here's how the four concepts connect:
     ```
   </Step>
   <Step>
-    The proxy attaches the real credential from the matching service and forwards the request to the upstream host.
+    The proxy reaches into the access bundle for the matching service's credential, attaches it, and forwards the request to the upstream host.
 
     ```mermaid
     flowchart LR
-      agent["AI agent"] -->|"routes through"| proxy["Proxy"]
-      proxy -->|"request with real credential"| apis["External APIs"]
-      proxy -->|"authorizes"| session["Session"]
-      agent -->|"runs with"| session
-      session -->|"scoped to"| bundle
+      agent["AI agent"] -->|"outbound request with session token"| proxy["Proxy"]
+      agent -->|"holds"| token["Session token"]
+      proxy -->|"request with real credentials"| apis["External API"]
+      proxy -->|"reads credentials from"| bundle
+      token -->|"scoped to"| bundle
       subgraph bundle["Access bundle"]
         s1["Service"]
         s2["Service"]
