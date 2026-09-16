@@ -82,7 +82,7 @@ HTTP/1.1 403 Forbidden
 no service covers host "internal.example.com": host blocked by policy
 ```
 
-Ports are part of the match. A [service's host pattern](/documentation/platform/agent-vault/access-bundles#host-patterns) that names no port covers port 443 only, so a service on `example.com` doesn't cover `example.com:8443`, and under this policy a request to the second is refused. Name the port in the pattern to cover it.
+Ports are part of the match. A [service's host pattern](/documentation/platform/agent-vault/services#host-patterns) that names no port covers port 443 only, so a service on `example.com` doesn't cover `example.com:8443`, and under this policy a request to the second is refused. Name the port in the pattern to cover it.
 
 <Frame>
   <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the two traffic policy options and the poll interval" />

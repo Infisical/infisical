@@ -9,6 +9,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -88,17 +89,19 @@ export const AuditLogsRetentionSection = () => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <>
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Audit Logs Retention</CardTitle>
-          <CardDescription>Set the number of days to keep your project audit logs.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)}
-            autoComplete="off"
-            className="flex flex-col items-start gap-4"
-          >
+      <form
+        onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)}
+        autoComplete="off"
+        className="mb-6"
+      >
+        <Card className="gap-0 overflow-hidden p-0">
+          <CardHeader className="p-6">
+            <CardTitle className="font-alliance">Audit Logs Retention</CardTitle>
+            <CardDescription>
+              Set the number of days to keep your project audit logs.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="max-w-xs px-6 pb-6">
             <Controller
               control={control}
               defaultValue={0}
@@ -119,17 +122,20 @@ export const AuditLogsRetentionSection = () => {
                 </Field>
               )}
             />
+          </CardContent>
+          <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
             <Button
               variant="project"
+              size="sm"
               type="submit"
               isPending={isSubmitting}
               isDisabled={!isAdmin || !isDirty}
             >
-              Save
+              Save changes
             </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </CardFooter>
+        </Card>
+      </form>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
