@@ -195,6 +195,7 @@ const Content = ({
   const [selectedEnvironments, setSelectedEnvironments] = useState<string[]>([]);
   const [folderPath, setFolderPath] = useState("");
   const [debouncedFolderPath] = useDebounce(folderPath);
+  const isFolderPathPending = folderPath !== debouncedFolderPath;
   const secretPath = `/${debouncedFolderPath.trim().replace(/^\/+|\/+$/g, "")}`;
   const environmentSlugs = selectedEnvironments.length
     ? selectedEnvironments
@@ -263,7 +264,11 @@ const Content = ({
   const isDeepSearchEnabled =
     (Boolean(search.trim()) || Object.values(filterTags).length > 0) && !isMetadataMode;
 
-  const { data, isPending: isDeepSearchPending } = useGetProjectSecretsQuickSearch(
+  const {
+    data,
+    isPending: isDeepSearchPending,
+    isFetching: isDeepSearchFetching
+  } = useGetProjectSecretsQuickSearch(
     {
       secretPath,
       environments: environmentSlugs,
@@ -275,6 +280,9 @@ const Content = ({
     },
     { enabled: isDeepSearchEnabled }
   );
+
+  const isDeepSearchLoading = isDeepSearchPending || isDeepSearchFetching || isFolderPathPending;
+  const isMetadataLoading = isMetadataPending || isMetadataFetching || isFolderPathPending;
 
   const {
     folders = {},
@@ -473,7 +481,7 @@ const Content = ({
 
   let resultsContent: ReactNode;
   if (isMetadataMode) {
-    if (isMetadataPending) {
+    if (isMetadataLoading) {
       resultsContent = <QuickSearchResultsSkeleton />;
     } else if (metadataResultsByEnv.length === 0) {
       resultsContent = (
@@ -508,7 +516,7 @@ const Content = ({
       );
     }
   } else if (isDeepSearchEnabled) {
-    if (isDeepSearchPending) {
+    if (isDeepSearchLoading) {
       resultsContent = <QuickSearchResultsSkeleton />;
     } else if (resultsByEnv.length === 0) {
       resultsContent = noResultsEmpty;
@@ -699,7 +707,7 @@ const Content = ({
             matchingCount={metadataResultCount}
             isSearchLimitReached={metadataData?.isSearchLimitReached ?? false}
             searchLimit={metadataData?.searchLimit ?? 100}
-            isPending={isMetadataFetching}
+            isPending={isMetadataLoading}
             hasActiveConditions={isMetadataMode}
             onChangeMatch={setMetadataMatch}
             onAddCondition={handleAddCondition}
@@ -711,7 +719,7 @@ const Content = ({
         )}
         {resultsContent}
       </ScrollableContent>
-      {isDeepSearchEnabled && !isDeepSearchPending && visibleResultCount > 0 && (
+      {isDeepSearchEnabled && !isDeepSearchLoading && visibleResultCount > 0 && (
         <div className="mt-3 border-t border-border pt-1">
           <Pagination
             startAdornment={
