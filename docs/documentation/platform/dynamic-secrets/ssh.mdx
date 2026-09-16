@@ -48,6 +48,10 @@ When you create an SSH dynamic secret, Infisical generates an internal CA key pa
     	Algorithm for the ephemeral key pairs generated per lease. Supported options: **ED25519** (default, recommended), **RSA 2048**, **RSA 4096**, **ECDSA P-256**, **ECDSA P-384**.
     </ParamField>
 
+    <ParamField path="CA Key Algorithm" type="string" required>
+    	Algorithm for the internal CA key pair that signs lease certificates. Supported options: **ED25519** (default, recommended), **RSA 2048**, **RSA 4096**, **ECDSA P-256**, **ECDSA P-384**. Changing this after creation generates a new CA, so hosts that trust the previous CA must be set up again.
+    </ParamField>
+
     ![SSH Form](/images/platform/dynamic-secrets/ssh/ssh-configuration-form.png)
 
   </Step>
@@ -158,7 +162,7 @@ For more details, see the [CLI dynamic secrets documentation](/cli/commands/dyna
 
 ## Audit or revoke leases
 
-Once you have created one or more leases, you will be able to access them by clicking on the respective dynamic secret item on the dashboard.
+Once you have created one or more leases, you'll be able to access them by selecting the respective dynamic secret item on the dashboard.
 
 ![Hover View Leases](/images/platform/dynamic-secrets/ssh/hover-view-leases.png)
 
@@ -174,13 +178,13 @@ This will allow you to see the expiration time of the lease or delete the lease 
 
 ## Edit dynamic secret
 
-To update the configuration of an existing SSH dynamic secret (principals, key algorithm, TTL, or to access the CA setup options), click on the dynamic secret item and select **Edit**.
+To update the configuration of an existing SSH dynamic secret (principals, key algorithm, CA key algorithm, TTL, or to access the CA setup options), select the dynamic secret item and then **Edit**.
 
 ![Edit Dynamic Secret](/images/platform/dynamic-secrets/ssh/edit-dynamic-secret.png)
 
 ## Renew leases
 
 <Note>
-  SSH certificate leases cannot be renewed because the certificate validity is
+  SSH certificate leases can't be renewed because the certificate validity is
   baked in at signing time. To get a new certificate, create a new lease.
 </Note>

@@ -152,7 +152,11 @@ export const dynamicSecretServiceFactory = ({
       throw new BadRequestError({ message: "Provided dynamic secret already exists under the folder" });
 
     const selectedProvider = dynamicSecretProviders[provider.type];
-    const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
+    const inputs = await selectedProvider.validateProviderInputs(provider.inputs, {
+      projectId,
+      defaultTTL,
+      maxTTL
+    });
 
     if (
       inputs &&
@@ -371,7 +375,9 @@ export const dynamicSecretServiceFactory = ({
     }
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, {
       projectId,
-      previousInputs: decryptedStoredInput
+      previousInputs: decryptedStoredInput,
+      defaultTTL,
+      maxTTL
     });
 
     const updatedFields = getUpdatedFieldPaths(

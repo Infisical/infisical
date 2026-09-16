@@ -1014,6 +1014,11 @@ testDynamicSecretProviderContract({
         name: "default TTL exceeds 7 days",
         values: { ...sshCreateValues, defaultTTL: "8d", maxTTL: "8d" },
         issuePaths: [["defaultTTL"], ["maxTTL"]]
+      },
+      {
+        name: "TTL is not a duration",
+        values: { ...sshCreateValues, defaultTTL: "invalid" },
+        issuePaths: [["defaultTTL"]]
       }
     ]
   },

@@ -37,6 +37,13 @@ const sshTtlSchema = z
   .superRefine((value, context) => {
     if (!value) return;
     const valueMs = ms(value);
+    if (valueMs === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "TTL must be a valid duration"
+      });
+      return;
+    }
     if (valueMs < 60 * 1000) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -61,7 +68,10 @@ const withTtlOrder = <T extends z.ZodType<TSshFormValues>>(schema: T) =>
   schema.refine(
     (data) => {
       if (!data.maxTTL || !data.defaultTTL) return true;
-      return ms(data.maxTTL)! >= ms(data.defaultTTL)!;
+      const maxTtlMs = ms(data.maxTTL);
+      const defaultTtlMs = ms(data.defaultTTL);
+      if (maxTtlMs === undefined || defaultTtlMs === undefined) return true;
+      return maxTtlMs >= defaultTtlMs;
     },
     {
       path: ["maxTTL"],

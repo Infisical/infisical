@@ -1073,6 +1073,8 @@ export type TDynamicProviderCreateMetadata = {
 export type TDynamicProviderValidateMetadata = {
   projectId: string;
   previousInputs?: object;
+  defaultTTL?: string;
+  maxTTL?: string | null;
 };
 
 export type TDynamicProviderFns = {

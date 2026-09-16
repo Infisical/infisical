@@ -181,6 +181,75 @@ describe("SshProvider.validateProviderInputs", () => {
     ).rejects.toThrow(BadRequestError);
     expect(mockedCreateSshKeyPair).not.toHaveBeenCalled();
   });
+
+  test("rejects a default TTL above 7 days", async () => {
+    const provider = SshProvider();
+
+    await expect(
+      provider.validateProviderInputs(
+        {
+          principals: ["ubuntu"],
+          keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+          caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
+        },
+        { ...metadata, defaultTTL: "8d" }
+      )
+    ).rejects.toThrow("SSH default TTL must be 7 days or less");
+    expect(mockedCreateSshKeyPair).not.toHaveBeenCalled();
+  });
+
+  test("rejects a max TTL above 7 days", async () => {
+    const provider = SshProvider();
+
+    await expect(
+      provider.validateProviderInputs(
+        {
+          principals: ["ubuntu"],
+          keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+          caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
+        },
+        { ...metadata, maxTTL: "8d" }
+      )
+    ).rejects.toThrow("SSH max TTL must be 7 days or less");
+    expect(mockedCreateSshKeyPair).not.toHaveBeenCalled();
+  });
+
+  test("accepts a default TTL and max TTL of exactly 7 days", async () => {
+    const provider = SshProvider();
+
+    await expect(
+      provider.validateProviderInputs(
+        {
+          principals: ["ubuntu"],
+          keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+          caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
+        },
+        { ...metadata, defaultTTL: "7d", maxTTL: "7d" }
+      )
+    ).resolves.toMatchObject({
+      principals: ["ubuntu"],
+      keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+      caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
+    });
+    expect(mockedCreateSshKeyPair).toHaveBeenCalledOnce();
+  });
+
+  test("does not reject when TTL metadata is omitted", async () => {
+    const provider = SshProvider();
+
+    await expect(
+      provider.validateProviderInputs(
+        {
+          principals: ["ubuntu"],
+          keyAlgorithm: SshCertKeyAlgorithm.ED25519,
+          caKeyAlgorithm: SshCertKeyAlgorithm.ED25519
+        },
+        metadata
+      )
+    ).resolves.toMatchObject({
+      principals: ["ubuntu"]
+    });
+  });
 });
 
 describe("SshProvider.create", () => {

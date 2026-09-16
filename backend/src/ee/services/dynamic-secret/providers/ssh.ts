@@ -15,8 +15,25 @@ import {
 
 const SSH_LEASE_MAX_TTL_MS = ms("7d");
 
+const assertSshTtlWithinLimit = (ttlMs: number, message: string) => {
+  if (ttlMs > SSH_LEASE_MAX_TTL_MS) {
+    throw new BadRequestError({ message });
+  }
+};
+
+const assertSshTtlStringWithinLimit = (ttl: string | null | undefined, fieldLabel: string) => {
+  if (!ttl) return;
+  assertSshTtlWithinLimit(ms(ttl), `SSH ${fieldLabel} must be 7 days or less`);
+};
+
 export const SshProvider = (): TDynamicProviderFns => {
-  const validateProviderInputs = async (inputs: object, { previousInputs }: TDynamicProviderValidateMetadata) => {
+  const validateProviderInputs = async (
+    inputs: object,
+    { previousInputs, defaultTTL, maxTTL }: TDynamicProviderValidateMetadata
+  ) => {
+    assertSshTtlStringWithinLimit(defaultTTL, "default TTL");
+    assertSshTtlStringWithinLimit(maxTTL, "max TTL");
+
     const parsed = DynamicSecretSshSchema.parse(inputs);
 
     const raw = inputs as Record<string, unknown>;
@@ -89,11 +106,7 @@ export const SshProvider = (): TDynamicProviderFns => {
     identity: { name: string };
     config?: TDynamicSecretLeaseConfig;
   }) => {
-    if (expireAt > Date.now() + SSH_LEASE_MAX_TTL_MS) {
-      throw new BadRequestError({
-        message: "SSH lease TTL must be 7 days or less"
-      });
-    }
+    assertSshTtlWithinLimit(expireAt - Date.now(), "SSH lease TTL must be 7 days or less");
 
     const parsed = SshStoredSchema.parse(inputs);
 

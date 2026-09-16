@@ -1,6 +1,6 @@
 import { KeyboardEvent, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import { InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 import {
   Button,
@@ -14,7 +14,10 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useGetSshCaPublicKey } from "@app/hooks/api";
 import { sshCertKeyAlgorithms } from "@app/hooks/api/dynamicSecret/constants";
@@ -165,7 +168,18 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
           name="inputs.caKeyAlgorithm"
           render={({ field, fieldState: { error } }) => (
             <Field data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="ssh-ca-key-algorithm">CA Key Algorithm</FieldLabel>
+              <FieldLabel htmlFor="ssh-ca-key-algorithm">
+                CA Key Algorithm
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon aria-label="About CA key algorithm" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Algorithm for the CA that signs lease certificates. Updating this requires hosts
+                    to be configured again.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Select
                 value={field.value}
                 onValueChange={(value) => {
@@ -190,11 +204,7 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
                   ))}
                 </SelectContent>
               </Select>
-              <FieldFeedback
-                id="ssh-ca-key-algorithm-feedback"
-                description="Algorithm for the CA that signs lease certificates. Changing this generates a new CA, and hosts that trust the previous CA must be set up again."
-                error={error?.message}
-              />
+              <FieldFeedback id="ssh-ca-key-algorithm-feedback" error={error?.message} />
             </Field>
           )}
         />
@@ -229,8 +239,7 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
 };
 
 const sshTtlFields = {
-  defaultTTL: { description: "Must be 7 days or less" },
-  maxTTL: { description: "Must be 7 days or less" }
+  maxTTL: { description: "Max TTL is 7 days" }
 } as const;
 
 export const sshDynamicSecretProvider = defineDynamicSecretProvider({
