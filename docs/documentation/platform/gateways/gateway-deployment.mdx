@@ -245,7 +245,7 @@ For the ports, certificates, and traffic flow behind each mode, see [Network arc
         Prefer the service account where you can. Restricting by project alone trusts every instance in that project, including one created by anyone who holds `compute.instances.create` there.
 
         <Warning>
-          **Allowed Zones** is a narrowing on top of one of those, never a restriction on its own. Zone names are a global namespace, so any GCP customer can place an instance in `us-central1-a` and match a zone-only configuration. A config carrying only zones is refused.
+          **Allowed Zones** is a narrowing on top of one of those. Zone names are a global namespace, so any GCP customer can place an instance in `us-central1-a` and match a zone-only configuration. A config carrying only zones is refused.
         </Warning>
 
         <Warning>
