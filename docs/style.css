@@ -1527,3 +1527,37 @@ a.ifx-card__title:hover .ifx-card__chevron {
   color: #d8b4fe;
   border-color: #6b21a8;
 }
+
+/* Mintlify honors `tag` only on sidebar groups, so a navbar dropdown item has no
+   way to flag Agent Vault as preview. Both nav items are flex rows, so ::after
+   lands after the label. The mobile item appends a checkmark when it is the
+   current page; `order` keeps that trailing the pill. Depends on Mintlify's
+   navbar markup; recheck after a CLI upgrade. */
+
+.nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  content: "PREVIEW";
+  flex: none;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.125;
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.dark .nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.dark .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  background-color: rgba(120, 53, 15, 0.35);
+  color: #fcd34d;
+}
+
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] {
+  justify-content: flex-start;
+}
+
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] > svg {
+  order: 1;
+  margin-left: auto;
+}

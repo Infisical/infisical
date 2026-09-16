@@ -12,7 +12,7 @@ export const AgentVaultAuditLogsPage = () => {
   const { currentProject } = useProject();
 
   return (
-    <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
       <Helmet>
         <title>{t("common.head-title", { title: "Audit Logs" })}</title>
       </Helmet>

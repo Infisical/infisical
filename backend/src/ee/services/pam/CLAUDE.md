@@ -129,6 +129,15 @@ metadata; **gateway-injection** (`GcpServiceAccount`, `AzureCli`) proxies the cl
 gateway and injects a backend-minted short-lived token so no credential reaches the client. See
 `access()` / `getSessionCredentials` and the CLI `packages/pam/handlers/<provider>`.
 
+**Snowflake is gateway-injection with no wire protocol**: the gateway answers the part of Snowflake's REST
+API that drivers speak and runs each statement through its own client (CLI `packages/pam/handlers/snowflake/`),
+so the client never holds a Snowflake token. The web explorer points `snowflake-sdk` at the relay port
+instead of at Snowflake, which is why `OneShotOptions` carries `connectionDetails`. Two things the REST
+shape costs that are easy to get wrong: a driver cancels on a second connection, so in-flight statements
+live in a process-wide map keyed by the driver's request id rather than on the proxy; and the connection
+test compares the login's `sessionInfo` against what was asked for, because Snowflake accepts a warehouse
+or role the credential can't use and silently leaves it unset.
+
 ## Policies & Settings
 
 **Policies** are governance controls on a template (MFA, reason, session duration, command-blocking),

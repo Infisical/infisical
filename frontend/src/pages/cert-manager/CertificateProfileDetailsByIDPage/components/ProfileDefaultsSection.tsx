@@ -16,6 +16,7 @@ import {
   EmptyTitle
 } from "@app/components/v3";
 import { TCertificateProfileWithDetails } from "@app/hooks/api/certificateProfiles";
+import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -241,6 +242,25 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
               </Detail>
             )}
           </div>
+        </>
+      )
+    });
+  }
+
+  if (defaults.customExtensions?.length) {
+    sections.push({
+      id: "customExtensions",
+      node: (
+        <>
+          <p className="mb-3 text-sm font-medium text-foreground">Custom extensions</p>
+          <CustomExtensionList
+            extensions={defaults.customExtensions.map((extension) => ({
+              oid: extension.oid,
+              label: extension.label,
+              critical: extension.critical,
+              displayValue: extension.value ?? "Supplied by the request"
+            }))}
+          />
         </>
       )
     });

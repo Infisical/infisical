@@ -28,29 +28,29 @@ export const ChargeBreakdown = ({ prorationAmount, additionalCharges, totalDueNo
   if (totalDueNow < 0) {
     // Net credit: nothing is charged now and the remaining credit rolls to future invoices.
     body = (
-      <>
+      <div>
         You&apos;ll be charged <span className="font-medium">$0</span> now. This change costs{" "}
         {fmtMoney(prorationAmount, 2)}, and a{" "}
         <span className="font-medium">{fmtMoney(Math.abs(totalDueNow), 2)} credit</span> will be
         applied to your future invoices.
-      </>
+      </div>
     );
   } else if (additionalCharges < 0) {
     // Still due now, but earlier changes contribute a credit that reduces the charge.
     body = (
-      <>
+      <div>
         You&apos;ll be charged <span className="font-medium">{fmtMoney(totalDueNow, 2)}</span> now:{" "}
         {fmtMoney(prorationAmount, 2)} for this change, and a credit of{" "}
         {fmtMoney(Math.abs(additionalCharges), 2)} from earlier changes will be applied.
-      </>
+      </div>
     );
   } else {
     body = (
-      <>
+      <div>
         You&apos;ll be charged <span className="font-medium">{fmtMoney(totalDueNow, 2)}</span> now:{" "}
         {fmtMoney(prorationAmount, 2)} for this change, plus {fmtMoney(additionalCharges, 2)} in
         pending charges from earlier changes that haven&apos;t been billed yet.
-      </>
+      </div>
     );
   }
 

@@ -30,7 +30,6 @@ import { createNotification } from "@app/components/notifications";
 import { NewSubOrganizationModal } from "@app/components/organization/NewSubOrganizationModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button as V2Button, Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -42,6 +41,13 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -781,64 +787,52 @@ export const Navbar = () => {
         </DropdownMenu>
       </ButtonGroup>
 
-      <Modal
-        isOpen={showCardDeclinedModal}
-        onOpenChange={() => !isModalIntrusive && setShowCardDeclinedModal(false)}
+      <Dialog
+        open={showCardDeclinedModal}
+        onOpenChange={(isOpen) => {
+          if (!isModalIntrusive) setShowCardDeclinedModal(isOpen);
+        }}
       >
-        <ModalContent
-          title={
-            <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-primary-400" />
+        <DialogContent showCloseButton={!isModalIntrusive}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-warning" />
               Your payment could not be processed.
-            </div>
-          }
-          showCloseButton={!isModalIntrusive}
-        >
-          <div>
-            <div>
-              <div className="mb-1">
-                <p>
-                  We were unable to process your last payment
-                  {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
-                  Please update your payment information to continue using premium features.
-                </p>
-              </div>
-              <div className="mt-4">
-                <div className="flex space-x-3">
-                  <V2Button
-                    colorSchema="primary"
-                    variant="solid"
-                    onClick={handleNavigateToRootOrgBilling}
-                  >
-                    Update Payment Method
-                  </V2Button>
-                  {!isModalIntrusive && (
-                    <V2Button
-                      colorSchema="secondary"
-                      variant="outline"
-                      onClick={() => setShowCardDeclinedModal(false)}
-                    >
-                      Dismiss
-                    </V2Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </ModalContent>
-      </Modal>
+            </DialogTitle>
+            <DialogDescription>
+              We were unable to process your last payment
+              {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
+              Please update your payment information to continue using premium features.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            {!isModalIntrusive && (
+              <Button variant="outline" onClick={() => setShowCardDeclinedModal(false)}>
+                Dismiss
+              </Button>
+            )}
+            <Button variant="org" onClick={handleNavigateToRootOrgBilling}>
+              Update Payment Method
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <NewSubOrganizationModal
         isOpen={showSubOrgForm}
         onOpenChange={setShowSubOrgForm}
         onCreated={({ id }) => handleOrgSelection({ organizationId: id })}
       />
-      <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
-        <ModalContent title="Server Administrators" subTitle="View all server administrators">
-          <div className="mb-2">
+      <Dialog open={showAdminsModal} onOpenChange={setShowAdminsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Server Administrators</DialogTitle>
+            <DialogDescription>View all server administrators</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="flex flex-col overflow-visible">
             <ServerAdminsPanel />
-          </div>
-        </ModalContent>
-      </Modal>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
