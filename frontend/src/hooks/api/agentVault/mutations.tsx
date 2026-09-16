@@ -10,6 +10,7 @@ import {
   TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
   TAgentVaultAccessBundle,
+  TAgentVaultActivityConfigResponse,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
   TAgentVaultEnrollment,
@@ -23,6 +24,7 @@ import {
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TUpdateAgentVaultAccessBundleDTO,
+  TUpdateAgentVaultActivityConfigDTO,
   TUpdateAgentVaultServiceDTO
 } from "./types";
 
@@ -357,5 +359,26 @@ export const useRevokeAgentVaultMembers = () => {
       return data;
     },
     onSuccess: () => invalidateMembers(queryClient, currentOrg.id)
+  });
+};
+
+export const useUpdateAgentVaultActivityConfig = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: TUpdateAgentVaultActivityConfigDTO) => {
+      const { data } = await apiRequest.patch<TAgentVaultActivityConfigResponse>(
+        "/api/v1/agent-vault/activity/config",
+        params
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.activityConfig(currentOrg.id) });
+      // A change of destination decides whether older chunks are still reachable, so any open timeline
+      // has to be re-read rather than left showing URLs that now 404.
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+    }
   });
 };

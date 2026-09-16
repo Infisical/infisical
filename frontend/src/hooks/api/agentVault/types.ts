@@ -1,4 +1,5 @@
 import {
+  AgentVaultActivityDecision,
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
@@ -278,4 +279,100 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TAgentVaultActivityConfig = {
+  enabled: boolean;
+  appConnectionId: string | null;
+  bucket: string | null;
+  region: string | null;
+  keyPrefix: string | null;
+  configVersion: number;
+};
+
+export type TAgentVaultActivityConfigResponse = {
+  config: TAgentVaultActivityConfig;
+  usage: { storedRecordCount: number; ceiling: number };
+  /**
+   * A presigned GET the browser fetches to prove the bucket allows cross-origin reads. Server-side
+   * validation cannot see a missing CORS rule, so without this an admin gets a green save and every
+   * Activity tab fails with an opaque network error.
+   */
+  corsProbeUrl: string | null;
+};
+
+export type TUpdateAgentVaultActivityConfigDTO = {
+  enabled?: boolean;
+  appConnectionId?: string | null;
+  bucket?: string;
+  region?: string;
+  keyPrefix?: string;
+};
+
+/** One sealed chunk, as the read endpoint describes it. The bytes live in the customer's bucket. */
+export type TAgentVaultActivityChunk = {
+  chunkId: string;
+  proxyId: string;
+  proxyName: string | null;
+  startedAt: string;
+  endedAt: string;
+  firstSeq: number;
+  lastSeq: number;
+  recordCount: number;
+  droppedCount: number;
+  configVersion: number;
+  ciphertextBytes: number;
+  iv: string;
+  /** Null when the chunk predates a change of bucket, so it is no longer reachable. */
+  presignedGetUrl: string | null;
+};
+
+export type TAgentVaultActivityPage = {
+  enabled: boolean;
+  sessionKey: string | null;
+  projectId: string;
+  configVersion: number;
+  chunks: TAgentVaultActivityChunk[];
+  nextCursor: string | null;
+};
+
+export type TAgentVaultActivityRecord = {
+  ts: string;
+  seq: number;
+  proxyId: string;
+  method: string;
+  host: string;
+  port: string;
+  path: string;
+  status: number;
+  decision: AgentVaultActivityDecision;
+  service: string | null;
+  accessBundle: string | null;
+};
+
+/** Why a chunk could not be shown. Rendered as one placeholder row rather than failing the whole view. */
+export type TAgentVaultActivityGapReason = "fetch" | "size" | "gcm" | "json" | "repointed";
+
+export type TAgentVaultActivityGap = {
+  chunkId: string;
+  proxyId: string;
+  proxyName: string | null;
+  startedAt: string;
+  reason: TAgentVaultActivityGapReason;
+  recordCount: number;
+};
+
+/** A dropped-records marker, rebuilt from droppedCount rather than from any record. */
+export type TAgentVaultActivityDrop = {
+  chunkId: string;
+  proxyId: string;
+  proxyName: string | null;
+  startedAt: string;
+  droppedCount: number;
+};
+
+/** Just enough of an app connection to pick one in the activity storage form. */
+export type TAgentVaultAwsConnection = {
+  id: string;
+  name: string;
 };

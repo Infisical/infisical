@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -7,6 +7,9 @@ import { AgentVaultMemberType } from "./enums";
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultActivityConfigResponse,
+  TAgentVaultActivityPage,
+  TAgentVaultAwsConnection,
   TAgentVaultMember,
   TAgentVaultProductActor,
   TAgentVaultProductMemberOf,
@@ -53,7 +56,11 @@ export const agentVaultKeys = {
   // Nested under members() so adding a member invalidates the candidate list too.
   availableMembers: (orgId: string) => [...agentVaultKeys.members(orgId), "available"] as const,
   availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
-    [...agentVaultKeys.availableMembers(orgId), params] as const
+    [...agentVaultKeys.availableMembers(orgId), params] as const,
+  activityConfig: (orgId: string) => [...agentVaultKeys.all(orgId), "activity-config"] as const,
+  awsConnections: (orgId: string) => [...agentVaultKeys.all(orgId), "aws-connections"] as const,
+  sessionActivity: (orgId: string, sessionId: string) =>
+    [...agentVaultKeys.sessions(orgId), sessionId, "activity"] as const
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
@@ -185,5 +192,76 @@ export const useListAgentVaultProxies = (params: TListAgentVaultProxiesDTO = {})
     },
     refetchInterval: 30_000,
     placeholderData: (prev) => prev
+  });
+};
+
+export const useGetAgentVaultActivityConfig = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.activityConfig(currentOrg.id),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAgentVaultActivityConfigResponse>(
+        "/api/v1/agent-vault/activity/config"
+      );
+      return data;
+    },
+    enabled
+  });
+};
+
+/**
+ * Cursor pagination, newest first.
+ *
+ * Polling stops the moment the viewer loads a second page. An interval refetch on an infinite query
+ * re-runs every page it holds, not just the first, and each page costs a key unwrap plus a presigned URL
+ * per chunk. Someone who has paged back is reading history rather than tailing a live agent, so the
+ * refresh buys them nothing and the cost grows with every page they open.
+ */
+export const useGetAgentVaultSessionActivity = (
+  sessionId: string | undefined,
+  { enabled = true, isActive = false }: { enabled?: boolean; isActive?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useInfiniteQuery({
+    queryKey: agentVaultKeys.sessionActivity(currentOrg.id, sessionId ?? ""),
+    enabled: enabled && Boolean(sessionId),
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const { data } = await apiRequest.get<TAgentVaultActivityPage>(
+        `/api/v1/agent-vault/sessions/${sessionId}/activity`,
+        { params: { limit: 50, ...(pageParam ? { before: pageParam } : {}) } }
+      );
+      return data;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    refetchInterval: (query) =>
+      isActive && (query.state.data?.pages.length ?? 0) <= 1 ? 30_000 : false,
+    staleTime: 0
+  });
+};
+
+/**
+ * The AWS connections activity storage can be pointed at, which are the organization-level ones.
+ *
+ * Deliberately not the shared useListAvailableAppConnections hook: that one takes a project id, and the
+ * Agent Vault project's would make the endpoint answer 403 before it ever reaches the org-level list.
+ * Its roles collapse to admin or member and carry no app-connection permissions, by design. A
+ * project-scoped connection is no use here either, since it belongs to some other project and the save
+ * would reject it.
+ */
+export const useListAgentVaultAwsConnections = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.awsConnections(currentOrg.id),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ appConnections: TAgentVaultAwsConnection[] }>(
+        "/api/v1/app-connections/aws/available"
+      );
+      return data.appConnections;
+    },
+    enabled
   });
 };

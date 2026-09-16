@@ -1,4 +1,4 @@
-import { FileText, IdCard, Info, Package, Route, Shield } from "lucide-react";
+import { FileText, IdCard, Info, Package, Route, Settings, Shield } from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
 import {
@@ -31,7 +31,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
           icon: Shield,
           pathSuffix: "access-management",
           activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
-        }
+        },
+        { label: "Settings", icon: Settings, pathSuffix: "settings" }
       ]
     : [];
 

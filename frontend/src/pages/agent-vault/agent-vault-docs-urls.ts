@@ -6,5 +6,6 @@ export const AgentVaultDocsUrls = {
   accessBundles: `${AGENT_VAULT_DOCS_BASE_URL}/access-bundles`,
   services: `${AGENT_VAULT_DOCS_BASE_URL}/services`,
   sessions: `${AGENT_VAULT_DOCS_BASE_URL}/sessions`,
-  proxies: `${AGENT_VAULT_DOCS_BASE_URL}/proxies`
+  proxies: `${AGENT_VAULT_DOCS_BASE_URL}/proxies`,
+  activityLogs: `${AGENT_VAULT_DOCS_BASE_URL}/activity-logs`
 } as const;

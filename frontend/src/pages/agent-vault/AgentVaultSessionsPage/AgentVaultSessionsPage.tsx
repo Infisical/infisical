@@ -70,11 +70,13 @@ import {
 import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
+import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionStatusBadge } from "./components/SessionStatusBadge";
 
@@ -99,6 +101,7 @@ export const AgentVaultSessionsPage = () => {
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
+  const { sessionId: openSessionId, openSheet } = useAgentVaultSheetState();
 
   const { data, isPending } = useListAgentVaultSessions({
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
@@ -265,7 +268,11 @@ export const AgentVaultSessionsPage = () => {
                 ))}
               {!isPending &&
                 sessions.map((session) => (
-                  <TableRow key={session.id}>
+                  <TableRow
+                    key={session.id}
+                    onClick={() => openSheet(session.id)}
+                    className="cursor-pointer"
+                  >
                     <TableCell>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -325,7 +332,8 @@ export const AgentVaultSessionsPage = () => {
                     <TableCell>
                       <SessionStatusBadge status={session.status} />
                     </TableCell>
-                    <TableCell variant="action">
+                    {/* The row opens the sheet, so the action cell keeps its click to itself. */}
+                    <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
                       {session.status === AgentVaultSessionStatus.Active && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -391,6 +399,8 @@ export const AgentVaultSessionsPage = () => {
           if (!isOpen) setSessionToRevoke(null);
         }}
       />
+
+      <SessionDetailSheet session={sessions.find((session) => session.id === openSessionId)} />
     </div>
   );
 };

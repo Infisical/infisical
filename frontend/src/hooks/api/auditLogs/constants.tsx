@@ -479,7 +479,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
-  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy"
+  [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
+  [EventType.AGENT_VAULT_ACTIVITY_CONFIG_UPDATE]: "Update activity logging settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -552,6 +553,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.AGENT_VAULT_PROXY_ENROLL,
     EventType.AGENT_VAULT_PROXY_UPDATE,
     EventType.AGENT_VAULT_PROXY_REVOKE,
-    EventType.AGENT_VAULT_PROXY_DELETE
+    EventType.AGENT_VAULT_PROXY_DELETE,
+    EventType.AGENT_VAULT_ACTIVITY_CONFIG_UPDATE
   ]
 };
