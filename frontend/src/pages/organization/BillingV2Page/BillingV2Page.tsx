@@ -17,7 +17,6 @@ import {
   useGetBillingV2Catalog,
   useGetBillingV2Overview
 } from "@app/hooks/api";
-import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
@@ -56,22 +55,12 @@ export const BillingV2Page = () => {
       return;
     }
     if (checkout === "success") {
-      analytics.captureForOrganization(
-        AnalyticsEvent.BillingCheckoutSuccessReturnViewed,
-        orgId,
-        {}
-      );
       createNotification({
         type: "success",
         text: "Subscription started. It may take a moment to appear here."
       });
       refetch();
     } else if (checkout === "canceled") {
-      analytics.captureForOrganization(
-        AnalyticsEvent.BillingCheckoutCanceledReturnViewed,
-        orgId,
-        {}
-      );
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
     window.history.replaceState({}, "", window.location.pathname);

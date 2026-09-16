@@ -298,6 +298,11 @@ export enum PostHogEventTypes {
   AccessApprovalPolicyUpdated = "Access Approval Policy Updated",
   SecretRotationV2Failed = "Secret Rotation V2 Failed",
 
+  // Billing
+  BillingCheckoutSessionCreated = "Billing Checkout Session Created",
+  BillingProductActivated = "Billing Product Activated",
+  BillingPlanUpgraded = "Billing Plan Upgraded",
+
   // Agent Proxy
   ProxiedServiceCreated = "Proxied Service Created",
 
@@ -1125,9 +1130,7 @@ export type TPamFolderEvent = {
 
 export type TPamAccountEvent = {
   event:
-    | PostHogEventTypes.PamAccountCreated
-    | PostHogEventTypes.PamAccountUpdated
-    | PostHogEventTypes.PamAccountDeleted;
+    PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountUpdated | PostHogEventTypes.PamAccountDeleted;
   properties: {
     accountType: string;
     orgId: string;
@@ -1768,9 +1771,7 @@ export type TSignerDeletedEvent = {
 
 export type TSignerMemberEvent = {
   event:
-    | PostHogEventTypes.SignerMemberAdded
-    | PostHogEventTypes.SignerMemberUpdated
-    | PostHogEventTypes.SignerMemberRemoved;
+    PostHogEventTypes.SignerMemberAdded | PostHogEventTypes.SignerMemberUpdated | PostHogEventTypes.SignerMemberRemoved;
   properties: {
     orgId: string;
     projectId: string;
@@ -2365,6 +2366,35 @@ export type TProxiedServiceCreatedEvent = {
   };
 };
 
+export type TBillingCheckoutSessionCreatedEvent = {
+  event: PostHogEventTypes.BillingCheckoutSessionCreated;
+  properties: {
+    productId: string;
+    plan?: string;
+    cadence?: "monthly" | "annual";
+  };
+};
+
+export type TBillingProductActivatedEvent = {
+  event: PostHogEventTypes.BillingProductActivated;
+  properties: {
+    productId: string;
+    plan?: string;
+    cadence?: "monthly" | "annual";
+    subscriptionId?: string;
+  };
+};
+
+export type TBillingPlanUpgradedEvent = {
+  event: PostHogEventTypes.BillingPlanUpgraded;
+  properties: {
+    productId: string;
+    fromPlan?: string;
+    toPlan: string;
+    subscriptionId?: string;
+  };
+};
+
 type TAgentVaultEventBase = {
   orgId: string;
   channel: string;
@@ -2747,5 +2777,8 @@ export type TPostHogEvent = {
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
   | TProxiedServiceCreatedEvent
+  | TBillingCheckoutSessionCreatedEvent
+  | TBillingProductActivatedEvent
+  | TBillingPlanUpgradedEvent
   | TAgentVaultPostHogEvent
 );

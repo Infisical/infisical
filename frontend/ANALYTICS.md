@@ -29,7 +29,7 @@ not add those fields at call sites.
 4. Update the PostHog insight or dashboard that consumes it.
 
 Event names describe completed facts in title case, such as `Paywall Viewed`
-or `Billing Checkout Redirected`. Use stable machine-readable values for IDs,
+or `Paywall Upgrade Clicked`. Use stable machine-readable values for IDs,
 plans, products, and other breakdowns; do not use display labels as
 identifiers.
 

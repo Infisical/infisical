@@ -12,7 +12,6 @@ import {
   useBuyBillingV2Product,
   usePreviewBillingV2Change
 } from "@app/hooks/api";
-import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { fmtMoney } from "../billing-v2-format";
 import { ChargeBreakdown } from "./ChargeBreakdown";
@@ -204,12 +203,6 @@ export const ActivateView = ({
   }, [plan]);
 
   const handleActivate = async () => {
-    analytics.captureForOrganization(AnalyticsEvent.BillingProductActivationClicked, orgId, {
-      productId: prod.id,
-      plan: plan.tier,
-      cadence
-    });
-
     try {
       const result = await buyProduct.mutateAsync({
         orgId,
@@ -228,11 +221,6 @@ export const ActivateView = ({
         return;
       }
       if (result.checkoutUrl) {
-        analytics.captureForOrganization(AnalyticsEvent.BillingCheckoutRedirected, orgId, {
-          productId: prod.id,
-          plan: plan.tier,
-          cadence
-        });
         window.location.href = result.checkoutUrl;
         return;
       }
