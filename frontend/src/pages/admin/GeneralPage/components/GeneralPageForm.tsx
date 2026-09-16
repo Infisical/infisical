@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AtSign } from "lucide-react";
@@ -8,7 +8,6 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -49,13 +48,23 @@ const formSchema = z.object({
   pageFrameContent: z.string().optional().default("")
 });
 
-type TDashboardForm = z.infer<typeof formSchema>;
+const signUpFormSchema = formSchema.pick({
+  signUpMode: true,
+  allowedSignUpDomain: true
+});
+const defaultOrganizationFormSchema = formSchema.pick({ defaultAuthOrgId: true });
+const trustLdapEmailsFormSchema = formSchema.pick({ trustLdapEmails: true });
+const noticesFormSchema = formSchema.pick({ authConsentContent: true, pageFrameContent: true });
+
+type TSignUpForm = z.infer<typeof signUpFormSchema>;
+type TDefaultOrganizationForm = z.infer<typeof defaultOrganizationFormSchema>;
+type TTrustLdapEmailsForm = z.infer<typeof trustLdapEmailsFormSchema>;
+type TNoticesForm = z.infer<typeof noticesFormSchema>;
 
 type GeneralSettingsCardProps = {
   title: string;
   description: string;
   children?: ReactNode;
-  action?: ReactNode;
   isSubmitting: boolean;
   isDirty: boolean;
 };
@@ -64,7 +73,6 @@ const GeneralSettingsCard = ({
   title,
   description,
   children,
-  action,
   isSubmitting,
   isDirty
 }: GeneralSettingsCardProps) => (
@@ -72,7 +80,6 @@ const GeneralSettingsCard = ({
     <CardHeader className="p-6">
       <CardTitle className="font-alliance">{title}</CardTitle>
       <CardDescription>{description}</CardDescription>
-      {action && <CardAction>{action}</CardAction>}
     </CardHeader>
     {children && <CardContent className="px-6 pb-6">{children}</CardContent>}
     <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
@@ -83,58 +90,58 @@ const GeneralSettingsCard = ({
         isPending={isSubmitting}
         isDisabled={!isDirty}
       >
-        Save changes
+        Save
       </Button>
     </CardFooter>
   </Card>
 );
 
-export const GeneralPageForm = () => {
-  const data = useServerConfig();
-  const { config } = data;
+type SignUpSettingsCardProps = {
+  allowSignUp: boolean;
+  allowedSignUpDomain: string;
+};
 
+const SignUpSettingsCard = ({ allowSignUp, allowedSignUpDomain }: SignUpSettingsCardProps) => {
+  const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
   const {
     control,
     handleSubmit,
+    reset,
     watch,
     formState: { isSubmitting, isDirty }
-  } = useForm<TDashboardForm>({
-    resolver: zodResolver(formSchema),
-    values: {
+  } = useForm<TSignUpForm>({
+    resolver: zodResolver(signUpFormSchema),
+    defaultValues: {
       // eslint-disable-next-line
-      signUpMode: config.allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
-      allowedSignUpDomain: config.allowedSignUpDomain,
-      trustLdapEmails: config.trustLdapEmails ?? false,
-      defaultAuthOrgId: config.defaultAuthOrgId ?? "",
-      authConsentContent: config.authConsentContent ?? "",
-      pageFrameContent: config.pageFrameContent ?? ""
+      signUpMode: allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
+      allowedSignUpDomain
     }
   });
 
-  const signUpMode = watch("signUpMode");
-  const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
-
-  const organizations = useGetOrganizations();
-
-  const onFormSubmit = async (formData: TDashboardForm) => {
-    const { allowedSignUpDomain, trustLdapEmails, authConsentContent, pageFrameContent } = formData;
-
-    await updateServerConfig({
-      defaultAuthOrgId: formData.defaultAuthOrgId || null,
-      allowSignUp: signUpMode !== SignUpModes.Disabled,
-      allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
-      trustLdapEmails,
-      authConsentContent,
-      pageFrameContent
+  useEffect(() => {
+    reset({
+      // eslint-disable-next-line
+      signUpMode: allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
+      allowedSignUpDomain
     });
+  }, [allowSignUp, allowedSignUpDomain, reset]);
+
+  const signUpMode = watch("signUpMode");
+  const onFormSubmit = async (formData: TSignUpForm) => {
+    await updateServerConfig({
+      allowSignUp: formData.signUpMode !== SignUpModes.Disabled,
+      allowedSignUpDomain:
+        formData.signUpMode === SignUpModes.Anyone ? formData.allowedSignUpDomain : null
+    });
+    reset(formData);
     createNotification({
-      text: "Successfully changed sign up setting.",
+      text: "Signup settings updated.",
       type: "success"
     });
   };
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit(onFormSubmit)}>
+    <form onSubmit={handleSubmit(onFormSubmit)}>
       <GeneralSettingsCard
         title="Allow User Signups"
         description="Choose whether users can sign up for this Infisical instance."
@@ -161,7 +168,7 @@ export const GeneralPageForm = () => {
               </Field>
             )}
           />
-          {signUpMode === "anyone" && (
+          {signUpMode === SignUpModes.Anyone && (
             <Controller
               control={control}
               defaultValue=""
@@ -193,7 +200,48 @@ export const GeneralPageForm = () => {
           )}
         </FieldGroup>
       </GeneralSettingsCard>
+    </form>
+  );
+};
 
+type DefaultOrganizationSettingsCardProps = {
+  defaultAuthOrgId: string;
+};
+
+const DefaultOrganizationSettingsCard = ({
+  defaultAuthOrgId
+}: DefaultOrganizationSettingsCardProps) => {
+  const organizations = useGetOrganizations();
+  const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting, isDirty }
+  } = useForm<TDefaultOrganizationForm>({
+    resolver: zodResolver(defaultOrganizationFormSchema),
+    defaultValues: {
+      defaultAuthOrgId
+    }
+  });
+
+  useEffect(() => {
+    reset({ defaultAuthOrgId });
+  }, [defaultAuthOrgId, reset]);
+
+  const onFormSubmit = async (formData: TDefaultOrganizationForm) => {
+    await updateServerConfig({
+      defaultAuthOrgId: formData.defaultAuthOrgId || null
+    });
+    reset(formData);
+    createNotification({
+      text: "Default organization updated.",
+      type: "success"
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onFormSubmit)}>
       <GeneralSettingsCard
         title="Default Organization"
         description="Select the default organization you want to set for SAML, LDAP, OIDC, and GitHub logins. When selected, user logins will be automatically scoped to the selected organization."
@@ -227,15 +275,54 @@ export const GeneralPageForm = () => {
           )}
         />
       </GeneralSettingsCard>
+    </form>
+  );
+};
 
+type TrustLdapEmailsSettingsCardProps = {
+  trustLdapEmails: boolean;
+};
+
+const TrustLdapEmailsSettingsCard = ({ trustLdapEmails }: TrustLdapEmailsSettingsCardProps) => {
+  const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting, isDirty }
+  } = useForm<TTrustLdapEmailsForm>({
+    resolver: zodResolver(trustLdapEmailsFormSchema),
+    defaultValues: {
+      trustLdapEmails
+    }
+  });
+
+  useEffect(() => {
+    reset({ trustLdapEmails });
+  }, [trustLdapEmails, reset]);
+
+  const onFormSubmit = async (formData: TTrustLdapEmailsForm) => {
+    await updateServerConfig(formData);
+    reset(formData);
+    createNotification({
+      text: "LDAP email verification setting updated.",
+      type: "success"
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onFormSubmit)}>
       <Controller
         control={control}
         name="trustLdapEmails"
         render={({ field }) => (
           <GeneralSettingsCard
-            title="Trust LDAP emails"
-            description="Trust email addresses provisioned by LDAP identity providers. When disabled, LDAP users must verify their email address on first login. SAML and OIDC users skip verification when their organization enforces SSO."
-            action={
+            title="LDAP Email Verification"
+            description="Choose whether users provisioned through LDAP must verify their email address on first login. SAML and OIDC users remain unaffected."
+            isSubmitting={isSubmitting}
+            isDirty={isDirty}
+          >
+            <div className="flex items-center gap-3">
               <Toggle
                 id="trust-ldap-emails"
                 aria-label="Trust LDAP emails"
@@ -243,13 +330,58 @@ export const GeneralPageForm = () => {
                 checked={field.value}
                 onCheckedChange={field.onChange}
               />
-            }
-            isSubmitting={isSubmitting}
-            isDirty={isDirty}
-          />
+              <FieldLabel
+                htmlFor="trust-ldap-emails"
+                className="cursor-pointer text-sm font-medium text-foreground"
+              >
+                Trust LDAP emails
+              </FieldLabel>
+            </div>
+          </GeneralSettingsCard>
         )}
       />
+    </form>
+  );
+};
 
+type NoticesSettingsCardProps = {
+  authConsentContent: string;
+  pageFrameContent: string;
+};
+
+const NoticesSettingsCard = ({
+  authConsentContent,
+  pageFrameContent
+}: NoticesSettingsCardProps) => {
+  const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting, isDirty }
+  } = useForm<TNoticesForm>({
+    resolver: zodResolver(noticesFormSchema),
+    defaultValues: {
+      authConsentContent,
+      pageFrameContent
+    }
+  });
+
+  useEffect(() => {
+    reset({ authConsentContent, pageFrameContent });
+  }, [authConsentContent, pageFrameContent, reset]);
+
+  const onFormSubmit = async (formData: TNoticesForm) => {
+    await updateServerConfig(formData);
+    reset(formData);
+    createNotification({
+      text: "Notices updated.",
+      type: "success"
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onFormSubmit)}>
       <GeneralSettingsCard
         title="Notices"
         description="Configure system-wide notification banners and security messages. These settings control the text displayed during authentication and throughout a user's session."
@@ -296,5 +428,24 @@ export const GeneralPageForm = () => {
         </FieldGroup>
       </GeneralSettingsCard>
     </form>
+  );
+};
+
+export const GeneralPageForm = () => {
+  const { config } = useServerConfig();
+
+  return (
+    <div className="space-y-6">
+      <SignUpSettingsCard
+        allowSignUp={config.allowSignUp}
+        allowedSignUpDomain={config.allowedSignUpDomain ?? ""}
+      />
+      <DefaultOrganizationSettingsCard defaultAuthOrgId={config.defaultAuthOrgId ?? ""} />
+      <TrustLdapEmailsSettingsCard trustLdapEmails={config.trustLdapEmails ?? false} />
+      <NoticesSettingsCard
+        authConsentContent={config.authConsentContent ?? ""}
+        pageFrameContent={config.pageFrameContent ?? ""}
+      />
+    </div>
   );
 };
