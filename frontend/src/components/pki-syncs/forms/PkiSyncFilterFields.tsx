@@ -98,7 +98,7 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
                   <Badge
                     variant="outline"
                     isTruncatable
-                    className="h-9 min-w-0 flex-1 pl-3 font-mono text-foreground"
+                    className="h-9 min-w-0 flex-1 pl-3 text-foreground"
                   >
                     <span className="truncate" title={first}>
                       {labelFor(first)}
@@ -121,10 +121,7 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
                           >
                             {rest.map((id) => (
                               <div key={id} className="flex items-center justify-between gap-2">
-                                <span
-                                  className="min-w-0 flex-1 truncate font-mono text-xs"
-                                  title={id}
-                                >
+                                <span className="min-w-0 flex-1 truncate text-xs" title={id}>
                                   {labelFor(id)}
                                 </span>
                                 <IconButton
@@ -196,7 +193,7 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
                   // eslint-disable-next-line react/no-array-index-key
                   <div key={index} className="flex items-center gap-3">
                     <Input
-                      className="min-w-0 flex-1 font-mono"
+                      className="min-w-0 flex-1"
                       placeholder="Key"
                       value={pair.key}
                       onChange={(e) =>
@@ -209,7 +206,7 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
                       }
                     />
                     <Input
-                      className="min-w-0 flex-1 font-mono"
+                      className="min-w-0 flex-1"
                       placeholder="Any value"
                       value={pair.value ?? ""}
                       onChange={(e) =>
