@@ -234,6 +234,46 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
   return { method: ResourceAuthMethodType.Token } as const;
 };
 
+const gatewayAuthMethodAuditMetadata = (
+  gatewayId: string,
+  gatewayName: string | undefined,
+  view: { method: string; config?: Record<string, unknown> }
+) => ({
+  resourceType: "gateway" as const,
+  resourceId: gatewayId,
+  resourceName: gatewayName,
+  method: view.method as "aws" | "gcp" | "kubernetes" | "token",
+  methodConfigId:
+    view.method === ResourceAuthMethodType.Aws ||
+    view.method === ResourceAuthMethodType.Gcp ||
+    view.method === ResourceAuthMethodType.Kubernetes
+      ? (view.config?.id as string)
+      : gatewayId,
+  ...(view.method === ResourceAuthMethodType.Aws
+    ? {
+        stsEndpoint: view.config?.stsEndpoint as string,
+        allowedPrincipalArns: view.config?.allowedPrincipalArns as string,
+        allowedAccountIds: view.config?.allowedAccountIds as string
+      }
+    : {}),
+  ...(view.method === ResourceAuthMethodType.Gcp
+    ? {
+        gcpAuthType: view.config?.type as string,
+        allowedServiceAccounts: view.config?.allowedServiceAccounts as string,
+        allowedProjects: view.config?.allowedProjects as string,
+        allowedZones: view.config?.allowedZones as string
+      }
+    : {}),
+  ...(view.method === ResourceAuthMethodType.Kubernetes
+    ? {
+        kubernetesHost: view.config?.kubernetesHost as string,
+        allowedNamespaces: view.config?.allowedNamespaces as string,
+        allowedNames: view.config?.allowedNames as string,
+        allowedAudience: view.config?.allowedAudience as string
+      }
+    : {})
+});
+
 export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   // ─── POST / ──────────────────────────────────────────────────────────────
   // Create a gateway. Body requires `authMethod` so create-and-configure happen in one call.
@@ -275,6 +315,17 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.GATEWAY_CREATE,
           metadata: { gatewayId: gateway.id, name: gateway.name }
+        }
+      });
+
+      // The allowlist decides who may authenticate as this gateway, so it belongs in the log at
+      // creation and not only when it is later edited.
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
+          metadata: gatewayAuthMethodAuditMetadata(gateway.id, gateway.name, view)
         }
       });
 
@@ -341,41 +392,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           orgId: req.permission.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-            metadata: {
-              resourceType: "gateway",
-              resourceId: req.params.gatewayId,
-              resourceName: gateway.name,
-              method: result.method as "aws" | "gcp" | "kubernetes" | "token",
-              methodConfigId:
-                result.method === ResourceAuthMethodType.Aws ||
-                result.method === ResourceAuthMethodType.Gcp ||
-                result.method === ResourceAuthMethodType.Kubernetes
-                  ? result.config.id
-                  : req.params.gatewayId,
-              ...(result.method === ResourceAuthMethodType.Aws
-                ? {
-                    stsEndpoint: result.config.stsEndpoint,
-                    allowedPrincipalArns: result.config.allowedPrincipalArns,
-                    allowedAccountIds: result.config.allowedAccountIds
-                  }
-                : {}),
-              ...(result.method === ResourceAuthMethodType.Gcp
-                ? {
-                    gcpAuthType: result.config.type,
-                    allowedServiceAccounts: result.config.allowedServiceAccounts,
-                    allowedProjects: result.config.allowedProjects,
-                    allowedZones: result.config.allowedZones
-                  }
-                : {}),
-              ...(result.method === ResourceAuthMethodType.Kubernetes
-                ? {
-                    kubernetesHost: result.config.kubernetesHost,
-                    allowedNamespaces: result.config.allowedNamespaces,
-                    allowedNames: result.config.allowedNames,
-                    allowedAudience: result.config.allowedAudience
-                  }
-                : {})
-            }
+            metadata: gatewayAuthMethodAuditMetadata(req.params.gatewayId, gateway.name, result)
           }
         });
 

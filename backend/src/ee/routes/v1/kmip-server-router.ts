@@ -152,6 +152,21 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
+          metadata: {
+            resourceType: "kmip",
+            resourceId: kmipServer.id,
+            resourceName: kmipServer.name,
+            method: view.method as "aws" | "token",
+            methodConfigId: "config" in view && "id" in view.config ? view.config.id : kmipServer.id
+          }
+        }
+      });
+
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(kmipServer, "kmip");
 
       return { ...kmipServer, canRevoke, authMethod: view };
@@ -285,6 +300,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
             metadata: {
               resourceType: "kmip",
               resourceId: req.params.kmipServerId,
+              resourceName: kmipServer.name,
               method: view.method as "aws" | "token",
               methodConfigId: "config" in view && "id" in view.config ? view.config.id : req.params.kmipServerId
             }

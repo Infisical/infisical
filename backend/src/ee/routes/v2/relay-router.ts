@@ -105,6 +105,21 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         }
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
+          metadata: {
+            resourceType: "relay",
+            resourceId: relay.id,
+            resourceName: relay.name,
+            method: view.method as "aws" | "token",
+            methodConfigId: "config" in view && "id" in view.config ? view.config.id : relay.id
+          }
+        }
+      });
+
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(relay, "relay");
 
       return { ...relay, canRevoke, authMethod: view };
@@ -234,6 +249,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
             metadata: {
               resourceType: "relay",
               resourceId: req.params.relayId,
+              resourceName: relay.name,
               method: view.method as "aws" | "token",
               methodConfigId: "config" in view && "id" in view.config ? view.config.id : req.params.relayId
             }
