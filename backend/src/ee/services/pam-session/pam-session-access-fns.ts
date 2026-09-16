@@ -186,6 +186,8 @@ export const terminatePamSessionsForUsers = async ({
 
   return () => {
     for (const session of sessions) {
+      // Gateway-less types (AWS IAM) hand STS credentials straight to the user; AWS has no per-session
+      // revocation, so those stay valid until they expire.
       if (session.gatewayId) {
         const sessionActor = resolveSessionActor(session);
         sendPamSessionCancellationSignal({
