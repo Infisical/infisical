@@ -231,7 +231,6 @@ export type TMetadataMatchedSecret = {
 export type TSearchSecretsByMetadataResponse = {
   secrets: TMetadataMatchedSecret[];
   searchLimit: number;
-  isSearchLimitReached: boolean;
 };
 
 export type TGetDashboardProjectSecretsByKeys = {

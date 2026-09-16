@@ -705,7 +705,6 @@ const Content = ({
             conditions={metadataConditions}
             match={metadataMatch}
             matchingCount={metadataResultCount}
-            isSearchLimitReached={metadataData?.isSearchLimitReached ?? false}
             searchLimit={metadataData?.searchLimit ?? 100}
             isPending={isMetadataLoading}
             hasActiveConditions={isMetadataMode}

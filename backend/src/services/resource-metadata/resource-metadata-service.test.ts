@@ -81,6 +81,15 @@ const setup = (
 };
 
 describe("metadata search scope and candidate limits", () => {
+  test.each([0, 99, 100])("does not disclose whether %s unauthorized candidates reach the cap", async (count) => {
+    const state = setup([]);
+    state.searchSecretMetadata.mockResolvedValue(Array.from({ length: count }, (_, index) => candidate(String(index))));
+    state.searchSecretMetadataWithEncryptedValues.mockResolvedValue(
+      Array.from({ length: count }, (_, index) => candidate(`encrypted-${index}`, true))
+    );
+    expect(await state.service.searchSecretMetadata(dto)).toEqual({ secrets: [], searchLimit: 100 });
+  });
+
   test("resolves the recursive subtree before running both scoped candidate queries in the transaction", async () => {
     const state = setup();
     await state.service.searchSecretMetadata({ ...dto, environments: ["dev"], secretPath: "/app" });
@@ -97,8 +106,7 @@ describe("metadata search scope and candidate limits", () => {
     state.findBySecretPathMultiEnv.mockResolvedValue([]);
     expect(await state.service.searchSecretMetadata(dto)).toEqual({
       secrets: [],
-      searchLimit: 100,
-      isSearchLimitReached: false
+      searchLimit: 100
     });
     expect(state.find).toHaveBeenCalledWith({ projectId: "project" }, { tx: state.db });
     expect(state.findBySecretPathMultiEnv).toHaveBeenCalledWith("project", ["dev", "prod"], "/", state.db);
@@ -111,8 +119,7 @@ describe("metadata search scope and candidate limits", () => {
     state.searchSecretMetadata.mockResolvedValue(Array.from({ length: 100 }, (_, index) => candidate(String(index))));
     expect(await state.service.searchSecretMetadata(dto)).toEqual({
       secrets: [],
-      searchLimit: 100,
-      isSearchLimitReached: true
+      searchLimit: 100
     });
   });
 
@@ -123,8 +130,7 @@ describe("metadata search scope and candidate limits", () => {
     );
     expect(await state.service.searchSecretMetadata(dto)).toEqual({
       secrets: [],
-      searchLimit: 100,
-      isSearchLimitReached: true
+      searchLimit: 100
     });
   });
 
@@ -147,7 +153,7 @@ describe("metadata search scope and candidate limits", () => {
       state.searchSecretMetadata.mockResolvedValue([candidate("secret")]);
       const result = await state.service.searchSecretMetadata(dto);
       expect(state.findSecretPathByFolderIds).toHaveBeenCalledWith("project", ["child"], state.db);
-      expect(result.isSearchLimitReached).toBe(false);
+      expect(result.searchLimit).toBe(100);
       expect(result.secrets).toEqual([
         expect.objectContaining({ tags: [{ id: "tag", slug: "backend" }], secretValueHidden: false })
       ]);

@@ -123,7 +123,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           searchLimit: z.number().describe(DASHBOARD.SECRET_METADATA_SEARCH.searchLimit),
-          isSearchLimitReached: z.boolean().describe(DASHBOARD.SECRET_METADATA_SEARCH.isSearchLimitReached),
           secrets: z
             .object({
               secretId: z.string(),

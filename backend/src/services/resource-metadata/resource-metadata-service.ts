@@ -75,7 +75,7 @@ export const resourceMetadataServiceFactory = ({
     const environmentSlugs =
       environments ?? (await projectEnvDAL.find({ projectId }, { tx: db })).map((env) => env.slug);
     const parents = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, secretPath, db);
-    if (!parents.length) return { secrets: [], searchLimit, isSearchLimitReached: false };
+    if (!parents.length) return { secrets: [], searchLimit };
     const scopedFolders = await folderDAL.findByEnvsDeep({ parentIds: parents.map((folder) => folder.id) }, db);
     const scopedFolderIds = scopedFolders.map((folder) => folder.id);
 
@@ -93,8 +93,6 @@ export const resourceMetadataServiceFactory = ({
       );
       return { plaintextMatched: plaintext, encryptedCandidates: encrypted };
     });
-
-    const isSearchLimitReached = plaintextMatched.length >= searchLimit || encryptedCandidates.length >= searchLimit;
 
     const matchedSecretById = new Map<string, TMatchedSecret>();
 
@@ -153,7 +151,7 @@ export const resourceMetadataServiceFactory = ({
     }
 
     const matchedSecrets = [...matchedSecretById.values()];
-    if (!matchedSecrets.length) return { secrets: [], searchLimit, isSearchLimitReached };
+    if (!matchedSecrets.length) return { secrets: [], searchLimit };
 
     const folderIds = [...new Set(matchedSecrets.map((secret) => secret.folderId))];
     const foldersWithPath = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, db);
@@ -201,7 +199,7 @@ export const resourceMetadataServiceFactory = ({
       ];
     });
 
-    return { secrets, searchLimit, isSearchLimitReached };
+    return { secrets, searchLimit };
   };
 
   return { searchSecretMetadata };
