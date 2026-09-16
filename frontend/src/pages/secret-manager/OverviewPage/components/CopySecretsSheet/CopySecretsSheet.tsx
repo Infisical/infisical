@@ -51,6 +51,7 @@ import {
 } from "@app/hooks/api/secretFolders/queries";
 import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
+import { getCopySecretsErrorKind } from "./copySecrets.data";
 import type {
   CopySecretsAttributes,
   CopySecretsEnvironment,
@@ -203,19 +204,22 @@ const CopySecretsSession = ({
       existingFolderPaths.add(path);
     }
   });
+  const sourceErrorKind = getCopySecretsErrorKind(foldersQuery.error, sourceQuery.error);
+  const destinationErrorKind = getCopySecretsErrorKind(foldersQuery.error, destinationQuery.error);
   const isSourceLoading =
-    !isSourcePathSettled ||
-    foldersQuery.isPending ||
-    foldersQuery.isFetching ||
-    sourceQuery.isPending ||
-    sourceQuery.isFetching;
-  const isSourceError = sourceQuery.isError || foldersQuery.isError;
+    !sourceErrorKind &&
+    (!isSourcePathSettled ||
+      foldersQuery.isPending ||
+      foldersQuery.isFetching ||
+      sourceQuery.isPending ||
+      sourceQuery.isFetching);
   const isDestinationLoading =
-    !isDestinationPathSettled ||
-    foldersQuery.isPending ||
-    foldersQuery.isFetching ||
-    destinationQuery.isPending ||
-    destinationQuery.isFetching;
+    !destinationErrorKind &&
+    (!isDestinationPathSettled ||
+      foldersQuery.isPending ||
+      foldersQuery.isFetching ||
+      destinationQuery.isPending ||
+      destinationQuery.isFetching);
   const unavailableValueCount = includeValues
     ? selectedSecrets.filter(({ isValueHidden }) => isValueHidden).length
     : 0;
@@ -239,7 +243,7 @@ const CopySecretsSession = ({
     ).length;
     if (!sourceEnvironment) {
       bulkSelectionSummary = `${count} selected items. Choose a source environment to confirm availability.`;
-    } else if (isSourceLoading && !isSourceError) {
+    } else if (isSourceLoading) {
       bulkSelectionSummary = "Checking selected items in this source…";
     } else if (availableSecretCount + availableFolderCount < count) {
       bulkSelectionSummary = `${availableSecretCount + availableFolderCount} of ${count} originally selected items are available in ${sourceEnvironment.name} at ${normalizedSourcePath}. Unavailable items won’t be copied.`;
@@ -299,8 +303,12 @@ const CopySecretsSession = ({
       })
     )
       return "Choose a different destination path";
-    if (isSourceError) return "Source secrets couldn't be loaded";
+    if (sourceErrorKind === "unauthorized") return "Organization access is required";
+    if (sourceErrorKind === "forbidden") return "Source access is required";
+    if (sourceErrorKind) return "Source secrets couldn't be loaded";
     if (isSourceLoading) return "Loading source secrets";
+    if (destinationErrorKind === "unauthorized") return "Organization access is required";
+    if (destinationErrorKind === "forbidden") return "Destination access is required";
     if (isDestinationLoading) return "Loading destination secrets";
     if (!selectedItemCount) return "Select at least one secret or folder";
     if (
@@ -451,7 +459,7 @@ const CopySecretsSession = ({
         </EmptyHeader>
       </Empty>
     );
-  } else if (isSourceLoading && !isSourceError) {
+  } else if (isSourceLoading) {
     sourceContent = (
       <div
         className="flex h-full flex-col gap-3 rounded-md border border-border bg-container p-4"
@@ -462,7 +470,26 @@ const CopySecretsSession = ({
         ))}
       </div>
     );
-  } else if (isSourceError) {
+  } else if (sourceErrorKind === "unauthorized") {
+    sourceContent = (
+      <Alert variant="danger" className="h-full content-center">
+        <AlertTitle>Organization access required</AlertTitle>
+        <AlertDescription>
+          Your session doesn&apos;t include access to this organization. Sign in again or switch
+          organizations.
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (sourceErrorKind === "forbidden") {
+    sourceContent = (
+      <Alert variant="danger" className="h-full content-center">
+        <AlertTitle>Access denied</AlertTitle>
+        <AlertDescription>
+          You don&apos;t have permission to view secrets at this location.
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (sourceErrorKind) {
     sourceContent = (
       <Alert variant="danger" className="h-full content-center">
         <AlertTitle>Couldn&apos;t load secrets</AlertTitle>
@@ -518,13 +545,42 @@ const CopySecretsSession = ({
         ))}
       </div>
     );
-  } else if (destinationQuery.isError) {
+  } else if (destinationErrorKind === "unauthorized") {
+    destinationContent = (
+      <Alert variant="danger" className="h-full content-center">
+        <AlertTitle>Organization access required</AlertTitle>
+        <AlertDescription>
+          Your session doesn&apos;t include access to this organization. Sign in again or switch
+          organizations.
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (destinationErrorKind === "forbidden") {
+    destinationContent = (
+      <Alert variant="danger" className="h-full content-center">
+        <AlertTitle>Access denied</AlertTitle>
+        <AlertDescription>
+          You don&apos;t have permission to view secrets at this location.
+        </AlertDescription>
+      </Alert>
+    );
+  } else if (destinationErrorKind) {
     destinationContent = (
       <Alert variant="warning" className="h-full content-center">
-        <AlertTitle>Destination contents unavailable</AlertTitle>
+        <AlertTitle>Couldn&apos;t preview destination</AlertTitle>
         <AlertDescription>
-          You can still copy here, but existing secrets can&apos;t be previewed with your current
-          access.
+          Existing secrets couldn&apos;t be loaded. You can still copy here, or try again.
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            onClick={() => {
+              foldersQuery.refetch();
+              destinationQuery.refetch();
+            }}
+          >
+            Retry
+          </Button>
         </AlertDescription>
       </Alert>
     );
