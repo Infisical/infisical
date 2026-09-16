@@ -40,9 +40,8 @@ import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/h
 import { useAdminRemoveIdentitySuperAdminAccess } from "@app/hooks/api/admin";
 import { useAdminGetIdentities } from "@app/hooks/api/admin/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { ConfirmActionDialog } from "@app/pages/admin/components/ConfirmActionDialog";
 import { V3TableEmptyState, V3TableSkeleton } from "@app/pages/admin/components/V3TableHelpers";
-
-import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
 const IdentityPanelTable = ({
   handlePopUpOpen
@@ -210,7 +209,6 @@ export const MachineIdentitiesTable = () => {
         title={`Are you sure you want to remove Server Admin permissions from ${
           (popUp?.removeServerAdmin?.data as { name: string })?.name || ""
         }?`}
-        description=""
         onOpenChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
         confirmationKey="confirm"
         onConfirm={handleRemoveServerAdmin}

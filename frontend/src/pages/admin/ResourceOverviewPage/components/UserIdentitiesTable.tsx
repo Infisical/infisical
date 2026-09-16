@@ -1,7 +1,6 @@
 import { Dispatch, SetStateAction, useState } from "react";
 import {
   AlertTriangleIcon,
-  CheckIcon,
   EllipsisVerticalIcon,
   FilterIcon,
   SearchIcon,
@@ -12,7 +11,6 @@ import {
   UserRoundXIcon,
   UsersIcon
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -26,6 +24,7 @@ import {
   CardTitle,
   Checkbox,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -62,9 +61,8 @@ import {
 } from "@app/hooks/api";
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { ConfirmActionDialog } from "@app/pages/admin/components/ConfirmActionDialog";
 import { V3TableEmptyState, V3TableSkeleton } from "@app/pages/admin/components/V3TableHelpers";
-
-import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
 const UserPanelTable = ({
   handlePopUpOpen,
@@ -140,17 +138,17 @@ const UserPanelTable = ({
         </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="Filter Users"
-              variant="outline"
-              className={twMerge("px-3", isTableFiltered && "border-primary/50 text-primary")}
+            <IconButton
+              aria-label="Filter users by access level"
+              variant={isTableFiltered ? "neutral" : "outline"}
             >
               <FilterIcon />
-            </Button>
+            </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="p-0">
-            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
-            <DropdownMenuItem
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Filter by Access Level</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem
+              checked={adminsOnly}
               onClick={(e) => {
                 e.preventDefault();
                 setAdminsOnly(!adminsOnly);
@@ -158,8 +156,7 @@ const UserPanelTable = ({
             >
               <ShieldCheckIcon />
               Server Admins
-              {adminsOnly && <CheckIcon className="ml-auto" />}
-            </DropdownMenuItem>
+            </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -479,7 +476,6 @@ export const UserIdentitiesTable = () => {
               }
             )?.username || ""
           }?`}
-          description=""
           onOpenChange={(isOpen) => handlePopUpToggle("upgradeToServerAdmin", isOpen)}
           confirmationKey="confirm"
           onConfirm={handleGrantServerAdminAccess}
@@ -490,7 +486,6 @@ export const UserIdentitiesTable = () => {
           title={`Are you sure you want to remove Server Admin permissions from ${
             (popUp?.removeServerAdmin?.data as { id: string; username: string })?.username || ""
           }?`}
-          description=""
           onOpenChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
           confirmationKey="confirm"
           onConfirm={handleRemoveServerAdminAccess}

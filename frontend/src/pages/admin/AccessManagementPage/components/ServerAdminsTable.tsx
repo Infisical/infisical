@@ -1,4 +1,4 @@
-import { Dispatch, ReactNode, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import {
   AlertTriangleIcon,
   EllipsisVerticalIcon,
@@ -13,15 +13,6 @@ import {
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogConfirmationField,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -63,79 +54,10 @@ import {
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { AddServerAdminModal } from "@app/pages/admin/AccessManagementPage/components/AddServerAdminModal";
+import { ConfirmActionDialog } from "@app/pages/admin/components/ConfirmActionDialog";
 import { V3TableEmptyState, V3TableSkeleton } from "@app/pages/admin/components/V3TableHelpers";
 
 const removeServerAdminUpgradePlanMessage = "Removing Server Admin permissions from user";
-
-const ConfirmDeleteDialog = ({
-  isOpen,
-  title,
-  subtitle = "This action is irreversible.",
-  confirmationValue,
-  buttonText = "Delete",
-  children,
-  onOpenChange,
-  onConfirm
-}: {
-  isOpen: boolean;
-  title: string;
-  subtitle?: string;
-  confirmationValue: string;
-  buttonText?: string;
-  children?: ReactNode;
-  onOpenChange: (isOpen: boolean) => void;
-  onConfirm: () => Promise<void>;
-}) => {
-  const [isPending, setIsPending] = useState(false);
-
-  const handleConfirm = async () => {
-    setIsPending(true);
-    try {
-      await onConfirm();
-    } catch {
-      setIsPending(false);
-      return;
-    }
-    setIsPending(false);
-  };
-
-  return (
-    <AlertDialog
-      open={isOpen}
-      confirmationValue={confirmationValue}
-      onOpenChange={(open) => {
-        if (isPending && !open) return;
-        onOpenChange(open);
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{subtitle}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogConfirmationField
-          onConfirm={() => {
-            handleConfirm().catch(() => undefined);
-          }}
-        />
-        {children}
-        <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="danger"
-            isPending={isPending}
-            onClick={(event) => {
-              event.preventDefault();
-              handleConfirm().catch(() => undefined);
-            }}
-          >
-            {buttonText}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
 
 const ServerAdminsPanelTable = ({
   handlePopUpOpen,
@@ -451,25 +373,24 @@ export const ServerAdminsTable = () => {
             totalCount={totalCount}
           />
         </CardContent>
-        <ConfirmDeleteDialog
+        <ConfirmActionDialog
           isOpen={popUp.removeUser.isOpen}
-          confirmationValue="remove"
+          confirmationKey="remove"
           title={`Are you sure you want to delete User with username ${
             (popUp?.removeUser?.data as { id: string; username: string })?.username || ""
           }?`}
           onOpenChange={(isOpen) => handlePopUpToggle("removeUser", isOpen)}
           onConfirm={handleRemoveUser}
         />
-        <ConfirmDeleteDialog
+        <ConfirmActionDialog
           isOpen={popUp.removeServerAdmin.isOpen}
           title={`Are you sure you want to remove Server Admin permissions from ${
             (popUp?.removeServerAdmin?.data as { id: string; username: string })?.username || ""
           }?`}
-          subtitle=""
           onOpenChange={(isOpen) => handlePopUpToggle("removeServerAdmin", isOpen)}
-          confirmationValue="confirm"
+          confirmationKey="confirm"
           onConfirm={handleRemoveServerAdminAccess}
-          buttonText="Remove Access"
+          confirmLabel="Remove Access"
         />
         <AddServerAdminModal
           isOpen={popUp.addServerAdmin.isOpen}
@@ -480,13 +401,13 @@ export const ServerAdminsTable = () => {
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
         />
-        <ConfirmDeleteDialog
+        <ConfirmActionDialog
           isOpen={popUp.removeUsers.isOpen}
           title="Are you sure you want to delete the following users?"
           onOpenChange={(isOpen) => handlePopUpToggle("removeUsers", isOpen)}
-          confirmationValue="confirm"
+          confirmationKey="confirm"
           onConfirm={handleRemoveUsers}
-          buttonText="Remove"
+          confirmLabel="Remove"
         >
           <div className="mt-4 text-sm text-muted">The following users will be deleted:</div>
           <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
@@ -525,7 +446,7 @@ export const ServerAdminsTable = () => {
               })}
             </ul>
           </div>
-        </ConfirmDeleteDialog>
+        </ConfirmActionDialog>
       </Card>
     </>
   );

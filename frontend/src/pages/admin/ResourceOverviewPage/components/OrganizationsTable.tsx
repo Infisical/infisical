@@ -74,10 +74,9 @@ import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { ConfirmActionDialog } from "@app/pages/admin/components/ConfirmActionDialog";
 import { V3TableEmptyState, V3TableSkeleton } from "@app/pages/admin/components/V3TableHelpers";
 import { AddOrganizationModal } from "@app/pages/admin/ResourceOverviewPage/components/AddOrganizationModal";
-
-import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
 enum MembersOrderBy {
   Name = "firstName",

@@ -14,6 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -26,7 +27,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   InputGroup,
@@ -52,10 +52,8 @@ import {
   useAdminGetEmailDomains,
   useAdminGetOrganizations
 } from "@app/hooks/api";
-import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
+import { ConfirmActionDialog } from "@app/pages/admin/components/ConfirmActionDialog";
 import { V3TableEmptyState, V3TableSkeleton } from "@app/pages/admin/components/V3TableHelpers";
-
-import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
 const AddEmailDomainSchema = z.object({
   organization: z.object({ id: z.string(), name: z.string() }),
@@ -63,6 +61,7 @@ const AddEmailDomainSchema = z.object({
 });
 
 type AddEmailDomainFormData = z.infer<typeof AddEmailDomainSchema>;
+type OrganizationOption = AddEmailDomainFormData["organization"];
 
 const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
   const createEmailDomain = useAdminCreateEmailDomain();
@@ -113,16 +112,23 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
         render={({ field, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor={organizationSelectId}>Organization</FieldLabel>
-            <FilterableSelect<OrganizationWithProjects>
-              inputId={organizationSelectId}
+            <Combobox<OrganizationOption>
+              id={organizationSelectId}
               isLoading={searchOrgFilter !== debouncedSearchTerm || isPending}
-              placeholder="Search organizations..."
-              options={organizations}
+              isError={Boolean(error)}
+              options={organizations.map(({ id, name }) => ({ id, name }))}
               getOptionLabel={(org) => org.name}
               getOptionValue={(org) => org.id}
-              value={field.value as unknown as OrganizationWithProjects}
-              onChange={field.onChange}
-              onInputChange={(value) => {
+              value={field.value ?? null}
+              onValueChange={field.onChange}
+              onClear={() => field.onChange(undefined)}
+              placeholder="Select organization..."
+              searchPlaceholder="Search organizations..."
+              searchAriaLabel="Search organizations"
+              shouldFilter={false}
+              includeMissingSelectedOptions
+              modal
+              onInputValueChange={(value) => {
                 setSearchOrgFilter(value);
                 if (!value) setDebouncedSearchTerm("");
               }}
