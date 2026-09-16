@@ -2,7 +2,7 @@ import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls
 
 import { ServiceStep } from "./serviceSchema";
 
-export const SERVICE_DOCS_URL = AgentVaultDocsUrls.accessBundles;
+export const SERVICE_DOCS_URL = AgentVaultDocsUrls.services;
 
 type StepMeta = {
   step: ServiceStep;
