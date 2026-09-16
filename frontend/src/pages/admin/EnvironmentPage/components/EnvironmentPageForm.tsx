@@ -354,6 +354,7 @@ export const EnvironmentPageForm = () => {
               size="sm"
               variant="neutral"
               isPending={savingGroup === pendingCollapse}
+              isDisabled={Boolean(savingGroup)}
               onClick={handleSaveAndCollapse}
             >
               Save Changes
