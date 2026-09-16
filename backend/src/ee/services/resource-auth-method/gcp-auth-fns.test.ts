@@ -203,6 +203,22 @@ describe("verifyGcpTokenAndExtractCaller", () => {
     });
   });
 
+  // The validators raise bare UnauthorizedErrors with no detail; those must still be wrapped so the
+  // failure carries a reason code and reaches the audit log.
+  test("wraps an unauthorized error raised by the validator itself", async () => {
+    vi.mocked(validateIamIdentity).mockRejectedValue(new UnauthorizedError({ message: "Invalid audience" }));
+    await expect(
+      verifyGcpTokenAndExtractCaller({
+        type: "iam",
+        jwt: jwtWith({ sub: SERVICE_ACCOUNT, aud: "gw-1", exp: futureExp }),
+        audience: "gw-1",
+        errorContext
+      })
+    ).rejects.toMatchObject({
+      detail: { reasonCode: "gcp_token_verification_failed", resourceId: "gw-1" }
+    });
+  });
+
   test("refuses a verified iam token whose payload has no expiry", async () => {
     vi.mocked(validateIamIdentity).mockResolvedValue({ email: SERVICE_ACCOUNT });
     await expect(

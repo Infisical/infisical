@@ -26,32 +26,25 @@ export const assertIamTokenLifetime = (payload: { exp?: number } | null, nowSeco
   return null;
 };
 
+const IAM_LIFETIME_MESSAGE = {
+  missing_expiry: "carries no expiry",
+  expired: "has already expired",
+  lifetime_too_long: "expires more than 12 hours from now"
+} as const;
+
 export const verifyGcpTokenAndExtractCaller = async ({
   type,
   jwt,
   audience,
   errorContext
 }: TVerifyGcpTokenInput): Promise<TGcpIdentityDetails> => {
+  let identityDetails: TGcpIdentityDetails;
   try {
-    if (type === GcpAuthType.Gce) {
-      return await validateIdTokenIdentity({ audience, jwt });
-    }
-
-    const identityDetails = await validateIamIdentity({ audience, jwt });
-    const payload = crypto.jwt().decode(jwt) as { exp?: number } | null;
-    const lifetimeProblem = assertIamTokenLifetime(payload, Math.floor(Date.now() / 1000));
-    if (lifetimeProblem) {
-      // Its own reason code: an operator debugging this needs to tell a token their tooling signed
-      // without a bounded expiry apart from a bad signature or a wrong audience.
-      throw new UnauthorizedError({
-        message: `Access denied: the signed GCP service account token was ${lifetimeProblem.replace("_", " ")}. It must carry an expiry no more than 12 hours ahead.`,
-        detail: { reasonCode: ResourceAuthLoginFailureReason.GcpTokenLifetimeRejected, ...errorContext }
-      });
-    }
-    return identityDetails;
+    identityDetails =
+      type === GcpAuthType.Gce
+        ? await validateIdTokenIdentity({ audience, jwt })
+        : await validateIamIdentity({ audience, jwt });
   } catch (err) {
-    // A lifetime refusal is already a well-formed decision, not a verification failure.
-    if (err instanceof UnauthorizedError) throw err;
     logger.error(
       err,
       `Resource GCP Auth Login: token verification failed [resourceId=${String(errorContext.resourceId)}]`
@@ -64,6 +57,21 @@ export const verifyGcpTokenAndExtractCaller = async ({
       detail: { reasonCode: ResourceAuthLoginFailureReason.GcpTokenVerificationFailed, ...errorContext }
     });
   }
+
+  // Its own reason code, so an operator can tell a token their tooling signed without a bounded
+  // expiry apart from a bad signature or a wrong audience.
+  if (type === GcpAuthType.Iam) {
+    const payload = crypto.jwt().decode(jwt) as { exp?: number } | null;
+    const lifetimeProblem = assertIamTokenLifetime(payload, Math.floor(Date.now() / 1000));
+    if (lifetimeProblem) {
+      throw new UnauthorizedError({
+        message: `Access denied: the signed GCP service account token ${IAM_LIFETIME_MESSAGE[lifetimeProblem]}. It must carry an expiry no more than 12 hours ahead.`,
+        detail: { reasonCode: ResourceAuthLoginFailureReason.GcpTokenLifetimeRejected, ...errorContext }
+      });
+    }
+  }
+
+  return identityDetails;
 };
 
 const splitAllowlist = (value: string) =>
