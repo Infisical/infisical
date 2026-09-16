@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Control, Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Search, TriangleAlert } from "lucide-react";
@@ -11,6 +11,14 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardContent,
@@ -35,7 +43,10 @@ type TForm = Record<string, string>;
 export const GroupContainer = ({
   group,
   control,
-  search
+  search,
+  isSaving,
+  isSaveDisabled,
+  onSave
 }: {
   group: {
     fields: {
@@ -48,6 +59,9 @@ export const GroupContainer = ({
   };
   control: Control<TForm, any, TForm>;
   search: string;
+  isSaving: boolean;
+  isSaveDisabled: boolean;
+  onSave: () => void;
 }) => {
   return (
     <AccordionItem value={group.name}>
@@ -94,6 +108,16 @@ export const GroupContainer = ({
             </div>
           ))}
         </div>
+        <div className="mt-6 flex justify-end border-t border-border pt-4">
+          <Button
+            variant="neutral"
+            onClick={onSave}
+            isPending={isSaving}
+            isDisabled={isSaveDisabled}
+          >
+            Save
+          </Button>
+        </div>
       </AccordionContent>
     </AccordionItem>
   );
@@ -103,6 +127,10 @@ export const EnvironmentPageForm = () => {
   const { data: envOverrides } = useGetEnvOverrides();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
   const [search, setSearch] = useState("");
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
+  const [pendingCollapse, setPendingCollapse] = useState<string | null>(null);
+  const [savingGroup, setSavingGroup] = useState<string | null>(null);
+  const savedValues = useRef<TForm>({});
 
   const allFields = useMemo(() => {
     if (!envOverrides) return [];
@@ -123,9 +151,10 @@ export const EnvironmentPageForm = () => {
 
   const {
     control,
-    handleSubmit,
+    getValues,
     reset,
-    formState: { isSubmitting, isDirty }
+    resetField,
+    formState: { dirtyFields }
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues
@@ -158,27 +187,89 @@ export const EnvironmentPageForm = () => {
   }, [search, formValues, envOverrides]);
 
   useEffect(() => {
+    savedValues.current = defaultValues;
     reset(defaultValues);
   }, [defaultValues, reset]);
 
-  const onSubmit = useCallback(
-    async (formData: TForm) => {
+  const saveGroup = useCallback(
+    async (groupName: string) => {
+      const group = Object.values(envOverrides ?? {}).find(({ name }) => name === groupName);
+      if (!group) return false;
+
+      const formData = getValues();
+      const nextSavedValues = { ...savedValues.current };
+      group.fields.forEach(({ key }) => {
+        nextSavedValues[key] = formData[key];
+      });
       const filteredFormData = Object.fromEntries(
-        Object.entries(formData).filter(([, value]) => value !== "")
+        Object.entries(nextSavedValues).filter(([, value]) => value !== "")
       );
-      await updateServerConfig({
-        envOverrides: filteredFormData
-      });
 
-      createNotification({
-        type: "success",
-        text: "Environment overrides updated successfully. It can take up to 5 minutes to take effect."
-      });
+      setSavingGroup(groupName);
+      try {
+        await updateServerConfig({
+          envOverrides: filteredFormData
+        });
 
-      reset(formData);
+        savedValues.current = nextSavedValues;
+        group.fields.forEach(({ key }) => {
+          resetField(key, { defaultValue: formData[key] });
+        });
+
+        createNotification({
+          type: "success",
+          text: "Environment overrides updated successfully. It can take up to 5 minutes to take effect."
+        });
+        return true;
+      } catch {
+        return false;
+      } finally {
+        setSavingGroup(null);
+      }
     },
-    [reset, updateServerConfig]
+    [envOverrides, getValues, resetField, updateServerConfig]
   );
+
+  const isGroupDirty = useCallback(
+    (groupName: string) => {
+      const group = Object.values(envOverrides ?? {}).find(({ name }) => name === groupName);
+      return Boolean(group?.fields.some(({ key }) => dirtyFields[key]));
+    },
+    [dirtyFields, envOverrides]
+  );
+
+  const handleOpenGroupsChange = (nextOpenGroups: string[]) => {
+    if (search) return;
+
+    const closingGroup = openGroups.find((groupName) => !nextOpenGroups.includes(groupName));
+    if (closingGroup && isGroupDirty(closingGroup)) {
+      setPendingCollapse(closingGroup);
+      return;
+    }
+
+    setOpenGroups(nextOpenGroups);
+  };
+
+  const handleDiscardAndCollapse = () => {
+    if (!pendingCollapse) return;
+
+    const group = Object.values(envOverrides ?? {}).find(({ name }) => name === pendingCollapse);
+    group?.fields.forEach(({ key }) => {
+      resetField(key, { defaultValue: savedValues.current[key] ?? "" });
+    });
+    setOpenGroups((current) => current.filter((groupName) => groupName !== pendingCollapse));
+    setPendingCollapse(null);
+  };
+
+  const handleSaveAndCollapse = async () => {
+    if (!pendingCollapse) return;
+
+    const groupName = pendingCollapse;
+    if (await saveGroup(groupName)) {
+      setOpenGroups((current) => current.filter((name) => name !== groupName));
+      setPendingCollapse(null);
+    }
+  };
 
   return (
     <Card>
@@ -193,12 +284,7 @@ export const EnvironmentPageForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
-          <div className="flex justify-end">
-            <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
-              Save
-            </Button>
-          </div>
+        <div className="flex flex-col gap-4">
           <InputGroup>
             <InputGroupAddon>
               <Search />
@@ -206,20 +292,75 @@ export const EnvironmentPageForm = () => {
             <InputGroupInput
               aria-label="Search environment variables"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => {
+                const nextSearch = event.target.value;
+                if (search && !nextSearch) {
+                  setOpenGroups((current) => [
+                    ...new Set([
+                      ...current,
+                      ...Object.values(envOverrides ?? {})
+                        .filter(({ name }) => isGroupDirty(name))
+                        .map(({ name }) => name)
+                    ])
+                  ]);
+                }
+                setSearch(nextSearch);
+              }}
               placeholder="Search keys and descriptions"
             />
           </InputGroup>
           <Accordion
             type="multiple"
-            value={search ? filteredData.map((group) => group!.name) : undefined}
+            value={search ? filteredData.map((group) => group!.name) : openGroups}
+            onValueChange={handleOpenGroupsChange}
           >
             {filteredData.map((group) => (
-              <GroupContainer key={group!.name} group={group!} control={control} search={search} />
+              <GroupContainer
+                key={group!.name}
+                group={group!}
+                control={control}
+                search={search}
+                isSaving={savingGroup === group!.name}
+                isSaveDisabled={!isGroupDirty(group!.name) || Boolean(savingGroup)}
+                onSave={() => saveGroup(group!.name)}
+              />
             ))}
           </Accordion>
-        </form>
+        </div>
       </CardContent>
+      <AlertDialog
+        open={Boolean(pendingCollapse)}
+        onOpenChange={(open) => {
+          if (!open) setPendingCollapse(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save Changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Save or discard your changes before closing this section.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={Boolean(savingGroup)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isDisabled={Boolean(savingGroup)}
+              onClick={handleDiscardAndCollapse}
+            >
+              Discard
+            </AlertDialogAction>
+            <Button
+              size="sm"
+              variant="neutral"
+              isPending={savingGroup === pendingCollapse}
+              onClick={handleSaveAndCollapse}
+            >
+              Save Changes
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
