@@ -416,6 +416,11 @@ export const pkiSyncServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
     return getProcessedPermissionRules(
       permission,
       ProjectPermissionCertificateActions.Read,
