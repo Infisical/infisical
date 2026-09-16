@@ -434,6 +434,17 @@ export const pkiSyncServiceFactory = ({
     const permissionFilters = await $certificateReadFilters(projectId, applicationId, actor);
     if (!permissionFilters) return;
 
+    const growingKinds = PKI_SYNC_FILTER_KINDS.filter(
+      (kind) => kind !== "certificateOrderIds" && filters?.[kind] !== undefined
+    );
+
+    if (growingKinds.length > 0) {
+      throw new ForbiddenRequestError({
+        message:
+          "Certificate profile and metadata filters also take certificates issued later, so they need access to read every certificate in this Application. Name the certificates instead, or ask for broader access."
+      });
+    }
+
     const scope = { projectId, applicationId };
     const [matchedCount, readableCount] = await Promise.all([
       certificateDAL.countCertificatesMatchingSyncFilters(filters, scope),
@@ -1293,6 +1304,7 @@ export const pkiSyncServiceFactory = ({
     }
 
     await $assertFilterProfilesInApplication(args.filters, args.applicationId);
+    await $assertActorCanReadFilterMatches(args.projectId, args.applicationId, args.filters, actor);
 
     const connection = await appConnectionService.validateAppConnectionUsageById(
       getPkiSyncConnectionApps(args.destination),
