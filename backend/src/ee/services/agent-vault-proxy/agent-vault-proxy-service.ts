@@ -307,9 +307,9 @@ export const agentVaultProxyServiceFactory = ({
       throw new NotFoundError({ message: "Session not found" });
     }
 
-    if (session.revokedAt) throw new UnauthorizedError({ message: "Session revoked" });
+    if (session.revokedAt) throw new UnauthorizedError({ message: "This session has been revoked" });
     if (session.expiresAt && session.expiresAt <= new Date()) {
-      throw new UnauthorizedError({ message: "Session expired" });
+      throw new UnauthorizedError({ message: "This session has expired" });
     }
     // The actor columns are SET NULL so the row outlives its owner for history. A null id must not reach the
     // lookups below: knex compiles `where col = null` to `IS NULL`, which matches every user row and made an

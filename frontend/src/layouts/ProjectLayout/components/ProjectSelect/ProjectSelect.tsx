@@ -257,6 +257,7 @@ const ProjectSelectInner = () => {
         </NavbarSwitcherContent>
       </NavbarSwitcher>
       <UpgradePlanModal
+        paywallKey="project.limit"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You've reached the maximum number of projects available on the Free plan. Upgrade to the Infisical Pro plan to create more projects."

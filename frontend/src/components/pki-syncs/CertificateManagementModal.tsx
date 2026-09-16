@@ -31,24 +31,18 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getCertificateDisplayName, truncateCertificateSerialNumber } from "@app/helpers/pkiSyncs";
-import {
-  CertStatus,
-  useAddCertificatesToPkiSync,
-  useListPkiSyncCertificates,
-  useRemoveCertificatesFromPkiSync
-} from "@app/hooks/api";
-import { PkiSync, TPkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
+import { CertStatus } from "@app/hooks/api";
+import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  pkiSync?: TPkiSync;
   destination?: PkiSync;
   applicationId?: string;
-  onCertificatesUpdated?: () => void;
-  selectedCertificateIds?: string[];
-  onCertificateSelectionChange?: (certificateIds: string[]) => void;
+  selectedOrderIds?: string[];
+  maxSelectable?: number;
+  onOrderSelectionChange?: (orderIds: string[], orderNames: [string, string][]) => void;
   title?: string;
   subtitle?: string;
   saveButtonText?: string;
@@ -57,12 +51,11 @@ type Props = {
 export const CertificateManagementModal = ({
   isOpen,
   onClose,
-  pkiSync,
   destination,
   applicationId: applicationIdProp,
-  onCertificatesUpdated,
-  selectedCertificateIds,
-  onCertificateSelectionChange,
+  selectedOrderIds,
+  maxSelectable,
+  onOrderSelectionChange,
   title = "Manage Certificate Sync",
   subtitle = "Select which certificates should be synced.",
   saveButtonText = "Save Changes"
@@ -73,11 +66,11 @@ export const CertificateManagementModal = ({
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const pageSize = 10;
 
-  const isCreateMode = !pkiSync;
-  const scopedApplicationId = pkiSync?.applicationId ?? applicationIdProp;
+  const scopedApplicationId = applicationIdProp;
 
-  const { syncOption } = usePkiSyncOption((pkiSync?.destination ?? destination) as PkiSync);
-  const isSingleSelect = syncOption?.maxCertificates === 1;
+  const { syncOption } = usePkiSyncOption(destination as PkiSync);
+  const selectionLimit = maxSelectable ?? syncOption?.maxCertificates;
+  const isSingleSelect = selectionLimit === 1;
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -103,44 +96,67 @@ export const CertificateManagementModal = ({
   const allCertificates = data?.certificates || [];
   const totalCount = data?.totalCount || 0;
 
-  const { data: syncData } = useListPkiSyncCertificates(pkiSync?.id || "", undefined, {
-    enabled: Boolean(pkiSync?.id)
-  });
-  const syncCertificates = syncData?.certificates || [];
-  const addCertificatesToSync = useAddCertificatesToPkiSync();
-  const removeCertificatesFromSync = useRemoveCertificatesFromPkiSync();
-
-  const syncedCertificateIds = isCreateMode
-    ? selectedCertificateIds || []
-    : syncCertificates.map((sc) => sc.certificateId);
+  const preselectedOrderIds = selectedOrderIds ?? [];
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const orderNamesSeen = React.useRef(new Map<string, string>());
 
   React.useEffect(() => {
-    setSelectedIds(syncedCertificateIds);
-  }, [JSON.stringify(syncedCertificateIds)]);
+    setSelectedIds(preselectedOrderIds);
+  }, [JSON.stringify(preselectedOrderIds)]);
 
-  const handleToggleSelection = (certId: string) => {
+  React.useEffect(() => {
+    allCertificates.forEach((cert) => {
+      if (cert.orderId) orderNamesSeen.current.set(cert.orderId, cert.commonName);
+    });
+  }, [allCertificates]);
+
+  const handleToggleSelection = (orderId: string) => {
     setSelectedIds((prev) => {
-      if (prev.includes(certId)) {
-        return prev.filter((id) => id !== certId);
+      if (prev.includes(orderId)) {
+        return prev.filter((id) => id !== orderId);
       }
-      // Single-slot destinations (e.g. Nutanix) allow only one certificate
-      return isSingleSelect ? [certId] : [...prev, certId];
+
+      if (isSingleSelect) return [orderId];
+
+      if (selectionLimit !== undefined && prev.length >= selectionLimit) {
+        createNotification({
+          text: `This sync holds at most ${selectionLimit} certificates. Deselect one first.`,
+          type: "error"
+        });
+        return prev;
+      }
+
+      return [...prev, orderId];
     });
   };
 
   const handleSelectAll = () => {
-    const currentPageIds = allCertificates.map((cert) => cert.id);
-    const allCurrentPageSelected = currentPageIds.every((id) => selectedIds.includes(id));
+    const currentPageOrderIds = allCertificates
+      .map((cert) => cert.orderId)
+      .filter((orderId): orderId is string => Boolean(orderId));
+    const allCurrentPageSelected = currentPageOrderIds.every((id) => selectedIds.includes(id));
 
     if (allCurrentPageSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !currentPageIds.includes(id)));
-    } else {
-      setSelectedIds((prev) => [...new Set([...prev, ...currentPageIds])]);
+      setSelectedIds((prev) => prev.filter((id) => !currentPageOrderIds.includes(id)));
+      return;
     }
+
+    setSelectedIds((prev) => {
+      const next = [...new Set([...prev, ...currentPageOrderIds])];
+
+      if (selectionLimit !== undefined && next.length > selectionLimit) {
+        createNotification({
+          text: `This sync holds at most ${selectionLimit} certificates. Only the first ${selectionLimit} were selected.`,
+          type: "error"
+        });
+        return next.slice(0, selectionLimit);
+      }
+
+      return next;
+    });
   };
 
   const clearSearch = () => {
@@ -155,149 +171,16 @@ export const CertificateManagementModal = ({
     }
   }, [isOpen]);
 
-  const handleSaveCertificates = async () => {
-    try {
-      if (isCreateMode) {
-        if (onCertificateSelectionChange) {
-          onCertificateSelectionChange(selectedIds);
-          onClose();
-        }
-        return;
-      }
+  const handleSaveCertificates = () => {
+    const orderNames = selectedIds
+      .filter((orderId) => orderNamesSeen.current.has(orderId))
+      .map(
+        (orderId) => [orderId, orderNamesSeen.current.get(orderId) as string] as [string, string]
+      );
 
-      if (!pkiSync) return;
-
-      const certificatesToAdd = selectedIds.filter((id) => !syncedCertificateIds.includes(id));
-      const certificatesToRemove = syncedCertificateIds.filter((id) => !selectedIds.includes(id));
-
-      const invalidCertificates = certificatesToAdd
-        .map((id) => allCertificates.find((cert) => cert.id === id))
-        .filter((cert) => {
-          if (!cert) return false;
-          const isExpired = new Date(cert.notAfter) < new Date();
-          const isRevoked = cert.status === CertStatus.REVOKED;
-          return isExpired || isRevoked;
-        });
-
-      if (invalidCertificates.length > 0) {
-        const invalidNames = invalidCertificates.map((cert) => cert?.commonName).join(", ");
-        createNotification({
-          text: `Cannot add expired or revoked certificates: ${invalidNames}`,
-          type: "error"
-        });
-        return;
-      }
-
-      type TOperationResult = {
-        type: "add" | "remove";
-        count: number;
-        success: boolean;
-        error?: unknown;
-      };
-
-      const runRemove = async (): Promise<TOperationResult | null> => {
-        if (certificatesToRemove.length === 0) return null;
-        try {
-          await removeCertificatesFromSync.mutateAsync({
-            pkiSyncId: pkiSync.id,
-            certificateIds: certificatesToRemove
-          });
-          return { type: "remove", count: certificatesToRemove.length, success: true };
-        } catch (error) {
-          return { type: "remove", count: certificatesToRemove.length, success: false, error };
-        }
-      };
-
-      const runAdd = async (): Promise<TOperationResult | null> => {
-        if (certificatesToAdd.length === 0) return null;
-        try {
-          await addCertificatesToSync.mutateAsync({
-            pkiSyncId: pkiSync.id,
-            certificateIds: certificatesToAdd
-          });
-          return { type: "add", count: certificatesToAdd.length, success: true };
-        } catch (error) {
-          return { type: "add", count: certificatesToAdd.length, success: false, error };
-        }
-      };
-
-      let results: (TOperationResult | null)[];
-      if (isSingleSelect) {
-        // Single-slot destinations (e.g. Nutanix, maxCertificates: 1) must remove the
-        // existing certificate before adding the replacement, otherwise the add would
-        // transiently exceed the limit and be rejected. Other destinations keep the
-        // original parallel behavior so their flow is unchanged.
-        results = [await runRemove(), await runAdd()];
-      } else {
-        results = await Promise.all([runAdd(), runRemove()]);
-      }
-
-      const completed = results.filter((r): r is TOperationResult => r !== null);
-
-      if (completed.length === 0) {
-        createNotification({
-          text: "No changes to save",
-          type: "info"
-        });
-        onClose();
-        return;
-      }
-
-      const failures = completed.filter((r) => !r.success);
-      const successes = completed.filter((r) => r.success);
-
-      if (failures.length === 0) {
-        const addCount = successes.find((r) => r.type === "add")?.count || 0;
-        const removeCount = successes.find((r) => r.type === "remove")?.count || 0;
-
-        let message = "Certificate selection updated successfully";
-        if (addCount > 0 && removeCount > 0) {
-          message = `Added ${addCount} and removed ${removeCount} certificate(s)`;
-        } else if (addCount > 0) {
-          message = `Added ${addCount} certificate(s)`;
-        } else if (removeCount > 0) {
-          message = `Removed ${removeCount} certificate(s)`;
-        }
-
-        createNotification({
-          text: message,
-          type: "success"
-        });
-
-        if (onCertificatesUpdated) {
-          onCertificatesUpdated();
-        }
-        onClose();
-      } else {
-        const partialSuccess = successes.length > 0;
-
-        const firstError = failures.map((f) => (f as { error?: unknown }).error).find(Boolean) as
-          | { response?: { data?: { message?: string } }; message?: string }
-          | undefined;
-        const reason =
-          firstError?.response?.data?.message ?? firstError?.message ?? "Please try again.";
-
-        createNotification({
-          text: partialSuccess
-            ? `Some certificate changes could not be saved: ${reason}`
-            : `Failed to update certificate selection: ${reason}`,
-          type: partialSuccess ? "warning" : "error"
-        });
-
-        if (partialSuccess && onCertificatesUpdated) {
-          onCertificatesUpdated();
-        }
-      }
-    } catch (error) {
-      console.error("Unexpected error during certificate sync operation:", error);
-      createNotification({
-        text: "An unexpected error occurred while updating certificates",
-        type: "error"
-      });
-    }
+    onOrderSelectionChange?.(selectedIds, orderNames);
+    onClose();
   };
-
-  const isLoading = addCertificatesToSync.isPending || removeCertificatesFromSync.isPending;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -351,14 +234,17 @@ export const CertificateManagementModal = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
+                    <TableHead className="w-10">
                       {!isSingleSelect && (
                         <Checkbox
                           id="select-all-certificates"
                           variant="project"
+                          aria-label="Select every certificate on this page"
                           isChecked={
                             allCertificates.length > 0 &&
-                            allCertificates.every((cert) => selectedIds.includes(cert.id))
+                            allCertificates.every(
+                              (cert) => cert.orderId && selectedIds.includes(cert.orderId)
+                            )
                           }
                           onCheckedChange={handleSelectAll}
                         />
@@ -375,7 +261,12 @@ export const CertificateManagementModal = ({
                     const isExpired = new Date(cert.notAfter) < new Date();
                     const isRevoked = cert.status === CertStatus.REVOKED;
                     const cannotBeAdded = isExpired || isRevoked;
-                    const isAlreadySynced = syncedCertificateIds.includes(cert.id);
+                    const isAlreadySynced = Boolean(
+                      cert.orderId && preselectedOrderIds.includes(cert.orderId)
+                    );
+                    const { orderId } = cert;
+                    const isSelectable = Boolean(orderId) && (!cannotBeAdded || isAlreadySynced);
+                    const isSelected = Boolean(orderId && selectedIds.includes(orderId));
 
                     const { originalDisplayName, displayName, isTruncated } =
                       getCertificateDisplayName(cert);
@@ -384,26 +275,24 @@ export const CertificateManagementModal = ({
                     return (
                       <TableRow
                         key={cert.id}
-                        className={`cursor-pointer ${
-                          cannotBeAdded && !isAlreadySynced ? "opacity-50" : ""
-                        }`}
+                        data-state={isSelected ? "selected" : undefined}
+                        className={
+                          isSelectable ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                        }
                         onClick={() => {
-                          if (!cannotBeAdded || isAlreadySynced) {
-                            handleToggleSelection(cert.id);
-                          }
+                          if (orderId && isSelectable) handleToggleSelection(orderId);
                         }}
                       >
-                        <TableCell className="max-w-0" onClick={(e) => e.stopPropagation()}>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
-                            id={cert.id}
+                            id={`select-certificate-${cert.id}`}
                             variant="project"
-                            isChecked={selectedIds.includes(cert.id)}
+                            aria-label={`Select ${originalDisplayName}`}
+                            isChecked={isSelected}
+                            isDisabled={!isSelectable}
                             onCheckedChange={() => {
-                              if (!cannotBeAdded || isAlreadySynced) {
-                                handleToggleSelection(cert.id);
-                              }
+                              if (orderId && isSelectable) handleToggleSelection(orderId);
                             }}
-                            isDisabled={cannotBeAdded && !isAlreadySynced}
                           />
                         </TableCell>
                         <TableCell className="max-w-0">
@@ -458,7 +347,7 @@ export const CertificateManagementModal = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="project" onClick={handleSaveCertificates} isPending={isLoading}>
+          <Button variant="project" onClick={handleSaveCertificates}>
             {saveButtonText}
           </Button>
         </DialogFooter>

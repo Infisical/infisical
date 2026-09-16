@@ -28,6 +28,7 @@ export const PkiManagerLayout = () => {
         <Outlet />
       </div>
       <UpgradePlanModal
+        paywallKey="cert-manager.product-access"
         isOpen={isUpgradeModalOpen}
         onOpenChange={setIsUpgradeModalOpen}
         text="Certificate Manager is not available on your current plan. Upgrade to continue using it."

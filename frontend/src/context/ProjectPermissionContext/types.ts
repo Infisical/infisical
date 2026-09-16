@@ -194,6 +194,12 @@ export enum ProjectPermissionCertificateProfileActions {
   ManageApplicationAttachments = "manage-application-attachments"
 }
 
+export enum ProjectPermissionApplicationActions {
+  Read = "read",
+  List = "list",
+  Create = "create"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -448,6 +454,7 @@ export enum ProjectPermissionSub {
   PkiSubscribers = "pki-subscribers",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
+  Application = "certificate-application",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
@@ -693,6 +700,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.CertificatePolicies> & CertificatePolicySubjectFields)
       )
     ]
+  | [ProjectPermissionApplicationActions, ProjectPermissionSub.Application]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateInventoryViews]

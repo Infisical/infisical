@@ -115,6 +115,19 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               </DetailValue>
             </Detail>
             <Detail>
+              <DetailLabel>Order ID</DetailLabel>
+              <DetailValue className="flex items-center gap-2 font-mono text-xs">
+                {certificate.orderId ? (
+                  <>
+                    {certificate.orderId}
+                    <CopyButton value={certificate.orderId} size="xs" variant="plain" />
+                  </>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
+              </DetailValue>
+            </Detail>
+            <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
                 {displayStatus.status === CertStatus.ACTIVE ? (
