@@ -2790,28 +2790,20 @@ const OverviewPageContent = () => {
             ) : null)}
           <div
             className={twMerge(
-              "flex h-10 min-w-0 items-center border border-border bg-container whitespace-nowrap",
+              "flex h-10 min-w-0 items-center border border-border bg-container-hover whitespace-nowrap",
               tableView === "table" ? "rounded-t-md border-b-0" : "mb-3 rounded-md"
             )}
           >
-            <FolderBreadcrumb
-              projectName={currentProject.name}
-              secretPath={secretPath}
-              onManageFolderAccess={
-                canManageCurrentFolderAccess ? handleCurrentFolderAccessOpen : undefined
-              }
-            />
-            {totalCount > 0 && (
-              <div className="shrink-0 px-3">
-                <ResourceCount
-                  dynamicSecretCount={totalDynamicSecretCount}
-                  secretCount={totalSecretCount}
-                  folderCount={totalFolderCount}
-                  importCount={totalImportCount}
-                  secretRotationCount={totalSecretRotationCount}
-                  proxiedServiceCount={totalProxiedServiceCount}
-                />
-              </div>
+            <FolderBreadcrumb projectName={currentProject.name} secretPath={secretPath} />
+            {canManageCurrentFolderAccess && (
+              <Button
+                variant="ghost"
+                size="xs"
+                className="mr-1.5 shrink-0"
+                onClick={handleCurrentFolderAccessOpen}
+              >
+                Manage Access
+              </Button>
             )}
           </div>
           {tableView === "no-environments" && (
@@ -3426,6 +3418,16 @@ const OverviewPageContent = () => {
               </DragDropProvider>
               {totalCount > 0 && (
                 <Pagination
+                  startAdornment={
+                    <ResourceCount
+                      dynamicSecretCount={totalDynamicSecretCount}
+                      secretCount={totalSecretCount}
+                      folderCount={totalFolderCount}
+                      importCount={totalImportCount}
+                      secretRotationCount={totalSecretRotationCount}
+                      proxiedServiceCount={totalProxiedServiceCount}
+                    />
+                  }
                   count={totalCount}
                   page={page}
                   perPage={perPage}

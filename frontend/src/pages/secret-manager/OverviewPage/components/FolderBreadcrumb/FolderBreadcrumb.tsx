@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDownIcon, CopyIcon, FolderIcon, SlashIcon, UsersIcon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, FolderIcon, SlashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -15,16 +15,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  IconButton
 } from "@app/components/v3";
 
 type Props = {
   projectName: string;
   secretPath?: string;
-  onManageFolderAccess?: () => void;
 };
 
 type Measurements = {
@@ -38,7 +34,7 @@ type Measurements = {
 const breadcrumbLinkClassName =
   "-my-1 inline-flex min-h-7 items-center rounded px-1.5 hover:bg-foreground/10 hover:no-underline";
 
-export function FolderBreadcrumb({ projectName, secretPath = "", onManageFolderAccess }: Props) {
+export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -137,12 +133,7 @@ export function FolderBreadcrumb({ projectName, secretPath = "", onManageFolderA
       (sum, w) => sum + w + separatorWidth + GAP * 2,
       0
     );
-    // The folder access button is a fixed-width sibling after the breadcrumb; subtract its
-    // footprint so the path collapses before it would collide with the button.
-    // v3 IconButton size="xs" => h-7 w-7 = 28px (border-box); GAP covers the gap before it.
-    const ACCESS_BUTTON_WIDTH = 28;
-    const accessButtonReserve = onManageFolderAccess ? ACCESS_BUTTON_WIDTH + GAP : 0;
-    const availableWidth = containerWidth - rootWidth - GAP - accessButtonReserve;
+    const availableWidth = containerWidth - rootWidth - GAP;
 
     // If everything fits, show all
     if (totalSegmentWidth <= availableWidth) {
@@ -200,7 +191,7 @@ export function FolderBreadcrumb({ projectName, secretPath = "", onManageFolderA
       endCount: needsCollapse ? end : 0,
       needsEllipsis: needsCollapse
     };
-  }, [measurements, folderPaths.length, Boolean(onManageFolderAccess)]);
+  }, [measurements, folderPaths.length]);
 
   // Derive visible segments
   const startSegments = needsEllipsis ? folderPaths.slice(0, startCount) : folderPaths;
@@ -246,10 +237,7 @@ export function FolderBreadcrumb({ projectName, secretPath = "", onManageFolderA
   );
 
   return (
-    <div
-      ref={containerRef}
-      className="relative flex h-7 min-w-0 flex-1 items-center gap-1 overflow-hidden"
-    >
+    <div ref={containerRef} className="relative flex min-w-0 flex-1 items-center gap-1">
       {/* Hidden measurement container */}
       <div
         ref={measureContainerRef}
@@ -283,14 +271,15 @@ export function FolderBreadcrumb({ projectName, secretPath = "", onManageFolderA
         </span>
       </div>
 
-      {/* Visible breadcrumb (shrinks/clips on its own so the access button is never clipped) */}
-      <Breadcrumb className="min-w-0 overflow-hidden">
+      <Breadcrumb className="min-w-0">
         <BreadcrumbList className="flex-nowrap">
           {/* Root folder */}
           <BreadcrumbItem>
-            <BreadcrumbLink asChild>
+            <BreadcrumbLink
+              asChild
+              className="inline-flex min-h-7 max-w-48 items-center gap-4 pr-1.5 pl-3 hover:no-underline"
+            >
               <Link
-                className={`${breadcrumbLinkClassName} max-w-48 gap-4 pr-1.5 pl-3`}
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                 to="."
                 search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
@@ -413,23 +402,6 @@ export function FolderBreadcrumb({ projectName, secretPath = "", onManageFolderA
           })}
         </BreadcrumbList>
       </Breadcrumb>
-
-      {onManageFolderAccess && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              variant="ghost-muted"
-              size="xs"
-              className="shrink-0"
-              aria-label="Manage folder access"
-              onClick={onManageFolderAccess}
-            >
-              <UsersIcon />
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>Manage Folder Access</TooltipContent>
-        </Tooltip>
-      )}
     </div>
   );
 }
