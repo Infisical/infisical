@@ -2211,6 +2211,7 @@ export const registerRoutes = async (
     userDAL,
     mfaSessionService,
     orgDAL,
+    membershipDAL,
     telemetryService
   });
 

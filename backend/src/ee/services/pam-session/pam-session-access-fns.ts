@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -199,4 +200,23 @@ export const terminatePamSessionsForUsers = async ({
       }
     }
   };
+};
+
+export const assertUserStillActiveInOrg = async ({
+  orgId,
+  userId,
+  membershipDAL,
+  tx
+}: {
+  orgId: string;
+  userId: string;
+  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
+  tx: Knex;
+}) => {
+  const membership = await membershipDAL.lockOrgMembershipForUser(orgId, userId, tx);
+  if (!membership || !membership.isActive) {
+    throw new ForbiddenRequestError({
+      message: "Your organization membership is no longer active. Contact an organization admin to restore access."
+    });
+  }
 };
