@@ -1,8 +1,13 @@
 import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
 
 const query = { projectId: "11111111-1111-4111-8111-111111111111", environment: "dev" };
+const legacyProjectId = "63bde6386e0a6d276c17a10d";
 
 describe("secret metadata API contract", () => {
+  test.each([query.projectId, legacyProjectId])("accepts supported project ID format: %s", (projectId) => {
+    expect(SecretMetadataQuerySchema.parse({ ...query, projectId }).projectId).toBe(projectId);
+  });
+
   test("defaults to a bounded recursive page and normalizes trailing slashes", () => {
     expect(SecretMetadataQuerySchema.parse(query)).toEqual({ ...query, secretPath: "/", limit: 500 });
     expect(
@@ -17,6 +22,8 @@ describe("secret metadata API contract", () => {
 
   test.each([
     { projectId: "bad" },
+    { projectId: "g".repeat(24) },
+    { projectId: "" },
     { environment: "a".repeat(65) },
     { secretPath: "relative" },
     { secretPath: "/bad\0" },

@@ -6,9 +6,16 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { slugSchema } from "@app/server/lib/schemas";
 
 const docs = DASHBOARD.SECRET_METADATA_LIST;
+const ProjectIdSchema = z.union([
+  z.string().trim().uuid(),
+  z
+    .string()
+    .trim()
+    .regex(/^[a-f\d]{24}$/i, "Project ID must be a UUID or legacy MongoDB ObjectId")
+]);
 
 export const SecretMetadataQuerySchema = z.object({
-  projectId: z.string().trim().uuid().describe(docs.projectId),
+  projectId: ProjectIdSchema.describe(docs.projectId),
   environment: slugSchema({ field: "Environment slug" }).describe(docs.environment),
   secretPath: z
     .string()
