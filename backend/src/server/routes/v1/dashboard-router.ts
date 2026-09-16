@@ -39,7 +39,11 @@ import {
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SecretMetadataQuerySchema, SecretMetadataResponseSchema } from "./dashboard-secret-metadata-schemas";
-import { isSecretPathMatch, resolveSecretDeepSearch } from "./dashboard-secret-search-fns";
+import {
+  isSecretPathMatch,
+  resolveSecretDeepSearch,
+  resolveSecretSearchFolderPath
+} from "./dashboard-secret-search-fns";
 
 const MAX_DEEP_SEARCH_LIMIT = 500; // arbitrary limit to prevent excessive results
 const DEEP_SEARCH_DEFAULT_PAGE_LIMIT = 25;
@@ -1596,7 +1600,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const tags = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
       if (!search && !tags.length) throw new BadRequestError({ message: "Search or tags required" });
 
-      const allFolders = await server.services.folder.getFoldersDeepByEnvs(
+      const scopedFolders = await server.services.folder.getFoldersDeepByEnvs(
         {
           projectId,
           environments,
@@ -1604,6 +1608,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         },
         req.permission
       );
+
+      const allFolders = scopedFolders.map((folder) => ({
+        ...folder,
+        path: resolveSecretSearchFolderPath(secretPath, folder.path)
+      }));
 
       const { searchName, searchPath } = resolveSecretDeepSearch(
         search,
