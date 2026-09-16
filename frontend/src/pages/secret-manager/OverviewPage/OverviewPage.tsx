@@ -3640,6 +3640,7 @@ const OverviewPageContent = () => {
       />
       {subscription && (
         <UpgradePlanModal
+          paywallKey="secret-manager.overview"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}

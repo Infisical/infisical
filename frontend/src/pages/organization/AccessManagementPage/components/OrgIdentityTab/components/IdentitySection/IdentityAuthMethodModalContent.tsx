@@ -452,6 +452,7 @@ export const IdentityAuthMethodModalContent = ({
       />
       {selectedMethodItem?.render ? selectedMethodItem.render() : <div />}
       <UpgradePlanModal
+        paywallKey="organization.identity-auth-method-modal"
         isOpen={popUp?.upgradePlan?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}

@@ -441,14 +441,16 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
           organizationId: req.params.organizationId,
           properties: {
             productId: req.body.productId,
-            plan: req.body.plan,
-            cadence: req.body.cadence,
+            plan: result.plan,
+            cadence: result.cadence,
             ...(result.outcome === "subscription_updated" ? { subscriptionId: result.subscriptionId } : {})
           }
         })
         .catch(() => {});
 
-      return result;
+      return result.outcome === "checkout_created"
+        ? { outcome: result.outcome, checkoutUrl: result.checkoutUrl }
+        : { outcome: result.outcome, subscriptionId: result.subscriptionId };
     }
   });
 

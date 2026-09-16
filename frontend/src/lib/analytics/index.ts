@@ -6,14 +6,13 @@ import {
   OrganizationAnalyticsEventMap
 } from "./events";
 
-const telemetry = new Telemetry().getInstance();
-
 export const analytics = {
   captureForOrganization<Event extends OrganizationAnalyticsEvent>(
     event: Event,
     orgId: string,
     properties: OrganizationAnalyticsEventMap[Event]
   ) {
+    const telemetry = new Telemetry().getInstance();
     telemetry.capture(event, {
       ...properties,
       orgId,

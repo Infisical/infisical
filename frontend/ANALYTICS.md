@@ -38,6 +38,11 @@ errors, arbitrary URLs, or unbounded user-entered content. Define an event's
 firing condition precisely so lifecycle events such as viewed, clicked,
 started, completed, failed, and canceled cannot overlap accidentally.
 
+Every paywall has a required, lowercase dot-separated `paywallKey` owned by
+its call site. Keep the key stable when copy or plan names change; use the
+modal text only as optional display context. Record the matched route ID, not
+the concrete URL containing organization, project, or resource identifiers.
+
 Each event has one owning producer. Do not emit the same event name from the
 frontend and backend: doing so mixes browser observations with domain outcomes
 and overcounts activity that originated from the web application.
@@ -53,5 +58,6 @@ adding a frontend event, check the backend event catalog and capture only the
 UI context that its route telemetry cannot provide.
 
 Legacy frontend telemetry still uses `Telemetry` directly. Migrate it through
-the shared API rather than copying that pattern into new code. PLATFOR-817
-tracks that migration and the remaining scope helpers.
+the shared API rather than copying that pattern into new code. The remaining
+legacy callers and scope helpers should move incrementally without changing
+their existing identity or feature-flag behavior.

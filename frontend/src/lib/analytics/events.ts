@@ -4,8 +4,9 @@ export const AnalyticsEvent = {
 } as const;
 
 type PaywallProperties = {
+  paywallKey: string;
   paywallText: string;
-  sourcePath: string;
+  route: string;
   isEnterpriseFeature: boolean;
 };
 

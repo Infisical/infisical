@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { SparklesIcon } from "lucide-react";
 
 import {
@@ -19,6 +19,7 @@ import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 type Props = {
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
+  paywallKey: string;
   text: string;
   // akhilmhdh: We will come back to this late. Otherwise would need to change in a lot of places.
   // eslint-disable-next-line
@@ -29,30 +30,46 @@ export const UpgradePlanModal = ({
   text,
   isOpen,
   onOpenChange,
+  paywallKey,
   isEnterpriseFeature
 }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
   const scopeVariant = useScopeVariant();
-
-  const eventProperties = {
-    paywallText: text,
-    sourcePath: window.location.pathname,
-    isEnterpriseFeature: Boolean(isEnterpriseFeature)
-  };
+  const route = useRouterState({
+    select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
+  });
+  const eventPropertiesRef = useRef<{
+    paywallKey: string;
+    paywallText: string;
+    route: string;
+    isEnterpriseFeature: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      const eventProperties = {
+        paywallKey,
+        paywallText: text,
+        route,
+        isEnterpriseFeature: Boolean(isEnterpriseFeature)
+      };
+      eventPropertiesRef.current = eventProperties;
       analytics.captureForOrganization(
         AnalyticsEvent.PaywallViewed,
         currentOrg.id,
         eventProperties
       );
+    } else {
+      eventPropertiesRef.current = null;
     }
     // The event should fire once per closed-to-open transition, not when copy or route context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleUpgradeClick = () => {
+    const eventProperties = eventPropertiesRef.current;
+    if (!eventProperties) return;
+
     analytics.captureForOrganization(
       AnalyticsEvent.PaywallUpgradeClicked,
       currentOrg.id,
