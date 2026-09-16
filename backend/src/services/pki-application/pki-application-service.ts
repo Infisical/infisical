@@ -472,7 +472,7 @@ export const pkiApplicationServiceFactory = ({
       );
     }
 
-    return pkiApplicationDAL.transaction(async (tx) => {
+    const profiles = await pkiApplicationDAL.transaction(async (tx) => {
       const existing = await pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
       const existingProfileIds = new Set(existing.map((row) => row.profileId));
       const toAttach = profileIds.filter((id) => !existingProfileIds.has(id));
@@ -486,6 +486,8 @@ export const pkiApplicationServiceFactory = ({
 
       return pkiApplicationProfileDAL.findByApplicationId(applicationId, tx);
     });
+
+    return { profiles, applicationName: application.name };
   };
 
   const detachProfile = async ({
@@ -538,7 +540,7 @@ export const pkiApplicationServiceFactory = ({
     );
 
     await pkiApplicationProfileDAL.delete({ applicationId, profileId });
-    return { applicationId, profileId };
+    return { applicationId, applicationName: application.name, profileId };
   };
 
   const getApplicationPermissions = async ({

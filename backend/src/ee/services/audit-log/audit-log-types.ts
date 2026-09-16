@@ -32,9 +32,16 @@ import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/t
 import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
+import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyAlgorithm,
+  CertKeyUsage,
+  CrlReason
+} from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -3130,6 +3137,8 @@ interface ImportCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     certificateProfileId?: string;
     profileName?: string;
     caId?: string;
@@ -3160,6 +3169,8 @@ interface GetCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3169,6 +3180,8 @@ interface DeleteCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3178,6 +3191,9 @@ interface RevokeCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    revocationReason?: CrlReason;
   };
 }
 
@@ -3198,6 +3214,8 @@ interface GetCertBody {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3207,6 +3225,8 @@ interface GetCertPrivateKey {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3216,6 +3236,8 @@ interface GetCertBundle {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 interface GetCertPkcs12 {
@@ -3224,6 +3246,8 @@ interface GetCertPkcs12 {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3233,6 +3257,7 @@ interface CreatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     applicationId?: string;
+    applicationName?: string;
     name: string;
     alertBefore?: string;
     eventType: PkiAlertEventType;
@@ -3244,6 +3269,7 @@ interface GetPkiAlert {
   metadata: {
     pkiAlertId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3253,6 +3279,7 @@ interface UpdatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     applicationId?: string;
+    applicationName?: string;
     name?: string;
     alertBefore?: string;
     eventType?: PkiAlertEventType;
@@ -3264,6 +3291,7 @@ interface DeletePkiAlert {
   metadata: {
     pkiAlertId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3331,6 +3359,7 @@ interface CreateCertificateInventoryView {
     columns?: string[];
     isShared?: boolean;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3343,6 +3372,7 @@ interface UpdateCertificateInventoryView {
     columns?: string[];
     isShared?: boolean;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3352,6 +3382,7 @@ interface DeleteCertificateInventoryView {
     viewId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -3420,10 +3451,16 @@ interface AutomatedRenewCertificate {
   type: EventType.AUTOMATED_RENEW_CERTIFICATE;
   metadata: {
     certificateId: string;
+    newCertificateId?: string;
+    certificateRequestId?: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     profileId: string;
     renewBeforeDays: string;
     profileName: string;
+    status: CertificateRequestStatus;
+    serialNumber?: string;
   };
 }
 
@@ -3432,6 +3469,8 @@ interface AutomatedRenewCertificateFailed {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     profileId: string;
     renewBeforeDays: string;
     profileName: string;
@@ -3737,6 +3776,7 @@ interface AttachPkiApplicationProfiles {
   type: EventType.ATTACH_PKI_APPLICATION_PROFILES;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     profileIds: string[];
   };
 }
@@ -3745,6 +3785,7 @@ interface DetachPkiApplicationProfile {
   type: EventType.DETACH_PKI_APPLICATION_PROFILE;
   metadata: {
     applicationId: string;
+    applicationName?: string;
     profileId: string;
   };
 }
@@ -3808,6 +3849,7 @@ interface GetPkiApplicationEnrollment {
   type: EventType.GET_PKI_APPLICATION_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3816,6 +3858,7 @@ interface SetPkiApplicationApiEnrollment {
   type: EventType.SET_PKI_APPLICATION_API_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     autoRenew: boolean;
     renewBeforeDays: number | null;
@@ -3826,6 +3869,7 @@ interface ClearPkiApplicationApiEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_API_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3834,6 +3878,7 @@ interface SetPkiApplicationEstEnrollment {
   type: EventType.SET_PKI_APPLICATION_EST_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     disableBootstrapCaValidation: boolean;
   };
@@ -3843,6 +3888,7 @@ interface ClearPkiApplicationEstEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_EST_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3851,6 +3897,7 @@ interface SetPkiApplicationAcmeEnrollment {
   type: EventType.SET_PKI_APPLICATION_ACME_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     skipDnsOwnershipVerification: boolean;
     skipEabBinding: boolean;
@@ -3861,6 +3908,7 @@ interface ClearPkiApplicationAcmeEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_ACME_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3869,6 +3917,7 @@ interface RevealPkiApplicationAcmeEabSecret {
   type: EventType.REVEAL_PKI_APPLICATION_ACME_EAB_SECRET;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3877,6 +3926,7 @@ interface RotatePkiApplicationAcmeEabSecret {
   type: EventType.ROTATE_PKI_APPLICATION_ACME_EAB_SECRET;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -3885,6 +3935,7 @@ interface SetPkiApplicationScepEnrollment {
   type: EventType.SET_PKI_APPLICATION_SCEP_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
     challengeType: string;
     signRaWithCa: boolean;
@@ -3897,6 +3948,7 @@ interface ClearPkiApplicationScepEnrollment {
   type: EventType.CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT;
   metadata: {
     applicationId: string;
+    applicationName: string;
     profileId: string;
   };
 }
@@ -4028,9 +4080,13 @@ interface IssueCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     certificateId: string;
+    certificateRequestId: string;
     commonName: string;
     profileName: string;
+    status: CertificateRequestStatus;
+    serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4039,9 +4095,13 @@ interface SignCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     certificateId: string;
+    certificateRequestId: string;
     profileName: string;
     commonName: string;
+    status: CertificateRequestStatus;
+    serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4049,8 +4109,13 @@ interface OrderCertificateFromProfile {
   type: EventType.ORDER_CERTIFICATE_FROM_PROFILE;
   metadata: {
     certificateProfileId: string;
+    certificateRequestId: string;
+    commonName: string;
     profileName: string;
+    status: CertificateRequestStatus;
+    serialNumber?: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4070,8 +4135,12 @@ interface RenewCertificate {
   metadata: {
     originalCertificateId: string;
     newCertificateId: string;
+    certificateRequestId: string;
     profileName: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
     changedAttributes: TRenewalAuditChange[];
   };
@@ -4589,6 +4658,7 @@ interface GetPkiSyncEvent {
     destination: string;
     syncId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4600,6 +4670,7 @@ interface GetPkiSyncCertificatesEvent {
     certificateIds: string[];
     destination: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4610,6 +4681,7 @@ interface CreatePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    applicationName?: string;
     connectionId?: string;
     connectionName?: string;
     targetHost?: string;
@@ -4625,6 +4697,7 @@ interface UpdatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
     destination?: string;
     connectionId?: string;
     connectionName?: string;
@@ -4641,6 +4714,7 @@ interface DeletePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4705,6 +4779,7 @@ interface PkiSyncSetDefaultCertificateEvent {
     name: string;
     certificateId: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4714,6 +4789,7 @@ interface PkiSyncClearDefaultCertificateEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 
@@ -4923,6 +4999,7 @@ interface UpdatePkiSignerApprovalPolicyEvent {
   type: EventType.UPDATE_PKI_SIGNER_APPROVAL_POLICY;
   metadata: {
     signerId: string;
+    name: string;
     stepCount: number;
   };
 }
@@ -4931,7 +5008,8 @@ interface PkiSignerRequestToSignEvent {
   type: EventType.PKI_SIGNER_REQUEST_TO_SIGN;
   metadata: {
     signerId: string;
-    requestId?: string;
+    name: string;
+    approvalRequestId?: string;
   };
 }
 
@@ -4939,7 +5017,8 @@ interface PkiSignerPreApproveSigningEvent {
   type: EventType.PKI_SIGNER_PRE_APPROVE_SIGNING;
   metadata: {
     signerId: string;
-    requestId?: string;
+    name: string;
+    approvalRequestId?: string;
     granteeUserId?: string;
     granteeIdentityId?: string;
   };
@@ -4949,7 +5028,8 @@ interface PkiSignerRevokeRequestEvent {
   type: EventType.PKI_SIGNER_REVOKE_REQUEST;
   metadata: {
     signerId: string;
-    requestId: string;
+    name: string;
+    approvalRequestId: string;
   };
 }
 
@@ -6482,6 +6562,8 @@ interface UpdateCertificateRenewalConfigEvent {
     certificateId: string;
     renewBeforeDays: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -6490,6 +6572,8 @@ interface UpdateCertificateMetadataEvent {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     metadata: { key: string; value: string }[];
   };
 }
@@ -6517,6 +6601,8 @@ interface DisableCertificateRenewalConfigEvent {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -6534,6 +6620,11 @@ interface GetCertificateRequestEvent {
   type: EventType.GET_CERTIFICATE_REQUEST;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    commonName?: string;
+    status?: string;
+    serialNumber?: string;
   };
 }
 
@@ -6549,6 +6640,8 @@ interface TriggerCertificateRequestValidationEvent {
   type: EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     status: string;
     orderStatus?: string;
   };
@@ -6558,6 +6651,9 @@ interface CancelCertificateRequestEvent {
   type: EventType.CANCEL_CERTIFICATE_REQUEST;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
+    commonName?: string;
     cancelled: boolean;
     previousStatus: string;
     previousPendingMessage: string | null;
@@ -6622,9 +6718,11 @@ interface ApprovalRequestGetEvent {
   type: EventType.APPROVAL_REQUEST_GET;
   metadata: {
     policyType: string;
-    requestId: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     status: string;
-  };
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestListEvent {
@@ -6639,35 +6737,44 @@ interface ApprovalRequestCreateEvent {
   type: EventType.APPROVAL_REQUEST_CREATE;
   metadata: {
     policyType: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     justification?: string;
     requestDuration: string;
-  };
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestApproveEvent {
   type: EventType.APPROVAL_REQUEST_APPROVE;
   metadata: {
     policyType: string;
-    requestId: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     comment?: string;
-  };
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestRejectEvent {
   type: EventType.APPROVAL_REQUEST_REJECT;
   metadata: {
     policyType: string;
-    requestId: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
     comment?: string;
-  };
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestCancelEvent {
   type: EventType.APPROVAL_REQUEST_CANCEL;
   metadata: {
     policyType: string;
-    requestId: string;
-  };
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+  } & TApprovalRequestSubjectMetadata;
 }
 
 interface ApprovalRequestGrantListEvent {
@@ -6793,6 +6900,7 @@ interface FinalizeAcmeOrderEvent {
   type: EventType.FINALIZE_ACME_ORDER;
   metadata: {
     orderId: string;
+    commonName: string;
     csr: string;
   };
 }
@@ -6801,6 +6909,9 @@ interface DownloadAcmeCertificateEvent {
   type: EventType.DOWNLOAD_ACME_CERTIFICATE;
   metadata: {
     orderId: string;
+    certificateId: string;
+    commonName: string;
+    serialNumber: string;
   };
 }
 
@@ -7075,6 +7186,7 @@ interface ScepDynamicChallengeGeneratedEvent {
     profileSlug: string;
     expiresAt: string;
     applicationId?: string;
+    applicationName?: string;
   };
 }
 

@@ -214,6 +214,7 @@ const LogsSectionComponent = ({
           />
         </CardContent>
         <UpgradePlanModal
+          paywallKey="organization.logs"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("upgradePlan", isOpen);
@@ -298,6 +299,7 @@ const LogsSectionComponent = ({
         timezone={timezone}
       />
       <UpgradePlanModal
+        paywallKey="organization.logs"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);

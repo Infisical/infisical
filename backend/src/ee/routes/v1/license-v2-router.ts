@@ -420,7 +420,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       // A first-touch org has no Stripe customer yet, so the server needs an email. Take it from the
       // authenticated user (JWT-only route) rather than trusting a client-supplied value.
       const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
-      return server.services.licenseV2.buyProduct({
+      const result = await server.services.licenseV2.buyProduct({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId,
@@ -430,6 +430,27 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         email,
         returnPath: req.body.returnPath
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event:
+            result.outcome === "checkout_created"
+              ? PostHogEventTypes.BillingCheckoutSessionCreated
+              : PostHogEventTypes.BillingProductActivated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.params.organizationId,
+          properties: {
+            productId: req.body.productId,
+            plan: result.plan,
+            cadence: result.cadence,
+            ...(result.outcome === "subscription_updated" ? { subscriptionId: result.subscriptionId } : {})
+          }
+        })
+        .catch(() => {});
+
+      return result.outcome === "checkout_created"
+        ? { outcome: result.outcome, checkoutUrl: result.checkoutUrl }
+        : { outcome: result.outcome, subscriptionId: result.subscriptionId };
     }
   });
 
@@ -458,7 +479,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.upgradeProduct({
+      const result = await server.services.licenseV2.upgradeProduct({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId,
@@ -466,6 +487,22 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         expectedPlanVersionId: req.body.expectedPlanVersionId,
         prorationDate: req.body.prorationDate
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.BillingPlanUpgraded,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.params.organizationId,
+          properties: {
+            productId: req.body.productId,
+            fromPlan: result.fromPlanKey,
+            toPlan: result.toPlanKey ?? req.body.plan,
+            subscriptionId: result.subscriptionId
+          }
+        })
+        .catch(() => {});
+
+      return result;
     }
   });
 

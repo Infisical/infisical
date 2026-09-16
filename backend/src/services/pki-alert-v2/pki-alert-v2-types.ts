@@ -346,6 +346,7 @@ export type TLastRun = {
 };
 
 export type TAlertV2Response = {
+  applicationName?: string | null;
   id: string;
   name: string;
   description: string | null;
