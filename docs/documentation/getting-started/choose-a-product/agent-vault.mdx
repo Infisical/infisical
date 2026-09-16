@@ -18,4 +18,4 @@ Infisical Agent Vault is an access layer for AI agents. Agents route their API c
 
 Traditional secrets management involves returning credentials back to applications and services. This isn't suitable for AI agents because they're vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could write a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
 
-Infisical Agent Vault solves this by brokering access at the network boundary. The agent gets a session that only provides access the services you allowed, and only until the session expires or you revoke it.
+Infisical Agent Vault solves this by brokering credentials using a proxy at the network boundary. The proxy attaches real credentials to services you've allowed, and only until the session expires (or you revoke it).
