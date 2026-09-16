@@ -588,7 +588,10 @@ const Content = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <IconButton aria-label="Search filters" variant={hasActiveFilters ? "project" : "outline"}>
+                <IconButton
+                  aria-label="Search filters"
+                  variant={hasActiveFilters ? "project" : "outline"}
+                >
                   <FilterIcon />
                 </IconButton>
               </DropdownMenuTrigger>
@@ -629,7 +632,11 @@ const Content = ({
             <FieldLabel htmlFor="quick-search-environments">Environments</FieldLabel>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button id="quick-search-environments" variant="outline" className="justify-between">
+                <Button
+                  id="quick-search-environments"
+                  variant="outline"
+                  className="justify-between"
+                >
                   {selectedEnvironments.length === 0
                     ? "All Environments"
                     : `${selectedEnvironments.length} Selected`}

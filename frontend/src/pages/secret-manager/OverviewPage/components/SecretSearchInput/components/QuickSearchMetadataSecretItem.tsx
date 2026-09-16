@@ -11,9 +11,9 @@ import {
 } from "@app/components/v3";
 import { TMetadataMatchedSecret } from "@app/hooks/api/dashboard/types";
 
-import { QuickSearchSelection } from "./quickSearchTypes";
 import { QuickSearchSecretCopyButton } from "./QuickSearchSecretCopyButton";
 import { QuickSearchSecretDetails } from "./QuickSearchSecretDetails";
+import { QuickSearchSelection } from "./quickSearchTypes";
 
 type Props = {
   secret: TMetadataMatchedSecret;

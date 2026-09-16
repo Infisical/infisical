@@ -14,7 +14,12 @@ type Props = {
   secretValueHidden: boolean;
 };
 
-export const QuickSearchSecretCopyButton = ({ environment, secretPath, secretKey, secretValueHidden }: Props) => {
+export const QuickSearchSecretCopyButton = ({
+  environment,
+  secretPath,
+  secretKey,
+  secretValueHidden
+}: Props) => {
   const { currentProject } = useProject();
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
   const [isCopying, setIsCopying] = useState(false);
@@ -22,14 +27,22 @@ export const QuickSearchSecretCopyButton = ({ environment, secretPath, secretKey
   const handleCopy = async () => {
     setIsCopying(true);
     try {
-      const data = await fetchSecretValue({ environment, secretPath, secretKey, projectId: currentProject.id });
+      const data = await fetchSecretValue({
+        environment,
+        secretPath,
+        secretKey,
+        projectId: currentProject.id
+      });
       const value = data.valueOverride ?? data.value;
       if (value === undefined) throw new Error("Secret value is unavailable");
       await navigator.clipboard.writeText(value);
       createNotification({ type: "info", title: "Secret value copied.", text: "" });
       setIsCopied(true);
     } catch {
-      createNotification({ type: "error", text: "Could not copy secret value. Check your access and try again." });
+      createNotification({
+        type: "error",
+        text: "Could not copy secret value. Check your access and try again."
+      });
     } finally {
       setIsCopying(false);
     }
@@ -53,7 +66,9 @@ export const QuickSearchSecretCopyButton = ({ environment, secretPath, secretKey
         </IconButton>
       </TooltipTrigger>
       <TooltipContent>
-        {secretValueHidden ? "You do not have permission to view this secret value" : "Copy secret value"}
+        {secretValueHidden
+          ? "You do not have permission to view this secret value"
+          : "Copy secret value"}
       </TooltipContent>
     </Tooltip>
   );

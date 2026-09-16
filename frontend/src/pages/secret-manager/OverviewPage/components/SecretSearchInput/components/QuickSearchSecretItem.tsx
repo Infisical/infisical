@@ -11,9 +11,9 @@ import {
 } from "@app/components/v3";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
-import { QuickSearchSelection } from "./quickSearchTypes";
 import { QuickSearchSecretCopyButton } from "./QuickSearchSecretCopyButton";
 import { QuickSearchSecretDetails } from "./QuickSearchSecretDetails";
+import { QuickSearchSelection } from "./quickSearchTypes";
 
 type Props = {
   secret: SecretV3RawSanitized;

@@ -590,8 +590,23 @@ export const useSearchSecretsByMetadata = (
   return useQuery({
     ...options,
     enabled: (options?.enabled ?? true) && filters.length > 0 && Boolean(projectId),
-    queryKey: dashboardKeys.searchSecretsByMetadata({ projectId, operator, filters, tags, environments, secretPath }),
-    queryFn: () => fetchSearchSecretsByMetadata({ projectId, operator, filters, tags, environments, secretPath }),
+    queryKey: dashboardKeys.searchSecretsByMetadata({
+      projectId,
+      operator,
+      filters,
+      tags,
+      environments,
+      secretPath
+    }),
+    queryFn: () =>
+      fetchSearchSecretsByMetadata({
+        projectId,
+        operator,
+        filters,
+        tags,
+        environments,
+        secretPath
+      }),
     placeholderData: (previousData) => previousData
   });
 };

@@ -19,7 +19,11 @@ export const QuickSearchSecretDetails = ({ tags = [], metadata = [] }: Props) =>
         </TooltipTrigger>
         <TooltipContent className="max-w-lg">
           <div className="flex flex-col gap-1">
-            {tags.map((tag) => <span key={tag.id} className="break-all">{tag.slug}</span>)}
+            {tags.map((tag) => (
+              <span key={tag.id} className="break-all">
+                {tag.slug}
+              </span>
+            ))}
           </div>
         </TooltipContent>
       </Tooltip>
@@ -35,7 +39,9 @@ export const QuickSearchSecretDetails = ({ tags = [], metadata = [] }: Props) =>
         <TooltipContent className="max-w-lg">
           <div className="flex flex-col gap-1 font-mono">
             {metadata.map((entry) => (
-              <span key={entry.key} className="break-all">{entry.key}: {entry.value ?? ""}</span>
+              <span key={entry.key} className="break-all">
+                {entry.key}: {entry.value ?? ""}
+              </span>
             ))}
           </div>
         </TooltipContent>
