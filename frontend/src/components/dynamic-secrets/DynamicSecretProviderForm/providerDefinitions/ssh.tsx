@@ -1,6 +1,6 @@
 import { KeyboardEvent, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { PlusIcon, Trash2Icon } from "lucide-react";
 
 import {
   Button,
@@ -14,10 +14,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  SelectValue
 } from "@app/components/v3";
 import { useGetSshCaPublicKey } from "@app/hooks/api";
 import { sshCertKeyAlgorithms } from "@app/hooks/api/dynamicSecret/constants";
@@ -168,18 +165,7 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
           name="inputs.caKeyAlgorithm"
           render={({ field, fieldState: { error } }) => (
             <Field data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="ssh-ca-key-algorithm">
-                CA Key Algorithm
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <InfoIcon aria-label="About CA key algorithm" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Algorithm for the CA that signs lease certificates. Updating this requires hosts
-                    to be configured again.
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
+              <FieldLabel htmlFor="ssh-ca-key-algorithm">CA Key Algorithm</FieldLabel>
               <Select
                 value={field.value}
                 onValueChange={(value) => {
@@ -204,7 +190,11 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
                   ))}
                 </SelectContent>
               </Select>
-              <FieldFeedback id="ssh-ca-key-algorithm-feedback" error={error?.message} />
+              <FieldFeedback
+                id="ssh-ca-key-algorithm-feedback"
+                description="Algorithm for the CA that signs lease certificates. Updating this requires hosts to be configured again."
+                error={error?.message}
+              />
             </Field>
           )}
         />
@@ -238,10 +228,6 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
   );
 };
 
-const sshTtlFields = {
-  maxTTL: { description: "Max TTL is 7 days" }
-} as const;
-
 export const sshDynamicSecretProvider = defineDynamicSecretProvider({
   provider: DynamicSecretProviders.Ssh,
   label: "SSH",
@@ -250,14 +236,12 @@ export const sshDynamicSecretProvider = defineDynamicSecretProvider({
     schema: sshCreateFormSchema,
     getDefaultValues: getSshCreateDefaultValues,
     toPayload: getSshCreatePayload,
-    commonFields: sshTtlFields,
     submitLabel: "Submit"
   },
   edit: {
     schema: sshEditFormSchema,
     getDefaultValues: getSshEditDefaultValues,
     toPayload: getSshEditPayload,
-    commonFields: sshTtlFields,
     submitLabel: "Submit",
     successMessage: "Successfully updated dynamic secret"
   }
