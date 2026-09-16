@@ -126,7 +126,7 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
         <AccordionTrigger className="px-3 py-3">{header}</AccordionTrigger>
         <AccordionContent className="border-t border-border px-3 pt-3 pb-3.5">
           <div className="flex flex-col gap-2.5">
-            <span className="text-[11px] tracking-wide text-muted uppercase">
+            <span className="text-2xs tracking-wide text-muted uppercase">
               Where these {unitLabel} were created
             </span>
             {scope.orgLevelCount > 0 && (
@@ -147,8 +147,8 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
             )}
             {scope.projects.length > 0 && (
               <div className="flex items-center gap-2 border-t border-border pt-2.5">
-                <span className="text-[11px] tracking-wide text-muted uppercase">Projects</span>
-                <span className="text-[11px] text-muted">{projectLabel}</span>
+                <span className="text-2xs tracking-wide text-muted uppercase">Projects</span>
+                <span className="text-2xs text-muted">{projectLabel}</span>
               </div>
             )}
             {scope.projects.map((project) => (
@@ -337,10 +337,10 @@ const BreakdownBody = ({
               </div>
 
               <div className="flex items-center justify-between gap-3 px-0.5">
-                <span className="text-[11px] tracking-wide text-muted uppercase">
+                <span className="text-2xs tracking-wide text-muted uppercase">
                   Sub-organizations
                 </span>
-                <span className="text-[11px] text-muted">
+                <span className="text-2xs text-muted">
                   {visibleSubOrgs.length}{" "}
                   {visibleSubOrgs.length === 1 ? "sub-organization" : "sub-organizations"}
                 </span>
