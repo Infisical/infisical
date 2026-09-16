@@ -414,7 +414,7 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex flex-col justify-center gap-4 lg:flex-row">
-          <div className="flex flex-1 flex-col gap-4">{renderDetailsSection()}</div>
+          <div className="flex min-w-0 flex-1 flex-col gap-4">{renderDetailsSection()}</div>
           <div className="flex flex-col gap-4 lg:w-96 lg:flex-shrink-0">
             <RequestActionsSection request={request} />
             <ApprovalStepsSection request={request} />
