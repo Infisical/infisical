@@ -799,6 +799,7 @@
                   "documentation/platform/agent-vault/services",
                   "documentation/platform/agent-vault/sessions",
                   "documentation/platform/agent-vault/proxies",
+                  "documentation/platform/agent-vault/activity-logs",
                   "documentation/platform/agent-vault/access-control"
                 ]
               }

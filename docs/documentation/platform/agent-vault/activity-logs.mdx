@@ -1,0 +1,146 @@
+---
+title: "Activity logs"
+description: "Record what an agent reached through a proxy, store it encrypted in your own S3 bucket, and read it back on the session."
+---
+
+An activity log is the per-request record of what an agent actually did: the method, host, path, status, and whether a credential went out with it. Every request that reaches a proxy is recorded, not only the ones that matched an access bundle, so a request to a host nobody configured shows up too.
+
+Records are encrypted before they leave the proxy and stored in an S3 bucket you own. Infisical keeps an index of where each batch lives, and hands your browser the key to open it. The records themselves never pass through Infisical.
+
+## What's recorded
+
+Each request produces one record:
+
+```json
+{
+  "ts": "2026-09-16T10:31:04.221Z",
+  "seq": 8412,
+  "proxyId": "7c1e…",
+  "method": "POST",
+  "host": "api.github.com",
+  "port": "443",
+  "path": "/repos/acme/web/issues",
+  "status": 201,
+  "decision": "brokered",
+  "service": "github",
+  "accessBundle": "code-review"
+}
+```
+
+`decision` is one of four outcomes:
+
+| Decision | What happened |
+| --- | --- |
+| `brokered` | A service matched and its credential went out with the request |
+| `passthrough` | No service matched, or the one that did carries no credential. The request went out untouched |
+| `blocked` | The traffic policy refused the request |
+| `error` | The proxy couldn't reach the upstream, or the session had stopped being valid |
+
+Request and response bodies aren't recorded, and neither are headers. A request header is where the injected credential goes, so storing headers would rebuild the exposure the product exists to remove. Query strings aren't recorded either: plenty of APIs put a token in one, so the proxy builds `path` from the URL path alone and never sees the query.
+
+## Prerequisites
+
+- An AWS connection in the organization, under **App Connections**
+- An S3 bucket, in a region the connection can reach
+
+Activity logs need a bucket you own. There's no option to store them inside Infisical, and no second storage backend, so an organization with only GCP or Azure connections can't turn this on.
+
+## Setting up storage
+
+Go to **Settings** under Agent Vault and fill in the **Activity Logging** card:
+
+1. Turn on **Record session activity**.
+2. Pick the **AWS Connection** whose credentials write the records.
+3. Enter the **Bucket** and its **Region**.
+4. Optionally set a **Key Prefix**, so activity objects sit under one path in a bucket you use for other things.
+5. Select **Save**.
+
+Saving checks the bucket before it stores anything: Infisical confirms the bucket exists, writes a test object under your prefix, and deletes it again. A failure names which step failed and what to grant.
+
+The page shows two policies with your bucket and prefix already filled in. Both are needed.
+
+The connection's credentials need this on the bucket:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::<bucket>"
+    }
+  ]
+}
+```
+
+The bucket also needs a CORS rule, because your browser is what fetches and decrypts the records:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT"],
+    "AllowedOrigins": ["https://app.infisical.com"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+Use your own instance URL as the allowed origin. Infisical can't check this rule from the server, so after a successful save your browser tries the bucket itself and warns you if the rule is missing. Without it the settings save cleanly and every Activity tab fails to load.
+
+Recording starts within one poll interval on every proxy, and covers sessions that are already running.
+
+## Reading a session's activity
+
+Go to **Sessions** and select a row. The **Activity** tab shows the merged timeline, newest first, with a summary of the hosts the agent reached and how many requests went to each. A host that no access bundle covers is marked, which is how a request to somewhere unexpected stands out.
+
+Filter by outcome to see only what was blocked or only what failed, and search by host, path, method, or service. Both work over the records already loaded, so they narrow what's on screen rather than fetching again. **Load more** fetches the page before it.
+
+While a session is active the first page refreshes every 30 seconds, so a running agent's requests appear without a reload.
+
+Search covers the pages you've loaded, not the whole session, and there's no view that spans sessions. Each session's records are encrypted under a key of their own, so a question like "which agent reached this host" is one you answer per session.
+
+### When several proxies serve one session
+
+A session token works on any enrolled proxy, so several proxies can serve one session at the same time. Their records merge into one timeline with a **Proxy** column and a filter. Within one proxy the order is exact. Across proxies it's wall-clock order, so two adjacent lines from different machines can be a second out of order.
+
+### Gaps in the timeline
+
+A record that couldn't be kept is still counted, so a gap is visible rather than silent:
+
+- **Records not kept.** A proxy buffers records in memory and ships them every 60 seconds. If it's cut off from Infisical or from your bucket for long enough, the oldest buffered records are dropped and the tab reports how many.
+- **A batch that can't be read.** If a batch is missing from the bucket, the wrong size, or fails decryption, the tab marks it and shows the rest.
+- **A batch stored somewhere else.** Changing the bucket or the prefix leaves everything recorded before the change where it was, and Infisical stops being able to read it. Those batches are marked as stored in a bucket the project no longer uses.
+
+## Changing where activity is stored
+
+Rotating the AWS connection's credentials, or correcting the region, leaves every object where it's stored and keeps it readable. Rotate the connection rather than moving the bucket.
+
+Changing the bucket or the key prefix is a hard cut. Nothing is copied, and everything recorded before the change becomes unreadable from Infisical. The objects stay in the old bucket, so you can still reach them with your own tooling.
+
+## Retention
+
+Activity is kept as long as the session is. Infisical deletes a session 30 days after it's revoked or expires, and deletes its activity objects from your bucket at the same time. A session that's still live keeps everything, including one created with a TTL of `never`.
+
+Infisical adds no S3 lifecycle rule. Object keys carry the date, as `<prefix>/<projectId>/<sessionId>/<proxyId>/<YYYY-MM-DD>/<chunkId>.json.enc`, so you can add your own rule if you want a shorter retention than the session's.
+
+## Storage limits
+
+What costs Infisical is the index, not the bytes in your bucket, so there's a cap on how many records an organization can have indexed at once. The **Settings** page shows the current count against it, and warns at 80%.
+
+At the cap, proxies stop recording. Each one pauses for 15 minutes and tries again, so raising the limit or letting old sessions age out resumes recording without restarting anything. Nothing already recorded is deleted to make room: dropping the oldest records would turn a flood of requests into a way of erasing evidence.
+
+Self-hosted instances set the cap with `AGENT_VAULT_ACTIVITY_MAX_STORED_RECORDS`, which defaults to 10,000,000.
+
+## What this doesn't cover
+
+A proxy that can't reach your bucket keeps buffering and retrying, and writes the failure to its own logs. It doesn't report the failure to Infisical, so a proxy whose egress blocks S3 looks the same in the dashboard as one with nothing to record. If a session you expect to see activity for shows none, check that proxy's logs.
+
+Recording can't be turned off on a single proxy. It's an organization-wide setting, so the person being recorded can't switch it off.
