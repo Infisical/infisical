@@ -1,12 +1,11 @@
 import { randomUUID } from "node:crypto";
 
+import jwt from "jsonwebtoken";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto/cryptography";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import {
@@ -45,9 +44,8 @@ const waitUntil = async (probe: () => Promise<boolean>, timeoutMs: number, inter
   }
 };
 
-const mintOrgJwt = (orgId: string) => {
-  const cfg = getConfig();
-  return crypto.jwt().sign(
+const mintOrgJwt = (orgId: string) =>
+  jwt.sign(
     {
       authTokenType: AuthTokenType.ACCESS_TOKEN,
       userId: seedData1.id,
@@ -56,10 +54,9 @@ const mintOrgJwt = (orgId: string) => {
       organizationId: orgId,
       accessVersion: 1
     },
-    cfg.AUTH_SECRET,
-    { expiresIn: cfg.JWT_AUTH_LIFETIME }
+    process.env.AUTH_SECRET as string,
+    { expiresIn: "1h" }
   );
-};
 
 const createOrg = async () => {
   const suffix = randomUUID().slice(0, 8);
