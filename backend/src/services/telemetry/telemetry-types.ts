@@ -1130,7 +1130,9 @@ export type TPamFolderEvent = {
 
 export type TPamAccountEvent = {
   event:
-    PostHogEventTypes.PamAccountCreated | PostHogEventTypes.PamAccountUpdated | PostHogEventTypes.PamAccountDeleted;
+    | PostHogEventTypes.PamAccountCreated
+    | PostHogEventTypes.PamAccountUpdated
+    | PostHogEventTypes.PamAccountDeleted;
   properties: {
     accountType: string;
     orgId: string;
@@ -1771,7 +1773,9 @@ export type TSignerDeletedEvent = {
 
 export type TSignerMemberEvent = {
   event:
-    PostHogEventTypes.SignerMemberAdded | PostHogEventTypes.SignerMemberUpdated | PostHogEventTypes.SignerMemberRemoved;
+    | PostHogEventTypes.SignerMemberAdded
+    | PostHogEventTypes.SignerMemberUpdated
+    | PostHogEventTypes.SignerMemberRemoved;
   properties: {
     orgId: string;
     projectId: string;
