@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/harness/infisical"
@@ -38,6 +39,9 @@ type Stack struct {
 	app     *infisical.Handle
 	root    infisical.Root
 	license *license.Server
+
+	adminOnce     sync.Once
+	instanceAdmin *Principal
 }
 
 // Option adjusts what Main brings up.
@@ -204,6 +208,29 @@ func (s *Stack) Require(t *testing.T, key infra.Key, option string) infra.Handle
 	return h
 }
 
+// failer is the part of *testing.T a guard needs.
+//
+// testing.TB cannot be implemented outside the testing package -- it carries an
+// unexported method for exactly that reason -- so asserting that a guard fires needs
+// a narrower interface of our own.
+type failer interface {
+	Helper()
+	Fatalf(format string, args ...any)
+}
+
+// requireIsolated refuses instance-wide access from a Shared package.
+func (s *Stack) requireIsolated(f failer) {
+	f.Helper()
+	if s.profile == Isolated {
+		return
+	}
+	f.Fatalf("%s: InstanceAdmin needs harness.Isolated.\n"+
+		"Instance configuration is global, so writing it from a Shared package would "+
+		"change the instance every other package is using.\n"+
+		"Change TestMain in %s to harness.Main(m, harness.Isolated).",
+		s.pkg, filepath.Base(s.mainFile))
+}
+
 // packageNameFor derives a container-name fragment from the TestMain file, so an
 // Isolated package's containers cannot be adopted by a different one.
 func packageNameFor(mainFile string) string {
@@ -216,4 +243,43 @@ func packageNameFor(mainFile string) string {
 		return infra.Sanitize(rel)
 	}
 	return infra.Sanitize(strings.TrimPrefix(dir, root))
+}
+
+// InstanceAdmin returns a principal that passes verifySuperAdmin.
+//
+// Only under Isolated. Instance configuration is global: a Shared-profile test that
+// disabled signup or changed the encryption strategy would break every other package
+// adopting the same container, and it would break them somewhere else, later, in a
+// test that looks unrelated. Isolated gives the package its own instance, so the
+// blast radius is the package.
+//
+// Prefers the bootstrap identity, which carries no user-level state a test could
+// corrupt. An adopted instance cannot produce one -- the client secret is shown once,
+// by the process that bootstrapped -- so there it falls back to the root user, who is
+// a super admin in their own right (super-admin-fns.ts accepts either).
+func (s *Stack) InstanceAdmin(t *testing.T) *Principal {
+	t.Helper()
+	s.requireIsolated(t)
+
+	s.adminOnce.Do(func() {
+		ip := newIP()
+		token := s.root.IdentityToken
+		if token == "" {
+			token = s.rootToken(t, ip)
+		}
+		s.instanceAdmin = &Principal{
+			Kind:  Identity,
+			ID:    s.root.IdentityID,
+			Name:  "instance-admin",
+			Token: token,
+			API:   s.client(t, token, ip),
+			ip:    ip,
+		}
+		if s.root.IdentityToken == "" {
+			s.instanceAdmin.Kind = User
+			s.instanceAdmin.ID = s.root.UserID
+			s.instanceAdmin.Email = s.root.Email
+		}
+	})
+	return s.instanceAdmin
 }

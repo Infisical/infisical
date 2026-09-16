@@ -200,31 +200,31 @@ func (e AdminBootstrap500JSONResponseBodyStatusCode) Valid() bool {
 
 // Defines values for UpdateAdminConfigJSONBodyEnabledLoginMethods.
 const (
-	Email  UpdateAdminConfigJSONBodyEnabledLoginMethods = "email"
-	Github UpdateAdminConfigJSONBodyEnabledLoginMethods = "github"
-	Gitlab UpdateAdminConfigJSONBodyEnabledLoginMethods = "gitlab"
-	Google UpdateAdminConfigJSONBodyEnabledLoginMethods = "google"
-	Ldap   UpdateAdminConfigJSONBodyEnabledLoginMethods = "ldap"
-	Oidc   UpdateAdminConfigJSONBodyEnabledLoginMethods = "oidc"
-	Saml   UpdateAdminConfigJSONBodyEnabledLoginMethods = "saml"
+	UpdateAdminConfigJSONBodyEnabledLoginMethodsEmail  UpdateAdminConfigJSONBodyEnabledLoginMethods = "email"
+	UpdateAdminConfigJSONBodyEnabledLoginMethodsGithub UpdateAdminConfigJSONBodyEnabledLoginMethods = "github"
+	UpdateAdminConfigJSONBodyEnabledLoginMethodsGitlab UpdateAdminConfigJSONBodyEnabledLoginMethods = "gitlab"
+	UpdateAdminConfigJSONBodyEnabledLoginMethodsGoogle UpdateAdminConfigJSONBodyEnabledLoginMethods = "google"
+	UpdateAdminConfigJSONBodyEnabledLoginMethodsLdap   UpdateAdminConfigJSONBodyEnabledLoginMethods = "ldap"
+	UpdateAdminConfigJSONBodyEnabledLoginMethodsOidc   UpdateAdminConfigJSONBodyEnabledLoginMethods = "oidc"
+	UpdateAdminConfigJSONBodyEnabledLoginMethodsSaml   UpdateAdminConfigJSONBodyEnabledLoginMethods = "saml"
 )
 
 // Valid indicates whether the value is a known member of the UpdateAdminConfigJSONBodyEnabledLoginMethods enum.
 func (e UpdateAdminConfigJSONBodyEnabledLoginMethods) Valid() bool {
 	switch e {
-	case Email:
+	case UpdateAdminConfigJSONBodyEnabledLoginMethodsEmail:
 		return true
-	case Github:
+	case UpdateAdminConfigJSONBodyEnabledLoginMethodsGithub:
 		return true
-	case Gitlab:
+	case UpdateAdminConfigJSONBodyEnabledLoginMethodsGitlab:
 		return true
-	case Google:
+	case UpdateAdminConfigJSONBodyEnabledLoginMethodsGoogle:
 		return true
-	case Ldap:
+	case UpdateAdminConfigJSONBodyEnabledLoginMethodsLdap:
 		return true
-	case Oidc:
+	case UpdateAdminConfigJSONBodyEnabledLoginMethodsOidc:
 		return true
-	case Saml:
+	case UpdateAdminConfigJSONBodyEnabledLoginMethodsSaml:
 		return true
 	default:
 		return false
@@ -411,18 +411,573 @@ func (e RefreshAuthToken500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for AttachUniversalAuth400JSONResponseBodyStatusCode.
+const (
+	AttachUniversalAuth400JSONResponseBodyStatusCodeN400 AttachUniversalAuth400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the AttachUniversalAuth400JSONResponseBodyStatusCode enum.
+func (e AttachUniversalAuth400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachUniversalAuth400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachUniversalAuth401JSONResponseBodyStatusCode.
+const (
+	AttachUniversalAuth401JSONResponseBodyStatusCodeN401 AttachUniversalAuth401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the AttachUniversalAuth401JSONResponseBodyStatusCode enum.
+func (e AttachUniversalAuth401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachUniversalAuth401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachUniversalAuth403JSONResponseBodyStatusCode.
+const (
+	AttachUniversalAuth403JSONResponseBodyStatusCodeN403 AttachUniversalAuth403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the AttachUniversalAuth403JSONResponseBodyStatusCode enum.
+func (e AttachUniversalAuth403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachUniversalAuth403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachUniversalAuth404JSONResponseBodyStatusCode.
+const (
+	AttachUniversalAuth404JSONResponseBodyStatusCodeN404 AttachUniversalAuth404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the AttachUniversalAuth404JSONResponseBodyStatusCode enum.
+func (e AttachUniversalAuth404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachUniversalAuth404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachUniversalAuth422JSONResponseBodyStatusCode.
+const (
+	AttachUniversalAuth422JSONResponseBodyStatusCodeN422 AttachUniversalAuth422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the AttachUniversalAuth422JSONResponseBodyStatusCode enum.
+func (e AttachUniversalAuth422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachUniversalAuth422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AttachUniversalAuth500JSONResponseBodyStatusCode.
+const (
+	AttachUniversalAuth500JSONResponseBodyStatusCodeN500 AttachUniversalAuth500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the AttachUniversalAuth500JSONResponseBodyStatusCode enum.
+func (e AttachUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AttachUniversalAuth500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode.
+const (
+	CreateUniversalAuthClientSecret400JSONResponseBodyStatusCodeN400 CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode enum.
+func (e CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUniversalAuthClientSecret400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode.
+const (
+	CreateUniversalAuthClientSecret401JSONResponseBodyStatusCodeN401 CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode enum.
+func (e CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUniversalAuthClientSecret401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode.
+const (
+	CreateUniversalAuthClientSecret403JSONResponseBodyStatusCodeN403 CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode enum.
+func (e CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUniversalAuthClientSecret403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode.
+const (
+	CreateUniversalAuthClientSecret404JSONResponseBodyStatusCodeN404 CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode enum.
+func (e CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUniversalAuthClientSecret404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode.
+const (
+	CreateUniversalAuthClientSecret422JSONResponseBodyStatusCodeN422 CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode enum.
+func (e CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUniversalAuthClientSecret422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode.
+const (
+	CreateUniversalAuthClientSecret500JSONResponseBodyStatusCodeN500 CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode enum.
+func (e CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUniversalAuthClientSecret500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LoginWithUniversalAuth200JSONResponseBodyTokenType.
+const (
+	Bearer LoginWithUniversalAuth200JSONResponseBodyTokenType = "Bearer"
+)
+
+// Valid indicates whether the value is a known member of the LoginWithUniversalAuth200JSONResponseBodyTokenType enum.
+func (e LoginWithUniversalAuth200JSONResponseBodyTokenType) Valid() bool {
+	switch e {
+	case Bearer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LoginWithUniversalAuth400JSONResponseBodyStatusCode.
+const (
+	LoginWithUniversalAuth400JSONResponseBodyStatusCodeN400 LoginWithUniversalAuth400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the LoginWithUniversalAuth400JSONResponseBodyStatusCode enum.
+func (e LoginWithUniversalAuth400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case LoginWithUniversalAuth400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LoginWithUniversalAuth401JSONResponseBodyStatusCode.
+const (
+	LoginWithUniversalAuth401JSONResponseBodyStatusCodeN401 LoginWithUniversalAuth401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the LoginWithUniversalAuth401JSONResponseBodyStatusCode enum.
+func (e LoginWithUniversalAuth401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case LoginWithUniversalAuth401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LoginWithUniversalAuth403JSONResponseBodyStatusCode.
+const (
+	LoginWithUniversalAuth403JSONResponseBodyStatusCodeN403 LoginWithUniversalAuth403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the LoginWithUniversalAuth403JSONResponseBodyStatusCode enum.
+func (e LoginWithUniversalAuth403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case LoginWithUniversalAuth403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LoginWithUniversalAuth404JSONResponseBodyStatusCode.
+const (
+	LoginWithUniversalAuth404JSONResponseBodyStatusCodeN404 LoginWithUniversalAuth404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the LoginWithUniversalAuth404JSONResponseBodyStatusCode enum.
+func (e LoginWithUniversalAuth404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case LoginWithUniversalAuth404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LoginWithUniversalAuth422JSONResponseBodyStatusCode.
+const (
+	LoginWithUniversalAuth422JSONResponseBodyStatusCodeN422 LoginWithUniversalAuth422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the LoginWithUniversalAuth422JSONResponseBodyStatusCode enum.
+func (e LoginWithUniversalAuth422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case LoginWithUniversalAuth422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LoginWithUniversalAuth500JSONResponseBodyStatusCode.
+const (
+	LoginWithUniversalAuth500JSONResponseBodyStatusCodeN500 LoginWithUniversalAuth500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the LoginWithUniversalAuth500JSONResponseBodyStatusCode enum.
+func (e LoginWithUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case LoginWithUniversalAuth500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateMachineIdentity400JSONResponseBodyStatusCode.
+const (
+	CreateMachineIdentity400JSONResponseBodyStatusCodeN400 CreateMachineIdentity400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateMachineIdentity400JSONResponseBodyStatusCode enum.
+func (e CreateMachineIdentity400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateMachineIdentity400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateMachineIdentity401JSONResponseBodyStatusCode.
+const (
+	CreateMachineIdentity401JSONResponseBodyStatusCodeN401 CreateMachineIdentity401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateMachineIdentity401JSONResponseBodyStatusCode enum.
+func (e CreateMachineIdentity401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateMachineIdentity401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateMachineIdentity403JSONResponseBodyStatusCode.
+const (
+	CreateMachineIdentity403JSONResponseBodyStatusCodeN403 CreateMachineIdentity403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateMachineIdentity403JSONResponseBodyStatusCode enum.
+func (e CreateMachineIdentity403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateMachineIdentity403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateMachineIdentity404JSONResponseBodyStatusCode.
+const (
+	CreateMachineIdentity404JSONResponseBodyStatusCodeN404 CreateMachineIdentity404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateMachineIdentity404JSONResponseBodyStatusCode enum.
+func (e CreateMachineIdentity404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateMachineIdentity404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateMachineIdentity422JSONResponseBodyStatusCode.
+const (
+	CreateMachineIdentity422JSONResponseBodyStatusCodeN422 CreateMachineIdentity422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateMachineIdentity422JSONResponseBodyStatusCode enum.
+func (e CreateMachineIdentity422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateMachineIdentity422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateMachineIdentity500JSONResponseBodyStatusCode.
+const (
+	CreateMachineIdentity500JSONResponseBodyStatusCodeN500 CreateMachineIdentity500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateMachineIdentity500JSONResponseBodyStatusCode enum.
+func (e CreateMachineIdentity500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateMachineIdentity500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteUsersToOrganization400JSONResponseBodyStatusCode.
+const (
+	InviteUsersToOrganization400JSONResponseBodyStatusCodeN400 InviteUsersToOrganization400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the InviteUsersToOrganization400JSONResponseBodyStatusCode enum.
+func (e InviteUsersToOrganization400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteUsersToOrganization400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteUsersToOrganization401JSONResponseBodyStatusCode.
+const (
+	InviteUsersToOrganization401JSONResponseBodyStatusCodeN401 InviteUsersToOrganization401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the InviteUsersToOrganization401JSONResponseBodyStatusCode enum.
+func (e InviteUsersToOrganization401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteUsersToOrganization401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteUsersToOrganization403JSONResponseBodyStatusCode.
+const (
+	InviteUsersToOrganization403JSONResponseBodyStatusCodeN403 InviteUsersToOrganization403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the InviteUsersToOrganization403JSONResponseBodyStatusCode enum.
+func (e InviteUsersToOrganization403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteUsersToOrganization403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteUsersToOrganization404JSONResponseBodyStatusCode.
+const (
+	InviteUsersToOrganization404JSONResponseBodyStatusCodeN404 InviteUsersToOrganization404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the InviteUsersToOrganization404JSONResponseBodyStatusCode enum.
+func (e InviteUsersToOrganization404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteUsersToOrganization404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteUsersToOrganization422JSONResponseBodyStatusCode.
+const (
+	InviteUsersToOrganization422JSONResponseBodyStatusCodeN422 InviteUsersToOrganization422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the InviteUsersToOrganization422JSONResponseBodyStatusCode enum.
+func (e InviteUsersToOrganization422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteUsersToOrganization422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteUsersToOrganization500JSONResponseBodyStatusCode.
+const (
+	InviteUsersToOrganization500JSONResponseBodyStatusCodeN500 InviteUsersToOrganization500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the InviteUsersToOrganization500JSONResponseBodyStatusCode enum.
+func (e InviteUsersToOrganization500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteUsersToOrganization500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyUserToOrganization400JSONResponseBodyStatusCode.
+const (
+	VerifyUserToOrganization400JSONResponseBodyStatusCodeN400 VerifyUserToOrganization400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the VerifyUserToOrganization400JSONResponseBodyStatusCode enum.
+func (e VerifyUserToOrganization400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyUserToOrganization400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyUserToOrganization401JSONResponseBodyStatusCode.
+const (
+	VerifyUserToOrganization401JSONResponseBodyStatusCodeN401 VerifyUserToOrganization401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the VerifyUserToOrganization401JSONResponseBodyStatusCode enum.
+func (e VerifyUserToOrganization401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyUserToOrganization401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyUserToOrganization403JSONResponseBodyStatusCode.
+const (
+	VerifyUserToOrganization403JSONResponseBodyStatusCodeN403 VerifyUserToOrganization403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the VerifyUserToOrganization403JSONResponseBodyStatusCode enum.
+func (e VerifyUserToOrganization403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyUserToOrganization403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyUserToOrganization404JSONResponseBodyStatusCode.
+const (
+	VerifyUserToOrganization404JSONResponseBodyStatusCodeN404 VerifyUserToOrganization404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the VerifyUserToOrganization404JSONResponseBodyStatusCode enum.
+func (e VerifyUserToOrganization404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyUserToOrganization404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyUserToOrganization422JSONResponseBodyStatusCode.
+const (
+	VerifyUserToOrganization422JSONResponseBodyStatusCodeN422 VerifyUserToOrganization422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the VerifyUserToOrganization422JSONResponseBodyStatusCode enum.
+func (e VerifyUserToOrganization422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyUserToOrganization422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyUserToOrganization500JSONResponseBodyStatusCode.
+const (
+	VerifyUserToOrganization500JSONResponseBodyStatusCodeN500 VerifyUserToOrganization500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the VerifyUserToOrganization500JSONResponseBodyStatusCode enum.
+func (e VerifyUserToOrganization500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyUserToOrganization500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetOrganizationPlanParamsRefreshCache.
 const (
-	False GetOrganizationPlanParamsRefreshCache = "false"
-	True  GetOrganizationPlanParamsRefreshCache = "true"
+	GetOrganizationPlanParamsRefreshCacheFalse GetOrganizationPlanParamsRefreshCache = "false"
+	GetOrganizationPlanParamsRefreshCacheTrue  GetOrganizationPlanParamsRefreshCache = "true"
 )
 
 // Valid indicates whether the value is a known member of the GetOrganizationPlanParamsRefreshCache enum.
 func (e GetOrganizationPlanParamsRefreshCache) Valid() bool {
 	switch e {
-	case False:
+	case GetOrganizationPlanParamsRefreshCacheFalse:
 		return true
-	case True:
+	case GetOrganizationPlanParamsRefreshCacheTrue:
 		return true
 	default:
 		return false
@@ -663,6 +1218,456 @@ const (
 func (e CreateProject500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateProject500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectMachineIdentities400JSONResponseBodyStatusCode.
+const (
+	ListProjectMachineIdentities400JSONResponseBodyStatusCodeN400 ListProjectMachineIdentities400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListProjectMachineIdentities400JSONResponseBodyStatusCode enum.
+func (e ListProjectMachineIdentities400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectMachineIdentities400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectMachineIdentities401JSONResponseBodyStatusCode.
+const (
+	ListProjectMachineIdentities401JSONResponseBodyStatusCodeN401 ListProjectMachineIdentities401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListProjectMachineIdentities401JSONResponseBodyStatusCode enum.
+func (e ListProjectMachineIdentities401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectMachineIdentities401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectMachineIdentities403JSONResponseBodyStatusCode.
+const (
+	ListProjectMachineIdentities403JSONResponseBodyStatusCodeN403 ListProjectMachineIdentities403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListProjectMachineIdentities403JSONResponseBodyStatusCode enum.
+func (e ListProjectMachineIdentities403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectMachineIdentities403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectMachineIdentities404JSONResponseBodyStatusCode.
+const (
+	ListProjectMachineIdentities404JSONResponseBodyStatusCodeN404 ListProjectMachineIdentities404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListProjectMachineIdentities404JSONResponseBodyStatusCode enum.
+func (e ListProjectMachineIdentities404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectMachineIdentities404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectMachineIdentities422JSONResponseBodyStatusCode.
+const (
+	ListProjectMachineIdentities422JSONResponseBodyStatusCodeN422 ListProjectMachineIdentities422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListProjectMachineIdentities422JSONResponseBodyStatusCode enum.
+func (e ListProjectMachineIdentities422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectMachineIdentities422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectMachineIdentities500JSONResponseBodyStatusCode.
+const (
+	ListProjectMachineIdentities500JSONResponseBodyStatusCodeN500 ListProjectMachineIdentities500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListProjectMachineIdentities500JSONResponseBodyStatusCode enum.
+func (e ListProjectMachineIdentities500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectMachineIdentities500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentityJSONBodyRoles0IsTemporary.
+const (
+	CreateProjectMachineIdentityJSONBodyRoles0IsTemporaryFalse CreateProjectMachineIdentityJSONBodyRoles0IsTemporary = false
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentityJSONBodyRoles0IsTemporary enum.
+func (e CreateProjectMachineIdentityJSONBodyRoles0IsTemporary) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentityJSONBodyRoles0IsTemporaryFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentityJSONBodyRoles1IsTemporary.
+const (
+	CreateProjectMachineIdentityJSONBodyRoles1IsTemporaryTrue CreateProjectMachineIdentityJSONBodyRoles1IsTemporary = true
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentityJSONBodyRoles1IsTemporary enum.
+func (e CreateProjectMachineIdentityJSONBodyRoles1IsTemporary) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentityJSONBodyRoles1IsTemporaryTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentityJSONBodyRoles1TemporaryMode.
+const (
+	CreateProjectMachineIdentityJSONBodyRoles1TemporaryModeRelative CreateProjectMachineIdentityJSONBodyRoles1TemporaryMode = "relative"
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentityJSONBodyRoles1TemporaryMode enum.
+func (e CreateProjectMachineIdentityJSONBodyRoles1TemporaryMode) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentityJSONBodyRoles1TemporaryModeRelative:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentity400JSONResponseBodyStatusCode.
+const (
+	CreateProjectMachineIdentity400JSONResponseBodyStatusCodeN400 CreateProjectMachineIdentity400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentity400JSONResponseBodyStatusCode enum.
+func (e CreateProjectMachineIdentity400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentity400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentity401JSONResponseBodyStatusCode.
+const (
+	CreateProjectMachineIdentity401JSONResponseBodyStatusCodeN401 CreateProjectMachineIdentity401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentity401JSONResponseBodyStatusCode enum.
+func (e CreateProjectMachineIdentity401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentity401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentity403JSONResponseBodyStatusCode.
+const (
+	CreateProjectMachineIdentity403JSONResponseBodyStatusCodeN403 CreateProjectMachineIdentity403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentity403JSONResponseBodyStatusCode enum.
+func (e CreateProjectMachineIdentity403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentity403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentity404JSONResponseBodyStatusCode.
+const (
+	CreateProjectMachineIdentity404JSONResponseBodyStatusCodeN404 CreateProjectMachineIdentity404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentity404JSONResponseBodyStatusCode enum.
+func (e CreateProjectMachineIdentity404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentity404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentity422JSONResponseBodyStatusCode.
+const (
+	CreateProjectMachineIdentity422JSONResponseBodyStatusCodeN422 CreateProjectMachineIdentity422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentity422JSONResponseBodyStatusCode enum.
+func (e CreateProjectMachineIdentity422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentity422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectMachineIdentity500JSONResponseBodyStatusCode.
+const (
+	CreateProjectMachineIdentity500JSONResponseBodyStatusCodeN500 CreateProjectMachineIdentity500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectMachineIdentity500JSONResponseBodyStatusCode enum.
+func (e CreateProjectMachineIdentity500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectMachineIdentity500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteProjectMembers400JSONResponseBodyStatusCode.
+const (
+	InviteProjectMembers400JSONResponseBodyStatusCodeN400 InviteProjectMembers400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the InviteProjectMembers400JSONResponseBodyStatusCode enum.
+func (e InviteProjectMembers400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteProjectMembers400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteProjectMembers401JSONResponseBodyStatusCode.
+const (
+	InviteProjectMembers401JSONResponseBodyStatusCodeN401 InviteProjectMembers401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the InviteProjectMembers401JSONResponseBodyStatusCode enum.
+func (e InviteProjectMembers401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteProjectMembers401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteProjectMembers403JSONResponseBodyStatusCode.
+const (
+	InviteProjectMembers403JSONResponseBodyStatusCodeN403 InviteProjectMembers403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the InviteProjectMembers403JSONResponseBodyStatusCode enum.
+func (e InviteProjectMembers403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteProjectMembers403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteProjectMembers404JSONResponseBodyStatusCode.
+const (
+	InviteProjectMembers404JSONResponseBodyStatusCodeN404 InviteProjectMembers404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the InviteProjectMembers404JSONResponseBodyStatusCode enum.
+func (e InviteProjectMembers404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteProjectMembers404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteProjectMembers422JSONResponseBodyStatusCode.
+const (
+	InviteProjectMembers422JSONResponseBodyStatusCodeN422 InviteProjectMembers422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the InviteProjectMembers422JSONResponseBodyStatusCode enum.
+func (e InviteProjectMembers422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteProjectMembers422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InviteProjectMembers500JSONResponseBodyStatusCode.
+const (
+	InviteProjectMembers500JSONResponseBodyStatusCodeN500 InviteProjectMembers500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the InviteProjectMembers500JSONResponseBodyStatusCode enum.
+func (e InviteProjectMembers500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case InviteProjectMembers500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembershipJSONBodyRoles0IsTemporary.
+const (
+	CreateProjectIdentityMembershipJSONBodyRoles0IsTemporaryFalse CreateProjectIdentityMembershipJSONBodyRoles0IsTemporary = false
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembershipJSONBodyRoles0IsTemporary enum.
+func (e CreateProjectIdentityMembershipJSONBodyRoles0IsTemporary) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembershipJSONBodyRoles0IsTemporaryFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembershipJSONBodyRoles1IsTemporary.
+const (
+	CreateProjectIdentityMembershipJSONBodyRoles1IsTemporaryTrue CreateProjectIdentityMembershipJSONBodyRoles1IsTemporary = true
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembershipJSONBodyRoles1IsTemporary enum.
+func (e CreateProjectIdentityMembershipJSONBodyRoles1IsTemporary) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembershipJSONBodyRoles1IsTemporaryTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembershipJSONBodyRoles1TemporaryMode.
+const (
+	CreateProjectIdentityMembershipJSONBodyRoles1TemporaryModeRelative CreateProjectIdentityMembershipJSONBodyRoles1TemporaryMode = "relative"
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembershipJSONBodyRoles1TemporaryMode enum.
+func (e CreateProjectIdentityMembershipJSONBodyRoles1TemporaryMode) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembershipJSONBodyRoles1TemporaryModeRelative:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembership400JSONResponseBodyStatusCode.
+const (
+	CreateProjectIdentityMembership400JSONResponseBodyStatusCodeN400 CreateProjectIdentityMembership400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembership400JSONResponseBodyStatusCode enum.
+func (e CreateProjectIdentityMembership400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembership400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembership401JSONResponseBodyStatusCode.
+const (
+	CreateProjectIdentityMembership401JSONResponseBodyStatusCodeN401 CreateProjectIdentityMembership401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembership401JSONResponseBodyStatusCode enum.
+func (e CreateProjectIdentityMembership401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembership401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembership403JSONResponseBodyStatusCode.
+const (
+	CreateProjectIdentityMembership403JSONResponseBodyStatusCodeN403 CreateProjectIdentityMembership403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembership403JSONResponseBodyStatusCode enum.
+func (e CreateProjectIdentityMembership403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembership403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembership404JSONResponseBodyStatusCode.
+const (
+	CreateProjectIdentityMembership404JSONResponseBodyStatusCodeN404 CreateProjectIdentityMembership404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembership404JSONResponseBodyStatusCode enum.
+func (e CreateProjectIdentityMembership404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembership404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembership422JSONResponseBodyStatusCode.
+const (
+	CreateProjectIdentityMembership422JSONResponseBodyStatusCodeN422 CreateProjectIdentityMembership422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembership422JSONResponseBodyStatusCode enum.
+func (e CreateProjectIdentityMembership422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembership422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectIdentityMembership500JSONResponseBodyStatusCode.
+const (
+	CreateProjectIdentityMembership500JSONResponseBodyStatusCodeN500 CreateProjectIdentityMembership500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectIdentityMembership500JSONResponseBodyStatusCode enum.
+func (e CreateProjectIdentityMembership500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectIdentityMembership500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -1044,6 +2049,126 @@ func (e SelectOrganizationV3500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CompleteAccountSignupV3JSONBody0Type.
+const (
+	CompleteAccountSignupV3JSONBody0TypeEmail CompleteAccountSignupV3JSONBody0Type = "email"
+)
+
+// Valid indicates whether the value is a known member of the CompleteAccountSignupV3JSONBody0Type enum.
+func (e CompleteAccountSignupV3JSONBody0Type) Valid() bool {
+	switch e {
+	case CompleteAccountSignupV3JSONBody0TypeEmail:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CompleteAccountSignupV3JSONBody1Type.
+const (
+	Alias CompleteAccountSignupV3JSONBody1Type = "alias"
+)
+
+// Valid indicates whether the value is a known member of the CompleteAccountSignupV3JSONBody1Type enum.
+func (e CompleteAccountSignupV3JSONBody1Type) Valid() bool {
+	switch e {
+	case Alias:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CompleteAccountSignupV3400JSONResponseBodyStatusCode.
+const (
+	CompleteAccountSignupV3400JSONResponseBodyStatusCodeN400 CompleteAccountSignupV3400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CompleteAccountSignupV3400JSONResponseBodyStatusCode enum.
+func (e CompleteAccountSignupV3400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CompleteAccountSignupV3400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CompleteAccountSignupV3401JSONResponseBodyStatusCode.
+const (
+	CompleteAccountSignupV3401JSONResponseBodyStatusCodeN401 CompleteAccountSignupV3401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CompleteAccountSignupV3401JSONResponseBodyStatusCode enum.
+func (e CompleteAccountSignupV3401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CompleteAccountSignupV3401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CompleteAccountSignupV3403JSONResponseBodyStatusCode.
+const (
+	CompleteAccountSignupV3403JSONResponseBodyStatusCodeN403 CompleteAccountSignupV3403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CompleteAccountSignupV3403JSONResponseBodyStatusCode enum.
+func (e CompleteAccountSignupV3403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CompleteAccountSignupV3403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CompleteAccountSignupV3404JSONResponseBodyStatusCode.
+const (
+	CompleteAccountSignupV3404JSONResponseBodyStatusCodeN404 CompleteAccountSignupV3404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CompleteAccountSignupV3404JSONResponseBodyStatusCode enum.
+func (e CompleteAccountSignupV3404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CompleteAccountSignupV3404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CompleteAccountSignupV3422JSONResponseBodyStatusCode.
+const (
+	CompleteAccountSignupV3422JSONResponseBodyStatusCodeN422 CompleteAccountSignupV3422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CompleteAccountSignupV3422JSONResponseBodyStatusCode enum.
+func (e CompleteAccountSignupV3422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CompleteAccountSignupV3422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CompleteAccountSignupV3500JSONResponseBodyStatusCode.
+const (
+	CompleteAccountSignupV3500JSONResponseBodyStatusCodeN500 CompleteAccountSignupV3500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CompleteAccountSignupV3500JSONResponseBodyStatusCode enum.
+func (e CompleteAccountSignupV3500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CompleteAccountSignupV3500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // GetServerStatus400JSONResponseBodyStatusCode defines parameters for GetServerStatus.
 type GetServerStatus400JSONResponseBodyStatusCode float32
 
@@ -1189,6 +2314,214 @@ type RefreshAuthToken422JSONResponseBodyStatusCode float32
 // RefreshAuthToken500JSONResponseBodyStatusCode defines parameters for RefreshAuthToken.
 type RefreshAuthToken500JSONResponseBodyStatusCode float32
 
+// AttachUniversalAuthJSONBody defines parameters for AttachUniversalAuth.
+type AttachUniversalAuthJSONBody struct {
+	// AccessTokenMaxTTL The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.
+	AccessTokenMaxTTL *int `json:"accessTokenMaxTTL,omitempty"`
+
+	// AccessTokenNumUsesLimit The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.
+	AccessTokenNumUsesLimit *int `json:"accessTokenNumUsesLimit,omitempty"`
+
+	// AccessTokenPeriod The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0.
+	AccessTokenPeriod *int `json:"accessTokenPeriod,omitempty"`
+
+	// AccessTokenTTL The lifetime for an access token in seconds. This value will be referenced at renewal time.
+	AccessTokenTTL *int `json:"accessTokenTTL,omitempty"`
+
+	// AccessTokenTrustedIps A list of IPs or CIDR ranges that access tokens can be used from. You can use 0.0.0.0/0, to allow usage from any network address.
+	AccessTokenTrustedIps *[]struct {
+		IpAddress string `json:"ipAddress"`
+	} `json:"accessTokenTrustedIps,omitempty"`
+
+	// ClientSecretTrustedIps A list of IPs or CIDR ranges that the Client Secret can be used from together with the Client ID to get back an access token. You can use 0.0.0.0/0, to allow usage from any network address.
+	ClientSecretTrustedIps *[]struct {
+		IpAddress string `json:"ipAddress"`
+	} `json:"clientSecretTrustedIps,omitempty"`
+
+	// LockoutCounterResetSeconds How long to wait from the most recent failed login until resetting the lockout counter.
+	LockoutCounterResetSeconds *float32 `json:"lockoutCounterResetSeconds,omitempty"`
+
+	// LockoutDurationSeconds How long an identity auth method lockout lasts.
+	LockoutDurationSeconds *float32 `json:"lockoutDurationSeconds,omitempty"`
+
+	// LockoutEnabled Whether the lockout feature is enabled.
+	LockoutEnabled *bool `json:"lockoutEnabled,omitempty"`
+
+	// LockoutThreshold The amount of times login must fail before locking the identity auth method.
+	LockoutThreshold *float32 `json:"lockoutThreshold,omitempty"`
+}
+
+// AttachUniversalAuth400JSONResponseBodyStatusCode defines parameters for AttachUniversalAuth.
+type AttachUniversalAuth400JSONResponseBodyStatusCode float32
+
+// AttachUniversalAuth401JSONResponseBodyStatusCode defines parameters for AttachUniversalAuth.
+type AttachUniversalAuth401JSONResponseBodyStatusCode float32
+
+// AttachUniversalAuth403JSONResponseBodyStatusCode defines parameters for AttachUniversalAuth.
+type AttachUniversalAuth403JSONResponseBodyStatusCode float32
+
+// AttachUniversalAuth404JSONResponseBodyStatusCode defines parameters for AttachUniversalAuth.
+type AttachUniversalAuth404JSONResponseBodyStatusCode float32
+
+// AttachUniversalAuth422JSONResponseBodyStatusCode defines parameters for AttachUniversalAuth.
+type AttachUniversalAuth422JSONResponseBodyStatusCode float32
+
+// AttachUniversalAuth500JSONResponseBodyStatusCode defines parameters for AttachUniversalAuth.
+type AttachUniversalAuth500JSONResponseBodyStatusCode float32
+
+// CreateUniversalAuthClientSecretJSONBody defines parameters for CreateUniversalAuthClientSecret.
+type CreateUniversalAuthClientSecretJSONBody struct {
+	// Description The description of the client secret.
+	Description *string `json:"description,omitempty"`
+
+	// NumUsesLimit The maximum number of times that the client secret can be used; a value of 0 implies infinite number of uses.
+	NumUsesLimit *float32 `json:"numUsesLimit,omitempty"`
+
+	// Ttl The lifetime for the client secret in seconds.
+	Ttl *float32 `json:"ttl,omitempty"`
+}
+
+// CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode defines parameters for CreateUniversalAuthClientSecret.
+type CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode float32
+
+// CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode defines parameters for CreateUniversalAuthClientSecret.
+type CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode float32
+
+// CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode defines parameters for CreateUniversalAuthClientSecret.
+type CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode float32
+
+// CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode defines parameters for CreateUniversalAuthClientSecret.
+type CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode float32
+
+// CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode defines parameters for CreateUniversalAuthClientSecret.
+type CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode float32
+
+// CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode defines parameters for CreateUniversalAuthClientSecret.
+type CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode float32
+
+// LoginWithUniversalAuthJSONBody defines parameters for LoginWithUniversalAuth.
+type LoginWithUniversalAuthJSONBody struct {
+	// ClientId Your Machine Identity Client ID.
+	ClientId string `json:"clientId"`
+
+	// ClientSecret Your Machine Identity Client Secret.
+	ClientSecret string `json:"clientSecret"`
+
+	// OrganizationSlug When set, this will scope the login session to the specified organization the machine identity has access to. If omitted, the session defaults to the organization where the machine identity was created in.
+	OrganizationSlug *string `json:"organizationSlug,omitempty"`
+}
+
+// LoginWithUniversalAuth200JSONResponseBodyTokenType defines parameters for LoginWithUniversalAuth.
+type LoginWithUniversalAuth200JSONResponseBodyTokenType string
+
+// LoginWithUniversalAuth400JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
+type LoginWithUniversalAuth400JSONResponseBodyStatusCode float32
+
+// LoginWithUniversalAuth401JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
+type LoginWithUniversalAuth401JSONResponseBodyStatusCode float32
+
+// LoginWithUniversalAuth403JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
+type LoginWithUniversalAuth403JSONResponseBodyStatusCode float32
+
+// LoginWithUniversalAuth404JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
+type LoginWithUniversalAuth404JSONResponseBodyStatusCode float32
+
+// LoginWithUniversalAuth422JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
+type LoginWithUniversalAuth422JSONResponseBodyStatusCode float32
+
+// LoginWithUniversalAuth500JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
+type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
+
+// CreateMachineIdentityJSONBody defines parameters for CreateMachineIdentity.
+type CreateMachineIdentityJSONBody struct {
+	// HasDeleteProtection Prevents deletion of the identity when enabled.
+	HasDeleteProtection *bool `json:"hasDeleteProtection,omitempty"`
+	Metadata            *[]struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	} `json:"metadata,omitempty"`
+
+	// Name The name of the identity to create.
+	Name string `json:"name"`
+
+	// OrganizationId The organization ID to which the identity belongs.
+	OrganizationId string `json:"organizationId"`
+
+	// Role The role of the identity. Possible values are 'no-access', 'member', and 'admin'.
+	Role *string `json:"role,omitempty"`
+}
+
+// CreateMachineIdentity400JSONResponseBodyStatusCode defines parameters for CreateMachineIdentity.
+type CreateMachineIdentity400JSONResponseBodyStatusCode float32
+
+// CreateMachineIdentity401JSONResponseBodyStatusCode defines parameters for CreateMachineIdentity.
+type CreateMachineIdentity401JSONResponseBodyStatusCode float32
+
+// CreateMachineIdentity403JSONResponseBodyStatusCode defines parameters for CreateMachineIdentity.
+type CreateMachineIdentity403JSONResponseBodyStatusCode float32
+
+// CreateMachineIdentity404JSONResponseBodyStatusCode defines parameters for CreateMachineIdentity.
+type CreateMachineIdentity404JSONResponseBodyStatusCode float32
+
+// CreateMachineIdentity422JSONResponseBodyStatusCode defines parameters for CreateMachineIdentity.
+type CreateMachineIdentity422JSONResponseBodyStatusCode float32
+
+// CreateMachineIdentity500JSONResponseBodyStatusCode defines parameters for CreateMachineIdentity.
+type CreateMachineIdentity500JSONResponseBodyStatusCode float32
+
+// InviteUsersToOrganizationJSONBody defines parameters for InviteUsersToOrganization.
+type InviteUsersToOrganizationJSONBody struct {
+	GrantAgentVaultAccess *bool                 `json:"grantAgentVaultAccess,omitempty"`
+	GrantPamAccess        *bool                 `json:"grantPamAccess,omitempty"`
+	InviteeEmails         []openapi_types.Email `json:"inviteeEmails"`
+	OrganizationId        string                `json:"organizationId"`
+	OrganizationRoleSlug  *string               `json:"organizationRoleSlug,omitempty"`
+	ProjectIds            *[]string             `json:"projectIds,omitempty"`
+}
+
+// InviteUsersToOrganization400JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
+type InviteUsersToOrganization400JSONResponseBodyStatusCode float32
+
+// InviteUsersToOrganization401JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
+type InviteUsersToOrganization401JSONResponseBodyStatusCode float32
+
+// InviteUsersToOrganization403JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
+type InviteUsersToOrganization403JSONResponseBodyStatusCode float32
+
+// InviteUsersToOrganization404JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
+type InviteUsersToOrganization404JSONResponseBodyStatusCode float32
+
+// InviteUsersToOrganization422JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
+type InviteUsersToOrganization422JSONResponseBodyStatusCode float32
+
+// InviteUsersToOrganization500JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
+type InviteUsersToOrganization500JSONResponseBodyStatusCode float32
+
+// VerifyUserToOrganizationJSONBody defines parameters for VerifyUserToOrganization.
+type VerifyUserToOrganizationJSONBody struct {
+	Code           string              `json:"code"`
+	Email          openapi_types.Email `json:"email"`
+	OrganizationId string              `json:"organizationId"`
+}
+
+// VerifyUserToOrganization400JSONResponseBodyStatusCode defines parameters for VerifyUserToOrganization.
+type VerifyUserToOrganization400JSONResponseBodyStatusCode float32
+
+// VerifyUserToOrganization401JSONResponseBodyStatusCode defines parameters for VerifyUserToOrganization.
+type VerifyUserToOrganization401JSONResponseBodyStatusCode float32
+
+// VerifyUserToOrganization403JSONResponseBodyStatusCode defines parameters for VerifyUserToOrganization.
+type VerifyUserToOrganization403JSONResponseBodyStatusCode float32
+
+// VerifyUserToOrganization404JSONResponseBodyStatusCode defines parameters for VerifyUserToOrganization.
+type VerifyUserToOrganization404JSONResponseBodyStatusCode float32
+
+// VerifyUserToOrganization422JSONResponseBodyStatusCode defines parameters for VerifyUserToOrganization.
+type VerifyUserToOrganization422JSONResponseBodyStatusCode float32
+
+// VerifyUserToOrganization500JSONResponseBodyStatusCode defines parameters for VerifyUserToOrganization.
+type VerifyUserToOrganization500JSONResponseBodyStatusCode float32
+
 // GetOrganizationPlanParams defines parameters for GetOrganizationPlan.
 type GetOrganizationPlanParams struct {
 	RefreshCache *GetOrganizationPlanParamsRefreshCache `form:"refreshCache,omitempty" json:"refreshCache,omitempty"`
@@ -1284,6 +2617,196 @@ type CreateProject422JSONResponseBodyStatusCode float32
 // CreateProject500JSONResponseBodyStatusCode defines parameters for CreateProject.
 type CreateProject500JSONResponseBodyStatusCode float32
 
+// ListProjectMachineIdentitiesParams defines parameters for ListProjectMachineIdentities.
+type ListProjectMachineIdentitiesParams struct {
+	// Offset The offset to start from. If you enter 10, it will start from the 10th identity.
+	Offset *float32 `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Limit The number of identities to return.
+	Limit *float32 `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Search The text string that identity names will be filtered by.
+	Search *string `form:"search,omitempty" json:"search,omitempty"`
+}
+
+// ListProjectMachineIdentities400JSONResponseBodyStatusCode defines parameters for ListProjectMachineIdentities.
+type ListProjectMachineIdentities400JSONResponseBodyStatusCode float32
+
+// ListProjectMachineIdentities401JSONResponseBodyStatusCode defines parameters for ListProjectMachineIdentities.
+type ListProjectMachineIdentities401JSONResponseBodyStatusCode float32
+
+// ListProjectMachineIdentities403JSONResponseBodyStatusCode defines parameters for ListProjectMachineIdentities.
+type ListProjectMachineIdentities403JSONResponseBodyStatusCode float32
+
+// ListProjectMachineIdentities404JSONResponseBodyStatusCode defines parameters for ListProjectMachineIdentities.
+type ListProjectMachineIdentities404JSONResponseBodyStatusCode float32
+
+// ListProjectMachineIdentities422JSONResponseBodyStatusCode defines parameters for ListProjectMachineIdentities.
+type ListProjectMachineIdentities422JSONResponseBodyStatusCode float32
+
+// ListProjectMachineIdentities500JSONResponseBodyStatusCode defines parameters for ListProjectMachineIdentities.
+type ListProjectMachineIdentities500JSONResponseBodyStatusCode float32
+
+// CreateProjectMachineIdentityJSONBody defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentityJSONBody struct {
+	// HasDeleteProtection Prevents deletion of the identity when enabled.
+	HasDeleteProtection *bool `json:"hasDeleteProtection,omitempty"`
+
+	// Metadata An optional array of key-value pairs to attach to the identity.
+	Metadata *[]struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	} `json:"metadata,omitempty"`
+
+	// Name The name of the identity to create.
+	Name  string                                             `json:"name"`
+	Roles *[]CreateProjectMachineIdentityJSONBody_Roles_Item `json:"roles,omitempty"`
+}
+
+// CreateProjectMachineIdentityJSONBodyRoles0 defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentityJSONBodyRoles0 struct {
+	IsTemporary *CreateProjectMachineIdentityJSONBodyRoles0IsTemporary `json:"isTemporary,omitempty"`
+	Role        string                                                 `json:"role"`
+}
+
+// CreateProjectMachineIdentityJSONBodyRoles0IsTemporary defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentityJSONBodyRoles0IsTemporary bool
+
+// CreateProjectMachineIdentityJSONBodyRoles1 defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentityJSONBodyRoles1 struct {
+	IsTemporary              CreateProjectMachineIdentityJSONBodyRoles1IsTemporary   `json:"isTemporary"`
+	Role                     string                                                  `json:"role"`
+	TemporaryAccessStartTime time.Time                                               `json:"temporaryAccessStartTime"`
+	TemporaryMode            CreateProjectMachineIdentityJSONBodyRoles1TemporaryMode `json:"temporaryMode"`
+	TemporaryRange           string                                                  `json:"temporaryRange"`
+}
+
+// CreateProjectMachineIdentityJSONBodyRoles1IsTemporary defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentityJSONBodyRoles1IsTemporary bool
+
+// CreateProjectMachineIdentityJSONBodyRoles1TemporaryMode defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentityJSONBodyRoles1TemporaryMode string
+
+// CreateProjectMachineIdentityJSONBody_Roles_Item defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentityJSONBody_Roles_Item struct {
+	union json.RawMessage
+}
+
+// CreateProjectMachineIdentity400JSONResponseBodyStatusCode defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentity400JSONResponseBodyStatusCode float32
+
+// CreateProjectMachineIdentity401JSONResponseBodyStatusCode defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentity401JSONResponseBodyStatusCode float32
+
+// CreateProjectMachineIdentity403JSONResponseBodyStatusCode defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentity403JSONResponseBodyStatusCode float32
+
+// CreateProjectMachineIdentity404JSONResponseBodyStatusCode defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentity404JSONResponseBodyStatusCode float32
+
+// CreateProjectMachineIdentity422JSONResponseBodyStatusCode defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentity422JSONResponseBodyStatusCode float32
+
+// CreateProjectMachineIdentity500JSONResponseBodyStatusCode defines parameters for CreateProjectMachineIdentity.
+type CreateProjectMachineIdentity500JSONResponseBodyStatusCode float32
+
+// InviteProjectMembersJSONBody defines parameters for InviteProjectMembers.
+type InviteProjectMembersJSONBody struct {
+	// Emails A list of organization member emails to invite to the project.
+	Emails *[]openapi_types.Email `json:"emails,omitempty"`
+
+	// RoleSlugs A list of role slugs to assign to the newly created project membership. If nothing is provided, it will default to the Member role.
+	RoleSlugs *[]string `json:"roleSlugs,omitempty"`
+
+	// Usernames A list of usernames to invite to the project.
+	Usernames *[]string `json:"usernames,omitempty"`
+}
+
+// InviteProjectMembers400JSONResponseBodyStatusCode defines parameters for InviteProjectMembers.
+type InviteProjectMembers400JSONResponseBodyStatusCode float32
+
+// InviteProjectMembers401JSONResponseBodyStatusCode defines parameters for InviteProjectMembers.
+type InviteProjectMembers401JSONResponseBodyStatusCode float32
+
+// InviteProjectMembers403JSONResponseBodyStatusCode defines parameters for InviteProjectMembers.
+type InviteProjectMembers403JSONResponseBodyStatusCode float32
+
+// InviteProjectMembers404JSONResponseBodyStatusCode defines parameters for InviteProjectMembers.
+type InviteProjectMembers404JSONResponseBodyStatusCode float32
+
+// InviteProjectMembers422JSONResponseBodyStatusCode defines parameters for InviteProjectMembers.
+type InviteProjectMembers422JSONResponseBodyStatusCode float32
+
+// InviteProjectMembers500JSONResponseBodyStatusCode defines parameters for InviteProjectMembers.
+type InviteProjectMembers500JSONResponseBodyStatusCode float32
+
+// CreateProjectIdentityMembershipJSONBody defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembershipJSONBody struct {
+	Role *string `json:"role,omitempty"`
+
+	// Roles A list of role slugs to assign to the newly created identity project membership.
+	Roles *[]CreateProjectIdentityMembershipJSONBody_Roles_Item `json:"roles,omitempty"`
+}
+
+// CreateProjectIdentityMembershipJSONBodyRoles0 defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembershipJSONBodyRoles0 struct {
+	// IsTemporary The role slug to assign to the newly created identity project membership.
+	IsTemporary *CreateProjectIdentityMembershipJSONBodyRoles0IsTemporary `json:"isTemporary,omitempty"`
+
+	// Role The role slug to assign to the newly created identity project membership.
+	Role string `json:"role"`
+}
+
+// CreateProjectIdentityMembershipJSONBodyRoles0IsTemporary defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembershipJSONBodyRoles0IsTemporary bool
+
+// CreateProjectIdentityMembershipJSONBodyRoles1 defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembershipJSONBodyRoles1 struct {
+	// IsTemporary The role slug to assign to the newly created identity project membership.
+	IsTemporary CreateProjectIdentityMembershipJSONBodyRoles1IsTemporary `json:"isTemporary"`
+
+	// Role The role slug to assign to the newly created identity project membership.
+	Role string `json:"role"`
+
+	// TemporaryAccessStartTime The role slug to assign to the newly created identity project membership.
+	TemporaryAccessStartTime time.Time `json:"temporaryAccessStartTime"`
+
+	// TemporaryMode The role slug to assign to the newly created identity project membership.
+	TemporaryMode CreateProjectIdentityMembershipJSONBodyRoles1TemporaryMode `json:"temporaryMode"`
+
+	// TemporaryRange The role slug to assign to the newly created identity project membership.
+	TemporaryRange string `json:"temporaryRange"`
+}
+
+// CreateProjectIdentityMembershipJSONBodyRoles1IsTemporary defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembershipJSONBodyRoles1IsTemporary bool
+
+// CreateProjectIdentityMembershipJSONBodyRoles1TemporaryMode defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembershipJSONBodyRoles1TemporaryMode string
+
+// CreateProjectIdentityMembershipJSONBody_Roles_Item defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembershipJSONBody_Roles_Item struct {
+	union json.RawMessage
+}
+
+// CreateProjectIdentityMembership400JSONResponseBodyStatusCode defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembership400JSONResponseBodyStatusCode float32
+
+// CreateProjectIdentityMembership401JSONResponseBodyStatusCode defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembership401JSONResponseBodyStatusCode float32
+
+// CreateProjectIdentityMembership403JSONResponseBodyStatusCode defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembership403JSONResponseBodyStatusCode float32
+
+// CreateProjectIdentityMembership404JSONResponseBodyStatusCode defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembership404JSONResponseBodyStatusCode float32
+
+// CreateProjectIdentityMembership422JSONResponseBodyStatusCode defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembership422JSONResponseBodyStatusCode float32
+
+// CreateProjectIdentityMembership500JSONResponseBodyStatusCode defines parameters for CreateProjectIdentityMembership.
+type CreateProjectIdentityMembership500JSONResponseBodyStatusCode float32
+
 // CreateOrganizationJSONBody defines parameters for CreateOrganization.
 type CreateOrganizationJSONBody struct {
 	Name string `json:"name"`
@@ -1377,14 +2900,89 @@ type SelectOrganizationV3422JSONResponseBodyStatusCode float32
 // SelectOrganizationV3500JSONResponseBodyStatusCode defines parameters for SelectOrganizationV3.
 type SelectOrganizationV3500JSONResponseBodyStatusCode float32
 
+// CompleteAccountSignupV3JSONBody defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3JSONBody struct {
+	union json.RawMessage
+}
+
+// CompleteAccountSignupV3JSONBody0 defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3JSONBody0 struct {
+	AttributionSource *string                              `json:"attributionSource,omitempty"`
+	Email             string                               `json:"email"`
+	FirstName         string                               `json:"firstName"`
+	HubspotUtk        *string                              `json:"hubspotUtk,omitempty"`
+	LastName          *string                              `json:"lastName,omitempty"`
+	OrganizationName  *string                              `json:"organizationName,omitempty"`
+	Password          string                               `json:"password"`
+	Type              CompleteAccountSignupV3JSONBody0Type `json:"type"`
+}
+
+// CompleteAccountSignupV3JSONBody0Type defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3JSONBody0Type string
+
+// CompleteAccountSignupV3JSONBody1 defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3JSONBody1 struct {
+	Code       string                               `json:"code"`
+	HubspotUtk *string                              `json:"hubspotUtk,omitempty"`
+	Type       CompleteAccountSignupV3JSONBody1Type `json:"type"`
+}
+
+// CompleteAccountSignupV3JSONBody1Type defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3JSONBody1Type string
+
+// CompleteAccountSignupV3400JSONResponseBodyStatusCode defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3400JSONResponseBodyStatusCode float32
+
+// CompleteAccountSignupV3401JSONResponseBodyStatusCode defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3401JSONResponseBodyStatusCode float32
+
+// CompleteAccountSignupV3403JSONResponseBodyStatusCode defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3403JSONResponseBodyStatusCode float32
+
+// CompleteAccountSignupV3404JSONResponseBodyStatusCode defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3404JSONResponseBodyStatusCode float32
+
+// CompleteAccountSignupV3422JSONResponseBodyStatusCode defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3422JSONResponseBodyStatusCode float32
+
+// CompleteAccountSignupV3500JSONResponseBodyStatusCode defines parameters for CompleteAccountSignupV3.
+type CompleteAccountSignupV3500JSONResponseBodyStatusCode float32
+
 // AdminBootstrapJSONRequestBody defines body for AdminBootstrap for application/json ContentType.
 type AdminBootstrapJSONRequestBody AdminBootstrapJSONBody
 
 // UpdateAdminConfigJSONRequestBody defines body for UpdateAdminConfig for application/json ContentType.
 type UpdateAdminConfigJSONRequestBody UpdateAdminConfigJSONBody
 
+// AttachUniversalAuthJSONRequestBody defines body for AttachUniversalAuth for application/json ContentType.
+type AttachUniversalAuthJSONRequestBody AttachUniversalAuthJSONBody
+
+// CreateUniversalAuthClientSecretJSONRequestBody defines body for CreateUniversalAuthClientSecret for application/json ContentType.
+type CreateUniversalAuthClientSecretJSONRequestBody CreateUniversalAuthClientSecretJSONBody
+
+// LoginWithUniversalAuthJSONRequestBody defines body for LoginWithUniversalAuth for application/json ContentType.
+type LoginWithUniversalAuthJSONRequestBody LoginWithUniversalAuthJSONBody
+
+// CreateMachineIdentityJSONRequestBody defines body for CreateMachineIdentity for application/json ContentType.
+type CreateMachineIdentityJSONRequestBody CreateMachineIdentityJSONBody
+
+// InviteUsersToOrganizationJSONRequestBody defines body for InviteUsersToOrganization for application/json ContentType.
+type InviteUsersToOrganizationJSONRequestBody InviteUsersToOrganizationJSONBody
+
+// VerifyUserToOrganizationJSONRequestBody defines body for VerifyUserToOrganization for application/json ContentType.
+type VerifyUserToOrganizationJSONRequestBody VerifyUserToOrganizationJSONBody
+
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody CreateProjectJSONBody
+
+// CreateProjectMachineIdentityJSONRequestBody defines body for CreateProjectMachineIdentity for application/json ContentType.
+type CreateProjectMachineIdentityJSONRequestBody CreateProjectMachineIdentityJSONBody
+
+// InviteProjectMembersJSONRequestBody defines body for InviteProjectMembers for application/json ContentType.
+type InviteProjectMembersJSONRequestBody InviteProjectMembersJSONBody
+
+// CreateProjectIdentityMembershipJSONRequestBody defines body for CreateProjectIdentityMembership for application/json ContentType.
+type CreateProjectIdentityMembershipJSONRequestBody CreateProjectIdentityMembershipJSONBody
 
 // CreateOrganizationJSONRequestBody defines body for CreateOrganization for application/json ContentType.
 type CreateOrganizationJSONRequestBody CreateOrganizationJSONBody
@@ -1394,6 +2992,9 @@ type LoginV3JSONRequestBody LoginV3JSONBody
 
 // SelectOrganizationV3JSONRequestBody defines body for SelectOrganizationV3 for application/json ContentType.
 type SelectOrganizationV3JSONRequestBody SelectOrganizationV3JSONBody
+
+// CompleteAccountSignupV3JSONRequestBody defines body for CompleteAccountSignupV3 for application/json ContentType.
+type CompleteAccountSignupV3JSONRequestBody CompleteAccountSignupV3JSONBody
 
 // AsCreateProject200JSONResponseBodyProjectDeletedEnvironmentsDeletedBy0 returns the union data inside the CreateProject200JSONResponseBody_Project_DeletedEnvironments_DeletedBy as a CreateProject200JSONResponseBodyProjectDeletedEnvironmentsDeletedBy0
 func (t CreateProject200JSONResponseBody_Project_DeletedEnvironments_DeletedBy) AsCreateProject200JSONResponseBodyProjectDeletedEnvironmentsDeletedBy0() (CreateProject200JSONResponseBodyProjectDeletedEnvironmentsDeletedBy0, error) {
@@ -1453,6 +3054,192 @@ func (t CreateProject200JSONResponseBody_Project_DeletedEnvironments_DeletedBy) 
 }
 
 func (t *CreateProject200JSONResponseBody_Project_DeletedEnvironments_DeletedBy) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateProjectMachineIdentityJSONBodyRoles0 returns the union data inside the CreateProjectMachineIdentityJSONBody_Roles_Item as a CreateProjectMachineIdentityJSONBodyRoles0
+func (t CreateProjectMachineIdentityJSONBody_Roles_Item) AsCreateProjectMachineIdentityJSONBodyRoles0() (CreateProjectMachineIdentityJSONBodyRoles0, error) {
+	var body CreateProjectMachineIdentityJSONBodyRoles0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectMachineIdentityJSONBodyRoles0 overwrites any union data inside the CreateProjectMachineIdentityJSONBody_Roles_Item as the provided CreateProjectMachineIdentityJSONBodyRoles0
+func (t *CreateProjectMachineIdentityJSONBody_Roles_Item) FromCreateProjectMachineIdentityJSONBodyRoles0(v CreateProjectMachineIdentityJSONBodyRoles0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectMachineIdentityJSONBodyRoles0 performs a merge with any union data inside the CreateProjectMachineIdentityJSONBody_Roles_Item, using the provided CreateProjectMachineIdentityJSONBodyRoles0
+func (t *CreateProjectMachineIdentityJSONBody_Roles_Item) MergeCreateProjectMachineIdentityJSONBodyRoles0(v CreateProjectMachineIdentityJSONBodyRoles0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateProjectMachineIdentityJSONBodyRoles1 returns the union data inside the CreateProjectMachineIdentityJSONBody_Roles_Item as a CreateProjectMachineIdentityJSONBodyRoles1
+func (t CreateProjectMachineIdentityJSONBody_Roles_Item) AsCreateProjectMachineIdentityJSONBodyRoles1() (CreateProjectMachineIdentityJSONBodyRoles1, error) {
+	var body CreateProjectMachineIdentityJSONBodyRoles1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectMachineIdentityJSONBodyRoles1 overwrites any union data inside the CreateProjectMachineIdentityJSONBody_Roles_Item as the provided CreateProjectMachineIdentityJSONBodyRoles1
+func (t *CreateProjectMachineIdentityJSONBody_Roles_Item) FromCreateProjectMachineIdentityJSONBodyRoles1(v CreateProjectMachineIdentityJSONBodyRoles1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectMachineIdentityJSONBodyRoles1 performs a merge with any union data inside the CreateProjectMachineIdentityJSONBody_Roles_Item, using the provided CreateProjectMachineIdentityJSONBodyRoles1
+func (t *CreateProjectMachineIdentityJSONBody_Roles_Item) MergeCreateProjectMachineIdentityJSONBodyRoles1(v CreateProjectMachineIdentityJSONBodyRoles1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateProjectMachineIdentityJSONBody_Roles_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateProjectMachineIdentityJSONBody_Roles_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateProjectIdentityMembershipJSONBodyRoles0 returns the union data inside the CreateProjectIdentityMembershipJSONBody_Roles_Item as a CreateProjectIdentityMembershipJSONBodyRoles0
+func (t CreateProjectIdentityMembershipJSONBody_Roles_Item) AsCreateProjectIdentityMembershipJSONBodyRoles0() (CreateProjectIdentityMembershipJSONBodyRoles0, error) {
+	var body CreateProjectIdentityMembershipJSONBodyRoles0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectIdentityMembershipJSONBodyRoles0 overwrites any union data inside the CreateProjectIdentityMembershipJSONBody_Roles_Item as the provided CreateProjectIdentityMembershipJSONBodyRoles0
+func (t *CreateProjectIdentityMembershipJSONBody_Roles_Item) FromCreateProjectIdentityMembershipJSONBodyRoles0(v CreateProjectIdentityMembershipJSONBodyRoles0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectIdentityMembershipJSONBodyRoles0 performs a merge with any union data inside the CreateProjectIdentityMembershipJSONBody_Roles_Item, using the provided CreateProjectIdentityMembershipJSONBodyRoles0
+func (t *CreateProjectIdentityMembershipJSONBody_Roles_Item) MergeCreateProjectIdentityMembershipJSONBodyRoles0(v CreateProjectIdentityMembershipJSONBodyRoles0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateProjectIdentityMembershipJSONBodyRoles1 returns the union data inside the CreateProjectIdentityMembershipJSONBody_Roles_Item as a CreateProjectIdentityMembershipJSONBodyRoles1
+func (t CreateProjectIdentityMembershipJSONBody_Roles_Item) AsCreateProjectIdentityMembershipJSONBodyRoles1() (CreateProjectIdentityMembershipJSONBodyRoles1, error) {
+	var body CreateProjectIdentityMembershipJSONBodyRoles1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectIdentityMembershipJSONBodyRoles1 overwrites any union data inside the CreateProjectIdentityMembershipJSONBody_Roles_Item as the provided CreateProjectIdentityMembershipJSONBodyRoles1
+func (t *CreateProjectIdentityMembershipJSONBody_Roles_Item) FromCreateProjectIdentityMembershipJSONBodyRoles1(v CreateProjectIdentityMembershipJSONBodyRoles1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectIdentityMembershipJSONBodyRoles1 performs a merge with any union data inside the CreateProjectIdentityMembershipJSONBody_Roles_Item, using the provided CreateProjectIdentityMembershipJSONBodyRoles1
+func (t *CreateProjectIdentityMembershipJSONBody_Roles_Item) MergeCreateProjectIdentityMembershipJSONBodyRoles1(v CreateProjectIdentityMembershipJSONBodyRoles1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateProjectIdentityMembershipJSONBody_Roles_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateProjectIdentityMembershipJSONBody_Roles_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCompleteAccountSignupV3JSONBody0 returns the union data inside the CompleteAccountSignupV3JSONBody as a CompleteAccountSignupV3JSONBody0
+func (t CompleteAccountSignupV3JSONBody) AsCompleteAccountSignupV3JSONBody0() (CompleteAccountSignupV3JSONBody0, error) {
+	var body CompleteAccountSignupV3JSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCompleteAccountSignupV3JSONBody0 overwrites any union data inside the CompleteAccountSignupV3JSONBody as the provided CompleteAccountSignupV3JSONBody0
+func (t *CompleteAccountSignupV3JSONBody) FromCompleteAccountSignupV3JSONBody0(v CompleteAccountSignupV3JSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCompleteAccountSignupV3JSONBody0 performs a merge with any union data inside the CompleteAccountSignupV3JSONBody, using the provided CompleteAccountSignupV3JSONBody0
+func (t *CompleteAccountSignupV3JSONBody) MergeCompleteAccountSignupV3JSONBody0(v CompleteAccountSignupV3JSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCompleteAccountSignupV3JSONBody1 returns the union data inside the CompleteAccountSignupV3JSONBody as a CompleteAccountSignupV3JSONBody1
+func (t CompleteAccountSignupV3JSONBody) AsCompleteAccountSignupV3JSONBody1() (CompleteAccountSignupV3JSONBody1, error) {
+	var body CompleteAccountSignupV3JSONBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCompleteAccountSignupV3JSONBody1 overwrites any union data inside the CompleteAccountSignupV3JSONBody as the provided CompleteAccountSignupV3JSONBody1
+func (t *CompleteAccountSignupV3JSONBody) FromCompleteAccountSignupV3JSONBody1(v CompleteAccountSignupV3JSONBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCompleteAccountSignupV3JSONBody1 performs a merge with any union data inside the CompleteAccountSignupV3JSONBody, using the provided CompleteAccountSignupV3JSONBody1
+func (t *CompleteAccountSignupV3JSONBody) MergeCompleteAccountSignupV3JSONBody1(v CompleteAccountSignupV3JSONBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CompleteAccountSignupV3JSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CompleteAccountSignupV3JSONBody) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -1553,6 +3340,70 @@ type ClientInterface interface {
 	// RefreshAuthToken performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 	RefreshAuthToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AttachUniversalAuthWithBody performs a POST /api/v1/auth/universal-auth/identities/{identityId} (the `AttachUniversalAuth` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Attach Universal Auth configuration onto machine identity.
+	AttachUniversalAuthWithBody(ctx context.Context, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AttachUniversalAuth performs a POST /api/v1/auth/universal-auth/identities/{identityId} (the `AttachUniversalAuth` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Attach Universal Auth configuration onto machine identity.
+	AttachUniversalAuth(ctx context.Context, identityId string, body AttachUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateUniversalAuthClientSecretWithBody performs a POST /api/v1/auth/universal-auth/identities/{identityId}/client-secrets (the `CreateUniversalAuthClientSecret` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create Universal Auth Client Secret for machine identity.
+	CreateUniversalAuthClientSecretWithBody(ctx context.Context, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateUniversalAuthClientSecret performs a POST /api/v1/auth/universal-auth/identities/{identityId}/client-secrets (the `CreateUniversalAuthClientSecret` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create Universal Auth Client Secret for machine identity.
+	CreateUniversalAuthClientSecret(ctx context.Context, identityId string, body CreateUniversalAuthClientSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LoginWithUniversalAuthWithBody performs a POST /api/v1/auth/universal-auth/login (the `LoginWithUniversalAuth` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Login with Universal Auth for machine identity.
+	LoginWithUniversalAuthWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LoginWithUniversalAuth performs a POST /api/v1/auth/universal-auth/login (the `LoginWithUniversalAuth` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Login with Universal Auth for machine identity.
+	LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateMachineIdentityWithBody performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create machine identity.
+	CreateMachineIdentityWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateMachineIdentity performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create machine identity.
+	CreateMachineIdentity(ctx context.Context, body CreateMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// InviteUsersToOrganizationWithBody performs a POST /api/v1/invite-org/signup (the `InviteUsersToOrganization` operationId) request,
+	// with any type of body and a specified content type.
+	InviteUsersToOrganizationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// InviteUsersToOrganization performs a POST /api/v1/invite-org/signup (the `InviteUsersToOrganization` operationId) request.
+	// Takes a body of the `application/json` content type.
+	InviteUsersToOrganization(ctx context.Context, body InviteUsersToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VerifyUserToOrganizationWithBody performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request,
+	// with any type of body and a specified content type.
+	VerifyUserToOrganizationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VerifyUserToOrganization performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request.
+	// Takes a body of the `application/json` content type.
+	VerifyUserToOrganization(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetOrganizationPlan performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 	GetOrganizationPlan(ctx context.Context, organizationId string, params *GetOrganizationPlanParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1567,6 +3418,47 @@ type ClientInterface interface {
 	//
 	// Create a new project.
 	CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListProjectMachineIdentities performs a GET /api/v1/projects/{projectId}/identities (the `ListProjectMachineIdentities` operationId) request.
+	//
+	// List identities in a project.
+	ListProjectMachineIdentities(ctx context.Context, projectId string, params *ListProjectMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectMachineIdentityWithBody performs a POST /api/v1/projects/{projectId}/identities (the `CreateProjectMachineIdentity` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an identity in a project.
+	CreateProjectMachineIdentityWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectMachineIdentity performs a POST /api/v1/projects/{projectId}/identities (the `CreateProjectMachineIdentity` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create an identity in a project.
+	CreateProjectMachineIdentity(ctx context.Context, projectId string, body CreateProjectMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// InviteProjectMembersWithBody performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Invite members to project.
+	InviteProjectMembersWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// InviteProjectMembers performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Invite members to project.
+	InviteProjectMembers(ctx context.Context, projectId string, body InviteProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectIdentityMembershipWithBody performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create project identity membership.
+	CreateProjectIdentityMembershipWithBody(ctx context.Context, projectId string, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectIdentityMembership performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create project identity membership.
+	CreateProjectIdentityMembership(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateOrganizationWithBody performs a POST /api/v2/organizations (the `CreateOrganization` operationId) request,
 	// with any type of body and a specified content type.
@@ -1594,6 +3486,14 @@ type ClientInterface interface {
 	// SelectOrganizationV3 performs a POST /api/v3/auth/select-organization (the `SelectOrganizationV3` operationId) request.
 	// Takes a body of the `application/json` content type.
 	SelectOrganizationV3(ctx context.Context, body SelectOrganizationV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteAccountSignupV3WithBody performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request,
+	// with any type of body and a specified content type.
+	CompleteAccountSignupV3WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteAccountSignupV3 performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CompleteAccountSignupV3(ctx context.Context, body CompleteAccountSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetServerStatus performs a GET /api/status (the `GetServerStatus` operationId) request.
@@ -1678,6 +3578,190 @@ func (c *Client) RefreshAuthToken(ctx context.Context, reqEditors ...RequestEdit
 	return c.Client.Do(req)
 }
 
+// AttachUniversalAuthWithBody performs a POST /api/v1/auth/universal-auth/identities/{identityId} (the `AttachUniversalAuth` operationId) request,
+// with any type of body and a specified content type.
+//
+// Attach Universal Auth configuration onto machine identity.
+func (c *Client) AttachUniversalAuthWithBody(ctx context.Context, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAttachUniversalAuthRequestWithBody(c.Server, identityId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AttachUniversalAuth performs a POST /api/v1/auth/universal-auth/identities/{identityId} (the `AttachUniversalAuth` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Attach Universal Auth configuration onto machine identity.
+func (c *Client) AttachUniversalAuth(ctx context.Context, identityId string, body AttachUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAttachUniversalAuthRequest(c.Server, identityId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateUniversalAuthClientSecretWithBody performs a POST /api/v1/auth/universal-auth/identities/{identityId}/client-secrets (the `CreateUniversalAuthClientSecret` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create Universal Auth Client Secret for machine identity.
+func (c *Client) CreateUniversalAuthClientSecretWithBody(ctx context.Context, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUniversalAuthClientSecretRequestWithBody(c.Server, identityId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateUniversalAuthClientSecret performs a POST /api/v1/auth/universal-auth/identities/{identityId}/client-secrets (the `CreateUniversalAuthClientSecret` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create Universal Auth Client Secret for machine identity.
+func (c *Client) CreateUniversalAuthClientSecret(ctx context.Context, identityId string, body CreateUniversalAuthClientSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUniversalAuthClientSecretRequest(c.Server, identityId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LoginWithUniversalAuthWithBody performs a POST /api/v1/auth/universal-auth/login (the `LoginWithUniversalAuth` operationId) request,
+// with any type of body and a specified content type.
+//
+// Login with Universal Auth for machine identity.
+func (c *Client) LoginWithUniversalAuthWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginWithUniversalAuthRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LoginWithUniversalAuth performs a POST /api/v1/auth/universal-auth/login (the `LoginWithUniversalAuth` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Login with Universal Auth for machine identity.
+func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginWithUniversalAuthRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateMachineIdentityWithBody performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create machine identity.
+func (c *Client) CreateMachineIdentityWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateMachineIdentityRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateMachineIdentity performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create machine identity.
+func (c *Client) CreateMachineIdentity(ctx context.Context, body CreateMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateMachineIdentityRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// InviteUsersToOrganizationWithBody performs a POST /api/v1/invite-org/signup (the `InviteUsersToOrganization` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) InviteUsersToOrganizationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewInviteUsersToOrganizationRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// InviteUsersToOrganization performs a POST /api/v1/invite-org/signup (the `InviteUsersToOrganization` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) InviteUsersToOrganization(ctx context.Context, body InviteUsersToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewInviteUsersToOrganizationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VerifyUserToOrganizationWithBody performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) VerifyUserToOrganizationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVerifyUserToOrganizationRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VerifyUserToOrganization performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) VerifyUserToOrganization(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVerifyUserToOrganizationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetOrganizationPlan performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 func (c *Client) GetOrganizationPlan(ctx context.Context, organizationId string, params *GetOrganizationPlanParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetOrganizationPlanRequest(c.Server, organizationId, params)
@@ -1713,6 +3797,117 @@ func (c *Client) CreateProjectWithBody(ctx context.Context, contentType string, 
 // Create a new project.
 func (c *Client) CreateProject(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateProjectRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListProjectMachineIdentities performs a GET /api/v1/projects/{projectId}/identities (the `ListProjectMachineIdentities` operationId) request.
+//
+// List identities in a project.
+func (c *Client) ListProjectMachineIdentities(ctx context.Context, projectId string, params *ListProjectMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectMachineIdentitiesRequest(c.Server, projectId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectMachineIdentityWithBody performs a POST /api/v1/projects/{projectId}/identities (the `CreateProjectMachineIdentity` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an identity in a project.
+func (c *Client) CreateProjectMachineIdentityWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectMachineIdentityRequestWithBody(c.Server, projectId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectMachineIdentity performs a POST /api/v1/projects/{projectId}/identities (the `CreateProjectMachineIdentity` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create an identity in a project.
+func (c *Client) CreateProjectMachineIdentity(ctx context.Context, projectId string, body CreateProjectMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectMachineIdentityRequest(c.Server, projectId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// InviteProjectMembersWithBody performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request,
+// with any type of body and a specified content type.
+//
+// Invite members to project.
+func (c *Client) InviteProjectMembersWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewInviteProjectMembersRequestWithBody(c.Server, projectId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// InviteProjectMembers performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Invite members to project.
+func (c *Client) InviteProjectMembers(ctx context.Context, projectId string, body InviteProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewInviteProjectMembersRequest(c.Server, projectId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectIdentityMembershipWithBody performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create project identity membership.
+func (c *Client) CreateProjectIdentityMembershipWithBody(ctx context.Context, projectId string, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectIdentityMembershipRequestWithBody(c.Server, projectId, identityId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectIdentityMembership performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create project identity membership.
+func (c *Client) CreateProjectIdentityMembership(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectIdentityMembershipRequest(c.Server, projectId, identityId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1810,6 +4005,34 @@ func (c *Client) SelectOrganizationV3WithBody(ctx context.Context, contentType s
 // Takes a body of the `application/json` content type.
 func (c *Client) SelectOrganizationV3(ctx context.Context, body SelectOrganizationV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSelectOrganizationV3Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteAccountSignupV3WithBody performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CompleteAccountSignupV3WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteAccountSignupV3RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteAccountSignupV3 performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CompleteAccountSignupV3(ctx context.Context, body CompleteAccountSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteAccountSignupV3Request(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1954,6 +4177,260 @@ func NewRefreshAuthTokenRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewAttachUniversalAuthRequest calls the generic AttachUniversalAuth builder with application/json body
+func NewAttachUniversalAuthRequest(server string, identityId string, body AttachUniversalAuthJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAttachUniversalAuthRequestWithBody(server, identityId, "application/json", bodyReader)
+}
+
+// NewAttachUniversalAuthRequestWithBody constructs an http.Request for the AttachUniversalAuth method, with any body, and a specified content type
+func NewAttachUniversalAuthRequestWithBody(server string, identityId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "identityId", identityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/auth/universal-auth/identities/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateUniversalAuthClientSecretRequest calls the generic CreateUniversalAuthClientSecret builder with application/json body
+func NewCreateUniversalAuthClientSecretRequest(server string, identityId string, body CreateUniversalAuthClientSecretJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateUniversalAuthClientSecretRequestWithBody(server, identityId, "application/json", bodyReader)
+}
+
+// NewCreateUniversalAuthClientSecretRequestWithBody constructs an http.Request for the CreateUniversalAuthClientSecret method, with any body, and a specified content type
+func NewCreateUniversalAuthClientSecretRequestWithBody(server string, identityId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "identityId", identityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/auth/universal-auth/identities/%s/client-secrets", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewLoginWithUniversalAuthRequest calls the generic LoginWithUniversalAuth builder with application/json body
+func NewLoginWithUniversalAuthRequest(server string, body LoginWithUniversalAuthJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLoginWithUniversalAuthRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewLoginWithUniversalAuthRequestWithBody constructs an http.Request for the LoginWithUniversalAuth method, with any body, and a specified content type
+func NewLoginWithUniversalAuthRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/auth/universal-auth/login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateMachineIdentityRequest calls the generic CreateMachineIdentity builder with application/json body
+func NewCreateMachineIdentityRequest(server string, body CreateMachineIdentityJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateMachineIdentityRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateMachineIdentityRequestWithBody constructs an http.Request for the CreateMachineIdentity method, with any body, and a specified content type
+func NewCreateMachineIdentityRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/identities")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewInviteUsersToOrganizationRequest calls the generic InviteUsersToOrganization builder with application/json body
+func NewInviteUsersToOrganizationRequest(server string, body InviteUsersToOrganizationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewInviteUsersToOrganizationRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewInviteUsersToOrganizationRequestWithBody constructs an http.Request for the InviteUsersToOrganization method, with any body, and a specified content type
+func NewInviteUsersToOrganizationRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/invite-org/signup")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewVerifyUserToOrganizationRequest calls the generic VerifyUserToOrganization builder with application/json body
+func NewVerifyUserToOrganizationRequest(server string, body VerifyUserToOrganizationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewVerifyUserToOrganizationRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewVerifyUserToOrganizationRequestWithBody constructs an http.Request for the VerifyUserToOrganization method, with any body, and a specified content type
+func NewVerifyUserToOrganizationRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/invite-org/verify")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetOrganizationPlanRequest constructs an http.Request for the GetOrganizationPlan method
 func NewGetOrganizationPlanRequest(server string, organizationId string, params *GetOrganizationPlanParams) (*http.Request, error) {
 	var err error
@@ -2036,6 +4513,239 @@ func NewCreateProjectRequestWithBody(server string, contentType string, body io.
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/projects")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListProjectMachineIdentitiesRequest constructs an http.Request for the ListProjectMachineIdentities method
+func NewListProjectMachineIdentitiesRequest(server string, projectId string, params *ListProjectMachineIdentitiesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/identities", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Search != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search", *params.Search, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateProjectMachineIdentityRequest calls the generic CreateProjectMachineIdentity builder with application/json body
+func NewCreateProjectMachineIdentityRequest(server string, projectId string, body CreateProjectMachineIdentityJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateProjectMachineIdentityRequestWithBody(server, projectId, "application/json", bodyReader)
+}
+
+// NewCreateProjectMachineIdentityRequestWithBody constructs an http.Request for the CreateProjectMachineIdentity method, with any body, and a specified content type
+func NewCreateProjectMachineIdentityRequestWithBody(server string, projectId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/identities", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewInviteProjectMembersRequest calls the generic InviteProjectMembers builder with application/json body
+func NewInviteProjectMembersRequest(server string, projectId string, body InviteProjectMembersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewInviteProjectMembersRequestWithBody(server, projectId, "application/json", bodyReader)
+}
+
+// NewInviteProjectMembersRequestWithBody constructs an http.Request for the InviteProjectMembers method, with any body, and a specified content type
+func NewInviteProjectMembersRequestWithBody(server string, projectId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/memberships", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateProjectIdentityMembershipRequest calls the generic CreateProjectIdentityMembership builder with application/json body
+func NewCreateProjectIdentityMembershipRequest(server string, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateProjectIdentityMembershipRequestWithBody(server, projectId, identityId, "application/json", bodyReader)
+}
+
+// NewCreateProjectIdentityMembershipRequestWithBody constructs an http.Request for the CreateProjectIdentityMembership method, with any body, and a specified content type
+func NewCreateProjectIdentityMembershipRequestWithBody(server string, projectId string, identityId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "identityId", identityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/memberships/identities/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2209,6 +4919,46 @@ func NewSelectOrganizationV3RequestWithBody(server string, contentType string, b
 	return req, nil
 }
 
+// NewCompleteAccountSignupV3Request calls the generic CompleteAccountSignupV3 builder with application/json body
+func NewCompleteAccountSignupV3Request(server string, body CompleteAccountSignupV3JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCompleteAccountSignupV3RequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCompleteAccountSignupV3RequestWithBody constructs an http.Request for the CompleteAccountSignupV3 method, with any body, and a specified content type
+func NewCompleteAccountSignupV3RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v3/signup/complete-account")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -2283,6 +5033,82 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	RefreshAuthTokenWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*RefreshAuthTokenResponse, error)
 
+	// AttachUniversalAuthWithBodyWithResponse performs a POST /api/v1/auth/universal-auth/identities/{identityId} (the `AttachUniversalAuth` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Attach Universal Auth configuration onto machine identity.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	AttachUniversalAuthWithBodyWithResponse(ctx context.Context, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AttachUniversalAuthResponse, error)
+
+	// AttachUniversalAuthWithResponse performs a POST /api/v1/auth/universal-auth/identities/{identityId} (the `AttachUniversalAuth` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Attach Universal Auth configuration onto machine identity.
+	AttachUniversalAuthWithResponse(ctx context.Context, identityId string, body AttachUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*AttachUniversalAuthResponse, error)
+
+	// CreateUniversalAuthClientSecretWithBodyWithResponse performs a POST /api/v1/auth/universal-auth/identities/{identityId}/client-secrets (the `CreateUniversalAuthClientSecret` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create Universal Auth Client Secret for machine identity.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateUniversalAuthClientSecretWithBodyWithResponse(ctx context.Context, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUniversalAuthClientSecretResponse, error)
+
+	// CreateUniversalAuthClientSecretWithResponse performs a POST /api/v1/auth/universal-auth/identities/{identityId}/client-secrets (the `CreateUniversalAuthClientSecret` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create Universal Auth Client Secret for machine identity.
+	CreateUniversalAuthClientSecretWithResponse(ctx context.Context, identityId string, body CreateUniversalAuthClientSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUniversalAuthClientSecretResponse, error)
+
+	// LoginWithUniversalAuthWithBodyWithResponse performs a POST /api/v1/auth/universal-auth/login (the `LoginWithUniversalAuth` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Login with Universal Auth for machine identity.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	LoginWithUniversalAuthWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
+
+	// LoginWithUniversalAuthWithResponse performs a POST /api/v1/auth/universal-auth/login (the `LoginWithUniversalAuth` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Login with Universal Auth for machine identity.
+	LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
+
+	// CreateMachineIdentityWithBodyWithResponse performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create machine identity.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateMachineIdentityWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMachineIdentityResponse, error)
+
+	// CreateMachineIdentityWithResponse performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create machine identity.
+	CreateMachineIdentityWithResponse(ctx context.Context, body CreateMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMachineIdentityResponse, error)
+
+	// InviteUsersToOrganizationWithBodyWithResponse performs a POST /api/v1/invite-org/signup (the `InviteUsersToOrganization` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	InviteUsersToOrganizationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InviteUsersToOrganizationResponse, error)
+
+	// InviteUsersToOrganizationWithResponse performs a POST /api/v1/invite-org/signup (the `InviteUsersToOrganization` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	InviteUsersToOrganizationWithResponse(ctx context.Context, body InviteUsersToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*InviteUsersToOrganizationResponse, error)
+
+	// VerifyUserToOrganizationWithBodyWithResponse performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	VerifyUserToOrganizationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*VerifyUserToOrganizationResponse, error)
+
+	// VerifyUserToOrganizationWithResponse performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	VerifyUserToOrganizationWithResponse(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyUserToOrganizationResponse, error)
+
 	// GetOrganizationPlanWithResponse performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -2301,6 +5127,55 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create a new project.
 	CreateProjectWithResponse(ctx context.Context, body CreateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectResponse, error)
+
+	// ListProjectMachineIdentitiesWithResponse performs a GET /api/v1/projects/{projectId}/identities (the `ListProjectMachineIdentities` operationId) request.
+	//
+	// List identities in a project.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListProjectMachineIdentitiesWithResponse(ctx context.Context, projectId string, params *ListProjectMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListProjectMachineIdentitiesResponse, error)
+
+	// CreateProjectMachineIdentityWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/identities (the `CreateProjectMachineIdentity` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an identity in a project.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateProjectMachineIdentityWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectMachineIdentityResponse, error)
+
+	// CreateProjectMachineIdentityWithResponse performs a POST /api/v1/projects/{projectId}/identities (the `CreateProjectMachineIdentity` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create an identity in a project.
+	CreateProjectMachineIdentityWithResponse(ctx context.Context, projectId string, body CreateProjectMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectMachineIdentityResponse, error)
+
+	// InviteProjectMembersWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Invite members to project.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	InviteProjectMembersWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InviteProjectMembersResponse, error)
+
+	// InviteProjectMembersWithResponse performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Invite members to project.
+	InviteProjectMembersWithResponse(ctx context.Context, projectId string, body InviteProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*InviteProjectMembersResponse, error)
+
+	// CreateProjectIdentityMembershipWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create project identity membership.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateProjectIdentityMembershipWithBodyWithResponse(ctx context.Context, projectId string, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error)
+
+	// CreateProjectIdentityMembershipWithResponse performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create project identity membership.
+	CreateProjectIdentityMembershipWithResponse(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error)
 
 	// CreateOrganizationWithBodyWithResponse performs a POST /api/v2/organizations (the `CreateOrganization` operationId) request,
 	// with any type of body and a specified content type.
@@ -2336,6 +5211,16 @@ type ClientWithResponsesInterface interface {
 	// SelectOrganizationV3WithResponse performs a POST /api/v3/auth/select-organization (the `SelectOrganizationV3` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	SelectOrganizationV3WithResponse(ctx context.Context, body SelectOrganizationV3JSONRequestBody, reqEditors ...RequestEditorFn) (*SelectOrganizationV3Response, error)
+
+	// CompleteAccountSignupV3WithBodyWithResponse performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CompleteAccountSignupV3WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteAccountSignupV3Response, error)
+
+	// CompleteAccountSignupV3WithResponse performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CompleteAccountSignupV3WithResponse(ctx context.Context, body CompleteAccountSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteAccountSignupV3Response, error)
 }
 
 type GetServerStatusResponse struct {
@@ -3080,6 +5965,1030 @@ func (r RefreshAuthTokenResponse) ContentType() string {
 	return ""
 }
 
+type AttachUniversalAuthResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		IdentityUniversalAuth struct {
+			AccessTokenMaxTTL          *float32           `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit    *float32           `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenPeriod          *float32           `json:"accessTokenPeriod,omitempty"`
+			AccessTokenTTL             *float32           `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps      interface{}        `json:"accessTokenTrustedIps,omitempty"`
+			ClientId                   string             `json:"clientId"`
+			ClientSecretTrustedIps     interface{}        `json:"clientSecretTrustedIps,omitempty"`
+			CreatedAt                  time.Time          `json:"createdAt"`
+			Id                         openapi_types.UUID `json:"id"`
+			IdentityId                 openapi_types.UUID `json:"identityId"`
+			LockoutCounterResetSeconds *float32           `json:"lockoutCounterResetSeconds,omitempty"`
+			LockoutDurationSeconds     *float32           `json:"lockoutDurationSeconds,omitempty"`
+			LockoutEnabled             *bool              `json:"lockoutEnabled,omitempty"`
+			LockoutThreshold           *float32           `json:"lockoutThreshold,omitempty"`
+			UpdatedAt                  time.Time          `json:"updatedAt"`
+		} `json:"identityUniversalAuth"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode AttachUniversalAuth400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode AttachUniversalAuth401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode AttachUniversalAuth403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode AttachUniversalAuth404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode AttachUniversalAuth422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode AttachUniversalAuth500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AttachUniversalAuthResponse) GetJSON200() *struct {
+	IdentityUniversalAuth struct {
+		AccessTokenMaxTTL          *float32           `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit    *float32           `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenPeriod          *float32           `json:"accessTokenPeriod,omitempty"`
+		AccessTokenTTL             *float32           `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps      interface{}        `json:"accessTokenTrustedIps,omitempty"`
+		ClientId                   string             `json:"clientId"`
+		ClientSecretTrustedIps     interface{}        `json:"clientSecretTrustedIps,omitempty"`
+		CreatedAt                  time.Time          `json:"createdAt"`
+		Id                         openapi_types.UUID `json:"id"`
+		IdentityId                 openapi_types.UUID `json:"identityId"`
+		LockoutCounterResetSeconds *float32           `json:"lockoutCounterResetSeconds,omitempty"`
+		LockoutDurationSeconds     *float32           `json:"lockoutDurationSeconds,omitempty"`
+		LockoutEnabled             *bool              `json:"lockoutEnabled,omitempty"`
+		LockoutThreshold           *float32           `json:"lockoutThreshold,omitempty"`
+		UpdatedAt                  time.Time          `json:"updatedAt"`
+	} `json:"identityUniversalAuth"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AttachUniversalAuthResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode AttachUniversalAuth400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AttachUniversalAuthResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode AttachUniversalAuth401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AttachUniversalAuthResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode AttachUniversalAuth403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r AttachUniversalAuthResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode AttachUniversalAuth404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r AttachUniversalAuthResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode AttachUniversalAuth422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r AttachUniversalAuthResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode AttachUniversalAuth500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AttachUniversalAuthResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AttachUniversalAuthResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AttachUniversalAuthResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AttachUniversalAuthResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateUniversalAuthClientSecretResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ClientSecret     string `json:"clientSecret"`
+		ClientSecretData struct {
+			ClientSecretNumUses      *float32           `json:"clientSecretNumUses,omitempty"`
+			ClientSecretNumUsesLimit *float32           `json:"clientSecretNumUsesLimit,omitempty"`
+			ClientSecretPrefix       string             `json:"clientSecretPrefix"`
+			ClientSecretTTL          *float32           `json:"clientSecretTTL,omitempty"`
+			CreatedAt                time.Time          `json:"createdAt"`
+			Description              string             `json:"description"`
+			Id                       string             `json:"id"`
+			IdentityUAId             openapi_types.UUID `json:"identityUAId"`
+			IsClientSecretRevoked    *bool              `json:"isClientSecretRevoked,omitempty"`
+			UpdatedAt                time.Time          `json:"updatedAt"`
+		} `json:"clientSecretData"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                       `json:"error"`
+		Message    interface{}                                                  `json:"message,omitempty"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateUniversalAuthClientSecretResponse) GetJSON200() *struct {
+	ClientSecret     string `json:"clientSecret"`
+	ClientSecretData struct {
+		ClientSecretNumUses      *float32           `json:"clientSecretNumUses,omitempty"`
+		ClientSecretNumUsesLimit *float32           `json:"clientSecretNumUsesLimit,omitempty"`
+		ClientSecretPrefix       string             `json:"clientSecretPrefix"`
+		ClientSecretTTL          *float32           `json:"clientSecretTTL,omitempty"`
+		CreatedAt                time.Time          `json:"createdAt"`
+		Description              string             `json:"description"`
+		Id                       string             `json:"id"`
+		IdentityUAId             openapi_types.UUID `json:"identityUAId"`
+		IsClientSecretRevoked    *bool              `json:"isClientSecretRevoked,omitempty"`
+		UpdatedAt                time.Time          `json:"updatedAt"`
+	} `json:"clientSecretData"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateUniversalAuthClientSecretResponse) GetJSON400() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateUniversalAuthClientSecretResponse) GetJSON401() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateUniversalAuthClientSecretResponse) GetJSON403() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateUniversalAuthClientSecretResponse) GetJSON404() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateUniversalAuthClientSecretResponse) GetJSON422() *struct {
+	Error      string                                                       `json:"error"`
+	Message    interface{}                                                  `json:"message,omitempty"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateUniversalAuthClientSecretResponse) GetJSON500() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateUniversalAuthClientSecretResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateUniversalAuthClientSecretResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateUniversalAuthClientSecretResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateUniversalAuthClientSecretResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LoginWithUniversalAuthResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AccessToken       string                                             `json:"accessToken"`
+		AccessTokenMaxTTL float32                                            `json:"accessTokenMaxTTL"`
+		ExpiresIn         float32                                            `json:"expiresIn"`
+		TokenType         LoginWithUniversalAuth200JSONResponseBodyTokenType `json:"tokenType"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode LoginWithUniversalAuth400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode LoginWithUniversalAuth401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode LoginWithUniversalAuth403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode LoginWithUniversalAuth404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode LoginWithUniversalAuth422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode LoginWithUniversalAuth500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r LoginWithUniversalAuthResponse) GetJSON200() *struct {
+	AccessToken       string                                             `json:"accessToken"`
+	AccessTokenMaxTTL float32                                            `json:"accessTokenMaxTTL"`
+	ExpiresIn         float32                                            `json:"expiresIn"`
+	TokenType         LoginWithUniversalAuth200JSONResponseBodyTokenType `json:"tokenType"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r LoginWithUniversalAuthResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode LoginWithUniversalAuth400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r LoginWithUniversalAuthResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode LoginWithUniversalAuth401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r LoginWithUniversalAuthResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode LoginWithUniversalAuth403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r LoginWithUniversalAuthResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode LoginWithUniversalAuth404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r LoginWithUniversalAuthResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode LoginWithUniversalAuth422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r LoginWithUniversalAuthResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode LoginWithUniversalAuth500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r LoginWithUniversalAuthResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LoginWithUniversalAuthResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LoginWithUniversalAuthResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LoginWithUniversalAuthResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateMachineIdentityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Identity struct {
+			AuthMethod          *string            `json:"authMethod,omitempty"`
+			AuthMethods         []string           `json:"authMethods"`
+			CreatedAt           time.Time          `json:"createdAt"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			Metadata            []struct {
+				Id    string `json:"id"`
+				Key   string `json:"key"`
+				Value string `json:"value"`
+			} `json:"metadata"`
+			Name      string             `json:"name"`
+			OrgId     openapi_types.UUID `json:"orgId"`
+			ProjectId *string            `json:"projectId,omitempty"`
+			UpdatedAt time.Time          `json:"updatedAt"`
+		} `json:"identity"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode CreateMachineIdentity400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode CreateMachineIdentity401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode CreateMachineIdentity403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode CreateMachineIdentity404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                             `json:"error"`
+		Message    interface{}                                        `json:"message,omitempty"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode CreateMachineIdentity422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode CreateMachineIdentity500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateMachineIdentityResponse) GetJSON200() *struct {
+	Identity struct {
+		AuthMethod          *string            `json:"authMethod,omitempty"`
+		AuthMethods         []string           `json:"authMethods"`
+		CreatedAt           time.Time          `json:"createdAt"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		Metadata            []struct {
+			Id    string `json:"id"`
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"metadata"`
+		Name      string             `json:"name"`
+		OrgId     openapi_types.UUID `json:"orgId"`
+		ProjectId *string            `json:"projectId,omitempty"`
+		UpdatedAt time.Time          `json:"updatedAt"`
+	} `json:"identity"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateMachineIdentityResponse) GetJSON400() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode CreateMachineIdentity400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateMachineIdentityResponse) GetJSON401() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode CreateMachineIdentity401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateMachineIdentityResponse) GetJSON403() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode CreateMachineIdentity403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateMachineIdentityResponse) GetJSON404() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode CreateMachineIdentity404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateMachineIdentityResponse) GetJSON422() *struct {
+	Error      string                                             `json:"error"`
+	Message    interface{}                                        `json:"message,omitempty"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode CreateMachineIdentity422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateMachineIdentityResponse) GetJSON500() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode CreateMachineIdentity500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateMachineIdentityResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateMachineIdentityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateMachineIdentityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateMachineIdentityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type InviteUsersToOrganizationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CompleteInviteLinks *[]struct {
+			Email string `json:"email"`
+			Link  string `json:"link"`
+		} `json:"completeInviteLinks,omitempty"`
+		GrantFailures *struct {
+			AgentVaultAccess bool     `json:"agentVaultAccess"`
+			PamAccess        bool     `json:"pamAccess"`
+			ProjectIds       []string `json:"projectIds"`
+		} `json:"grantFailures,omitempty"`
+		Message string `json:"message"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode InviteUsersToOrganization400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode InviteUsersToOrganization401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode InviteUsersToOrganization403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode InviteUsersToOrganization404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode InviteUsersToOrganization422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode InviteUsersToOrganization500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r InviteUsersToOrganizationResponse) GetJSON200() *struct {
+	CompleteInviteLinks *[]struct {
+		Email string `json:"email"`
+		Link  string `json:"link"`
+	} `json:"completeInviteLinks,omitempty"`
+	GrantFailures *struct {
+		AgentVaultAccess bool     `json:"agentVaultAccess"`
+		PamAccess        bool     `json:"pamAccess"`
+		ProjectIds       []string `json:"projectIds"`
+	} `json:"grantFailures,omitempty"`
+	Message string `json:"message"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r InviteUsersToOrganizationResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode InviteUsersToOrganization400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r InviteUsersToOrganizationResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode InviteUsersToOrganization401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r InviteUsersToOrganizationResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode InviteUsersToOrganization403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r InviteUsersToOrganizationResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode InviteUsersToOrganization404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r InviteUsersToOrganizationResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode InviteUsersToOrganization422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r InviteUsersToOrganizationResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode InviteUsersToOrganization500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r InviteUsersToOrganizationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r InviteUsersToOrganizationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r InviteUsersToOrganizationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r InviteUsersToOrganizationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type VerifyUserToOrganizationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Message string `json:"message"`
+
+		// OrganizationName Name of the organization associated with the verified invitation
+		OrganizationName string  `json:"organizationName"`
+		Token            *string `json:"token,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode VerifyUserToOrganization400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode VerifyUserToOrganization401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode VerifyUserToOrganization403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode VerifyUserToOrganization404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                `json:"error"`
+		Message    interface{}                                           `json:"message,omitempty"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode VerifyUserToOrganization422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode VerifyUserToOrganization500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VerifyUserToOrganizationResponse) GetJSON200() *struct {
+	Message string `json:"message"`
+
+	// OrganizationName Name of the organization associated with the verified invitation
+	OrganizationName string  `json:"organizationName"`
+	Token            *string `json:"token,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r VerifyUserToOrganizationResponse) GetJSON400() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode VerifyUserToOrganization400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r VerifyUserToOrganizationResponse) GetJSON401() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode VerifyUserToOrganization401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r VerifyUserToOrganizationResponse) GetJSON403() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode VerifyUserToOrganization403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r VerifyUserToOrganizationResponse) GetJSON404() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode VerifyUserToOrganization404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r VerifyUserToOrganizationResponse) GetJSON422() *struct {
+	Error      string                                                `json:"error"`
+	Message    interface{}                                           `json:"message,omitempty"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode VerifyUserToOrganization422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r VerifyUserToOrganizationResponse) GetJSON500() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode VerifyUserToOrganization500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r VerifyUserToOrganizationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VerifyUserToOrganizationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VerifyUserToOrganizationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VerifyUserToOrganizationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetOrganizationPlanResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -3448,6 +7357,696 @@ func (r CreateProjectResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListProjectMachineIdentitiesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Identities []struct {
+			ActiveLockoutAuthMethods *[]string          `json:"activeLockoutAuthMethods,omitempty"`
+			AuthMethods              *[]string          `json:"authMethods,omitempty"`
+			CreatedAt                time.Time          `json:"createdAt"`
+			HasDeleteProtection      *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                       openapi_types.UUID `json:"id"`
+			Metadata                 *[]struct {
+				Id    string `json:"id"`
+				Key   string `json:"key"`
+				Value string `json:"value"`
+			} `json:"metadata,omitempty"`
+			Name      string             `json:"name"`
+			OrgId     openapi_types.UUID `json:"orgId"`
+			ProjectId *string            `json:"projectId,omitempty"`
+			UpdatedAt time.Time          `json:"updatedAt"`
+		} `json:"identities"`
+		TotalCount float32 `json:"totalCount"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode ListProjectMachineIdentities400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode ListProjectMachineIdentities401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode ListProjectMachineIdentities403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode ListProjectMachineIdentities404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                    `json:"error"`
+		Message    interface{}                                               `json:"message,omitempty"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode ListProjectMachineIdentities422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode ListProjectMachineIdentities500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListProjectMachineIdentitiesResponse) GetJSON200() *struct {
+	Identities []struct {
+		ActiveLockoutAuthMethods *[]string          `json:"activeLockoutAuthMethods,omitempty"`
+		AuthMethods              *[]string          `json:"authMethods,omitempty"`
+		CreatedAt                time.Time          `json:"createdAt"`
+		HasDeleteProtection      *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                       openapi_types.UUID `json:"id"`
+		Metadata                 *[]struct {
+			Id    string `json:"id"`
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"metadata,omitempty"`
+		Name      string             `json:"name"`
+		OrgId     openapi_types.UUID `json:"orgId"`
+		ProjectId *string            `json:"projectId,omitempty"`
+		UpdatedAt time.Time          `json:"updatedAt"`
+	} `json:"identities"`
+	TotalCount float32 `json:"totalCount"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListProjectMachineIdentitiesResponse) GetJSON400() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode ListProjectMachineIdentities400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListProjectMachineIdentitiesResponse) GetJSON401() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode ListProjectMachineIdentities401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListProjectMachineIdentitiesResponse) GetJSON403() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode ListProjectMachineIdentities403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListProjectMachineIdentitiesResponse) GetJSON404() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode ListProjectMachineIdentities404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListProjectMachineIdentitiesResponse) GetJSON422() *struct {
+	Error      string                                                    `json:"error"`
+	Message    interface{}                                               `json:"message,omitempty"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode ListProjectMachineIdentities422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListProjectMachineIdentitiesResponse) GetJSON500() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode ListProjectMachineIdentities500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListProjectMachineIdentitiesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListProjectMachineIdentitiesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListProjectMachineIdentitiesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListProjectMachineIdentitiesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateProjectMachineIdentityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Identity struct {
+			ActiveLockoutAuthMethods *[]string          `json:"activeLockoutAuthMethods,omitempty"`
+			AuthMethods              *[]string          `json:"authMethods,omitempty"`
+			CreatedAt                time.Time          `json:"createdAt"`
+			HasDeleteProtection      *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                       openapi_types.UUID `json:"id"`
+			Metadata                 *[]struct {
+				Id    string `json:"id"`
+				Key   string `json:"key"`
+				Value string `json:"value"`
+			} `json:"metadata,omitempty"`
+			Name      string             `json:"name"`
+			OrgId     openapi_types.UUID `json:"orgId"`
+			ProjectId *string            `json:"projectId,omitempty"`
+			UpdatedAt time.Time          `json:"updatedAt"`
+		} `json:"identity"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectMachineIdentity400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectMachineIdentity401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectMachineIdentity403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectMachineIdentity404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                    `json:"error"`
+		Message    interface{}                                               `json:"message,omitempty"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectMachineIdentity422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectMachineIdentity500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateProjectMachineIdentityResponse) GetJSON200() *struct {
+	Identity struct {
+		ActiveLockoutAuthMethods *[]string          `json:"activeLockoutAuthMethods,omitempty"`
+		AuthMethods              *[]string          `json:"authMethods,omitempty"`
+		CreatedAt                time.Time          `json:"createdAt"`
+		HasDeleteProtection      *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                       openapi_types.UUID `json:"id"`
+		Metadata                 *[]struct {
+			Id    string `json:"id"`
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"metadata,omitempty"`
+		Name      string             `json:"name"`
+		OrgId     openapi_types.UUID `json:"orgId"`
+		ProjectId *string            `json:"projectId,omitempty"`
+		UpdatedAt time.Time          `json:"updatedAt"`
+	} `json:"identity"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateProjectMachineIdentityResponse) GetJSON400() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectMachineIdentity400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateProjectMachineIdentityResponse) GetJSON401() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectMachineIdentity401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateProjectMachineIdentityResponse) GetJSON403() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectMachineIdentity403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateProjectMachineIdentityResponse) GetJSON404() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectMachineIdentity404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateProjectMachineIdentityResponse) GetJSON422() *struct {
+	Error      string                                                    `json:"error"`
+	Message    interface{}                                               `json:"message,omitempty"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectMachineIdentity422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateProjectMachineIdentityResponse) GetJSON500() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectMachineIdentity500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateProjectMachineIdentityResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateProjectMachineIdentityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateProjectMachineIdentityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProjectMachineIdentityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type InviteProjectMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Memberships []struct {
+			CreatedAt time.Time          `json:"createdAt"`
+			Id        openapi_types.UUID `json:"id"`
+			ProjectId string             `json:"projectId"`
+			UpdatedAt time.Time          `json:"updatedAt"`
+			UserId    openapi_types.UUID `json:"userId"`
+		} `json:"memberships"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode InviteProjectMembers400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode InviteProjectMembers401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode InviteProjectMembers403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode InviteProjectMembers404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode InviteProjectMembers422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode InviteProjectMembers500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r InviteProjectMembersResponse) GetJSON200() *struct {
+	Memberships []struct {
+		CreatedAt time.Time          `json:"createdAt"`
+		Id        openapi_types.UUID `json:"id"`
+		ProjectId string             `json:"projectId"`
+		UpdatedAt time.Time          `json:"updatedAt"`
+		UserId    openapi_types.UUID `json:"userId"`
+	} `json:"memberships"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r InviteProjectMembersResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode InviteProjectMembers400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r InviteProjectMembersResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode InviteProjectMembers401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r InviteProjectMembersResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode InviteProjectMembers403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r InviteProjectMembersResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode InviteProjectMembers404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r InviteProjectMembersResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode InviteProjectMembers422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r InviteProjectMembersResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode InviteProjectMembers500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r InviteProjectMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r InviteProjectMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r InviteProjectMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r InviteProjectMembersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateProjectIdentityMembershipResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		IdentityMembership struct {
+			CreatedAt  time.Time          `json:"createdAt"`
+			Id         openapi_types.UUID `json:"id"`
+			IdentityId openapi_types.UUID `json:"identityId"`
+			ProjectId  string             `json:"projectId"`
+			UpdatedAt  time.Time          `json:"updatedAt"`
+		} `json:"identityMembership"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateProjectIdentityMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateProjectIdentityMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateProjectIdentityMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateProjectIdentityMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                       `json:"error"`
+		Message    interface{}                                                  `json:"message,omitempty"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateProjectIdentityMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode CreateProjectIdentityMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateProjectIdentityMembershipResponse) GetJSON200() *struct {
+	IdentityMembership struct {
+		CreatedAt  time.Time          `json:"createdAt"`
+		Id         openapi_types.UUID `json:"id"`
+		IdentityId openapi_types.UUID `json:"identityId"`
+		ProjectId  string             `json:"projectId"`
+		UpdatedAt  time.Time          `json:"updatedAt"`
+	} `json:"identityMembership"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateProjectIdentityMembershipResponse) GetJSON400() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateProjectIdentityMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateProjectIdentityMembershipResponse) GetJSON401() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateProjectIdentityMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateProjectIdentityMembershipResponse) GetJSON403() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateProjectIdentityMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateProjectIdentityMembershipResponse) GetJSON404() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateProjectIdentityMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateProjectIdentityMembershipResponse) GetJSON422() *struct {
+	Error      string                                                       `json:"error"`
+	Message    interface{}                                                  `json:"message,omitempty"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateProjectIdentityMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateProjectIdentityMembershipResponse) GetJSON500() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode CreateProjectIdentityMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateProjectIdentityMembershipResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateProjectIdentityMembershipResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateProjectIdentityMembershipResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProjectIdentityMembershipResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -4192,6 +8791,179 @@ func (r SelectOrganizationV3Response) ContentType() string {
 	return ""
 }
 
+type CompleteAccountSignupV3Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Message string `json:"message"`
+		Token   string `json:"token"`
+		User    struct {
+			AuthMethods     *[]string          `json:"authMethods,omitempty"`
+			Email           *string            `json:"email,omitempty"`
+			FirstName       *string            `json:"firstName,omitempty"`
+			Id              openapi_types.UUID `json:"id"`
+			IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+			LastName        *string            `json:"lastName,omitempty"`
+			PublicKey       *string            `json:"publicKey,omitempty"`
+			Username        string             `json:"username"`
+		} `json:"user"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                          `json:"details,omitempty"`
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CompleteAccountSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CompleteAccountSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                          `json:"details,omitempty"`
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CompleteAccountSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CompleteAccountSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                               `json:"error"`
+		Message    interface{}                                          `json:"message,omitempty"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CompleteAccountSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                               `json:"error"`
+		Message    string                                               `json:"message"`
+		ReqId      string                                               `json:"reqId"`
+		StatusCode CompleteAccountSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CompleteAccountSignupV3Response) GetJSON200() *struct {
+	Message string `json:"message"`
+	Token   string `json:"token"`
+	User    struct {
+		AuthMethods     *[]string          `json:"authMethods,omitempty"`
+		Email           *string            `json:"email,omitempty"`
+		FirstName       *string            `json:"firstName,omitempty"`
+		Id              openapi_types.UUID `json:"id"`
+		IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+		LastName        *string            `json:"lastName,omitempty"`
+		PublicKey       *string            `json:"publicKey,omitempty"`
+		Username        string             `json:"username"`
+	} `json:"user"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CompleteAccountSignupV3Response) GetJSON400() *struct {
+	Details    interface{}                                          `json:"details,omitempty"`
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CompleteAccountSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CompleteAccountSignupV3Response) GetJSON401() *struct {
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CompleteAccountSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CompleteAccountSignupV3Response) GetJSON403() *struct {
+	Details    interface{}                                          `json:"details,omitempty"`
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CompleteAccountSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CompleteAccountSignupV3Response) GetJSON404() *struct {
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CompleteAccountSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CompleteAccountSignupV3Response) GetJSON422() *struct {
+	Error      string                                               `json:"error"`
+	Message    interface{}                                          `json:"message,omitempty"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CompleteAccountSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CompleteAccountSignupV3Response) GetJSON500() *struct {
+	Error      string                                               `json:"error"`
+	Message    string                                               `json:"message"`
+	ReqId      string                                               `json:"reqId"`
+	StatusCode CompleteAccountSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CompleteAccountSignupV3Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CompleteAccountSignupV3Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CompleteAccountSignupV3Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CompleteAccountSignupV3Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetServerStatusWithResponse performs a GET /api/status (the `GetServerStatus` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -4258,6 +9030,154 @@ func (c *ClientWithResponses) RefreshAuthTokenWithResponse(ctx context.Context, 
 	return ParseRefreshAuthTokenResponse(rsp)
 }
 
+// AttachUniversalAuthWithBodyWithResponse performs a POST /api/v1/auth/universal-auth/identities/{identityId} (the `AttachUniversalAuth` operationId) request,
+// with any type of body and a specified content type.
+//
+// Attach Universal Auth configuration onto machine identity.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) AttachUniversalAuthWithBodyWithResponse(ctx context.Context, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AttachUniversalAuthResponse, error) {
+	rsp, err := c.AttachUniversalAuthWithBody(ctx, identityId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAttachUniversalAuthResponse(rsp)
+}
+
+// AttachUniversalAuthWithResponse performs a POST /api/v1/auth/universal-auth/identities/{identityId} (the `AttachUniversalAuth` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Attach Universal Auth configuration onto machine identity.
+func (c *ClientWithResponses) AttachUniversalAuthWithResponse(ctx context.Context, identityId string, body AttachUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*AttachUniversalAuthResponse, error) {
+	rsp, err := c.AttachUniversalAuth(ctx, identityId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAttachUniversalAuthResponse(rsp)
+}
+
+// CreateUniversalAuthClientSecretWithBodyWithResponse performs a POST /api/v1/auth/universal-auth/identities/{identityId}/client-secrets (the `CreateUniversalAuthClientSecret` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create Universal Auth Client Secret for machine identity.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateUniversalAuthClientSecretWithBodyWithResponse(ctx context.Context, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUniversalAuthClientSecretResponse, error) {
+	rsp, err := c.CreateUniversalAuthClientSecretWithBody(ctx, identityId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUniversalAuthClientSecretResponse(rsp)
+}
+
+// CreateUniversalAuthClientSecretWithResponse performs a POST /api/v1/auth/universal-auth/identities/{identityId}/client-secrets (the `CreateUniversalAuthClientSecret` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create Universal Auth Client Secret for machine identity.
+func (c *ClientWithResponses) CreateUniversalAuthClientSecretWithResponse(ctx context.Context, identityId string, body CreateUniversalAuthClientSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUniversalAuthClientSecretResponse, error) {
+	rsp, err := c.CreateUniversalAuthClientSecret(ctx, identityId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUniversalAuthClientSecretResponse(rsp)
+}
+
+// LoginWithUniversalAuthWithBodyWithResponse performs a POST /api/v1/auth/universal-auth/login (the `LoginWithUniversalAuth` operationId) request,
+// with any type of body and a specified content type.
+//
+// Login with Universal Auth for machine identity.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) LoginWithUniversalAuthWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error) {
+	rsp, err := c.LoginWithUniversalAuthWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLoginWithUniversalAuthResponse(rsp)
+}
+
+// LoginWithUniversalAuthWithResponse performs a POST /api/v1/auth/universal-auth/login (the `LoginWithUniversalAuth` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Login with Universal Auth for machine identity.
+func (c *ClientWithResponses) LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error) {
+	rsp, err := c.LoginWithUniversalAuth(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLoginWithUniversalAuthResponse(rsp)
+}
+
+// CreateMachineIdentityWithBodyWithResponse performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create machine identity.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateMachineIdentityWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMachineIdentityResponse, error) {
+	rsp, err := c.CreateMachineIdentityWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateMachineIdentityResponse(rsp)
+}
+
+// CreateMachineIdentityWithResponse performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create machine identity.
+func (c *ClientWithResponses) CreateMachineIdentityWithResponse(ctx context.Context, body CreateMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMachineIdentityResponse, error) {
+	rsp, err := c.CreateMachineIdentity(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateMachineIdentityResponse(rsp)
+}
+
+// InviteUsersToOrganizationWithBodyWithResponse performs a POST /api/v1/invite-org/signup (the `InviteUsersToOrganization` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) InviteUsersToOrganizationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InviteUsersToOrganizationResponse, error) {
+	rsp, err := c.InviteUsersToOrganizationWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseInviteUsersToOrganizationResponse(rsp)
+}
+
+// InviteUsersToOrganizationWithResponse performs a POST /api/v1/invite-org/signup (the `InviteUsersToOrganization` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) InviteUsersToOrganizationWithResponse(ctx context.Context, body InviteUsersToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*InviteUsersToOrganizationResponse, error) {
+	rsp, err := c.InviteUsersToOrganization(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseInviteUsersToOrganizationResponse(rsp)
+}
+
+// VerifyUserToOrganizationWithBodyWithResponse performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) VerifyUserToOrganizationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*VerifyUserToOrganizationResponse, error) {
+	rsp, err := c.VerifyUserToOrganizationWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVerifyUserToOrganizationResponse(rsp)
+}
+
+// VerifyUserToOrganizationWithResponse performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) VerifyUserToOrganizationWithResponse(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyUserToOrganizationResponse, error) {
+	rsp, err := c.VerifyUserToOrganization(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVerifyUserToOrganizationResponse(rsp)
+}
+
 // GetOrganizationPlanWithResponse performs a GET /api/v1/organizations/{organizationId}/plan (the `GetOrganizationPlan` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -4293,6 +9213,97 @@ func (c *ClientWithResponses) CreateProjectWithResponse(ctx context.Context, bod
 		return nil, err
 	}
 	return ParseCreateProjectResponse(rsp)
+}
+
+// ListProjectMachineIdentitiesWithResponse performs a GET /api/v1/projects/{projectId}/identities (the `ListProjectMachineIdentities` operationId) request.
+//
+// List identities in a project.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListProjectMachineIdentitiesWithResponse(ctx context.Context, projectId string, params *ListProjectMachineIdentitiesParams, reqEditors ...RequestEditorFn) (*ListProjectMachineIdentitiesResponse, error) {
+	rsp, err := c.ListProjectMachineIdentities(ctx, projectId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListProjectMachineIdentitiesResponse(rsp)
+}
+
+// CreateProjectMachineIdentityWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/identities (the `CreateProjectMachineIdentity` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an identity in a project.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateProjectMachineIdentityWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectMachineIdentityResponse, error) {
+	rsp, err := c.CreateProjectMachineIdentityWithBody(ctx, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectMachineIdentityResponse(rsp)
+}
+
+// CreateProjectMachineIdentityWithResponse performs a POST /api/v1/projects/{projectId}/identities (the `CreateProjectMachineIdentity` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create an identity in a project.
+func (c *ClientWithResponses) CreateProjectMachineIdentityWithResponse(ctx context.Context, projectId string, body CreateProjectMachineIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectMachineIdentityResponse, error) {
+	rsp, err := c.CreateProjectMachineIdentity(ctx, projectId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectMachineIdentityResponse(rsp)
+}
+
+// InviteProjectMembersWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request,
+// with any type of body and a specified content type.
+//
+// Invite members to project.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) InviteProjectMembersWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*InviteProjectMembersResponse, error) {
+	rsp, err := c.InviteProjectMembersWithBody(ctx, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseInviteProjectMembersResponse(rsp)
+}
+
+// InviteProjectMembersWithResponse performs a POST /api/v1/projects/{projectId}/memberships (the `InviteProjectMembers` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Invite members to project.
+func (c *ClientWithResponses) InviteProjectMembersWithResponse(ctx context.Context, projectId string, body InviteProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*InviteProjectMembersResponse, error) {
+	rsp, err := c.InviteProjectMembers(ctx, projectId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseInviteProjectMembersResponse(rsp)
+}
+
+// CreateProjectIdentityMembershipWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create project identity membership.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateProjectIdentityMembershipWithBodyWithResponse(ctx context.Context, projectId string, identityId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error) {
+	rsp, err := c.CreateProjectIdentityMembershipWithBody(ctx, projectId, identityId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectIdentityMembershipResponse(rsp)
+}
+
+// CreateProjectIdentityMembershipWithResponse performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create project identity membership.
+func (c *ClientWithResponses) CreateProjectIdentityMembershipWithResponse(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error) {
+	rsp, err := c.CreateProjectIdentityMembership(ctx, projectId, identityId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectIdentityMembershipResponse(rsp)
 }
 
 // CreateOrganizationWithBodyWithResponse performs a POST /api/v2/organizations (the `CreateOrganization` operationId) request,
@@ -4370,6 +9381,28 @@ func (c *ClientWithResponses) SelectOrganizationV3WithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseSelectOrganizationV3Response(rsp)
+}
+
+// CompleteAccountSignupV3WithBodyWithResponse performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CompleteAccountSignupV3WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteAccountSignupV3Response, error) {
+	rsp, err := c.CompleteAccountSignupV3WithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteAccountSignupV3Response(rsp)
+}
+
+// CompleteAccountSignupV3WithResponse performs a POST /api/v3/signup/complete-account (the `CompleteAccountSignupV3` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CompleteAccountSignupV3WithResponse(ctx context.Context, body CompleteAccountSignupV3JSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteAccountSignupV3Response, error) {
+	rsp, err := c.CompleteAccountSignupV3(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteAccountSignupV3Response(rsp)
 }
 
 // ParseGetServerStatusResponse parses an HTTP response from a GetServerStatusWithResponse call
@@ -4849,6 +9882,677 @@ func ParseRefreshAuthTokenResponse(rsp *http.Response) (*RefreshAuthTokenRespons
 	return response, nil
 }
 
+// ParseAttachUniversalAuthResponse parses an HTTP response from a AttachUniversalAuthWithResponse call
+func ParseAttachUniversalAuthResponse(rsp *http.Response) (*AttachUniversalAuthResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AttachUniversalAuthResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			IdentityUniversalAuth struct {
+				AccessTokenMaxTTL          *float32           `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit    *float32           `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenPeriod          *float32           `json:"accessTokenPeriod,omitempty"`
+				AccessTokenTTL             *float32           `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps      interface{}        `json:"accessTokenTrustedIps,omitempty"`
+				ClientId                   string             `json:"clientId"`
+				ClientSecretTrustedIps     interface{}        `json:"clientSecretTrustedIps,omitempty"`
+				CreatedAt                  time.Time          `json:"createdAt"`
+				Id                         openapi_types.UUID `json:"id"`
+				IdentityId                 openapi_types.UUID `json:"identityId"`
+				LockoutCounterResetSeconds *float32           `json:"lockoutCounterResetSeconds,omitempty"`
+				LockoutDurationSeconds     *float32           `json:"lockoutDurationSeconds,omitempty"`
+				LockoutEnabled             *bool              `json:"lockoutEnabled,omitempty"`
+				LockoutThreshold           *float32           `json:"lockoutThreshold,omitempty"`
+				UpdatedAt                  time.Time          `json:"updatedAt"`
+			} `json:"identityUniversalAuth"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode AttachUniversalAuth400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode AttachUniversalAuth401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode AttachUniversalAuth403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode AttachUniversalAuth404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode AttachUniversalAuth422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode AttachUniversalAuth500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateUniversalAuthClientSecretResponse parses an HTTP response from a CreateUniversalAuthClientSecretWithResponse call
+func ParseCreateUniversalAuthClientSecretResponse(rsp *http.Response) (*CreateUniversalAuthClientSecretResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateUniversalAuthClientSecretResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ClientSecret     string `json:"clientSecret"`
+			ClientSecretData struct {
+				ClientSecretNumUses      *float32           `json:"clientSecretNumUses,omitempty"`
+				ClientSecretNumUsesLimit *float32           `json:"clientSecretNumUsesLimit,omitempty"`
+				ClientSecretPrefix       string             `json:"clientSecretPrefix"`
+				ClientSecretTTL          *float32           `json:"clientSecretTTL,omitempty"`
+				CreatedAt                time.Time          `json:"createdAt"`
+				Description              string             `json:"description"`
+				Id                       string             `json:"id"`
+				IdentityUAId             openapi_types.UUID `json:"identityUAId"`
+				IsClientSecretRevoked    *bool              `json:"isClientSecretRevoked,omitempty"`
+				UpdatedAt                time.Time          `json:"updatedAt"`
+			} `json:"clientSecretData"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateUniversalAuthClientSecret400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateUniversalAuthClientSecret401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateUniversalAuthClientSecret403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateUniversalAuthClientSecret404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    interface{}                                                  `json:"message,omitempty"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateUniversalAuthClientSecret422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateUniversalAuthClientSecret500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLoginWithUniversalAuthResponse parses an HTTP response from a LoginWithUniversalAuthWithResponse call
+func ParseLoginWithUniversalAuthResponse(rsp *http.Response) (*LoginWithUniversalAuthResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LoginWithUniversalAuthResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AccessToken       string                                             `json:"accessToken"`
+			AccessTokenMaxTTL float32                                            `json:"accessTokenMaxTTL"`
+			ExpiresIn         float32                                            `json:"expiresIn"`
+			TokenType         LoginWithUniversalAuth200JSONResponseBodyTokenType `json:"tokenType"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode LoginWithUniversalAuth400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode LoginWithUniversalAuth401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode LoginWithUniversalAuth403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode LoginWithUniversalAuth404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode LoginWithUniversalAuth422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode LoginWithUniversalAuth500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateMachineIdentityResponse parses an HTTP response from a CreateMachineIdentityWithResponse call
+func ParseCreateMachineIdentityResponse(rsp *http.Response) (*CreateMachineIdentityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateMachineIdentityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Identity struct {
+				AuthMethod          *string            `json:"authMethod,omitempty"`
+				AuthMethods         []string           `json:"authMethods"`
+				CreatedAt           time.Time          `json:"createdAt"`
+				HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				Metadata            []struct {
+					Id    string `json:"id"`
+					Key   string `json:"key"`
+					Value string `json:"value"`
+				} `json:"metadata"`
+				Name      string             `json:"name"`
+				OrgId     openapi_types.UUID `json:"orgId"`
+				ProjectId *string            `json:"projectId,omitempty"`
+				UpdatedAt time.Time          `json:"updatedAt"`
+			} `json:"identity"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode CreateMachineIdentity400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode CreateMachineIdentity401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode CreateMachineIdentity403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode CreateMachineIdentity404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    interface{}                                        `json:"message,omitempty"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode CreateMachineIdentity422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode CreateMachineIdentity500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseInviteUsersToOrganizationResponse parses an HTTP response from a InviteUsersToOrganizationWithResponse call
+func ParseInviteUsersToOrganizationResponse(rsp *http.Response) (*InviteUsersToOrganizationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &InviteUsersToOrganizationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CompleteInviteLinks *[]struct {
+				Email string `json:"email"`
+				Link  string `json:"link"`
+			} `json:"completeInviteLinks,omitempty"`
+			GrantFailures *struct {
+				AgentVaultAccess bool     `json:"agentVaultAccess"`
+				PamAccess        bool     `json:"pamAccess"`
+				ProjectIds       []string `json:"projectIds"`
+			} `json:"grantFailures,omitempty"`
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode InviteUsersToOrganization400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode InviteUsersToOrganization401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode InviteUsersToOrganization403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode InviteUsersToOrganization404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode InviteUsersToOrganization422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode InviteUsersToOrganization500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseVerifyUserToOrganizationResponse parses an HTTP response from a VerifyUserToOrganizationWithResponse call
+func ParseVerifyUserToOrganizationResponse(rsp *http.Response) (*VerifyUserToOrganizationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VerifyUserToOrganizationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Message string `json:"message"`
+
+			// OrganizationName Name of the organization associated with the verified invitation
+			OrganizationName string  `json:"organizationName"`
+			Token            *string `json:"token,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode VerifyUserToOrganization400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode VerifyUserToOrganization401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode VerifyUserToOrganization403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode VerifyUserToOrganization404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    interface{}                                           `json:"message,omitempty"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode VerifyUserToOrganization422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode VerifyUserToOrganization500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetOrganizationPlanResponse parses an HTTP response from a GetOrganizationPlanWithResponse call
 func ParseGetOrganizationPlanResponse(rsp *http.Response) (*GetOrganizationPlanResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -5078,6 +10782,457 @@ func ParseCreateProjectResponse(rsp *http.Response) (*CreateProjectResponse, err
 			Message    string                                     `json:"message"`
 			ReqId      string                                     `json:"reqId"`
 			StatusCode CreateProject500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListProjectMachineIdentitiesResponse parses an HTTP response from a ListProjectMachineIdentitiesWithResponse call
+func ParseListProjectMachineIdentitiesResponse(rsp *http.Response) (*ListProjectMachineIdentitiesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListProjectMachineIdentitiesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Identities []struct {
+				ActiveLockoutAuthMethods *[]string          `json:"activeLockoutAuthMethods,omitempty"`
+				AuthMethods              *[]string          `json:"authMethods,omitempty"`
+				CreatedAt                time.Time          `json:"createdAt"`
+				HasDeleteProtection      *bool              `json:"hasDeleteProtection,omitempty"`
+				Id                       openapi_types.UUID `json:"id"`
+				Metadata                 *[]struct {
+					Id    string `json:"id"`
+					Key   string `json:"key"`
+					Value string `json:"value"`
+				} `json:"metadata,omitempty"`
+				Name      string             `json:"name"`
+				OrgId     openapi_types.UUID `json:"orgId"`
+				ProjectId *string            `json:"projectId,omitempty"`
+				UpdatedAt time.Time          `json:"updatedAt"`
+			} `json:"identities"`
+			TotalCount float32 `json:"totalCount"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode ListProjectMachineIdentities400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode ListProjectMachineIdentities401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode ListProjectMachineIdentities403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode ListProjectMachineIdentities404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    interface{}                                               `json:"message,omitempty"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode ListProjectMachineIdentities422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode ListProjectMachineIdentities500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateProjectMachineIdentityResponse parses an HTTP response from a CreateProjectMachineIdentityWithResponse call
+func ParseCreateProjectMachineIdentityResponse(rsp *http.Response) (*CreateProjectMachineIdentityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateProjectMachineIdentityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Identity struct {
+				ActiveLockoutAuthMethods *[]string          `json:"activeLockoutAuthMethods,omitempty"`
+				AuthMethods              *[]string          `json:"authMethods,omitempty"`
+				CreatedAt                time.Time          `json:"createdAt"`
+				HasDeleteProtection      *bool              `json:"hasDeleteProtection,omitempty"`
+				Id                       openapi_types.UUID `json:"id"`
+				Metadata                 *[]struct {
+					Id    string `json:"id"`
+					Key   string `json:"key"`
+					Value string `json:"value"`
+				} `json:"metadata,omitempty"`
+				Name      string             `json:"name"`
+				OrgId     openapi_types.UUID `json:"orgId"`
+				ProjectId *string            `json:"projectId,omitempty"`
+				UpdatedAt time.Time          `json:"updatedAt"`
+			} `json:"identity"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectMachineIdentity400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectMachineIdentity401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectMachineIdentity403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectMachineIdentity404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    interface{}                                               `json:"message,omitempty"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectMachineIdentity422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectMachineIdentity500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseInviteProjectMembersResponse parses an HTTP response from a InviteProjectMembersWithResponse call
+func ParseInviteProjectMembersResponse(rsp *http.Response) (*InviteProjectMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &InviteProjectMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Memberships []struct {
+				CreatedAt time.Time          `json:"createdAt"`
+				Id        openapi_types.UUID `json:"id"`
+				ProjectId string             `json:"projectId"`
+				UpdatedAt time.Time          `json:"updatedAt"`
+				UserId    openapi_types.UUID `json:"userId"`
+			} `json:"memberships"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode InviteProjectMembers400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode InviteProjectMembers401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode InviteProjectMembers403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode InviteProjectMembers404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode InviteProjectMembers422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode InviteProjectMembers500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateProjectIdentityMembershipResponse parses an HTTP response from a CreateProjectIdentityMembershipWithResponse call
+func ParseCreateProjectIdentityMembershipResponse(rsp *http.Response) (*CreateProjectIdentityMembershipResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateProjectIdentityMembershipResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			IdentityMembership struct {
+				CreatedAt  time.Time          `json:"createdAt"`
+				Id         openapi_types.UUID `json:"id"`
+				IdentityId openapi_types.UUID `json:"identityId"`
+				ProjectId  string             `json:"projectId"`
+				UpdatedAt  time.Time          `json:"updatedAt"`
+			} `json:"identityMembership"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateProjectIdentityMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateProjectIdentityMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateProjectIdentityMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateProjectIdentityMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    interface{}                                                  `json:"message,omitempty"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateProjectIdentityMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode CreateProjectIdentityMembership500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -5553,6 +11708,119 @@ func ParseSelectOrganizationV3Response(rsp *http.Response) (*SelectOrganizationV
 			Message    string                                            `json:"message"`
 			ReqId      string                                            `json:"reqId"`
 			StatusCode SelectOrganizationV3500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCompleteAccountSignupV3Response parses an HTTP response from a CompleteAccountSignupV3WithResponse call
+func ParseCompleteAccountSignupV3Response(rsp *http.Response) (*CompleteAccountSignupV3Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CompleteAccountSignupV3Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Message string `json:"message"`
+			Token   string `json:"token"`
+			User    struct {
+				AuthMethods     *[]string          `json:"authMethods,omitempty"`
+				Email           *string            `json:"email,omitempty"`
+				FirstName       *string            `json:"firstName,omitempty"`
+				Id              openapi_types.UUID `json:"id"`
+				IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+				LastName        *string            `json:"lastName,omitempty"`
+				PublicKey       *string            `json:"publicKey,omitempty"`
+				Username        string             `json:"username"`
+			} `json:"user"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                          `json:"details,omitempty"`
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CompleteAccountSignupV3400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CompleteAccountSignupV3401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                          `json:"details,omitempty"`
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CompleteAccountSignupV3403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CompleteAccountSignupV3404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                               `json:"error"`
+			Message    interface{}                                          `json:"message,omitempty"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CompleteAccountSignupV3422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                               `json:"error"`
+			Message    string                                               `json:"message"`
+			ReqId      string                                               `json:"reqId"`
+			StatusCode CompleteAccountSignupV3500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
