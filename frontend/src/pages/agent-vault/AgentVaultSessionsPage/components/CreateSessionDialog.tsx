@@ -133,8 +133,8 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
         <DialogHeader>
           <DialogTitle>Create Session</DialogTitle>
           <DialogDescription>
-            An agent running with this session can reach the hosts in the access bundle it carries,
-            and nothing else.
+            An agent running with this session can only reach the hosts in the session&apos;s
+            associated access bundle.
           </DialogDescription>
         </DialogHeader>
 
