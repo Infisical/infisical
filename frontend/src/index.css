@@ -143,6 +143,7 @@
 
   /* Elevation */
   --shadow-floating: 0 8px 32px rgb(0 0 0 / 0.6);
+  --shadow-floating-light: 0 4px 12px rgb(0 0 0 / 0.08);
 
   /* Sidebar */
   --color-sidebar: #19191c;
