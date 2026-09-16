@@ -106,8 +106,8 @@ type TPkiScepServiceFactoryDep = {
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
-  pkiApplicationDAL?: Pick<TPkiApplicationDALFactory, "findById">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
 };
 
 export type TPkiScepServiceFactory = ReturnType<typeof pkiScepServiceFactory>;
@@ -153,7 +153,7 @@ export const pkiScepServiceFactory = ({
     }
 
     let resolvedScepConfigId: string | null;
-    if (applicationId && pkiApplicationProfileDAL) {
+    if (applicationId) {
       const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
@@ -225,7 +225,7 @@ export const pkiScepServiceFactory = ({
     }
 
     let resolvedScepConfigId: string | null;
-    if (applicationId && pkiApplicationProfileDAL) {
+    if (applicationId) {
       const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
@@ -1168,9 +1168,6 @@ export const pkiScepServiceFactory = ({
 
     let resolvedScepConfigId: string | null = null;
     if (applicationId) {
-      if (!pkiApplicationProfileDAL) {
-        throw new BadRequestError({ message: "Application context is not supported on this server." });
-      }
       const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
@@ -1267,7 +1264,7 @@ export const pkiScepServiceFactory = ({
 
     void scepDynamicChallengeDAL.pruneExpired(scepConfig.id);
 
-    const application = applicationId && pkiApplicationDAL ? await pkiApplicationDAL.findById(applicationId) : null;
+    const application = applicationId ? await pkiApplicationDAL.findById(applicationId) : null;
 
     return {
       challenge: challengePlaintext,
