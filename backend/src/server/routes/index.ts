@@ -1356,14 +1356,16 @@ export const registerRoutes = async (
     totpConfigDAL,
     userDAL,
     kmsService,
-    keyStore
+    keyStore,
+    userService
   });
 
   const webAuthnService = webAuthnServiceFactory({
     webAuthnCredentialDAL,
     userDAL,
     tokenService,
-    keyStore
+    keyStore,
+    userService
   });
 
   const mfaLockoutService = mfaLockoutServiceFactory({
