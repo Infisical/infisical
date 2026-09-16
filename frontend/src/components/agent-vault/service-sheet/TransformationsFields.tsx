@@ -15,7 +15,6 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
 import { AgentVaultSubstitutionSurface } from "@app/hooks/api/agentVault";
 
 import { SecretInput } from "./CredentialFields";
@@ -28,6 +27,37 @@ import {
 } from "./serviceSchema";
 
 const SURFACES = Object.values(AgentVaultSubstitutionSurface);
+
+// Mirrors the label + gap of the Field beside it so the button centers on the input itself,
+// rather than on the column that also holds the label and the error message.
+const RemoveRowButton = ({
+  ariaLabel,
+  hasLabelRow,
+  onClick
+}: {
+  ariaLabel: string;
+  hasLabelRow: boolean;
+  onClick: () => void;
+}) => (
+  <div className="flex flex-col gap-0.5">
+    {hasLabelRow && (
+      <FieldLabel className="pointer-events-none invisible text-xs select-none" aria-hidden>
+        &nbsp;
+      </FieldLabel>
+    )}
+    <div className="flex h-9 items-center">
+      <IconButton
+        aria-label={ariaLabel}
+        variant="ghost"
+        size="xs"
+        className="hover:text-danger"
+        onClick={onClick}
+      >
+        <TrashIcon className="size-4" />
+      </IconButton>
+    </div>
+  </div>
+);
 
 export const TransformationsFields = () => {
   const { control } = useFormContext<TServiceForm>();
@@ -107,18 +137,11 @@ export const TransformationsFields = () => {
                   </Field>
                 )}
               />
-              <IconButton
-                aria-label={`Remove header ${index + 1}`}
-                variant="ghost"
-                size="xs"
-                className={cn(
-                  index === 0 ? "mt-6.5" : "mt-0.5",
-                  "transition-transform hover:text-danger"
-                )}
+              <RemoveRowButton
+                ariaLabel={`Remove header ${index + 1}`}
+                hasLabelRow={index === 0}
                 onClick={() => customHeaders.remove(index)}
-              >
-                <TrashIcon className="size-4" />
-              </IconButton>
+              />
             </div>
           ))}
         </div>
@@ -212,15 +235,11 @@ export const TransformationsFields = () => {
                     </Field>
                   )}
                 />
-                <IconButton
-                  aria-label={`Remove substitution ${index + 1}`}
-                  variant="ghost"
-                  size="xs"
-                  className="mt-6.5 transition-transform hover:text-danger"
+                <RemoveRowButton
+                  ariaLabel={`Remove substitution ${index + 1}`}
+                  hasLabelRow
                   onClick={() => substitutions.remove(index)}
-                >
-                  <TrashIcon className="size-4" />
-                </IconButton>
+                />
               </div>
 
               <Controller
