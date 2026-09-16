@@ -91,16 +91,18 @@ const DOCUMENTATION_URL =
   "https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents";
 
 const CopySecretsAccessError = ({ kind }: { kind: Exclude<CopySecretsErrorKind, "unknown"> }) => (
-  <Alert variant="danger" className="h-full content-center">
-    <AlertTitle>
-      {kind === "unauthorized" ? "Organization access required" : "Access denied"}
-    </AlertTitle>
-    <AlertDescription>
-      {kind === "unauthorized"
-        ? "Your session doesn't include access to this organization. Sign in again or switch organizations."
-        : "You don't have permission to view secrets at this location."}
-    </AlertDescription>
-  </Alert>
+  <div className="flex h-full items-center">
+    <Alert variant="danger">
+      <AlertTitle>
+        {kind === "unauthorized" ? "Organization access required" : "Access denied"}
+      </AlertTitle>
+      <AlertDescription>
+        {kind === "unauthorized"
+          ? "Your session doesn't include access to this organization. Sign in again or switch organizations."
+          : "You don't have permission to view secrets at this location."}
+      </AlertDescription>
+    </Alert>
+  </div>
 );
 
 const CopySecretsSession = ({
@@ -487,23 +489,25 @@ const CopySecretsSession = ({
     sourceContent = <CopySecretsAccessError kind={sourceErrorKind} />;
   } else if (sourceErrorKind) {
     sourceContent = (
-      <Alert variant="danger" className="h-full content-center">
-        <AlertTitle>Couldn&apos;t load secrets</AlertTitle>
-        <AlertDescription>
-          Check your source location and access, then try again.
-          <Button
-            type="button"
-            size="xs"
-            variant="outline"
-            onClick={() => {
-              foldersQuery.refetch();
-              sourceQuery.refetch();
-            }}
-          >
-            Retry
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <div className="flex h-full items-center">
+        <Alert variant="danger">
+          <AlertTitle>Couldn&apos;t load secrets</AlertTitle>
+          <AlertDescription>
+            Check your source location and access, then try again.
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              onClick={() => {
+                foldersQuery.refetch();
+                sourceQuery.refetch();
+              }}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -545,23 +549,25 @@ const CopySecretsSession = ({
     destinationContent = <CopySecretsAccessError kind={destinationErrorKind} />;
   } else if (destinationErrorKind) {
     destinationContent = (
-      <Alert variant="warning" className="h-full content-center">
-        <AlertTitle>Couldn&apos;t preview destination</AlertTitle>
-        <AlertDescription>
-          Existing secrets couldn&apos;t be loaded. You can still copy here, or try again.
-          <Button
-            type="button"
-            size="xs"
-            variant="outline"
-            onClick={() => {
-              foldersQuery.refetch();
-              destinationQuery.refetch();
-            }}
-          >
-            Retry
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <div className="flex h-full items-center">
+        <Alert variant="warning">
+          <AlertTitle>Couldn&apos;t preview destination</AlertTitle>
+          <AlertDescription>
+            Existing secrets couldn&apos;t be loaded. You can still copy here, or try again.
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              onClick={() => {
+                foldersQuery.refetch();
+                destinationQuery.refetch();
+              }}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
