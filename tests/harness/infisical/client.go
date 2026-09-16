@@ -38,6 +38,28 @@ func NewClient(baseURL string, editors ...api.RequestEditorFn) (*api.ClientWithR
 	return c, nil
 }
 
+// ForwardedFor gives a caller its own rate-limit bucket.
+//
+// Only three rate limits are entitlements (read, write, secrets); auth, invite, MFA,
+// identity-creation and project-creation are hardcoded and keyed on req.realIp. A
+// suite running in parallel shares one source address and burns through
+// authRateLimit's 60 per minute in seconds.
+//
+// Absent TRUSTED_PROXY_CIDRS, fastifyIp runs in legacy mode where the first matching
+// forwarded header wins verbatim, so a per-tenant address gives each tenant its own
+// bucket and the headroom scales with parallelism instead of being a fixed ceiling.
+//
+// This is the one place the harness leans on a behaviour a reimplementation might not
+// share. If it stops being honoured the limits collapse back to per-process, which is
+// slow and flaky rather than wrong, and the fallback is raising them through the
+// super-admin API.
+func ForwardedFor(ip string) api.RequestEditorFn {
+	return func(_ context.Context, req *http.Request) error {
+		req.Header.Set("X-Forwarded-For", ip)
+		return nil
+	}
+}
+
 // BearerAuth attaches a token to every request.
 func BearerAuth(token string) api.RequestEditorFn {
 	return func(_ context.Context, req *http.Request) error {

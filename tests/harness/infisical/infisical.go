@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Infisical/infisical/tests/harness/license"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/mailpit"
 	"github.com/Infisical/infisical/tests/infra/postgres"
@@ -119,6 +120,14 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		env["NO_PROXY"] = wiremock.NoProxy(postgres.MustFrom(d).Endpoint(infra.Internal).Host,
 			redis.MustFrom(d).Endpoint(infra.Internal).Host)
 		env["NODE_EXTRA_CA_CERTS"] = wiremock.CAPath
+
+		// Point the license client at the same WireMock, which is what makes
+		// entitlements resolve per organization. Without this the instance is not
+		// Cloud, and getPlan short-circuits to one instance-wide feature set for
+		// every tenant.
+		for k, v := range license.Env(wm) {
+			env[k] = v
+		}
 	}
 
 	for k, v := range m.env {

@@ -5,11 +5,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra"
 )
 
@@ -20,17 +22,34 @@ func main() {
 	}
 
 	switch cmd {
+	case "up":
+		os.Exit(up())
 	case "status":
 		os.Exit(status())
 	case "down":
 		os.Exit(down())
 	default:
 		fmt.Fprintln(os.Stderr, strings.TrimSpace(`
+inf up       start the shared stack, so a test run adopts it instead of creating it
 inf status   list harness containers, with the checkout that created each
 inf down     stop every harness container and remove the network
 `))
 		os.Exit(2)
 	}
+}
+
+// up pre-warms the shared stack.
+//
+// Not required: a test binary creates what it needs if nothing is there. Running it
+// first means the binaries in one `go test ./...` adopt a single instance rather than
+// racing to create it, and it keeps the image build and the 540-migration boot out of
+// the first package's timing.
+func up() int {
+	if err := harness.Up(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return status()
 }
 
 func status() int {
