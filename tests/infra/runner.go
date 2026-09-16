@@ -26,6 +26,7 @@ type dockerRunner struct {
 	workspace string
 	log       Logger
 	netName   string
+	runID     string
 
 	mu   sync.Mutex
 	seen map[string]bool // names this process has already started
@@ -33,7 +34,7 @@ type dockerRunner struct {
 
 // NewRunner returns the default Docker-backed Runner.
 func NewRunner(workspace string, log Logger) Runner {
-	return &dockerRunner{workspace: workspace, log: log}
+	return &dockerRunner{workspace: workspace, log: log, runID: time.Now().UTC().Format("20060102-150405")}
 }
 
 // Network creates the shared network if it is absent, and is a no-op otherwise.
@@ -83,7 +84,11 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 		opts = append(opts, testcontainers.WithExposedPorts(ports...))
 	}
 	if spec.Ready != nil {
-		opts = append(opts, testcontainers.WithWaitStrategyAndDeadline(DefaultStartupTimeout, spec.Ready))
+		deadline := spec.StartupTimeout
+		if deadline == 0 {
+			deadline = DefaultStartupTimeout
+		}
+		opts = append(opts, testcontainers.WithWaitStrategyAndDeadline(deadline, spec.Ready))
 	}
 	if len(spec.Command) > 0 {
 		opts = append(opts, testcontainers.WithCmd(spec.Command...))
@@ -116,11 +121,17 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 	}
 	defer release()
 
+	// Attached before the container starts, so output survives a failed wait
+	// strategy tearing the container down before anyone can read it.
+	sink := newLogSink(r.runID, spec.Name)
+	opts = append(opts, testcontainers.WithLogConsumers(sink))
+
 	r.log.Infof("start  %s (%s)", spec.Name, spec.Image)
 
 	dc, err := testcontainers.Run(ctx, spec.Image, opts...)
 	if err != nil {
-		return Container{}, fmt.Errorf("infra: starting %s (%s): %w", spec.Name, spec.Image, err)
+		sink.Close()
+		return Container{}, startFailure(spec.Name, spec.Image, sink, err)
 	}
 
 	c := Container{
@@ -145,7 +156,10 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 			}
 			return Endpoint{Host: host, Port: int(mapped.Num())}
 		},
-		stop: func(ctx context.Context) error { return dc.Terminate(ctx) },
+		stop: func(ctx context.Context) error {
+			sink.Close()
+			return dc.Terminate(ctx)
+		},
 		exec: func(ctx context.Context, cmd []string) (int, string, error) {
 			code, reader, err := dc.Exec(ctx, cmd, tcexec.Multiplexed())
 			if err != nil {

@@ -157,7 +157,7 @@ func checkLifetimes(m Module, scopes map[Key]Scope, byKey map[Key]Module) error 
 		return fmt.Errorf(
 			"infra: %s is %s-scoped but depends on %s which is %s-scoped.\n"+
 				"A container reads its configuration once at start, so it cannot point at something that dies first.\n"+
-				"Either widen %s to %s, or narrow %s to %s.",
+				"Either widen %s to %s, or narrow %s to %s",
 			m.Key(), mine, dep, theirs, dep, mine, m.Key(), theirs)
 	}
 	return nil

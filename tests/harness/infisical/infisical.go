@@ -90,6 +90,10 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		"ENCRYPTION_KEY":    encryptionKey,
 		"NODE_ENV":          "production",
 		"TELEMETRY_ENABLED": "false",
+		// Serve every route and every field at /api/docs/json. The suite generates
+		// every call it makes and has no hand-written client to fall back on, so a
+		// route missing from the spec is a route no test can reach.
+		"OPENAPI_FULL_SPEC": "true",
 		"SITE_URL":          fmt.Sprintf("http://%s:%d", self, port),
 	}
 	if m.runModes != "" {
@@ -156,3 +160,33 @@ func (h *Handle) BaseURL(m infra.Mode) string { return h.Endpoint(m).URL("http")
 func (h *Handle) Logs(ctx context.Context) (string, error) { return h.c.Logs(ctx) }
 
 func From(d infra.Deps) (*Handle, bool) { return d.Get[*Handle](Key) }
+
+// Status is the part of GET /api/status the harness cares about.
+type Status struct {
+	EmailConfigured bool
+	RedisConfigured bool
+	SignupAllowed   bool
+}
+
+// Status reads GET /api/status, for instance-wide configuration no other response
+// exposes.
+func (h *Handle) Status(ctx context.Context) (Status, error) {
+	c, err := NewClient(h.BaseURL(infra.External))
+	if err != nil {
+		return Status{}, err
+	}
+	res, err := c.GetServerStatusWithResponse(ctx)
+	if err != nil {
+		return Status{}, fmt.Errorf("infisical: reading status: %w", err)
+	}
+	if res.JSON200 == nil {
+		return Status{}, apiError("status", res.StatusCode(), res.Body)
+	}
+	return Status{
+		EmailConfigured: deref(res.JSON200.EmailConfigured),
+		RedisConfigured: deref(res.JSON200.RedisConfigured),
+		SignupAllowed:   deref(res.JSON200.InviteOnlySignup),
+	}, nil
+}
+
+func deref(b *bool) bool { return b != nil && *b }

@@ -1,6 +1,9 @@
 package infra
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // File is copied into a container before it starts.
 type File struct {
@@ -24,8 +27,20 @@ type ContainerSpec struct {
 	Aliases []string
 	Files   []File
 	Labels  map[string]string
-	Ready   Ready
-	Check   func(context.Context, Container) error
+
+	// Ready is applied by the container engine while the container starts. It
+	// answers "is it up".
+	Ready Ready
+
+	// StartupTimeout overrides DefaultStartupTimeout. Only worth setting for a
+	// container expected to fail, so a test asserting that failure does not wait out
+	// the full deadline.
+	StartupTimeout time.Duration
+
+	// Check runs once the container is ready and answers "is it the thing we asked
+	// for". A wait strategy returns a bool; this is where a silently ineffective
+	// environment variable gets caught with a message that names it.
+	Check func(context.Context, Container) error
 }
 
 // Container is a started container, as seen by a module.
