@@ -550,7 +550,7 @@ export const NetworkingAuthMethodForm = ({
           )}
           <p className="text-xs text-muted">
             {gcpAuthType === "gce"
-              ? "Allowed service account emails or allowed projects is required. Zones only narrow one of those."
+              ? "Allowed service account emails or allowed projects is required."
               : "Allowed service account emails is required."}
           </p>
         </>
