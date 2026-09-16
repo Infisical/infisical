@@ -7,7 +7,8 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -98,34 +99,34 @@ const Page = () => {
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 w-full max-w-8xl">
-                {cameFromApplication && search.applicationName ? (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId,
-                      applicationName: search.applicationName
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    {search.applicationName}
-                  </Link>
-                ) : (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    Certificate Profiles
-                  </Link>
-                )}
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
                 <PageHeader
+                  backLink={
+                    cameFromApplication && search.applicationName ? (
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId,
+                          applicationName: search.applicationName
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        {search.applicationName}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        Certificate Profiles
+                      </Link>
+                    )
+                  }
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate profile"
                   title={profile.slug}

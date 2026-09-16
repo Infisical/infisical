@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
@@ -25,9 +25,8 @@ export const SettingsPage = () => {
       <Helmet>
         <title>Settings</title>
       </Helmet>
-      <div className="w-full max-w-8xl">
+      <div className="flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
-          className="mb-6"
           scope={ProjectType.CertificateManager}
           title="Settings"
           description="Configure app connections, HSM connectors, and cleanup rules."
@@ -43,19 +42,13 @@ export const SettingsPage = () => {
             })
           }
         >
-          <TabList>
-            <Tab variant="project" value="app-connections">
-              App Connections
-            </Tab>
-            <Tab variant="project" value="hsm-connectors">
-              HSM Connectors
-            </Tab>
-            <Tab variant="project" value="cleanup">
-              Cleanup
-            </Tab>
-          </TabList>
+          <TabsList variant="project" aria-label="Certificate Manager settings sections">
+            <TabsTrigger value="app-connections">App Connections</TabsTrigger>
+            <TabsTrigger value="hsm-connectors">HSM Connectors</TabsTrigger>
+            <TabsTrigger value="cleanup">Cleanup</TabsTrigger>
+          </TabsList>
 
-          <TabPanel value="app-connections">
+          <TabsContent value="app-connections">
             <ProjectPermissionCan
               renderGuardBanner
               I={ProjectPermissionAppConnectionActions.Read}
@@ -63,9 +56,9 @@ export const SettingsPage = () => {
             >
               <AppConnectionsTab />
             </ProjectPermissionCan>
-          </TabPanel>
+          </TabsContent>
 
-          <TabPanel value="hsm-connectors">
+          <TabsContent value="hsm-connectors">
             <ProjectPermissionCan
               renderGuardBanner
               I={ProjectPermissionHsmConnectorActions.Read}
@@ -73,11 +66,11 @@ export const SettingsPage = () => {
             >
               <HsmConnectorsTab />
             </ProjectPermissionCan>
-          </TabPanel>
+          </TabsContent>
 
-          <TabPanel value="cleanup">
+          <TabsContent value="cleanup">
             <CertificateCleanupTab />
-          </TabPanel>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

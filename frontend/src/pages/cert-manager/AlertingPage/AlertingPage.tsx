@@ -3,8 +3,14 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  DocumentationLinkBadge,
+  PageHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -29,7 +35,7 @@ export const AlertingPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Alerting" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title={
@@ -52,26 +58,41 @@ export const AlertingPage = () => {
               <PkiAlertsV2Page hideContainer />
             </div>
           ) : (
-            <Tabs orientation="vertical" value={selectedTab} onValueChange={setSelectedTab}>
-              <TabList>
-                <Tab variant="project" value="rule-based">
+            <Tabs
+              orientation="vertical"
+              value={selectedTab}
+              onValueChange={setSelectedTab}
+              className="max-xl:flex-col xl:gap-x-12"
+            >
+              <TabsList
+                variant="project"
+                aria-label="Alerting sections"
+                className="max-xl:gap-0 max-xl:border-b max-xl:border-border max-xl:data-[orientation=vertical]:h-11 max-xl:data-[orientation=vertical]:flex-row xl:data-[orientation=vertical]:gap-y-6 xl:data-[style=underline]:w-fit"
+              >
+                <TabsTrigger
+                  value="rule-based"
+                  className="max-xl:data-[orientation=vertical]:h-11 max-xl:data-[orientation=vertical]:w-auto max-xl:data-[orientation=vertical]:justify-center max-xl:data-[orientation=vertical]:px-3 max-xl:data-[orientation=vertical]:py-0.5 max-xl:data-[orientation=vertical]:after:inset-x-0 max-xl:data-[orientation=vertical]:after:inset-y-auto max-xl:data-[orientation=vertical]:after:bottom-0 max-xl:data-[orientation=vertical]:after:h-0.5 max-xl:data-[orientation=vertical]:after:w-auto xl:data-[orientation=vertical]:h-5 xl:data-[orientation=vertical]:py-0"
+                >
                   Certificate Alerts
-                </Tab>
-                <Tab variant="project" value="legacy">
+                </TabsTrigger>
+                <TabsTrigger
+                  value="legacy"
+                  className="max-xl:data-[orientation=vertical]:h-11 max-xl:data-[orientation=vertical]:w-auto max-xl:data-[orientation=vertical]:justify-center max-xl:data-[orientation=vertical]:px-3 max-xl:data-[orientation=vertical]:py-0.5 max-xl:data-[orientation=vertical]:after:inset-x-0 max-xl:data-[orientation=vertical]:after:inset-y-auto max-xl:data-[orientation=vertical]:after:bottom-0 max-xl:data-[orientation=vertical]:after:h-0.5 max-xl:data-[orientation=vertical]:after:w-auto xl:data-[orientation=vertical]:h-5 xl:data-[orientation=vertical]:py-0"
+                >
                   Collection Alerts (Legacy)
-                </Tab>
-              </TabList>
+                </TabsTrigger>
+              </TabsList>
 
-              <TabPanel value="rule-based">
+              <TabsContent value="rule-based" className="mt-0 py-5 xl:overflow-x-hidden xl:py-0">
                 <PkiAlertsV2Page />
-              </TabPanel>
+              </TabsContent>
 
-              <TabPanel value="legacy">
+              <TabsContent value="legacy" className="mt-0 py-5 xl:overflow-x-hidden xl:py-0">
                 <div className="space-y-6">
                   <PkiAlertsSection />
                   <PkiCollectionSection />
                 </div>
-              </TabPanel>
+              </TabsContent>
             </Tabs>
           )}
         </ProjectPermissionCan>
