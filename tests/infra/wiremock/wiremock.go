@@ -73,7 +73,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		Command: m.flags,
 		Ports:   []int{port},
 		Aliases: m.aliases,
-		Ready:   infra.HTTPReady(port, "/__admin/mappings"),
+		Ready:   infra.ForHTTP("/__admin/mappings").WithPort("8080/tcp"),
 	})
 	if err != nil {
 		return nil, err

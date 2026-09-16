@@ -47,9 +47,14 @@ type Deps struct {
 	workspace string
 	name      NameParts
 	runner    Runner
+	log       Logger
 }
 
 func (d Deps) Network() string { return d.network }
+
+// ContainerName is the name this module's container will get. A module needs it to
+// build a URL pointing at itself, which Infisical does for SITE_URL.
+func (d Deps) ContainerName() string { return ContainerName(d.name) }
 
 // Run starts this module's container. Name, alias and labels are filled in from the
 // resolved scope, so a module never computes its own identity and cannot get the
@@ -68,9 +73,14 @@ func (d Deps) Run(ctx context.Context, spec ContainerSpec) (Container, error) {
 }
 
 // NewDeps builds the Deps handed to one module's Start.
-func NewDeps(handles map[Key]Handle, network, workspace string, name NameParts, r Runner) Deps {
-	return Deps{handles: handles, network: network, workspace: workspace, name: name, runner: r}
+func NewDeps(handles map[Key]Handle, network, workspace string, name NameParts, r Runner, log Logger) Deps {
+	if log == nil {
+		log = NewLogger()
+	}
+	return Deps{handles: handles, network: network, workspace: workspace, name: name, runner: r, log: log}
 }
+
+func (d Deps) Log() Logger { return d.log }
 
 // Get returns a typed handle, or false when the module was not declared.
 //

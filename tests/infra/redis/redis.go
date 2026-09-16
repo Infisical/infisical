@@ -48,7 +48,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 	c, err := d.Run(ctx, infra.ContainerSpec{
 		Image: m.image,
 		Ports: []int{port},
-		Ready: infra.ExecReady("redis-cli", "ping"),
+		Ready: infra.ForExec([]string{"redis-cli", "ping"}),
 	})
 	if err != nil {
 		return nil, err

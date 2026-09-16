@@ -41,7 +41,7 @@ func TestRunner_AdoptOrCreate(t *testing.T) {
 		Name:  name,
 		Image: "redis:7-alpine",
 		Ports: []int{6379},
-		Ready: infra.ExecReady("redis-cli", "ping"),
+		Ready: infra.ForExec([]string{"redis-cli", "ping"}),
 	}
 
 	first, err := runner.Run(ctx, spec)
@@ -92,7 +92,7 @@ func TestRunner_NameChangeCreatesNewContainer(t *testing.T) {
 			Name:  infra.ContainerName(p),
 			Image: "redis:7-alpine",
 			Ports: []int{6379},
-			Ready: infra.ExecReady("redis-cli", "ping"),
+			Ready: infra.ForExec([]string{"redis-cli", "ping"}),
 		})
 		if err != nil {
 			t.Fatalf("run %s: %v", fingerprint, err)

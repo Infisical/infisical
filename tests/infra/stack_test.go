@@ -40,7 +40,7 @@ func startAll(t *testing.T, mods []infra.Module, scope infra.Scope) map[infra.Ke
 		name.Scope = infra.Test
 		name.ScopeID = "m1smoke"
 
-		h, err := m.Start(ctx, infra.NewDeps(handles, infra.NetworkName, infra.Workspace(), name, runner))
+		h, err := m.Start(ctx, infra.NewDeps(handles, infra.NetworkName, infra.Workspace(), name, runner, log))
 		if err != nil {
 			t.Fatalf("start %s: %v", m.Key(), err)
 		}

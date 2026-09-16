@@ -9,9 +9,6 @@ type File struct {
 	Mode int64  // 0 means 0644
 }
 
-// ReadyFunc decides when a container is usable. Implementations live in ready.go.
-type ReadyFunc func(ctx context.Context, c Container) error
-
 // ContainerSpec is what a module asks for. Everything a module needs to say about a
 // container, and nothing about how it gets created.
 type ContainerSpec struct {
@@ -27,7 +24,8 @@ type ContainerSpec struct {
 	Aliases []string
 	Files   []File
 	Labels  map[string]string
-	Ready   ReadyFunc
+	Ready   Ready
+	Check   func(context.Context, Container) error
 }
 
 // Container is a started container, as seen by a module.
@@ -39,11 +37,19 @@ type Container struct {
 	stop     func(context.Context) error
 	exec     func(context.Context, []string) (int, string, error)
 	logs     func(context.Context) (string, error)
+	running  func(context.Context) (bool, int, error)
 }
 
 func (c Container) Endpoint(m Mode, port int) Endpoint       { return c.endpoint(m, port) }
 func (c Container) Stop(ctx context.Context) error           { return c.stop(ctx) }
 func (c Container) Logs(ctx context.Context) (string, error) { return c.logs(ctx) }
+
+// Running reports whether the container is still up, and its exit code if not.
+//
+// Readiness uses it to fail the moment the application exits during boot rather than
+// waiting out the full timeout. On a 540-migration boot that is the difference
+// between a clear error and a five minute stare.
+func (c Container) Running(ctx context.Context) (bool, int, error) { return c.running(ctx) }
 
 // Exec runs a command inside the container and returns its exit code and combined
 // output. Used by readiness checks such as pg_isready.
