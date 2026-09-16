@@ -250,7 +250,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (credential.type === AgentVaultCredentialType.Bearer && credential.value === undefined) {
         throw new BadRequestError({
           message:
-            "Changing the credential type to bearer needs the token, because the stored secret belongs to the old type"
+            "Provide a new token when changing the credential type to bearer. The stored secret belongs to the previous type"
         });
       }
       return splitCredential(
@@ -715,7 +715,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       outcome = await grant();
     } catch (err) {
       if (isUniqueViolation(err)) {
-        throw new BadRequestError({ message: "That user, machine identity or group already has this access bundle" });
+        throw new BadRequestError({ message: "That user, machine identity, or group already has this access bundle" });
       }
       throw err;
     }

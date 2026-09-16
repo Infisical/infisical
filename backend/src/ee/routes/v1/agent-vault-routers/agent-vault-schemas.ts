@@ -143,11 +143,11 @@ export const AgentVaultMemberIdsSchema = z
   })
   .refine(
     (body) => body.userIds.length + body.identityIds.length + body.groupIds.length > 0,
-    "Name at least one user, machine identity or group"
+    "Name at least one user, machine identity, or group"
   )
   .refine(
     (body) => body.userIds.length + body.identityIds.length + body.groupIds.length <= AGENT_VAULT_MAX_GRANTEES,
-    `Grant an access bundle to at most ${AGENT_VAULT_MAX_GRANTEES} users, machine identities and groups at a time`
+    `Grant an access bundle to at most ${AGENT_VAULT_MAX_GRANTEES} users, machine identities, and groups at a time`
   );
 
 // A removed grant is gone, so this reports the row's own columns rather than joining the actor's name,
