@@ -10,10 +10,10 @@ import { formatOidcAudiences } from "@app/services/identity-oidc-auth/identity-o
 import { TEMPLATE_VALIDATION_MESSAGES } from "./identity-auth-template-enums";
 
 export const ldapTemplateFieldsSchema = z.object({
-  url: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.URL_REQUIRED),
-  bindDN: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_DN_REQUIRED),
+  url: z.string().trim().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.URL_REQUIRED),
+  bindDN: z.string().trim().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_DN_REQUIRED),
   bindPass: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.BIND_PASSWORD_REQUIRED),
-  searchBase: z.string().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.SEARCH_BASE_REQUIRED),
+  searchBase: z.string().trim().min(1, TEMPLATE_VALIDATION_MESSAGES.LDAP.SEARCH_BASE_REQUIRED),
   ldapCaCertificate: z.string().trim().optional()
 });
 

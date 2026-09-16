@@ -692,7 +692,8 @@ export const identityLdapAuthServiceFactory = ({
       };
     }
 
-    if (config.url && config.url !== identityLdapAuth.url && !config.bindPass) {
+    const nextUrl = config.url?.trim();
+    if (nextUrl && nextUrl !== identityLdapAuth.url.trim() && !config.bindPass) {
       throw new BadRequestError({
         message: template
           ? `LDAP auth template '${template.name}' has no bind password stored, so it cannot move this identity to a different LDAP URL. Add a bind password to the template first.`

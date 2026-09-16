@@ -72,6 +72,8 @@ import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
 import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
+const normalizeUrl = (value?: string) => value?.trim() ?? "";
+
 const buildSchema = (maxAccessTokenTTL: number, isUpdate: boolean, currentUrl?: string) =>
   z
     .object({
@@ -177,7 +179,7 @@ const buildSchema = (maxAccessTokenTTL: number, isUpdate: boolean, currentUrl?: 
             path: ["bindDN"]
           });
         }
-        if (!data.bindPass && (!isUpdate || data.url !== currentUrl)) {
+        if (!data.bindPass && (!isUpdate || normalizeUrl(data.url) !== normalizeUrl(currentUrl))) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: isUpdate
@@ -292,7 +294,10 @@ export const IdentityLdapAuthForm = ({
   const templateId = watch("templateId");
   const urlValue = watch("url");
   const hasUrlChanged = Boolean(
-    isUpdate && scope !== "template" && data?.url && urlValue !== data.url
+    isUpdate &&
+      scope !== "template" &&
+      data?.url &&
+      normalizeUrl(urlValue) !== normalizeUrl(data.url)
   );
 
   const configurationOptions = useMemo<ConfigurationOption[]>(
