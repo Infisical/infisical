@@ -32,8 +32,27 @@ type dockerRunner struct {
 	seen map[string]bool // names this process has already started
 }
 
+// disableRyuk turns off testcontainers' reaper.
+//
+// Ryuk reaps everything created in a session when that session ends, and a session is
+// one test binary. Two things break under it. Shared containers are meant to outlive
+// the run so a second `go test` adopts them; Ryuk deletes them at the first binary's
+// exit. Worse, a container carries the label of the session that CREATED it, so with
+// `go test ./...` running packages concurrently, the first binary to finish reaps
+// containers the others are still using.
+//
+// Reaping is explicit instead: every container carries an inf.scope label and
+// `inf down` removes them. The cost is that a killed run leaves containers behind,
+// which for shared ones is the intended behaviour anyway.
+func disableRyuk() {
+	if _, set := os.LookupEnv("TESTCONTAINERS_RYUK_DISABLED"); !set {
+		_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+	}
+}
+
 // NewRunner returns the default Docker-backed Runner.
 func NewRunner(workspace string, log Logger) Runner {
+	disableRyuk()
 	return &dockerRunner{workspace: workspace, log: log, runID: time.Now().UTC().Format("20060102-150405")}
 }
 
@@ -126,8 +145,7 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 	sink := newLogSink(r.runID, spec.Name)
 	opts = append(opts, testcontainers.WithLogConsumers(sink))
 
-	r.log.Infof("start  %s (%s)", spec.Name, spec.Image)
-
+	began := time.Now()
 	dc, err := testcontainers.Run(ctx, spec.Image, opts...)
 	if err != nil {
 		sink.Close()
@@ -191,6 +209,15 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 			return c, fmt.Errorf("infra: %s came up but is not usable: %w", spec.Name, err)
 		}
 	}
+
+	// adopt versus create is the most useful single line the harness prints: an
+	// unexpected create means a name is varying when it should not, and everything
+	// downstream is slower than it should be.
+	action := "create"
+	if c.Adopted {
+		action = "adopt"
+	}
+	r.log.Decision(action, spec.Name, c.Endpoint(External, firstPort(spec)), time.Since(began), "")
 	return c, nil
 }
 
@@ -246,4 +273,11 @@ func Workspace() string {
 		return "unknown"
 	}
 	return strings.TrimSuffix(wd, "/tests")
+}
+
+func firstPort(spec ContainerSpec) int {
+	if len(spec.Ports) == 0 {
+		return 0
+	}
+	return spec.Ports[0]
 }

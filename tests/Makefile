@@ -3,7 +3,7 @@
 # the toolchain's own.
 GOFMT := $(shell go env GOROOT)/bin/gofmt
 
-.PHONY: fmt lint test test-unit test-docker down status generate-client
+.PHONY: fmt lint test test-unit test-docker test-suites up down status generate-client
 
 fmt:
 	$(GOFMT) -w .
@@ -24,8 +24,15 @@ test: lint test-unit
 test-docker:
 	INFRA_DOCKER_TESTS=1 go test ./infra/... -count=1
 
+# Every suite run starts from a clean stack.
+test-suites: down up
+	go test ./suites/... -count=1
+
 down:
 	go run ./cmd/inf down
+
+up:
+	go run ./cmd/inf up
 
 status:
 	go run ./cmd/inf status

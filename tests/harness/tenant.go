@@ -1,0 +1,283 @@
+package harness
+
+import (
+	"context"
+	"crypto/rand"
+	"fmt"
+	"net/http"
+	"strings"
+	"testing"
+
+	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/harness/infisical"
+	"github.com/Infisical/infisical/tests/harness/license"
+	"github.com/Infisical/infisical/tests/infra"
+	"github.com/google/uuid"
+)
+
+// Tenant is one organization and everything under it. It is the unit of isolation:
+// every test gets its own, which is what makes t.Parallel() the default rather than
+// the exception.
+type Tenant struct {
+	OrgID   uuid.UUID
+	OrgSlug string
+
+	// Admin is a plain organization administrator, not the instance root. It carries
+	// no super-admin flag, so a test cannot reach instance-wide state through it by
+	// accident: the server answers 403.
+	Admin *Principal
+
+	// ip is this tenant's rate-limit bucket. See infisical.ForwardedFor.
+	ip string
+
+	stack *Stack
+	plan  *license.Plan
+}
+
+// Principal is anything that can authenticate: a user, a machine identity, a SCIM
+// token. The shape is the same, so a test asserting what an actor may do reads the
+// same whichever it holds.
+type Principal struct {
+	Email string
+	Token string
+	API   *api.ClientWithResponses
+}
+
+// Address returns a mailbox inside this tenant's own domain, so two parallel tests
+// inviting "alice" never collide.
+func (t *Tenant) Address(local string) string {
+	return local + "@" + t.OrgSlug + ".test"
+}
+
+// TenantOption adjusts a new tenant.
+type TenantOption func(*tenantConfig)
+
+type tenantConfig struct {
+	name string
+	plan *license.Plan
+}
+
+// WithName names the organization. Rarely needed: the slug carries a nanoid, so names
+// do not have to be unique.
+func WithName(name string) TenantOption { return func(c *tenantConfig) { c.name = name } }
+
+// WithPlan gives the tenant entitlements other than the default.
+func WithPlan(p license.Plan) TenantOption { return func(c *tenantConfig) { c.plan = &p } }
+
+// NewTenant creates an organization with its own administrator.
+//
+// The instance root has to do the creating: POST /api/v2/organizations refuses any
+// actor that is not a USER, so the bootstrap identity token cannot mint tenants and
+// the root password is the only thing that can. That password stays inside the
+// harness; what a test gets back is an ordinary org admin.
+//
+// One login, not two. Every round trip here comes out of authRateLimit's 60 per
+// minute, which is not an entitlement and cannot be raised through the plan.
+func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
+	t.Helper()
+	ctx := t.Context()
+
+	cfg := tenantConfig{name: "t-" + strings.ToLower(uuid.NewString()[:8])}
+	for _, o := range opts {
+		o(&cfg)
+	}
+
+	ip := tenantIP()
+	unscoped := s.rootToken(t, ip)
+
+	created, err := s.client(t, unscoped, ip).CreateOrganizationWithResponse(ctx,
+		api.CreateOrganizationJSONRequestBody{Name: cfg.name})
+	if err != nil {
+		t.Fatalf("harness: creating an organization: %v", err)
+	}
+	if created.JSON200 == nil {
+		t.Fatalf("harness: creating an organization returned %d: %s", created.StatusCode(), body(created.Body))
+	}
+
+	org := created.JSON200.Organization
+	tenant := &Tenant{OrgID: org.Id, OrgSlug: org.Slug, ip: ip, stack: s, plan: cfg.plan}
+	tenant.Admin = s.scopeToOrg(t, unscoped, org.Id, ip)
+
+	if cfg.plan != nil {
+		tenant.SetPlan(t, *cfg.plan)
+	}
+
+	t.Cleanup(tenant.remove)
+	return tenant
+}
+
+// SetPlan changes this tenant's entitlements, and proves the change took effect.
+//
+// A stub on its own does nothing: getPlan caches per organization in Redis for 900
+// seconds. Verify reads the plan back with refreshCache=true, which busts that cache
+// through the API and asserts the stub produced what was asked for in one call.
+func (t *Tenant) SetPlan(tt *testing.T, p license.Plan) {
+	tt.Helper()
+	if t.stack.license == nil {
+		tt.Fatalf("%s: SetPlan needs the license stub, which needs WireMock", t.stack.pkg)
+	}
+	if err := t.stack.license.SetOrgPlan(tt.Context(), t.OrgID.String(), p); err != nil {
+		tt.Fatalf("harness: %v", err)
+	}
+	t.plan = &p
+	t.Verify(tt, p)
+}
+
+// Verify reads the resolved plan back and fails if it is not what was asked for.
+//
+// The stub speaks License Server keys while the plan speaks TFeatureSet fields, and
+// feature-mapping.ts warns that a wrong key means the feature is never projected.
+// That failure is silent: it surfaces later as a 403 in a test that looks unrelated
+// to licensing. This turns it into a failure at tenant creation, naming the field.
+func (t *Tenant) Verify(tt *testing.T, want license.Plan) {
+	tt.Helper()
+
+	res, err := t.Admin.API.GetOrganizationPlanWithResponse(tt.Context(), t.OrgID.String(),
+		&api.GetOrganizationPlanParams{RefreshCache: refreshCache()})
+	if err != nil {
+		tt.Fatalf("harness: reading the plan back: %v", err)
+	}
+	if res.JSON200 == nil {
+		tt.Fatalf("harness: reading the plan back returned %d: %s", res.StatusCode(), body(res.Body))
+	}
+
+	got, ok := res.JSON200.Plan.(map[string]any)
+	if !ok {
+		tt.Fatalf("harness: plan came back as %T, not an object", res.JSON200.Plan)
+	}
+	for field, expected := range want.Expect() {
+		if !planMatches(lookup(got, field), expected) {
+			tt.Fatalf("tenant %s: asked for %s=%v, the instance resolved %v.\n"+
+				"Likely a wrong License Server feature key; see "+
+				"backend/src/services/license-client/feature-mapping.ts",
+				t.OrgSlug, field, expected, lookup(got, field))
+		}
+	}
+}
+
+// lookup resolves a TFeatureSet field, which may be nested.
+//
+// feature-mapping.ts records the target as a dotted path for nested fields, and the
+// rate limits are what use it: "rateLimits.readLimit" is an object member, not a key
+// containing a dot.
+func lookup(plan map[string]any, field string) any {
+	var current any = plan
+	for _, part := range strings.Split(field, ".") {
+		obj, ok := current.(map[string]any)
+		if !ok {
+			return nil
+		}
+		current = obj[part]
+	}
+	return current
+}
+
+// planMatches compares loosely on purpose: JSON numbers arrive as float64, so a cap
+// entitled as 1000000 comes back as 1e+06.
+func planMatches(got, want any) bool {
+	if g, ok := got.(float64); ok {
+		if w, ok := toFloat(want); ok {
+			return g == w
+		}
+	}
+	return got == want
+}
+
+func toFloat(v any) (float64, bool) {
+	switch n := v.(type) {
+	case int:
+		return float64(n), true
+	case float64:
+		return n, true
+	}
+	return 0, false
+}
+
+// rootToken logs in as the instance root and returns an unscoped token.
+//
+// Unexported: the root is shared by every tenant, so a test holding it could change a
+// password or revoke a session and break every parallel test on the instance.
+func (s *Stack) rootToken(t *testing.T, ip string) string {
+	t.Helper()
+	anon, err := infisical.NewClient(s.app.BaseURL(infra.External), infisical.ForwardedFor(ip))
+	if err != nil {
+		t.Fatalf("harness: %v", err)
+	}
+	res, err := anon.LoginV3WithResponse(t.Context(), api.LoginV3JSONRequestBody{
+		Email:    s.root.Email,
+		Password: s.root.Password,
+	})
+	if err != nil {
+		t.Fatalf("harness: logging in as the instance root: %v", err)
+	}
+	if res.JSON200 == nil {
+		t.Fatalf("harness: logging in as the instance root returned %d: %s", res.StatusCode(), body(res.Body))
+	}
+	return res.JSON200.AccessToken
+}
+
+// scopeToOrg binds an unscoped session to one organization.
+//
+// A login token carries no organization; selectOrganization is what binds it, and
+// every org-scoped route needs that binding.
+func (s *Stack) scopeToOrg(t *testing.T, unscoped string, orgID uuid.UUID, ip string) *Principal {
+	t.Helper()
+
+	res, err := s.client(t, unscoped, ip).SelectOrganizationV3WithResponse(t.Context(),
+		api.SelectOrganizationV3JSONRequestBody{OrganizationId: orgID.String()})
+	if err != nil {
+		t.Fatalf("harness: selecting the organization: %v", err)
+	}
+	if res.JSON200 == nil {
+		t.Fatalf("harness: selecting the organization returned %d: %s", res.StatusCode(), body(res.Body))
+	}
+
+	return &Principal{
+		Email: s.root.Email,
+		Token: res.JSON200.Token,
+		API:   s.client(t, res.JSON200.Token, ip),
+	}
+}
+
+// client builds an API client carrying a token and a rate-limit bucket.
+func (s *Stack) client(t *testing.T, token, ip string) *api.ClientWithResponses {
+	t.Helper()
+	c, err := infisical.NewClient(s.app.BaseURL(infra.External),
+		infisical.BearerAuth(token), infisical.ForwardedFor(ip))
+	if err != nil {
+		t.Fatalf("harness: %v", err)
+	}
+	return c
+}
+
+// tenantIP is a per-tenant source address, so one tenant's logins cannot exhaust
+// another's rate-limit budget.
+func tenantIP() string {
+	b := make([]byte, 3)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("10.%d.%d.%d", b[0], b[1], b[2])
+}
+
+// remove deletes the organization. Best effort and never fails a test: the org is
+// disposable, and a leaked one cannot affect another test because nothing outside it
+// can see it.
+func (t *Tenant) remove() {
+	ctx := context.WithoutCancel(context.Background())
+	res, err := t.Admin.API.DeleteOrganizationWithResponse(ctx, t.OrgID.String())
+	if err != nil || res.StatusCode() != http.StatusOK {
+		t.stack.log.Infof("tenant %s could not be deleted, leaving it", t.OrgSlug)
+	}
+}
+
+func refreshCache() *api.GetOrganizationPlanParamsRefreshCache {
+	v := api.GetOrganizationPlanParamsRefreshCache("true")
+	return &v
+}
+
+func body(b []byte) string {
+	const max = 400
+	if len(b) > max {
+		return string(b[:max]) + "..."
+	}
+	return string(b)
+}
