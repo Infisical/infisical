@@ -9,9 +9,12 @@ generate:
 output-options:
   # Only what the suite calls. Add an id here when a test reaches for a new endpoint.
   #
-  # The route must also be in the spec, which needs OPENAPI_FULL_SPEC on the instance
-  # being generated from: half the routes are hidden by default, and a route with no
-  # operationId gets a name derived from its path that changes when the path does.
+  # The route must also be in the spec, which needs OPENAPI_FULL_SPEC *and* a
+  # non-production NODE_ENV on the instance being generated from -- env.ts resolves
+  # isOpenApiFullSpec as `NODE_ENV !== "production" && OPENAPI_FULL_SPEC`, so the
+  # harness's own container can never serve it. Generate from the dev stack. Half the
+  # routes are hidden by default, and a route with no operationId gets a name derived
+  # from its path that changes when the path does.
   include-operation-ids:
     - adminBootstrap
     - updateAdminConfig
@@ -23,3 +26,14 @@ output-options:
     - deleteOrganization
     - createProject
     - getOrganizationPlan
+    - inviteUsersToOrganization
+    - verifyUserToOrganization
+    - completeAccountSignupV3
+    - inviteProjectMembers
+    - createMachineIdentity
+    - createProjectMachineIdentity
+    - createProjectIdentityMembership
+    - listProjectMachineIdentities
+    - attachUniversalAuth
+    - createUniversalAuthClientSecret
+    - loginWithUniversalAuth

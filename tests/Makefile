@@ -3,6 +3,11 @@
 # the toolchain's own.
 GOFMT := $(shell go env GOROOT)/bin/gofmt
 
+# Where `generate-client` reads the spec from. The instance must have
+# OPENAPI_FULL_SPEC set, which docker-compose.dev.yml does; without it half the routes
+# are missing and no test can reach them.
+INFISICAL_OPENAPI_URL ?= http://localhost:8080
+
 .PHONY: fmt lint test test-unit test-docker test-suites up down status generate-client
 
 fmt:
@@ -16,33 +21,40 @@ lint:
 
 # Unit tests only: no Docker, no containers, runs in under a second.
 test-unit:
-	go test ./infra/... ./internal/... -count=1
+	go test ./infra/... ./internal/... ./harness/... -count=1
 
 test: lint test-unit
 
-# Container tests. Needs Docker. `inf down` if a run is interrupted.
+# Container tests for the infra layer. These create their own per-test containers and
+# do not touch the shared stack.
 test-docker:
 	INFRA_DOCKER_TESTS=1 go test ./infra/... -count=1
 
-# Every suite run starts from a clean stack.
-test-suites: down up
-	go test ./suites/... -count=1
-
-down:
-	go run ./cmd/inf down
+# Bring the stack up, run the suites, and always take it down again.
+#
+# `trap ... EXIT` rather than a follow-up line, because a make recipe stops at the
+# first failing command: without it a red run would leave the stack up and the next
+# `up` would silently adopt it. The trap fires on Ctrl-C too, so an interrupted run
+# still cleans up.
+#
+# The recipe's exit status is still `go test`'s, so a failure stays a failure.
+test-suites: up
+	@trap '$(MAKE) --no-print-directory down' EXIT; go test ./suites/... -count=1
 
 up:
 	go run ./cmd/inf up
+
+down:
+	go run ./cmd/inf down
 
 status:
 	go run ./cmd/inf status
 
 # Generate the API client from a running Infisical. Bring one up first (`make up-dev`
-# from the repo root); it must have OPENAPI_FULL_SPEC set, which docker-compose.dev.yml
-# does, or half the routes are missing from the spec and no test can reach them.
-#
-# oapi-codegen reads the URL directly, so there is no spec snapshot to keep in sync.
-INFISICAL_OPENAPI_URL ?= http://localhost:8080
-
+# from the repo root). oapi-codegen reads the URL directly, so there is no spec
+# snapshot to keep in sync.
+# Must point at a NON-PRODUCTION instance: the full spec is gated on
+# `NODE_ENV != "production"`, so the harness's own container serves the partial one
+# and regenerating against it silently drops operations. The dev stack qualifies.
 generate-client:
 	go tool oapi-codegen -config clients/api/oapi-codegen.yaml $(INFISICAL_OPENAPI_URL)/api/docs/json

@@ -34,13 +34,37 @@ type Tenant struct {
 	plan  *license.Plan
 }
 
-// Principal is anything that can authenticate: a user, a machine identity, a SCIM
-// token. The shape is the same, so a test asserting what an actor may do reads the
-// same whichever it holds.
+// Kind is what sort of actor a Principal is. Authorization differs by actor type in
+// places, and granting project access takes a different route for each, so the
+// distinction has to survive into the test.
+type Kind int
+
+const (
+	User Kind = iota
+	Identity
+)
+
+func (k Kind) String() string {
+	if k == Identity {
+		return "identity"
+	}
+	return "user"
+}
+
+// Principal is anything that can authenticate: a user, a machine identity. The shape
+// is the same, so a test asserting what an actor may do reads the same whichever it
+// holds.
 type Principal struct {
-	Email string
+	Kind  Kind
+	ID    uuid.UUID
+	Name  string
+	Email string // empty for an identity
 	Token string
 	API   *api.ClientWithResponses
+
+	// ip is this principal's rate-limit bucket, kept so a later call on its behalf
+	// lands in the same one. See infisical.ForwardedFor.
+	ip string
 }
 
 // Address returns a mailbox inside this tenant's own domain, so two parallel tests
@@ -57,9 +81,9 @@ type tenantConfig struct {
 	plan *license.Plan
 }
 
-// WithName names the organization. Rarely needed: the slug carries a nanoid, so names
-// do not have to be unique.
-func WithName(name string) TenantOption { return func(c *tenantConfig) { c.name = name } }
+// WithTenantName names the organization. Rarely needed: the slug carries a nanoid,
+// so names do not have to be unique.
+func WithTenantName(name string) TenantOption { return func(c *tenantConfig) { c.name = name } }
 
 // WithPlan gives the tenant entitlements other than the default.
 func WithPlan(p license.Plan) TenantOption { return func(c *tenantConfig) { c.plan = &p } }
@@ -82,7 +106,7 @@ func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 		o(&cfg)
 	}
 
-	ip := tenantIP()
+	ip := newIP()
 	unscoped := s.rootToken(t, ip)
 
 	created, err := s.client(t, unscoped, ip).CreateOrganizationWithResponse(ctx,
@@ -96,7 +120,16 @@ func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 
 	org := created.JSON200.Organization
 	tenant := &Tenant{OrgID: org.Id, OrgSlug: org.Slug, ip: ip, stack: s, plan: cfg.plan}
-	tenant.Admin = s.scopeToOrg(t, unscoped, org.Id, ip)
+
+	scoped := s.scopeToOrg(t, unscoped, org.Id, ip)
+	tenant.Admin = &Principal{
+		Kind:  User,
+		Name:  "admin",
+		Email: s.root.Email,
+		Token: scoped,
+		API:   s.client(t, scoped, ip),
+		ip:    ip,
+	}
 
 	if cfg.plan != nil {
 		tenant.SetPlan(t, *cfg.plan)
@@ -220,7 +253,10 @@ func (s *Stack) rootToken(t *testing.T, ip string) string {
 //
 // A login token carries no organization; selectOrganization is what binds it, and
 // every org-scoped route needs that binding.
-func (s *Stack) scopeToOrg(t *testing.T, unscoped string, orgID uuid.UUID, ip string) *Principal {
+// It is also what accepts a pending invitation: selectOrganization promotes an
+// Invited membership to Accepted, so an invited user is not really a member until
+// this runs.
+func (s *Stack) scopeToOrg(t *testing.T, unscoped string, orgID uuid.UUID, ip string) string {
 	t.Helper()
 
 	res, err := s.client(t, unscoped, ip).SelectOrganizationV3WithResponse(t.Context(),
@@ -231,12 +267,7 @@ func (s *Stack) scopeToOrg(t *testing.T, unscoped string, orgID uuid.UUID, ip st
 	if res.JSON200 == nil {
 		t.Fatalf("harness: selecting the organization returned %d: %s", res.StatusCode(), body(res.Body))
 	}
-
-	return &Principal{
-		Email: s.root.Email,
-		Token: res.JSON200.Token,
-		API:   s.client(t, res.JSON200.Token, ip),
-	}
+	return res.JSON200.Token
 }
 
 // client builds an API client carrying a token and a rate-limit bucket.
@@ -250,9 +281,12 @@ func (s *Stack) client(t *testing.T, token, ip string) *api.ClientWithResponses 
 	return c
 }
 
-// tenantIP is a per-tenant source address, so one tenant's logins cannot exhaust
-// another's rate-limit budget.
-func tenantIP() string {
+// newIP is a source address for one caller, so nobody's requests can exhaust anyone
+// else's rate-limit budget. Tenants get one; so does every principal, because the
+// invite that creates a user runs into smtpRateLimit's two per forty seconds.
+//
+// RFC 1918 space, so a value can never collide with a real address.
+func newIP() string {
 	b := make([]byte, 3)
 	_, _ = rand.Read(b)
 	return fmt.Sprintf("10.%d.%d.%d", b[0], b[1], b[2])
