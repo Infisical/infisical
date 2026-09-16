@@ -369,7 +369,10 @@ export const dynamicSecretServiceFactory = ({
         throw error;
       }
     }
-    const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
+    const updatedInput = await selectedProvider.validateProviderInputs(newInput, {
+      projectId,
+      previousInputs: decryptedStoredInput
+    });
 
     const updatedFields = getUpdatedFieldPaths(
       {

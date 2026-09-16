@@ -160,6 +160,44 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
             </Field>
           )}
         />
+        <Controller
+          control={control}
+          name="inputs.caKeyAlgorithm"
+          render={({ field, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="ssh-ca-key-algorithm">CA Key Algorithm</FieldLabel>
+              <Select
+                value={field.value}
+                onValueChange={(value) => {
+                  if (!value || value === field.value) return;
+                  field.onChange(value);
+                }}
+              >
+                <SelectTrigger
+                  ref={field.ref}
+                  id="ssh-ca-key-algorithm"
+                  onBlur={field.onBlur}
+                  isError={Boolean(error)}
+                  aria-describedby="ssh-ca-key-algorithm-feedback"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sshCertKeyAlgorithms.map((algorithm) => (
+                    <SelectItem key={algorithm.value} value={algorithm.value}>
+                      {algorithm.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldFeedback
+                id="ssh-ca-key-algorithm-feedback"
+                description="Algorithm for the CA that signs lease certificates. Changing this generates a new CA, and hosts that trust the previous CA must be set up again."
+                error={error?.message}
+              />
+            </Field>
+          )}
+        />
       </DynamicSecretProviderGroup>
 
       {mode === "edit" && (
@@ -190,6 +228,11 @@ const SshFields = ({ context, mode }: TDynamicSecretProviderRendererProps) => {
   );
 };
 
+const sshTtlFields = {
+  defaultTTL: { description: "Must be 7 days or less" },
+  maxTTL: { description: "Must be 7 days or less" }
+} as const;
+
 export const sshDynamicSecretProvider = defineDynamicSecretProvider({
   provider: DynamicSecretProviders.Ssh,
   label: "SSH",
@@ -198,12 +241,14 @@ export const sshDynamicSecretProvider = defineDynamicSecretProvider({
     schema: sshCreateFormSchema,
     getDefaultValues: getSshCreateDefaultValues,
     toPayload: getSshCreatePayload,
+    commonFields: sshTtlFields,
     submitLabel: "Submit"
   },
   edit: {
     schema: sshEditFormSchema,
     getDefaultValues: getSshEditDefaultValues,
     toPayload: getSshEditPayload,
+    commonFields: sshTtlFields,
     submitLabel: "Submit",
     successMessage: "Successfully updated dynamic secret"
   }
