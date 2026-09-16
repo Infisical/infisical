@@ -481,6 +481,9 @@ const envSchema = z
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
+    LICENSE_SERVER_DEV_SCENARIO: zpStr(
+      z.enum(["cloud-trial-available", "cloud-trial-used", "cloud-managed", "self-hosted-licensed"]).optional()
+    ),
 
     // GENERIC
     STANDALONE_MODE: z
@@ -696,6 +699,14 @@ const envSchema = z
     });
 
     validateSecretScanningTimeouts(data, ctx);
+
+    if (data.LICENSE_SERVER_DEV_SCENARIO && (data.NODE_ENV !== "development" || IS_PACKAGED)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["LICENSE_SERVER_DEV_SCENARIO"],
+        message: "LICENSE_SERVER_DEV_SCENARIO is only available when NODE_ENV=development"
+      });
+    }
   })
   .transform((data) => ({
     ...data,
@@ -706,7 +717,8 @@ const envSchema = z
       ? databaseReadReplicaSchema.parse(JSON.parse(data.DB_READ_REPLICAS))
       : undefined,
     // Only cloud holds the License Server service key; self-hosted authenticates with a license key.
-    isCloud: Boolean(data.LICENSE_SERVER_V2_SERVICE_KEY),
+    isCloud:
+      Boolean(data.LICENSE_SERVER_V2_SERVICE_KEY) || Boolean(data.LICENSE_SERVER_DEV_SCENARIO?.startsWith("cloud-")),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
     isClickHouseConfigured: Boolean(data.CLICKHOUSE_URL),

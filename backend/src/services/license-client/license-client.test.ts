@@ -142,7 +142,8 @@ describe("licenseClientFactory (usage example)", () => {
       LICENSE_SERVER_V2_SERVICE_KEY: undefined,
       LICENSE_SERVER_URL: "https://license.example.com",
       LICENSE_KEY: undefined,
-      INTERNAL_REGION: undefined
+      INTERNAL_REGION: undefined,
+      isDevelopmentMode: false
     },
     keyStore: createFakeKeyStore()
   });
@@ -162,5 +163,21 @@ describe("licenseClientFactory (usage example)", () => {
     const identities = await licenseClient.getFeature(ORG_ID, IdentitiesMeter);
     // throw a LimitExceededError here in real code
     expect(await identities.canUse(1)).toBe(false); // fallback cap is 0, current is 4
+  });
+
+  test("rejects development scenarios outside development mode", () => {
+    expect(() =>
+      licenseClientFactory({
+        envConfig: {
+          LICENSE_SERVER_V2_SERVICE_KEY: undefined,
+          LICENSE_SERVER_URL: "https://license.example.com",
+          LICENSE_KEY: undefined,
+          INTERNAL_REGION: undefined,
+          LICENSE_SERVER_DEV_SCENARIO: "cloud-trial-available",
+          isDevelopmentMode: false
+        },
+        keyStore: createFakeKeyStore()
+      })
+    ).toThrow("LICENSE_SERVER_DEV_SCENARIO is only available in development mode");
   });
 });

@@ -5,6 +5,7 @@ import { logger } from "@app/lib/logger";
 import { featureReaderFactory } from "./feature-reader";
 import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
+import { licenseServerDevBackend } from "./license-client-dev-backend";
 import {
   TBuyProductPayload,
   TCancelTrialPayload,
@@ -21,7 +22,12 @@ import { createSelfHostedTokenProvider } from "./license-token-provider";
 type TLicenseClientFactoryDep = {
   envConfig: Pick<
     TEnvConfig,
-    "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_SERVER_URL" | "LICENSE_KEY" | "INTERNAL_REGION"
+    | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "LICENSE_SERVER_URL"
+    | "LICENSE_KEY"
+    | "INTERNAL_REGION"
+    | "LICENSE_SERVER_DEV_SCENARIO"
+    | "isDevelopmentMode"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   // Offline (air-gapped) licenses must never contact the license server; the SDK stays dormant for them.
@@ -40,6 +46,13 @@ const buildBackend = (
   // air-gap and leak the signed credential — keep the SDK dormant so no read can POST it to the server.
   if (isOffline) {
     return null;
+  }
+
+  if (envConfig.LICENSE_SERVER_DEV_SCENARIO) {
+    if (!envConfig.isDevelopmentMode) {
+      throw new Error("LICENSE_SERVER_DEV_SCENARIO is only available in development mode");
+    }
+    return licenseServerDevBackend(envConfig.LICENSE_SERVER_DEV_SCENARIO);
   }
 
   const licenseKey = envConfig.LICENSE_KEY;

@@ -31,7 +31,10 @@ import {
 } from "./license-types";
 
 type TLicenseServiceFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "LICENSE_SERVER_V2_SERVICE_KEY" | "isCloud">;
+  envConfig: Pick<
+    TEnvConfig,
+    "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "LICENSE_SERVER_V2_SERVICE_KEY" | "LICENSE_SERVER_DEV_SCENARIO" | "isCloud"
+  >;
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: Pick<TLicenseDALFactory, "countBillableOrgActors">;
@@ -92,9 +95,16 @@ export const licenseServiceFactory = ({
 
   const init = async () => {
     try {
-      if (envConfig.LICENSE_SERVER_V2_SERVICE_KEY) {
+      if (envConfig.isCloud) {
         instanceType = InstanceType.Cloud;
         logger.info(`Instance type: ${InstanceType.Cloud}`);
+        return;
+      }
+
+      if (envConfig.LICENSE_SERVER_DEV_SCENARIO === "self-hosted-licensed") {
+        await syncSelfHostedFeatures(true);
+        instanceType = InstanceType.EnterpriseOnPrem;
+        logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
         return;
       }
 
