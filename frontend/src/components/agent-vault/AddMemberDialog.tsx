@@ -125,7 +125,13 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
       });
 
       if (!granted.length) {
-        createNotification({ text: "This member already has this access bundle", type: "info" });
+        createNotification({
+          text:
+            selected.length === 1
+              ? `"${selected[0].label}" already has this access bundle`
+              : `All ${selected.length} selected members already have this access bundle`,
+          type: "info"
+        });
       } else {
         const grantedText =
           granted.length === 1 && selected.length === 1

@@ -143,7 +143,7 @@ export const AgentVaultSessionsPage = () => {
         scope={ProjectType.AgentVault}
         icon={IdCardIcon}
         title="Sessions"
-        description="Create time-bound sessions that let your agents call the services in an access bundle."
+        description="Create sessions that let your agents reach the services in an access bundle."
       />
 
       <Card>
