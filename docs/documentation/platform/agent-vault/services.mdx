@@ -1,0 +1,185 @@
+---
+title: "Services"
+description: "External APIs that an AI agent can securely call during a session."
+---
+
+A service represents one external API that an agent can access during a [session](/documentation/platform/agent-vault/sessions). Each service defines the external API’s host URL, its authentication method, and a real credential to attach when forwarding requests from the agent.
+
+You can configure services within an [access bundle](/documentation/platform/agent-vault/access-bundles). For example, you might create a **code-review** access bundle and add services for Slack, GitHub, and Anthropic:
+
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundle-services.png" alt="The code-review access bundle's Services table listing its GitHub, Slack, and Anthropic services with their credentials and hosts" />
+</Frame>
+
+## Add a service
+
+To add a service to an access bundle:
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
+  </Step>
+  <Step>
+    On the **Choose a template** panel, pick the template for the API you want to reach, or select **Custom** to configure the host and header yourself.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with Custom, OpenAI, Anthropic, Slack, GitHub, and Google Workspace" />
+    </Frame>
+  </Step>
+  <Step>
+    Follow the steps and paste your credentials in the **Credential** section.
+  </Step>
+  <Step>
+    Select **Add Service**. The service appears in the bundle's list.
+  </Step>
+</Steps>
+
+## Credential types
+
+When configuring a service, you have the option to set its credential type. This determines what the proxy attaches to outbound requests.
+
+<Tip>
+If you're configuring a service with a template, you can usually leave the credential type set to the default.
+</Tip>
+
+### Bearer
+
+The proxy attaches one header in the format `<header name>: <prefix> <value>`, which defaults to `Authorization: Bearer <value>`.
+
+Bearer is the right choice for most APIs. If the API expects a bare key instead of a `Bearer`-prefixed one, change the header name to `X-API-Key` and clear the prefix.
+
+### Basic
+
+The proxy attaches the header `Authorization: Basic <base64 of username:password>`. Either the username or the password can be left blank.
+
+Basic is the right choice for APIs behind HTTP basic authentication, including ones that put the entire key in the username field.
+
+### Pass-through
+
+The proxy attaches no credential. Unless the service has [transformations](#transformations), it forwards the agent's request to the API unchanged.
+
+Pass-through is the right choice when the proxy's strict [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) would otherwise block the host. It lets the request reach the API without attaching a credential.
+
+<Note>
+For **Bearer** and **Basic** services, if the agent's request already carries a header with the same name as the one the service sends, the proxy replaces it with the service's credential.
+</Note>
+
+## Host patterns
+
+When configuring a service, you have the option to set which host patterns it matches. A host pattern controls which outbound requests get the service's credential attached.
+
+<Tip>
+For security reasons, we recommend keeping host patterns as narrow as the API allows. If you're configuring a service with a template, you can usually leave the host set to the default.
+</Tip>
+
+### Multiple hosts
+
+A single pattern can cover multiple hosts by listing them, separated by commas:
+
+```text
+api.github.com, uploads.github.com
+```
+
+### Default port
+
+A host without a port specified only matches requests to the standard HTTPS port `443`:
+
+```
+api.github.com
+```
+
+This pattern matches `api.github.com:443`, but not `api.github.com:80` or `api.github.com:8080`.
+
+### Non-standard ports
+
+To match a port other than `443`, include it in the host:
+
+```text
+internal-api.example.com:8443
+```
+
+### Wildcards
+
+Wildcards match exactly one label. The pattern below matches `api.atlassian.net`, but not `a.b.atlassian.net` or `atlassian.net`.
+
+```text
+*.atlassian.net
+```
+
+### Paths/routes
+
+You can't configure a specific path/route on a host. Patterns like `api.github.com/repos` aren't supported. To restrict a service to certain routes, use [path prefixes](#methods-and-paths) instead.
+
+## Methods and paths
+
+By default, a service allows every HTTP method and every path on its hosts. When configuring a service, you have the option to narrow it to only the methods and routes your agent needs.
+
+### Methods
+
+Select the HTTP methods the service allows. A read-only service might allow only `GET` and `HEAD`, so a request that tries to write is stopped before it leaves your network.
+
+### Path prefixes
+
+List the routes the service allows. A path prefix matches whole segments, so `/repos` covers `/repos/octo/hello` but not `/repositories`. Write the path exactly as it appears in the URL.
+
+The proxy blocks a request that breaks either rule with a 403:
+
+```text
+HTTP/1.1 403 Forbidden
+
+service "github" does not allow POST: blocked by service policy
+```
+
+<Note>
+A service with path prefixes set also refuses any path that different servers would resolve differently, such as one containing `..` or an encoded slash. Ordinary paths still work, including ones carrying a space or a non-ASCII character such as `/repos/owner/repo/contents/café.md`.
+</Note>
+
+## Host conflicts
+
+Two services within an access bundle can't cover the same host with the same pattern. For example, if you have a service that defines its host as `api.github.com` and you try to create a second service with that same host, Infisical will stop you from saving the second service.
+
+However, two services can match the same host if they define the host pattern differently. When the agent makes a request to that host, the request will match the service that defines the host more explicitly. For example:
+
+- One service defines its host as `api.github.com`
+- Another service defines it as `*.github.com`
+
+In the above example, requests to `api.github.com` would get the credential from the first service.
+
+<Note>
+Different access bundles can cover the same host with different credentials, since an agent only gets the credential from the access bundle its session is scoped to.
+</Note>
+
+
+## Transformations
+
+A service can add two things to a request that the agent never holds: custom headers and placeholder substitutions. Both are optional, and both work with any credential type, including pass-through.
+
+### Custom headers
+
+Some APIs need a header alongside the credential, such as an organization ID or an API version. On the **Transformations** step, add one with a name, an optional prefix, and a value. The proxy attaches it to every request to that service.
+
+Infisical never returns a header value once it's saved, so renaming a header keeps its value and there's nothing to retype.
+
+A custom header can't reuse the credential's own header name, because the credential would win and the custom header would do nothing. Infisical rejects the save. Headers the proxy sets itself, such as `Host`, `Content-Length`, and `Connection`, are rejected for the same reason.
+
+### Substitutions
+
+When an agent already sends a fake value, a substitution swaps it for the real one on the way out. Give the placeholder your agent sends, the real value, and where in the request to look for it: the path, the query string, a header, or the body.
+
+For example, an agent configured with `__GITHUB_PAT__` as its GitHub token sends:
+
+```text
+Authorization: Bearer __GITHUB_PAT__
+```
+
+GitHub receives the real token, and the agent never holds it.
+
+The swap is a plain find-and-replace, so pick a placeholder distinctive enough that it can't appear anywhere else in the request.
+
+A value containing a `/` stays inside one path segment rather than adding another, so a GitLab project reaches the API as `group%2Fproject` and a path prefix still accepts it.
+
+The proxy doesn't rewrite a body over 10 MB, or one sent compressed with `Content-Encoding`. The placeholder goes out unchanged, and the proxy logs a warning naming the service.
+
+<Warning>
+Method rules, path prefixes, custom headers, and substitutions all need a recent [proxy](/documentation/platform/agent-vault/proxies). An older proxy forwards the request without them: the credential still goes out, the restrictions aren't enforced, and the upstream rejects a request that needed a custom header. Upgrade your proxies before you rely on any of these.
+</Warning>

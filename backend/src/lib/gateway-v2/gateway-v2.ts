@@ -152,7 +152,8 @@ export const createGatewayConnection = async (
     [GatewayProxyProtocol.Adcs]: ["infisical-adcs"],
     [GatewayProxyProtocol.Discovery]: ["infisical-discovery"],
     [GatewayProxyProtocol.ConnectionTest]: ["infisical-connection-test"],
-    [GatewayProxyProtocol.WinRm]: ["infisical-winrm"]
+    [GatewayProxyProtocol.WinRm]: ["infisical-winrm"],
+    [GatewayProxyProtocol.Sql]: ["infisical-sql"]
   };
 
   // SNI cannot carry an IP literal (RFC 6066), so an address goes in host and a name in servername.

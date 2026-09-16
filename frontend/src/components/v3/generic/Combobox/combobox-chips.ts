@@ -18,7 +18,7 @@ export const comboboxChipsViewportClass = (singleLine?: boolean) =>
   ].join(" ");
 
 export const COMBOBOX_CHIP_CLASS =
-  "flex h-6 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring";
+  "flex h-6.5 max-w-full items-center gap-1 rounded-sm bg-foreground/10 px-1.5 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring";
 
 export const COMBOBOX_CHIP_LABEL_CLASS = "max-w-48 truncate";
 

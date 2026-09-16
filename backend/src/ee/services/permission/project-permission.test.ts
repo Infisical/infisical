@@ -1,3 +1,4 @@
+import { projectAdminPermissions, projectMemberPermissions, projectViewerPermission } from "./default-roles";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretFolderActions,
@@ -22,5 +23,18 @@ describe("ProjectPermissionV2Schema secret-folders actions", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe("ProjectPermissionV2Schema certificate-application actions", () => {
+  test("accepts every action the built-in roles grant, so duplicating them round-trips", () => {
+    const granted = [...projectAdminPermissions, ...projectMemberPermissions, ...projectViewerPermission].filter(
+      (rule) => rule.subject === ProjectPermissionSub.Application
+    );
+
+    expect(granted).not.toHaveLength(0);
+    granted.forEach((rule) => {
+      expect(ProjectPermissionV2Schema.safeParse(rule).success).toBe(true);
+    });
   });
 });
