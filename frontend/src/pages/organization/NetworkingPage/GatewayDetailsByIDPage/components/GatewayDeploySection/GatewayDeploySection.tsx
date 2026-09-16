@@ -38,8 +38,8 @@ import { useMintGatewayToken } from "@app/hooks/api/gateways-v2";
 import { GatewayAuthMethodView, TGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2/types";
 
 import { AwsStartCommandContent } from "../GatewayAuthMethod/AwsStartCommandDialog";
-import { GcpStartCommandContent } from "../GatewayAuthMethod/GcpStartCommandDialog";
 import { EnrollmentTokenContent } from "../GatewayAuthMethod/EnrollmentTokenDialog";
+import { GcpStartCommandContent } from "../GatewayAuthMethod/GcpStartCommandDialog";
 import { KubernetesStartCommandContent } from "../GatewayAuthMethod/KubernetesStartCommandDialog";
 
 // Mirrors the backend's parseDirectAddress so the form rejects exactly what the API would.
