@@ -2215,7 +2215,7 @@ export const certificateV3ServiceFactory = ({
       metadata: updatedMetadata,
       projectId: certificate.projectId,
       commonName: certificate.commonName,
-      applicationId: certificate.applicationId,
+      applicationId: certificate.applicationId ?? null,
       applicationName: certificate.applicationId
         ? ((await pkiApplicationDAL.findById(certificate.applicationId))?.name ?? null)
         : null

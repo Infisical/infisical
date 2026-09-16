@@ -458,7 +458,7 @@ export const certificateRequestServiceFactory = ({
         updatedAt: certificateRequest.updatedAt
       },
       projectId: certificateRequest.projectId,
-      applicationId: certificateRequest.applicationId,
+      applicationId: certificateRequest.applicationId ?? null,
       applicationName: await $resolveApplicationName(certificateRequest.applicationId)
     };
   };
@@ -654,7 +654,7 @@ export const certificateRequestServiceFactory = ({
         cancelled: false,
         previousStatus,
         previousPendingMessage,
-        applicationId: certificateRequest.applicationId,
+        applicationId: certificateRequest.applicationId ?? null,
         applicationName: await $resolveApplicationName(certificateRequest.applicationId)
       };
     }
@@ -685,7 +685,7 @@ export const certificateRequestServiceFactory = ({
         cancelled: false,
         previousStatus,
         previousPendingMessage,
-        applicationId: certificateRequest.applicationId,
+        applicationId: certificateRequest.applicationId ?? null,
         applicationName: await $resolveApplicationName(certificateRequest.applicationId)
       };
     }
@@ -723,7 +723,7 @@ export const certificateRequestServiceFactory = ({
       cancelled: true,
       previousStatus,
       previousPendingMessage,
-      applicationId: certificateRequest.applicationId,
+      applicationId: certificateRequest.applicationId ?? null,
       applicationName: await $resolveApplicationName(certificateRequest.applicationId)
     };
   };

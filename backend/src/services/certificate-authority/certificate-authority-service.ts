@@ -1489,7 +1489,7 @@ export const certificateAuthorityServiceFactory = ({
     return {
       ...result,
       projectId: certificateRequest.projectId,
-      applicationId: certificateRequest.applicationId,
+      applicationId: certificateRequest.applicationId ?? null,
       applicationName: certificateRequest.applicationId
         ? ((await pkiApplicationDAL.findById(certificateRequest.applicationId))?.name ?? null)
         : null

@@ -1346,7 +1346,7 @@ export const certificateRenewalServiceFactory = ({
       return {
         ...response,
         changedAttributes,
-        applicationId: renewalResult.originalCert.applicationId,
+        applicationId: renewalResult.originalCert.applicationId ?? null,
         applicationName: await $resolveApplicationName(renewalResult.originalCert.applicationId)
       };
     }
@@ -1356,7 +1356,7 @@ export const certificateRenewalServiceFactory = ({
       return {
         ...response,
         changedAttributes,
-        applicationId: renewalResult.originalCert.applicationId,
+        applicationId: renewalResult.originalCert.applicationId ?? null,
         applicationName: await $resolveApplicationName(renewalResult.originalCert.applicationId)
       };
     }
@@ -1453,7 +1453,7 @@ export const certificateRenewalServiceFactory = ({
         profileName: profile?.slug || "External CA Profile",
         commonName: renewalRequest.commonName || "",
         changedAttributes,
-        applicationId: originalCert.applicationId,
+        applicationId: originalCert.applicationId ?? null,
         applicationName: await $resolveApplicationName(originalCert.applicationId)
       };
     }
@@ -1592,7 +1592,7 @@ export const certificateRenewalServiceFactory = ({
       projectId: certificate.projectId,
       renewBeforeDays,
       commonName: certificate.commonName || "",
-      applicationId: certificate.applicationId,
+      applicationId: certificate.applicationId ?? null,
       applicationName: await $resolveApplicationName(certificate.applicationId)
     };
   };
@@ -1617,7 +1617,7 @@ export const certificateRenewalServiceFactory = ({
     return {
       projectId: certificate.projectId,
       commonName: certificate.commonName || "",
-      applicationId: certificate.applicationId,
+      applicationId: certificate.applicationId ?? null,
       applicationName: await $resolveApplicationName(certificate.applicationId)
     };
   };

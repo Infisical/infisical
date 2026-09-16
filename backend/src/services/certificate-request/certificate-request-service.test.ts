@@ -785,7 +785,9 @@ describe("CertificateRequestService", () => {
         projectId,
         cancelled: true,
         previousStatus: CertificateRequestStatus.PENDING,
-        previousPendingMessage: "Performing DNS-01 challenge"
+        previousPendingMessage: "Performing DNS-01 challenge",
+        applicationId: null,
+        applicationName: null
       });
     });
 
@@ -820,7 +822,9 @@ describe("CertificateRequestService", () => {
         projectId,
         cancelled: false,
         previousStatus: CertificateRequestStatus.PENDING_VALIDATION,
-        previousPendingMessage: "Awaiting CA validation"
+        previousPendingMessage: "Awaiting CA validation",
+        applicationId: null,
+        applicationName: null
       });
     });
 
@@ -848,7 +852,9 @@ describe("CertificateRequestService", () => {
         projectId,
         cancelled: false,
         previousStatus: CertificateRequestStatus.ISSUED,
-        previousPendingMessage: null
+        previousPendingMessage: null,
+        applicationId: null,
+        applicationName: null
       });
     });
 
