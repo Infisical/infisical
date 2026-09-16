@@ -466,6 +466,11 @@ export const identityLdapAuthServiceFactory = ({
       let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
       if (template) {
         ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
+        if (!ldapConfig.bindDN || !ldapConfig.bindPass || !ldapConfig.searchBase || !ldapConfig.url) {
+          throw new BadRequestError({
+            message: `LDAP auth template '${template.name}' is missing a bind DN, bind password, search base, or URL. Update the template before attaching it to an identity.`
+          });
+        }
       } else {
         if (!bindDN || !bindPass || !searchBase || !url) {
           throw new BadRequestError({
@@ -714,6 +719,15 @@ export const identityLdapAuthServiceFactory = ({
         url,
         ldapCaCertificate
       };
+    }
+
+    const nextUrl = config.url?.trim();
+    if (nextUrl && nextUrl !== identityLdapAuth.url.trim() && !config.bindPass) {
+      throw new BadRequestError({
+        message: template
+          ? `LDAP auth template '${template.name}' has no bind password stored, so it cannot move this identity to a different LDAP URL. Add a bind password to the template first.`
+          : "Changing the LDAP URL requires supplying bindPass, because the stored bind password cannot be read back. Send the bind password for the new server with this change."
+      });
     }
 
     let encryptedBindPass: Buffer | undefined;
