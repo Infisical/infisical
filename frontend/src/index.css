@@ -248,8 +248,33 @@
   --radius-dialog: var(--radius-lg);
 }
 
-/* Layout tokens */
+/* Component sizing tokens
+ * Icons: xs for badges/compact buttons, sm for standard buttons, md for rows and controls,
+ * lg for prominent standalone icons, and xl for large icon controls.
+ * Heights: badge minimums are 18px; compact/default controls are 28/32/36/40px; menu
+ * rows are 28px or 36px; table headers and rows are 30px and 40px.
+ * Local composition spacing should continue to use Tailwind's standard gap/padding utilities.
+ */
 @theme {
+  --spacing-icon-xs: calc(var(--spacing) * 3);
+  --spacing-icon-sm: calc(var(--spacing) * 3.5);
+  --spacing-icon-md: calc(var(--spacing) * 4);
+  --spacing-icon-lg: calc(var(--spacing) * 5);
+  --spacing-icon-xl: calc(var(--spacing) * 7);
+  --spacing-badge: calc(var(--spacing) * 4.5);
+  --spacing-control-2xs: calc(var(--spacing) * 6);
+  --spacing-control-xs: calc(var(--spacing) * 7);
+  --spacing-control-sm: calc(var(--spacing) * 8);
+  --spacing-control-md: calc(var(--spacing) * 9);
+  --spacing-control-lg: calc(var(--spacing) * 10);
+  --spacing-button-xs: var(--spacing-control-xs);
+  --spacing-button-sm: var(--spacing-control-sm);
+  --spacing-button-md: var(--spacing-control-md);
+  --spacing-button-lg: var(--spacing-control-lg);
+  --spacing-row-sm: calc(var(--spacing) * 7);
+  --spacing-row-md: calc(var(--spacing) * 9);
+  --spacing-table-header: calc(var(--spacing) * 7.5);
+  --spacing-table-row: calc(var(--spacing) * 10);
   --breakpoint-dashboard: 1400px;
   --max-width-8xl: 88rem;
 }
