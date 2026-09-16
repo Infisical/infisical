@@ -115,7 +115,7 @@ flowchart LR
     
     Configure:
     - **Destination**: Select the App Connection and target endpoint
-    - **Certificates**: Choose which certificates to sync
+    - **Certificates**: Add filters describing the certificates this sync holds
     - **Options**: Configure sync behavior (see below)
   </Step>
   <Step title="Certificates are synced">
@@ -123,11 +123,37 @@ flowchart LR
   </Step>
 </Steps>
 
+## Certificate filters
+
+A sync holds whichever of the Application's certificates match its filters. Filters describe certificates instead of naming them, so a certificate issued into the Application later joins the sync as soon as it matches.
+
+### The filters
+
+Filters live on the **Certificates** step of the sync, under **Add Filter**:
+
+| Filter | API field | Matches |
+|--------|-----------|---------|
+| **[Certificate Orders](/documentation/platform/pki/applications/certificates#certificate-orders)** | `certificateOrderIds` | The current certificate of each selected order, so the sync follows that order through its renewals |
+| **[Certificate profile](/documentation/platform/pki/settings/profiles)** | `profileIds` | Certificates issued from any of the selected profiles |
+| **Metadata** | `metadata` | Certificates carrying every key and value pair listed |
+
+Matching is exact, and a certificate has to match every filter you set. Two filters are stricter than one, so `profile = Prod TLS Edge` together with `metadata tier = prod` holds the certificates that are both.
+
+<Warning>
+  A sync with no filters syncs nothing. A new sync stays empty until you set one.
+</Warning>
+
+### Dropping a certificate can delete it at the destination
+
+A certificate that leaves a sync is deleted from the destination when **Allow to remove certificates from destination** is enabled, whether it left because it was deleted, because it stopped being active, or because a filter changed.
+
+So a filter edit can be destructive. A load balancer serving a certificate loses it the moment that certificate stops matching. Before you save, Infisical lists the certificates the change would drop and asks you to confirm.
+
 ## Sync options
 
 | Option | Description |
 |--------|-------------|
-| **Remove on expiry** | Automatically remove expired certificates from the destination |
+| **Allow to remove certificates from destination** | Delete a certificate from the destination once it leaves this sync |
 | **Include Root CA** | Include the root CA certificate in the chain |
 | **Certificate naming** | Customize how certificates are named in the destination via the Certificate Name Schema (default: `Infisical-{{certificateId}}`) |
 

@@ -1774,6 +1774,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     approvalPolicyDAL,
     approvalRequestDAL,
+    pkiSyncDAL,
     permissionService
   });
 
@@ -3587,6 +3588,7 @@ export const registerRoutes = async (
     pkiCollectionDAL,
     pkiCollectionItemDAL,
     certificateSyncDAL,
+    auditLogService,
     pkiSyncDAL,
     pkiSyncQueue,
     certificateAuthorityService,
@@ -3673,7 +3675,8 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     resourceMetadataDAL,
     pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL
+    apiEnrollmentConfigDAL,
+    pkiSyncQueue
   });
 
   const approvalPolicyService = approvalPolicyServiceFactory({
@@ -3882,10 +3885,13 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     licenseService,
+    keyStore,
     pkiSyncQueue,
     pkiSyncHealthCheckQueue,
     auditLogService,
-    kmsService
+    kmsService,
+    pkiApplicationProfileDAL,
+    pkiApplicationDAL
   });
 
   const pkiDiscoveryQueue = pkiDiscoveryQueueFactory({

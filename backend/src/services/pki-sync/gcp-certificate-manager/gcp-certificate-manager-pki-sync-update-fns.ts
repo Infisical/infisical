@@ -41,17 +41,3 @@ export const resolveGcpCertificateManagerConfigUpdate = (
 
 export const buildGcpTooManyCertificatesMessage = (certificateMap: string, certificateCount: number) =>
   `This sync attaches its certificates to the GCP certificate map "${certificateMap}", and GCP allows at most ${GCP_MAX_CERTIFICATES_PER_MAP_ENTRY} certificates in one certificate map entry. Turn off the certificate map binding to sync ${certificateCount} certificates, or link at most ${GCP_MAX_CERTIFICATES_PER_MAP_ENTRY}.`;
-
-export const assertGcpCertificateManagerCertificateCount = (
-  destinationConfig: TGcpCertificateManagerPkiSyncConfig | undefined,
-  resultingCertificateCount: number
-) => {
-  if (resultingCertificateCount <= GCP_MAX_CERTIFICATES_PER_MAP_ENTRY) return;
-
-  const certificateMapBinding = destinationConfig?.certificateMapBinding;
-  if (!certificateMapBinding) return;
-
-  throw new BadRequestError({
-    message: buildGcpTooManyCertificatesMessage(certificateMapBinding.certificateMap, resultingCertificateCount)
-  });
-};

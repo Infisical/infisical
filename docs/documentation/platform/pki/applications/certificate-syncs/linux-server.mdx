@@ -81,7 +81,9 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
             "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "connectionId": "550e8400-e29b-41d4-a716-446655440000",
             "isAutoSyncEnabled": true,
-            "certificateIds": ["550e8400-e29b-41d4-a716-446655440000"],
+            "filters": {
+                "certificateOrderIds": ["550e8400-e29b-41d4-a716-446655440000"]
+            },
             "syncOptions": {
                 "exportFormat": "pem",
                 "includePrivateKey": true,

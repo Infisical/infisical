@@ -88,9 +88,13 @@ describe("CertificateV3Service", () => {
     | "find"
     | "getRequestEnrollmentTypeByCertId"
     | "getOriginatingRequestByCertId"
+    | "findCertificatesMatchingSyncFilters"
+    | "findActiveCertificatesByIds"
   > = {
     findOne: vi.fn(),
     findById: vi.fn(),
+    findCertificatesMatchingSyncFilters: vi.fn().mockResolvedValue([]),
+    findActiveCertificatesByIds: vi.fn().mockResolvedValue([]),
     updateById: vi.fn(),
     getRequestEnrollmentTypeByCertId: vi.fn().mockResolvedValue(null),
     getOriginatingRequestByCertId: vi.fn().mockResolvedValue({ enrollmentType: null, csr: null }),
@@ -307,13 +311,15 @@ describe("CertificateV3Service", () => {
         findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]),
         addCertificates: vi.fn().mockResolvedValue([]),
         findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(null),
-        updateSyncMetadata: vi.fn().mockResolvedValue(null)
+        updateSyncMetadata: vi.fn().mockResolvedValue(null),
+        primaryNode: vi.fn()
       },
       pkiSyncDAL: {
         find: vi.fn().mockResolvedValue([])
       },
       pkiSyncQueue: {
-        queuePkiSyncSyncCertificatesById: vi.fn().mockResolvedValue(undefined)
+        queuePkiSyncSyncCertificatesById: vi.fn().mockResolvedValue(undefined),
+        queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined)
       },
       certificateBodyDAL: {
         create: vi.fn().mockResolvedValue({ id: "body-123" })
