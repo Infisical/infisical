@@ -2,7 +2,6 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig, loadEnv, PluginOption } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
-import topLevelAwait from "vite-plugin-top-level-await";
 import wasm from "vite-plugin-wasm";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -44,7 +43,9 @@ export default defineConfig(({ mode }) => {
       // }
     },
     build: {
-      rollupOptions: {
+      target: ["es2020", "edge88", "firefox78", "chrome87", "safari14"],
+      cssTarget: ["edge88", "firefox78", "chrome87", "safari14"],
+      rolldownOptions: {
         output: {
           entryFileNames: `assets/[name]-${version}-[hash].js`,
           chunkFileNames: `assets/[name]-${version}-[hash].js`,
@@ -100,7 +101,6 @@ export default defineConfig(({ mode }) => {
         }
       }),
       wasm(),
-      topLevelAwait(),
       TanStackRouterVite({
         virtualRouteConfig: "./src/routes.ts"
       }),
