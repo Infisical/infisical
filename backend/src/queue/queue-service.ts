@@ -126,6 +126,7 @@ export enum QueueName {
   ProjectEnvHardDelete = "project-env-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
+  SecretBlindIndexMigrationDispatch = "secret-blind-index-migration-dispatch",
   UsageEvent = "usage-event",
   IntegrationDeprecationNotice = "integration-deprecation-notice"
 }
@@ -213,6 +214,7 @@ export enum QueueJobs {
   ProjectEnvHardDelete = "project-env-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
+  SecretBlindIndexMigrationDispatch = "secret-blind-index-migration-dispatch",
   UsageEvent = "usage-event-job",
   SendIntegrationDeprecationNotice = "send-integration-deprecation-notice"
 }
@@ -605,6 +607,10 @@ export type TQueueJobTypes = {
   [QueueName.SecretBlindIndexMigration]: {
     name: QueueJobs.SecretBlindIndexMigration;
     payload: { projectId: string };
+  };
+  [QueueName.SecretBlindIndexMigrationDispatch]: {
+    name: QueueJobs.SecretBlindIndexMigrationDispatch;
+    payload: { orgId: string };
   };
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;

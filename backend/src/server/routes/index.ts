@@ -3331,7 +3331,8 @@ export const registerRoutes = async (
     orgDAL,
     identityOrgMembershipDAL,
     dynamicSecretLeaseDAL,
-    insightsDAL
+    insightsDAL,
+    projectQueue: projectQueueService
   });
 
   const auditReportDAL = auditReportDALFactory(db);

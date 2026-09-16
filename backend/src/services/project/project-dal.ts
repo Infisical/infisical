@@ -1018,6 +1018,24 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  // only secret manager projects have blind index
+  const countMissingBlindIndexProjects = async (orgId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.Project)
+        .where({
+          orgId,
+          secretBlindIndexEnabled: false,
+          type: ProjectType.SecretManager,
+          version: ProjectVersion.V3
+        })
+        .whereNull("deleteAfter")
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count org projects pending secret blind index" });
+    }
+  };
+
   const countOfBillableOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
@@ -1043,6 +1061,7 @@ export const projectDALFactory = (db: TDbClient) => {
 
   return {
     ...projectOrm,
+    countMissingBlindIndexProjects,
     findById,
     findOne,
     find,
