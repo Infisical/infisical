@@ -16,16 +16,16 @@ Each **Signer** represents a single signing identity, like `mobile-app-prod`, `f
 ## What's in a signer?
 
 <CardGroup cols={2}>
-  <Card title="Certificate" icon="certificate">
+  <Card title="Certificate" icon="award">
     The X.509 code-signing certificate the Signer uses, backed by an internal or external CA.
   </Card>
   <Card title="Members" icon="users">
     Team members with Administrator, Operator, or Auditor roles on this Signer.
   </Card>
-  <Card title="Approval policy" icon="check-double">
+  <Card title="Approval policy" icon="check-check">
     Optional review workflow before signatures are produced.
   </Card>
-  <Card title="Activity" icon="clock-rotate-left">
+  <Card title="Activity" icon="history">
     Audit trail of every successful, failed, and denied signing operation.
   </Card>
 </CardGroup>
@@ -81,16 +81,16 @@ Members are assigned to Signers with one of three roles:
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Create a Signer" icon="pen-nib" href="/documentation/platform/pki/code-signing/signers#create-a-signer">
+  <Card title="Create a Signer" icon="pen-tool" href="/documentation/platform/pki/code-signing/signers#create-a-signer">
     The 4-step wizard.
   </Card>
-  <Card title="Add an approval policy" icon="check-double" href="/documentation/platform/pki/code-signing/approvals#configure-the-approval-policy">
+  <Card title="Add an approval policy" icon="check-check" href="/documentation/platform/pki/code-signing/approvals#configure-the-approval-policy">
     Require sign-off and cap per-approval limits.
   </Card>
   <Card title="Install the PKCS#11 module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module#installation">
     Hook up your signing tools.
   </Card>
-  <Card title="Sign your first JAR" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
+  <Card title="Sign your first JAR" icon="java" iconType="brands" href="/documentation/platform/pki/guides/code-signing/jarsigner">
     End-to-end walkthrough.
   </Card>
 </CardGroup>
