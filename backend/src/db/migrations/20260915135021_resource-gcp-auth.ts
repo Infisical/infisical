@@ -9,7 +9,6 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("authMethodId").notNullable().unique();
       t.foreign("authMethodId").references("id").inTable(TableName.ResourceAuthMethod).onDelete("CASCADE");
-      // "gce" verifies a metadata-server ID token, "iam" a service-account-signed JWT.
       t.string("type", 32).notNullable().defaultTo("gce");
       t.string("allowedServiceAccounts", 1024).notNullable().defaultTo("");
       t.string("allowedProjects", 1024).notNullable().defaultTo("");

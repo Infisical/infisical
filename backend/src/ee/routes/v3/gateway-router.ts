@@ -79,16 +79,11 @@ const GcpAuthMethodInputSchema = z
     allowedProjects: validateAllowedProjects.describe(GATEWAYS.AUTH_METHOD.allowedProjects),
     allowedZones: validateAllowedZones.describe(GATEWAYS.AUTH_METHOD.allowedZones)
   })
-  // Zones are deliberately not sufficient on their own: the zone namespace is global, so any GCP
-  // customer can put an instance in us-central1-a and satisfy a zone-only config. Only service
-  // accounts and projects name something inside this organization.
   .refine((data) => data.allowedServiceAccounts.trim().length > 0 || data.allowedProjects.trim().length > 0, {
     message:
       "At least one of allowedServiceAccounts or allowedProjects must be set. A zone on its own restricts nothing, because any GCP customer can create an instance in a given zone.",
     path: ["allowedServiceAccounts"]
   })
-  // An IAM-signed JWT carries no instance details, so a project or zone allowlist on it would never
-  // be checkable and every login would be refused.
   .refine((data) => data.type !== GcpAuthType.Iam || (!data.allowedProjects.trim() && !data.allowedZones.trim()), {
     message:
       "Allowed projects and zones only apply to the Compute Engine token type. Restrict an IAM service account token by service account instead.",
@@ -330,6 +325,8 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+
       if (req.body.authMethod) {
         const setInput = toSetAuthMethodArg(req.body.authMethod);
 
@@ -347,6 +344,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             metadata: {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
+              resourceName: gateway.name,
               method: result.method as "aws" | "gcp" | "kubernetes" | "token",
               methodConfigId:
                 result.method === ResourceAuthMethodType.Aws ||
@@ -398,7 +396,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           });
       }
 
-      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission

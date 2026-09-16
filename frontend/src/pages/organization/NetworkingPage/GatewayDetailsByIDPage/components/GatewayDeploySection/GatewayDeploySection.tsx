@@ -115,7 +115,6 @@ export const GatewayDeploySection = ({
   // Derived, so switching auth method can't leave a tab selected that the new method lacks.
   let deploymentTabs = ["cli", "systemd"];
   if (isKubernetes) deploymentTabs = ["helm", "cli"];
-  // A GCP gateway runs on a Compute Engine VM or in GKE, so it gets every target.
   if (isGcp) deploymentTabs = ["cli", "systemd", "helm"];
   const activeTab = deploymentTabs.includes(deploymentMethod)
     ? deploymentMethod

@@ -39,8 +39,7 @@ spec:
   {{- end }}
   {{- if or $usePVC .Values.gateway.enrollment.method }}
   strategy:
-    # A gateway is one identity: every login invalidates the previous token, so a second pod
-    # starting alongside the first knocks it offline before it is ready.
+    # One identity per gateway: a second pod logging in knocks the first offline.
     type: Recreate
   {{- end }}
   selector:

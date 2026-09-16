@@ -198,8 +198,7 @@ export const ResourceAuthMethodType = {
   Identity: "identity"
 } as const;
 
-// "gce" verifies an ID token minted by the metadata server, "iam" a JWT the service account signed
-// through iamcredentials. Mirrors the machine identity GCP auth types.
+// Mirrors the machine identity GCP auth types.
 export const GcpAuthType = {
   Gce: "gce",
   Iam: "iam"

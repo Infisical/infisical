@@ -86,8 +86,6 @@ const schema = z
     }
 
     if (data.method === "gcp") {
-      // Zones alone restrict nothing: the zone namespace is global, so any GCP customer can put an
-      // instance in one. Projects are not offered on the iam type, so the message narrows there.
       const isIam = data.gcpAuthType === "iam";
       if (!data.allowedServiceAccounts.trim() && (isIam || !data.allowedProjects.trim())) {
         ctx.addIssue({
@@ -153,8 +151,7 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
   }
 
   if (form.method === "gcp") {
-    // Projects and zones are hidden on the iam type, so a value left over from a previous gce
-    // config must be dropped rather than submitted against a field the user can no longer see.
+    // Hidden on the iam type, so a leftover gce value must not be submitted.
     const isIam = form.gcpAuthType === "iam";
     return {
       method: "gcp" as const,

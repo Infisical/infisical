@@ -39,12 +39,10 @@ gateway:
     gcp:
       # Required when method=gcp. Gateway ID from the Infisical UI.
       gatewayId: ""
-      # How the gateway proves its GCP identity: "gce" reads an identity token from the instance
-      # metadata server, which covers GKE workload identity; "iam" signs a JWT through the IAM
-      # Credentials API. Leave empty for the CLI default of "gce".
+      # "gce" reads an identity token from the metadata server (covers GKE workload identity),
+      # "iam" signs one through the IAM Credentials API. Empty means "gce".
       type: ""
-      # Only for type=iam, and only when the pod has no workload identity to sign with. Path to a
-      # service account key file, which you must mount yourself.
+      # Only for type=iam without workload identity. You must mount the key file yourself.
       serviceAccountKeyFilePath: ""
 
     # Kubernetes enrollment settings (method=kubernetes).

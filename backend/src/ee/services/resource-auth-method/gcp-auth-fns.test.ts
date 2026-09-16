@@ -86,7 +86,6 @@ describe("validateGcpAllowlists", () => {
     );
   });
 
-  // Zone names are a global namespace, so a zone-only config restricts nobody.
   test("refuses a zone-only config", () => {
     expect(reasonCodeOf(() => validate({ allowedZones: "us-central1-a" }))).toBe("no_allowlist_configured");
   });
@@ -115,8 +114,6 @@ describe("validateGcpAllowlists", () => {
     ).toBe("zone_not_allowed");
   });
 
-  // A GKE workload identity token carries no compute_engine claim. Skipping the project check
-  // there would authenticate any Google service account against a project-only allowlist.
   test("refuses a project allowlist when the token carries no Compute Engine details", () => {
     expect(
       reasonCodeOf(() =>
@@ -170,8 +167,6 @@ vi.mock("@app/lib/crypto", () => ({
 describe("verifyGcpTokenAndExtractCaller", () => {
   const errorContext = { resourceId: "gw-1", orgId: "org-1" };
   const futureExp = Math.floor(Date.now() / 1000) + 600;
-  // Header and signature are irrelevant: the mocked validators stand in for the real verification,
-  // and only the payload is decoded here for the lifetime check.
   const jwtWith = (payload: object) => `x.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.y`;
 
   beforeEach(() => {
@@ -203,8 +198,6 @@ describe("verifyGcpTokenAndExtractCaller", () => {
     });
   });
 
-  // The validators raise bare UnauthorizedErrors with no detail; those must still be wrapped so the
-  // failure carries a reason code and reaches the audit log.
   test("wraps an unauthorized error raised by the validator itself", async () => {
     vi.mocked(validateIamIdentity).mockRejectedValue(new UnauthorizedError({ message: "Invalid audience" }));
     await expect(

@@ -42,10 +42,8 @@ export const GcpStartCommandContent = ({
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
 
   const resolvedRelayName = isDirect || relay.id === "_auto" ? "" : relay.name;
-  // gce is the CLI default, so only the iam type needs the flag spelled out.
   const authTypePart = gcpAuthType === "iam" ? " --gcp-auth-type=iam" : "";
-  // Without this annotation the chart creates an unbound service account, and the pod authenticates
-  // as nothing the gateway allows. The first allowed account is the best guess available here.
+  // Without this the chart creates an unbound service account and the pod authenticates as nothing.
   const workloadIdentityAccount =
     allowedServiceAccounts.split(",")[0]?.trim() ||
     "<gsa-name>@<project-id>.iam.gserviceaccount.com";

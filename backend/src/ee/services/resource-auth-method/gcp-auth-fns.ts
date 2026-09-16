@@ -13,10 +13,7 @@ type TVerifyGcpTokenInput = {
   errorContext: Record<string, unknown>;
 };
 
-// Google caps a signJwt expiry at 12 hours ahead, but accepts a payload with no `exp` at all, and
-// jsonwebtoken only enforces an expiry that is present. Without this, anyone who briefly holds
-// signJwt on an allowed service account can mint a proof that outlives the revocation of that
-// permission.
+// signJwt accepts a payload with no `exp`, which would make the proof replayable forever.
 const MAX_IAM_TOKEN_LIFETIME_SECONDS = 12 * 60 * 60;
 
 export const assertIamTokenLifetime = (payload: { exp?: number } | null, nowSeconds: number) => {
@@ -58,8 +55,6 @@ export const verifyGcpTokenAndExtractCaller = async ({
     });
   }
 
-  // Its own reason code, so an operator can tell a token their tooling signed without a bounded
-  // expiry apart from a bad signature or a wrong audience.
   if (type === GcpAuthType.Iam) {
     const payload = crypto.jwt().decode(jwt) as { exp?: number } | null;
     const lifetimeProblem = assertIamTokenLifetime(payload, Math.floor(Date.now() / 1000));
@@ -101,9 +96,7 @@ export const validateGcpAllowlists = ({
   const projects = splitAllowlist(allowedProjects);
   const zones = splitAllowlist(allowedZones);
 
-  // A zone allowlist is not an allowlist on its own. Zone names are a global namespace, so any GCP
-  // customer can place an instance in one; only a service account or project names something inside
-  // this organization.
+  // Zone names are a global namespace, so a zone-only config restricts nobody.
   if (!serviceAccounts.length && !projects.length) {
     throw new UnauthorizedError({
       message: zones.length
@@ -126,9 +119,7 @@ export const validateGcpAllowlists = ({
 
   if (!projects.length && !zones.length) return;
 
-  // A GKE Workload Identity token carries no compute_engine claim, so there is nothing to match a
-  // project or zone against. Skipping the check there would authenticate any service account that
-  // cleared the (possibly empty) service account allowlist.
+  // A GKE workload identity token has no compute_engine claim; skipping would authenticate anything.
   const { computeEngineDetails } = identityDetails;
   if (type !== GcpAuthType.Gce || !computeEngineDetails) {
     throw new UnauthorizedError({
