@@ -305,11 +305,22 @@ export const projectServiceFactory = ({
       }
 
       if (kmsKeyId) {
+        if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
+          throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
+        }
+
         const kms = await kmsService.getKmsById(kmsKeyId, tx);
 
         if (kms.orgId !== organization.id) {
           throw new ForbiddenRequestError({
             message: "KMS does not belong in the organization"
+          });
+        }
+
+        // an internal key here belongs to another project or to the org
+        if (!kms.isExternal) {
+          throw new BadRequestError({
+            message: "Only an external KMS key can be assigned to a project"
           });
         }
       }

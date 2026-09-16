@@ -1,76 +1,81 @@
 ---
 title: "Sessions"
-description: "Create the session an agent runs with, choose how long it lives, and revoke it while the agent is running."
+description: "Time-bound grants that let AI agents access services without holding real credentials."
 ---
 
-A session is the token an agent runs with. It carries one access bundle and an expiry. On every request the proxy uses it to decide which services the agent may use right now, and applies their credentials on the way out.
+A session is a time-bound grant scoped to one [access bundle](/documentation/platform/agent-vault/access-bundles). Infisical returns a session token that identifies the session, and the agent uses that token to authenticate to the [proxy](/documentation/platform/agent-vault/proxies) on every outbound request. The proxy then attaches the real credential from the matching [service](/documentation/platform/agent-vault/services) at the network boundary.
 
-## Creating a session
+Every session is scoped to one access bundle and expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one poll interval.
+
+## Create a session
 
 Anyone granted at least one access bundle can create a session. Admins can create one with any access bundle.
 
 <Tabs>
   <Tab title="Dashboard">
-    Go to **Sessions** and select **Create Session**. Pick the access bundle the agent needs, set how long the session lives, and select **Create Session**. The token is shown once, with the command to run:
+    <Steps>
+      <Step>
+        In Agent Vault, go to **Sessions** and select **Create Session**.
+      </Step>
+      <Step>
+        Pick the **Access Bundle** the agent should use, set a duration under **Expires**, then select **Create Session**.
 
-    <Frame>
-      <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session dialog with an access bundle picked and a seven day expiry" />
-    </Frame>
+        <Frame>
+          <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session dialog with an access bundle picked and a seven day expiry" />
+        </Frame>
+      </Step>
+      <Step>
+        Copy the command shown. The session token appears once and can't be retrieved again.
 
-    ```bash
-    infisical agent-vault run --session-token <session-token> --proxy <proxy-address> -- claude
-    ```
+        <Frame>
+          <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the run command with the session token shown once" />
+        </Frame>
+      </Step>
+    </Steps>
 
-    Copy it now. The dialog can't be reopened.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the run command with the session token shown once" />
-    </Frame>
-
-    This is the way to start an agent on a machine that has no Infisical login. The token is the only thing you hand over.
+    Hand the copied command to whoever will start the agent. No Infisical login is needed on that machine.
   </Tab>
   <Tab title="CLI">
     `infisical agent-vault run` creates a session for you when you name the access bundle:
 
     ```bash
-    infisical agent-vault run --access-bundle code-review --proxy <proxy-address> -- claude
+    infisical agent-vault run --access-bundle <bundle-name> --proxy <proxy-address> -- <agent-command>
     ```
 
-    The CLI creates the session as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables), and as your login otherwise. It revokes the session when the agent exits unless you pass `--keep-session`.
+    Set the duration with [`--ttl`](/cli/commands/agent-vault#ttl), which takes a value like `30m`, `8h`, `7d`, or `never`.
 
-    For an agent that runs unattended, set the machine identity up first: create it with Universal Auth, add it under **Access Control**, and grant it the access bundle.
+    The CLI creates the session as your user by default, or as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables). It revokes the session when the agent exits unless you pass `--keep-session`.
+
+    For an agent that runs unattended, set up the [machine identity](/documentation/platform/identities/machine-identities) first: create it with Universal Auth, add it under **Access Control**, and grant it the access bundle.
   </Tab>
 </Tabs>
 
-### How long a session lives
+<Tip>
+  Picking **Never** as the duration keeps the session working until someone revokes it. Only use this for long-running agents, and revoke the session once the agent has finished.
+</Tip>
 
-Pick how long the session should last. **Never** keeps it working until someone revokes it, so revoke it once the agent that used it has finished.
+## Revoke a session
 
-On the CLI this is [`--ttl`](/cli/commands/agent-vault#ttl), which takes a duration such as `30m`, `8h` or `7d`, or `never`.
+To revoke a session before it expires, go to the **Sessions** page, open the session's menu, and select **Revoke Session**. The proxy stops applying credentials for it on its next poll.
 
-## What a running agent can reach
-
-The access bundle on a session is fixed when the session is created. Whether the agent still gets its credentials is re-checked against the current grants on every proxy poll, 60 seconds by default:
-
-- Remove someone from the access bundle, and every session they created with it gets no credentials.
-- Demote an admin to member, and their sessions over access bundles they weren't explicitly granted get no credentials.
-- Delete an access bundle, and every session that carried it gets no credentials. The session still lists the access bundle's name so you can see what it was.
-- Remove them from Agent Vault, and the proxy refuses every request on their sessions. Removal also takes away a member's access bundle grants, so adding them back leaves their sessions without credentials until you grant the access bundle again. An admin reaches every access bundle, so their sessions work as soon as they're back.
-
-In the first three cases the agent's requests still go out, and what it can reach without a credential is decided by the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). Nothing on the agent's machine needs to be restarted for any of this.
-
-## Revoking and expiry
-
-Select the session's menu on the Sessions page and choose **Revoke Session**. The proxy stops applying credentials for it on its next poll. Revoking is permanent.
-
-An expired session stops the same way. The Sessions page shows sessions as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can see what an agent could reach.
+The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions for 30 days so you can audit what an agent had access to during the session:
 
 <Frame>
   <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their access bundle and expiry" />
 </Frame>
 
-Admins can switch the list between **All Sessions** and **My Sessions**. Members see only their own.
+## Access changes
+
+The access bundle is chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials on every poll (60 seconds by default). Here are a few situations where a session's access might be revoked:
+
+- If a user, group, or machine identity is removed from an access bundle, every session that user or identity created with that bundle stops getting credentials
+- If an access bundle is deleted, every session scoped to it stops getting credentials. The session still lists the bundle's name so you can see what it was
+- If a user is removed from Agent Vault, the proxy refuses every request on their sessions
+
+<Note>
+In the first two cases, the agent's requests still go out. However, whether they reach the upstream host depends on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
+</Note>
 
 ## Audit trail
 
-Creating and revoking a session each write an audit event, as does every change to an access bundle, service, or proxy. Open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.
+When you create or revoke a session, Infisical writes an audit event. To review these events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.

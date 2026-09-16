@@ -13,7 +13,7 @@ import {
   scanGitRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig, SECRET_SCANNING_SCAN_OVERHEAD_MS } from "@app/lib/config/env";
+import { getConfig, SECRET_SCANNING_SCAN_OVERHEAD } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -72,9 +72,7 @@ const STUCK_SCAN_STATUS_MESSAGE =
 // shorter can expire mid-scan and let a second scan of the same resource start alongside the first.
 const getFullScanLockTtlMs = () => {
   const appCfg = getConfig();
-  return (
-    appCfg.SECRET_SCANNING_CLONE_TIMEOUT_MS + appCfg.SECRET_SCANNING_SCAN_TIMEOUT_MS + SECRET_SCANNING_SCAN_OVERHEAD_MS
-  );
+  return appCfg.SECRET_SCANNING_CLONE_TIMEOUT + appCfg.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
 };
 
 export const secretScanningV2QueueServiceFactory = ({
@@ -837,10 +835,10 @@ export const secretScanningV2QueueServiceFactory = ({
     pattern: "*/10 * * * *",
     runHashTtlS: 60 * 60,
     handler: async () => {
-      const { SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS } = getConfig();
+      const { SECRET_SCANNING_STUCK_SCAN_TIMEOUT } = getConfig();
 
       const stuckScans = await secretScanningV2DAL.scans.findStuck(
-        new Date(Date.now() - SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS),
+        new Date(Date.now() - SECRET_SCANNING_STUCK_SCAN_TIMEOUT),
         STUCK_SCAN_REAP_BATCH_SIZE
       );
 

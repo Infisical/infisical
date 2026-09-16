@@ -17,10 +17,13 @@ import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
 import {
   buildGatewayConnectionTest,
   CLOUD_CONNECTION_VALIDATORS,
+  exceedsOraclePasswordLimit,
+  ORACLE_MAX_PASSWORD_LENGTH,
   TestConnectionMode
 } from "../pam-account/pam-account-connection-test";
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
 import {
+  collectCredentialSecrets,
   parseInternalMetadata,
   validateConnectionDetails,
   validateCredentials
@@ -33,6 +36,8 @@ import {
   classifyCloudProbeError,
   computeNextHeartbeatAt,
   describeFailure,
+  GATEWAY_MISSING_CHECK_NOTE,
+  gatewayIsMissingCheckSupport,
   HEARTBEAT_SSH_CERT_TTL_SECONDS,
   HEARTBEAT_TIMEOUT_MS,
   isHeartbeatScheduled,
@@ -145,10 +150,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       accountType,
       await decrypt(projectId, account.encryptedCredentials)
     ) as Record<string, unknown>;
-    for (const field of ["password", "privateKey", "serviceAccountKeyJson", "clientSecret", "serviceAccountToken"]) {
-      const value = credentials[field];
-      if (typeof value === "string" && value) usedSecrets.push(value);
-    }
+    usedSecrets.push(...collectCredentialSecrets(accountType, credentials));
 
     const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
     if (validateCloud) {
@@ -215,8 +217,15 @@ export const pamAccountHeartbeatServiceFactory = ({
     const probeCredentials =
       accountType === PamAccountType.SSH ? await mintEphemeralSshCertificate(account, credentials) : credentials;
 
+    if (exceedsOraclePasswordLimit(accountType, credentials)) {
+      return {
+        status: PamHeartbeatStatus.CannotCheck,
+        message: `This account's password is longer than ${ORACLE_MAX_PASSWORD_LENGTH} characters, so this credential was not checked`
+      };
+    }
+
     const test = await buildGatewayConnectionTest(accountType, connectionDetails, probeCredentials, orgId, {
-      allowWindowsAuthSql: true
+      allowNewerGatewayTests: true
     });
     if (!test) {
       return { status: PamHeartbeatStatus.Unknown, message: "This account type cannot be checked yet" };
@@ -254,6 +263,9 @@ export const pamAccountHeartbeatServiceFactory = ({
       return { status: PamHeartbeatStatus.CannotCheck, message: "The gateway could not be reached" };
     }
     if (!result.ok) {
+      if (gatewayIsMissingCheckSupport(result.errorMessage)) {
+        return { status: PamHeartbeatStatus.CannotCheck, message: GATEWAY_MISSING_CHECK_NOTE };
+      }
       return {
         status: statusForFailureKind(result.kind),
         message: describeFailure(result.kind, result.errorMessage)

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 
+import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
@@ -485,12 +486,13 @@ export const ProjectCategoryOverview = () => {
                     <Icon className={iconClassName} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <CardDescription className="text-base font-semibold text-foreground">
+                    <CardDescription className="flex items-center gap-1.5 text-base font-semibold text-foreground">
                       <span
                         className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
                       >
                         {getProjectTitle(type)}
                       </span>
+                      <PreviewBadge type={type} />
                     </CardDescription>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
                       {getProjectDescription(type)}

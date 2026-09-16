@@ -285,6 +285,7 @@ I
 (?i)Realtime
 (?i)Secrets Management
 (?i)Certificate Management
+(?i)Key Management
 (?i)Privileged Access Management
 (?i)Honey Token
 (?i)Honey Tokens
