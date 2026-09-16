@@ -354,7 +354,7 @@ export const Navbar = () => {
   return (
     <div
       className={twMerge(
-        "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
+        "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent in-data-[theme=light]:bg-none",
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
         !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
