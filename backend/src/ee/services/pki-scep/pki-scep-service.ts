@@ -47,6 +47,7 @@ import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certi
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -105,7 +106,8 @@ type TPkiScepServiceFactoryDep = {
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
 };
 
 export type TPkiScepServiceFactory = ReturnType<typeof pkiScepServiceFactory>;
@@ -137,7 +139,8 @@ export const pkiScepServiceFactory = ({
   certificateIssuanceQueue,
   auditLogService,
   permissionService,
-  pkiApplicationProfileDAL
+  pkiApplicationProfileDAL,
+  pkiApplicationDAL
 }: TPkiScepServiceFactoryDep) => {
   const loadScepContext = async (profileId: string, applicationId?: string) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -150,7 +153,7 @@ export const pkiScepServiceFactory = ({
     }
 
     let resolvedScepConfigId: string | null;
-    if (applicationId && pkiApplicationProfileDAL) {
+    if (applicationId) {
       const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
@@ -222,7 +225,7 @@ export const pkiScepServiceFactory = ({
     }
 
     let resolvedScepConfigId: string | null;
-    if (applicationId && pkiApplicationProfileDAL) {
+    if (applicationId) {
       const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
@@ -1165,9 +1168,6 @@ export const pkiScepServiceFactory = ({
 
     let resolvedScepConfigId: string | null = null;
     if (applicationId) {
-      if (!pkiApplicationProfileDAL) {
-        throw new BadRequestError({ message: "Application context is not supported on this server." });
-      }
       const junction = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
       if (!junction) {
         throw new NotFoundError({
@@ -1264,10 +1264,13 @@ export const pkiScepServiceFactory = ({
 
     void scepDynamicChallengeDAL.pruneExpired(scepConfig.id);
 
+    const application = applicationId ? await pkiApplicationDAL.findById(applicationId) : null;
+
     return {
       challenge: challengePlaintext,
       projectId: profile.projectId,
       profileSlug: profile.slug,
+      applicationName: application?.name ?? null,
       expiresAt: expiresAt.toISOString()
     };
   };

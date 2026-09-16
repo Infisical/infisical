@@ -213,6 +213,12 @@ export const certificateServiceFactory = ({
   /**
    * Return details for certificate with serial number [serialNumber]
    */
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const getCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
     // Validation: require either id or serialNumber
     if (!id && !serialNumber) {
@@ -420,6 +426,7 @@ export const certificateServiceFactory = ({
 
     return {
       cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
       certPrivateKey
     };
   };
@@ -515,7 +522,8 @@ export const certificateServiceFactory = ({
     usageMeteringService.emitForProject(cert.projectId, WildcardCerts.key);
 
     return {
-      deletedCert
+      deletedCert,
+      applicationName: await $resolveApplicationName(deletedCert.applicationId)
     };
   };
 
@@ -749,7 +757,7 @@ export const certificateServiceFactory = ({
         }
       : expandInternalCa(ca);
 
-    return { revokedAt, cert, ca: caResult };
+    return { revokedAt, cert, applicationName: await $resolveApplicationName(cert.applicationId), ca: caResult };
   };
 
   /**
@@ -842,7 +850,8 @@ export const certificateServiceFactory = ({
       certificate: certObj.toString("pem"),
       certificateChain,
       serialNumber: certObj.serialNumber,
-      cert
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId)
     };
   };
 
@@ -1378,6 +1387,7 @@ export const certificateServiceFactory = ({
       privateKey: privateKeyPem,
       serialNumber,
       cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
       profileName: linkage?.profileName ?? null,
       caName: linkage?.caName ?? null
     };
@@ -1515,7 +1525,8 @@ export const certificateServiceFactory = ({
       certificateChain,
       privateKey,
       serialNumber: cert.serialNumber,
-      cert
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId)
     };
   };
 
@@ -1602,7 +1613,8 @@ export const certificateServiceFactory = ({
 
     return {
       pkcs12Data,
-      cert
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId)
     };
   };
 
