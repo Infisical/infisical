@@ -13,6 +13,12 @@ const SYNC_POLL_MS = 100;
 type TSecretSyncRecord = {
   id: string;
   name: string;
+  syncOptions: {
+    initialSyncBehavior: string;
+    recursive?: boolean;
+    keySchema?: string;
+    disableSecretDeletion?: boolean;
+  };
   syncStatus: string | null;
   importStatus: string | null;
   removeStatus: string | null;
@@ -125,6 +131,38 @@ export const getSecretSync = async (dto: { syncId: string; authToken: string }) 
 
   expect(res.statusCode).toBe(200);
   return res.json().secretSync as TSecretSyncRecord;
+};
+
+export const listSecretSyncs = async (dto: { projectId: string; authToken: string }) => {
+  const res = await testServer.inject({
+    method: "GET",
+    url: `/api/v1/secret-syncs/${DESTINATION}`,
+    headers: { authorization: `Bearer ${dto.authToken}` },
+    query: { projectId: dto.projectId }
+  });
+
+  expect(res.statusCode).toBe(200);
+  return res.json().secretSyncs as TSecretSyncRecord[];
+};
+
+export const updateSecretSync = async (dto: {
+  syncId: string;
+  body: Record<string, unknown>;
+  authToken: string;
+  expectStatusCode?: number;
+}) => {
+  const res = await testServer.inject({
+    method: "PATCH",
+    url: `/api/v1/secret-syncs/${DESTINATION}/${dto.syncId}`,
+    headers: { authorization: `Bearer ${dto.authToken}` },
+    body: dto.body
+  });
+
+  expect(res.statusCode).toBe(dto.expectStatusCode ?? 200);
+
+  if ((dto.expectStatusCode ?? 200) !== 200) return { error: res.json() };
+
+  return { secretSync: res.json().secretSync as TSecretSyncRecord };
 };
 
 export const deleteSecretSync = async (dto: { syncId: string; authToken: string }) => {
