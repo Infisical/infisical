@@ -4,6 +4,7 @@ import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { isInfisicalCloud } from "@app/helpers/platform";
 
 import { getPostHog, isPostHogEnabled } from "../../posthog";
+import { resolveFeatureFlagVariant } from "../resolveFeatureFlagVariant";
 import {
   resolveSignupFlowVariant,
   SIGNUP_COMPLETED_EVENT,
@@ -78,50 +79,20 @@ export const useSignupFlowVariant = (enabled = true) => {
   useEffect(() => {
     if (!enabled || variant) return undefined;
 
-    const client = getPostHog();
-    if (!client) {
-      setVariant(SignupFlowVariant.Control);
-      return undefined;
-    }
-
-    let isSettled = false;
-    let unsubscribe: (() => void) | undefined;
-    let timeout: number | undefined;
-    const settle = (nextVariant: SignupFlowVariant, shouldPersist = false) => {
-      if (isSettled) return;
-      isSettled = true;
-      window.clearTimeout(timeout);
-      unsubscribe?.();
-      if (shouldPersist) persistSignupFlowVariant(nextVariant);
-      setVariant(nextVariant);
-    };
-
-    timeout = window.setTimeout(() => settle(SignupFlowVariant.Control), FEATURE_FLAG_TIMEOUT_MS);
-    try {
-      unsubscribe = client.onFeatureFlags((_flags, _variants, context) => {
-        if (isSettled) return;
-
-        try {
-          const flagValue = context?.errorsLoading
-            ? undefined
-            : client.getFeatureFlag(SIGNUP_FLOW_FEATURE_FLAG, {
-                fresh: true
-              });
-          const resolvedVariant = resolveSignupFlowVariant(flagValue);
-          settle(resolvedVariant.variant, resolvedVariant.shouldPersist);
-        } catch {
-          settle(SignupFlowVariant.Control);
-        }
-      });
-      if (isSettled) unsubscribe();
-    } catch {
-      settle(SignupFlowVariant.Control);
-    }
-
-    return () => {
-      window.clearTimeout(timeout);
-      unsubscribe?.();
-    };
+    return resolveFeatureFlagVariant({
+      client: getPostHog(),
+      fallback: {
+        variant: SignupFlowVariant.Control,
+        shouldPersist: false
+      },
+      featureFlag: SIGNUP_FLOW_FEATURE_FLAG,
+      onResolved: (resolvedVariant) => {
+        if (resolvedVariant.shouldPersist) persistSignupFlowVariant(resolvedVariant.variant);
+        setVariant(resolvedVariant.variant);
+      },
+      resolve: resolveSignupFlowVariant,
+      timeoutMs: FEATURE_FLAG_TIMEOUT_MS
+    });
   }, [enabled, variant]);
 
   return variant;
