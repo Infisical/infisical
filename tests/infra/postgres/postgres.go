@@ -73,9 +73,9 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 			"POSTGRES_DB":       m.database,
 		},
 		Ports: []int{port},
-		// `up --wait` treats a container with no healthcheck as ready once it is
-		// running, which for Postgres is before it accepts connections.
-		Ready: infra.ExecReady("pg_isready", "-U", user, "-d", m.database),
+		// A running Postgres container is not an accepting one, which is why this is
+		// pg_isready rather than a port check.
+		Ready: infra.ForExec([]string{"pg_isready", "-U", user, "-d", m.database}),
 	})
 	if err != nil {
 		return nil, err

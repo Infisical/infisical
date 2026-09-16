@@ -1,4 +1,2 @@
 # Container logs, written unconditionally so you can tail one while a test hangs.
 .logs/
-# Materialized Docker build context for the test image.
-.build-context/

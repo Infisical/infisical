@@ -34,7 +34,7 @@ func start(t *testing.T, opts ...postgres.Option) *postgres.Handle {
 	name.ScopeID = infra.Sanitize(t.Name())
 
 	began := time.Now()
-	h, err := m.Start(ctx, infra.NewDeps(nil, infra.NetworkName, infra.Workspace(), name, runner))
+	h, err := m.Start(ctx, infra.NewDeps(nil, infra.NetworkName, infra.Workspace(), name, runner, log))
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}

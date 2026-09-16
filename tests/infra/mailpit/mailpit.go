@@ -41,7 +41,7 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 	c, err := d.Run(ctx, infra.ContainerSpec{
 		Image: m.image,
 		Ports: []int{smtpPort, apiPort},
-		Ready: infra.HTTPReady(apiPort, "/api/v1/info"),
+		Ready: infra.ForHTTP("/api/v1/info").WithPort("8025/tcp"),
 	})
 	if err != nil {
 		return nil, err

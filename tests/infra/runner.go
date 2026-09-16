@@ -82,6 +82,9 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 		}
 		opts = append(opts, testcontainers.WithExposedPorts(ports...))
 	}
+	if spec.Ready != nil {
+		opts = append(opts, testcontainers.WithWaitStrategyAndDeadline(DefaultStartupTimeout, spec.Ready))
+	}
 	if len(spec.Command) > 0 {
 		opts = append(opts, testcontainers.WithCmd(spec.Command...))
 	}
@@ -112,6 +115,8 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 		return Container{}, err
 	}
 	defer release()
+
+	r.log.Infof("start  %s (%s)", spec.Name, spec.Image)
 
 	dc, err := testcontainers.Run(ctx, spec.Image, opts...)
 	if err != nil {
@@ -149,6 +154,13 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 			out, _ := io.ReadAll(reader)
 			return code, string(out), nil
 		},
+		running: func(ctx context.Context) (bool, int, error) {
+			st, err := dc.State(ctx)
+			if err != nil {
+				return false, 0, err
+			}
+			return st.Running, st.ExitCode, nil
+		},
 		logs: func(ctx context.Context) (string, error) {
 			rc, err := dc.Logs(ctx)
 			if err != nil {
@@ -160,9 +172,9 @@ func (r *dockerRunner) Run(ctx context.Context, spec ContainerSpec) (Container, 
 		},
 	}
 
-	if spec.Ready != nil {
-		if err := spec.Ready(ctx, c); err != nil {
-			return c, fmt.Errorf("infra: %s never became ready: %w", spec.Name, err)
+	if spec.Check != nil {
+		if err := spec.Check(ctx, c); err != nil {
+			return c, fmt.Errorf("infra: %s came up but is not usable: %w", spec.Name, err)
 		}
 	}
 	return c, nil
