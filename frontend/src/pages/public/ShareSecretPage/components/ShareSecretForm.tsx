@@ -196,6 +196,7 @@ export const ShareSecretForm = ({
   const {
     control,
     reset,
+    setValue,
     handleSubmit,
     formState: { isSubmitting },
     watch
@@ -445,7 +446,7 @@ export const ShareSecretForm = ({
               <FieldSet className="gap-4">
                 <FieldLegend variant="label">Access</FieldLegend>
 
-                {!isPublic && !isViewLimitEnforced && (
+                {!isViewLimitEnforced && (
                   <Controller
                     control={control}
                     name="shouldLimitView"
@@ -466,7 +467,7 @@ export const ShareSecretForm = ({
                   />
                 )}
 
-                {!isPublic && isLimitingView && (
+                {isLimitingView && (
                   <Controller
                     control={control}
                     name="viewLimit"
@@ -556,13 +557,16 @@ export const ShareSecretForm = ({
                             !allowSecretSharingOutsideOrganization
                           }
                           disabled={!allowSecretSharingOutsideOrganization}
-                          onCheckedChange={(v) =>
+                          onCheckedChange={(v) => {
+                            if (v) {
+                              setValue("allowExternalEmails", false, { shouldValidate: true });
+                            }
                             onChange(
                               v
                                 ? SecretSharingAccessType.Organization
                                 : SecretSharingAccessType.Anyone
-                            )
-                          }
+                            );
+                          }}
                         />
                         <FieldLabel htmlFor="share-secret-org-only" className="flex-auto">
                           Limit access to people within organization

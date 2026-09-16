@@ -10,7 +10,7 @@ import { ShareSecretForm } from "./components";
 
 export const ShareSecretPage = () => {
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-bunker-800 px-4 text-foreground scheme-dark">
+    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-page px-4 text-foreground scheme-dark">
       <AuthPageBackground />
       <Helmet>
         <title>Securely Share Secrets | Infisical</title>

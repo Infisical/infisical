@@ -128,14 +128,21 @@ export const RequestedSecretsRow = ({
               {!row.encryptedSecret && (
                 <DropdownMenuItem
                   isDisabled={isExpired}
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      `${window.location.origin}/secret-request/secret/${row.id}`
-                    );
-                    createNotification({
-                      text: "Secret request link copied to clipboard.",
-                      type: "success"
-                    });
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        `${window.location.origin}/secret-request/secret/${row.id}`
+                      );
+                      createNotification({
+                        text: "Secret request link copied to clipboard.",
+                        type: "success"
+                      });
+                    } catch {
+                      createNotification({
+                        text: "Could not copy the link. Your browser blocked clipboard access.",
+                        type: "error"
+                      });
+                    }
                   }}
                 >
                   <Copy />
