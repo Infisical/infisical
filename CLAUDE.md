@@ -80,6 +80,10 @@ Never write: narration restating the next line; section headers inside a functio
 
 Before finishing, delete any comment you added that only says what the code says.
 
+### Product Analytics
+
+Read [`ANALYTICS.md`](ANALYTICS.md) before adding or changing product analytics. Every event has one owning producer: the frontend records UI exposure and intent, the application backend records accepted commands it can establish, and the system of record records durable outcomes. Define stable dimensions, cardinality, firing conditions, and dashboard consumers before implementation.
+
 ### Design System & Voice
 
 The v3 visual system (colors, typography, components, layout) and product voice/content tone are documented in [`DESIGN.md`](DESIGN.md). Read it before producing new UI or user-visible copy.

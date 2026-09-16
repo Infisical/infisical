@@ -330,6 +330,7 @@ export const Page = () => {
             actorId={(popUp.assumePrivileges.data as { userId: string })?.userId}
           />
           <UpgradePlanModal
+            paywallKey="project.member-details-by-id"
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
             text={popUp.upgradePlan?.data?.text}

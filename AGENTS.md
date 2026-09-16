@@ -33,3 +33,9 @@ Before changing a shared frontend component's lifecycle, read the [shared compon
 - Never create a GitHub issue.
 - When creating a pull request, use and fully complete the repository's
   `.github/pull_request_template.md` template.
+
+## Workflow Guardrails
+
+- Do not reformat existing code as incidental cleanup. Preserve the repository's current formatting unless a review agent, CI check, or user explicitly asks for a formatting change.
+- Never push changes to `license-fns` or local UI fixtures to a remote branch. Those edits are local-only support for review and test passes; keep them out of commits and pull requests.
+- When resolving merge conflicts, optimize for a correct, minimal, strategically unblocking resolution. Do not let a slow or stalled local check block the push when the corresponding frontend or backend CI checks on GitHub can validate the branch; push the resolved code and use CI to complete the expensive verification.

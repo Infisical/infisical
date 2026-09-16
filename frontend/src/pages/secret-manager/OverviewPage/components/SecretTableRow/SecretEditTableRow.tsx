@@ -1898,6 +1898,7 @@ export const SecretEditTableRow = ({
         </SheetContent>
       </Sheet>
       <UpgradePlanModal
+        paywallKey="secret-manager.secret-edit-table-row"
         isOpen={popUp.accessInsightsUpgrade.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
         text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."

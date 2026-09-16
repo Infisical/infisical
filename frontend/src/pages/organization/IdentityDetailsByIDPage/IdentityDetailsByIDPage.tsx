@@ -241,6 +241,7 @@ const Page = () => {
         handlePopUpToggle={handlePopUpToggle}
       />
       <UpgradePlanModal
+        paywallKey="organization.identity-details-by-id"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
