@@ -984,9 +984,8 @@ export const orgDALFactory = (db: TDbClient) => {
     })[]
   > => {
     try {
-      // Joining every alias fans a user out to one row per alias, so the filter above can match any of
-      // them. DISTINCT ON collapses that back to one row per membership *after* the filter has run,
-      // keeping the alias the IdP asked for when it filtered and the newest one when it did not.
+      // Fan out to one row per alias so a userName filter can match any of them, not just the newest.
+      // DISTINCT ON collapses it back after the filter runs, so the row we keep is the one that matched.
       const dedupedMemberships = $buildScimMembershipQuery(orgId, scimFilter, orgAuthMethod, { tx, membershipId })
         .distinctOn(`${TableName.Membership}.id`)
         .select(

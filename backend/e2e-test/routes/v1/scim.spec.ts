@@ -139,8 +139,7 @@ describe("SCIM v1 Router", () => {
         testUsers.push({ user, membership });
       }
 
-      // Call GET /Users. count is raised past the org's membership count so this one page holds every
-      // match, which is what lets totalResults and Resources be compared directly below.
+      // Big count so one page holds every match, otherwise totalResults won't line up with Resources.
       const res = await testServer.inject({
         method: "GET",
         url: "/api/v1/scim/Users?count=500",
@@ -925,8 +924,8 @@ describe("SCIM v1 Router", () => {
       const label = `superseded-${crypto.randomUUID().slice(0, 8)}`;
       const { membershipId, externalId, actorUserId } = await seedScimUser(db, label);
 
-      // A SAML login whose asserted subject differs from the SCIM userName mints a second, newer alias.
-      // Before the fix this hid the user from `userName eq`, and the IdP provisioned them again.
+      // A SAML login with a different subject adds a second, newer alias. That used to hide the user
+      // from `userName eq`, so the IdP provisioned them again.
       const samlSubject = `saml-subject-${label}`;
       await db(TableName.UserAliases).insert({
         userId: actorUserId,
@@ -950,7 +949,7 @@ describe("SCIM v1 Router", () => {
       expect(payload.totalResults).toBe(1);
       expect(payload.Resources).toHaveLength(1);
       expect(payload.Resources[0].id).toBe(membershipId);
-      // The response echoes the identifier the caller filtered on, not the alias that superseded it.
+      // We echo back what the caller filtered on, not the newer alias.
       expect(payload.Resources[0].userName).toBe(externalId);
     });
 
@@ -1001,7 +1000,7 @@ describe("SCIM v1 Router", () => {
       const payload = JSON.parse(res.payload) as { totalResults: number; Resources: unknown[] };
 
       expect(payload.Resources).toHaveLength(1);
-      // A client paging with startIndex/count needs the full count to know there is a next page.
+      // A paging client needs the real count to know there's another page.
       expect(payload.totalResults).toBeGreaterThan(1);
     });
   });
@@ -1077,7 +1076,6 @@ describe("SCIM v1 Router", () => {
       const [membership] = await db(TableName.Membership).where({ id: membershipId }).select("actorUserId");
       if (membership?.actorUserId) createdUserIds.push(membership.actorUserId);
 
-      // Suspend-then-delete is the natural sequence for a provisioning system that suspends first.
       const suspendRes = await testServer.inject({
         method: "PUT",
         url: `/api/v1/scim/Users/${membershipId}`,
@@ -1124,8 +1122,7 @@ describe("SCIM v1 Router", () => {
         .limit(1);
 
       expect(events).toHaveLength(1);
-      // Answering "deleted" to an id that matched nothing has to stay distinguishable from a real
-      // delete, or a provisioning system holding a stale id reports success forever.
+      // Otherwise a stale id looks just like a real delete and the IdP reports success forever.
       expect((events[0].event as { deleted: boolean; orgMembershipId: string }).deleted).toBe(false);
       expect((events[0].event as { deleted: boolean; orgMembershipId: string }).orgMembershipId).toBe(
         unknownMembershipId

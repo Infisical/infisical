@@ -1079,7 +1079,7 @@ export const scimServiceFactory = ({
       groupDAL.findGroups(groupFilter, {
         offset: startIndex - 1,
         limit,
-        // Without a total order an IdP walking startIndex/count can skip or repeat a group between pages.
+        // Unordered paging can skip or repeat groups between pages.
         sort: [["id", "asc"]]
       }),
       groupDAL.countGroups(groupFilter)
