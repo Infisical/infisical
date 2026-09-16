@@ -1,6 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import {
+  CodeBlock,
   Detail,
   DetailGroup,
   DetailGroupHeader,
@@ -20,6 +21,20 @@ import {
 
 const NONE = <span className="text-muted italic">None</span>;
 
+const MASK = "\u2022".repeat(8);
+
+const alignColumns = (rows: string[][]) => {
+  const widths = rows[0].map((_, column) => Math.max(...rows.map((row) => row[column].length)));
+  return rows
+    .map((row) =>
+      row
+        .map((cell, column) => (column === row.length - 1 ? cell : cell.padEnd(widths[column])))
+        .join("  ")
+        .trimEnd()
+    )
+    .join("\n");
+};
+
 type Props = {
   isUpdate: boolean;
 };
@@ -31,6 +46,22 @@ export const ReviewFields = ({ isUpdate }: Props) => {
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
   const secretLabel = isBasic ? "Password" : "Token";
   const sends = credentialPreview(form);
+
+  const headerRows = form.customHeaders
+    .filter((header) => header.name)
+    .map((header) => [`${header.name}:`, header.prefix ? `${header.prefix} ${MASK}` : MASK]);
+
+  const substitutionRows = form.substitutions
+    .filter((substitution) => substitution.placeholder)
+    .map((substitution) => [
+      substitution.placeholder,
+      `\u2192 ${MASK}`,
+      substitution.surfaces.length
+        ? `in ${substitution.surfaces
+            .map((surface) => SURFACE_LABELS[surface].toLowerCase())
+            .join(", ")}`
+        : ""
+    ]);
 
   const outcome = (value: string | undefined, canClear: boolean) => {
     if (!isUpdate) return value ? "Set" : "None";
@@ -100,27 +131,20 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           Transformations
         </DetailGroupHeader>
         {/* One line each, so a header reads the way it goes out on the wire. */}
-        <div className="flex flex-col gap-1.5 text-sm text-foreground">
-          {form.customHeaders.length === 0 && form.substitutions.length === 0 && <p>{NONE}</p>}
-          {form.customHeaders
-            .filter((header) => header.name)
-            .map((header) => (
-              <p key={header.name}>
-                {header.name}: {header.prefix ? `${header.prefix} ` : ""}••••••••
-              </p>
-            ))}
-          {form.substitutions
-            .filter((substitution) => substitution.placeholder)
-            .map((substitution) => (
-              <p key={substitution.placeholder}>
-                {substitution.placeholder} → ••••••••
-                {substitution.surfaces.length
-                  ? ` in ${substitution.surfaces
-                      .map((surface) => SURFACE_LABELS[surface].toLowerCase())
-                      .join(", ")}`
-                  : ""}
-              </p>
-            ))}
+        <div className="flex flex-col gap-3">
+          {headerRows.length === 0 && substitutionRows.length === 0 && (
+            <p className="text-sm">{NONE}</p>
+          )}
+          {headerRows.length > 0 && (
+            <CodeBlock label="Custom headers" isCopyable={false} value={alignColumns(headerRows)} />
+          )}
+          {substitutionRows.length > 0 && (
+            <CodeBlock
+              label="Substitutions"
+              isCopyable={false}
+              value={alignColumns(substitutionRows)}
+            />
+          )}
         </div>
       </DetailGroup>
     </div>
