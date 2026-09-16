@@ -868,8 +868,7 @@ a.ifx-steps__label:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1px;
-  border: 1px solid #ebebeb;
-  background-color: #ebebeb;
+  background-color: transparent;
 }
 
 .ifx-card {
@@ -880,6 +879,7 @@ a.ifx-steps__label:hover {
   flex-direction: column;
   padding: 1.5rem;
   background-color: #fbfbfa;
+  outline: 1px solid #ebebeb;
   text-decoration: none;
   transition: background-color 0.2s, box-shadow 0.2s;
 }
@@ -1049,13 +1049,13 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .dark .ifx-grid {
-  border-color: #1e1f24;
-  background-color: #1e1f24;
+  background-color: transparent;
 }
 
 .dark .ifx-card {
   --ifx-ink: #707174;
   background-color: #101114;
+  outline-color: #1e1f24;
 }
 
 .dark .ifx-card--secrets {

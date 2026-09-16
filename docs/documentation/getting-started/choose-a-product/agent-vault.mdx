@@ -4,7 +4,7 @@ sidebarTitle: "Run AI agents securely"
 description: "Give AI agents access to the services they need without ever handing them a real credential."
 ---
 
-Infisical Agent Vault is an access layer for AI agents. Agents route their API calls through an Agent Vault proxy that attaches the real credentials on the way out, so the agent itself never holds them. If a [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection) tricks the agent into revealing a credential, there's nothing there to reveal.
+Infisical Agent Vault is an access layer for AI agents. Agents route their API calls through a proxy that attaches the real credentials on the way out, so the agent itself never holds them. If a [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection) tricks the agent into revealing a credential, there's nothing there to reveal.
 
 <Warning>
   Agent Vault is in preview and subject to change. We don't currently recommend it for production use.
@@ -16,6 +16,6 @@ Infisical Agent Vault is an access layer for AI agents. Agents route their API c
 
 ## Why brokering access matters for agents
 
-Traditional secrets management involves returning credentials back to applications and services. This isn't suitable for AI agents because they're vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could write a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
+Traditional secrets management involves returning credentials back to applications and services. This isn't suitable for AI agents because a credential in the agent's environment can leak in many ways. An agent may inadvertently include it in a log line, a message, or a tool call it makes, or an attacker may deliberately extract it through [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection).
 
 Infisical Agent Vault solves this by brokering credentials using a proxy at the network boundary. The proxy attaches real credentials to services you've allowed, and only until the session expires (or you revoke it).
