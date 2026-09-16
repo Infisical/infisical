@@ -59,7 +59,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const profiles = await server.services.pkiApplication.attachProfiles({
+      const { profiles, applicationName } = await server.services.pkiApplication.attachProfiles({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -69,8 +69,6 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         profileIds: req.body.profileIds
       });
 
-      const applicationName = await server.services.pkiApplication.getApplicationNameById(req.params.applicationId);
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -78,7 +76,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
           type: EventType.ATTACH_PKI_APPLICATION_PROFILES,
           metadata: {
             applicationId: req.params.applicationId,
-            ...(applicationName && { applicationName }),
+            applicationName,
             profileIds: req.body.profileIds
           }
         }
@@ -131,8 +129,6 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
         profileId: req.params.profileId
       });
 
-      const applicationName = await server.services.pkiApplication.getApplicationNameById(result.applicationId);
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -140,7 +136,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
           type: EventType.DETACH_PKI_APPLICATION_PROFILE,
           metadata: {
             applicationId: result.applicationId,
-            ...(applicationName && { applicationName }),
+            applicationName: result.applicationName,
             profileId: result.profileId
           }
         }

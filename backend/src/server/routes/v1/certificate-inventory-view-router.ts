@@ -149,9 +149,6 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
-      const applicationName = view.applicationId
-        ? await server.services.pkiApplication.getApplicationNameById(view.applicationId)
-        : undefined;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -165,7 +162,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             columns: req.body.columns,
             isShared: req.body.isShared,
             ...(view.applicationId && { applicationId: view.applicationId }),
-            ...(applicationName && { applicationName })
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });
@@ -214,9 +211,6 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
-      const applicationName = view.applicationId
-        ? await server.services.pkiApplication.getApplicationNameById(view.applicationId)
-        : undefined;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -230,7 +224,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             columns: req.body.columns,
             isShared: req.body.isShared,
             ...(view.applicationId && { applicationId: view.applicationId }),
-            ...(applicationName && { applicationName })
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });
@@ -268,9 +262,6 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
-      const applicationName = view.applicationId
-        ? await server.services.pkiApplication.getApplicationNameById(view.applicationId)
-        : undefined;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -281,7 +272,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             viewId: req.params.viewId,
             name: view.name,
             ...(view.applicationId && { applicationId: view.applicationId }),
-            ...(applicationName && { applicationName })
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });

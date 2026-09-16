@@ -98,6 +98,7 @@ import {
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -173,6 +174,7 @@ type TCertificateV3ServiceFactoryDep = {
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageCounterDAL: Pick<
@@ -338,6 +340,7 @@ export const certificateV3ServiceFactory = ({
   resourceMetadataDAL,
   pkiAlertV2Queue,
   pkiApplicationProfileDAL,
+  pkiApplicationDAL,
   apiEnrollmentConfigDAL,
   licenseService,
   usageCounterDAL,
@@ -522,7 +525,7 @@ export const certificateV3ServiceFactory = ({
     return actor === ActorType.IDENTITY && policy?.bypassForMachineIdentities === true;
   };
 
-  const issueCertificateFromProfile = async ({
+  const $issueCertificateFromProfile = async ({
     profileId,
     certificateRequest,
     metadata,
@@ -1213,7 +1216,7 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const signCertificateFromProfile = async ({
+  const $signCertificateFromProfile = async ({
     profileId,
     csr,
     validity,
@@ -1676,7 +1679,7 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const orderCertificate = async ({
+  const $orderCertificate = async ({
     profileId,
     certificateOrder,
     metadata,
@@ -2140,7 +2143,15 @@ export const certificateV3ServiceFactory = ({
       updatedMetadata = metadata;
     }
 
-    return { metadata: updatedMetadata, projectId: certificate.projectId, commonName: certificate.commonName };
+    return {
+      metadata: updatedMetadata,
+      projectId: certificate.projectId,
+      commonName: certificate.commonName,
+      applicationId: certificate.applicationId,
+      applicationName: certificate.applicationId
+        ? ((await pkiApplicationDAL.findById(certificate.applicationId))?.name ?? null)
+        : null
+    };
   };
 
   const renewalService = certificateRenewalServiceFactory({
@@ -2163,6 +2174,7 @@ export const certificateV3ServiceFactory = ({
     resourceMetadataDAL,
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
+    pkiApplicationDAL,
     apiEnrollmentConfigDAL,
     licenseService,
     quotaDeps: $quotaDeps,
@@ -2170,6 +2182,21 @@ export const certificateV3ServiceFactory = ({
     resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
     reportCertificateIssued: $reportCertificateIssued
   });
+
+  const $withApplicationName = async <T>(applicationId: string | undefined, result: T) => {
+    if (!applicationId) return result;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return { ...result, applicationName: application?.name };
+  };
+
+  const issueCertificateFromProfile = async (dto: Parameters<typeof $issueCertificateFromProfile>[0]) =>
+    $withApplicationName(dto.applicationId, await $issueCertificateFromProfile(dto));
+
+  const signCertificateFromProfile = async (dto: Parameters<typeof $signCertificateFromProfile>[0]) =>
+    $withApplicationName(dto.applicationId, await $signCertificateFromProfile(dto));
+
+  const orderCertificate = async (dto: Parameters<typeof $orderCertificate>[0]) =>
+    $withApplicationName(dto.applicationId, await $orderCertificate(dto));
 
   return {
     ...renewalService,

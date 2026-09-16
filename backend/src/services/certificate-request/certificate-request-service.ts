@@ -20,6 +20,7 @@ import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { domainComponentsSchema } from "@app/services/certificate-common/certificate-constants";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -39,6 +40,7 @@ import {
 type TCertificateRequestServiceFactoryDep = {
   certificateRequestDAL: TCertificateRequestDALFactory;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -135,6 +137,7 @@ const validateCertificateRequestData = (data: unknown) => {
 export const certificateRequestServiceFactory = ({
   certificateRequestDAL,
   certificateDAL,
+  pkiApplicationDAL,
   certificateService,
   permissionService,
   resourceMetadataDAL,
@@ -142,6 +145,12 @@ export const certificateRequestServiceFactory = ({
   userDAL,
   identityDAL
 }: TCertificateRequestServiceFactoryDep) => {
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const createCertificateRequest = async ({
     acmeOrderId,
     actor,
@@ -427,7 +436,9 @@ export const certificateRequestServiceFactory = ({
         createdAt: certificateRequest.createdAt,
         updatedAt: certificateRequest.updatedAt
       },
-      projectId: certificateRequest.projectId
+      projectId: certificateRequest.projectId,
+      applicationId: certificateRequest.applicationId,
+      applicationName: await $resolveApplicationName(certificateRequest.applicationId)
     };
   };
 
@@ -621,7 +632,9 @@ export const certificateRequestServiceFactory = ({
         projectId: certificateRequest.projectId,
         cancelled: false,
         previousStatus,
-        previousPendingMessage
+        previousPendingMessage,
+        applicationId: certificateRequest.applicationId,
+        applicationName: await $resolveApplicationName(certificateRequest.applicationId)
       };
     }
 
@@ -650,7 +663,9 @@ export const certificateRequestServiceFactory = ({
         projectId: certificateRequest.projectId,
         cancelled: false,
         previousStatus,
-        previousPendingMessage
+        previousPendingMessage,
+        applicationId: certificateRequest.applicationId,
+        applicationName: await $resolveApplicationName(certificateRequest.applicationId)
       };
     }
 
@@ -686,7 +701,9 @@ export const certificateRequestServiceFactory = ({
       projectId: certificateRequest.projectId,
       cancelled: true,
       previousStatus,
-      previousPendingMessage
+      previousPendingMessage,
+      applicationId: certificateRequest.applicationId,
+      applicationName: await $resolveApplicationName(certificateRequest.applicationId)
     };
   };
 

@@ -68,6 +68,7 @@ describe("CertificateRequestService", () => {
     service = certificateRequestServiceFactory({
       certificateRequestDAL: mockCertificateRequestDAL as TCertificateRequestDALFactory,
       certificateDAL: mockCertificateDAL,
+      pkiApplicationDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never,
       certificateService: mockCertificateService,
       permissionService: mockPermissionService,
       resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() },

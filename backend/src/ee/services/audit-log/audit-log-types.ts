@@ -3137,6 +3137,8 @@ interface ImportCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     certificateProfileId?: string;
     profileName?: string;
     caId?: string;
@@ -3167,6 +3169,8 @@ interface GetCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3176,6 +3180,8 @@ interface DeleteCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3185,6 +3191,8 @@ interface RevokeCert {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     revocationReason?: CrlReason;
   };
 }
@@ -3206,6 +3214,8 @@ interface GetCertBody {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3215,6 +3225,8 @@ interface GetCertPrivateKey {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3224,6 +3236,8 @@ interface GetCertBundle {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 interface GetCertPkcs12 {
@@ -3232,6 +3246,8 @@ interface GetCertPkcs12 {
     certId: string;
     cn: string;
     serialNumber: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -3438,6 +3454,8 @@ interface AutomatedRenewCertificate {
     newCertificateId?: string;
     certificateRequestId?: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     profileId: string;
     renewBeforeDays: string;
     profileName: string;
@@ -3451,6 +3469,8 @@ interface AutomatedRenewCertificateFailed {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     profileId: string;
     renewBeforeDays: string;
     profileName: string;
@@ -4116,6 +4136,8 @@ interface RenewCertificate {
     certificateRequestId: string;
     profileName: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
     changedAttributes: TRenewalAuditChange[];
@@ -6538,6 +6560,8 @@ interface UpdateCertificateRenewalConfigEvent {
     certificateId: string;
     renewBeforeDays: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -6546,6 +6570,8 @@ interface UpdateCertificateMetadataEvent {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     metadata: { key: string; value: string }[];
   };
 }
@@ -6573,6 +6599,8 @@ interface DisableCertificateRenewalConfigEvent {
   metadata: {
     certificateId: string;
     commonName: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -6590,6 +6618,8 @@ interface GetCertificateRequestEvent {
   type: EventType.GET_CERTIFICATE_REQUEST;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     commonName?: string;
     status?: string;
     serialNumber?: string;
@@ -6608,6 +6638,8 @@ interface TriggerCertificateRequestValidationEvent {
   type: EventType.TRIGGER_CERTIFICATE_REQUEST_VALIDATION;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     status: string;
     orderStatus?: string;
   };
@@ -6617,6 +6649,8 @@ interface CancelCertificateRequestEvent {
   type: EventType.CANCEL_CERTIFICATE_REQUEST;
   metadata: {
     certificateRequestId: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
     commonName?: string;
     cancelled: boolean;
     previousStatus: string;

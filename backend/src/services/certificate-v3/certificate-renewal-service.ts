@@ -80,6 +80,7 @@ import {
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
@@ -144,6 +145,7 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "attachCertificate" | "transitionFromPending">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
@@ -211,6 +213,7 @@ export const certificateRenewalServiceFactory = ({
   certificateRequestDAL,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  pkiApplicationDAL,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   licenseService,
@@ -1004,6 +1007,12 @@ export const certificateRenewalServiceFactory = ({
     });
   };
 
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const renewCertificate = async ({
     certificateId,
     actor,
@@ -1302,12 +1311,22 @@ export const certificateRenewalServiceFactory = ({
         actorOrgId,
         removeRootsFromChain
       });
-      return { ...response, changedAttributes };
+      return {
+        ...response,
+        changedAttributes,
+        applicationId: renewalResult.originalCert.applicationId,
+        applicationName: await $resolveApplicationName(renewalResult.originalCert.applicationId)
+      };
     }
 
     if (renewalResult.renewalMode === CertificateRenewalMode.InternalCa) {
       const response = await $completeInternalCaRenewal({ ...renewalResult, actorCtx, removeRootsFromChain });
-      return { ...response, changedAttributes };
+      return {
+        ...response,
+        changedAttributes,
+        applicationId: renewalResult.originalCert.applicationId,
+        applicationName: await $resolveApplicationName(renewalResult.originalCert.applicationId)
+      };
     }
 
     if (renewalResult.renewalMode === CertificateRenewalMode.ExternalCa) {
@@ -1398,7 +1417,9 @@ export const certificateRenewalServiceFactory = ({
         projectId: originalCert.projectId,
         profileName: profile?.slug || "External CA Profile",
         commonName: renewalRequest.commonName || "",
-        changedAttributes
+        changedAttributes,
+        applicationId: originalCert.applicationId,
+        applicationName: await $resolveApplicationName(originalCert.applicationId)
       };
     }
 
@@ -1535,7 +1556,9 @@ export const certificateRenewalServiceFactory = ({
     return {
       projectId: certificate.projectId,
       renewBeforeDays,
-      commonName: certificate.commonName || ""
+      commonName: certificate.commonName || "",
+      applicationId: certificate.applicationId,
+      applicationName: await $resolveApplicationName(certificate.applicationId)
     };
   };
 
@@ -1558,7 +1581,9 @@ export const certificateRenewalServiceFactory = ({
 
     return {
       projectId: certificate.projectId,
-      commonName: certificate.commonName || ""
+      commonName: certificate.commonName || "",
+      applicationId: certificate.applicationId,
+      applicationName: await $resolveApplicationName(certificate.applicationId)
     };
   };
 

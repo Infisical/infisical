@@ -356,6 +356,9 @@ describe("CertificateV3Service", () => {
         findAllByProfileId: vi.fn().mockResolvedValue([]),
         findOneByApplicationAndProfile: vi.fn().mockResolvedValue(undefined)
       } as never,
+      pkiApplicationDAL: {
+        findById: vi.fn().mockResolvedValue(undefined)
+      } as never,
       apiEnrollmentConfigDAL: {
         findById: vi.fn().mockResolvedValue(undefined)
       },

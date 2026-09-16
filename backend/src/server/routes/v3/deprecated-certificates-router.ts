@@ -514,6 +514,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         event: {
           type: EventType.RENEW_CERTIFICATE,
           metadata: {
+            applicationId: certificateData.applicationId,
+            applicationName: certificateData.applicationName,
             renewalKeySource: CertificateRenewalKeySource.New,
             changedAttributes: certificateData.changedAttributes ?? [],
             originalCertificateId: req.params.certificateId,
@@ -575,7 +577,9 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG,
             metadata: {
               certificateId: req.params.certificateId,
-              commonName: data.commonName
+              commonName: data.commonName,
+              applicationId: data.applicationId,
+              applicationName: data.applicationName
             }
           }
         });
@@ -603,7 +607,9 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             metadata: {
               certificateId: req.params.certificateId,
               renewBeforeDays: req.body.renewBeforeDays.toString(),
-              commonName: data.commonName
+              commonName: data.commonName,
+              applicationId: data.applicationId,
+              applicationName: data.applicationName
             }
           }
         });

@@ -98,6 +98,8 @@ export type TOrderCertificateFromProfileDTO = {
 
 export type TCertificateIssuanceResponse = {
   status: CertificateRequestStatus;
+  applicationId?: string | null;
+  applicationName?: string | null;
   certificateRequestId: string;
   projectId: string;
   profileName: string;
@@ -179,12 +181,16 @@ export type TDisableRenewalConfigDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRenewalConfigResponse = {
+  applicationId?: string | null;
+  applicationName?: string | null;
   projectId: string;
   renewBeforeDays: number;
   commonName: string;
 };
 
 export type TDisableRenewalResponse = {
+  applicationId?: string | null;
+  applicationName?: string | null;
   projectId: string;
   commonName: string;
 };

@@ -86,8 +86,6 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         ...req.body
       });
 
-      const applicationName = await server.services.pkiApplication.getApplicationNameById(req.params.applicationId);
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -96,7 +94,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
           metadata: {
             pkiAlertId: alert.id,
             applicationId: req.params.applicationId,
-            ...(applicationName && { applicationName }),
+            ...(alert.applicationName && { applicationName: alert.applicationName }),
             name: alert.name,
             alertBefore: alert.alertBefore ?? undefined,
             eventType: alert.eventType
@@ -148,8 +146,6 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         ...req.body
       });
 
-      const applicationName = await server.services.pkiApplication.getApplicationNameById(req.params.applicationId);
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -158,7 +154,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
           metadata: {
             pkiAlertId: alert.id,
             applicationId: req.params.applicationId,
-            ...(applicationName && { applicationName }),
+            ...(alert.applicationName && { applicationName: alert.applicationName }),
             name: alert.name,
             alertBefore: alert.alertBefore ?? undefined,
             eventType: alert.eventType
@@ -207,8 +203,6 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
         alertId: req.params.alertId
       });
 
-      const applicationName = await server.services.pkiApplication.getApplicationNameById(req.params.applicationId);
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -217,7 +211,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
           metadata: {
             pkiAlertId: alert.id,
             applicationId: req.params.applicationId,
-            ...(applicationName && { applicationName })
+            ...(alert.applicationName && { applicationName: alert.applicationName })
           }
         }
       });
