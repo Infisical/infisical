@@ -1,3 +1,4 @@
+import { TDbClient } from "@app/db";
 import { ActionProjectType } from "@app/db/schemas";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -14,6 +15,7 @@ import { dedupeMetadata, matchesSecretMetadataFilters } from "./resource-metadat
 import { TResolvedSecretMetadata, TSearchSecretMetadataDTO } from "./resource-metadata-types";
 
 type TResourceMetadataServiceFactoryDep = {
+  db: TDbClient;
   resourceMetadataDAL: Pick<
     TResourceMetadataDALFactory,
     "searchSecretMetadata" | "searchSecretMetadataWithEncryptedValues" | "transaction"
@@ -37,6 +39,7 @@ type TMatchedSecret = {
 };
 
 export const resourceMetadataServiceFactory = ({
+  db,
   resourceMetadataDAL,
   permissionService,
   folderDAL,
@@ -69,10 +72,11 @@ export const resourceMetadataServiceFactory = ({
     });
 
     const searchLimit = MAX_SECRET_METADATA_SEARCH_SECRETS;
-    const environmentSlugs = environments ?? (await projectEnvDAL.find({ projectId })).map((env) => env.slug);
-    const parents = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, secretPath);
+    const environmentSlugs =
+      environments ?? (await projectEnvDAL.find({ projectId }, { tx: db })).map((env) => env.slug);
+    const parents = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, secretPath, db);
     if (!parents.length) return { secrets: [], searchLimit, isSearchLimitReached: false };
-    const scopedFolders = await folderDAL.findByEnvsDeep({ parentIds: parents.map((folder) => folder.id) });
+    const scopedFolders = await folderDAL.findByEnvsDeep({ parentIds: parents.map((folder) => folder.id) }, db);
     const scopedFolderIds = scopedFolders.map((folder) => folder.id);
 
     // run both searches on primary via a transaction so recently written metadata is visible (avoids
@@ -152,7 +156,7 @@ export const resourceMetadataServiceFactory = ({
     if (!matchedSecrets.length) return { secrets: [], searchLimit, isSearchLimitReached };
 
     const folderIds = [...new Set(matchedSecrets.map((secret) => secret.folderId))];
-    const foldersWithPath = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+    const foldersWithPath = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, db);
     const folderPathById: Record<string, { path: string; environmentSlug: string }> = {};
     foldersWithPath.forEach((folder) => {
       if (folder) folderPathById[folder.id] = { path: folder.path, environmentSlug: folder.environmentSlug };

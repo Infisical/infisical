@@ -38,6 +38,7 @@ const setup = (
     { action: Actions.DescribeSecret, subject: ProjectPermissionSub.Secrets }
   ]
 ) => {
+  const db = vi.fn() as unknown as Knex;
   const tx = {};
   const getProjectPermission = vi.fn().mockResolvedValue({
     permission: createMongoAbility<ProjectPermissionSet>(rules)
@@ -54,6 +55,7 @@ const setup = (
     .fn()
     .mockResolvedValue({ decryptor: vi.fn().mockReturnValue(Buffer.from("unmatched")) });
   const service = resourceMetadataServiceFactory({
+    db,
     permissionService: { getProjectPermission },
     projectEnvDAL: { find },
     folderDAL: { findBySecretPathMultiEnv, findByEnvsDeep, findSecretPathByFolderIds },
@@ -66,10 +68,12 @@ const setup = (
   });
   return {
     service,
+    db,
     tx,
     find,
     findBySecretPathMultiEnv,
     findByEnvsDeep,
+    findSecretPathByFolderIds,
     searchSecretMetadata,
     searchSecretMetadataWithEncryptedValues,
     createCipherPairWithDataKey
@@ -81,8 +85,8 @@ describe("metadata search scope and candidate limits", () => {
     const state = setup();
     await state.service.searchSecretMetadata({ ...dto, environments: ["dev"], secretPath: "/app" });
     expect(state.find).not.toHaveBeenCalled();
-    expect(state.findBySecretPathMultiEnv).toHaveBeenCalledWith("project", ["dev"], "/app");
-    expect(state.findByEnvsDeep).toHaveBeenCalledWith({ parentIds: ["parent"] });
+    expect(state.findBySecretPathMultiEnv).toHaveBeenCalledWith("project", ["dev"], "/app", state.db);
+    expect(state.findByEnvsDeep).toHaveBeenCalledWith({ parentIds: ["parent"] }, state.db);
     for (const search of [state.searchSecretMetadata, state.searchSecretMetadataWithEncryptedValues]) {
       expect(search).toHaveBeenCalledWith(expect.objectContaining({ folderIds: ["parent", "child"] }), state.tx);
     }
@@ -96,8 +100,8 @@ describe("metadata search scope and candidate limits", () => {
       searchLimit: 100,
       isSearchLimitReached: false
     });
-    expect(state.find).toHaveBeenCalledWith({ projectId: "project" });
-    expect(state.findBySecretPathMultiEnv).toHaveBeenCalledWith("project", ["dev", "prod"], "/");
+    expect(state.find).toHaveBeenCalledWith({ projectId: "project" }, { tx: state.db });
+    expect(state.findBySecretPathMultiEnv).toHaveBeenCalledWith("project", ["dev", "prod"], "/", state.db);
     expect(state.searchSecretMetadata).not.toHaveBeenCalled();
     expect(state.searchSecretMetadataWithEncryptedValues).not.toHaveBeenCalled();
   });
@@ -142,6 +146,7 @@ describe("metadata search scope and candidate limits", () => {
       ]);
       state.searchSecretMetadata.mockResolvedValue([candidate("secret")]);
       const result = await state.service.searchSecretMetadata(dto);
+      expect(state.findSecretPathByFolderIds).toHaveBeenCalledWith("project", ["child"], state.db);
       expect(result.isSearchLimitReached).toBe(false);
       expect(result.secrets).toEqual([
         expect.objectContaining({ tags: [{ id: "tag", slug: "backend" }], secretValueHidden: false })
