@@ -13,11 +13,10 @@ import {
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 
-import { HTTP_METHODS, TServiceForm } from "./serviceSchema";
+import { HTTP_METHODS, isAllMethods, TServiceForm } from "./serviceSchema";
 
 export const DetailsFields = () => {
-  const { control, watch, setValue, trigger, clearErrors } = useFormContext<TServiceForm>();
-  const allMethods = watch("allMethods");
+  const { control, trigger, clearErrors } = useFormContext<TServiceForm>();
 
   return (
     <div className="flex flex-col gap-5">
@@ -77,66 +76,58 @@ export const DetailsFields = () => {
         )}
       />
 
-      <Field>
-        <FieldLabel>Methods</FieldLabel>
-        <FieldContent>
-          <Controller
-            control={control}
-            name="allMethods"
-            render={({ field }) => (
+      <Controller
+        control={control}
+        name="methods"
+        render={({ field, fieldState }) => (
+          <Field>
+            <FieldLabel>Methods</FieldLabel>
+            <FieldContent>
               <Field orientation="horizontal">
                 <Checkbox
                   id="all-methods"
-                  isChecked={field.value}
-                  onCheckedChange={(checked) => {
-                    field.onChange(checked === true);
-                    // Dropping the selection on the way back to All keeps one meaning per state: the
-                    // list is only ever read when the box is unchecked.
-                    if (checked === true) setValue("methods", [], { shouldDirty: true });
-                  }}
+                  isChecked={isAllMethods(field.value)}
+                  onCheckedChange={(checked) =>
+                    field.onChange(checked === true ? [...HTTP_METHODS] : [])
+                  }
                 />
                 <FieldLabel htmlFor="all-methods">All Methods</FieldLabel>
               </Field>
-            )}
-          />
 
-          <Controller
-            control={control}
-            name="methods"
-            render={({ field, fieldState }) => (
-              <FieldContent>
-                {/* Indented under the checkbox label so the seven read as what "All Methods" governs.
-                    Fixed columns line the boxes up; w-fit keeps them hugging the labels rather than
-                    stretching across the width of the sheet. */}
-                <div
-                  role="group"
-                  aria-label="Methods"
-                  className="mt-2 ml-6 grid w-fit grid-cols-4 gap-x-8 gap-y-2"
-                >
-                  {HTTP_METHODS.map((method) => (
-                    <Field key={method} orientation="horizontal" className="w-auto">
-                      <Checkbox
-                        id={`method-${method}`}
-                        isChecked={allMethods || field.value.includes(method)}
-                        isDisabled={allMethods}
-                        onCheckedChange={(checked) =>
-                          field.onChange(
-                            checked === true
-                              ? [...field.value, method]
-                              : field.value.filter((value) => value !== method)
+              {/* Indented under the checkbox label so the seven read as what "All Methods" governs.
+                  Fixed columns line the boxes up; w-fit keeps them hugging the labels rather than
+                  stretching across the width of the sheet. */}
+              <div
+                role="group"
+                aria-label="Methods"
+                className="mt-2 ml-6 grid w-fit grid-cols-4 gap-x-8 gap-y-2"
+              >
+                {HTTP_METHODS.map((method) => (
+                  <Field key={method} orientation="horizontal" className="w-auto">
+                    <Checkbox
+                      id={`method-${method}`}
+                      isChecked={field.value.includes(method)}
+                      onCheckedChange={(checked) =>
+                        // Rebuilt from the canonical list so a rechecked method lands back in its
+                        // old slot rather than at the end.
+                        field.onChange(
+                          HTTP_METHODS.filter((candidate) =>
+                            candidate === method
+                              ? checked === true
+                              : field.value.includes(candidate)
                           )
-                        }
-                      />
-                      <FieldLabel htmlFor={`method-${method}`}>{method}</FieldLabel>
-                    </Field>
-                  ))}
-                </div>
-                <FieldError>{fieldState.error?.message}</FieldError>
-              </FieldContent>
-            )}
-          />
-        </FieldContent>
-      </Field>
+                        )
+                      }
+                    />
+                    <FieldLabel htmlFor={`method-${method}`}>{method}</FieldLabel>
+                  </Field>
+                ))}
+              </div>
+              <FieldError>{fieldState.error?.message}</FieldError>
+            </FieldContent>
+          </Field>
+        )}
+      />
 
       <Controller
         control={control}

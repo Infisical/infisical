@@ -31,6 +31,10 @@ export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
 
 export const HTTP_METHODS = Object.values(AgentVaultHttpMethod);
 
+/** Every method selected is stored as allowedMethods: null, so "All" is a view of the list, not a flag beside it. */
+export const isAllMethods = (methods: AgentVaultHttpMethod[]) =>
+  methods.length === HTTP_METHODS.length;
+
 // Mirrors AGENT_VAULT_MAX_CUSTOM_HEADERS / AGENT_VAULT_MAX_SUBSTITUTIONS / AGENT_VAULT_MAX_PATH_PREFIXES on the
 // backend. Without these the only thing enforcing the cap is the server, and its rejection names an array
 // root that no field renders.
@@ -81,15 +85,7 @@ export enum ServiceStep {
 
 export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: [
-    "name",
-    "hosts",
-    "hostDraft",
-    "allMethods",
-    "methods",
-    "pathPrefixes",
-    "pathDraft"
-  ],
+  [ServiceStep.Details]: ["name", "hosts", "hostDraft", "methods", "pathPrefixes", "pathDraft"],
   [ServiceStep.Credential]: ["credentialType", "headerName", "headerPrefix", "username", "secret"],
   [ServiceStep.Transformations]: ["customHeaders", "substitutions"],
   [ServiceStep.Review]: []
@@ -117,7 +113,6 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
       headerPrefix: z.string().trim().max(64).optional(),
       username: z.string().trim().max(256).optional(),
       secret: z.string().max(8192).optional(),
-      allMethods: z.boolean(),
       methods: z.array(z.nativeEnum(AgentVaultHttpMethod)),
       pathPrefixes: z
         .array(z.string())
@@ -177,7 +172,7 @@ export const buildServiceSchema = (service?: TAgentVaultService | null) =>
         });
       }
 
-      if (!data.allMethods && data.methods.length === 0) {
+      if (data.methods.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["methods"],

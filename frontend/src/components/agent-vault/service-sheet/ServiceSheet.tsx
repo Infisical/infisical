@@ -37,6 +37,8 @@ import { ReviewFields } from "./ReviewFields";
 import {
   buildServiceSchema,
   displayHostPattern,
+  HTTP_METHODS,
+  isAllMethods,
   SERVICE_STEP_FIELDS,
   ServiceStep,
   TServiceForm,
@@ -55,8 +57,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   headerPrefix: "Bearer",
   username: "",
   secret: "",
-  allMethods: true,
-  methods: [],
+  methods: [...HTTP_METHODS],
   pathPrefixes: [],
   customHeaders: [],
   substitutions: []
@@ -131,8 +132,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
         username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
         secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
-        allMethods: service.allowedMethods === null,
-        methods: service.allowedMethods ?? [],
+        methods: service.allowedMethods ?? [...HTTP_METHODS],
         pathPrefixes: service.allowedPathPrefixes ?? [],
         // The stored values never come back, so each row carries the sentinel until it is retyped.
         customHeaders: service.customHeaders.map((header) => ({
@@ -219,7 +219,7 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
   };
 
   const buildPolicy = (data: TServiceForm) => ({
-    allowedMethods: data.allMethods ? null : data.methods,
+    allowedMethods: isAllMethods(data.methods) ? null : data.methods,
     allowedPathPrefixes: data.pathPrefixes.length ? data.pathPrefixes : null
   });
 

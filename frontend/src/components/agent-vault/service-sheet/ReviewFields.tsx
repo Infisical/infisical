@@ -10,7 +10,13 @@ import {
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { credentialPreview } from "./CredentialFields";
-import { CREDENTIAL_LABELS, SURFACE_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  CREDENTIAL_LABELS,
+  isAllMethods,
+  SURFACE_LABELS,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 
 const NONE = <span className="text-muted italic">None</span>;
 
@@ -48,7 +54,9 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           </Detail>
           <Detail>
             <DetailLabel>Methods</DetailLabel>
-            <DetailValue>{form.allMethods ? "All" : form.methods.join(", ")}</DetailValue>
+            <DetailValue>
+              {isAllMethods(form.methods) ? "All" : form.methods.join(", ")}
+            </DetailValue>
           </Detail>
           <Detail>
             <DetailLabel>Paths</DetailLabel>
