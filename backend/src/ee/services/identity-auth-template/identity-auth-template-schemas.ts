@@ -123,6 +123,9 @@ export const ldapTemplateFieldsResponseSchema = ldapTemplateFieldsSchema
   .omit({ bindPass: true })
   .partial()
   .extend({
+    url: z.string().optional(),
+    bindDN: z.string().optional(),
+    searchBase: z.string().optional(),
     hasBindPass: z.boolean().describe("Whether a bind password is stored for this template")
   });
 
