@@ -47,7 +47,7 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
     - The host (for example, `api.github.com`)
     - The header the API expects (for example, `Authorization: Bearer <token>`)
 
-    All you need to do is paste your credentials in the **Credential** section.
+    Paste your credentials in the **Credential** section.
   </Step>
   <Step>
     Once you've configured the service, select **Add Service**.
@@ -116,7 +116,7 @@ Next, create a [session](/documentation/platform/agent-vault/sessions) with your
 
 ## Step 2: Launch your agent
 
-On the host where the agent runs, paste the command you copied in the previous step. Replace `<proxy-host>` with your host's actual domain and `<agent-command>` with your agent's own command.
+On the host where the agent runs, paste the command you copied in the previous step. Replace `<proxy-host>` with your host's actual domain or IP address, and `<agent-command>` with your agent's own command.
 
 For example, with Claude:
 
@@ -124,7 +124,7 @@ For example, with Claude:
 infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
 ```
 
-The CLI trusts the proxy's certificate for the agent and starts `claude` with its HTTP traffic routed through the proxy. Any calls to the services configured in your access bundle leave the proxy with the real token attached, while calls to any other host leave the network normally.
+The CLI adds the proxy's certificate authority to the agent process' trusted CAs and starts `claude` with its HTTP traffic routed through the proxy. Any calls to services in your access bundle leave the proxy with the real credential attached, while calls to any other host go out normally.
 
 <Note>
   On macOS, you'll need to enter your user password when running your agent for the first time. This is because macOS needs your approval to add the proxy's certificate to your keychain.
@@ -132,7 +132,7 @@ The CLI trusts the proxy's certificate for the agent and starts `claude` with it
 
 ## Step 3: Verify it works
 
-To confirm the proxy is brokering credentials, make a test call to your API. Pick an authenticated endpoint on the API you configured (for example, one that returns your account), and make the call one of two ways:
+To confirm the proxy is attaching credentials, make a test call to a service you configured. Pick an authenticated endpoint on that service (for example, one that returns your account), and make the call one of two ways:
 
 <Tabs>
   <Tab title="With your agent">
@@ -140,7 +140,7 @@ To confirm the proxy is brokering credentials, make a test call to your API. Pic
 
     > Run `curl -sS <endpoint-url>` and show me the output.
 
-    The API should respond successfully. The agent doesn't need any real API credentials because the proxy attaches the token as the request passes through. Run the same command outside the agent, and it fails with an authentication error.
+    The API should respond successfully. The agent doesn't need any real API credentials because the proxy attaches the credential as the request passes through. Run the same command outside the agent, and it fails with an authentication error.
   </Tab>
   <Tab title="With `curl`">
     Any HTTP client works the same way. Run it through the proxy in place of your agent's command:
@@ -164,7 +164,7 @@ To confirm the proxy is brokering credentials, make a test call to your API. Pic
     The credential wasn't applied. Open your access bundle and confirm a service covers the host you called. If one does, the stored token is likely wrong.
   </Accordion>
   <Accordion title="407 from the proxy">
-    The session token was missing from the request. Confirm you passed `--session-token`, or that the token is included in your `HTTPS_PROXY` environment variable.
+    The session token was missing from the request. Confirm you passed `--session-token`, or that the token appears as the userinfo in your `HTTPS_PROXY` URL (like `http://x-agent-vault:<session-token>@<proxy-address>`).
   </Accordion>
   <Accordion title="403 from the proxy">
     This could be for two reasons:
@@ -181,7 +181,7 @@ To confirm the proxy is brokering credentials, make a test call to your API. Pic
     Lists of services that AI agents can access during a session.
   </Card>
   <Card title="Sessions" icon="ticket" href="/documentation/platform/agent-vault/sessions">
-    Time-bound tokens that let AI agents access services without holding real credentials.
+    Time-bound grants that let AI agents access services without holding real credentials.
   </Card>
   <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
     Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.

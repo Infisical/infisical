@@ -1,11 +1,11 @@
 ---
 title: "Sessions"
-description: "Time-bound tokens that let AI agents access services without holding real credentials."
+description: "Time-bound grants that let AI agents access services without holding real credentials."
 ---
 
-A session is a time-bound token that lets an AI agent access the [services](/documentation/platform/agent-vault/services) in an [access bundle](/documentation/platform/agent-vault/access-bundles). Instead of handling real credentials, the agent uses the session token to authenticate. Then, the proxy attaches the real credentials to the agent's requests at the network boundary.
+A session is a time-bound grant scoped to one [access bundle](/documentation/platform/agent-vault/access-bundles). Infisical returns a session token that identifies the session, and the agent uses that token to authenticate to the [proxy](/documentation/platform/agent-vault/proxies) on every outbound request. The proxy then attaches the real credential from the matching [service](/documentation/platform/agent-vault/services) at the network boundary.
 
-Every session carries one access bundle and expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one poll interval.
+Every session is scoped to one access bundle and expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one poll interval.
 
 ## Create a session
 
@@ -46,7 +46,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
 
     The CLI creates the session as your user by default, or as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables). It revokes the session when the agent exits unless you pass `--keep-session`.
 
-    For an agent that runs unattended, set up the machine identity first: create it with Universal Auth, add it under **Access Control**, and grant it the access bundle.
+    For an agent that runs unattended, set up the [machine identity](/documentation/platform/identities/machine-identities) first: create it with Universal Auth, add it under **Access Control**, and grant it the access bundle.
   </Tab>
 </Tabs>
 
@@ -66,14 +66,14 @@ The **Sessions** page shows each session as **Active**, **Revoked**, or **Expire
 
 ## Access changes
 
-The access bundle on a session is fixed when the session is created, but the proxy re-checks whether the agent still gets credentials on every poll (60 seconds by default). Here are a few situations where a session's access might be revoked:
+The access bundle is chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials on every poll (60 seconds by default). Here are a few situations where a session's access might be revoked:
 
-- If a user, group, or machine identity is removed from the access bundle, every session they created with that access bundle stops getting credentials
-- If an access bundle is deleted, every session that carried it stops getting credentials. The session still lists the bundle's name so you can see what it was
+- If a user, group, or machine identity is removed from an access bundle, every session that user or identity created with that bundle stops getting credentials
+- If an access bundle is deleted, every session scoped to it stops getting credentials. The session still lists the bundle's name so you can see what it was
 - If a user is removed from Agent Vault, the proxy refuses every request on their sessions
 
 <Note>
-In the first two cases, the agent's requests still go out, but the APIs they can reach without a credential depend on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
+In the first two cases, the agent's requests still go out. However, whether they reach the upstream host depends on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
 </Note>
 
 ## Audit trail

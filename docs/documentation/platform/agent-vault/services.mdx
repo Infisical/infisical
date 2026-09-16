@@ -58,7 +58,7 @@ Basic is the right choice for APIs behind HTTP basic authentication, including o
 
 The proxy attaches nothing, and forwards the agent's request to the API unchanged.
 
-Pass-through is the right choice when you need to make a host reachable through a proxy that only allows access bundle hosts. See the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) documentation for more information.
+Pass-through is the right choice when the proxy's strict [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) would otherwise block the host. It lets the request reach the API without attaching a credential.
 
 <Note>
 For **Bearer** and **Basic** services, if the agent's request already carries a header with the same name as the one the service sends, the proxy replaces it with the service's credential.
@@ -122,5 +122,5 @@ However, two services can match the same host if they define the host pattern di
 In the above example, requests to `api.github.com` would get the credential from the first service.
 
 <Note>
-Different access bundles can cover the same host with different credentials, since an agent only gets the credential from the access bundle its session carries.
+Different access bundles can cover the same host with different credentials, since an agent only gets the credential from the access bundle its session is scoped to.
 </Note>
