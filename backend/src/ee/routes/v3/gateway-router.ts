@@ -20,8 +20,9 @@ import {
   ResourceAuthMethodType
 } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
+import { TAuthMethodView } from "@app/ee/services/resource-auth-method/resource-auth-method-types";
 import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
-import { UnauthorizedError } from "@app/lib/errors";
+import { InternalServerError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -234,45 +235,55 @@ const toSetAuthMethodArg = (input: TSettableAuthMethodInput) => {
   return { method: ResourceAuthMethodType.Token } as const;
 };
 
-const gatewayAuthMethodAuditMetadata = (
-  gatewayId: string,
-  gatewayName: string | undefined,
-  view: { method: string; config?: Record<string, unknown> }
-) => ({
-  resourceType: "gateway" as const,
-  resourceId: gatewayId,
-  resourceName: gatewayName,
-  method: view.method as "aws" | "gcp" | "kubernetes" | "token",
-  methodConfigId:
-    view.method === ResourceAuthMethodType.Aws ||
-    view.method === ResourceAuthMethodType.Gcp ||
-    view.method === ResourceAuthMethodType.Kubernetes
-      ? (view.config?.id as string)
-      : gatewayId,
-  ...(view.method === ResourceAuthMethodType.Aws
-    ? {
-        stsEndpoint: view.config?.stsEndpoint as string,
-        allowedPrincipalArns: view.config?.allowedPrincipalArns as string,
-        allowedAccountIds: view.config?.allowedAccountIds as string
-      }
-    : {}),
-  ...(view.method === ResourceAuthMethodType.Gcp
-    ? {
-        gcpAuthType: view.config?.type as string,
-        allowedServiceAccounts: view.config?.allowedServiceAccounts as string,
-        allowedProjects: view.config?.allowedProjects as string,
-        allowedZones: view.config?.allowedZones as string
-      }
-    : {}),
-  ...(view.method === ResourceAuthMethodType.Kubernetes
-    ? {
-        kubernetesHost: view.config?.kubernetesHost as string,
-        allowedNamespaces: view.config?.allowedNamespaces as string,
-        allowedNames: view.config?.allowedNames as string,
-        allowedAudience: view.config?.allowedAudience as string
-      }
-    : {})
-});
+const gatewayAuthMethodAuditMetadata = (gatewayId: string, gatewayName: string, view: TAuthMethodView) => {
+  const base = {
+    resourceType: "gateway" as const,
+    resourceId: gatewayId,
+    resourceName: gatewayName
+  };
+
+  if (view.method === ResourceAuthMethodType.Aws) {
+    return {
+      ...base,
+      method: view.method,
+      methodConfigId: view.config.id,
+      stsEndpoint: view.config.stsEndpoint,
+      allowedPrincipalArns: view.config.allowedPrincipalArns,
+      allowedAccountIds: view.config.allowedAccountIds
+    };
+  }
+
+  if (view.method === ResourceAuthMethodType.Gcp) {
+    return {
+      ...base,
+      method: view.method,
+      methodConfigId: view.config.id,
+      gcpAuthType: view.config.type,
+      allowedServiceAccounts: view.config.allowedServiceAccounts,
+      allowedProjects: view.config.allowedProjects,
+      allowedZones: view.config.allowedZones
+    };
+  }
+
+  if (view.method === ResourceAuthMethodType.Kubernetes) {
+    return {
+      ...base,
+      method: view.method,
+      methodConfigId: view.config.id,
+      kubernetesHost: view.config.kubernetesHost,
+      allowedNamespaces: view.config.allowedNamespaces,
+      allowedNames: view.config.allowedNames,
+      allowedAudience: view.config.allowedAudience
+    };
+  }
+
+  if (view.method === ResourceAuthMethodType.Token) {
+    return { ...base, method: view.method, methodConfigId: gatewayId };
+  }
+
+  // Legacy identity gateways cannot be created or have their method set, so reaching this is a bug.
+  throw new InternalServerError({ message: `Cannot audit auth method "${view.method}" for a gateway` });
+};
 
 export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
   // ─── POST / ──────────────────────────────────────────────────────────────
@@ -318,8 +329,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         }
       });
 
-      // The allowlist decides who may authenticate as this gateway, so it belongs in the log at
-      // creation and not only when it is later edited.
+      // The allowlist is the authorization, so it belongs in the log at creation, not only on edit.
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
