@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
-import { ConflictError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { projectServiceFactory } from "./project-service";
@@ -155,11 +155,11 @@ describe("secret scanning project uniqueness", () => {
       type: ProjectType.SecretScanning
     });
 
-  test("rejects a second secret scanning project in the same organization with a conflict", async () => {
+  test("rejects a second secret scanning project in the same organization", async () => {
     const { service, projectDAL } = setup();
     projectDAL.find.mockResolvedValue([{ id: "existing-scanning-project" }]);
 
-    await expect(createSecretScanningProject(service)).rejects.toThrow(ConflictError);
+    await expect(createSecretScanningProject(service)).rejects.toThrow(BadRequestError);
     await expect(createSecretScanningProject(service)).rejects.toThrow(
       "Secret Scanning is limited to one project per organization at this time."
     );
@@ -169,7 +169,7 @@ describe("secret scanning project uniqueness", () => {
     const { service, projectDAL, tx } = setup();
     projectDAL.find.mockResolvedValue([{ id: "existing-scanning-project" }]);
 
-    await expect(createSecretScanningProject(service)).rejects.toThrow(ConflictError);
+    await expect(createSecretScanningProject(service)).rejects.toThrow(BadRequestError);
 
     expect(projectDAL.find).toHaveBeenCalledExactlyOnceWith(
       { orgId: "root", type: ProjectType.SecretScanning },
