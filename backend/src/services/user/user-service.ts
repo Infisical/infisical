@@ -669,12 +669,13 @@ export const userServiceFactory = ({
         : sessionOrg;
     const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
     const asRequired = { challenge: requiredMfaMethod, accepted: [requiredMfaMethod] };
-    if (!user || !excludeMethod || requiredMfaMethod !== excludeMethod) return asRequired;
+    if (!user || !excludeMethod) return asRequired;
 
     const enforcingOrgs = await findMfaEnforcingOrgs(userId);
     if (enforcingOrgs.some((enforcingOrg) => (enforcingOrg.selectedMfaMethod ?? MfaMethod.EMAIL) === excludeMethod)) {
-      return asRequired;
+      return { challenge: excludeMethod, accepted: [excludeMethod] };
     }
+    if (requiredMfaMethod !== excludeMethod) return asRequired;
 
     const replacement = await findReplacementMfaMethod(user, excludeMethod);
     if (!replacement) return asRequired;

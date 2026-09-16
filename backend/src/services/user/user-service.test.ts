@@ -327,6 +327,23 @@ describe("getStepUpMfaMethod", () => {
     });
   });
 
+  test("challenges a factor another org enforces even when the current org asks for less", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: ["loose-org", ENFORCED_ORG_ID],
+      orgs: [
+        { id: "loose-org", enforceMfa: false },
+        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.TOTP }
+      ],
+      hasTotp: true
+    });
+
+    await expect(service.getStepUpMfaMethod(USER_ID, "loose-org", MfaMethod.TOTP)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP]
+    });
+  });
+
   test("keeps the required method when no substitute is configured", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
