@@ -30,8 +30,6 @@ export type OverviewProps = {
 };
 
 // Composes the billing overview by render state: loading → skeleton, error/no-overview → error panel,
-// no-subscription → banner + products, otherwise the full active layout. Each section is its own
-// component under components/ (cards/, deprecation/, states/); this file only routes and lays them out.
 export const Overview = ({
   overview,
   catalog,
@@ -90,6 +88,29 @@ export const Overview = ({
       </Alert>
     ) : null;
 
+  const showPayment = overview.isCloud && !isManaged;
+
+  const hasBillingHistory =
+    Boolean(overview.payment) || Boolean(overview.billingDetails) || overview.invoices.length > 0;
+
+  const billingSection = !isManaged && (
+    <>
+      <div className="@container">
+        <div className={cn("grid gap-4", showPayment && "@3xl:grid-cols-[2fr_3fr]")}>
+          {showPayment && (
+            <PaymentCard
+              overview={overview}
+              canManage={canManageBilling}
+              onUpdate={onUpdatePayment}
+            />
+          )}
+          <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
+        </div>
+      </div>
+      {showPayment && <InvoicesCard invoices={overview.invoices} />}
+    </>
+  );
+
   if (subState === "no-subscription") {
     return (
       <div className="flex flex-col gap-4">
@@ -110,11 +131,10 @@ export const Overview = ({
           onSetCommitment={onSetCommitment}
           onContact={onContact}
         />
+        {hasBillingHistory && billingSection}
       </div>
     );
   }
-
-  const showPayment = overview.isCloud && !isManaged;
 
   return (
     <div className="flex flex-col gap-4">
@@ -150,22 +170,7 @@ export const Overview = ({
         onSetCommitment={onSetCommitment}
         onContact={onContact}
       />
-      {!isManaged && (
-        // Payment (cloud-only) + details share a row, keyed off container width (sidebar resizes it).
-        <div className="@container">
-          <div className={cn("grid gap-4", showPayment && "@3xl:grid-cols-[2fr_3fr]")}>
-            {showPayment && (
-              <PaymentCard
-                overview={overview}
-                canManage={canManageBilling}
-                onUpdate={onUpdatePayment}
-              />
-            )}
-            <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
-          </div>
-        </div>
-      )}
-      {showPayment && <InvoicesCard invoices={overview.invoices} />}
+      {billingSection}
     </div>
   );
 };

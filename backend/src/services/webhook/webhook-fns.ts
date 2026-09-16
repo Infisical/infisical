@@ -17,7 +17,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
 import { TWebhookPayloads, WebhookEvents, WebhookType } from "./webhook-types";
 
-const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
+const WEBHOOK_TRIGGER_TIMEOUT = 30 * 1000;
 
 const CHANGE_REQUEST_STATUS_LABEL: Record<string, string> = {
   [RequestState.Open]: "Open",
