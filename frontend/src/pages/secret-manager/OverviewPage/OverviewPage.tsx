@@ -2833,7 +2833,7 @@ const OverviewPageContent = () => {
                   containerClassName="overscroll-x-none rounded-t-none"
                 >
                   <TableHeader>
-                    <TableRow className="h-10">
+                    <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-foreground/5">
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
@@ -2861,7 +2861,7 @@ const OverviewPageContent = () => {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="flex h-full w-full cursor-pointer items-center gap-2 px-3 text-left hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                              className="flex h-full w-full cursor-pointer items-center gap-2 px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                               aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}`}
                             >
                               <span className="text-foreground">Name</span>
