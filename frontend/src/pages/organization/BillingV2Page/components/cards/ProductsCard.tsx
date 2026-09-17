@@ -210,7 +210,7 @@ const ActiveProductCard = ({
             commitNudge && "mb-0"
           )}
         >
-          <span className="text-xs text-muted">Usage across your organizations</span>
+          <span className="text-xs text-muted">Usage across your organization</span>
           <span className="flex shrink-0 items-center gap-1 text-xs text-accent transition-colors group-hover:text-foreground">
             View breakdown
             <ChevronRight className="size-3.5" />

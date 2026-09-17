@@ -117,7 +117,7 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
 
   if (!canExpand) {
     return (
-      <div className="rounded-md border border-border p-3">
+      <div className="rounded-md border border-border px-3 py-4">
         <div className="flex">{header}</div>
       </div>
     );
@@ -131,8 +131,10 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
       className="rounded-md border border-border"
     >
       <AccordionItem value={scope.orgId}>
-        <AccordionTrigger className="px-3 py-3">{header}</AccordionTrigger>
-        <AccordionContent className="border-t border-border px-3 pt-3 pb-3.5">
+        <AccordionTrigger className="px-3 group-data-[variant=ghost]/accordion:py-4">
+          {header}
+        </AccordionTrigger>
+        <AccordionContent className="border-t border-border px-3 group-data-[variant=ghost]/accordion:pt-3 group-data-[variant=ghost]/accordion:pb-4">
           <div className="flex flex-col gap-2.5">
             <span className="text-2xs tracking-wide text-muted uppercase">
               Where these {unitLabel} were created
@@ -141,7 +143,7 @@ const ScopeRow = ({ scope, scopedCount, unitLabel, hasProjectDetail }: ScopeRowP
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2 text-xs text-accent">
-                    <span className={cn("size-2.5 shrink-0 rounded-xs", orgLevelTint)} />
+                    <ScopeIcon className="size-3.5 shrink-0 text-neutral" />
                     <span className="truncate">{scope.isRoot ? "Org" : "Sub-Org"}</span>
                   </span>
                   <CountShare count={scope.orgLevelCount} total={scope.count} />
@@ -349,24 +351,24 @@ const BreakdownBody = ({
               </div>
               <div className="flex h-[5px] w-full gap-0.5 overflow-hidden rounded-xs bg-background">
                 <div
-                  className="animate-bar-grow h-full rounded-xs bg-org/85"
+                  className="animate-bar-grow h-full rounded-xs rounded-r-none bg-org/85"
                   style={{ width: pct(rootScope.count, scopedCount) }}
                 />
                 <div
-                  className="animate-bar-grow h-full rounded-xs bg-sub-org/85"
+                  className="animate-bar-grow h-full rounded-xs rounded-l-none bg-sub-org/85"
                   style={{ width: pct(subOrgCount, scopedCount), animationDelay: "60ms" }}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-accent">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-3 rounded-xs bg-org/85" />
+                  <span className="h-[5px] w-3 rounded-xs bg-org/85" />
                   <span className="font-semibold text-foreground">
                     {rootScope.count.toLocaleString()}
                   </span>{" "}
                   created in the root org
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-3 rounded-xs bg-sub-org/85" />
+                  <span className="h-[5px] w-3 rounded-xs bg-sub-org/85" />
                   <span className="font-semibold text-foreground">
                     {subOrgCount.toLocaleString()}
                   </span>{" "}
