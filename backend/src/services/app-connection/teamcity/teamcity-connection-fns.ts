@@ -39,7 +39,8 @@ export const validateTeamCityConnectionCredentials = async (config: TTeamCityCon
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
-      }
+      },
+      timeout: 30_000
     });
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
@@ -65,7 +66,8 @@ export const listTeamCityProjects = async (appConnection: TTeamCityConnection) =
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
-      }
+      },
+      timeout: 30_000
     }
   );
 
