@@ -232,6 +232,31 @@ describe("Agent Vault V1 Router", async () => {
       expect(accessBundle.members[0].actor).toMatchObject({ type: "user", id: seedData1.id });
     });
 
+    test("updatedAt moves when a bundle changes, and matches createdAt until it does", async () => {
+      const bundle = await createAccessBundle("stamped");
+
+      const read = async () =>
+        (
+          JSON.parse((await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload) as {
+            accessBundle: { createdAt: string; updatedAt: string };
+          }
+        ).accessBundle;
+
+      const fresh = await read();
+      expect(fresh.updatedAt).toBe(fresh.createdAt);
+
+      expect(
+        (await inject("PATCH", `/api/v1/agent-vault/access-bundles/${bundle.id}`, { description: "touched" }))
+          .statusCode
+      ).toBe(200);
+
+      // The column is maintained by a Postgres trigger rather than by any write in this codebase, so
+      // nothing but a round trip proves it fires.
+      const touched = await read();
+      expect(new Date(touched.updatedAt).getTime()).toBeGreaterThan(new Date(fresh.updatedAt).getTime());
+      expect(touched.createdAt).toBe(fresh.createdAt);
+    });
+
     test("two concurrent creates for the same host do not both get in", async () => {
       const bundle = await createAccessBundle("race-hosts");
       const attempts = await Promise.all(
