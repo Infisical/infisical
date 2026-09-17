@@ -143,7 +143,9 @@ However, two services can match the same host if they define the host pattern di
 - One service defines its host as `api.github.com`
 - Another service defines it as `*.github.com`
 
-In the above example, requests to `api.github.com` would get the credential from the first service.
+In the above example, requests to `api.github.com` are handled by the first service.
+
+The more specific service handles the request outright, so its [methods and paths](#methods-and-paths) are the ones that apply. If it allows only GET, a POST to `api.github.com` is refused even though the wildcard service allows every method. A wildcard covers the hosts its sibling doesn't name, not the requests its sibling refuses.
 
 <Note>
 Different access bundles can cover the same host with different credentials, since an agent only gets the credential from the access bundle its session is scoped to.
