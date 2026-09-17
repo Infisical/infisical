@@ -37,7 +37,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 <AgentVaultBranch service="gemini">
   > Run `curl -sS https://generativelanguage.googleapis.com/v1beta/models` and show me the output.
 
-  Google Gemini returns the list of available models. Run the same request outside the agent and it fails with a 400.
+  Google Gemini returns the list of available models. Run the same request outside the agent and it fails with a 403.
 </AgentVaultBranch>
 
 <AgentVaultBranch service="mistral">
@@ -97,7 +97,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 <AgentVaultBranch service="cloudflare">
   > Run `curl -sS https://api.cloudflare.com/client/v4/user/tokens/verify` and show me the output.
 
-  Cloudflare returns your token's status. Run the same request outside the agent and it fails with a 401.
+  Cloudflare returns your token's status. Run the same request outside the agent and it fails with a 400.
 </AgentVaultBranch>
 
 <AgentVaultBranch service="datadog">
@@ -121,7 +121,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 <AgentVaultBranch service="github-npm">
   > Run `curl -sS https://npm.pkg.github.com/-/whoami` and show me the output.
 
-  GitHub Packages returns your npm username, confirming the token is valid. Run the same request outside the agent and it fails with a 401.
+  GitHub Packages returns your npm username, confirming the token is valid. Run the same request outside the agent and it fails with a 403.
 </AgentVaultBranch>
 
 <AgentVaultBranch service="notion">
@@ -161,9 +161,9 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 </AgentVaultBranch>
 
 <AgentVaultBranch service="sentry">
-  > Run `curl -sS https://sentry.io/api/0/` and show me the output.
+  > Run `curl -sS https://sentry.io/api/0/organizations/` and show me the output.
 
-  Sentry returns the API root. Run the same request outside the agent and it fails with a 401.
+  Sentry returns the organizations your token can access. Run the same request outside the agent and it fails with a 401.
 </AgentVaultBranch>
 
 <AgentVaultBranch service="stripe">
