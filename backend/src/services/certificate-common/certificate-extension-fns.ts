@@ -260,6 +260,8 @@ export const describeCustomExtensionValue = (oid: string, base64Value: string): 
 };
 
 const ASN1_STRING_TAG_NUMBERS = new Set([12, 18, 19, 20, 21, 22, 25, 26, 27, 28, 29, 30]);
+const ASN1_OCTET_STRING_TAG_NUMBER = 4;
+const PRINTABLE_TEXT_PATTERN = new RE2("^[\\x20-\\x7e]+$");
 
 export const describeCustomExtensionTextForPolicy = (oid: string, base64Value: string): string | null => {
   const described = describeCustomExtensionValue(oid, base64Value);
@@ -268,11 +270,22 @@ export const describeCustomExtensionTextForPolicy = (oid: string, base64Value: s
   const parsed = parseSingleDerValue(Buffer.from(base64Value, "base64"));
   if (!parsed) return null;
 
-  const { idBlock, valueBlock } = parsed as { idBlock: { tagClass: number; tagNumber: number }; valueBlock: unknown };
-  if (idBlock.tagClass !== 1 || !ASN1_STRING_TAG_NUMBERS.has(idBlock.tagNumber)) return null;
+  const { idBlock, valueBlock } = parsed as {
+    idBlock: { tagClass: number; tagNumber: number };
+    valueBlock: { value?: unknown; valueHexView?: Uint8Array };
+  };
+  if (idBlock.tagClass !== 1) return null;
 
-  const { value } = valueBlock as { value?: unknown };
-  return typeof value === "string" ? value : null;
+  if (ASN1_STRING_TAG_NUMBERS.has(idBlock.tagNumber)) {
+    return typeof valueBlock.value === "string" ? valueBlock.value : null;
+  }
+
+  if (idBlock.tagNumber === ASN1_OCTET_STRING_TAG_NUMBER && valueBlock.valueHexView) {
+    const octets = Buffer.from(valueBlock.valueHexView).toString("utf8");
+    return PRINTABLE_TEXT_PATTERN.test(octets) ? octets : null;
+  }
+
+  return null;
 };
 
 export const parseCustomExtensionsFromCertificate = (
@@ -524,16 +537,10 @@ export const resolveCustomExtensions = ({
     const allowed = rule.allowed ?? [];
 
     const matchesPatterns = (patterns: string[]) =>
-      matchValue === null ? patterns.includes("*") : matchesAnyPattern(matchValue, patterns);
-    const valueForMessage = matchValue ?? "(binary)";
-
-    if (matchValue === null && denied.length > 0) {
-      errors.push(
-        `Custom extension '${oid}' was supplied as binary, which this policy cannot check against the values it denies: ${denied.join(", ")}. Supply the value as text so it can be checked.`
-      );
-      // eslint-disable-next-line no-continue
-      continue;
-    }
+      matchValue === null
+        ? patterns.includes("*") || matchesAnyPattern(encodedValue, patterns)
+        : matchesAnyPattern(matchValue, patterns);
+    const valueForMessage = matchValue ?? encodedValue;
 
     if (matchesPatterns(denied)) {
       errors.push(

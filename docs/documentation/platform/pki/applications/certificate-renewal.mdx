@@ -75,11 +75,9 @@ Reuse is available for certificates issued with an Infisical-managed key pair. A
 
 ### Custom extensions
 
-The wizard fills these in from the current certificate, including whether each one is critical. Each row has a format: **Text**, which is what most extensions use, or **DER** for a value that isn't text, such as OCSP must-staple. A DER value arrives as base64 and reaches the certificate byte for byte. Edit either one, switch a row's format, or remove the row if the replacement shouldn't carry it.
+A renewal starts from the extensions on the current certificate. A value is text, or base64-encoded DER for anything that isn't text, such as OCSP must-staple, which reaches the certificate byte for byte.
 
-A few extensions are written by the issuing authority itself. A Certificate Transparency timestamp is signed over the exact certificate it sits on, so the same bytes on a replacement wouldn't verify, and the CA version and previous certificate hash ADCS adds describe that CA's own key and certificate history. Infisical shows them on the certificate and leaves them out of the renewal, where the issuing authority writes its own.
-
-Some authorities, DigiCert among them, don't accept custom extensions at all. A certificate renewed there is issued without them. If the request asks for one anyway, the renewal fails rather than dropping it.
+Certificate Transparency timestamps and the ADCS CA version and previous certificate hash are left out, because the authority issuing the renewal writes its own. An authority that doesn't accept custom extensions at all, DigiCert for example, issues the renewal without them and refuses a request that asks for one.
 
 ### Permissions
 
@@ -141,7 +139,7 @@ Sending a property the CSR already carries is rejected rather than quietly ignor
 
     `renewalKeySource` accepts `new`, `reuse`, or `csr`. Supply `csr` alongside `renewalKeySource: "csr"`. To clear an attribute, send it as `null`.
 
-    A custom extension carries its value in `value`, and `valueEncoding` says how to read it. The default, `text`, encodes the value as a DER UTF8String. Use `der` for a value that isn't text, such as OCSP must-staple: `{ "oid": "1.3.6.1.5.5.7.1.24", "value": "MAMCAQU=", "valueEncoding": "der" }`. Those bytes reach the certificate unchanged.
+    `valueEncoding` says how to read a custom extension's `value`: `text` by default, or `der` for base64 that reaches the certificate byte for byte, as in `{ "oid": "1.3.6.1.5.5.7.1.24", "value": "MAMCAQU=", "valueEncoding": "der" }` for OCSP must-staple.
 
     A request with no body renews the certificate as it is with a new key pair, so existing automation keeps working unchanged.
 

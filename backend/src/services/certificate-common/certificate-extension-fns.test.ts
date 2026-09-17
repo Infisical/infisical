@@ -553,9 +553,7 @@ describe("resolveCustomExtensions", () => {
   it("normalises unpadded base64 so the resolved value matches what the certificate will carry", () => {
     const { extensions, errors } = resolveCustomExtensions({
       rules: null,
-      requestExtensions: [
-        { oid: CUSTOM_OID, value: "MAMCAQU", valueEncoding: CertExtensionValueEncoding.DER }
-      ]
+      requestExtensions: [{ oid: CUSTOM_OID, value: "MAMCAQU", valueEncoding: CertExtensionValueEncoding.DER }]
     });
 
     expect(errors).toEqual([]);
@@ -565,9 +563,7 @@ describe("resolveCustomExtensions", () => {
   it("takes a DER value for an OID Infisical encodes itself, which is the escape hatch for a CA that wants other bytes", () => {
     const { errors, extensions } = resolveCustomExtensions({
       rules: null,
-      requestExtensions: [
-        { oid: SID_OID, value: "MAMCAQU=", valueEncoding: CertExtensionValueEncoding.DER }
-      ]
+      requestExtensions: [{ oid: SID_OID, value: "MAMCAQU=", valueEncoding: CertExtensionValueEncoding.DER }]
     });
 
     expect(errors).toEqual([]);
@@ -585,7 +581,7 @@ describe("resolveCustomExtensions", () => {
     expect(extensions[0].value).toBe("BQA=");
   });
 
-  it("refuses a DER value it cannot read rather than letting it past a policy's denied values", () => {
+  it("reads the text inside an octet string so a denied value cannot hide in one", () => {
     const octetString = Buffer.concat([Buffer.from([0x04, 0x0b]), Buffer.from("secret-prod", "utf8")]).toString(
       "base64"
     );
@@ -596,13 +592,11 @@ describe("resolveCustomExtensions", () => {
     ]) {
       const { extensions, errors } = resolveCustomExtensions({
         rules,
-        requestExtensions: [
-          { oid: CUSTOM_OID, value: octetString, valueEncoding: CertExtensionValueEncoding.DER }
-        ]
+        requestExtensions: [{ oid: CUSTOM_OID, value: octetString, valueEncoding: CertExtensionValueEncoding.DER }]
       });
 
       expect(extensions).toEqual([]);
-      expect(errors[0]).toContain("cannot check against the values it denies");
+      expect(errors[0]).toContain("'secret-prod' is denied by this policy");
     }
   });
 
@@ -613,13 +607,54 @@ describe("resolveCustomExtensions", () => {
 
     const { extensions, errors } = resolveCustomExtensions({
       rules: [{ oid: CUSTOM_OID, allowed: ["*"] }],
-      requestExtensions: [
-        { oid: CUSTOM_OID, value: octetString, valueEncoding: CertExtensionValueEncoding.DER }
-      ]
+      requestExtensions: [{ oid: CUSTOM_OID, value: octetString, valueEncoding: CertExtensionValueEncoding.DER }]
     });
 
     expect(errors).toEqual([]);
     expect(extensions[0].value).toBe(octetString);
+  });
+
+  it("lets an unrelated binary value past a policy that denies specific bytes", () => {
+    const { errors, extensions } = resolveCustomExtensions({
+      rules: [{ oid: CUSTOM_OID, allowed: ["*"], denied: ["MAMCAQU="] }],
+      requestExtensions: [
+        {
+          oid: CUSTOM_OID,
+          value: Buffer.from([0x30, 0x03, 0x02, 0x01, 0x06]).toString("base64"),
+          valueEncoding: CertExtensionValueEncoding.DER
+        }
+      ]
+    });
+
+    expect(errors).toEqual([]);
+    expect(extensions).toHaveLength(1);
+  });
+
+  it("pins a DER value to exact bytes when the policy lists its base64", () => {
+    const mustStaple = "MAMCAQU=";
+    const other = Buffer.from([0x30, 0x03, 0x02, 0x01, 0x06]).toString("base64");
+
+    const allowed = resolveCustomExtensions({
+      rules: [{ oid: CUSTOM_OID, allowed: [mustStaple] }],
+      requestExtensions: [{ oid: CUSTOM_OID, value: mustStaple, valueEncoding: CertExtensionValueEncoding.DER }]
+    });
+    const rejected = resolveCustomExtensions({
+      rules: [{ oid: CUSTOM_OID, allowed: [mustStaple] }],
+      requestExtensions: [{ oid: CUSTOM_OID, value: other, valueEncoding: CertExtensionValueEncoding.DER }]
+    });
+
+    expect(allowed.errors).toEqual([]);
+    expect(allowed.extensions[0].value).toBe(mustStaple);
+    expect(rejected.errors[0]).toContain("is not allowed by this policy");
+  });
+
+  it("denies a DER value the policy lists by its base64", () => {
+    const { errors } = resolveCustomExtensions({
+      rules: [{ oid: CUSTOM_OID, allowed: ["*"], denied: ["MAMCAQU="] }],
+      requestExtensions: [{ oid: CUSTOM_OID, value: "MAMCAQU=", valueEncoding: CertExtensionValueEncoding.DER }]
+    });
+
+    expect(errors[0]).toContain("is denied by this policy");
   });
 
   it("matches a policy against the text inside a DER value, whichever ASN.1 string type carries it", () => {
