@@ -10,6 +10,7 @@ import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recordi
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -305,7 +306,9 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       tags: [ApiDocsTags.PamSessions],
       body: z.object({
         path: z.string().trim().min(3).describe("Account path in the format 'folderName/accountName'"),
-        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
+        reason: auditSafeText(z.string().trim().max(1000), { allowMultiline: true })
+          .optional()
+          .describe("Optional reason for the session"),
         duration: z
           .string()
           .trim()
@@ -438,7 +441,9 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         accountId: z.string().uuid().describe("The ID of the account")
       }),
       body: z.object({
-        reason: z.string().trim().max(1000).optional().describe("Optional reason for the session"),
+        reason: auditSafeText(z.string().trim().max(1000), { allowMultiline: true })
+          .optional()
+          .describe("Optional reason for the session"),
         mfaSessionId: z.string().max(64).optional().describe("MFA session ID from a completed MFA verification"),
         selectedHost: z
           .string()
