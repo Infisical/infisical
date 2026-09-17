@@ -48,15 +48,16 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       <SidebarCollapsibleGroup label="Infrastructure">
         <ProjectNavList items={infrastructureItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>
-      <SidebarMenu>
+      <SidebarMenu className="mt-auto">
         <SidebarMenuItem>
           <SidebarMenuButton
             size="lg"
             closeOnMobile
             tooltip="About Agent Vault"
+            className="text-xs text-muted [&_svg]:size-3.5"
             onClick={() => setIsIntroOpen(true)}
           >
-            <Info className="size-4" />
+            <Info className="mb-px" />
             <span>About Agent Vault</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
