@@ -386,8 +386,6 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
-
       if (req.body.authMethod) {
         const setInput = toSetAuthMethodArg(req.body.authMethod);
 
@@ -397,12 +395,14 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           actor: req.permission
         });
 
+        const updated = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
+
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
-            metadata: gatewayAuthMethodAuditMetadata(req.params.gatewayId, gateway.name, result)
+            metadata: gatewayAuthMethodAuditMetadata(req.params.gatewayId, updated.name, result)
           }
         });
 
@@ -423,6 +423,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           });
       }
 
+      const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
         actor: req.permission
