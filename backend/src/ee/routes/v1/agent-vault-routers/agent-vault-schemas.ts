@@ -7,6 +7,7 @@ import {
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
+  AgentVaultMemberType,
   AgentVaultSubstitutionSurface
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
@@ -230,40 +231,71 @@ export const AgentVaultMemberIdsSchema = z
     `Grant an access bundle to at most ${AGENT_VAULT_MAX_GRANTEES} users, machine identities, and groups at a time`
   );
 
-// A removed grant is gone, so this reports the row's own columns rather than joining the actor's name,
-// the way every other membership delete on the platform does.
+const actorTypeSchema = <T extends AgentVaultMemberType>(type: T) =>
+  z.literal(type).describe(AGENT_VAULT.MEMBER.actorType);
+
+const actorIdSchema = z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId);
+
+// A grant names exactly one actor, so the three are a union rather than three nullable columns. Write
+// responses carry only the reference: they do not join the actor's row, and adding a join to report
+// what the caller just sent would cost a query per grant.
+export const AgentVaultActorRefSchema = z.discriminatedUnion("type", [
+  z
+    .object({ type: actorTypeSchema(AgentVaultMemberType.User), id: actorIdSchema })
+    .describe(JSON.stringify({ title: "User" })),
+  z
+    .object({ type: actorTypeSchema(AgentVaultMemberType.Identity), id: actorIdSchema })
+    .describe(JSON.stringify({ title: "Machine identity" })),
+  z
+    .object({ type: actorTypeSchema(AgentVaultMemberType.Group), id: actorIdSchema })
+    .describe(JSON.stringify({ title: "Group" }))
+]);
+
+export const AgentVaultActorSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.User),
+      id: actorIdSchema,
+      username: z.string().describe(AGENT_VAULT.MEMBER.username),
+      email: z.string().nullable().describe(AGENT_VAULT.MEMBER.email),
+      firstName: z.string().nullable().describe(AGENT_VAULT.MEMBER.firstName),
+      lastName: z.string().nullable().describe(AGENT_VAULT.MEMBER.lastName)
+    })
+    .describe(JSON.stringify({ title: "User" })),
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.Identity),
+      id: actorIdSchema,
+      name: z.string().describe(AGENT_VAULT.MEMBER.identityName)
+    })
+    .describe(JSON.stringify({ title: "Machine identity" })),
+  z
+    .object({
+      type: actorTypeSchema(AgentVaultMemberType.Group),
+      id: actorIdSchema,
+      name: z.string().describe(AGENT_VAULT.MEMBER.groupName)
+    })
+    .describe(JSON.stringify({ title: "Group" }))
+]);
+
 export const AgentVaultRemovedMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-  userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),
-  identityId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.identityId),
-  groupId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.groupId),
-  createdAt: z.date()
+  createdAt: z.date(),
+  actor: AgentVaultActorRefSchema
 });
 
+// No accessBundleId: the list route carries it in the URL and the bundle-detail route nests these
+// inside the bundle, so on both it would only repeat something the caller already has.
 export const AgentVaultMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),
-  identityId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.identityId),
-  groupId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.groupId),
   createdAt: z.date(),
-  user: z
-    .object({
-      username: z.string(),
-      email: z.string().nullable(),
-      firstName: z.string().nullable(),
-      lastName: z.string().nullable()
-    })
-    .nullable(),
-  identity: z.object({ name: z.string() }).nullable(),
-  group: z.object({ name: z.string() }).nullable()
+  actor: AgentVaultActorSchema
 });
 
 export const AgentVaultCreatedMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-  userId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.userId),
-  identityId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.identityId),
-  groupId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.groupId),
-  createdAt: z.date()
+  createdAt: z.date(),
+  actor: AgentVaultActorRefSchema
 });

@@ -1,29 +1,28 @@
 import { BotIcon, UserIcon, UsersIcon } from "lucide-react";
 
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
 
-export const memberDisplayName = (member: TAgentVaultMember) => {
-  if (member.group) return member.group.name;
-  if (member.identity) return member.identity.name;
-  if (!member.user) return "Unknown";
+export const memberDisplayName = ({ actor }: TAgentVaultMember) => {
+  if (actor.type !== AgentVaultMemberType.User) return actor.name;
 
-  const fullName = [member.user.firstName, member.user.lastName].filter(Boolean).join(" ");
-  return fullName || member.user.username || member.user.email || "Unknown";
+  const fullName = [actor.firstName, actor.lastName].filter(Boolean).join(" ");
+  return fullName || actor.username || actor.email || "Unknown";
 };
 
-const memberKind = (member: TAgentVaultMember) => {
-  if (member.groupId) return { label: "Group", icon: UsersIcon };
-  if (member.identityId) return { label: "Machine Identity", icon: BotIcon };
-  return { label: "User", icon: UserIcon };
+const KIND = {
+  [AgentVaultMemberType.User]: { label: "User", icon: UserIcon },
+  [AgentVaultMemberType.Identity]: { label: "Machine Identity", icon: BotIcon },
+  [AgentVaultMemberType.Group]: { label: "Group", icon: UsersIcon }
 };
 
-const memberSubtitle = (member: TAgentVaultMember, kindLabel: string) => {
-  if (member.user) return member.user.email || member.user.username;
-  return kindLabel;
+const memberSubtitle = ({ actor }: TAgentVaultMember, kindLabel: string) => {
+  if (actor.type !== AgentVaultMemberType.User) return kindLabel;
+  return actor.email || actor.username;
 };
 
 export const MemberName = ({ member }: { member: TAgentVaultMember }) => {
-  const { label, icon: Icon } = memberKind(member);
+  const { label, icon: Icon } = KIND[member.actor.type];
 
   return (
     <div className="flex min-w-0 items-center gap-2.5">

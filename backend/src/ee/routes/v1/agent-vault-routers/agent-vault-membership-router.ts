@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
+import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -168,7 +169,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
       memberships.forEach((membership) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultProductMemberAdded,
-          properties: { memberType: "user", role: membership.role }
+          properties: { memberType: AgentVaultMemberType.User, role: membership.role }
         })
       );
 
@@ -213,7 +214,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: "user", role: req.body.role }
+        properties: { memberType: AgentVaultMemberType.User, role: req.body.role }
       });
 
       return member;
@@ -251,7 +252,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberRemoved,
-        properties: { memberType: "user" }
+        properties: { memberType: AgentVaultMemberType.User }
       });
 
       return { membershipId: removed.membershipId, userId: req.params.userId };
@@ -295,7 +296,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberAdded,
-        properties: { memberType: "group", role: req.body.role }
+        properties: { memberType: AgentVaultMemberType.Group, role: req.body.role }
       });
 
       return member;
@@ -339,7 +340,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: "group", role: req.body.role }
+        properties: { memberType: AgentVaultMemberType.Group, role: req.body.role }
       });
 
       return member;
@@ -377,7 +378,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberRemoved,
-        properties: { memberType: "group" }
+        properties: { memberType: AgentVaultMemberType.Group }
       });
 
       return { membershipId: removed.membershipId, groupId: req.params.groupId };
@@ -421,7 +422,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberAdded,
-        properties: { memberType: "identity", role: req.body.role }
+        properties: { memberType: AgentVaultMemberType.Identity, role: req.body.role }
       });
 
       return member;
@@ -465,7 +466,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: "identity", role: req.body.role }
+        properties: { memberType: AgentVaultMemberType.Identity, role: req.body.role }
       });
 
       return member;
@@ -503,7 +504,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultProductMemberRemoved,
-        properties: { memberType: "identity" }
+        properties: { memberType: AgentVaultMemberType.Identity }
       });
 
       return { membershipId: removed.membershipId, identityId: req.params.identityId };

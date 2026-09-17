@@ -21,24 +21,19 @@ import {
   useListAgentVaultProductIdentityMembers,
   useListAgentVaultProductUserMembers
 } from "@app/hooks/api/agentVault";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultMember } from "@app/hooks/api/agentVault/types";
 
 import { PendingInvitationBadge } from "./PendingInvitationBadge";
 
-enum MemberKind {
-  User = "user",
-  Identity = "identity",
-  Group = "group"
-}
-
-const KIND_ICON: Record<MemberKind, typeof UserIcon> = {
-  [MemberKind.User]: UserIcon,
-  [MemberKind.Identity]: BotIcon,
-  [MemberKind.Group]: UsersIcon
+const KIND_ICON: Record<AgentVaultMemberType, typeof UserIcon> = {
+  [AgentVaultMemberType.User]: UserIcon,
+  [AgentVaultMemberType.Identity]: BotIcon,
+  [AgentVaultMemberType.Group]: UsersIcon
 };
 
 type Option = {
-  kind: MemberKind;
+  kind: AgentVaultMemberType;
   id: string;
   label: string;
   subtitle: string;
@@ -65,11 +60,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
   const { data: groupMemberships } = useListAgentVaultProductGroupMembers(isOpen);
   const { data: identities } = useListAgentVaultProductIdentityMembers(isOpen);
 
-  const grantedIds = useMemo(
-    () =>
-      new Set(members.map((member) => member.userId ?? member.identityId ?? member.groupId ?? "")),
-    [members]
-  );
+  const grantedIds = useMemo(() => new Set(members.map((member) => member.actor.id)), [members]);
 
   const options = useMemo<Option[]>(() => {
     const userOptions = (users ?? [])
@@ -77,7 +68,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
       .map((member) => {
         const fullName = [member.firstName, member.lastName].filter(Boolean).join(" ");
         return {
-          kind: MemberKind.User,
+          kind: AgentVaultMemberType.User,
           id: member.userId as string,
           label: fullName || member.username || member.email || "",
           subtitle: member.email || member.username,
@@ -89,7 +80,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     const groupOptions = (groupMemberships ?? [])
       .filter((member) => member.groupId)
       .map((member) => ({
-        kind: MemberKind.Group,
+        kind: AgentVaultMemberType.Group,
         id: member.groupId as string,
         label: member.name,
         subtitle: "Group"
@@ -99,7 +90,7 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     const identityOptions = (identities ?? [])
       .filter((member) => member.identityId)
       .map((member) => ({
-        kind: MemberKind.Identity,
+        kind: AgentVaultMemberType.Identity,
         id: member.identityId as string,
         label: member.name,
         subtitle: "Machine Identity"
@@ -114,14 +105,14 @@ export const AddMemberDialog = ({ isOpen, onOpenChange, accessBundleId, members 
     try {
       if (!selected.length) return;
 
-      const idsOfKind = (kind: MemberKind) =>
+      const idsOfKind = (kind: AgentVaultMemberType) =>
         selected.filter((option) => option.kind === kind).map((option) => option.id);
 
       const { members: granted, skipped } = await addMembers.mutateAsync({
         accessBundleId,
-        userIds: idsOfKind(MemberKind.User),
-        identityIds: idsOfKind(MemberKind.Identity),
-        groupIds: idsOfKind(MemberKind.Group)
+        userIds: idsOfKind(AgentVaultMemberType.User),
+        identityIds: idsOfKind(AgentVaultMemberType.Identity),
+        groupIds: idsOfKind(AgentVaultMemberType.Group)
       });
 
       if (!granted.length) {

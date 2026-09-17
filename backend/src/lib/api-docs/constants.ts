@@ -4270,13 +4270,21 @@ export const AGENT_VAULT = {
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",
-    userId: "The ID of the user to grant the access bundle to.",
-    identityId: "The ID of the machine identity to grant the access bundle to.",
-    groupId: "The ID of the group to grant the access bundle to.",
+    userId: "The ID of the user whose Agent Vault membership this is.",
+    identityId: "The ID of the machine identity whose Agent Vault membership this is.",
+    groupId: "The ID of the group whose Agent Vault membership this is.",
     userIds: "The IDs of the users to grant the access bundle to.",
     identityIds: "The IDs of the machine identities to grant the access bundle to.",
     groupIds: "The IDs of the groups to grant the access bundle to.",
-    skipped: "The IDs of the requested grantees who already had the access bundle and were left as they were."
+    actorType: "Whether the access bundle is granted to a user, a machine identity or a group.",
+    actorId: "The ID of the user, machine identity or group the access bundle is granted to.",
+    username: "The username of the user the access bundle is granted to.",
+    email: "The email address of the user the access bundle is granted to.",
+    firstName: "The first name of the user the access bundle is granted to.",
+    lastName: "The last name of the user the access bundle is granted to.",
+    identityName: "The name of the machine identity the access bundle is granted to.",
+    groupName: "The name of the group the access bundle is granted to.",
+    skipped: "The requested grantees who already had the access bundle and were left as they were."
   },
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member."

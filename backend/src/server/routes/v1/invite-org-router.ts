@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamProductRole } from "@app/ee/services/pam/pam-enums";
 import { ForbiddenRequestError } from "@app/lib/errors";
@@ -231,7 +232,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             });
             emitAgentVaultTelemetry(server.services.telemetry, req, {
               event: PostHogEventTypes.AgentVaultProductMemberAdded,
-              properties: { memberType: "user", role: membership.role }
+              properties: { memberType: AgentVaultMemberType.User, role: membership.role }
             });
           }
         } catch (err) {

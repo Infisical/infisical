@@ -7,7 +7,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
-import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultCredentialType, AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -19,6 +19,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
+  AgentVaultActorRefSchema,
   AgentVaultAllowedMethodsSchema,
   AgentVaultAllowedPathPrefixesSchema,
   AgentVaultCreatedMemberSchema,
@@ -50,11 +51,13 @@ const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   createdAt: true
 });
 
-const memberTypeOf = (member: { userId?: string | null; identityId?: string | null; groupId?: string | null }) => {
-  if (member.userId) return "user" as const;
-  if (member.identityId) return "identity" as const;
-  return "group" as const;
-};
+// The audit body keeps the three flat ids it has always carried, because renaming a field on a live
+// event breaks the SIEM rules customers built on it.
+const auditActorFields = (actor: { type: AgentVaultMemberType; id: string }) => ({
+  ...(actor.type === AgentVaultMemberType.User && { userId: actor.id }),
+  ...(actor.type === AgentVaultMemberType.Identity && { identityId: actor.id }),
+  ...(actor.type === AgentVaultMemberType.Group && { groupId: actor.id })
+});
 
 const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
   actorId: req.permission.id,
@@ -530,7 +533,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           members: AgentVaultCreatedMemberSchema.array(),
-          skipped: z.string().uuid().array().describe(AGENT_VAULT.MEMBER.skipped)
+          skipped: AgentVaultActorRefSchema.array().describe(AGENT_VAULT.MEMBER.skipped)
         })
       }
     },
@@ -555,9 +558,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
                 accessBundleId: req.params.accessBundleId,
                 accessBundleName,
                 memberId: member.id,
-                ...(member.userId && { userId: member.userId }),
-                ...(member.identityId && { identityId: member.identityId }),
-                ...(member.groupId && { groupId: member.groupId })
+                ...auditActorFields(member.actor)
               }
             }
           })
@@ -567,7 +568,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       members.forEach((member) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultAccessBundleMemberAdded,
-          properties: { accessBundleId: req.params.accessBundleId, memberType: memberTypeOf(member) }
+          properties: { accessBundleId: req.params.accessBundleId, memberType: member.actor.type }
         })
       );
 
@@ -614,7 +615,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved,
-        properties: { accessBundleId: req.params.accessBundleId, memberType: memberTypeOf(member) }
+        properties: { accessBundleId: req.params.accessBundleId, memberType: member.actor.type }
       });
 
       return { member };

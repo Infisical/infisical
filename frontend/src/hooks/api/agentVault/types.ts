@@ -1,6 +1,7 @@
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
+  AgentVaultMemberType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface,
@@ -70,20 +71,22 @@ export type TAgentVaultService = {
   createdAt: string;
 };
 
+export type TAgentVaultActor =
+  | {
+      type: AgentVaultMemberType.User;
+      id: string;
+      username: string;
+      email: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    }
+  | { type: AgentVaultMemberType.Identity; id: string; name: string }
+  | { type: AgentVaultMemberType.Group; id: string; name: string };
+
 export type TAgentVaultMember = {
   id: string;
-  userId: string | null;
-  identityId: string | null;
-  groupId: string | null;
   createdAt: string;
-  user: {
-    username: string;
-    email: string | null;
-    firstName: string | null;
-    lastName: string | null;
-  } | null;
-  identity: { name: string } | null;
-  group: { name: string } | null;
+  actor: TAgentVaultActor;
 };
 
 export type TAgentVaultAccessBundle = {

@@ -21,6 +21,12 @@ export enum AgentVaultCredentialType {
   Passthrough = "passthrough"
 }
 
+export enum AgentVaultMemberType {
+  User = "user",
+  Identity = "identity",
+  Group = "group"
+}
+
 export enum AgentVaultTrafficPolicy {
   AnyHost = "any-host",
   BundleHosts = "bundle-hosts"

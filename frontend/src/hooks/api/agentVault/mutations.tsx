@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { ApiErrorTypes } from "../types";
+import { AgentVaultMemberType } from "./enums";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
@@ -153,7 +154,7 @@ export const useAddAgentVaultAccessBundleMembers = () => {
     mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
       const { data } = await apiRequest.post<{
         members: { id: string }[];
-        skipped: string[];
+        skipped: { type: AgentVaultMemberType; id: string }[];
       }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
       return data;
     },

@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { RESOURCE_SCOPE, ResourceType, TableName, TAgentVaultAccessBundles } from "@app/db/schemas";
+import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -17,16 +18,28 @@ export type TAgentVaultAccessBundleListRow = {
   memberCount: number;
 };
 
+export type TAgentVaultAccessBundleActorRef = {
+  type: AgentVaultMemberType;
+  id: string;
+};
+
+export type TAgentVaultAccessBundleActor =
+  | {
+      type: AgentVaultMemberType.User;
+      id: string;
+      username: string;
+      email: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    }
+  | { type: AgentVaultMemberType.Identity; id: string; name: string }
+  | { type: AgentVaultMemberType.Group; id: string; name: string };
+
 export type TAgentVaultAccessBundleMemberDetail = {
   id: string;
   accessBundleId: string;
-  userId: string | null;
-  identityId: string | null;
-  groupId: string | null;
   createdAt: Date;
-  user: { username: string; email: string | null; firstName: string | null; lastName: string | null } | null;
-  identity: { name: string } | null;
-  group: { name: string } | null;
+  actor: TAgentVaultAccessBundleActor;
 };
 
 const grantScope = (projectId: string, accessBundleId?: string) => ({
@@ -176,23 +189,28 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         groupName: string | null;
       }[];
 
+      const actorOf = (row: (typeof rows)[number]): TAgentVaultAccessBundleActor => {
+        if (row.identityId) {
+          return { type: AgentVaultMemberType.Identity, id: row.identityId, name: row.identityName ?? "" };
+        }
+        if (row.groupId) {
+          return { type: AgentVaultMemberType.Group, id: row.groupId, name: row.groupName ?? "" };
+        }
+        return {
+          type: AgentVaultMemberType.User,
+          id: row.userId ?? "",
+          username: row.userUsername ?? "",
+          email: row.userEmail,
+          firstName: row.userFirstName,
+          lastName: row.userLastName
+        };
+      };
+
       return rows.map((row) => ({
         id: row.id,
         accessBundleId: row.accessBundleId,
-        userId: row.userId,
-        identityId: row.identityId,
-        groupId: row.groupId,
         createdAt: row.createdAt,
-        user: row.userId
-          ? {
-              username: row.userUsername ?? "",
-              email: row.userEmail,
-              firstName: row.userFirstName,
-              lastName: row.userLastName
-            }
-          : null,
-        identity: row.identityId ? { name: row.identityName ?? "" } : null,
-        group: row.groupId ? { name: row.groupName ?? "" } : null
+        actor: actorOf(row)
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault access bundle members" });

@@ -225,11 +225,11 @@ describe("Agent Vault V1 Router", async () => {
 
       const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
       const { accessBundle } = JSON.parse(res.payload) as {
-        accessBundle: { members: { userId: string | null; identityId: string | null }[] };
+        accessBundle: { members: { actor: { type: string; id: string } }[] };
       };
 
       expect(accessBundle.members).toHaveLength(1);
-      expect(accessBundle.members[0].userId).toBe(seedData1.id);
+      expect(accessBundle.members[0].actor).toMatchObject({ type: "user", id: seedData1.id });
     });
 
     test("two concurrent creates for the same host do not both get in", async () => {
@@ -455,7 +455,15 @@ describe("Agent Vault V1 Router", async () => {
           })
         ).statusCode;
 
-      for (const prefix of ["repos", "/repos/../admin", "/repos//x", "/repos%2fx", "/repos;x", "/repos\\x", "/repos,x"]) {
+      for (const prefix of [
+        "repos",
+        "/repos/../admin",
+        "/repos//x",
+        "/repos%2fx",
+        "/repos;x",
+        "/repos\\x",
+        "/repos,x"
+      ]) {
         // eslint-disable-next-line no-await-in-loop
         expect(await reject(prefix)).toBe(422);
       }
@@ -1749,6 +1757,65 @@ describe("Agent Vault V1 Router", async () => {
       expect(notAnId.statusCode).toBe(422);
     });
 
+    test("listing members discriminates the user, machine identity and group arms", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle("member-arms");
+      const group = await createProjectGroup(projectId, "av-arms-group", ProjectMembershipRole.Member);
+      const identity = await createOrgIdentity(`av-arms-identity-${Date.now()}`);
+
+      try {
+        // A grant only reaches an actor already in the implicit project.
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/memberships/identities/${identity.id}`, {
+              role: "member"
+            })
+          ).statusCode
+        ).toBe(200);
+
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+              groupIds: [group.id],
+              identityIds: [identity.id]
+            })
+          ).statusCode
+        ).toBe(200);
+
+        const res = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`);
+        expect(res.statusCode).toBe(200);
+        const { members } = JSON.parse(res.payload) as {
+          members: {
+            id: string;
+            actor: { type: string; id: string; name?: string; username?: string };
+          }[];
+        };
+
+        // The creator's own grant is already there, so all three arms are on one response.
+        const byType = Object.fromEntries(members.map((member) => [member.actor.type, member]));
+        expect(Object.keys(byType).sort()).toEqual(["group", "identity", "user"]);
+
+        expect(byType.group.actor).toMatchObject({ type: "group", id: group.id });
+        expect(byType.identity.actor).toMatchObject({ type: "identity", id: identity.id });
+        expect(byType.user.actor).toMatchObject({ type: "user", id: seedData1.id });
+        expect(byType.user.actor.username).toBeTruthy();
+
+        // The three nullable id columns and the three nullable detail objects are gone for good.
+        members.forEach((member) => {
+          expect(member).not.toHaveProperty("accessBundleId");
+          expect(member).not.toHaveProperty("userId");
+          expect(member).not.toHaveProperty("identityId");
+          expect(member).not.toHaveProperty("groupId");
+          expect(member).not.toHaveProperty("user");
+          expect(member).not.toHaveProperty("identity");
+          expect(member).not.toHaveProperty("group");
+        });
+      } finally {
+        await deleteOrgIdentity(identity.id);
+        await group.cleanup();
+      }
+    });
+
     test("one call grants several actors, dedupes repeats and skips the already granted", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle("member-batch");
@@ -1769,9 +1836,13 @@ describe("Agent Vault V1 Router", async () => {
           groupIds: [first.id, second.id]
         });
         expect(again.statusCode).toBe(200);
-        const repeat = JSON.parse(again.payload) as { members: unknown[]; skipped: string[] };
+        const repeat = JSON.parse(again.payload) as {
+          members: unknown[];
+          skipped: { type: string; id: string }[];
+        };
         expect(repeat.members).toEqual([]);
-        expect(repeat.skipped.sort()).toEqual([first.id, second.id].sort());
+        expect(repeat.skipped.map((actor) => actor.id).sort()).toEqual([first.id, second.id].sort());
+        expect(repeat.skipped.every((actor) => actor.type === "group")).toBe(true);
       } finally {
         await first.cleanup();
         await second.cleanup();
@@ -2105,7 +2176,10 @@ describe("Agent Vault V1 Router", async () => {
         identityIds: [identity.id]
       });
       expect(again.statusCode).toBe(200);
-      expect(JSON.parse(again.payload)).toMatchObject({ members: [], skipped: [identity.id] });
+      expect(JSON.parse(again.payload)).toMatchObject({
+        members: [],
+        skipped: [{ type: "identity", id: identity.id }]
+      });
 
       expect(await usageCounterDALFactory(testDb).countAgentVaultIdentities(seedData1.organization.id)).toBe(
         seatsBefore

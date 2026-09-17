@@ -33,11 +33,12 @@ import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
+  AgentVaultMemberType,
   AgentVaultResourceRole,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
-import { TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
+import { TAgentVaultAccessBundleActorRef, TAgentVaultAccessBundleDALFactory } from "./agent-vault-access-bundle-dal";
 import {
   TAddMembersDTO,
   TAgentVaultCredentialInput,
@@ -101,13 +102,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     scopeResourceId: accessBundleId
   });
 
+  const toActorRef = (row: TMemberships): TAgentVaultAccessBundleActorRef => {
+    if (row.actorIdentityId) return { type: AgentVaultMemberType.Identity, id: row.actorIdentityId };
+    if (row.actorGroupId) return { type: AgentVaultMemberType.Group, id: row.actorGroupId };
+    return { type: AgentVaultMemberType.User, id: row.actorUserId ?? "" };
+  };
+
   const toMember = (row: TMemberships) => ({
     id: row.id,
     accessBundleId: row.scopeResourceId!,
-    userId: row.actorUserId ?? null,
-    identityId: row.actorIdentityId ?? null,
-    groupId: row.actorGroupId ?? null,
-    createdAt: row.createdAt
+    createdAt: row.createdAt,
+    actor: toActorRef(row)
   });
 
   type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
@@ -115,6 +120,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   type TGrantActor = { actorColumn: TGrantActorColumn; actorId: string };
 
   const actorKey = ({ actorColumn, actorId }: TGrantActor) => `${actorColumn}:${actorId}`;
+
+  const ACTOR_TYPE_OF: Record<TGrantActorColumn, AgentVaultMemberType> = {
+    actorUserId: AgentVaultMemberType.User,
+    actorIdentityId: AgentVaultMemberType.Identity,
+    actorGroupId: AgentVaultMemberType.Group
+  };
+
+  const toActorRefFromGrant = ({ actorColumn, actorId }: TGrantActor): TAgentVaultAccessBundleActorRef => ({
+    type: ACTOR_TYPE_OF[actorColumn],
+    id: actorId
+  });
 
   const ACTOR_FIELD_OF: Record<TGrantActorColumn, "userId" | "identityId" | "groupId"> = {
     actorUserId: "userId",
@@ -947,7 +963,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           })
         );
 
-        const skipped = actors.filter((actor) => alreadyGranted.has(actorKey(actor))).map((actor) => actor.actorId);
+        const skipped = actors.filter((actor) => alreadyGranted.has(actorKey(actor))).map(toActorRefFromGrant);
         const toGrant = actors.filter((actor) => !alreadyGranted.has(actorKey(actor)));
         if (!toGrant.length) return { created: [] as TMemberships[], skipped };
 
@@ -958,7 +974,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         return { created, skipped };
       });
 
-    let outcome: { created: TMemberships[]; skipped: string[] };
+    let outcome: { created: TMemberships[]; skipped: TAgentVaultAccessBundleActorRef[] };
     try {
       outcome = await grant();
     } catch (err) {
@@ -986,15 +1002,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (!member) throw new NotFoundError({ message: `Access bundle membership with ID '${memberId}' not found` });
 
     await membershipDAL.deleteById(member.id);
-    return {
-      id: member.id,
-      accessBundleId: bundle.id,
-      userId: member.actorUserId ?? null,
-      identityId: member.actorIdentityId ?? null,
-      groupId: member.actorGroupId ?? null,
-      createdAt: member.createdAt,
-      accessBundleName: bundle.name
-    };
+    return { ...toMember(member), accessBundleName: bundle.name };
   };
 
   return {
