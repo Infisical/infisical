@@ -212,6 +212,7 @@ export const AgentVaultServiceSchema = z.object({
     .array()
     .describe(AGENT_VAULT.SERVICE.substitutions),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
+  // Only a user edit writes this row, so unlike the proxy's, this is not moved by a background write.
   updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
 });
 
@@ -282,7 +283,7 @@ export const AgentVaultActorSchema = z.discriminatedUnion("type", [
 export const AgentVaultRemovedMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-  createdAt: z.date(),
+  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultActorRefSchema
 });
 
@@ -290,13 +291,13 @@ export const AgentVaultRemovedMemberSchema = z.object({
 // inside the bundle, so on both it would only repeat something the caller already has.
 export const AgentVaultMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  createdAt: z.date(),
+  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultActorSchema
 });
 
 export const AgentVaultCreatedMemberSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-  createdAt: z.date(),
+  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
   actor: AgentVaultActorRefSchema
 });

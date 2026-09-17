@@ -4271,6 +4271,7 @@ export const AGENT_VAULT = {
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",
+    createdAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
     identityId: "The ID of the machine identity whose Agent Vault membership this is.",
     groupId: "The ID of the group whose Agent Vault membership this is.",
@@ -4306,7 +4307,8 @@ export const AGENT_VAULT = {
     allowedHosts:
       "Hosts that stay reachable under the `bundle-hosts` traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
     pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
-    sessionToken: "The session an agent is running with. A selector, not a second credential."
+    sessionToken: "The session an agent is running with. A selector, not a second credential.",
+    createdAt: "When the proxy was registered."
   },
   SESSION: {
     sessionId: "The ID of the session.",

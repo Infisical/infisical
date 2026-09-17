@@ -147,7 +147,6 @@ export type TAgentVaultProxy = {
   allowedHosts?: string | null;
   pollInterval?: number;
   createdAt?: string;
-  updatedAt?: string;
 };
 
 export type TAgentVaultEnrollment = {
