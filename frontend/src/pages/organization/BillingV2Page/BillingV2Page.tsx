@@ -156,7 +156,7 @@ export const BillingV2Page = () => {
   const isViewingOtherOrg = selectedOrgId !== orgId;
   const canManageBilling = hasManageBillingPermission && !isViewingOtherOrg;
 
-  const isReloadingProducts = useHeldLoading(isPlaceholderData);
+  const isReloading = useHeldLoading(isPlaceholderData && !isError);
 
   let subState: BillingV2RenderState = "loading";
   if (isError) {
@@ -261,7 +261,7 @@ export const BillingV2Page = () => {
               rootOrgs={pickerOrgs}
               rootOrgCount={rootOrgCount}
               isRootOrgsLoading={isOrgSearchPending}
-              isReloadingProducts={isReloadingProducts}
+              isReloading={isReloading}
               selectedOrgId={breakdownScope === "instance" ? ALL_ORGS_VALUE : selectedOrgId}
               onSelectOrg={(nextId) => {
                 if (nextId === ALL_ORGS_VALUE) {

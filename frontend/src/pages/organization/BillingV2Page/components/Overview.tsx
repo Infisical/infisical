@@ -28,7 +28,7 @@ export type OverviewProps = {
   rootOrgs: BillingV2Organization[];
   rootOrgCount: number;
   isRootOrgsLoading: boolean;
-  isReloadingProducts: boolean;
+  isReloading: boolean;
   selectedOrgId: string;
   onSelectOrg: (orgId: string) => void;
   onSearchOrgs: (search: string) => void;
@@ -52,7 +52,7 @@ export const Overview = ({
   rootOrgs,
   rootOrgCount,
   isRootOrgsLoading,
-  isReloadingProducts,
+  isReloading,
   selectedOrgId,
   onSelectOrg,
   onSearchOrgs,
@@ -74,21 +74,23 @@ export const Overview = ({
     />
   ) : null;
 
-  if (subState === "loading") {
+  if (subState === "loading" || isReloading) {
     return (
       <div className="flex flex-col gap-4">
         <StatTilesSkeleton />
         <ProductsCard
           key="products"
+          overview={overview}
           catalog={catalog}
           readOnly
           orgFilter={orgFilter}
+          isReloading
           onManage={onUpgrade}
           onSetCommitment={onSetCommitment}
           onViewBreakdown={onViewBreakdown}
           onContact={onContact}
         />
-        {isInfisicalCloud() && <BillingSectionSkeleton />}
+        {(overview?.isCloud ?? isInfisicalCloud()) && <BillingSectionSkeleton />}
       </div>
     );
   }
@@ -177,7 +179,6 @@ export const Overview = ({
           catalog={catalog}
           readOnly={productsReadOnly}
           orgFilter={orgFilter}
-          isReloading={isReloadingProducts}
           onManage={onUpgrade}
           onSetCommitment={onSetCommitment}
           onViewBreakdown={onViewBreakdown}
@@ -220,7 +221,6 @@ export const Overview = ({
         catalog={catalog}
         readOnly={productsReadOnly}
         orgFilter={orgFilter}
-        isReloading={isReloadingProducts}
         onManage={onUpgrade}
         onSetCommitment={onSetCommitment}
         onViewBreakdown={onViewBreakdown}

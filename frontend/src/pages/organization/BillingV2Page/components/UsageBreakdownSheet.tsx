@@ -29,6 +29,7 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useHeldLoading } from "@app/hooks";
 import {
   BillingV2BreakdownDimension,
   BillingV2BreakdownScope,
@@ -465,7 +466,7 @@ export const UsageBreakdownSheet = ({
     isPending,
     isError
   } = useGetBillingV2UsageBreakdown(orgId, dimensionKey, scope);
-  const isLoading = isPending && Boolean(dimensionKey);
+  const isLoading = useHeldLoading(isPending && Boolean(dimensionKey));
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
@@ -516,7 +517,9 @@ export const UsageBreakdownSheet = ({
             </Empty>
           )}
 
-          {breakdown && !isError && <BreakdownBody breakdown={breakdown} scopeKind={scope} />}
+          {breakdown && !isError && !isLoading && (
+            <BreakdownBody breakdown={breakdown} scopeKind={scope} />
+          )}
         </div>
 
         <SheetFooter className="flex-row items-center justify-end border-t">
