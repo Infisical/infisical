@@ -4230,8 +4230,8 @@ export const AGENT_VAULT = {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
     hostPattern:
-      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to 443). A leading '*.' wildcard matches exactly one label. Paths are not supported.",
-    headerName: "The header the credential is written to. Defaults to Authorization.",
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
+    headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
     username:
@@ -4248,9 +4248,9 @@ export const AGENT_VAULT = {
     allowedMethods:
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
-      "The path prefixes this service allows, matched on whole segments, so '/repos' covers '/repos/octo' but not '/repositories'. Null allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
+      "The path prefixes this service allows, matched on whole segments, so `/repos` covers `/repos/octo` but not `/repositories`. `null` allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
     customHeaders:
-      "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's id to change it in place and keep its stored value. Without an id, a header is matched by name.",
+      "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
     customHeaderName: "The name of the header, which must not be the credential's own header.",
     customHeaderPrefix: "Written before the header value, separated by one space. Leave empty to send the value alone.",
@@ -4259,7 +4259,7 @@ export const AGENT_VAULT = {
     customHeaderValue: "The header value. Never returned once saved.",
     updateCustomHeaderValue: "The header value. Omit to keep the value already stored for this header.",
     substitutions:
-      "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's id to change it in place and keep its stored value. Without an id, it is matched by its placeholder.",
+      "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's `id` to change it in place and keep its stored value. Without an `id`, it is matched by its placeholder.",
     substitutionId:
       "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
     placeholder:
@@ -4284,7 +4284,7 @@ export const AGENT_VAULT = {
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",
-    heartbeat: "When the proxy last checked in, or null if it never has.",
+    heartbeat: "When the proxy last checked in, or `null` if it never has.",
     isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
     enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
     rootCaCertificate:
@@ -4293,9 +4293,9 @@ export const AGENT_VAULT = {
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
     trafficPolicy:
-      "Which hosts an agent may reach through this proxy. 'any-host' lets every request out; 'bundle-hosts' allows only hosts an access bundle covers, plus anything in allowedHosts, and refuses the rest with a 403.",
+      "Which hosts an agent may reach through this proxy. `any-host` lets every request out; `bundle-hosts` allows only hosts an access bundle covers, plus anything in `allowedHosts`, and refuses the rest with a 403.",
     allowedHosts:
-      "Hosts that stay reachable under the 'bundle-hosts' traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
+      "Hosts that stay reachable under the `bundle-hosts` traffic policy even though no access bundle covers them. Still intercepted, and given no credential.",
     pollInterval: "How often, in seconds, the proxy refreshes its sessions and settings. Between 10 and 300.",
     sessionToken: "The session an agent is running with. A selector, not a second credential."
   },
