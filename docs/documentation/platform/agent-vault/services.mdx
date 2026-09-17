@@ -98,6 +98,18 @@ To match a port other than `443`, include it in the host:
 internal-api.example.com:8443
 ```
 
+### Plaintext hosts
+
+A service behaves the same way over plain `http://` as it does over HTTPS. The proxy attaches the credential, the custom headers, and the substitutions either way. Use a plaintext host for an API on your own network that terminates TLS at the edge, or one that serves no HTTPS at all.
+
+Since a host without a port means `443`, a plaintext service has to name its port:
+
+```text
+internal-api.example.com:8080
+```
+
+The credential crosses that hop unencrypted, so anyone who can read traffic between the proxy and the API can read it. Keep plaintext hosts to a network you trust.
+
 ### Wildcards
 
 Wildcards match exactly one label. The pattern below matches `api.atlassian.net`, but not `a.b.atlassian.net` or `atlassian.net`.

@@ -124,12 +124,13 @@ the matching at runtime and reimplements the same rules, so a change here needs 
 - Methods and path prefixes are filters on a service that already matched, **not** part of the match key,
   so the same-bundle host conflict rule stays host-only. Two services on one host differing only by method
   is still a hard reject.
-- A violation is a 403 from the proxy, not a withheld credential, and the check sits above the plaintext
-  refusal so it holds on plain http too. `NULL` is the only "unrestricted"; an empty array is never stored.
+- A violation is a 403 from the proxy, not a withheld credential. `NULL` is the only "unrestricted"; an
+  empty array is never stored.
 - There is no version negotiation with the proxy. A binary predating this drops the new resolve fields and
   enforces nothing while the UI shows the rules. Settled: accepted while the product is in preview.
-- A portless pattern means 443. An explicit port is allowed, `:80` included, so the proxy must also refuse
-  to inject over plaintext, and it does.
+- A portless pattern means 443, and that is the whole of what keeps a credential off a plaintext wire:
+  injection in the proxy is scheme-blind, so naming a port (`:80` included) is how an admin opts a service
+  into brokering over http.
 - A wildcard is the leftmost label only and matches exactly one label. This is what makes every pattern pair
   identical, contained or disjoint, which is what makes conflict detection exact. Do not loosen it.
 - Conflict detection is an intersection over individual patterns, because `hostPattern` is a comma-separated

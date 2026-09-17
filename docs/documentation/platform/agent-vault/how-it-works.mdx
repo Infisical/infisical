@@ -150,7 +150,7 @@ Even if an attacker stole the session token, they could only reach the hosts, me
 
 ### Proxies
 
-A proxy runs where your agent's traffic leaves your network. It intercepts every outbound HTTPS request, authorizes the request against the session's access bundle, attaches the matching service's credential as a header, and forwards the request to the upstream host. A request that breaks the service's rules is refused instead.
+A proxy runs where your agent's traffic leaves your network. It intercepts every outbound request, authorizes the request against the session's access bundle, attaches the matching service's credential as a header, and forwards the request to the upstream host. A request that breaks the service's rules is refused instead.
 
 <Card title="Proxies" icon="route" href="/documentation/platform/agent-vault/proxies">
   Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.
