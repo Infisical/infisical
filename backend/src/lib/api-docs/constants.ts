@@ -4250,8 +4250,8 @@ export const AGENT_VAULT = {
     allowedPathPrefixes:
       "The path prefixes this service allows, matched on whole segments, so '/repos' covers '/repos/octo' but not '/repositories'. Null allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
     customHeaders:
-      "Extra headers the proxy attaches to every request to this service, on top of the credential. Send the whole list: a row is matched to a stored one by 'id' when you send one and otherwise by its name, a name matching nothing is created, and a stored custom header you leave out is deleted.",
-    customHeaderId: "The ID of the custom header. Optional: a header is matched by its name when this is omitted.",
+      "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's id to change it in place and keep its stored value. Without an id, a header is matched by name.",
+    customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
     customHeaderName: "The name of the header, which must not be the credential's own header.",
     customHeaderPrefix: "Written before the header value, separated by one space. Leave empty to send the value alone.",
     updateCustomHeaderPrefix:
@@ -4259,9 +4259,9 @@ export const AGENT_VAULT = {
     customHeaderValue: "The header value. Never returned once saved.",
     updateCustomHeaderValue: "The header value. Omit to keep the value already stored for this header.",
     substitutions:
-      "Placeholders the proxy swaps for a real secret before forwarding. Send the whole list: a row is matched to a stored one by 'id' when you send one and otherwise by its placeholder, a placeholder matching nothing is created, and a stored substitution you leave out is deleted.",
+      "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's id to change it in place and keep its stored value. Without an id, it is matched by its placeholder.",
     substitutionId:
-      "The ID of the substitution. Optional: a substitution is matched by its placeholder when this is omitted.",
+      "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
     placeholder:
       "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing.",
     surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
