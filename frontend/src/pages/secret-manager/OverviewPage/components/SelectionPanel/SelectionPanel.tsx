@@ -31,7 +31,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretBatch } from "@app/hooks/api";
-import { fetchSecretValue } from "@app/hooks/api/dashboard/queries";
+import { fetchDashboardProjectSecretsByKeys } from "@app/hooks/api/dashboard/queries";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -403,38 +403,59 @@ export const SelectionPanel = ({
     areRotationsSelected ||
     selectedSecretEntries.some(
       ([environment, secret]) =>
-        secret.secretValueHidden ||
-        !permission.can(
-          ProjectPermissionSecretActions.ReadValue,
-          subject(ProjectPermissionSub.Secrets, {
-            environment,
-            secretPath: secret.path ?? secretPath,
-            secretName: secret.key,
-            secretTags: (secret.tags ?? []).map((tag) => tag.slug)
-          })
-        )
+        !secret.idOverride &&
+        (secret.secretValueHidden ||
+          !permission.can(
+            ProjectPermissionSecretActions.ReadValue,
+            subject(ProjectPermissionSub.Secrets, {
+              environment,
+              secretPath: secret.path ?? secretPath,
+              secretName: secret.key,
+              secretTags: (secret.tags ?? []).map((tag) => tag.slug)
+            })
+          ))
     );
 
   const handleCopyToClipboard = async () => {
     if (isClipboardDisabled || isCopying) return;
     setIsCopying(true);
     try {
-      const lines = await selectedSecretEntries.reduce<Promise<string[]>>(
-        async (pendingLines, [environment, secret]) => {
-          const copiedLines = await pendingLines;
-          const { value } = await fetchSecretValue({
+      const groups = selectedSecretEntries.reduce<
+        Record<string, { environment: string; path: string; secrets: SecretV3RawSanitized[] }>
+      >((acc, [environment, secret]) => {
+        const path = secret.path ?? secretPath;
+        const groupKey = JSON.stringify([environment, path]);
+        acc[groupKey] ??= { environment, path, secrets: [] };
+        acc[groupKey].secrets.push(secret);
+        return acc;
+      }, {});
+      const lines = await Promise.all(
+        Object.values(groups).map(async ({ environment, path, secrets }) => {
+          const { secrets: fetchedSecrets } = await fetchDashboardProjectSecretsByKeys({
             projectId,
             environment,
-            secretPath: secret.path ?? secretPath,
-            secretKey: secret.key
+            secretPath: path,
+            keys: secrets.map((secret) => secret.key),
+            viewSecretValue: true
           });
-          if (value === undefined) throw new Error("Secret value unavailable");
-          if (visibleEnvs.length > 1) copiedLines.push(`# ${environment}`);
-          const escapedValue = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-          copiedLines.push(`${secret.key}="${escapedValue}"`);
-          return copiedLines;
-        },
-        Promise.resolve([])
+          const valuesById = new Map(fetchedSecrets.map((secret) => [secret.id, secret]));
+          const copiedLines = secrets.map((secret) => {
+            const fetchedSecret = valuesById.get(secret.idOverride ?? secret.id);
+            if (
+              !fetchedSecret ||
+              fetchedSecret.secretValueHidden ||
+              fetchedSecret.secretValue === undefined
+            ) {
+              throw new Error("Secret value unavailable");
+            }
+            const escapedValue = fetchedSecret.secretValue
+              .replace(/\\/g, "\\\\")
+              .replace(/"/g, '\\"');
+            return `${secret.key}="${escapedValue}"`;
+          });
+          if (visibleEnvs.length > 1) copiedLines.unshift(`# ${environment}`);
+          return copiedLines.join("\n");
+        })
       );
       await navigator.clipboard.writeText(lines.join("\n"));
       createNotification({ type: "success", text: "Selected secrets copied to clipboard" });
