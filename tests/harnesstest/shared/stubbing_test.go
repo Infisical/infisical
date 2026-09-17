@@ -1,4 +1,4 @@
-package integrations_test
+package harnesstest_test
 
 import (
 	"net/http"
@@ -10,19 +10,18 @@ import (
 	"github.com/Infisical/infisical/tests/provider"
 )
 
-func TestAppConnection_Create(t *testing.T) {
+func TestOutbound_IsIntercepted(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("ok/an outbound call is intercepted", func(t *testing.T) {
+	t.Run("ok/an outbound call reaches the stub", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `The one test the whole stubbing design rests on. The connection is
 			created with no host, so GitHub's client resolves api.github.com, and the only
 			way that request can reach WireMock is the forward proxy and the injected CA.
-			If it stops passing, no integration test below it is testing anything real.`)
+			If it stops passing, no integration test anywhere is testing anything real.`)
 
-		tn := h.NewTenant(t)
-		conn := appconnection.New(t, tn, provider.GitHub)
+		conn := appconnection.New(t, h.NewTenant(t), provider.GitHub)
 
 		if n := conn.Stub(t).Received(t, "GET", "/user"); n != 1 {
 			t.Fatalf("the credential check reached the stub %d times, want 1", n)
@@ -47,17 +46,17 @@ func TestAppConnection_Create(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid/a rejected credential fails the create", func(t *testing.T) {
+	t.Run("invalid/what the stub answers is load bearing", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `Proves the stub is load bearing rather than incidental: if creating a
-			connection succeeded whatever the provider answered, the interception above
-			would not be evidence of anything.`)
+		spec.Why(t, `The interception test above proves a request arrived. On its own that
+			is not enough: if the application ignored the response, every stubbed value a
+			test asserts on would be decoration. Changing the answer has to change the
+			outcome.`)
 
-		tn := h.NewTenant(t)
-
-		_, err := appconnection.Try(t, tn, provider.GitHub, appconnection.RejectCredentials(http.StatusUnauthorized))
+		_, err := appconnection.Try(t, h.NewTenant(t), provider.GitHub,
+			appconnection.RejectCredentials(http.StatusUnauthorized))
 		if err == nil {
-			t.Fatal("a connection was created against a provider that rejected the credential")
+			t.Fatal("the connection was created even though the stub rejected the credential")
 		}
 	})
 }

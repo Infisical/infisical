@@ -1,4 +1,4 @@
-package integrations_test
+package organization_test
 
 import (
 	"testing"
