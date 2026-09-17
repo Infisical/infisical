@@ -416,7 +416,12 @@ export const ServiceSheet = ({ isOpen, onOpenChange, accessBundleId, service }: 
                   <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
                     Setup steps
                   </p>
-                  <Stepper activeStep={step} orientation="vertical" onStepChange={handleStepChange}>
+                  <Stepper
+                    activeStep={step}
+                    orientation="vertical"
+                    nonLinear={isUpdate}
+                    onStepChange={handleStepChange}
+                  >
                     <StepperList>
                       {steps.map((meta, index) => (
                         <StepperStep
