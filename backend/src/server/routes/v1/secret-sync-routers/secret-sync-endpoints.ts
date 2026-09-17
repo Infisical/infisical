@@ -556,7 +556,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       operationId: `check${destinationNameForOpId}SecretSyncRecursiveConflicts`,
       tags: [ApiDocsTags.SecretSyncs],
       body: z.object({
-        projectId: z.string().uuid(),
+        projectId: z.string(),
         environment: slugSchema({ field: "environment", max: 64 }),
         secretPath: z
           .string()
