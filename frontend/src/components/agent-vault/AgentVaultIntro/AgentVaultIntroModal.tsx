@@ -44,7 +44,7 @@ export const AgentVaultIntroModal = ({ isOpen, onOpenChange }: Props) => (
     >
       <img
         src={introDiagram}
-        alt="An agent picks up a request from Slack and calls out through the Agent Proxy, which checks policy, brokers the credential from Infisical, and forwards the call to Anthropic, Sentry and GitHub."
+        alt="An agent picks up a request from Slack and calls out through the Agent Proxy, which checks policy, brokers the credential from Agent Vault, and forwards the call to Anthropic, Sentry and GitHub."
         className="aspect-video w-full border-b border-border bg-black object-contain"
       />
       <div className="flex flex-col gap-4 p-6">
