@@ -1,0 +1,55 @@
+# Socket (SCA) configuration. Alert selection lives here so it is reviewable in
+# a PR; the block-versus-warn split is set in the Socket dashboard security
+# policy, and merge enforcement comes from the branch ruleset. See
+# .github/SECURITY_CHECKS.md.
+version: 2
+
+githubApp:
+    enabled: true
+    pullRequestAlertsEnabled: true
+    projectReportsEnabled: true
+    dependencyOverviewEnabled: true
+    disableCommentsAndCheckRuns: false
+    # No bot is exempt. Automation opens dependency and fix PRs here, which is
+    # exactly the traffic a supply-chain alert needs to see.
+    ignoreUsers: []
+
+# Defaults made explicit. A change to any of these is a policy change and
+# should be argued in review rather than discovered later in the dashboard.
+# Rules not listed here keep Socket's own defaults, so this is a record of
+# intent rather than the complete rule set.
+issueRules:
+    # Supply-chain attack indicators. Dashboard action Block for these five,
+    # regardless of severity: they are attack signals rather than graded
+    # vulnerabilities.
+    malware: true
+    gptMalware: true
+    didYouMean: true
+    installScripts: true
+    obfuscatedFile: true
+
+    # Same family, but noisy enough to report rather than gate. Dashboard
+    # action Warn.
+    troll: true
+    gitDependency: true
+    httpDependency: true
+
+    # Known vulnerabilities. The pull request alerts check raises these only for
+    # packages a PR adds or bumps; the project report inventories the whole
+    # branch and will list pre-existing ones. Dashboard actions: criticalCVE
+    # and cve Block, mediumCVE and mildCVE Warn. All four stay on here so the
+    # medium and low ones still report and keep their SLA clock.
+    criticalCVE: true
+    cve: true
+    mediumCVE: true
+    mildCVE: true
+
+    # Behavioral signals. Noisier, and native code and eval are both expected
+    # in parts of this tree, so they report without being treated as blocking.
+    hasNativeCode: true
+    usesEval: true
+    dynamicRequire: true
+
+    # Hygiene. Worth knowing, never a merge gate.
+    deprecated: true
+    unmaintained: true
