@@ -56,7 +56,7 @@ Basic is the right choice for APIs behind HTTP basic authentication, including o
 
 ### Pass-through
 
-The proxy attaches no credential. Unless the service has [transformations](#transformations), it forwards the agent's request to the API unchanged.
+The proxy attaches no credential. Unless the service adds [custom headers](#custom-headers) or [substitutions](#substitutions), it forwards the agent's request to the API unchanged.
 
 Pass-through is the right choice when the proxy's strict [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) would otherwise block the host. It lets the request reach the API without attaching a credential.
 
@@ -150,25 +150,23 @@ Different access bundles can cover the same host with different credentials, sin
 </Note>
 
 
-## Transformations
+## Custom headers
 
-A service can add two things to a request that the agent never holds: custom headers and placeholder substitutions. Both are optional, and both work with any credential type, including pass-through.
+Some APIs need a header alongside the credential, such as an organization ID or an API version. On the **Credential** step, under **Advanced Options**, add one with a name, an optional prefix, and a value. The proxy attaches it to every request to that service, whatever credential type the service uses.
 
 <Frame>
-  <img src="/images/platform/agent-vault/service-transformations.png" alt="The Credential step with an API version custom header and a substitution that swaps the agent's placeholder for the real token, matched in the header" />
+  <img src="/images/platform/agent-vault/service-advanced-options.png" alt="The Credential step with an API version custom header and a substitution that swaps the agent's placeholder for the real token, matched in the header" />
 </Frame>
-
-### Custom headers
-
-Some APIs need a header alongside the credential, such as an organization ID or an API version. On the **Credential** step, add one with a name, an optional prefix, and a value. The proxy attaches it to every request to that service.
 
 Infisical never returns a header value once it's saved, so renaming a header keeps its value and there's nothing to retype.
 
 A custom header can't reuse the credential's own header name, because the credential would win and the custom header would do nothing. Infisical rejects the save. Headers the proxy sets itself, such as `Host`, `Content-Length`, and `Connection`, are rejected for the same reason.
 
-### Substitutions
+## Substitutions
 
-When an agent already sends a fake value, a substitution swaps it for the real one on the way out. Give the placeholder your agent sends, the real value, and where in the request to look for it: the path, the query string, a header, or the body.
+When an agent already sends a fake value, a substitution swaps it for the real one on the way out. It works with any credential type, including pass-through, which is what makes a host reachable without attaching a credential of its own.
+
+On the **Credential** step, under **Advanced Options**, give the placeholder your agent sends, the real value, and where in the request to look for it: the path, the query string, a header, or the body.
 
 For example, an agent configured with `__GITHUB_PAT__` as its GitHub token sends:
 

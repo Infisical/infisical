@@ -19,8 +19,6 @@ import {
   UNCHANGED_SECRET
 } from "./serviceSchema";
 
-const NONE = <span className="text-muted italic">None</span>;
-
 const MASK = "\u2022".repeat(8);
 
 const alignColumns = (rows: string[][]) => {
@@ -124,27 +122,24 @@ export const ReviewFields = ({ isUpdate }: Props) => {
             </Detail>
           )}
         </div>
-      </DetailGroup>
-
-      <DetailGroup>
-        <DetailGroupHeader className="border-b border-border pb-2">
-          Transformations
-        </DetailGroupHeader>
-        <div className="flex flex-col gap-3">
-          {headerRows.length === 0 && substitutionRows.length === 0 && (
-            <p className="text-sm">{NONE}</p>
-          )}
-          {headerRows.length > 0 && (
-            <CodeBlock label="Custom headers" isCopyable={false} value={alignColumns(headerRows)} />
-          )}
-          {substitutionRows.length > 0 && (
-            <CodeBlock
-              label="Substitutions"
-              isCopyable={false}
-              value={alignColumns(substitutionRows)}
-            />
-          )}
-        </div>
+        {(headerRows.length > 0 || substitutionRows.length > 0) && (
+          <div className="flex flex-col gap-3">
+            {headerRows.length > 0 && (
+              <CodeBlock
+                label="Custom headers"
+                isCopyable={false}
+                value={alignColumns(headerRows)}
+              />
+            )}
+            {substitutionRows.length > 0 && (
+              <CodeBlock
+                label="Substitutions"
+                isCopyable={false}
+                value={alignColumns(substitutionRows)}
+              />
+            )}
+          </div>
+        )}
       </DetailGroup>
     </div>
   );
