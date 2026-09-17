@@ -49,90 +49,106 @@ const basicHalvesAreNotBothEmpty = (
 
 export const AgentVaultCredentialInputSchema = z
   .discriminatedUnion("type", [
-    z.object({
-      type: z.literal(AgentVaultCredentialType.Bearer),
-      headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-      headerPrefix: z
-        .string()
-        .trim()
-        .max(64)
-        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .optional()
-        .describe(AGENT_VAULT.SERVICE.headerPrefix),
-      value: z
-        .string()
-        .min(1)
-        .max(8192)
-        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .describe(AGENT_VAULT.SERVICE.value)
-    }),
-    z.object({
-      type: z.literal(AgentVaultCredentialType.Basic),
-      username: z
-        .string()
-        .trim()
-        .max(256)
-        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .describe(AGENT_VAULT.SERVICE.username),
-      password: z
-        .string()
-        .max(8192)
-        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .describe(AGENT_VAULT.SERVICE.password)
-    }),
-    z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+    z
+      .object({
+        type: z.literal(AgentVaultCredentialType.Bearer),
+        headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
+        headerPrefix: z
+          .string()
+          .trim()
+          .max(64)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.headerPrefix),
+        value: z
+          .string()
+          .min(1)
+          .max(8192)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .describe(AGENT_VAULT.SERVICE.value)
+      })
+      .describe(JSON.stringify({ title: "Bearer" })),
+    z
+      .object({
+        type: z.literal(AgentVaultCredentialType.Basic),
+        username: z
+          .string()
+          .trim()
+          .max(256)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .describe(AGENT_VAULT.SERVICE.username),
+        password: z
+          .string()
+          .max(8192)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .describe(AGENT_VAULT.SERVICE.password)
+      })
+      .describe(JSON.stringify({ title: "Basic Auth" })),
+    z
+      .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+      .describe(JSON.stringify({ title: "Pass-through" }))
   ])
   .superRefine(basicHalvesAreNotBothEmpty);
 
 // Not derived from the create schema: its `.default()`s would turn an omitted field into a reset on a PATCH.
 export const AgentVaultCredentialUpdateSchema = z
   .discriminatedUnion("type", [
-    z.object({
-      type: z.literal(AgentVaultCredentialType.Bearer),
-      headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-      headerPrefix: z
-        .string()
-        .trim()
-        .max(64)
-        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .optional()
-        .describe(AGENT_VAULT.SERVICE.headerPrefix),
-      value: z
-        .string()
-        .min(1)
-        .max(8192)
-        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .optional()
-        .describe(AGENT_VAULT.SERVICE.updateValue)
-    }),
-    z.object({
-      type: z.literal(AgentVaultCredentialType.Basic),
-      username: z
-        .string()
-        .trim()
-        .max(256)
-        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .optional()
-        .describe(AGENT_VAULT.SERVICE.updateUsername),
-      password: z
-        .string()
-        .max(8192)
-        .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        .optional()
-        .describe(AGENT_VAULT.SERVICE.updatePassword)
-    }),
-    z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+    z
+      .object({
+        type: z.literal(AgentVaultCredentialType.Bearer),
+        headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
+        headerPrefix: z
+          .string()
+          .trim()
+          .max(64)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.headerPrefix),
+        value: z
+          .string()
+          .min(1)
+          .max(8192)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.updateValue)
+      })
+      .describe(JSON.stringify({ title: "Bearer" })),
+    z
+      .object({
+        type: z.literal(AgentVaultCredentialType.Basic),
+        username: z
+          .string()
+          .trim()
+          .max(256)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.updateUsername),
+        password: z
+          .string()
+          .max(8192)
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.updatePassword)
+      })
+      .describe(JSON.stringify({ title: "Basic Auth" })),
+    z
+      .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+      .describe(JSON.stringify({ title: "Pass-through" }))
   ])
   .superRefine(basicHalvesAreNotBothEmpty);
 
 export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal(AgentVaultCredentialType.Bearer),
-    headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
-    headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix)
-  }),
-  z.object({ type: z.literal(AgentVaultCredentialType.Basic) }),
-  z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+  z
+    .object({
+      type: z.literal(AgentVaultCredentialType.Bearer),
+      headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
+      headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix)
+    })
+    .describe(JSON.stringify({ title: "Bearer" })),
+  z.object({ type: z.literal(AgentVaultCredentialType.Basic) }).describe(JSON.stringify({ title: "Basic Auth" })),
+  z
+    .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+    .describe(JSON.stringify({ title: "Pass-through" }))
 ]);
 
 export const AgentVaultAllowedMethodsSchema = z
