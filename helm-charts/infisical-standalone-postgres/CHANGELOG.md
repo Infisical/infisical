@@ -1,3 +1,8 @@
+## 1.10.1 (September 17, 2026)
+Changes:
+* `infisical.autoBootstrap.secretDestination.namespace` now defaults to `""` instead of the literal `"default"`, so the bootstrap secret and its Role/RoleBinding are created in the release namespace as documented. Previously the `default` value was truthy and the documented fall back to the release namespace never applied, so the root identity token was written to the `default` namespace.
+* If you rely on the secret living in the `default` namespace, set `infisical.autoBootstrap.secretDestination.namespace: "default"` explicitly before upgrading.
+
 ## 1.10.0 (July 3, 2026)
 Changes:
 * Added configurable `securityContext` via `infisical.podSecurityContext` and `infisical.containerSecurityContext`, with secure defaults so the Infisical Deployment and the auto-bootstrap Job run under the Kubernetes Pod Security "restricted" standard out of the box.
