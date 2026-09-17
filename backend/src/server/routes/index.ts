@@ -2512,6 +2512,7 @@ export const registerRoutes = async (
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
     secretQueueService,
+    secretSyncQueue,
     dynamicSecretDAL,
     secretRotationV2DAL,
     honeyTokenDAL,

@@ -1042,34 +1042,37 @@ export const secretSyncQueueFactory = ({
     await Promise.allSettled(notifications);
   };
 
+  // Takes a path rather than a folder, so it serves a write inside a folder and the deletion of the
+  // folder itself. The path need not still exist: the only thing the folder is needed for is the
+  // sync rooted exactly on it, and a deleted folder has no such sync left to find, because
+  // secret_syncs.folderId is SET NULL by its foreign key.
   const queueSecretSyncsSyncSecretsByPath = async ({
     secretPath,
     projectId,
     environmentSlug
   }: TQueueSecretSyncsByPathDTO) => {
+    const environment = await projectEnvDAL.findOne({ projectId, slug: environmentSlug });
+    if (!environment) return;
+
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, secretPath);
 
-    if (!folder)
-      throw new Error(
-        `Could not find folder at path "${secretPath}" for environment with slug "${environmentSlug}" in project with ID "${projectId}"`
-      );
-
-    const ancestorPaths = getAncestorPaths(secretPath);
-
     const ancestorFolders = (
-      await folderDAL.findByManySecretPath(ancestorPaths.map((path) => ({ envId: folder.envId, secretPath: path })))
+      await folderDAL.findByManySecretPath(
+        getAncestorPaths(secretPath).map((path) => ({ envId: environment.id, secretPath: path }))
+      )
     ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 
     const candidateSyncs = await secretSyncDAL.find({
-      $in: { folderId: [...ancestorFolders.map((entry) => entry.id), folder.id] },
+      $in: { folderId: [...ancestorFolders.map((entry) => entry.id), ...(folder ? [folder.id] : [])] },
       isAutoSyncEnabled: true
     });
 
-    // A sync on the changed folder itself always matches, recursive or not. A sync on an
-    // ancestor folder only matches when it is recursive, so a non-recursive sync rooted above
-    // this path is never triggered by a write it was never configured to cover.
+    // A sync on the path itself always matches, recursive or not. A sync on an ancestor folder only
+    // matches when it is recursive, so a non-recursive sync rooted above this path is never
+    // triggered by a change it was never configured to cover.
     const secretSyncs = candidateSyncs.filter(
-      (sync) => sync.folderId === folder.id || Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.recursive)
+      (sync) =>
+        (folder && sync.folderId === folder.id) || Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.recursive)
     );
 
     await secretSyncDAL.update(

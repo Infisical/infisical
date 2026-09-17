@@ -2,11 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
-import { createFolder } from "e2e-test/testUtils/folders";
+import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
 import { addIdentityToProject, createIdentityActor, grantIdentityFolderAccess } from "e2e-test/testUtils/identities";
 import {
   createAwsAppConnection,
   createSecretSync,
+  expectDestinationUnchanged,
   getSecretSync,
   listSecretSyncs,
   setAutoSync,
@@ -375,7 +376,7 @@ describe("A recursive secret sync is refused when two folders use the same secre
   });
 });
 
-describe("A write in a subfolder reaches the recursive sync above it", async () => {
+describe("A change in a subfolder reaches the recursive sync above it", async () => {
   vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
   // Each test waits for the auto-sync-enable run to finish (via waitForSyncRun) before writing the
@@ -464,5 +465,91 @@ describe("A write in a subfolder reaches the recursive sync above it", async () 
       destinationPath,
       expected: { SUBFOLDER_KEY: "subfolder-value" }
     });
+  });
+
+  // Deleting a folder takes secrets away from a recursive sync with no secret-level write to carry
+  // it, so the trigger has to come from the folder delete itself. Built on its own subtree so the
+  // destination holds nothing but this test's secret.
+  test("deleting a subfolder removes its secrets from the recursive sync above it", async () => {
+    const destinationPath = "/recursive-folder-delete-target/";
+
+    await createFolder({
+      authToken: adminToken,
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/",
+      name: "audit"
+    });
+    const reports = await createFolder({
+      authToken: adminToken,
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/audit",
+      name: "reports"
+    });
+
+    await createSecretV2({
+      authToken: adminToken,
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/audit/reports",
+      key: "AUDIT_KEY",
+      value: "audit-value"
+    });
+
+    const { secretSync } = await createSecretSync({
+      name: "recursive-folder-delete",
+      projectId,
+      connectionId,
+      environmentSlug: ENV,
+      secretPath: "/audit",
+      region: REGION,
+      destinationPath,
+      initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination,
+      recursive: true,
+      isAutoSyncEnabled: false,
+      authToken: adminToken
+    });
+
+    await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken: adminToken });
+
+    // Wait for the secret to land, then for the destination to go quiet. Enabling auto sync can
+    // leave more than one run in flight, and a straggler arriving after the delete would empty the
+    // destination for a reason this test would then misread as the delete having triggered a sync.
+    await waitForDestinationSecrets({
+      region: REGION,
+      destinationPath,
+      expected: { AUDIT_KEY: "audit-value" }
+    });
+    await expectDestinationUnchanged({
+      region: REGION,
+      destinationPath,
+      expected: { AUDIT_KEY: "audit-value" }
+    });
+
+    const runCountBeforeDelete = fakeParameterStore.at(REGION, destinationPath).runCount();
+
+    // Removes "/audit/reports", leaving the sync on "/audit" in place: the route takes the folder
+    // by id and its parent's path, so secretPath here is the parent rather than the target.
+    await deleteFolder({
+      authToken: adminToken,
+      workspaceId: projectId,
+      environmentSlug: ENV,
+      secretPath: "/audit",
+      id: reports.id,
+      forceDelete: true
+    });
+
+    // A run that starts after the delete, not merely an empty destination: only the delete can have
+    // queued it.
+    await waitForSyncRun({
+      syncId: secretSync!.id,
+      region: REGION,
+      destinationPath,
+      runCountBefore: runCountBeforeDelete,
+      authToken: adminToken
+    });
+
+    expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({});
   });
 });
