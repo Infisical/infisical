@@ -162,15 +162,13 @@ export const CredentialFields = ({ storedType }: Props) => {
         )}
       />
 
-      {/* One row, laid out like the custom header row on the Transformations step, and in the order the
-          three parts appear on the wire. */}
       {credentialType === AgentVaultCredentialType.Bearer && (
         <div className="flex items-start gap-3">
           <Controller
             control={control}
             name="headerName"
             render={({ field, fieldState }) => (
-              <Field className="flex-1">
+              <Field className="w-56">
                 <FieldLabel>Header Name</FieldLabel>
                 <FieldContent>
                   <Input
