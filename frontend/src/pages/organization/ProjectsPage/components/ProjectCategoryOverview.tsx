@@ -496,7 +496,7 @@ export const ProjectCategoryOverview = () => {
                       <span>{getProjectTitle(type)}</span>
                       <PreviewBadge type={type} />
                     </CardDescription>
-                    <p className="mt-1 text-sm leading-relaxed text-accent">{description}</p>
+                    <p className="mt-0 text-sm leading-snug text-accent">{description}</p>
                   </div>
                 </div>
               </CardHeader>
