@@ -4456,7 +4456,7 @@
                       "api-reference/endpoints/agent-vault-proxies/create",
                       "api-reference/endpoints/agent-vault-proxies/update",
                       "api-reference/endpoints/agent-vault-proxies/delete",
-                      "api-reference/endpoints/agent-vault-proxies/generate-enrollment-token",
+                      "api-reference/endpoints/agent-vault-proxies/enrollment-token",
                       "api-reference/endpoints/agent-vault-proxies/revoke"
                     ]
                   },

@@ -289,7 +289,7 @@ export const useReissueAgentVaultProxyEnrollmentToken = () =>
   useMutation({
     mutationFn: async (proxyId: string) => {
       const { data } = await apiRequest.post<TAgentVaultEnrollment>(
-        `/api/v1/agent-vault/proxies/${proxyId}/token-auth/generate-enrollment-token`
+        `/api/v1/agent-vault/proxies/${proxyId}/token-auth/enrollment-token`
       );
       return data;
     }

@@ -221,7 +221,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
 
   server.route({
     method: "POST",
-    url: "/:proxyId/token-auth/generate-enrollment-token",
+    url: "/:proxyId/token-auth/enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "reissueAgentVaultProxyEnrollmentToken",
