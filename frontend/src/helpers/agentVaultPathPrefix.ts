@@ -3,7 +3,7 @@ import { z } from "zod";
 // Mirrors backend/src/ee/services/agent-vault/agent-vault-path-prefix.ts, which stays the grammar of record.
 // Kept here so a bad prefix is caught before the request rather than coming back as a server error.
 
-const PATH_PREFIX_RE = /^\/[A-Za-z0-9\-._~$&+,/:=@]*$/;
+const PATH_PREFIX_RE = /^\/[A-Za-z0-9\-._~$&+/:=@]*$/;
 
 export const normalizePathPrefix = (value: string) => {
   const trimmed = value.trim();
@@ -21,7 +21,7 @@ export const pathPrefixError = (raw: string, existing: string[] = []): string | 
   if (value.split("/").some((segment) => segment === "." || segment === ".."))
     return "A path prefix can't contain a . or .. segment.";
   if (!PATH_PREFIX_RE.test(value))
-    return "A path prefix can only contain letters, digits and - . _ ~ $ & + , : = @. Anything else is percent-encoded in the request URL, so a prefix carrying it would never match.";
+    return "A path prefix can only contain letters, digits and - . _ ~ $ & + : = @.";
 
   const normalized = normalizePathPrefix(value);
   if (existing.some((other) => normalizePathPrefix(other) === normalized))

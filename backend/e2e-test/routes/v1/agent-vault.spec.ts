@@ -455,7 +455,7 @@ describe("Agent Vault V1 Router", async () => {
           })
         ).statusCode;
 
-      for (const prefix of ["repos", "/repos/../admin", "/repos//x", "/repos%2fx", "/repos;x", "/repos\\x"]) {
+      for (const prefix of ["repos", "/repos/../admin", "/repos//x", "/repos%2fx", "/repos;x", "/repos\\x", "/repos,x"]) {
         // eslint-disable-next-line no-await-in-loop
         expect(await reject(prefix)).toBe(422);
       }

@@ -1,16 +1,14 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-// The grammar of record. packages/agentvault/policy.go does the matching at runtime and reimplements these
-// rules, so a change here needs the same change there.
-
 export const AGENT_VAULT_MAX_PATH_PREFIX_LENGTH = 512;
 export const AGENT_VAULT_MAX_PATH_PREFIXES = 20;
 
 // An allowlist, because a prefix is compared against the escaped path and only these survive that encoding:
 // `/café` would be judged against `/caf%C3%A9` and could never match. '%' is left out so the comparison stays
-// exact, ';' and '\' because servers disagree about them, '?' and '#' because both end the path.
-const PATH_PREFIX_RE = new RE2(/^\/[A-Za-z0-9\-._~$&+,/:=@]*$/);
+// exact, ';' and '\' because servers disagree about them, '?' and '#' because both end the path. ',' survives
+// encoding and would match, but the UI commits a chip on it, so it cannot be typed and is refused here too.
+const PATH_PREFIX_RE = new RE2(/^\/[A-Za-z0-9\-._~$&+/:=@]*$/);
 
 const hasTraversalSegment = (value: string) => value.split("/").some((segment) => segment === "." || segment === "..");
 
@@ -30,7 +28,7 @@ const pathPrefixError = (raw: string) => {
   if (value.includes("//")) return `"${value}" can't contain an empty path segment.`;
   if (hasTraversalSegment(value)) return `"${value}" can't contain a . or .. segment.`;
   if (!PATH_PREFIX_RE.test(value))
-    return `"${value}" can only contain letters, digits and - . _ ~ $ & + , : = @. Anything else is percent-encoded in the request URL, so a prefix carrying it would never match.`;
+    return `"${value}" can only contain letters, digits and - . _ ~ $ & + : = @.`;
   return null;
 };
 
