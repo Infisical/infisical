@@ -43,6 +43,7 @@ import {
   TDeleteSecretBatchDTO,
   TSecretFolder
 } from "@app/hooks/api/types";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import type {
   CopySecretsFolder,
   CopySecretsInvocation,
@@ -405,14 +406,15 @@ export const SelectionPanel = ({
       ([environment, secret]) =>
         !secret.idOverride &&
         (secret.secretValueHidden ||
-          !permission.can(
+          !hasSecretReadValueOrDescribePermission(
+            permission,
             ProjectPermissionSecretActions.ReadValue,
-            subject(ProjectPermissionSub.Secrets, {
+            {
               environment,
               secretPath: secret.path ?? secretPath,
               secretName: secret.key,
               secretTags: (secret.tags ?? []).map((tag) => tag.slug)
-            })
+            }
           ))
     );
 
@@ -450,7 +452,9 @@ export const SelectionPanel = ({
             }
             const escapedValue = fetchedSecret.secretValue
               .replace(/\\/g, "\\\\")
-              .replace(/"/g, '\\"');
+              .replace(/"/g, '\\"')
+              .replace(/\r/g, "\\r")
+              .replace(/\n/g, "\\n");
             return `${secret.key}="${escapedValue}"`;
           });
           if (visibleEnvs.length > 1) copiedLines.unshift(`# ${environment}`);
