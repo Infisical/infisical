@@ -16,6 +16,7 @@ import {
   FieldLabel,
   Label,
   SecretPathInput,
+  Spinner,
   Toggle
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
@@ -158,7 +159,7 @@ const DefaultSecretSyncSourceFields = () => {
             </Field>
             <FieldError errors={[error]} />
             {Boolean(value) && syncOption?.canImportSecrets && (
-              <Alert variant="info">
+              <Alert variant="warning">
                 <Info />
                 <AlertTitle>Initial sync is set to overwrite the destination</AlertTitle>
                 <AlertDescription>
@@ -168,13 +169,12 @@ const DefaultSecretSyncSourceFields = () => {
               </Alert>
             )}
             {isChecking && (
-              <p className="text-sm text-muted">Checking for naming conflicts across folders...</p>
-            )}
-            {isClear && (
-              <p className="flex items-center gap-1.5 text-sm text-success">
-                <CheckCircle2 className="size-4" />
-                No naming collisions detected
-              </p>
+              <div className="flex items-center gap-2">
+                <Spinner size="xs" />
+                <p className="text-xs text-mineshaft-300">
+                  Checking for naming conflicts across folders...
+                </p>
+              </div>
             )}
             {!isChecking && conflicts.length > 0 && (
               <Alert variant="danger">
