@@ -19,7 +19,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 </AgentVaultBranch>
 
 <AgentVaultBranch service="anthropic">
-  > Run `curl -sS https://api.anthropic.com/v1/models` and show me the output.
+  > Run `curl -sS https://api.anthropic.com/v1/models -H "anthropic-version: 2023-06-01"` and show me the output.
 
   Anthropic returns the list of available models. Run the same request outside the agent and it fails with a 401.
 </AgentVaultBranch>
@@ -119,9 +119,9 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 </AgentVaultBranch>
 
 <AgentVaultBranch service="github-npm">
-  > Run `curl -sS https://api.github.com/user` and show me the output.
+  > Run `curl -sS https://npm.pkg.github.com/-/whoami` and show me the output.
 
-  GitHub returns your account, confirming the token is valid. Run the same request outside the agent and it fails with a 401.
+  GitHub Packages returns your npm username, confirming the token is valid. Run the same request outside the agent and it fails with a 401.
 </AgentVaultBranch>
 
 <AgentVaultBranch service="notion">

@@ -20,7 +20,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 
 <AgentVaultBranch service="anthropic">
   ```bash
-  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.anthropic.com/v1/models
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.anthropic.com/v1/models -H "anthropic-version: 2023-06-01"
   ```
 </AgentVaultBranch>
 
@@ -116,7 +116,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
 
 <AgentVaultBranch service="github-npm">
   ```bash
-  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.github.com/user
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://npm.pkg.github.com/-/whoami
   ```
 </AgentVaultBranch>
 
