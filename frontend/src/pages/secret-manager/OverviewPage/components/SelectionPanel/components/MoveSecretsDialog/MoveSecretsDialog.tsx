@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import type { InputActionMeta, OptionProps, SingleValue, SingleValueProps } from "react-select";
-import { components as reactSelectComponents } from "react-select";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,9 +8,12 @@ import {
   CheckCircleIcon,
   CheckIcon,
   CircleAlertIcon,
+  FolderIcon,
+  FolderOpenIcon,
   FolderPlusIcon,
   InfoIcon,
   LoaderCircleIcon,
+  SlashIcon,
   TriangleAlertIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -25,6 +26,7 @@ import {
   AlertTitle,
   Button,
   Checkbox,
+  Combobox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -42,7 +44,6 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { CreatableSelect } from "@app/components/v3/generic/ReactSelect";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
@@ -79,6 +80,7 @@ type Props = {
   environments: ProjectEnv[];
   visibleEnvs: ProjectEnv[];
   projectId: string;
+  projectName: string;
   projectSlug: string;
   sourceSecretPath: string;
   secrets: Record<string, Record<string, SecretV3RawSanitized>>;
@@ -92,12 +94,20 @@ type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
   foldersWithRbacPolicies: string[];
 };
 
-type OptionValue = {
+type FolderOptionValue = {
+  kind: "folder";
   secretPath: string;
-  __isNew__?: boolean;
-  isCreateOption?: boolean;
+  name: string;
+  depth: number;
+};
+
+type CreateOptionValue = {
+  kind: "create";
+  secretPath: string;
   createDisabledReason?: string;
 };
+
+type OptionValue = FolderOptionValue | CreateOptionValue;
 
 const joinSecretPath = (basePath: string, name: string) =>
   basePath === "/" ? `/${name}` : `${basePath}/${name}`;
@@ -125,76 +135,101 @@ const isValidFolderPath = (path: string) => {
   );
 };
 
-const PathSegments = ({ secretPath }: { secretPath: string }) => {
+const PathTrail = ({ projectName, secretPath }: { projectName: string; secretPath: string }) => {
   const segments = getPathSegments(secretPath);
 
-  if (secretPath === "/" || segments.every((segment) => !segment)) {
-    return <span className="text-muted">Root</span>;
-  }
-
   return (
-    <span className="inline-flex min-w-0 items-center font-mono">
-      {segments.map((segment, index) => (
-        <span
-          key={segments.slice(0, index + 1).join("/")}
-          className="inline-flex min-w-0 items-center"
-        >
-          {index > 0 && (
-            <span className="mx-1 text-muted/60" aria-hidden="true">
-              /
-            </span>
-          )}
-          <span className="truncate">{segment}</span>
-        </span>
-      ))}
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <FolderIcon className="size-4 shrink-0 text-folder" aria-hidden="true" />
+      <span className="max-w-40 shrink-0 truncate">{projectName}</span>
+      {secretPath !== "/" &&
+        segments.map((segment, index) => (
+          <span
+            key={segments.slice(0, index + 1).join("/")}
+            className="inline-flex min-w-0 items-center gap-1.5 font-mono"
+          >
+            <SlashIcon className="size-3 shrink-0 -rotate-12 text-muted" aria-hidden="true" />
+            <span className="truncate">{segment}</span>
+          </span>
+        ))}
     </span>
   );
 };
 
-const PathSingleValue = (props: SingleValueProps<OptionValue>) => {
-  const { data } = props;
-
+const SourceFolderContext = ({
+  projectName,
+  sourceSecretPath
+}: {
+  projectName: string;
+  sourceSecretPath: string;
+}) => {
   return (
-    <reactSelectComponents.SingleValue {...props}>
-      <PathSegments secretPath={data.secretPath} />
-    </reactSelectComponents.SingleValue>
+    <div className="mb-4 rounded-md border border-border bg-container px-3 py-2.5">
+      <p className="mb-1 text-xs text-muted">Moving from</p>
+      <div className="min-w-0 text-sm text-foreground">
+        <PathTrail projectName={projectName} secretPath={sourceSecretPath} />
+      </div>
+    </div>
   );
 };
 
-const PathOption = (props: OptionProps<OptionValue>) => {
-  const { data, isDisabled, isSelected } = props;
+const PathOption = ({
+  option,
+  projectName,
+  isSelected
+}: {
+  option: OptionValue;
+  projectName: string;
+  isSelected: boolean;
+}) => {
+  if (option.kind === "create") {
+    return (
+      <span className="flex min-w-0 items-center gap-2">
+        <FolderPlusIcon className="size-4 shrink-0 text-folder" aria-hidden="true" />
+        <span className="min-w-0 truncate font-mono text-xs">{option.secretPath}</span>
+      </span>
+    );
+  }
+
+  const Icon = isSelected ? FolderOpenIcon : FolderIcon;
+  const segments = getPathSegments(option.secretPath);
 
   return (
-    <reactSelectComponents.Option {...props}>
-      <div
-        className={twMerge(
-          "flex cursor-pointer items-center justify-between gap-2",
-          isDisabled && "cursor-not-allowed opacity-50"
-        )}
-      >
-        {data.isCreateOption ? (
-          <>
-            <div className="min-w-0 flex-1">
-              <PathSegments secretPath={data.secretPath} />
-            </div>
-            <div
-              className="flex max-w-56 shrink-0 items-center gap-1.5 text-xs text-muted"
-              title={isDisabled ? data.createDisabledReason : undefined}
-            >
-              <FolderPlusIcon className="size-3.5" />
-              <span className="truncate">
-                {isDisabled && data.createDisabledReason ? data.createDisabledReason : "New Folder"}
+    <span className="flex min-w-0 items-center">
+      {option.secretPath === "/" ? (
+        <>
+          <FolderIcon className="size-4 shrink-0 text-folder" aria-hidden="true" />
+          <span className="ml-2 min-w-0">
+            <span className="block truncate">{projectName}</span>
+            <span className="block text-xs text-muted">Project root</span>
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="flex shrink-0 self-stretch" aria-hidden="true">
+            {Array.from({ length: option.depth }, (_, index) => (
+              <span
+                key={`${option.secretPath}-guide-${index + 1}`}
+                className="w-4 border-l border-border"
+              />
+            ))}
+          </span>
+          <Icon className="size-4 shrink-0 text-folder" aria-hidden="true" />
+          <span className="ml-2 flex min-w-0 items-center gap-1 font-mono text-xs">
+            {segments.map((segment, index) => (
+              <span key={segments.slice(0, index + 1).join("/")} className="contents">
+                {index > 0 && (
+                  <SlashIcon className="size-3 shrink-0 -rotate-12 text-muted" aria-hidden="true" />
+                )}
+                <span className={twMerge("truncate", index < segments.length - 1 && "text-muted")}>
+                  {segment}
+                </span>
               </span>
-            </div>
-          </>
-        ) : (
-          <div className="min-w-0 flex-1">
-            <PathSegments secretPath={data.secretPath} />
-          </div>
-        )}
-        {!data.isCreateOption && isSelected && <CheckIcon className="size-4 shrink-0" />}
-      </div>
-    </reactSelectComponents.Option>
+            ))}
+          </span>
+        </>
+      )}
+    </span>
   );
 };
 
@@ -206,6 +241,7 @@ const DestinationPathField = ({
   pathEnvironments,
   creationEnvironments,
   projectId,
+  projectName,
   inputId,
   value,
   onChange,
@@ -216,6 +252,7 @@ const DestinationPathField = ({
   pathEnvironments: ProjectEnv[];
   creationEnvironments: ProjectEnv[];
   projectId: string;
+  projectName: string;
   inputId: string;
   value: OptionValue | null;
   onChange: (newValue: OptionValue | null) => void;
@@ -276,16 +313,25 @@ const DestinationPathField = ({
       )
     ])
   );
-  const options = Object.keys(folders)
+  const folderOptions: FolderOptionValue[] = Object.keys(folders)
     .filter(
       (secretPath) =>
-        secretPath === "/" ||
-        creationEnvironments.length === 0 ||
-        creationEnvironments.every((environment) =>
-          existingFolderPaths.get(environment.slug)?.has(removeTrailingSlash(secretPath))
-        )
+        secretPath !== "/" &&
+        (creationEnvironments.length === 0 ||
+          creationEnvironments.every((environment) =>
+            existingFolderPaths.get(environment.slug)?.has(removeTrailingSlash(secretPath))
+          ))
     )
-    .map((secretPath) => ({ secretPath }));
+    .sort((left, right) => left.localeCompare(right))
+    .map((secretPath) => {
+      const segments = getPathSegments(secretPath);
+      return {
+        kind: "folder",
+        secretPath,
+        name: segments.at(-1) ?? secretPath,
+        depth: segments.length
+      };
+    });
   const missingCreationTargets = isRootPath
     ? []
     : creationEnvironments
@@ -348,24 +394,25 @@ const DestinationPathField = ({
     disabledReason = "Creating folder";
   }
 
-  const handleInputChange = (nextValue: string, { action }: InputActionMeta) => {
-    if (action !== "input-change") return inputPath;
-
-    const nextPath = normalizeFolderPathInput(nextValue);
-    setInputPath(nextPath);
-    if (value?.secretPath !== getAbsolutePath(nextPath)) onChange(null);
-    return nextPath;
+  const rootOption: FolderOptionValue = {
+    kind: "folder",
+    secretPath: "/",
+    name: projectName,
+    depth: 0
   };
-
-  const showSelectedPathInput = () => {
-    if (value?.secretPath && value.secretPath !== "/" && !inputPath) {
-      setInputPath(normalizeFolderPathInput(value.secretPath));
-    }
-  };
-
-  const restoreSelectedPathValue = () => {
-    if (value) setInputPath("");
-  };
+  const createOption: CreateOptionValue | null =
+    !isRootPath && !matchesExistingFolder
+      ? {
+          kind: "create",
+          secretPath: candidatePath,
+          createDisabledReason: canCreate ? undefined : disabledReason
+        }
+      : null;
+  const options: OptionValue[] = [
+    rootOption,
+    ...folderOptions,
+    ...(createOption ? [createOption] : [])
+  ];
 
   const handleCreatePath = async (path: string) => {
     const absolutePath = getAbsolutePath(path);
@@ -422,7 +469,13 @@ const DestinationPathField = ({
         })
       ]);
       setInputPath("");
-      onChange({ secretPath: absolutePath });
+      const segments = getPathSegments(absolutePath);
+      onChange({
+        kind: "folder",
+        secretPath: absolutePath,
+        name: segments.at(-1) ?? absolutePath,
+        depth: segments.length
+      });
     } finally {
       createRequestRef.current = false;
       onCreatingChange(false);
@@ -433,67 +486,66 @@ const DestinationPathField = ({
     <Field>
       <FieldLabel htmlFor={inputId}>Destination folder</FieldLabel>
       <FieldContent>
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="w-3 shrink-0 text-center font-mono text-accent" aria-hidden="true">
-            /
-          </span>
-          <div className="min-w-0 flex-1">
-            <CreatableSelect<OptionValue>
-              inputId={inputId}
-              allowCreateWhileLoading
-              components={{ Option: PathOption, SingleValue: PathSingleValue }}
-              createOptionPosition="last"
-              inputValue={inputPath}
-              isDisabled={isCreating}
-              isLoading={isSearching || isCreating}
-              isOptionDisabled={(option) => Boolean(option.isCreateOption) && !canCreate}
-              isValidNewOption={(nextInputValue) => {
-                const nextPath = normalizeFolderPathInput(nextInputValue);
-                const nextAbsolutePath = getAbsolutePath(nextPath);
+        <Combobox
+          id={inputId}
+          modal
+          options={options}
+          value={value}
+          isDisabled={isCreating}
+          isLoading={isCreating}
+          shouldFilter={false}
+          includeMissingSelectedOptions={!inputPath}
+          placeholder="Select a destination folder..."
+          searchPlaceholder="Search or create a folder..."
+          searchAriaLabel="Search destination folders"
+          emptyMessage="No folders found. Type a path to create one."
+          loadingMessage={isCreating ? "Creating folder..." : "Loading folders..."}
+          getOptionValue={(option) =>
+            option.kind === "create" ? `create:${option.secretPath}` : option.secretPath
+          }
+          getOptionLabel={(option) => {
+            if (option.kind === "create") return `Create ${option.secretPath}`;
+            return option.secretPath === "/" ? projectName : option.secretPath;
+          }}
+          getOptionKeywords={(option) =>
+            option.kind === "create"
+              ? [option.secretPath]
+              : [option.secretPath, option.name, projectName]
+          }
+          isOptionDisabled={(option) =>
+            option.kind === "create" ? !canCreate : isCandidateBlocked(option.secretPath)
+          }
+          renderOption={(option, { isSelected }) => (
+            <PathOption option={option} projectName={projectName} isSelected={isSelected} />
+          )}
+          renderOptionIndicator={(option, { isSelected }) => {
+            if (option.kind === "folder") {
+              return isSelected ? <CheckIcon className="size-4" /> : null;
+            }
 
-                return (
-                  Boolean(nextPath) &&
-                  creationEnvironments.some(
-                    (environment) =>
-                      !existingFolderPaths.get(environment.slug)?.has(nextAbsolutePath)
-                  )
-                );
-              }}
-              options={options}
-              value={value}
-              onBlur={restoreSelectedPathValue}
-              onChange={(nextValue) => {
-                const option = nextValue as SingleValue<OptionValue>;
-                if (!option || option.isCreateOption) return;
-                setInputPath("");
-                onChange(option);
-              }}
-              onCreateOption={handleCreatePath}
-              onFocus={showSelectedPathInput}
-              onInputChange={handleInputChange}
-              onMenuClose={restoreSelectedPathValue}
-              onMenuOpen={showSelectedPathInput}
-              getNewOptionData={(nextInputValue) => ({
-                secretPath: getAbsolutePath(nextInputValue),
-                __isNew__: true,
-                isCreateOption: true,
-                createDisabledReason: canCreate ? undefined : disabledReason
-              })}
-              getOptionLabel={(option) => {
-                if (option.isCreateOption) {
-                  return `New Folder: ${
-                    option.createDisabledReason ?? stripLeadingSlashes(option.secretPath)
-                  }`;
-                }
-                return option.secretPath === "/" ? "Root" : stripLeadingSlashes(option.secretPath);
-              }}
-              getOptionValue={(option) =>
-                option.isCreateOption ? `create:${option.secretPath}` : option.secretPath
-              }
-              placeholder="Root"
-            />
-          </div>
-        </div>
+            return (
+              <span
+                className="flex max-w-56 items-center gap-1.5 text-xs text-muted"
+                title={option.createDisabledReason}
+              >
+                <FolderPlusIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{option.createDisabledReason ?? "New Folder"}</span>
+              </span>
+            );
+          }}
+          renderValue={(option) => (
+            <PathTrail projectName={projectName} secretPath={option.secretPath} />
+          )}
+          onInputValueChange={(nextValue) => setInputPath(normalizeFolderPathInput(nextValue))}
+          onClear={() => onChange(null)}
+          onValueChange={async (option) => {
+            if (option.kind === "create") {
+              await handleCreatePath(option.secretPath);
+              return;
+            }
+            onChange(option);
+          }}
+        />
       </FieldContent>
     </Field>
   );
@@ -774,6 +826,7 @@ const SingleEnvContent = ({
   environments,
   visibleEnvs,
   projectId,
+  projectName,
   projectSlug,
   sourceSecretPath,
   foldersWithRbacPolicies
@@ -785,7 +838,10 @@ const SingleEnvContent = ({
   const moveSecretRotation = useMoveSecretRotation();
   const moveFolder = useMoveFolder();
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
-    secretPath: "/"
+    kind: "folder",
+    secretPath: "/",
+    name: projectName,
+    depth: 0
   });
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
@@ -805,8 +861,13 @@ const SingleEnvContent = ({
   const selectedEnvironment = watch("environment");
 
   useEffect(() => {
-    setSelectedPath({ secretPath: "/" });
-  }, [selectedEnvironment]);
+    setSelectedPath({
+      kind: "folder",
+      secretPath: "/",
+      name: projectName,
+      depth: 0
+    });
+  }, [selectedEnvironment, projectName]);
 
   const destinationSelected =
     Boolean(selectedPath?.secretPath) &&
@@ -1022,6 +1083,7 @@ const SingleEnvContent = ({
           </Field>
         )}
       />
+      <SourceFolderContext projectName={projectName} sourceSecretPath={sourceSecretPath} />
       <div className="mt-4">
         <DestinationPathField
           key={selectedEnvironment}
@@ -1033,6 +1095,7 @@ const SingleEnvContent = ({
           }
           creationEnvironments={environments.filter(({ slug }) => slug === selectedEnvironment)}
           projectId={projectId}
+          projectName={projectName}
           value={selectedPath}
           onChange={setSelectedPath}
           isCreating={isCreatingFolder}
@@ -1116,6 +1179,7 @@ const MultiEnvContent = ({
   folders,
   environments,
   projectId,
+  projectName,
   projectSlug,
   sourceSecretPath,
   foldersWithRbacPolicies
@@ -1128,7 +1192,10 @@ const MultiEnvContent = ({
   const { permission } = useProjectPermission();
   const [moveResults, setMoveResults] = useState<MoveResults | null>(null);
   const [selectedPath, setSelectedPath] = useState<OptionValue | null>({
-    secretPath: "/"
+    kind: "folder",
+    secretPath: "/",
+    name: projectName,
+    depth: 0
   });
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
@@ -1467,11 +1534,13 @@ const MultiEnvContent = ({
           Select a single environment to move {moveCopy.noun} across environments.
         </AlertTitle>
       </Alert>
+      <SourceFolderContext projectName={projectName} sourceSecretPath={sourceSecretPath} />
       <DestinationPathField
         inputId="move-secret-path-multi"
         pathEnvironments={environments}
         creationEnvironments={folderCreationEnvironments}
         projectId={projectId}
+        projectName={projectName}
         value={selectedPath}
         onChange={setSelectedPath}
         isCreating={isCreatingFolder}
