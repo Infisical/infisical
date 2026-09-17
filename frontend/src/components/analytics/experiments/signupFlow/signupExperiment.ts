@@ -19,14 +19,20 @@ const SIGNUP_FLOW_VARIANT_COOKIE_KEY = "infisical_signup_flow_variant";
 const SIGNUP_FLOW_VARIANT_QUERY_PARAM = "signupFlow";
 const FEATURE_FLAG_TIMEOUT_MS = 2500;
 
-const getLocalSignupFlowVariantOverride = () => {
-  if (!import.meta.env.DEV) return undefined;
+const isPullRequestPreview = () =>
+  /^pr-\d+\.preview\.infisical\.com$/.test(window.location.hostname);
+
+const getSignupFlowVariantOverride = () => {
+  if (!import.meta.env.DEV && !isPullRequestPreview()) return undefined;
 
   const value = new URLSearchParams(window.location.search).get(SIGNUP_FLOW_VARIANT_QUERY_PARAM);
   const resolvedVariant = resolveSignupFlowVariant(value);
 
   return resolvedVariant.shouldPersist ? resolvedVariant.variant : undefined;
 };
+
+export const isSignupFlowExperimentEnabled = () =>
+  isInfisicalCloud() || import.meta.env.DEV || Boolean(getSignupFlowVariantOverride());
 
 const persistSignupFlowVariant = (variant: SignupFlowVariant) => {
   try {
@@ -69,8 +75,8 @@ export const useSignupFlowVariant = (enabled = true) => {
   const [variant, setVariant] = useState<SignupFlowVariant | null>(() => {
     if (!enabled) return SignupFlowVariant.Control;
 
-    const localOverride = getLocalSignupFlowVariantOverride();
-    if (localOverride) return localOverride;
+    const override = getSignupFlowVariantOverride();
+    if (override) return override;
 
     if (!isPostHogEnabled()) return SignupFlowVariant.Control;
     return getPersistedSignupFlowVariant() ?? null;
