@@ -13,7 +13,8 @@ import {
   planCommitBatches,
   scanGitRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
-import { getConfig } from "@app/lib/config/env";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig, getSecretScanningScanBudgetMs } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -58,6 +59,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItemPrimary" | "deleteItem">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
@@ -76,6 +78,9 @@ const FULL_SCAN_ATTEMPTS = 3;
 const FULL_SCAN_MAX_STALLED_COUNT = 2;
 const FULL_SCAN_RETRY_DELAY = ms("1m");
 
+const DUPLICATE_FULL_SCAN_STATUS_MESSAGE =
+  "Another scan of this resource was already in progress, so this scan was not started.";
+
 export const secretScanningV2QueueServiceFactory = ({
   queueService,
   cronJob,
@@ -85,9 +90,39 @@ export const secretScanningV2QueueServiceFactory = ({
   smtpService,
   kmsService,
   auditLogService,
+  keyStore,
   appConnectionDAL,
   notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
+  /**
+   * Full scans of one resource are serialized across pods by a lease in Redis holding the ID of the
+   * scan that owns it. A retry or a stalled-job recovery carries the same scan ID, so it reclaims
+   * its own lease and resumes where it left off; a second, distinct scan of the same resource finds
+   * the lease held and gives up rather than cloning the repository alongside the first. Renewing is
+   * the same operation as acquiring, and returns false once the lease has been lost.
+   */
+  const acquireFullScanLease = async (resourceId: string, scanId: string) => {
+    const key = KeyStorePrefixes.SecretScanningFullScanLease(resourceId);
+    const ttlSeconds = Math.ceil(getSecretScanningScanBudgetMs(getConfig()) / 1000);
+
+    const acquired = await keyStore.setItemWithExpiryNX(key, ttlSeconds, scanId);
+
+    if (acquired) return true;
+
+    // if same scanId, this can be a retry, so allow it
+    if ((await keyStore.getItemPrimary(key)) !== scanId) return false;
+
+    await keyStore.setItemWithExpiry(key, ttlSeconds, scanId);
+
+    return true;
+  };
+
+  const releaseFullScanLease = async (resourceId: string, scanId: string) => {
+    const key = KeyStorePrefixes.SecretScanningFullScanLease(resourceId);
+
+    if ((await keyStore.getItemPrimary(key)) === scanId) await keyStore.deleteItem(key);
+  };
+
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
     resourceExternalId?: string
@@ -209,7 +244,28 @@ export const secretScanningV2QueueServiceFactory = ({
 
     if (!scan) throw new Error(`Scan with ID "${scanId}" not found`);
 
+    let holdsLease = false;
+
     try {
+      holdsLease = await acquireFullScanLease(resourceId, scanId);
+
+      if (!holdsLease) {
+        await secretScanningV2DAL.scans.update(
+          {
+            id: scanId,
+            $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+          },
+          {
+            status: SecretScanningScanStatus.Failed,
+            statusMessage: DUPLICATE_FULL_SCAN_STATUS_MESSAGE
+          }
+        );
+
+        logger.warn(`secretScanningV2Queue: Full Scan Skipped, resource is already being scanned ${logDetails}`);
+
+        return;
+      }
+
       await secretScanningV2DAL.scans.update(
         { id: scanId },
         {
@@ -256,10 +312,11 @@ export const secretScanningV2QueueServiceFactory = ({
        * Each batch is made durable on its own: its findings and the commit it reached are committed
        * before the next `infisical scan` starts, so a worker killed mid-scan resumes from there
        * rather than re-walking history it has already paid for. Returns whether this run still owns
-       * the scan — once the reaper has given up on it, there is nothing left to make progress on.
+       * the scan and its lease — once the reaper has given up on it, or another scan of the resource
+       * has taken over, there is nothing left to make progress on.
        */
-      const persistBatch = async (batchFindings: TFindingsPayload, lastScannedCommit?: string) =>
-        secretScanningV2DAL.findings.transaction(async (tx) => {
+      const persistBatch = async (batchFindings: TFindingsPayload, lastScannedCommit?: string) => {
+        const owned = await secretScanningV2DAL.findings.transaction(async (tx) => {
           if (batchFindings.length) {
             const findings = await secretScanningV2DAL.findings.upsert(
               batchFindings.map((finding) => ({
@@ -279,14 +336,27 @@ export const secretScanningV2QueueServiceFactory = ({
             allFindings.push(...findings);
           }
 
-          const owned = await secretScanningV2DAL.scans.update(
+          const progressed = await secretScanningV2DAL.scans.update(
             { id: scanId, status: SecretScanningScanStatus.Scanning },
             { lastScannedCommit, progressUpdatedAt: new Date() },
             tx
           );
 
-          return Boolean(owned.length);
+          return Boolean(progressed.length);
         });
+
+        if (!owned) return false;
+
+        // Renewed on the same beat progress is recorded, so the lease outlives a scan of any length
+        // without a timer of its own. Losing it means another scan of this resource has taken over.
+        holdsLease = await acquireFullScanLease(resourceId, scanId);
+
+        if (!holdsLease) {
+          logger.warn(`secretScanningV2Queue: Full Scan lost its lease on the resource ${logDetails}`);
+        }
+
+        return holdsLease;
+      };
 
       let stillOwned = true;
 
@@ -472,6 +542,7 @@ export const secretScanningV2QueueServiceFactory = ({
       );
       throw error;
     } finally {
+      if (holdsLease) await releaseFullScanLease(resourceId, scanId);
       await deleteTempFolder(tempFolder);
     }
   };

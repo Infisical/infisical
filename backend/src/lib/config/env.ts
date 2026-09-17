@@ -65,6 +65,16 @@ export const runModesSchema = zpStr(z.string().optional())
  */
 export const SECRET_SCANNING_SCAN_OVERHEAD = ms("5m");
 
+/**
+ * Clone plus scan plus that overhead: the longest a healthy scan can go without making externally
+ * visible progress. The stuck-scan validation and the full-scan lease TTL both key off it, so they
+ * cannot drift apart.
+ */
+export const getSecretScanningScanBudgetMs = (timeouts: {
+  SECRET_SCANNING_CLONE_TIMEOUT: number;
+  SECRET_SCANNING_SCAN_TIMEOUT: number;
+}) => timeouts.SECRET_SCANNING_CLONE_TIMEOUT + timeouts.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+
 const zodTimeoutMs = ({
   envVar,
   description,
@@ -135,8 +145,7 @@ export const validateSecretScanningTimeouts = (
   data: z.infer<typeof secretScanningTimeoutsSchema>,
   ctx: z.RefinementCtx
 ) => {
-  const scanBudgetMs =
-    data.SECRET_SCANNING_CLONE_TIMEOUT + data.SECRET_SCANNING_SCAN_TIMEOUT + SECRET_SCANNING_SCAN_OVERHEAD;
+  const scanBudgetMs = getSecretScanningScanBudgetMs(data);
   if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT <= scanBudgetMs) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
