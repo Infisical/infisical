@@ -181,6 +181,7 @@ import { snowflakeConnectionService } from "./snowflake/snowflake-connection-ser
 import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
 import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
+import { ValidateStripeConnectionCredentialsSchema } from "./stripe";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
 import { ValidateTeamCityConnectionCredentialsSchema } from "./teamcity";
@@ -308,7 +309,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
   [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
-  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema
+  [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
+  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

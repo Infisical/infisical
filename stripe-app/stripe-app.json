@@ -1,0 +1,20 @@
+{
+  "$schema": "https://stripe.com/stripe-app.schema.json",
+  "id": "infisical-integration-dev",
+  "name": "Infisical Integration DEV",
+  "version": "0.0.4",
+  "icon": "./icon.png",
+  "extensions": null,
+  "permissions": [
+    {
+      "permission": "api_key_write",
+      "purpose": "Lets Infisical create, rotate and expire API keys in your account so your Stripe credentials can be rotated automatically."
+    }
+  ],
+  "allowed_redirect_uris": [
+    "https://provable-triceps-maximum.ngrok-free.dev/organization/app-connections/stripe/oauth/callback"
+  ],
+  "distribution_type": "public",
+  "stripe_api_access_type": "oauth",
+  "sandbox_install_compatible": true
+}

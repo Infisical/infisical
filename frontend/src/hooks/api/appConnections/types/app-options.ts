@@ -127,6 +127,12 @@ export type THerokuConnectionOption = TAppConnectionOptionBase & {
   oauthClientId?: string;
 };
 
+export type TStripeConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Stripe;
+  oauthClientId?: string;
+  oauthAuthorizeUrl?: string;
+};
+
 export type TOnePassConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.OnePass;
 };
@@ -375,6 +381,7 @@ export type TAppConnectionOption =
   | TOCIConnectionOption
   | TOnePassConnectionOption
   | THerokuConnectionOption
+  | TStripeConnectionOption
   | TRenderConnectionOption
   | TFlyioConnectionOption
   | TGitlabConnectionOption
@@ -461,6 +468,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.OCI]: TOCIConnectionOption;
   [AppConnection.OnePass]: TOnePassConnectionOption;
   [AppConnection.Heroku]: THerokuConnectionOption;
+  [AppConnection.Stripe]: TStripeConnectionOption;
   [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
   [AppConnection.GitLab]: TGitlabConnectionOption;

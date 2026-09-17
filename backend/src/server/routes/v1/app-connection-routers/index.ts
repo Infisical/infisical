@@ -73,6 +73,7 @@ import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
 import { registerSpaceliftConnectionRouter } from "./spacelift-connection-router";
 import { registerSshConnectionRouter } from "./ssh-connection-router";
+import { registerStripeConnectionRouter } from "./stripe-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
@@ -172,5 +173,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Fireworks]: registerFireworksConnectionRouter,
     [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter,
     [AppConnection.Spacelift]: registerSpaceliftConnectionRouter,
-    [AppConnection.Daytona]: registerDaytonaConnectionRouter
+    [AppConnection.Daytona]: registerDaytonaConnectionRouter,
+    [AppConnection.Stripe]: registerStripeConnectionRouter
   };
