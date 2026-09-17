@@ -3,9 +3,11 @@ import {
   TCertificatePolicyRule,
   TSubjectRule
 } from "@app/hooks/api/certificatePolicies";
+import { CertExtensionValueEncoding } from "@app/hooks/api/certificates/enums";
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
+  decodeDerTextValue,
   formatSANType,
   validateCustomExtensionValue
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
@@ -672,7 +674,7 @@ export const evaluateCustomExtensions = ({
   rules
 }: {
   declarations: TCustomExtensionDeclaration[];
-  rows: { oid: string; value: string }[];
+  rows: { oid: string; value: string; valueEncoding?: CertExtensionValueEncoding }[];
   rules?: TCustomExtensionPolicyRule[] | null;
 }): CustomExtensionsGuidance => {
   const errorsByOid: Record<string, string> = {};
@@ -680,7 +682,14 @@ export const evaluateCustomExtensions = ({
     declarations.map((declaration) => [declaration.oid, declaration])
   );
   const valueByOid = new Map(
-    rows.filter((row) => row.oid.trim()).map((row) => [row.oid, row.value])
+    rows
+      .filter((row) => row.oid.trim())
+      .map((row) => [
+        row.oid,
+        row.valueEncoding === CertExtensionValueEncoding.DER
+          ? (decodeDerTextValue(row.value) ?? row.value)
+          : row.value
+      ])
   );
   const isUnrestricted = rules === undefined || rules === null;
 

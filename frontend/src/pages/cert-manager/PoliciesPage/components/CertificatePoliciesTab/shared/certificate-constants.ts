@@ -448,6 +448,53 @@ export const validateCustomExtensionValue = (oid: string, value: string): string
 export const getCustomExtensionValuePlaceholder = (oid: string) =>
   getCustomExtensionPreset(oid)?.placeholder ?? "Value";
 
+const ASN1_STRING_TAGS = new Set([
+  0x0c, 0x12, 0x13, 0x14, 0x15, 0x16, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e
+]);
+
+export const decodeDerTextValue = (base64Value: string): string | null => {
+  let bytes: Uint8Array;
+  try {
+    const binary = atob(base64Value);
+    bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  } catch {
+    return null;
+  }
+
+  if (bytes.length < 2) return null;
+
+  const tag = bytes[0];
+  let length = bytes[1];
+  let offset = 2;
+
+  // eslint-disable-next-line no-bitwise
+  if (length & 0x80) {
+    // eslint-disable-next-line no-bitwise
+    const count = length & 0x7f;
+    if (count === 0 || count > 4 || bytes.length < 2 + count) return null;
+    length = 0;
+    for (let index = 0; index < count; index += 1) {
+      // eslint-disable-next-line no-bitwise
+      length = (length << 8) | bytes[2 + index];
+    }
+    offset = 2 + count;
+  }
+
+  if (offset + length !== bytes.length || !ASN1_STRING_TAGS.has(tag)) return null;
+
+  const body = bytes.slice(offset);
+  if (tag === 0x1e) {
+    let decoded = "";
+    for (let index = 0; index + 1 < body.length; index += 2) {
+      // eslint-disable-next-line no-bitwise
+      decoded += String.fromCharCode((body[index] << 8) | body[index + 1]);
+    }
+    return decoded;
+  }
+
+  return new TextDecoder().decode(body);
+};
+
 export const getCustomExtensionValuePlaceholderFor = (
   oid: string,
   encoding?: CertExtensionValueEncoding

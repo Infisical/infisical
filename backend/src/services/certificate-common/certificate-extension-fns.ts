@@ -263,14 +263,10 @@ const ASN1_STRING_TAG_NUMBERS = new Set([12, 18, 19, 20, 21, 22, 25, 26, 27, 28,
 const ASN1_OCTET_STRING_TAG_NUMBER = 4;
 const PRINTABLE_TEXT_PATTERN = new RE2("^[\\x20-\\x7e]+$");
 
-export const describeCustomExtensionTextForPolicy = (oid: string, base64Value: string): string | null => {
-  const described = describeCustomExtensionValue(oid, base64Value);
-  if (described !== null) return described;
+const MAX_DER_TEXT_DEPTH = 4;
 
-  const parsed = parseSingleDerValue(Buffer.from(base64Value, "base64"));
-  if (!parsed) return null;
-
-  const { idBlock, valueBlock } = parsed as {
+const textFromDerNode = (node: unknown): string | null => {
+  const { idBlock, valueBlock } = node as {
     idBlock: { tagClass: number; tagNumber: number };
     valueBlock: { value?: unknown; valueHexView?: Uint8Array };
   };
@@ -286,6 +282,36 @@ export const describeCustomExtensionTextForPolicy = (oid: string, base64Value: s
   }
 
   return null;
+};
+
+const collectDerTextValues = (node: unknown, depth = 0, found: string[] = []): string[] => {
+  if (depth > MAX_DER_TEXT_DEPTH) return found;
+
+  const text = textFromDerNode(node);
+  if (text !== null) {
+    found.push(text);
+    return found;
+  }
+
+  const { valueBlock } = node as { valueBlock: { value?: unknown } };
+  if (Array.isArray(valueBlock.value)) {
+    valueBlock.value.forEach((child) => collectDerTextValues(child, depth + 1, found));
+  }
+
+  return found;
+};
+
+export const collectCustomExtensionTextValues = (base64Value: string): string[] => {
+  const parsed = parseSingleDerValue(Buffer.from(base64Value, "base64"));
+  return parsed ? collectDerTextValues(parsed) : [];
+};
+
+export const describeCustomExtensionTextForPolicy = (oid: string, base64Value: string): string | null => {
+  const described = describeCustomExtensionValue(oid, base64Value);
+  if (described !== null) return described;
+
+  const parsed = parseSingleDerValue(Buffer.from(base64Value, "base64"));
+  return parsed ? textFromDerNode(parsed) : null;
 };
 
 export const parseCustomExtensionsFromCertificate = (
@@ -542,9 +568,12 @@ export const resolveCustomExtensions = ({
         : matchesAnyPattern(matchValue, patterns);
     const valueForMessage = matchValue ?? encodedValue;
 
-    if (matchesPatterns(denied)) {
+    const deniedTexts = matchValue === null && denied.length ? collectCustomExtensionTextValues(encodedValue) : [];
+    const isDenied = matchesPatterns(denied) || deniedTexts.some((text) => matchesAnyPattern(text, denied));
+
+    if (isDenied) {
       errors.push(
-        `Custom extension '${oid}' value '${valueForMessage}' is denied by this policy. Denied values: ${denied.join(", ")}`
+        `Custom extension '${oid}' value '${deniedTexts[0] ?? valueForMessage}' is denied by this policy. Denied values: ${denied.join(", ")}`
       );
       // eslint-disable-next-line no-continue
       continue;

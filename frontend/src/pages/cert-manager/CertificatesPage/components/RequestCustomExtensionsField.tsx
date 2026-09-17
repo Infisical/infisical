@@ -124,14 +124,11 @@ export const RequestCustomExtensionsField = ({
           encoding: CertExtensionValueEncoding | undefined,
           onSelect: (next: CertExtensionValueEncoding) => void
         ) => {
-          const isPreset = isPresetExtensionOid(oid);
+          const current = encoding ?? CertExtensionValueEncoding.TEXT;
+          const isPreset = isPresetExtensionOid(oid) && current !== CertExtensionValueEncoding.DER;
           const select = (
             <Select
-              value={
-                isPreset
-                  ? CertExtensionValueEncoding.TEXT
-                  : (encoding ?? CertExtensionValueEncoding.TEXT)
-              }
+              value={current}
               disabled={isPreset}
               onValueChange={(next) => onSelect(next as CertExtensionValueEncoding)}
             >

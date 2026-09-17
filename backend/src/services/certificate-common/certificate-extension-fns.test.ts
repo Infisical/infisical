@@ -614,6 +614,19 @@ describe("resolveCustomExtensions", () => {
     expect(extensions[0].value).toBe(octetString);
   });
 
+  it("finds a denied value nested inside a DER structure", () => {
+    const inner = Buffer.concat([Buffer.from([0x0c, 0x0b]), Buffer.from("secret-prod", "utf8")]);
+    const wrapped = Buffer.concat([Buffer.from([0x30, inner.length]), inner]).toString("base64");
+
+    const { errors, extensions } = resolveCustomExtensions({
+      rules: [{ oid: CUSTOM_OID, allowed: ["*"], denied: ["secret-*"] }],
+      requestExtensions: [{ oid: CUSTOM_OID, value: wrapped, valueEncoding: CertExtensionValueEncoding.DER }]
+    });
+
+    expect(extensions).toEqual([]);
+    expect(errors[0]).toContain("'secret-prod' is denied by this policy");
+  });
+
   it("lets an unrelated binary value past a policy that denies specific bytes", () => {
     const { errors, extensions } = resolveCustomExtensions({
       rules: [{ oid: CUSTOM_OID, allowed: ["*"], denied: ["MAMCAQU="] }],

@@ -1,3 +1,4 @@
+import { TCustomExtensionRule } from "@app/hooks/api/certificatePolicies";
 import {
   certKeyAlgorithms,
   SIGNATURE_ALGORITHMS_OPTIONS
@@ -6,7 +7,6 @@ import {
   CertExtensionValueEncoding,
   CertificateRenewalKeySource
 } from "@app/hooks/api/certificates/enums";
-import { TCustomExtensionRule } from "@app/hooks/api/certificatePolicies";
 import { TCertificate, TRenewCertificateAttributes } from "@app/hooks/api/certificates/types";
 import {
   CertExtendedKeyUsageType,
