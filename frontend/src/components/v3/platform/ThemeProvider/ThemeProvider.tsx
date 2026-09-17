@@ -92,11 +92,25 @@ export const ThemeProvider = ({
 
   const setTheme = React.useCallback(
     (nextTheme: Theme) => {
-      applyTheme(resolveTheme(nextTheme, pathname));
-      persistTheme(nextTheme);
-      setThemeState(nextTheme);
+      const nextResolvedTheme = resolveTheme(nextTheme, pathname);
+      const updateTheme = () => {
+        applyTheme(nextResolvedTheme);
+        persistTheme(nextTheme);
+        setThemeState(nextTheme);
+      };
+
+      if (
+        nextResolvedTheme === resolvedTheme ||
+        !("startViewTransition" in document) ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ) {
+        updateTheme();
+        return;
+      }
+
+      document.startViewTransition(updateTheme);
     },
-    [pathname]
+    [pathname, resolvedTheme]
   );
 
   const value = React.useMemo(
