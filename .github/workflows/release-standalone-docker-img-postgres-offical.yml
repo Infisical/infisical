@@ -131,66 +131,16 @@ jobs:
             - name: 🔍 Scan infisical/infisical with Trivy
               id: trivy_infisical_core
               continue-on-error: true
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, Apr 22, 2026
-              env:
-                  # The GHCR default rate-limits anonymous pulls from Actions egress IPs.
-                  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-                  # The digest is a manifest list, so pick an arch rather than letting the
-                  # runner decide. arm64 is published but deliberately not scanned: the OS
-                  # packages are pinned to the same versions for both arches and Debian
-                  # advisories match on version, not arch, so its findings are amd64's.
-                  TRIVY_PLATFORM: linux/amd64
+              uses: ./.github/actions/trivy-image-scan
               with:
-                  scan-type: image
-                  image-ref: infisical/infisical@${{ steps.build.outputs.digest }}
-                  version: ${{ env.TRIVY_CLI_VERSION }}
-                  scanners: vuln
-                  severity: CRITICAL,HIGH
-                  # Not actionable at release time; the Debian pins in
-                  # Dockerfile.standalone-infisical cover what is.
-                  ignore-unfixed: true
-                  format: json
-                  output: trivy-infisical-core.json
-                  timeout: 15m
-                  exit-code: "0"
-            # The only record of this release's fixable findings, so it outlives the
-            # default retention. Unfixed CVEs are filtered out above and are not in it.
-            - name: 📤 Keep the Trivy report for infisical/infisical
-              id: trivy_upload_infisical_core
-              if: steps.trivy_infisical_core.outcome == 'success'
-              continue-on-error: true
-              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-              with:
-                  name: trivy-infisical-core-${{ steps.extract_version.outputs.version }}
-                  path: trivy-infisical-core.json
-                  retention-days: 90
-                  if-no-files-found: error
-            # Nothing here touches job status, so without a summary the run looks the
-            # same whether the image shipped clean or with twenty criticals.
-            - name: 📋 Summarize Trivy findings for infisical/infisical
-              if: steps.trivy_infisical_core.outcome == 'success'
-              continue-on-error: true
-              env:
-                  REPORT: trivy-infisical-core.json
-              run: |
-                  set -euo pipefail
-                  total=$(jq '[.Results[]?.Vulnerabilities[]?] | length' "$REPORT")
-                  crit=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$REPORT")
-                  cves=$(jq -r '[.Results[]?.Vulnerabilities[]?.VulnerabilityID] | unique | length' "$REPORT")
-                  {
-                    echo "### Trivy: infisical/infisical"
-                    echo
-                    echo "| findings | critical | unique CVEs |"
-                    echo "| --- | --- | --- |"
-                    echo "| $total | $crit | $cves |"
-                  } >> "$GITHUB_STEP_SUMMARY"
-                  if [ "$total" -gt 0 ]; then
-                    echo "::warning::infisical/infisical: $total fixable CRITICAL/HIGH findings across $cves CVEs. See the trivy-infisical-core artifact."
-                  fi
-            # A scan that breaks is otherwise indistinguishable from a clean one, since
-            # both leave the job green with no report attached.
+                  image: infisical/infisical
+                  digest: ${{ steps.build.outputs.digest }}
+                  artifact-name: trivy-infisical-core-${{ steps.extract_version.outputs.version }}
+                  trivy-version: ${{ env.TRIVY_CLI_VERSION }}
+            # Any failure inside the action, whether the scan, the upload or the summary,
+            # surfaces as this step's outcome, so a broken scan cannot read as a clean one.
             - name: Flag an incomplete Trivy scan of infisical/infisical
-              if: steps.trivy_infisical_core.outcome == 'failure' || steps.trivy_upload_infisical_core.outcome == 'failure'
+              if: steps.trivy_infisical_core.outcome == 'failure'
               run: echo "::warning::Trivy did not report on infisical/infisical for this release. No report does not mean no findings."
 
     infisical-fips-standalone:
@@ -269,66 +219,16 @@ jobs:
             - name: 🔍 Scan infisical/infisical-fips with Trivy
               id: trivy_infisical_fips
               continue-on-error: true
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, Apr 22, 2026
-              env:
-                  # The GHCR default rate-limits anonymous pulls from Actions egress IPs.
-                  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-                  # The digest is a manifest list, so pick an arch rather than letting the
-                  # runner decide. arm64 is published but deliberately not scanned: the OS
-                  # packages are pinned to the same versions for both arches and Debian
-                  # advisories match on version, not arch, so its findings are amd64's.
-                  TRIVY_PLATFORM: linux/amd64
+              uses: ./.github/actions/trivy-image-scan
               with:
-                  scan-type: image
-                  image-ref: infisical/infisical-fips@${{ steps.build_fips.outputs.digest }}
-                  version: ${{ env.TRIVY_CLI_VERSION }}
-                  scanners: vuln
-                  severity: CRITICAL,HIGH
-                  # Not actionable at release time; the Debian pins in
-                  # Dockerfile.fips.standalone-infisical cover what is.
-                  ignore-unfixed: true
-                  format: json
-                  output: trivy-infisical-fips.json
-                  timeout: 15m
-                  exit-code: "0"
-            # The only record of this release's fixable findings, so it outlives the
-            # default retention. Unfixed CVEs are filtered out above and are not in it.
-            - name: 📤 Keep the Trivy report for infisical/infisical-fips
-              id: trivy_upload_infisical_fips
-              if: steps.trivy_infisical_fips.outcome == 'success'
-              continue-on-error: true
-              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-              with:
-                  name: trivy-infisical-fips-${{ steps.extract_version.outputs.version }}
-                  path: trivy-infisical-fips.json
-                  retention-days: 90
-                  if-no-files-found: error
-            # Nothing here touches job status, so without a summary the run looks the
-            # same whether the image shipped clean or with twenty criticals.
-            - name: 📋 Summarize Trivy findings for infisical/infisical-fips
-              if: steps.trivy_infisical_fips.outcome == 'success'
-              continue-on-error: true
-              env:
-                  REPORT: trivy-infisical-fips.json
-              run: |
-                  set -euo pipefail
-                  total=$(jq '[.Results[]?.Vulnerabilities[]?] | length' "$REPORT")
-                  crit=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$REPORT")
-                  cves=$(jq -r '[.Results[]?.Vulnerabilities[]?.VulnerabilityID] | unique | length' "$REPORT")
-                  {
-                    echo "### Trivy: infisical/infisical-fips"
-                    echo
-                    echo "| findings | critical | unique CVEs |"
-                    echo "| --- | --- | --- |"
-                    echo "| $total | $crit | $cves |"
-                  } >> "$GITHUB_STEP_SUMMARY"
-                  if [ "$total" -gt 0 ]; then
-                    echo "::warning::infisical/infisical-fips: $total fixable CRITICAL/HIGH findings across $cves CVEs. See the trivy-infisical-fips artifact."
-                  fi
-            # A scan that breaks is otherwise indistinguishable from a clean one, since
-            # both leave the job green with no report attached.
+                  image: infisical/infisical-fips
+                  digest: ${{ steps.build_fips.outputs.digest }}
+                  artifact-name: trivy-infisical-fips-${{ steps.extract_version.outputs.version }}
+                  trivy-version: ${{ env.TRIVY_CLI_VERSION }}
+            # Any failure inside the action, whether the scan, the upload or the summary,
+            # surfaces as this step's outcome, so a broken scan cannot read as a clean one.
             - name: Flag an incomplete Trivy scan of infisical/infisical-fips
-              if: steps.trivy_infisical_fips.outcome == 'failure' || steps.trivy_upload_infisical_fips.outcome == 'failure'
+              if: steps.trivy_infisical_fips.outcome == 'failure'
               run: echo "::warning::Trivy did not report on infisical/infisical-fips for this release. No report does not mean no findings."
     trigger-binary-release:
       runs-on: ubuntu-latest
